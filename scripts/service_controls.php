@@ -49,7 +49,7 @@ a {
 	cursor: pointer;
 	text-align: center;
 }
-		@media screen and (max-width: 1000px) {
+		@media screen and (max-width: 800px) {
 			.column {
 				float: none;
 				width: 100%;
@@ -59,31 +59,23 @@ a {
 <body style="background-color: rgb(119, 196, 135);">
 	<div class="row">
 		<div class="column first">
-    	<form action="/scripts/filemanager/filemanager.php" target="_top">
-    		<button type="submit" class="block">File Manager</button>
-    	</form>
-			<form action="/scripts/adminer.php" target="_top">
-				<button type="submit" class="block">Database Maintenance</button>
+			<form action="/scripts/stop_core_services.php" onclick="return confirm('Stop core services?')">
+				<button type="submit" class="block">Stop Core Services</button>
 			</form>
-			<form action="/scripts/config.php">
-				<button type="submit" class="block">Settings</button>
+			<form action="/scripts/restart_services.php" onclick="return confirm('Restart ALL services?')">
+				<button type="submit" class="block">Restart ALL Services</button>
 			</form>
-			<form action="/scripts/system_controls.php">
-				<button type="submit" class="block">System Controls</button>
+			<form action="/scripts/restart_birdnet_analysis.php">
+				<button type="submit" class="block">Restart BirdNET Analysis</button>
 			</form>
-		</div>
-		<div class="column second">
-			<form action="http://birdnetpi.local:8888" target="top">
-				<button type="submit" class="block">Web Terminal</button>
+			<form action="/scripts/restart_birdnet_recording.php">
+				<button type="submit" class="block">Restart Recording</button>
 			</form>
-			<form action="/scripts/service_controls.php">
-				<button type="submit" class="block">Manage Services</button>
+			<form action="/scripts/restart_extraction.php">
+				<button type="submit" class="block">Restart Extraction</button>
 			</form>
-			<form action="/scripts/include_list.php">
-				<button type="submit" class="block">Included Species List</button>
-			</form>
-			<form action="/scripts/exclude_list.php">
-				<button type="submit" class="block">Excluded Species List</button>
+			<form action="/scripts/restart_caddy.php" onclick="return confirm('Restart Caddy? You will be disconnected for about 20 seconds.')">
+				<button type="submit" class="block">Restart Caddy</button>
 			</form>
 		</div>
 	</div>
