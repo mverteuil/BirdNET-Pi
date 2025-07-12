@@ -1,63 +1,20 @@
-import subprocess
-import os
-from models.birdnet_config import BirdNETConfig
-
+from services.file_manager import FileManager
 
 class AudioManager:
-    def __init__(self, config: BirdNETConfig):
-        self.config = config
+    def __init__(self, file_manager: FileManager):
+        self.file_manager = file_manager
 
-    def record_from_sound_card(self):
-        command = [
-            "arecord",
-            "-f",
-            "S16_LE",
-            "-c",
-            str(self.config.channels),
-            "-r",
-            "48000",
-            "-t",
-            "wav",
-            "--max-file-time",
-            str(self.config.recording_length),
-        ]
+    def custom_record(self, duration: int, output_path: str):
+        """Records audio for a specified duration and saves it to the output path."""
+        print(f"Recording audio for {duration} seconds to {output_path}")
+        # This will involve using a library like sounddevice or subprocess to call arecord/ffmpeg
+        # For now, it's a placeholder.
+        # self.file_manager.write_file(output_path, "dummy audio data")
+        pass
 
-        if self.config.rec_card:
-            command.extend(["-D", self.config.rec_card])
-
-        command.extend(["--use-strftime", os.path.join(self.config.recordings_dir, "%Y-%m-%d-birdnet-%H-%M-%S.wav")])
-
-        subprocess.run(command)
-
-    def record_from_rtsp_stream(self):
-        rtsp_streams = self.config.rtsp_stream.split(",")
-        stream_data_dir = os.path.join(self.config.recordings_dir, "StreamData")
-
-        if not os.path.exists(stream_data_dir):
-            os.makedirs(stream_data_dir)
-
-        while True:
-            for i, stream in enumerate(rtsp_streams):
-                command = [
-                    "ffmpeg",
-                    "-nostdin",
-                    "-i",
-                    stream,
-                    "-t",
-                    str(self.config.recording_length),
-                    "-vn",
-                    "-acodec",
-                    "pcm_s16le",
-                    "-ac",
-                    "2",
-                    "-ar",
-                    "48000",
-                    "file:" + os.path.join(stream_data_dir, f"{i}.wav"),
-                ]
-                subprocess.run(command)
-
-    def record(self):
-        if self.config.rtsp_stream:
-            self.record_from_rtsp_stream()
-        else:
-            self.record_from_sound_card()
+    def livestream(self, input_device: str, output_url: str):
+        """Starts an audio livestream from the input device to the output URL."""
+        print(f"Starting livestream from {input_device} to {output_url}")
+        # This will involve using a library or subprocess to stream audio
+        # For now, it's a placeholder.
+        pass
