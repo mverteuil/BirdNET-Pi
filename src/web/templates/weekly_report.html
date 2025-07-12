@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Weekly Report</title>
+  </head>
+  <body>
+    <h1>Week {{ report.week_number }} Report</h1>
+    <p>{{ report.start_date }} - {{ report.end_date }}</p>
+
+    <h2>Summary</h2>
+    <p>
+      Total Detections: <b>{{ report.total_detections_current }}</b> ({{
+      report.percentage_diff_total }}%)
+    </p>
+    <p>
+      Unique Species Detected: <b>{{ report.unique_species_current }}</b> ({{
+      report.percentage_diff_unique_species }}%)
+    </p>
+
+    <h2>Top 10 Species</h2>
+    <ul>
+      {% for species in report.top_10_species %}
+      <li>
+        {{ species.com_name }} - {{ species.count }} ({{ species.percentage_diff
+        }}%)
+      </li>
+      {% endfor %}
+    </ul>
+
+    <h2>Species Detected for the First Time</h2>
+    <ul>
+      {% for species in report.new_species %}
+      <li>{{ species.com_name }} - {{ species.count }}</li>
+      {% else %}
+      <li>No new species were seen this week.</li>
+      {% endfor %}
+    </ul>
+
+    <hr />
+    <small>* data from {{ report.start_date }} — {{ report.end_date }}.</small
+    ><br />
+    <small
+      >* percentages are calculated relative to week {{ report.prior_week_number
+      }}.</small
+    >
+  </body>
+</html>

@@ -7,7 +7,7 @@ class ReportingManager:
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
 
-    def get_weekly_report(self):
+    def get_weekly_report_data(self):
         today = datetime.date.today()
         # Calculate last Sunday (end of last week)
         last_sunday = today - datetime.timedelta(days=today.weekday() + 1)
@@ -22,54 +22,101 @@ class ReportingManager:
         # Connect to the database
         self.db_manager.connect()
 
-        # Total Detections and Unique Species for the current week
-        current_week_detections_query = """
+        # Get stats for the current week
+        current_week_stats_query = """
+            SELECT COUNT(*) as total_count, COUNT(DISTINCT Com_Name) as unique_species
+            FROM detections
+            WHERE Date BETWEEN ? AND ?
+        """
+        current_week_stats = self.db_manager.fetch_one(
+            current_week_stats_query, (str(start_date), str(end_date))
+        )
+
+        # Get stats for the prior week
+        prior_week_stats_query = """
+            SELECT COUNT(*) as total_count, COUNT(DISTINCT Com_Name) as unique_species
+            FROM detections
+            WHERE Date BETWEEN ? AND ?
+        """
+        prior_week_stats = self.db_manager.fetch_one(
+            prior_week_stats_query, (str(prior_start_date), str(prior_end_date))
+        )
+
+        # Get top 10 species for the current week with their counts from the prior week
+        top_species_query = """
+        WITH CurrentWeekCounts AS (
             SELECT Com_Name, COUNT(*) as count
             FROM detections
             WHERE Date BETWEEN ? AND ?
             GROUP BY Com_Name
-            ORDER BY count DESC
-        """
-        current_week_total_detections_query = """
-            SELECT COUNT(*) as total_count
+        ),
+        PriorWeekCounts AS (
+            SELECT Com_Name, COUNT(*) as count
             FROM detections
             WHERE Date BETWEEN ? AND ?
+            GROUP BY Com_Name
+        )
+        SELECT
+            c.Com_Name,
+            c.count as current_count,
+            COALESCE(p.count, 0) as prior_count
+        FROM CurrentWeekCounts c
+        LEFT JOIN PriorWeekCounts p ON c.Com_Name = p.Com_Name
+        ORDER BY current_count DESC
+        LIMIT 10
         """
-        current_week_unique_species_query = """
-            SELECT COUNT(DISTINCT Com_Name) as unique_species_count
-            FROM detections
-            WHERE Date BETWEEN ? AND ?
-        """
+        top_10_species_rows = self.db_manager.fetch_all(
+            top_species_query,
+            (
+                str(start_date),
+                str(end_date),
+                str(prior_start_date),
+                str(prior_end_date),
+            ),
+        )
 
-        current_week_detections = self.db_manager.fetch_all(
-            current_week_detections_query, (str(start_date), str(end_date))
-        )
-        current_week_total_count = self.db_manager.fetch_one(
-            current_week_total_detections_query, (str(start_date), str(end_date))
-        )
-        current_week_unique_species_count = self.db_manager.fetch_one(
-            current_week_unique_species_query, (str(start_date), str(end_date))
-        )
+        top_10_species = []
+        if top_10_species_rows:
+            for row in top_10_species_rows:
+                current_count = row["current_count"]
+                prior_count = row["prior_count"]
+                percentage_diff = 0
+                if prior_count > 0:
+                    percentage_diff = round(
+                        ((current_count - prior_count) / prior_count) * 100
+                    )
 
-        # Total Detections and Unique Species for the prior week
-        prior_week_total_detections_query = """
-            SELECT COUNT(*) as total_count
-            FROM detections
-            WHERE Date BETWEEN ? AND ?
-        """
-        prior_week_unique_species_query = """
-            SELECT COUNT(DISTINCT Com_Name) as unique_species_count
-            FROM detections
-            WHERE Date BETWEEN ? AND ?
-        """
+                top_10_species.append(
+                    {
+                        "com_name": row["Com_Name"],
+                        "count": current_count,
+                        "percentage_diff": percentage_diff,
+                    }
+                )
 
-        prior_week_total_count = self.db_manager.fetch_one(
-            prior_week_total_detections_query,
-            (str(prior_start_date), str(prior_end_date)),
+        # Get new species for the current week
+        new_species_query = """
+        SELECT Com_Name, COUNT(*) as count
+        FROM detections
+        WHERE Date BETWEEN ? AND ?
+          AND Com_Name NOT IN (
+            SELECT DISTINCT Com_Name
+            FROM detections
+            WHERE Date < ?
+          )
+        GROUP BY Com_Name
+        ORDER BY count DESC
+        """
+        new_species_rows = self.db_manager.fetch_all(
+            new_species_query, (str(start_date), str(end_date), str(start_date))
         )
-        prior_week_unique_species_count = self.db_manager.fetch_one(
-            prior_week_unique_species_query,
-            (str(prior_start_date), str(prior_end_date)),
+        new_species = (
+            [
+                {"com_name": row["Com_Name"], "count": row["count"]}
+                for row in new_species_rows
+            ]
+            if new_species_rows
+            else []
         )
 
         # Disconnect from the database
@@ -77,20 +124,16 @@ class ReportingManager:
 
         # Extract counts
         total_detections_current = (
-            current_week_total_count["total_count"] if current_week_total_count else 0
+            current_week_stats["total_count"] if current_week_stats else 0
         )
         unique_species_current = (
-            current_week_unique_species_count["unique_species_count"]
-            if current_week_unique_species_count
-            else 0
+            current_week_stats["unique_species"] if current_week_stats else 0
         )
         total_detections_prior = (
-            prior_week_total_count["total_count"] if prior_week_total_count else 0
+            prior_week_stats["total_count"] if prior_week_stats else 0
         )
         unique_species_prior = (
-            prior_week_unique_species_count["unique_species_count"]
-            if prior_week_unique_species_count
-            else 0
+            prior_week_stats["unique_species"] if prior_week_stats else 0
         )
 
         # Calculate percentage differences
@@ -110,61 +153,6 @@ class ReportingManager:
                 ((unique_species_current - unique_species_prior) / unique_species_prior)
                 * 100
             )
-
-        # Prepare top 10 species data
-        top_10_species = []
-        for i, detection in enumerate(current_week_detections):
-            if i >= 10:
-                break
-            com_name = detection["Com_Name"]
-            current_count = detection["count"]
-
-            prior_week_species_count_query = """
-                SELECT COUNT(*) as count
-                FROM detections
-                WHERE Com_Name = ? AND Date BETWEEN ? AND ?
-            """
-            prior_count_row = self.db_manager.fetch_one(
-                prior_week_species_count_query,
-                (com_name, str(prior_start_date), str(prior_end_date)),
-            )
-            prior_count = prior_count_row["count"] if prior_count_row else 0
-
-            species_percentage_diff = 0
-            if prior_count > 0:
-                species_percentage_diff = round(
-                    ((current_count - prior_count) / prior_count) * 100
-                )
-
-            top_10_species.append(
-                {
-                    "com_name": com_name,
-                    "count": current_count,
-                    "percentage_diff": species_percentage_diff,
-                }
-            )
-
-        # Prepare new species data
-        new_species = []
-        for detection in current_week_detections:
-            com_name = detection["Com_Name"]
-            current_count = detection["count"]
-
-            # Check if this species was detected in any other week (not current week)
-            other_weeks_query = """
-                SELECT COUNT(*) as count
-                FROM detections
-                WHERE Com_Name = ? AND Date NOT BETWEEN ? AND ?
-            """
-            other_weeks_count_row = self.db_manager.fetch_one(
-                other_weeks_query, (com_name, str(start_date), str(end_date))
-            )
-            other_weeks_count = (
-                other_weeks_count_row["count"] if other_weeks_count_row else 0
-            )
-
-            if other_weeks_count == 0:
-                new_species.append({"com_name": com_name, "count": current_count})
 
         return {
             "start_date": start_date.strftime("%Y-%m-%d"),
