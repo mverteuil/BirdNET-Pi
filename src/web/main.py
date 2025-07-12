@@ -1,6 +1,7 @@
 from BirdNET_Pi.src.models.birdnet_config import BirdNETConfig
 from BirdNET_Pi.src.services.detection_event_publisher import DetectionEventPublisher
 from BirdNET_Pi.src.utils.config_file_parser import ConfigFileParser
+from BirdNET_Pi.src.web.routers import settings_router
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -9,6 +10,8 @@ from fastapi.templating import Jinja2Templates
 app = FastAPI()
 
 app.mount("/static", StaticFiles(directory="src/web/static"), name="static")
+
+app.include_router(settings_router.router)
 
 templates = Jinja2Templates(directory="src/web/templates")
 
