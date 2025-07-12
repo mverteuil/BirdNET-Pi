@@ -23,7 +23,7 @@ repos:
     -   id: prettier
         files: \.(css|html|js)$
         exclude: (\.min\.js|\.min\.css|templates/index_bootstrap\.html)
--   repo: https://github.com/koalaman/shellcheck-pre-commit
+-   repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.9.0
     hooks:
     -   id: shellcheck
