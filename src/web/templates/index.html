@@ -2,9 +2,24 @@
 <html>
 <head>
     <title>BirdNET-Pi</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <h1>Welcome to BirdNET-Pi!</h1>
     <p>This is the new web interface.</p>
+
+    <h2>WebSocket Messages:</h2>
+    <div id="messages"></div>
+
+    <script>
+        var ws = new WebSocket("ws://localhost:8000/ws");
+        ws.onmessage = function(event) {
+            var messages = document.getElementById("messages");
+            var message = document.createElement("div");
+            var content = document.createTextNode(event.data);
+            message.appendChild(content);
+            messages.appendChild(message);
+        };
+    </script>
 </body>
 </html>

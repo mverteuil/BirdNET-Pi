@@ -17,3 +17,8 @@ repos:
         args: [ "--select", "I", "--fix" ]
       - id: ruff-check
         args: [ "--fix" ]
+-   repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.0.3
+    hooks:
+    -   id: prettier
+        types: [css, html, javascript]
