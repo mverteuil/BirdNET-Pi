@@ -1,0 +1,11 @@
+# .shellcheckrc
+
+# Ignore SC2086: Double quote to prevent globbing and word splitting.
+# This is often a false positive in our scripts.
+# See https://github.com/koalaman/shellcheck/wiki/SC2086
+# for more information.
+
+# We can add more rules here as needed.
+
+# Example of ignoring another rule:
+# ignore: SC2034
