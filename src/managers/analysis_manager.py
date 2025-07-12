@@ -1,9 +1,9 @@
-from services.file_manager import FileManager
-from services.database_manager import DatabaseManager
-from services.analysis_client_service import AnalysisClientService
-from services.detection_event_publisher import DetectionEventPublisher
 from models.birdnet_config import BirdNETConfig
-from models.database_models import Detection
+from services.analysis_client_service import AnalysisClientService
+from services.database_manager import DatabaseManager
+from services.detection_event_publisher import DetectionEventPublisher
+from services.file_manager import FileManager
+
 
 class AnalysisManager:
     def __init__(
@@ -33,14 +33,14 @@ class AnalysisManager:
             detection_data = {
                 "species": "Example Species",
                 "confidence": 0.9,
-                "timestamp": "2025-01-01 12:00:00", # Placeholder
+                "timestamp": "2025-01-01 12:00:00",  # Placeholder
                 "audio_file_path": audio_file_path,
             }
             new_detection = self.database_manager.add_detection(detection_data)
             print(f"Added detection to DB: {new_detection.species}")
 
             # 3. Publish detection event
-            self.detection_event_publisher.publish_detection_event(new_detection)
+            self.detection_event_publisher.publish_detection(new_detection)
 
     def extract_new_birdsounds(self):
         """Extracts new birdsounds based on analysis results."""
