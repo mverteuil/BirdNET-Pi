@@ -68,4 +68,40 @@ then
     sudo usermod -aG audio,video,dialout birdnetpi
 fi
 
+# Function to download model files from GitHub Releases
+download_model_files() {
+    echo "Downloading BirdNET-Pi model files..."
+    local github_owner="mverteuil"
+    local github_repo="BirdNET-Pi"
+    local release_tag="models-v1.0.0"
+    local model_filenames=(
+        "BirdNET_6K_GLOBAL_MODEL.tflite"
+        "BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16.tflite"
+        "BirdNET_GLOBAL_6K_V2.4_Model_FP16.tflite"
+        "labels_l18n.zip"
+        "labels_lang.txt"
+        "labels_nm.zip"
+    )
+    local model_dir="${HOME}/BirdNET-Pi/model"
+
+    # Create model directory if it doesn't exist
+    sudo -u birdnetpi mkdir -p "${model_dir}"
+
+    for model_file in "${model_filenames[@]}"; do
+        local download_url="https://github.com/${github_owner}/${github_repo}/releases/download/${release_tag}/${model_file}"
+        local destination_path="${model_dir}/${model_file}"
+
+        if [ ! -f "${destination_path}" ]; then
+            echo "Downloading ${model_file} from ${download_url}"
+            sudo -u birdnetpi wget -q --show-progress -O "${destination_path}" "${download_url}"
+            echo "Download complete."
+        else
+            echo "${model_file} already exists. Skipping download."
+        fi
+    done
+}
+
+# Call the function to download model files
+download_model_files
+
 echo "Foundational environment setup complete."
