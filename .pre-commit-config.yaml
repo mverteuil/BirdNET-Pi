@@ -21,4 +21,5 @@ repos:
     rev: v3.0.3
     hooks:
     -   id: prettier
-        types: [css, html, javascript]
+        files: \.(css|html|js)$
+        exclude: (\.min\.js|\.min\.css|templates/index_bootstrap\.html)
