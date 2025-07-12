@@ -16,4 +16,4 @@ if __name__ == "__main__":
     file_manager = FileManager(config.data.recordings_dir)
 
     data_manager = DataManager(config, file_manager)
-    data_manager.cleanup_processed_files()
+    data_manager.clear_all_data()
