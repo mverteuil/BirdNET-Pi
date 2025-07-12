@@ -334,7 +334,7 @@ if (file_exists($home.'/BirdNET-Pi/scripts/thisrun.txt')) {
 <script>
   document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('modelsel').addEventListener('change', function() {
-    if(this.value == "BirdNET_GLOBAL_6K_V2.4_Model_FP16"){ 
+    if(this.value == "BirdNET_GLOBAL_6K_V2.4_Model_FP16"){
       document.getElementById("soft").style.display="unset";
     } else {
       document.getElementById("soft").style.display="none";
@@ -350,13 +350,13 @@ function sendTestNotification(e) {
   var apprise_config = encodeURIComponent(document.getElementsByName("apprise_input")[0].value);
 
   var xmlHttp = new XMLHttpRequest();
-    xmlHttp.onreadystatechange = function() { 
+    xmlHttp.onreadystatechange = function() {
         if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
             document.getElementById("testsuccessmsg").innerHTML = this.responseText+" Test sent! Make sure to <b>Update Settings</b> below."
             e.classList.remove("disabled");
         }
     }
-    xmlHttp.open("GET", "scripts/config.php?sendtest=true&apprise_notification_title="+apprise_notification_title+"&apprise_notification_body="+apprise_notification_body+"&apprise_config="+apprise_config, true); // true for asynchronous 
+    xmlHttp.open("GET", "scripts/config.php?sendtest=true&apprise_notification_title="+apprise_notification_title+"&apprise_notification_body="+apprise_notification_body+"&apprise_config="+apprise_config, true); // true for asynchronous
     xmlHttp.send(null);
 }
 </script>
@@ -677,7 +677,7 @@ https://discordapp.com/api/webhooks/{WebhookID}/{WebhookToken}
       <?php
       $current_timezone = trim(shell_exec("cat /etc/timezone"));
       $timezone_identifiers = DateTimeZone::listIdentifiers(DateTimeZone::ALL);
-        
+
       $n = 425;
       for($i = 0; $i < $n; $i++) {
           $isSelected = "";
@@ -708,4 +708,3 @@ if(isset($_GET['status'])){
         <button type="submit" name="view" value="Advanced">Advanced Settings</button>
       </form>
 </div>
-

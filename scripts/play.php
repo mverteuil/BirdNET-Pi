@@ -193,7 +193,7 @@ if(isset($_GET['bydate'])){
     $statement = $db->prepare('SELECT DISTINCT(Com_Name) FROM detections GROUP BY Com_Name ORDER BY COUNT(*) DESC');
   } else {
     $statement = $db->prepare('SELECT DISTINCT(Com_Name) FROM detections ORDER BY Com_Name ASC');
-  } 
+  }
   session_start();
   if($statement == False){
     echo "Database is busy";
@@ -269,7 +269,7 @@ function toggleLock(filename, type, elem) {
   if(type == "add") {
     xhttp.open("GET", "play.php?excludefile="+filename+"&exclude_add=true", true);
   } else {
-    xhttp.open("GET", "play.php?excludefile="+filename+"&exclude_del=true", true);  
+    xhttp.open("GET", "play.php?excludefile="+filename+"&exclude_del=true", true);
   }
   xhttp.send();
   elem.setAttribute("src","images/spinner.gif");
@@ -317,7 +317,7 @@ function toggleShiftFreq(filename, shiftAction, elem) {
     xhttp.open("GET", "play.php?shiftfile="+filename+"&doshift=true", true);
   } else {
     console.log("unshifting freqs of " + filename);
-    xhttp.open("GET", "play.php?shiftfile="+filename, true);  
+    xhttp.open("GET", "play.php?shiftfile="+filename, true);
   }
   xhttp.send();
   elem.setAttribute("src","images/spinner.gif");
@@ -435,7 +435,7 @@ for ($row = 0; $row < $num_rows; $row++) {
     echo "<td>
       <button action=\"submit\" name=\"byspecies\" value=\"byspecies\">By Species</button></td></tr>
       <tr><td><button action=\"submit\" name=\"bydate\" value=\"bydate\">By Date</button></td>";
-  } 
+  }
 
   echo "</form>
     </tr>
@@ -462,7 +462,7 @@ if(isset($_GET['species'])){ ?>
 </div>
 <?php
   // add disk_check_exclude.txt lines into an array for grepping
-  $fp = @fopen($home."/BirdNET-Pi/scripts/disk_check_exclude.txt", 'r'); 
+  $fp = @fopen($home."/BirdNET-Pi/scripts/disk_check_exclude.txt", 'r');
 if ($fp) {
   $disk_check_exclude_arr = explode("\n", fread($fp, filesize($home."/BirdNET-Pi/scripts/disk_check_exclude.txt")));
 }
@@ -539,7 +539,7 @@ echo "<table>
 
       if(file_exists($shifted_path.$filename_formatted)) {
         $shiftImageIcon = "images/unshift.svg";
-        $shiftTitle = "This file has been shifted down in frequency."; 
+        $shiftTitle = "This file has been shifted down in frequency.";
         $shiftAction = "unshift";
   $filename = $filename_shifted;
       } else {
@@ -549,10 +549,10 @@ echo "<table>
       }
 
       echo "<tr>
-  <td class=\"relative\"> 
+  <td class=\"relative\">
 
-<img style='cursor:pointer;right:90px' src='images/delete.svg' onclick='deleteDetection(\"".$filename_formatted."\")' class=\"copyimage\" width=25 title='Delete Detection'> 
-<img style='cursor:pointer;right:45px' onclick='toggleLock(\"".$filename_formatted."\",\"".$type."\", this)' class=\"copyimage\" width=25 title=\"".$title."\" src=\"".$imageicon."\"> 
+<img style='cursor:pointer;right:90px' src='images/delete.svg' onclick='deleteDetection(\"".$filename_formatted."\")' class=\"copyimage\" width=25 title='Delete Detection'>
+<img style='cursor:pointer;right:45px' onclick='toggleLock(\"".$filename_formatted."\",\"".$type."\", this)' class=\"copyimage\" width=25 title=\"".$title."\" src=\"".$imageicon."\">
 <img style='cursor:pointer' onclick='toggleShiftFreq(\"".$filename_formatted."\",\"".$shiftAction."\", this)' class=\"copyimage\" width=25 title=\"".$shiftTitle."\" src=\"".$shiftImageIcon."\"> $date $time<br>$confidence<br>
 
         ".$imageelem."
@@ -596,7 +596,7 @@ echo "<table>
         $filename_formatted = $date."/".$comname."/".$results['File_Name'];
 
         // add disk_check_exclude.txt lines into an array for grepping
-        $fp = @fopen($home."/BirdNET-Pi/scripts/disk_check_exclude.txt", 'r'); 
+        $fp = @fopen($home."/BirdNET-Pi/scripts/disk_check_exclude.txt", 'r');
         if ($fp) {
           $disk_check_exclude_arr = explode("\n", fread($fp, filesize($home."/BirdNET-Pi/scripts/disk_check_exclude.txt")));
         }
@@ -614,7 +614,7 @@ echo "<table>
 
       if(file_exists($shifted_path.$filename_formatted)) {
         $shiftImageIcon = "images/unshift.svg";
-        $shiftTitle = "This file has been shifted down in frequency."; 
+        $shiftTitle = "This file has been shifted down in frequency.";
         $shiftAction = "unshift";
   $filename = $filename_shifted;
       } else {
@@ -624,10 +624,10 @@ echo "<table>
       }
 
           echo "<tr>
-      <td class=\"relative\"> 
+      <td class=\"relative\">
 
-<img style='cursor:pointer;right:90px' src='images/delete.svg' onclick='deleteDetection(\"".$filename_formatted."\", true)' class=\"copyimage\" width=25 title='Delete Detection'> 
-<img style='cursor:pointer;right:45px' onclick='toggleLock(\"".$filename_formatted."\",\"".$type."\", this)' class=\"copyimage\" width=25 title=\"".$title."\" src=\"".$imageicon."\"> 
+<img style='cursor:pointer;right:90px' src='images/delete.svg' onclick='deleteDetection(\"".$filename_formatted."\", true)' class=\"copyimage\" width=25 title='Delete Detection'>
+<img style='cursor:pointer;right:45px' onclick='toggleLock(\"".$filename_formatted."\",\"".$type."\", this)' class=\"copyimage\" width=25 title=\"".$title."\" src=\"".$imageicon."\">
 <img style='cursor:pointer' onclick='toggleShiftFreq(\"".$filename_formatted."\",\"".$shiftAction."\", this)' class=\"copyimage\" width=25 title=\"".$shiftTitle."\" src=\"".$shiftImageIcon."\">$date $time<br>$confidence<br>
 
 <video onplay='setLiveStreamVolume(0)' onended='setLiveStreamVolume(1)' onpause='setLiveStreamVolume(1)' controls poster=\"$filename_png\" preload=\"none\" title=\"$filename\"><source src=\"$filename\"></video></td>

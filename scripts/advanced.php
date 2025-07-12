@@ -111,7 +111,7 @@ if(isset($_GET['submit'])) {
     }
   }
 
-  
+
   if(isset($_GET["overlap"])) {
     $overlap = $_GET["overlap"];
     if(strcmp($overlap,$config['OVERLAP']) !== 0) {
@@ -403,7 +403,7 @@ if (file_exists('./scripts/thisrun.txt')) {
       var slider = document.getElementById("privacy_threshold");
       var output = document.getElementById("threshold_value");
       output.innerHTML = slider.value; // Display the default slider value
-      
+
       // Update the current slider value (each time you drag the slider handle)
       slider.oninput = function() {
         output.innerHTML = this.value;
@@ -412,7 +412,7 @@ if (file_exists('./scripts/thisrun.txt')) {
       </script>
       <p>If a Human is predicted anywhere among the top <span id="predictionCount"><?php echo $newconfig['PRIVACY_THRESHOLD'] == 0 ? "threshold % of" : intval(($newconfig['PRIVACY_THRESHOLD'] * $count)/100); ?></span> predictions, the sample will be considered of human origin and no data will be collected. Start with 1% and move up as needed.</p>
       </td></tr></table><br>
-      
+
       <table class="settingstable"><tr><td>
       <h2>Full Disk Behaviour</h2>
       <label for="purge">
@@ -432,7 +432,7 @@ if (file_exists('./scripts/thisrun.txt')) {
       <p>Set Channels to the number of channels supported by your sound card. 32 max.</p>
       <label for="recording_length">Recording Length: </label>
       <input name="recording_length" oninput="document.getElementsByName('extraction_length')[0].setAttribute('max', this.value);" type="number" min="3" max="60" step="1" value="<?php print($newconfig['RECORDING_LENGTH']);?>" required/><br>
-      <p>Set Recording Length in seconds between 6 and 60. Multiples of 3 are recommended, as BirdNET analyzes in 3-second chunks.</p> 
+      <p>Set Recording Length in seconds between 6 and 60. Multiples of 3 are recommended, as BirdNET analyzes in 3-second chunks.</p>
       <label for="extraction_length">Extraction Length: </label>
       <input name="extraction_length" oninput="this.setAttribute('max', document.getElementsByName('recording_length')[0].value);" type="number" min="3" value="<?php print($newconfig['EXTRACTION_LENGTH']);?>" /><br>
       <p>Set Extraction Length to something less than your Recording Length. Min=3 Max=Recording Length</p>
@@ -447,7 +447,7 @@ foreach($formats as $format){
 ?>
       </select>
       <br><br>
-      
+
       <label id="rtsp_stream_input_label" for="rtsp_stream">RTSP Stream: </label>
       <br>
       <input style="display: none;" name="rtsp_stream" type="url" value="">

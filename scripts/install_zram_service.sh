@@ -14,7 +14,7 @@ cat << EOF | sudo tee /etc/systemd/system/zram.service
 Description=Swap with zram
 After=multi-user.target
 [Service]
-Type=oneshot 
+Type=oneshot
 RemainAfterExit=true
 ExecStartPre=/sbin/mkswap /dev/zram0
 ExecStart=/sbin/swapon /dev/zram0

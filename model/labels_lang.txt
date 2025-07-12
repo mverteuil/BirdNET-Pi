@@ -27,5 +27,3 @@ Spanish,labels_es.txt
 Swedish,labels_sv.txt
 Thai,labels_th.txt
 Ukrainian,labels_uk.txt
-
-

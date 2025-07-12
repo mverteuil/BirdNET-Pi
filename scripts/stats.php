@@ -15,7 +15,7 @@ if($db == False) {
 }
 
 if(isset($_GET['sort']) && $_GET['sort'] == "occurrences") {
-  
+
   $statement = $db->prepare('SELECT Date, Time, File_Name, Com_Name, COUNT(*), MAX(Confidence) FROM detections GROUP BY Com_Name ORDER BY COUNT(*) DESC');
   if($statement == False) {
     echo "Database busy";
@@ -171,7 +171,7 @@ function setModalText(iter, title, text, authorlink) {
   document.getElementById('modalText').innerHTML = "<div style='white-space:nowrap'>Image link: <a target='_blank' href="+text+">"+text+"</a><br>Author link: <a target='_blank' href="+authorlink+">"+authorlink+"</a></div>";
   showDialog();
 }
-</script>  
+</script>
 <div class="column center">
 <?php if(!isset($_GET['species'])){
 ?><p class="centered">Choose a species to load images from Flickr.</p>
@@ -204,9 +204,9 @@ while($results=$result3->fetchArray(SQLITE3_ASSOC)){
   </tr>
     </table>
   <p>Loading Images from Flickr</p>", '6096');
-  
+
   echo "<script>document.getElementsByTagName(\"h3\")[0].scrollIntoView();</script>";
-  
+
   ob_flush();
   flush();
   if (file_exists('./scripts/thisrun.txt')) {
@@ -220,7 +220,7 @@ while($results=$result3->fetchArray(SQLITE3_ASSOC)){
       $lines = file($home."/BirdNET-Pi/model/labels_flickr.txt");
     }
     // convert sci name to English name
-    foreach($lines as $line){ 
+    foreach($lines as $line){
       if(strpos($line, $results['Sci_Name']) !== false){
         $engname = trim(explode("_", $line)[1]);
         break;

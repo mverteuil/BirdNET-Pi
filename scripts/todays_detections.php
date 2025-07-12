@@ -15,7 +15,7 @@ if (file_exists('./scripts/thisrun.txt')) {
     $config = parse_ini_file('./scripts/thisrun.txt');
   } elseif (file_exists('./scripts/firstrun.ini')) {
   $config = parse_ini_file('./scripts/firstrun.ini');
-  } 
+  }
 
   if($config["SITE_NAME"] == "") {
     $site_name = "BirdNET-Pi";
@@ -203,7 +203,7 @@ if(isset($_GET['ajax_detections']) && $_GET['ajax_detections'] == "true"  ) {
     } else {
       $statement0 = $db->prepare('SELECT Time, Com_Name, Sci_Name, Confidence, File_Name FROM detections WHERE Date == Date(\'now\', \'localtime\') '.$searchquery.' ORDER BY Time DESC');
     }
-    
+
   }
   if($statement0 == False){
     echo "Database is busy";
@@ -225,7 +225,7 @@ if(isset($_GET['ajax_detections']) && $_GET['ajax_detections'] == "true"  ) {
     $config = parse_ini_file('./scripts/thisrun.txt');
   } elseif (file_exists('./scripts/firstrun.ini')) {
   $config = parse_ini_file('./scripts/firstrun.ini');
-  } 
+  }
 
 
   while($todaytable=$result0->fetchArray(SQLITE3_ASSOC))
@@ -278,7 +278,7 @@ if(isset($_GET['ajax_detections']) && $_GET['ajax_detections'] == "true"  ) {
         $lines = file($home."/BirdNET-Pi/model/labels_flickr.txt");
       }
       // convert sci name to English name
-      foreach($lines as $line){ 
+      foreach($lines as $line){
         if(strpos($line, $todaytable['Sci_Name']) !== false){
           $engname = trim(explode("_", $line)[1]);
           break;
@@ -317,14 +317,14 @@ if(isset($_GET['ajax_detections']) && $_GET['ajax_detections'] == "true"  ) {
           <td class="relative">
             <img style='cursor:pointer;right:45px' src='images/delete.svg' onclick='deleteDetection("<?php echo $filename_formatted; ?>")' class="copyimage" width=25 title='Delete Detection'>
             <a target="_blank" href="index.php?filename=<?php echo $todaytable['File_Name']; ?>"><img class="copyimage" title="Open in new tab" width=25 src="images/copy.png"></a>
-        
-            
+
+
           <div class="centered_image_container">
             <?php if(!empty($config["FLICKR_API_KEY"]) && strlen($image[2]) > 0) { ?>
               <img onclick='setModalText(<?php echo $iterations; ?>,"<?php echo urlencode($image[2]); ?>", "<?php echo $image[3]; ?>", "<?php echo $image[4]; ?>", "<?php echo $image[1]; ?>", "<?php echo $image[5]; ?>")' src="<?php echo $image[1]; ?>" class="img1">
             <?php } ?>
 
-            <?php echo $todaytable['Time'];?><br> 
+            <?php echo $todaytable['Time'];?><br>
           <b><a class="a2" href="https://allaboutbirds.org/guide/<?php echo $comname;?>" target="top"><?php echo $todaytable['Com_Name'];?></a></b><img style="height: 1em;cursor:pointer" title="View species stats" onclick="generateMiniGraph(this, '<?php echo $comname; ?>')" width=25 src="images/chart.svg"><br>
           <a class="a2" href="https://wikipedia.org/wiki/<?php echo $sciname;?>" target="top"><i><?php echo $todaytable['Sci_Name'];?></i></a><br>
           <b>Confidence:</b> <?php echo round((float)round($todaytable['Confidence'],2) * 100 ) . '%';?><br></div><br>
@@ -371,11 +371,11 @@ if(isset($_GET['ajax_detections']) && $_GET['ajax_detections'] == "true"  ) {
         </tr>
       </table>
 
-  <?php 
+  <?php
   if($iterations == 0) {
     echo "<h3>No Detections For Today.</h3>";
   }
-  
+
   // don't show the button if there's no more detections to be displayed, we're at the end of the list
   if($iterations >= 40 && isset($_GET['display_limit']) && is_numeric($_GET['display_limit'])) { ?>
   <center>
@@ -410,8 +410,8 @@ if(isset($_GET['today_stats'])) {
       </form>
       </tr>
     </table>
-<?php   
-die(); 
+<?php
+die();
 }
 
 ?>
@@ -437,7 +437,7 @@ die();
   <script src="static/dialog-polyfill.js"></script>
   <script src="static/Chart.bundle.js"></script>
   <script src="static/chartjs-plugin-trendline.min.js"></script>
-  
+
   <script>
     function deleteDetection(filename,copylink=false) {
     if (confirm("Are you sure you want to delete this detection from the database?") == true) {
@@ -495,7 +495,7 @@ die();
     last_photo_link = text;
     showDialog();
   }
-  </script>  
+  </script>
     <h3>Number of Detections</h3>
     <div id="todaystats"><table>
       <tr>
@@ -589,7 +589,7 @@ function searchDetections(searchvalue) {
     document.getElementById("detections_table").innerHTML = "<h3>Loading...</h3>";
     searchterm = searchvalue;
     if(document.getElementsByClassName('legacyview')[0].innerHTML == "Normal view") {
-      loadDetections(undefined,undefined);  
+      loadDetections(undefined,undefined);
     } else {
       loadDetections(40,undefined);
     }
@@ -607,7 +607,7 @@ function loadDetections(detections_limit, element=undefined) {
     } else {
      document.getElementById("detections_table").innerHTML= this.responseText;
     }
-    
+
   }
   if(searchterm != ""){
     xhttp.open("GET", "todays_detections.php?ajax_detections=true&display_limit="+detections_limit+"&searchterm="+searchterm, true);
@@ -789,7 +789,7 @@ function generateMiniGraph(elem, comname) {
 window.addEventListener('scroll', function() {
   // Get all chart elements
   var charts = document.querySelectorAll('.chartdiv');
-  
+
   // Loop through all chart elements and remove them
   charts.forEach(function(chart) {
     chart.parentNode.removeChild(chart);

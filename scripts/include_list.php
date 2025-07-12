@@ -21,8 +21,8 @@ $eachlines = file($filename, FILE_IGNORE_NEW_LINES);
   <h2>All Species Labels</h2>
   <select name="species[]" id="species" multiple size="30">
     <option selected value="base">Please Select</option>
-      <?php   
-        foreach($eachlines as $lines){echo 
+      <?php
+        foreach($eachlines as $lines){echo
     "<option value=\"".$lines."\">$lines</option>";}
        ?>
   </select>
@@ -49,7 +49,7 @@ $eachlines = file($filename, FILE_IGNORE_NEW_LINES);
       <?php
         $filename = './scripts/include_species_list.txt';
         $eachlines = file($filename, FILE_IGNORE_NEW_LINES);
-        foreach($eachlines as $lines){echo 
+        foreach($eachlines as $lines){echo
     "<option value=\"".$lines."\">$lines</option>";}
       ?>
   </select>

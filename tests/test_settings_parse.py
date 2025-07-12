@@ -1,5 +1,6 @@
-from scripts.utils.parse_settings import config_to_settings
 import tempfile
+
+from scripts.utils.parse_settings import config_to_settings
 
 
 def test():
@@ -34,11 +35,11 @@ LAST_RUN=
 THIS_RUN=
 IDFILE=/home/pi/BirdNET-Pi/IdentifiedSoFar.txt"""
 
-    filename = tempfile.NamedTemporaryFile(suffix='.txt', delete=False)
-    with open(filename.name, 'w', encoding='utf8', newline='') as f:
+    filename = tempfile.NamedTemporaryFile(suffix=".txt", delete=False)
+    with open(filename.name, "w", encoding="utf8", newline="") as f:
         f.write(text)
 
     settings = config_to_settings(filename.name)
-    assert (settings["APPRISE_NOTIFICATION_TITLE"] == "Bird!")
-    assert (settings["FULL_DISK"] == "purge")
-    assert (settings["OVERLAP"] == "0.0")  # Yes, it's a string at this point.
+    assert settings["APPRISE_NOTIFICATION_TITLE"] == "Bird!"
+    assert settings["FULL_DISK"] == "purge"
+    assert settings["OVERLAP"] == "0.0"  # Yes, it's a string at this point.

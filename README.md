@@ -114,7 +114,7 @@ Please take a look at the [wiki](https://github.com/mcguirepr89/BirdNET-Pi/wiki)
 - [and more!](https://github.com/mcguirepr89/BirdNET-Pi/discussions)
 
 
-## Updating 
+## Updating
 
 Use the web interface and go to "Tools" > "System Controls" > "Update." If you encounter any issues with that, or suspect that the update did not work for some reason, please save its output and post it in an issue where we can help.
 

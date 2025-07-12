@@ -71,7 +71,7 @@ $newest_file = $files[2];
 //then stop processing
 if($newest_file == $_GET['newest_file']) {
   die();
-} 
+}
 
 //Print out the filename
 echo "file,".$newest_file."\n";
@@ -115,7 +115,7 @@ if (is_array($config) && array_key_exists('RTSP_STREAM',$config)) {
 }
 
 ?>
-<script>  
+<script>
 // CREDITS: https://codepen.io/jakealbaugh/pen/jvQweW
 
 // UPDATE: there is a problem in chrome with starting audio context
@@ -128,7 +128,7 @@ let fps =[];
 let avgfps;
 let requestTime;
 
-<?php 
+<?php
 if(isset($_GET['legacy']) && $_GET['legacy'] == "true") {
   echo "var legacy = true;";
 } else {
@@ -150,7 +150,7 @@ window.onload = function(){
     document.body.querySelector('h1').remove();
     document.getElementsByClassName("centered")[0].remove()
 
-    <?php 
+    <?php
     if (file_exists('./scripts/thisrun.txt')) {
     $config = parse_ini_file('./scripts/thisrun.txt');
   } elseif (file_exists('./scripts/firstrun.ini')) {
@@ -184,11 +184,11 @@ window.onload = function(){
     };
   }
   player.play();
-  
+
   }
 };
 
-function fitTextOnCanvas(text,fontface,yPosition){    
+function fitTextOnCanvas(text,fontface,yPosition){
     var fontsize=300;
     do{
         fontsize--;
@@ -274,17 +274,17 @@ function loadDetectionIfNewExists() {
       } else {
         applyText(split[i].split(",")[1],x, ((document.body.querySelector('canvas').height * 0.50) + add ), split[i].split(",")[2])
       }
-  
+
 
           lastbird = split[i].split(",")[1]
         }
-        
+
       }
     }
   }
   xhttp.open("GET", "spectrogram.php?ajax_csv=true&newest_file="+newest_file, true);
   xhttp.send();
-  
+
 }
 
 window.setInterval(function(){
@@ -332,7 +332,7 @@ function toggleFreqshift(state) {
   freqShiftReconnectDelay = <?php echo $FREQSHIFT_RECONNECT_DELAY; ?>;
 
   var livestream_freqshift_spinner = document.getElementById('livestream_freqshift_spinner');
-  livestream_freqshift_spinner.style.display = "inline"; 
+  livestream_freqshift_spinner.style.display = "inline";
   // Create the XMLHttpRequest object.
   const xhr = new XMLHttpRequest();
   // Initialize the request
@@ -355,7 +355,7 @@ function toggleFreqshift(state) {
           audio_player.load();
           audio_player.play();
 
-          livestream_freqshift_spinner.style.display = "none"; 
+          livestream_freqshift_spinner.style.display = "none";
         },
         freqShiftReconnectDelay
         )
@@ -374,8 +374,8 @@ function initialize() {
   ACTX = new AudioContext();
   ANALYSER = ACTX.createAnalyser();
 
-  ANALYSER.fftSize = 2048;  
-  
+  ANALYSER.fftSize = 2048;
+
   try{
     process();
   } catch(e) {
@@ -387,7 +387,7 @@ function initialize() {
 
   function process() {
     SOURCE = ACTX.createMediaElementSource(player);
-    
+
 
     compressor = ACTX.createDynamicsCompressor();
     compressor.threshold.setValueAtTime(-50, ACTX.currentTime);
@@ -524,7 +524,7 @@ h1 {
   </div>
   <div style="display:inline" id="fshift" >
     <label>Freq shift: </label>
-    <?php 
+    <?php
         if ($config['ACTIVATE_FREQSHIFT_IN_LIVESTREAM'] == "true") {
           $freqshift_state = "checked";
         } else {

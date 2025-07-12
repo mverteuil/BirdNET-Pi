@@ -21,7 +21,7 @@ while [ $now -ge ${CUSTOM_WINDOW_START[0]} ] && [ $now -le ${CUSTOM_WINDOW_END[0
   # lines below and uncommend the commands at the bottom.
   arecord -f S16_LE -c${CHANNELS} -r48000 -t wav -d $RECORDING_DURATION \
     --use-strftime ${EXTRACTED}/Raw/%B-%Y/%d-%A/%F-birdnet-${STAMP}.wav
-  
+
   # Uncomment the lines below if you'd prefer having no directory scructure
   # under the "Raw" directory. Be sure to comment out the command above.
   #arecord -f S16_LE -c${CHANNELS} -r48000 -t wav -d $RECORDING_DURATION \
@@ -35,7 +35,7 @@ while [ $now -ge ${CUSTOM_WINDOW_START[1]} ] && [ $now -le ${CUSTOM_WINDOW_END[1
   # lines below and uncommend the commands at the bottom.
   arecord -f S16_LE -c${CHANNELS} -r48000 -t wav -d $RECORDING_DURATION \
     --use-strftime ${EXTRACTED}/Raw/%B-%Y/%d-%A/%F-birdnet-${STAMP}.wav
-  
+
   # Uncomment the lines below if you'd prefer having no directory scructure
   # under the "Raw" directory. Be sure to comment out the command above.
   #arecord -f S16_LE -c${CHANNELS} -r48000 -t wav -d $RECORDING_DURATION \
@@ -49,11 +49,11 @@ while [ $now -ge ${CUSTOM_WINDOW_START[2]} ] && [ $now -le ${CUSTOM_WINDOW_END[2
   # lines below and uncommend the commands at the bottom.
   arecord -f S16_LE -c${CHANNELS} -r48000 -t wav -d $RECORDING_DURATION \
     --use-strftime ${EXTRACTED}/Raw/%B-%Y/%d-%A/%F-birdnet-${STAMP}.wav
-  
+
   # Uncomment the lines below if you'd prefer having no directory scructure
   # under the "Raw" directory. Be sure to comment out the command above.
   #arecord -f S16_LE -c${CHANNELS} -r48000 -t wav -d $RECORDING_DURATION \
-  #  --use-strftime ${EXTRACTED}/Raw/%F-birdnet-${STAMP}.wav 
+  #  --use-strftime ${EXTRACTED}/Raw/%F-birdnet-${STAMP}.wav
   sleep $PAUSE_DURATION
   now=$(date +%H)
 done
@@ -63,7 +63,7 @@ while [ $now -ge ${CUSTOM_WINDOW_START[3]} ] && [ $now -le ${CUSTOM_WINDOW_END[3
   # lines below and uncommend the commands at the bottom.
   arecord -f S16_LE -c${CHANNELS} -r48000 -t wav -d $RECORDING_DURATION \
     --use-strftime ${EXTRACTED}/Raw/%B-%Y/%d-%A/%F-birdnet-${STAMP}.wav
-  
+
   # Uncomment the lines below if you'd prefer having no directory scructure
   # under the "Raw" directory. Be sure to comment out the command above.
   #arecord -f S16_LE -c${CHANNELS} -r48000 -t wav -d $RECORDING_DURATION \
@@ -71,5 +71,3 @@ while [ $now -ge ${CUSTOM_WINDOW_START[3]} ] && [ $now -le ${CUSTOM_WINDOW_END[3
   sleep $PAUSE_DURATION
   now=$(date +%H)
 done
-
-

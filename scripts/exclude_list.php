@@ -14,11 +14,11 @@
   <?php
     error_reporting(E_ALL);
     ini_set('display_errors',1);
-    
+
     $filename = './scripts/labels.txt';
     $eachline = file($filename, FILE_IGNORE_NEW_LINES);
-    
-    foreach($eachline as $lines){echo 
+
+    foreach($eachline as $lines){echo
   "<option value=\"".$lines."\">$lines</option>";}
   ?>
   </select>
@@ -46,7 +46,7 @@
   $filename = './scripts/exclude_species_list.txt';
   $eachline = file($filename, FILE_IGNORE_NEW_LINES);
   foreach($eachline as $lines){
-    echo 
+    echo
   "<option value=\"".$lines."\">$lines</option>";
 }?>
   </select>

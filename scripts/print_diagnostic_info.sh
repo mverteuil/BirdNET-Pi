@@ -29,7 +29,7 @@ echo ""
 
 # 5. CPU usage
 echo "========== CPU Info =========="
-cat /proc/cpuinfo 
+cat /proc/cpuinfo
 
 echo ""
 

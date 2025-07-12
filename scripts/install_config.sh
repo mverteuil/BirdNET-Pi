@@ -106,8 +106,8 @@ APPRISE_ONLY_NOTIFY_SPECIES_NAMES=""
 APPRISE_ONLY_NOTIFY_SPECIES_NAMES_2=""
 
 #----------------------  Flickr Images API Configuration -----------------------#
-## If FLICKR_API_KEY is set, the web interface will try and display bird images 
-## for each detection. If FLICKR_FILTER_EMAIL is set, the images will only be 
+## If FLICKR_API_KEY is set, the web interface will try and display bird images
+## for each detection. If FLICKR_FILTER_EMAIL is set, the images will only be
 ## displayed from a particular Flickr user (e.g. yourself).
 
 FLICKR_API_KEY=
@@ -236,7 +236,7 @@ SILENCE_UPDATE_INDICATOR=0
 RAW_SPECTROGRAM=0
 
 ## CUSTOM_IMAGE and CUSTOM_IMAGE_TITLE allow you to show a custom image on the
-## Overview page of your BirdNET-Pi. This can be used to show a dynamically 
+## Overview page of your BirdNET-Pi. This can be used to show a dynamically
 ## updating picture of your garden, for example.
 
 CUSTOM_IMAGE=

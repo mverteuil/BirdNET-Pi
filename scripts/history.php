@@ -139,7 +139,7 @@ function submitID() {
 
 }
 
-</script>  
+</script>
 
 <form action="" method="GET">
   <input type="date" name="date" value="<?php echo $theDate;?>">

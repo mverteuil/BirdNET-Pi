@@ -24,4 +24,3 @@ ${NOTIFICATION}"
     $HOME/BirdNET-Pi/birdnet/bin/apprise -vv -t 'New Species Detected' -b "${NOTIFICATION}" --config=$HOME/BirdNET-Pi/apprise.txt
   fi
 fi
-

@@ -8,13 +8,13 @@ $fetch = shell_exec("sudo -u".$user." git -C ".$home."/BirdNET-Pi fetch 2>&1");
 $str = trim(shell_exec("sudo -u".$user." git -C ".$home."/BirdNET-Pi status"));
 if (preg_match("/behind '.*?' by (\d+) commit(s?)\b/", $str, $matches)) {
   $num_commits_behind = $matches[1];
-  $_SESSION['behind'] = $num_commits_behind; 
+  $_SESSION['behind'] = $num_commits_behind;
 }
 if (preg_match('/\b(\d+)\b and \b(\d+)\b different commits each/', $str, $matches)) {
     $num1 = (int) $matches[1];
     $num2 = (int) $matches[2];
     $sum = $num1 + $num2;
-    $_SESSION['behind'] = $sum; 
+    $_SESSION['behind'] = $sum;
 }
 ?><html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -43,7 +43,7 @@ function update() {
   </form>
   <form action="" method="GET">
     <button type="submit" name="submit" value="sudo clear_all_data.sh" onclick="return confirm('Clear ALL Data? Note that this cannot be undone and will take up to 90 seconds.')">Clear ALL data</button>
-  </form> 
+  </form>
 <?php
   $cmd="cd ".$home."/BirdNET-Pi && sudo -u ".$user." git rev-list --max-count=1 HEAD";
   $curr_hash = shell_exec($cmd);

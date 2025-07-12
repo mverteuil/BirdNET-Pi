@@ -1,4 +1,4 @@
-<?php 
+<?php
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -140,7 +140,7 @@ if(isset($_GET['ascii'])) {
 	}
 
         $prevweek = date('W', $enddate) - 1;
-        if($prevweek < 1) { $prevweek = 52; } 
+        if($prevweek < 1) { $prevweek = 52; }
 
 	echo "<hr><small>* data from ".date('Y-m-d', $startdate)." — ".date('Y-m-d',$enddate).".</small><br>";
 	echo '<small>* percentages are calculated relative to week '.($prevweek).'.</small>';
@@ -175,13 +175,13 @@ $i = 0;
 while($detection=$result1->fetchArray(SQLITE3_ASSOC))
 {
 	if($debug == true){
-		if($i > 10) { 
+		if($i > 10) {
 			break;
 		}
 	}
 	$i++;
 	$detections[$detection["Com_Name"]] = $detection["COUNT(*)"];
-	
+
 }
 ?>
 <br>
@@ -237,7 +237,7 @@ while($detection=$result1->fetchArray(SQLITE3_ASSOC))
 		</tr>
 	</thead>
 	<tbody>
-	<?php 
+	<?php
 
     $newspeciescount=0;
 	foreach($detections as $com_name=>$scount)
