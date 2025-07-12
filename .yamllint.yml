@@ -1,0 +1,3 @@
+rules:
+  trailing-whitespace:
+    level: error

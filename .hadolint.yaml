@@ -1,0 +1,9 @@
+ignored:
+  - DL3008 # Pin versions in apt get install. Instead of `apt-get install <package>` use `apt-get install <package>=<version>`
+  - DL3018 # Pin versions in apk add. Instead of `apk add <package>` use `apk add <package>=<version>`
+  - DL3028 # Pin versions in pip install. Instead of `pip install <package>` use `pip install <package>==<version>` or `pip install --requirement <requirements file>`
+  - DL3042 # Avoid use of cache directory with pip. Use `pip install --no-cache-dir <package>`
+
+# Customize rules
+# For example, to treat all INFO rules as WARNING
+# severity: info=warning

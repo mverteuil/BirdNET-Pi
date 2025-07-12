@@ -27,3 +27,7 @@ repos:
     rev: v0.9.0
     hooks:
     -   id: shellcheck
+-   repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0 # Use the latest stable version
+    hooks:
+    -   id: hadolint
