@@ -54,7 +54,9 @@
       </form>
       <form action="" id="toolsbtn" method="GET" id="views">
         <button type="submit" name="view" value="Tools" form="views">
-          Tools
+          Tools{% if commits_behind > 0 %}
+          <div class="updatenumber">{{ commits_behind }}</div>
+          {% endif %}
         </button>
       </form>
       <button href="javascript:void(0);" class="icon" onclick="myFunction()">
