@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  birdnet-pi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: birdnet-pi
+    restart: unless-stopped
+    ports:
+      - "8000:8000" # FastAPI application
+      - "80:80"   # Caddy (if Caddy is integrated into the birdnet-pi container)
+    volumes:
+      - birdnet-data:/mnt/birdnet # Persistent data storage
+      - /dev/snd:/dev/snd # For audio input
+    devices:
+      - /dev/snd # For audio input
+    environment:
+      # Add any necessary environment variables here
+      - BIRDNETPI_URL=http://localhost
+      - EXTRACTED=/mnt/birdnet/extracted
+      - CADDY_PWD=your_caddy_password # Replace with a strong password or use secrets
+
+volumes:
+  birdnet-data:
+    driver: local
