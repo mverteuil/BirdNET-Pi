@@ -1,5 +1,6 @@
 import yaml
-from BirdNET_Pi.src.models.birdnet_config import BirdNETConfig
+
+from models.birdnet_config import BirdNETConfig
 
 
 class ConfigFileParser:

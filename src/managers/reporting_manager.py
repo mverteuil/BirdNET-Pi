@@ -1,6 +1,6 @@
 import datetime
 
-from BirdNET_Pi.src.services.database_manager import DatabaseManager
+from services.database_manager import DatabaseManager
 
 
 class ReportingManager:

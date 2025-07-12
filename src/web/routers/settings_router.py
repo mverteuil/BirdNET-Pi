@@ -1,9 +1,10 @@
-from BirdNET_Pi.src.models.birdnet_config import BirdNETConfig
-from BirdNET_Pi.src.utils.config_file_parser import ConfigFileParser
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.status import HTTP_303_SEE_OTHER
+
+from models.birdnet_config import BirdNETConfig
+from utils.config_file_parser import ConfigFileParser
 
 router = APIRouter()
 
