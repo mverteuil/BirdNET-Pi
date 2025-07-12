@@ -10,9 +10,8 @@ class ReportingManager:
 
     def get_weekly_report_data(self):
         today = datetime.date.today()
-        # Calculate last Sunday (end of last week)
+        # Sunday of the week that just finished
         last_sunday = today - datetime.timedelta(days=today.weekday() + 1)
-        # Calculate start of last week (Monday before last Sunday)
         start_date = last_sunday - datetime.timedelta(days=6)
         end_date = last_sunday
 
