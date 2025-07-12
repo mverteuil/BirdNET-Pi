@@ -1,54 +1,78 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
+  <head>
     <title>BirdNET-Pi Views</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css" />
     <link rel="stylesheet" type="text/css" href="/static/dialog-polyfill.css" />
-</head>
-<body>
-<div class="topnav" id="myTopnav">
-  <form action="" method="GET" id="views">
-    <button type="submit" name="view" value="Overview" form="views">Overview</button>
-  </form>
-  <form action="" method="GET" id="views">
-    <button type="submit" name="view" value="Todays Detections" form="views">Today's Detections</button>
-  </form>
-  <form action="" method="GET" id="views">
-    <button type="submit" name="view" value="Spectrogram" form="views">Spectrogram</button>
-  </form>
-  <form action="" method="GET" id="views">
-    <button type="submit" name="view" value="Species Stats" form="views">Best Recordings</button>
-  </form>
-  <form action="" method="GET" id="views">
-    <button type="submit" name="view" value="Streamlit" form="views">Species Stats</button>
-  </form>
-  <form action="" method="GET" id="views">
-    <button type="submit" name="view" value="Daily Charts" form="views">Daily Charts</button>
-  </form>
-  <form action="" method="GET" id="views">
-    <button type="submit" name="view" value="Recordings" form="views">Recordings</button>
-  </form>
-  <form action="" method="GET" id="views">
-    <button type="submit" name="view" value="View Log" form="views">View Log</button>
-  </form>
-  <form action="" id="toolsbtn" method="GET" id="views">
-    <button type="submit" name="view" value="Tools" form="views">Tools</button>
-  </form>
-  <button href="javascript:void(0);" class="icon" onclick="myFunction()"><img src="/static/images/menu.png"></button>
-</div>
+  </head>
+  <body>
+    <div class="topnav" id="myTopnav">
+      <form action="" method="GET" id="views">
+        <button type="submit" name="view" value="Overview" form="views">
+          Overview
+        </button>
+      </form>
+      <form action="" method="GET" id="views">
+        <button
+          type="submit"
+          name="view"
+          value="Todays Detections"
+          form="views"
+        >
+          Today's Detections
+        </button>
+      </form>
+      <form action="" method="GET" id="views">
+        <button type="submit" name="view" value="Spectrogram" form="views">
+          Spectrogram
+        </button>
+      </form>
+      <form action="" method="GET" id="views">
+        <button type="submit" name="view" value="Species Stats" form="views">
+          Best Recordings
+        </button>
+      </form>
+      <form action="" method="GET" id="views">
+        <button type="submit" name="view" value="Streamlit" form="views">
+          Species Stats
+        </button>
+      </form>
+      <form action="" method="GET" id="views">
+        <button type="submit" name="view" value="Daily Charts" form="views">
+          Daily Charts
+        </button>
+      </form>
+      <form action="" method="GET" id="views">
+        <button type="submit" name="view" value="Recordings" form="views">
+          Recordings
+        </button>
+      </form>
+      <form action="" method="GET" id="views">
+        <button type="submit" name="view" value="View Log" form="views">
+          View Log
+        </button>
+      </form>
+      <form action="" id="toolsbtn" method="GET" id="views">
+        <button type="submit" name="view" value="Tools" form="views">
+          Tools
+        </button>
+      </form>
+      <button href="javascript:void(0);" class="icon" onclick="myFunction()">
+        <img src="/static/images/menu.png" />
+      </button>
+    </div>
 
-<script>
-function myFunction() {
-  var x = document.getElementById("myTopnav");
-  if (x.className === "topnav") {
-    x.className += " responsive";
-  } else {
-    x.className = "topnav";
-  }
-}
-</script>
+    <script>
+      function myFunction() {
+        var x = document.getElementById("myTopnav");
+        if (x.className === "topnav") {
+          x.className += " responsive";
+        } else {
+          x.className = "topnav";
+        }
+      }
+    </script>
 
-<div class="views">
-</div>
-</body>
+    <div class="views"></div>
+  </body>
 </html>
