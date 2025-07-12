@@ -50,3 +50,32 @@ class ConfigFileParser:
                 "apprise_only_notify_species_names_2", ""
             ),
         )
+
+    def save_config(self, config: BirdNETConfig):
+        config_data = {
+            "site_name": config.site_name,
+            "latitude": config.latitude,
+            "longitude": config.longitude,
+            "model": config.model,
+            "sf_thresh": config.sf_thresh,
+            "birdweather_id": config.birdweather_id,
+            "apprise_input": config.apprise_input,
+            "apprise_notification_title": config.apprise_notification_title,
+            "apprise_notification_body": config.apprise_notification_body,
+            "apprise_notify_each_detection": config.apprise_notify_each_detection,
+            "apprise_notify_new_species": config.apprise_notify_new_species,
+            "apprise_notify_new_species_each_day": config.apprise_notify_new_species_each_day,
+            "apprise_weekly_report": config.apprise_weekly_report,
+            "minimum_time_limit": config.minimum_time_limit,
+            "flickr_api_key": config.flickr_api_key,
+            "flickr_filter_email": config.flickr_filter_email,
+            "database_lang": config.database_lang,
+            "timezone": config.timezone,
+            "caddy_pwd": config.caddy_pwd,
+            "silence_update_indicator": config.silence_update_indicator,
+            "birdnetpi_url": config.birdnetpi_url,
+            "apprise_only_notify_species_names": config.apprise_only_notify_species_names,
+            "apprise_only_notify_species_names_2": config.apprise_only_notify_species_names_2,
+        }
+        with open(self.config_path, "w") as f:
+            yaml.safe_dump(config_data, f, sort_keys=False)
