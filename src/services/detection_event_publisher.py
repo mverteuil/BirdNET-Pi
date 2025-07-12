@@ -1,4 +1,4 @@
-from BirdNET_Pi.src.utils.signals import detection_event
+from utils.signals import detection_event
 
 
 class DetectionEventPublisher:
