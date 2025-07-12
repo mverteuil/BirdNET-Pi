@@ -1,5 +1,5 @@
-import subprocess
 import os
+import subprocess
 
 
 class LogManager:
@@ -23,10 +23,14 @@ class LogManager:
             ]
             sed_command = [
                 "sed",
-                f"s/{self.home_dir.replace('/', '\\/')}//g;s/Line/d;/find/d;/systemd/d;s/ .*\\[.*\\]: /---/",
+                r"s/{}/g;s/Line/d;/find/d;/systemd/d;s/ .*\[.*\]: /---/".format(
+                    self.home_dir.replace("/", "\/")
+                ),
             ]
 
-            journalctl_process = subprocess.Popen(journalctl_command, stdout=subprocess.PIPE)
+            journalctl_process = subprocess.Popen(
+                journalctl_command, stdout=subprocess.PIPE
+            )
             sed_process = subprocess.Popen(
                 sed_command, stdin=journalctl_process.stdout, stdout=subprocess.PIPE
             )

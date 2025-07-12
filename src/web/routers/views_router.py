@@ -1,9 +1,12 @@
+import pandas as pd
+import plotly.io as pio
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from managers.reporting_manager import ReportingManager
 from managers.update_manager import UpdateManager
+from reporting_dashboard import ReportingDashboard
 from services.database_manager import DatabaseManager
 
 router = APIRouter()
@@ -29,4 +32,41 @@ async def get_weekly_report(request: Request):
     report_data = reporting_manager.get_weekly_report_data()
     return templates.TemplateResponse(
         "weekly_report.html", {"request": request, "report": report_data}
+    )
+
+
+@router.get("/views/charts", response_class=HTMLResponse)
+async def get_charts(request: Request):
+    dashboard = ReportingDashboard()
+    df = dashboard.get_data()
+
+    # Default values for plot generation
+    start_date = pd.to_datetime(df.index.min()).date()
+    end_date = pd.to_datetime(df.index.max()).date()
+    top_N = 10
+    specie = "All"
+    num_days_to_display = 7  # Arbitrary for now
+    selected_pal = "Viridis"  # Arbitrary for now
+
+    # Generate multi-day plot
+    multi_day_fig = dashboard.generate_multi_day_species_and_hourly_plot(
+        df, "Hourly", start_date, end_date, top_N, specie
+    )
+    multi_day_plot_json = pio.to_json(multi_day_fig)
+
+    # Generate daily plot
+    daily_fig = dashboard.generate_daily_detections_plot(
+        df,
+        "15 minutes",
+        start_date,
+        df["Com_Name"].mode()[0],
+        num_days_to_display,
+        selected_pal,
+    )
+    daily_plot_json = pio.to_json(daily_fig)
+
+    plot_data = {"multi_day_plot": multi_day_plot_json, "daily_plot": daily_plot_json}
+
+    return templates.TemplateResponse(
+        "charts.html", {"request": request, "plot_data": plot_data}
     )

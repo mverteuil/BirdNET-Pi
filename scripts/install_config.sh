@@ -4,6 +4,8 @@ set -x # Uncomment to enable debugging
 set -e
 trap 'exit 1' SIGINT SIGHUP
 
+my_dir="$(dirname "$0")"
+
 echo "Beginning $0"
 birdnet_conf=$my_dir/birdnet.conf
 
@@ -19,7 +21,7 @@ else
 fi
 
 install_config() {
-  cat << EOF > $birdnet_conf
+  cat << EOF > "$birdnet_conf"
 ################################################################################
 #                    Configuration settings for BirdNET-Pi                     #
 ################################################################################
@@ -250,10 +252,10 @@ EOF
 }
 
 # Checks for a birdnet.conf file
-if ! [ -f ${birdnet_conf} ];then
+if ! [ -f "${birdnet_conf}" ];then
   install_config
 fi
-chmod g+w ${birdnet_conf}
+chmod g+w "${birdnet_conf}"
 [ -d /etc/birdnet ] || sudo mkdir /etc/birdnet
-sudo ln -sf $birdnet_conf /etc/birdnet/birdnet.conf
-grep -ve '^#' -e '^$' /etc/birdnet/birdnet.conf > $my_dir/firstrun.ini
+sudo ln -sf "$birdnet_conf" /etc/birdnet/birdnet.conf
+grep -vE '^(#|$)' /etc/birdnet/birdnet.conf > "$my_dir"/firstrun.ini

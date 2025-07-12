@@ -1,6 +1,6 @@
+import os
 import re
 import subprocess
-import os
 
 
 class UpdateManager:
@@ -69,14 +69,31 @@ class UpdateManager:
 
             # Switches git to specified branch
             subprocess.run(
-                ["git", "-C", self.repo_path, "switch", "-C", branch, "--track", f"{remote}/{branch}"],
+                [
+                    "git",
+                    "-C",
+                    self.repo_path,
+                    "switch",
+                    "-C",
+                    branch,
+                    "--track",
+                    f"{remote}/{branch}",
+                ],
                 check=True,
                 capture_output=True,
             )
 
             # Prints out changes
             diff_output = subprocess.run(
-                ["git", "-C", self.repo_path, "diff", "--stat", current_commit_hash, "HEAD"],
+                [
+                    "git",
+                    "-C",
+                    self.repo_path,
+                    "diff",
+                    "--stat",
+                    current_commit_hash,
+                    "HEAD",
+                ],
                 check=True,
                 capture_output=True,
                 text=True,
@@ -91,7 +108,16 @@ class UpdateManager:
             script_dir = os.path.join(self.repo_path, "scripts")
             for script in os.listdir(script_dir):
                 if os.path.isfile(os.path.join(script_dir, script)):
-                    subprocess.run(["sudo", "ln", "-sf", os.path.join(script_dir, script), "/usr/local/bin/"], check=True)
+                    subprocess.run(
+                        [
+                            "sudo",
+                            "ln",
+                            "-sf",
+                            os.path.join(script_dir, script),
+                            "/usr/local/bin/",
+                        ],
+                        check=True,
+                    )
 
             # Call update_birdnet_snippets (assuming it's also a Python function now)
             # This will be handled by the wrapper script calling the appropriate Python function
@@ -104,7 +130,9 @@ class UpdateManager:
             print(f"An unexpected error occurred during update: {e}")
             raise
 
-    def update_caddyfile(self, birdnetpi_url: str, extracted_path: str, caddy_pwd: str = None):
+    def update_caddyfile(
+        self, birdnetpi_url: str, extracted_path: str, caddy_pwd: str = None
+    ):
         try:
             # Ensure /etc/caddy exists
             subprocess.run(["sudo", "mkdir", "-p", "/etc/caddy"], check=True)
@@ -113,9 +141,12 @@ class UpdateManager:
 
             # Backup existing Caddyfile if it exists
             if os.path.exists(caddyfile_path):
-                subprocess.run(["sudo", "cp", caddyfile_path, f"{caddyfile_path}.original"], check=True)
+                subprocess.run(
+                    ["sudo", "cp", caddyfile_path, f"{caddyfile_path}.original"],
+                    check=True,
+                )
 
-            caddyfile_content = f"""http:// {birdnetpi_url} {
+            caddyfile_content = """http:// {birdnetpi_url} {
   reverse_proxy localhost:8000
   reverse_proxy /log* localhost:8080
   reverse_proxy /stats* localhost:8501
@@ -128,10 +159,14 @@ class UpdateManager:
             temp_caddyfile_path = "/tmp/Caddyfile_temp"
             with open(temp_caddyfile_path, "w") as f:
                 f.write(caddyfile_content)
-            subprocess.run(["sudo", "mv", temp_caddyfile_path, caddyfile_path], check=True)
+            subprocess.run(
+                ["sudo", "mv", temp_caddyfile_path, caddyfile_path], check=True
+            )
 
             # Format and reload Caddy
-            subprocess.run(["sudo", "caddy", "fmt", "--overwrite", caddyfile_path], check=True)
+            subprocess.run(
+                ["sudo", "caddy", "fmt", "--overwrite", caddyfile_path], check=True
+            )
             subprocess.run(["sudo", "systemctl", "reload", "caddy"], check=True)
 
             print("Caddyfile updated and Caddy reloaded successfully.")
@@ -142,4 +177,3 @@ class UpdateManager:
         except Exception as e:
             print(f"An unexpected error occurred during Caddyfile update: {e}")
             raise
-
