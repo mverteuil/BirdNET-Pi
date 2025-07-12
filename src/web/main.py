@@ -13,7 +13,10 @@ templates = Jinja2Templates(directory="src/web/templates")
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    site_name = "BirdNET-Pi"
+    return templates.TemplateResponse(
+        "index.html", {"request": request, "site_name": site_name}
+    )
 
 
 @app.websocket("/ws")
