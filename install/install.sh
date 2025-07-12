@@ -26,7 +26,6 @@ sudo apt install -y \
     libjpeg-dev \
     zlib1g-dev \
     python3-dev \
-    python3-pip \
     python3-venv \
     lsof \
     net-tools \
@@ -36,6 +35,10 @@ sudo apt install -y \
     sox \
     libsox-fmt-mp3 \
     ffmpeg
+
+# Install uv
+echo "Installing uv..."
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Install Caddy (if not already installed via apt)
 # This part might need adjustment based on how Caddy is officially distributed for Debian/Raspbian
@@ -103,5 +106,12 @@ download_model_files() {
 
 # Call the function to download model files
 download_model_files
+
+# Install Python dependencies using uv
+echo "Installing Python dependencies using uv..."
+# Ensure uv is in the PATH for the birdnetpi user
+export PATH="${HOME}/.cargo/bin:$PATH"
+# Change to the BirdNET-Pi directory to ensure pyproject.toml is found
+(cd /home/birdnetpi/BirdNET-Pi && uv sync)
 
 echo "Foundational environment setup complete."

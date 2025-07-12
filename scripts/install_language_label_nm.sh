@@ -18,16 +18,16 @@ HOME=$(awk -F: '/1000/ {print $6}' /etc/passwd)
 
 label_file_name="labels_${lang}.txt"
 
-unzip -o $HOME/BirdNET-Pi/model/labels_nm.zip $label_file_name \
-  -d $HOME/BirdNET-Pi/model \
-  && mv -f $HOME/BirdNET-Pi/model/$label_file_name $HOME/BirdNET-Pi/model/labels.txt \
+unzip -o "$HOME"/BirdNET-Pi/model/labels_nm.zip "$label_file_name" \
+  -d "$HOME"/BirdNET-Pi/model \
+  && mv -f "$HOME"/BirdNET-Pi/model/"$label_file_name" "$HOME"/BirdNET-Pi/model/labels.txt \
   && logger "[$0] Changed language label file to '$label_file_name'";
 
 label_file_name_flickr="labels_en.txt"
 
-unzip -o $HOME/BirdNET-Pi/model/labels_nm.zip $label_file_name_flickr \
-  -d $HOME/BirdNET-Pi/model \
-  && mv -f $HOME/BirdNET-Pi/model/$label_file_name_flickr $HOME/BirdNET-Pi/model/labels_flickr.txt \
+unzip -o "$HOME"/BirdNET-Pi/model/labels_nm.zip "$label_file_name_flickr" \
+  -d "$HOME"/BirdNET-Pi/model \
+  && mv -f "$HOME"/BirdNET-Pi/model/"$label_file_name_flickr" "$HOME"/BirdNET-Pi/model/labels_flickr.txt \
   && logger "[$0] Set Flickr labels '$label_file_name_flickr'";
 
 exit 0

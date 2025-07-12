@@ -1,8 +1,11 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.exc import SQLAlchemyError
-from models.database_models import Base, Detection, AudioFile
 import os
+
+from sqlalchemy import create_engine
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import sessionmaker
+
+from models.database_models import Base, Detection
+
 
 class DatabaseManager:
     def __init__(self, db_path: str):
@@ -17,7 +20,9 @@ class DatabaseManager:
             os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
             self.engine = create_engine(f"sqlite:///{self.db_path}")
             Base.metadata.create_all(self.engine)
-            self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+            self.SessionLocal = sessionmaker(
+                autocommit=False, autoflush=False, bind=self.engine
+            )
             print(f"Database initialized at {self.db_path}")
         except SQLAlchemyError as e:
             print(f"Error initializing database: {e}")
@@ -67,32 +72,50 @@ class DatabaseManager:
 
         db = self.SessionLocal()
         try:
-            with open(csv_file_path, 'r') as f:
-                reader = csv.reader(f, delimiter=';')
-                header = next(reader)  # Skip header row
+            with open(csv_file_path, "r") as f:
+                reader = csv.reader(f, delimiter=";")
+                next(reader)  # Skip header row
                 for row in reader:
                     if not row:  # Skip empty rows
                         continue
                     try:
                         # Assuming the order: Date;Time;Sci_Name;Com_Name;Confidence;Lat;Lon;Cutoff;Week;Sens;Overlap
-                        date_str, time_str, sci_name, com_name, confidence_str, lat_str, lon_str, cutoff_str, week_str, sens_str, overlap_str = row
+                        (
+                            date_str,
+                            time_str,
+                            sci_name,
+                            com_name,
+                            confidence_str,
+                            lat_str,
+                            lon_str,
+                            cutoff_str,
+                            week_str,
+                            sens_str,
+                            overlap_str,
+                        ) = row
 
                         # Combine date and time strings and parse
                         timestamp_str = f"{date_str} {time_str}"
-                        timestamp = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+                        timestamp = datetime.strptime(
+                            timestamp_str, "%Y-%m-%d %H:%M:%S"
+                        )
 
                         detection = Detection(
-                            species=f"{com_name} ({sci_name})", # Combine for species name
+                            species=f"{com_name} ({sci_name})",  # Combine for species name
                             confidence=float(confidence_str),
                             timestamp=timestamp,
-                            audio_file_path="", # This information is not in BirdDB.txt
+                            audio_file_path="",  # This information is not in BirdDB.txt
                             # Add other fields if they map directly to Detection model
                         )
                         db.add(detection)
                     except ValueError as ve:
-                        print(f"Skipping row due to data conversion error: {row} - {ve}")
+                        print(
+                            f"Skipping row due to data conversion error: {row} - {ve}"
+                        )
                     except IndexError as ie:
-                        print(f"Skipping row due to incorrect column count: {row} - {ie}")
+                        print(
+                            f"Skipping row due to incorrect column count: {row} - {ie}"
+                        )
             db.commit()
             print(f"Successfully imported detections from {csv_file_path}")
         except SQLAlchemyError as e:
@@ -101,5 +124,20 @@ class DatabaseManager:
             raise
         except FileNotFoundError:
             print(f"CSV file not found at {csv_file_path}")
+        finally:
+            db.close()
+
+    def clear_database(self):
+        """Clears all data from the database tables."""
+        try:
+            db = self.SessionLocal()
+            for table in Base.metadata.sorted_tables:
+                db.execute(table.delete())
+            db.commit()
+            print("Database cleared successfully.")
+        except SQLAlchemyError as e:
+            db.rollback()
+            print(f"Error clearing database: {e}")
+            raise
         finally:
             db.close()

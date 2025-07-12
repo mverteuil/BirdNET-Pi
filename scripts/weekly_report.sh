@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=all
 source /etc/birdnet/birdnet.conf
 if [ ${APPRISE_WEEKLY_REPORT} == 1 ];then
 	NOTIFICATION=$(curl 'localhost/views.php?view=Weekly%20Report&ascii=true')

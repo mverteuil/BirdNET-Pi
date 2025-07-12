@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=all
 source /etc/birdnet/birdnet.conf
 sqlite3 $HOME/BirdNET-Pi/scripts/birds.db << EOF
 DROP TABLE IF EXISTS detections;

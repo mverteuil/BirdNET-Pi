@@ -1,0 +1,51 @@
+[project]
+name = "birdnet-pi"
+version = "0.1.0"
+description = "A Python-based BirdNET-Pi application"
+authors = [
+    { name = "Your Name", email = "your.email@example.com" }
+]
+requires-python = "==3.11.*"
+dependencies = [
+    "pip",
+    "wheel",
+    "setuptools",
+    "colorama==0.4.4",
+    "librosa",
+    "pytz",
+    "tzlocal",
+    "pandas",
+    "seaborn",
+    "streamlit==1.19.0",
+    "plotly",
+    "apprise==1.2.1",
+    "paho-mqtt",
+    "suntime",
+    "altair<5",
+    "sqlalchemy",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==7.1.2",
+    "pytest-mock==3.7.0",
+    "pytest-cov",
+]
+
+# This is a placeholder for the tflite_runtime wheel.
+# In a real scenario, you might need to handle this as a direct URL dependency
+# or a separate installation step depending on uv's capabilities and the target platform.
+# For now, we'll assume uv can handle it if it's in the local wheelhouse or specified.
+# "tflite_runtime @ file:///path/to/tflite_runtime-2.6.0-cp39-none-linux_aarch64.whl"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv]
+# Configuration for uv, if needed.
+# For example, you might specify a Python version or other settings.
+# python = "3.9"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

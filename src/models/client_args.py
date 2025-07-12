@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class ClientArgs:
     # Arguments for client-side scripts, e.g., analysis, recording

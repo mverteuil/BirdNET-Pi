@@ -82,13 +82,15 @@ class AppSetup:
                 "description": "BirdNET Analysis",
                 "after": "birdnet_server.service",
                 "requires": "birdnet_server.service",
-                "exec_start": self.file_path_resolver.get_absolute_path("scripts/birdnet_analysis.sh"),
+                "exec_start": self.file_path_resolver.get_absolute_path(
+                    "scripts/birdnet_analysis.sh"
+                ),
             },
             {
                 "name": "birdnet_server.service",
                 "description": "BirdNET Analysis Server",
                 "before": "birdnet_analysis.service",
-                "exec_start": f"{python_exec} {self.file_path_resolver.get_absolute_path('src/main.py')}", # Assuming main.py is the server entry
+                "exec_start": f"{python_exec} {self.file_path_resolver.get_absolute_path('src/main.py')}",  # Assuming main.py is the server entry
             },
             {
                 "name": "extraction.service",
@@ -99,13 +101,17 @@ class AppSetup:
             {
                 "name": "birdnet_recording.service",
                 "description": "BirdNET Recording",
-                "exec_start": self.file_path_resolver.get_absolute_path("scripts/birdnet_recording.sh"),
+                "exec_start": self.file_path_resolver.get_absolute_path(
+                    "scripts/birdnet_recording.sh"
+                ),
                 "environment": "XDG_RUNTIME_DIR=/run/user/1000",
             },
             {
                 "name": "custom_recording.service",
                 "description": "BirdNET Custom Recording",
-                "exec_start": self.file_path_resolver.get_absolute_path("scripts/custom_recording.sh"),
+                "exec_start": self.file_path_resolver.get_absolute_path(
+                    "scripts/custom_recording.sh"
+                ),
                 "environment": "XDG_RUNTIME_DIR=/run/user/1000",
             },
             {
@@ -117,12 +123,14 @@ class AppSetup:
             {
                 "name": "spectrogram_viewer.service",
                 "description": "BirdNET-Pi Spectrogram Viewer",
-                "exec_start": self.file_path_resolver.get_absolute_path("scripts/spectrogram.sh"),
+                "exec_start": self.file_path_resolver.get_absolute_path(
+                    "scripts/spectrogram.sh"
+                ),
             },
             {
                 "name": "chart_viewer.service",
                 "description": "BirdNET-Pi Chart Viewer Service",
-                "exec_start": f"{python_exec} {self.file_path_resolver.get_absolute_path('scripts/daily_plot.py')}", # Assuming daily_plot.py exists
+                "exec_start": f"{python_exec} {self.file_path_resolver.get_absolute_path('scripts/daily_plot.py')}",  # Assuming daily_plot.py exists
             },
             {
                 "name": "birdnet_log.service",
@@ -134,14 +142,16 @@ class AppSetup:
             {
                 "name": "web_terminal.service",
                 "description": "BirdNET-Pi Web Terminal",
-                "exec_start": "/usr/local/bin/gotty --address localhost -w -p 8888 -P terminal --title-format \"BirdNET-Pi Terminal\" login",
+                "exec_start": '/usr/local/bin/gotty --address localhost -w -p 8888 -P terminal --title-format "BirdNET-Pi Terminal" login',
                 "restart": "on-failure",
                 "environment": "TERM=xterm-256color",
             },
             {
                 "name": "livestream.service",
                 "description": "BirdNET-Pi Live Stream",
-                "exec_start": self.file_path_resolver.get_absolute_path("scripts/livestream.sh"),
+                "exec_start": self.file_path_resolver.get_absolute_path(
+                    "scripts/livestream.sh"
+                ),
                 "after": "network-online.target",
                 "requires": "network-online.target",
                 "environment": "XDG_RUNTIME_DIR=/run/user/1000",
@@ -174,11 +184,21 @@ class AppSetup:
                 f.write(content)
 
             # Move with sudo
-            self._run_command(["sudo", "mv", temp_file_path, service_file_path], f"Creating {service_name}")
-            self._run_command(["sudo", "systemctl", "enable", service_name], f"Enabling {service_name}")
-            self._run_command(["sudo", "systemctl", "start", service_name], f"Starting {service_name}")
+            self._run_command(
+                ["sudo", "mv", temp_file_path, service_file_path],
+                f"Creating {service_name}",
+            )
+            self._run_command(
+                ["sudo", "systemctl", "enable", service_name],
+                f"Enabling {service_name}",
+            )
+            self._run_command(
+                ["sudo", "systemctl", "start", service_name], f"Starting {service_name}"
+            )
 
-        self._run_command(["sudo", "systemctl", "daemon-reload"], "Reloading systemd daemon")
+        self._run_command(
+            ["sudo", "systemctl", "daemon-reload"], "Reloading systemd daemon"
+        )
         print("Systemd services setup complete.")
 
     def run_setup(self):

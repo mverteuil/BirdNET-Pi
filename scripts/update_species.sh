@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=all
 # Update the species list
 #set -x
 source /etc/birdnet/birdnet.conf

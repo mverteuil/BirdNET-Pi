@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
+# shellcheck disable=all
 # This installs the services that have been selected
 set -x # Uncomment to enable debugging
 trap 'rm -f ${tmpfile}' EXIT
 trap 'exit 1' SIGINT SIGHUP
 tmpfile=$(mktemp)
+
+my_dir="$(dirname "$0")"
 
 config_file=$my_dir/birdnet.conf
 export USER=$USER
@@ -32,7 +35,7 @@ set_hostname() {
 }
 
 update_etc_hosts() {
-  sed -ie s/'$(hostname).local'/"$(hostname).local ${BIRDNETPI_URL//https:\/\/} ${WEBTERMINAL_URL//https:\/\/} ${BIRDNETLOG_URL//https:\/\/}"/g /etc/hosts
+  sed -ie s/"$(hostname).local"/"$(hostname).local ${BIRDNETPI_URL//https:\/\/} ${WEBTERMINAL_URL//https:\/\/} ${BIRDNETLOG_URL//https:\/\/}"/g /etc/hosts
 }
 
 install_scripts() {

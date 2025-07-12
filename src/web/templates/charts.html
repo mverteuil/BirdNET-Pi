@@ -1,0 +1,22 @@
+{% extends "base.html" %} {% block title %}BirdNET-Pi Charts{% endblock %} {%
+block content %}
+<div class="container">
+  <h1>BirdNET-Pi Charts</h1>
+
+  <div id="multi-day-plot"></div>
+  <div id="daily-plot"></div>
+
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script>
+    var plot_data = {{ plot_data | tojson }};
+
+    if (plot_data.multi_day_plot) {
+        Plotly.newPlot('multi-day-plot', JSON.parse(plot_data.multi_day_plot).data, JSON.parse(plot_data.multi_day_plot).layout);
+    }
+
+    if (plot_data.daily_plot) {
+        Plotly.newPlot('daily-plot', JSON.parse(plot_data.daily_plot).data, JSON.parse(plot_data.daily_plot).layout);
+    }
+  </script>
+</div>
+{% endblock %}

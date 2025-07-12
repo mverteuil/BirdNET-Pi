@@ -1,4 +1,5 @@
 import datetime
+import subprocess
 
 from services.database_manager import DatabaseManager
 
@@ -166,3 +167,31 @@ class ReportingManager:
             "new_species": new_species,
             "prior_week_number": prior_end_date.isocalendar()[1],
         }
+
+    def get_most_recent_detections(self, limit: int = 10):
+        self.db_manager.connect()
+        query = "SELECT * FROM detections ORDER BY Date DESC, Time DESC LIMIT ?"
+        recent_detections = self.db_manager.fetch_all(query, (limit,))
+        self.db_manager.disconnect()
+        return recent_detections
+
+    def generate_spectrogram(self, audio_file_path: str, output_image_path: str):
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-i",
+                    audio_file_path,
+                    "-lavfi",
+                    "showspectrumpic=s=1280x720",  # Adjust size as needed
+                    "-frames:v",
+                    "1",
+                    output_image_path,
+                ],
+                check=True,
+            )
+            print(f"Spectrogram generated successfully at {output_image_path}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error generating spectrogram: {e}")
+        except FileNotFoundError:
+            print("Error: ffmpeg command not found. Please ensure ffmpeg is installed.")

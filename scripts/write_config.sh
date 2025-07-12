@@ -1,4 +1,5 @@
 #!/usr/bin/bash
+# shellcheck disable=all
 # Writes variables to config file
 birdnetpi_dir=$HOME/BirdNET-Pi
 birders_conf=${birdnetpi_dir}/Birders_Guide_Installer_Configuration.txt

@@ -1,16 +1,6 @@
-#!/usr/bin/env bash
-# Restarts ALL services and removes ALL unprocessed audio
+#!/bin/bash
 
+# This is a minimal wrapper script. The core logic has been migrated to Python.
 
-services=(birdnet_recording.service
-custom_recording.service
-birdnet_analysis.service
-birdnet_server.service
-chart_viewer.service
-extraction.service
-spectrogram_viewer.service)
-
-for i in  "${services[@]}";do
-  sudo systemctl stop  ${i}
-done
-sudo rm -rf ${RECS_DIR}/$(date +%B-%Y/%d-%A)/*
+# Execute the Python wrapper for ServiceManager's stop_service logic
+python3 /Users/mdeverteuil/Documents/Codebase/birdnet-exploration/BirdNET-Pi/src/service_manager_wrapper.py stop_service "$@"

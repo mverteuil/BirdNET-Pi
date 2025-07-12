@@ -3,10 +3,13 @@
 #set -x # Uncomment to debug
 trap 'rm -f ${TMPFILE}' EXIT
 my_dir=$HOME/BirdNET-Pi/scripts
+# shellcheck disable=SC1091
 source /etc/birdnet/birdnet.conf &> /dev/null
-SCRIPTS=($(ls -1 ${my_dir}) ${HOME}/.gotty)
+mapfile -t LS_OUTPUT < <(ls -1 "${my_dir}")
+SCRIPTS=("${LS_OUTPUT[@]}" "${HOME}"/.gotty)
 set -x
-services=($(awk '/service/ && /systemctl/ && !/php/ {print $3}' ${my_dir}/install_services.sh | sort) custom_recording.service avahi-alias@.service)
+mapfile -t AWK_OUTPUT < <(awk '/service/ && /systemctl/ && !/php/ {print $3}' "${my_dir}"/install_services.sh | sort)
+services=("${AWK_OUTPUT[@]}" custom_recording.service avahi-alias@.service)
 
 remove_services() {
   for i in "${services[@]}"; do
@@ -14,7 +17,7 @@ remove_services() {
       sudo systemctl disable --now "${i}"
     fi
     if [ -L /lib/systemd/system/"${i}" ];then
-      sudo rm -f /lib/systemd/system/$i
+      sudo rm -f /lib/systemd/system/"${i}"
     fi
     if [ -f /etc/systemd/system/"${i}" ];then
       sudo rm /etc/systemd/system/"${i}"
@@ -50,5 +53,5 @@ remove_scripts() {
 remove_services
 remove_scripts
 if [ -d /etc/birdnet ];then sudo rm -drf /etc/birdnet;fi
-if [ -f ${HOME}/BirdNET-Pi/birdnet.conf ];then sudo rm -f ${HOME}/BirdNET-Pi/birdnet.conf;fi
+if [ -f "${HOME}"/BirdNET-Pi/birdnet.conf ];then sudo rm -f "${HOME}"/BirdNET-Pi/birdnet.conf;fi
 echo "Uninstall finished. Remove this directory with 'rm -drfv' to finish."

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=all
 # This scripts installs NoIP's Dynamic Update Client (DUC)
 cd /usr/local/src && wget https://www.noip.com/client/linux/noip-duc-linux.tar.gz
 tar -vzxf noip-duc-linux.tar.gz

@@ -1,11 +1,12 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean
+from sqlalchemy import Column, DateTime, Float, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 
 Base = declarative_base()
 
+
 class Detection(Base):
-    __tablename__ = 'detections'
+    __tablename__ = "detections"
 
     id = Column(Integer, primary_key=True, index=True)
     species = Column(String, index=True)
@@ -15,8 +16,9 @@ class Detection(Base):
     spectrogram_path = Column(String, nullable=True)
     # Add more fields as needed, e.g., latitude, longitude, site_name from config
 
+
 class AudioFile(Base):
-    __tablename__ = 'audio_files'
+    __tablename__ = "audio_files"
 
     id = Column(Integer, primary_key=True, index=True)
     file_path = Column(String, unique=True, index=True)

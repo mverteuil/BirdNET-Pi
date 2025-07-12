@@ -8,39 +8,11 @@ ENV PYTHONUNBUFFERED=1
 # Set the working directory inside the container
 WORKDIR /app
 
-# Install system dependencies
-RUN apt update && apt upgrade -y && \
-    apt install -y --no-install-recommends \
-    build-essential \
-    git \
-    curl \
-    wget \
-    unzip \
-    cmake \
-    make \
-    bc \
-    libjpeg-dev \
-    zlib1g-dev \
-    python3-dev \
-    python3-pip \
-    python3-venv \
-    lsof \
-    net-tools \
-    alsa-utils \
-    pulseaudio \
-    avahi-utils \
-    sox \
-    libsox-fmt-mp3 \
-    ffmpeg \
-    sqlite3 \
-    php \
-    php-fpm \
-    php-curl \
-    php-xml \
-    php-zip \
-    icecast2 \
-    caddy && \
-    rm -rf /var/lib/apt/lists/*
+# Set shell for pipefail
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Install system dependencies and uv
+RUN apt-get update && apt-get upgrade -y &&     apt-get install -y --no-install-recommends     build-essential     git     curl     wget     unzip     cmake     make     bc     libjpeg-dev     zlib1g-dev     python3-dev     python3-venv     lsof     net-tools     alsa-utils     pulseaudio     avahi-utils     sox     libsox-fmt-mp3     ffmpeg     sqlite3     php     php-fpm     php-curl     php-xml     php-zip     icecast2     caddy &&     curl -LsSf https://astral.sh/uv/install.sh | sh &&     rm -rf /var/lib/apt/lists/*
 
 # Copy the BirdNET-Pi application code
 COPY . /app
@@ -59,8 +31,10 @@ USER birdnetpi
 RUN python3 -m venv /app/venv
 ENV PATH="/app/venv/bin:$PATH"
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies using uv
+# Note: tflite_runtime.whl might need special handling if not available via uv directly.
+# For now, assuming it's handled by uv or a separate step in a more complex build.
+RUN uv sync
 
 # Expose the port for FastAPI (assuming it runs on 8000)
 EXPOSE 8000

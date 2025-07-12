@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=all
 
 usage() { echo "Usage: $0 -l <language i18n id>" 1>&2; exit 1; }
 

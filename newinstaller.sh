@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=all
 
 if [ "$EUID" == 0 ]
   then echo "Please run as a non-root user."

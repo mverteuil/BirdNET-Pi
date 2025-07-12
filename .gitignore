@@ -24,6 +24,7 @@
 .idea/**/uiDesigner.xml
 .idea/**/dbnavigator.xml
 
+*/*.egg-info/*
 *.pyc
 *.flac
 .vscode
@@ -43,4 +44,5 @@ BirdDB.txt
 exclude_species_list.txt
 firstrun.ini
 HUMAN.txt
+
 include_species_list.txt
