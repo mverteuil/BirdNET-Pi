@@ -16,6 +16,7 @@ def docker_compose_up_down():
     subprocess.run(["docker", "compose", "down"], check=True)
 
 
+@pytest.mark.expensive
 def test_root_endpoint_e2e(docker_compose_up_down):
     response = httpx.get("http://localhost:80")
     assert response.status_code == 200
