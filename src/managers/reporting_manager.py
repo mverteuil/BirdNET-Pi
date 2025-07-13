@@ -4,7 +4,7 @@ import subprocess
 import pandas as pd
 import plotly.graph_objects as go
 
-from services.database_manager import DatabaseManager
+from managers.database_manager import DatabaseManager
 from utils.config_file_parser import ConfigFileParser
 from utils.file_path_resolver import FilePathResolver
 

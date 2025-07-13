@@ -1,6 +1,6 @@
+from managers.database_manager import DatabaseManager
 from models.birdnet_config import BirdNETConfig
 from services.analysis_client_service import AnalysisClientService
-from services.database_manager import DatabaseManager
 from services.detection_event_publisher import DetectionEventPublisher
 from services.file_manager import FileManager
 

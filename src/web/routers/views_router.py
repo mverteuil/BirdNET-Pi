@@ -4,9 +4,9 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from managers.database_manager import DatabaseManager
 from managers.reporting_manager import ReportingManager
 from managers.update_manager import UpdateManager
-from services.database_manager import DatabaseManager
 
 router = APIRouter()
 
