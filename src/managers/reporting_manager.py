@@ -21,7 +21,7 @@ class ReportingManager:
             os.path.join(
                 os.path.dirname(__file__), "..", "etc", "birdnet_pi_config.yaml"
             )
-        ).parse()
+        )
         self.file_path_resolver = FilePathResolver(self.config.base_data_path)
 
     def get_data(self):
