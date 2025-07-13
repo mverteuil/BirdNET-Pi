@@ -31,12 +31,11 @@ jobs:
             ${{ runner.os }}-pre-commit-
       - name: Install uv
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --force --prefix /usr/local
       - name: Install pre-commit hooks
-        run: ~/.cargo/bin/uv run pre-commit install
+        run: uv run pre-commit install
       - name: Run pre-commit checks
-        run: ~/.cargo/bin/uv run pre-commit run --all-files
+        run: uv run pre-commit run --all-files
 
   test:
     runs-on: ubuntu-latest
@@ -49,10 +48,9 @@ jobs:
           python-version: '3.11'
       - name: Install uv
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --force --prefix /usr/local
       - name: Install dependencies
-        run: ~/.cargo/bin/uv sync
+        run: uv sync
         working-directory: BirdNET-Pi
       - name: Build and run Docker Compose services
         run: |
@@ -62,7 +60,7 @@ jobs:
       - name: Wait for services to be healthy
         run: sleep 15
       - name: Run pytest tests
-        run: ~/.cargo/bin/uv run pytest --cov=src --cov-report=xml --cov-report=term-missing
+        run: uv run pytest --cov=src --cov-report=xml --cov-report=term-missing
         working-directory: BirdNET-Pi
       - name: Check code coverage
         run: python scripts/ci/check_coverage.py
