@@ -1,8 +1,6 @@
 import datetime
-import subprocess
 
 import pandas as pd
-import plotly.graph_objects as go
 
 from managers.database_manager import DatabaseManager
 from utils.config_file_parser import ConfigFileParser
@@ -266,88 +264,6 @@ class ReportingManager:
             "new_species": new_species,
         }
 
-    def _prepare_daily_detection_data(self, df, resample_sel, specie):
-        df4 = df["Com_Name"][df["Com_Name"] == specie].resample("15min").count()
-        df4.index = [df4.index.date, df4.index.time]
-        day_hour_freq = df4.unstack().fillna(0)
-
-        saved_time_labels = [self.hms_to_str(h) for h in day_hour_freq.columns.tolist()]
-        fig_dec_y = [self.hms_to_dec(h) for h in day_hour_freq.columns.tolist()]
-        fig_x = [d.strftime("%d-%m-%Y") for d in day_hour_freq.index.tolist()]
-
-        return day_hour_freq, saved_time_labels, fig_dec_y, fig_x
-
-    def _create_daily_detections_heatmap(
-        self,
-        fig_x,
-        day_hour_freq,
-        fig_z,
-        selected_pal,
-        sunrise_list,
-        sunrise_text_list,
-        daysback_range,
-    ):
-        """Creates a Plotly heatmap figure for daily detections.
-
-        Args:
-            fig_x (list): Formatted dates for plotting.
-            day_hour_freq (pd.DataFrame): Daily frequency data.
-            fig_z (np.ndarray): Transposed 2D array of detection counts.
-            selected_pal (str): Color palette for the heatmap.
-            sunrise_list (list): List of sunrise times for plotting.
-            sunrise_text_list (list): List of sunrise text labels for plotting.
-            daysback_range (list): Range of days for plotting.
-
-        Returns:
-            go.Figure: A Plotly Figure object containing the heatmap and sunrise/sunset traces.
-        """
-        heatmap = go.Heatmap(
-            x=fig_x,
-            y=day_hour_freq.columns,
-            z=fig_z,
-            showscale=False,
-            texttemplate="%{text}",
-            autocolorscale=False,
-            colorscale=selected_pal,
-        )
-
-        sunrise_sunset = go.Scatter(
-            x=daysback_range,
-            y=sunrise_list,
-            mode="lines",
-            hoverinfo="text",
-            text=sunrise_text_list,
-            line_color="orange",
-            line_width=1,
-            name=" ",
-        )
-
-        fig = go.Figure(data=[heatmap, sunrise_sunset])
-        return fig
-
-    def _update_daily_plot_layout(self, fig, saved_time_labels, day_hour_freq):
-        """Updates the layout of the daily detections plot, specifically the y-axis ticks.
-
-        Args:
-            fig (go.Figure): The Plotly Figure object to update.
-            saved_time_labels (list): Formatted time labels.
-            day_hour_freq (pd.DataFrame): Daily frequency data.
-
-        Returns:
-            go.Figure: The updated Plotly Figure object.
-        """
-        number_of_y_ticks = 12
-        y_downscale_factor = int(len(saved_time_labels) / number_of_y_ticks)
-        fig.update_layout(
-            yaxis=dict(
-                tickmode="array",
-                tickvals=day_hour_freq.columns[::y_downscale_factor],
-                ticktext=saved_time_labels[::y_downscale_factor],
-                nticks=6,
-            )
-        )
-        return fig
-
     def _prepare_sunrise_sunset_data_for_plot(self, num_days_to_display, fig_x):
         """Prepares sunrise and sunset data for plotting.
 
@@ -377,24 +293,3 @@ class ReportingManager:
         recent_detections = self.db_manager.fetch_all(query, (limit,))
         self.db_manager.disconnect()
         return recent_detections
-
-    def generate_spectrogram(self, audio_file_path: str, output_image_path: str):
-        try:
-            subprocess.run(
-                [
-                    "ffmpeg",
-                    "-i",
-                    audio_file_path,
-                    "-lavfi",
-                    "showspectrumpic=s=1280x720",  # Adjust size as needed
-                    "-frames:v",
-                    "1",
-                    output_image_path,
-                ],
-                check=True,
-            )
-            print(f"Spectrogram generated successfully at {output_image_path}")
-        except subprocess.CalledProcessError as e:
-            print(f"Error generating spectrogram: {e}")
-        except FileNotFoundError:
-            print("Error: ffmpeg command not found. Please ensure ffmpeg is installed.")
