@@ -64,7 +64,7 @@ jobs:
         run: uv sync
       - name: Build and run Docker Compose services
         run: |
-          docker compose build --build-arg TARGETARCH=$(uname -m)
+          docker compose build --build-arg TARGETARCH="$(uname -m)"
           docker compose up -d
       - name: Wait for services to be healthy
         run: sleep 15
