@@ -37,6 +37,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck
+          curl -L https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 -o hadolint
+          sudo mv hadolint /usr/local/bin/hadolint
+          sudo chmod +x /usr/local/bin/hadolint
       - name: Install pre-commit
         run: pip install pre-commit
       - name: Install pre-commit hooks
@@ -44,21 +47,9 @@ jobs:
       - name: Run pre-commit checks
         run: pre-commit run --all-files
 
-  validate_dockerfile:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install hadolint
-        run: |
-          curl -L https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 -o hadolint
-          sudo mv hadolint /usr/local/bin/hadolint
-          sudo chmod +x /usr/local/bin/hadolint
-      - name: Run hadolint
-        run: hadolint Dockerfile
-
   test:
     runs-on: ubuntu-latest
-    needs: [lint_and_format, validate_dockerfile]
+    needs: lint_and_format
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
