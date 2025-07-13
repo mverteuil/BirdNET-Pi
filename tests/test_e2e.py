@@ -11,6 +11,8 @@ def docker_compose_up_down():
     subprocess.run(["docker", "compose", "up", "-d", "--build"], check=True)
     # Wait for services to be ready
     time.sleep(10)  # Adjust as needed
+    subprocess.run(["docker", "ps"], check=True)
+    subprocess.run(["docker", "logs", "birdnet-pi"], check=True)
     yield
     # Bring down Docker Compose
     subprocess.run(["docker", "compose", "down"], check=True)

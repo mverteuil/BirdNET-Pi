@@ -1,15 +1,26 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from models.birdnet_config import BirdNETConfig
 from services.detection_event_publisher import DetectionEventPublisher
 from utils.config_file_parser import ConfigFileParser
+from utils.file_path_resolver import FilePathResolver
 
 from .routers import settings_router
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Load configuration
+    config_parser = ConfigFileParser(FilePathResolver().get_birdnet_pi_config_path())
+    app.state.config = config_parser.load_config()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory="src/web/static"), name="static")
 
@@ -17,15 +28,11 @@ app.include_router(settings_router.router)
 
 templates = Jinja2Templates(directory="src/web/templates")
 
-# Load configuration
-config_parser = ConfigFileParser("etc/birdnet_pi_config.yaml")
-app_config: BirdNETConfig = config_parser.load_config()
-
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     return templates.TemplateResponse(
-        request, "index.html", {"site_name": app_config.site_name}
+        request, "index.html", {"site_name": request.app.state.config.site_name}
     )
 
 

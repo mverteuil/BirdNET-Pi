@@ -2,6 +2,7 @@ import argparse
 
 from .managers.audio_manager import AudioManager
 from .utils.config_file_parser import ConfigFileParser
+from .utils.file_path_resolver import FilePathResolver
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Audio Manager Wrapper")
@@ -22,7 +23,8 @@ if __name__ == "__main__":
 
     # This is a placeholder for where the config would be loaded
     # In a real application, this would be handled by a config loader
-    config = ConfigFileParser("etc/birdnet.conf").parse()
+    file_path_resolver = FilePathResolver()
+    config = ConfigFileParser(file_path_resolver.get_birdnet_conf_path()).parse()
 
     audio_manager = AudioManager(config)
 

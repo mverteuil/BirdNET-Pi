@@ -2,13 +2,16 @@ import os
 
 
 class FilePathResolver:
-    def __init__(self):
-        # Determine the repository root dynamically
-        # This file is in BirdNET-Pi/src/utils/
-        # So, go up two directories to reach BirdNET-Pi/
-        self.base_dir = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..", "..")
-        )
+    def __init__(self, base_dir: str | None = None):
+        if base_dir:
+            self.base_dir = base_dir
+        else:
+            # Determine the repository root dynamically
+            # This file is in BirdNET-Pi/src/utils/
+            # So, go up two directories to reach BirdNET-Pi/
+            self.base_dir = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "..", "..")
+            )
 
     def resolve(self, *paths: str) -> str:
         """Resolves an absolute path from the base directory and given subpaths."""
@@ -21,3 +24,11 @@ class FilePathResolver:
     def get_extracted_birdsounds_path(self) -> str:
         """Returns the absolute path to the extracted birdsounds directory."""
         return self.resolve("BirdSongs", "Extracted", "By_Date")
+
+    def get_birdnet_conf_path(self) -> str:
+        """Returns the absolute path to the birdnet.conf file."""
+        return self.resolve("config", "birdnet.conf")
+
+    def get_birdnet_pi_config_path(self) -> str:
+        """Returns the absolute path to the birdnet_pi_config.yaml file."""
+        return self.resolve("config", "birdnet_pi_config.yaml")

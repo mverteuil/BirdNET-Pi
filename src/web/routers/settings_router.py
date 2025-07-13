@@ -5,15 +5,17 @@ from starlette.status import HTTP_303_SEE_OTHER
 
 from models.birdnet_config import BirdNETConfig
 from utils.config_file_parser import ConfigFileParser
+from utils.file_path_resolver import FilePathResolver
 
 router = APIRouter()
 
 templates = Jinja2Templates(directory="src/web/templates")
+file_path_resolver = FilePathResolver()
 
 
 @router.get("/settings", response_class=HTMLResponse)
 async def get_settings(request: Request):
-    config_parser = ConfigFileParser("etc/birdnet_pi_config.yaml")
+    config_parser = ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path())
     app_config: BirdNETConfig = config_parser.load_config()
     return templates.TemplateResponse(
         "settings.html", {"request": request, "config": app_config}
@@ -47,7 +49,7 @@ async def post_settings(
     apprise_only_notify_species_names: str = Form(""),
     apprise_only_notify_species_names_2: str = Form(""),
 ):
-    config_parser = ConfigFileParser("etc/birdnet_pi_config.yaml")
+    config_parser = ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path())
     updated_config = BirdNETConfig(
         site_name=site_name,
         latitude=latitude,

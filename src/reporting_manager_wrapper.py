@@ -3,6 +3,7 @@ import argparse
 from .managers.reporting_manager import ReportingManager
 from .services.database_manager import DatabaseManager
 from .utils.config_file_parser import ConfigFileParser
+from .utils.file_path_resolver import FilePathResolver
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Reporting Manager Wrapper")
@@ -23,7 +24,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    config = ConfigFileParser("etc/birdnet.conf").parse()
+    file_path_resolver = FilePathResolver()
+    config = ConfigFileParser(file_path_resolver.get_birdnet_conf_path()).parse()
     db_manager = DatabaseManager(config.database.path)
 
     reporting_manager = ReportingManager(db_manager)

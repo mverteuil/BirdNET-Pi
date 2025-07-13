@@ -1,5 +1,4 @@
 import datetime
-import os
 import subprocess
 from datetime import timedelta
 
@@ -15,14 +14,14 @@ from utils.file_path_resolver import FilePathResolver
 
 
 class ReportingManager:
-    def __init__(self, db_manager: DatabaseManager):
+    def __init__(
+        self, db_manager: DatabaseManager, file_path_resolver: FilePathResolver
+    ):
         self.db_manager = db_manager
+        self.file_path_resolver = file_path_resolver
         self.config = ConfigFileParser(
-            os.path.join(
-                os.path.dirname(__file__), "..", "etc", "birdnet_pi_config.yaml"
-            )
-        )
-        self.file_path_resolver = FilePathResolver(self.config.base_data_path)
+            self.file_path_resolver.get_birdnet_pi_config_path()
+        ).load_config()
 
     def get_data(self):
         df = self.db_manager.get_all_detections()
@@ -177,6 +176,9 @@ class ReportingManager:
             )
 
         return {
+            "start_date": str(start_date),
+            "end_date": str(end_date),
+            "week_number": start_date.isocalendar()[1],
             "total_detections_current": total_detections_current,
             "unique_species_current": unique_species_current,
             "total_detections_prior": total_detections_prior,

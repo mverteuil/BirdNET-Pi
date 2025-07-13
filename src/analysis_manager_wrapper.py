@@ -16,11 +16,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    config = ConfigFileParser("etc/birdnet.conf").parse()
+    file_path_resolver = FilePathResolver()
+    config = ConfigFileParser(file_path_resolver.get_birdnet_conf_path()).parse()
 
     db_manager = DatabaseManager(config.database.path)
     file_manager = FileManager(config.data.recordings_dir)
-    file_path_resolver = FilePathResolver()
 
     analysis_manager = AnalysisManager(
         config, db_manager, file_manager, file_path_resolver

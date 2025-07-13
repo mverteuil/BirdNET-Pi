@@ -62,6 +62,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     python3 \
     python3-venv \
+    supervisor \
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 COPY scripts/install_deps.sh /usr/local/bin/install_deps.sh
@@ -77,8 +78,7 @@ RUN useradd -m -s /bin/bash birdnetpi && \
 
 # Copy application code to runtime stage
 COPY . /app
-RUN chown -R birdnetpi:birdnetpi /app && chmod +x /app/start.sh
-RUN ls -l /app/start.sh
+RUN chown -R birdnetpi:birdnetpi /app
 
 # Switch to the birdnetpi user and set up Python environment
 USER birdnetpi
@@ -88,12 +88,14 @@ ENV TMPDIR=/app/tmp
 
 RUN /usr/local/bin/uv sync --no-cache
 
-# Copy Caddyfile template and start script
-COPY etc/Caddyfile.template /etc/caddy/Caddyfile
-COPY start.sh /app/start.sh
+# Copy Caddyfile and supervisor config
+USER root
+COPY scripts/setup_configs.sh /usr/local/bin/setup_configs.sh
+RUN setup_configs.sh
+USER birdnetpi
 
 # Expose the port for Caddy (80)
 EXPOSE 80
 
-# Command to run the start script
-CMD ["bash", "/app/start.sh"]
+# Command to run supervisord
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

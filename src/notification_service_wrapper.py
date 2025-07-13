@@ -2,6 +2,7 @@ import argparse
 
 from .services.notification_service import NotificationService
 from .utils.config_file_parser import ConfigFileParser
+from .utils.file_path_resolver import FilePathResolver
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Notification Service Wrapper")
@@ -13,7 +14,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    config = ConfigFileParser("etc/birdnet.conf").parse()
+    file_path_resolver = FilePathResolver()
+    config = ConfigFileParser(file_path_resolver.get_birdnet_conf_path()).parse()
     notification_service = NotificationService(config)
 
     if args.action == "species_notifier":
