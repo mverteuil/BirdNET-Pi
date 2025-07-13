@@ -62,12 +62,6 @@ jobs:
           echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
       - name: Install dependencies
         run: uv sync --all-extras
-      - name: Build and run Docker Compose services
-        run: |
-          docker compose build --build-arg TARGETARCH="$(uname -m)"
-          docker compose up -d
-      - name: Wait for services to be healthy
-        run: sleep 15
       - name: Run pytest tests
         run: uv run pytest --cov=src --cov-report=xml --cov-report=term-missing
       - name: Check code coverage
