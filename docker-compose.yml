@@ -8,13 +8,14 @@ services:
     container_name: birdnet-pi
     restart: unless-stopped
     ports:
-      - "8000:8000" # FastAPI application
-      - "80:80"   # Caddy (if Caddy is integrated into the birdnet-pi container)
+      - "80:80"   # Caddy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
     volumes:
       - birdnet-data:/mnt/birdnet # Persistent data storage
-      - /dev/snd:/dev/snd # For audio input
-    devices:
-      - /dev/snd # For audio input
     environment:
       # Add any necessary environment variables here
       - BIRDNETPI_URL=http://localhost

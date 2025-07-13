@@ -52,6 +52,16 @@ then
     sudo apt install -y caddy
 fi
 
+# Deploy Caddyfile template
+echo "Deploying Caddyfile..."
+sudo cp "${HOME}/BirdNET-Pi/etc/Caddyfile.template" "/etc/caddy/Caddyfile"
+sudo chown root:root "/etc/caddy/Caddyfile"
+sudo chmod 644 "/etc/caddy/Caddyfile"
+
+# Reload Caddy to apply new configuration
+echo "Reloading Caddy service..."
+sudo systemctl reload caddy
+
 # Install SQLite3 and PHP dependencies (for backward compatibility/migration if needed)
 echo "Installing SQLite3 and PHP dependencies..."
 sudo apt install -y sqlite3 php-sqlite3 php php-fpm php-curl php-xml php-zip

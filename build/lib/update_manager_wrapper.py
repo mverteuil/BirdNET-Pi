@@ -1,4 +1,3 @@
-import os
 import sys
 
 from .managers.update_manager import UpdateManager

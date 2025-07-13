@@ -1,43 +1,105 @@
-# Use a Debian-based image as a base
+# Stage 1: Builder
+FROM debian:bullseye as builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install build-time dependencies
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    git \
+    curl \
+    unzip \
+    python3-dev \
+    python3-venv \
+    && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Create birdnetpi user for consistent permissions during build
+RUN useradd -m -s /bin/bash birdnetpi
+
+
+# Stage 2: Runtime
 FROM debian:bullseye-slim
 
-# Set environment variables
+ENV DNS_SERVER=8.8.8.8
+
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
-# Set the working directory inside the container
 WORKDIR /app
 
 # Set shell for pipefail
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Install system dependencies and uv
-RUN apt-get update && apt-get upgrade -y &&     apt-get install -y --no-install-recommends     build-essential     git     curl     wget     unzip     cmake     make     bc     libjpeg-dev     zlib1g-dev     python3-dev     python3-venv     lsof     net-tools     alsa-utils     pulseaudio     avahi-utils     sox     libsox-fmt-mp3     ffmpeg     sqlite3     php     php-fpm     php-curl     php-xml     php-zip     icecast2     caddy &&     curl -LsSf https://astral.sh/uv/install.sh | sh &&     rm -rf /var/lib/apt/lists/*
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    sqlite3 \
+    php \
+    php-fpm \
+    php-curl \
+    php-xml \
+    php-zip \
+    icecast2 \
+    lsof \
+    net-tools \
+    alsa-utils \
+    pulseaudio \
+    avahi-utils \
+    sox \
+    libsox-fmt-mp3 \
+    bc \
+    libjpeg-dev \
+    zlib1g-dev \
+    debian-keyring \
+    debian-archive-keyring \
+    apt-transport-https \
+    gnupg \
+    curl \
+    ca-certificates \
+    python3 \
+    python3-venv \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Copy the BirdNET-Pi application code
-COPY . /app
+# Install uv globally in runtime stage
+RUN curl -Lsf https://github.com/astral-sh/uv/releases/download/0.7.20/uv-aarch64-unknown-linux-gnu.tar.gz -o /tmp/uv.tar.gz && \
+    tar -xzf /tmp/uv.tar.gz -C /usr/local/bin --strip-components=1 && \
+    rm /tmp/uv.tar.gz
 
-# Create a dedicated user for BirdNET-Pi
+# Install Caddy
+RUN curl -L https://github.com/caddyserver/caddy/releases/download/v2.8.4/caddy_2.8.4_linux_arm64.deb -o /tmp/caddy.deb && \
+    dpkg -i /tmp/caddy.deb && \
+    rm /tmp/caddy.deb && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Create dedicated user for BirdNET-Pi and set up directories/permissions
 RUN useradd -m -s /bin/bash birdnetpi && \
-    usermod -aG audio,video,dialout birdnetpi
+    usermod -aG audio,video,dialout birdnetpi && \
+    mkdir -p /var/log /app/tmp && \
+    chmod 777 /var/log && \
+    chown birdnetpi:birdnetpi /app/tmp
 
-# Set permissions for the application directory
-RUN chown -R birdnetpi:birdnetpi /app
+# Copy application code to runtime stage
+COPY . /app
+RUN chown -R birdnetpi:birdnetpi /app && chmod +x /app/start.sh
+RUN ls -l /app/start.sh
 
-# Switch to the birdnetpi user
+# Switch to the birdnetpi user and set up Python environment
 USER birdnetpi
+WORKDIR /app
+ENV PATH="/app/.venv/bin:/usr/local/bin:$PATH"
+ENV TMPDIR=/app/tmp
 
-# Create and activate a Python virtual environment
-RUN python3 -m venv /app/venv
-ENV PATH="/app/venv/bin:$PATH"
+RUN /usr/local/bin/uv sync --no-cache
 
-# Install Python dependencies using uv
-# Note: tflite_runtime.whl might need special handling if not available via uv directly.
-# For now, assuming it's handled by uv or a separate step in a more complex build.
-RUN uv sync
+# Copy Caddyfile template and start script
+COPY etc/Caddyfile.template /etc/caddy/Caddyfile
+COPY start.sh /app/start.sh
 
-# Expose the port for FastAPI (assuming it runs on 8000)
-EXPOSE 8000
+# Expose the port for Caddy (80)
+EXPOSE 80
 
-# Command to run the FastAPI application
-CMD ["python3", "-m", "uvicorn", "src.web.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Command to run the start script
+CMD ["bash", "/app/start.sh"]

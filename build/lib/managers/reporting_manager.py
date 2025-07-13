@@ -1,6 +1,6 @@
 import datetime
-import os
 import subprocess
+import os
 from datetime import timedelta
 
 import numpy as np
@@ -176,18 +176,7 @@ class ReportingManager:
                 * 100
             )
 
-        return {
-            "total_detections_current": total_detections_current,
-            "unique_species_current": unique_species_current,
-            "total_detections_prior": total_detections_prior,
-            "unique_species_prior": unique_species_prior,
-            "percentage_diff_total": percentage_diff_total,
-            "percentage_diff_unique_species": percentage_diff_unique_species,
-            "top_10_species": top_10_species,
-            "new_species": new_species,
-        }
-
-    def generate_multi_day_species_and_hourly_plot(
+        def generate_multi_day_species_and_hourly_plot(
         self, df, resample_sel, start_date, end_date, top_N, specie
     ):
         df5 = self.time_resample(df, resample_sel)

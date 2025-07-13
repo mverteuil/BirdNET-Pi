@@ -1,5 +1,4 @@
 import argparse
-import sys
 
 from .managers.system_monitor import SystemMonitor
 

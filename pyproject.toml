@@ -23,6 +23,9 @@ dependencies = [
     "suntime",
     "altair<5",
     "sqlalchemy",
+    "uvicorn",
+    "fastapi",
+    "python-multipart",
 ]
 
 [project.optional-dependencies]
@@ -30,7 +33,9 @@ dev = [
     "pytest==7.1.2",
     "pytest-mock==3.7.0",
     "pytest-cov",
+    "httpx",
 ]
+
 
 # This is a placeholder for the tflite_runtime wheel.
 # In a real scenario, you might need to handle this as a direct URL dependency
@@ -43,9 +48,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.uv]
-# Configuration for uv, if needed.
-# For example, you might specify a Python version or other settings.
-# python = "3.9"
+
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
