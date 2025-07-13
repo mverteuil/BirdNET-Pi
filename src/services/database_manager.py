@@ -112,10 +112,6 @@ class DatabaseManager:
                         print(
                             f"Skipping row due to data conversion error: {row} - {ve}"
                         )
-                    except IndexError as ie:
-                        print(
-                            f"Skipping row due to incorrect column count: {row} - {ie}"
-                        )
             db.commit()
             print(f"Successfully imported detections from {csv_file_path}")
         except SQLAlchemyError as e:

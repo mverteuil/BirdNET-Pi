@@ -196,7 +196,7 @@ class ReportingManager:
         hourly = self.get_hourly_crosstab(df5)
         top_N_species = self.get_species_counts(df5)[:top_N]
 
-        df_counts = int(hourly[hourly.index == specie]["All"])
+        df_counts = int(hourly[hourly.index == specie]["All"].iloc[0])
         fig = make_subplots(
             rows=3,
             cols=2,
@@ -330,9 +330,7 @@ class ReportingManager:
         )
         return fig
 
-    def generate_daily_detections_plot(
-        self, df, resample_sel, start_date, specie, num_days_to_display, selected_pal
-    ):
+    def _prepare_daily_detection_data(self, df, resample_sel, specie):
         df4 = df["Com_Name"][df["Com_Name"] == specie].resample("15min").count()
         df4.index = [df4.index.date, df4.index.time]
         day_hour_freq = df4.unstack().fillna(0)
@@ -340,6 +338,15 @@ class ReportingManager:
         saved_time_labels = [self.hms_to_str(h) for h in day_hour_freq.columns.tolist()]
         fig_dec_y = [self.hms_to_dec(h) for h in day_hour_freq.columns.tolist()]
         fig_x = [d.strftime("%d-%m-%Y") for d in day_hour_freq.index.tolist()]
+
+        return day_hour_freq, saved_time_labels, fig_dec_y, fig_x
+
+    def generate_daily_detections_plot(
+        self, df, resample_sel, start_date, specie, num_days_to_display, selected_pal
+    ):
+        day_hour_freq, saved_time_labels, fig_dec_y, fig_x = (
+            self._prepare_daily_detection_data(df, resample_sel, specie)
+        )
 
         day_hour_freq.columns = fig_dec_y
         fig_z = day_hour_freq.values.transpose()
