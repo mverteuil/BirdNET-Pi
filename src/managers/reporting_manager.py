@@ -1,12 +1,8 @@
 import datetime
 import subprocess
-from datetime import timedelta
 
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-from suntime import Sun
 
 from services.database_manager import DatabaseManager
 from utils.config_file_parser import ConfigFileParser
@@ -29,17 +25,18 @@ class ReportingManager:
         df = df.set_index("DateTime")
         return df
 
-    def get_weekly_report_data(self):
-        today = datetime.date.today()
-        # Sunday of the week that just finished
-        last_sunday = today - datetime.timedelta(days=today.weekday() + 1)
-        start_date = last_sunday - datetime.timedelta(days=6)
-        end_date = last_sunday
+    def _get_weekly_stats(self, start_date, end_date, prior_start_date, prior_end_date):
+        """Fetches total detection counts and unique species counts for the current and prior weeks.
 
-        # Calculate dates for the prior week
-        prior_start_date = start_date - datetime.timedelta(days=7)
-        prior_end_date = end_date - datetime.timedelta(days=7)
+        Args:
+            start_date (datetime.date): Start date of the current week.
+            end_date (datetime.date): End date of the current week.
+            prior_start_date (datetime.date): Start date of the prior week.
+            prior_end_date (datetime.date): End date of the prior week.
 
+        Returns:
+            tuple: A tuple containing (current_week_stats, prior_week_stats) dictionaries.
+        """
         # Connect to the database
         self.db_manager.connect()
 
@@ -62,8 +59,23 @@ class ReportingManager:
         prior_week_stats = self.db_manager.fetch_one(
             prior_week_stats_query, (str(prior_start_date), str(prior_end_date))
         )
+        self.db_manager.disconnect()
+        return current_week_stats, prior_week_stats
 
-        # Get top 10 species for the current week with their counts from the prior week
+    def _get_top_species_data(
+        self, start_date, end_date, prior_start_date, prior_end_date
+    ):
+        """Fetches the top 10 species for the current week and their counts from the prior week.
+
+        Args:
+            start_date (datetime.date): Start date of the current week.
+            end_date (datetime.date): End date of the current week.
+            prior_start_date (datetime.date): Start date of the prior week.
+            prior_end_date (datetime.date): End date of the prior week.
+
+        Returns:
+            list: A list of dictionaries, each containing species common name, current count, and percentage difference from the prior week.
+        """
         top_species_query = """
         WITH CurrentWeekCounts AS (
             SELECT Com_Name, COUNT(*) as count
@@ -114,8 +126,18 @@ class ReportingManager:
                         "percentage_diff": percentage_diff,
                     }
                 )
+        return top_10_species
 
-        # Get new species for the current week
+    def _get_new_species_data(self, start_date, end_date):
+        """Fetches new species detected in the current week that were not present in prior data.
+
+        Args:
+            start_date (datetime.date): Start date of the current week.
+            end_date (datetime.date): End date of the current week.
+
+        Returns:
+            list: A list of dictionaries, each containing new species common name and count.
+        """
         new_species_query = """
         SELECT Com_Name, COUNT(*) as count
         FROM detections
@@ -139,25 +161,26 @@ class ReportingManager:
             if new_species_rows
             else []
         )
+        return new_species
 
-        # Disconnect from the database
-        self.db_manager.disconnect()
+    def _calculate_percentage_differences(
+        self,
+        total_detections_current,
+        unique_species_current,
+        total_detections_prior,
+        unique_species_prior,
+    ):
+        """Calculates percentage differences for total detections and unique species.
 
-        # Extract counts
-        total_detections_current = (
-            current_week_stats["total_count"] if current_week_stats else 0
-        )
-        unique_species_current = (
-            current_week_stats["unique_species"] if current_week_stats else 0
-        )
-        total_detections_prior = (
-            prior_week_stats["total_count"] if prior_week_stats else 0
-        )
-        unique_species_prior = (
-            prior_week_stats["unique_species"] if prior_week_stats else 0
-        )
+        Args:
+            total_detections_current (int): Total detections in the current period.
+            unique_species_current (int): Unique species in the current period.
+            total_detections_prior (int): Total detections in the prior period.
+            unique_species_prior (int): Unique species in the prior period.
 
-        # Calculate percentage differences
+        Returns:
+            tuple: A tuple containing (percentage_diff_total, percentage_diff_unique_species).
+        """
         percentage_diff_total = 0
         if total_detections_prior > 0:
             percentage_diff_total = round(
@@ -174,6 +197,60 @@ class ReportingManager:
                 ((unique_species_current - unique_species_prior) / unique_species_prior)
                 * 100
             )
+        return percentage_diff_total, percentage_diff_unique_species
+
+    def get_weekly_report_data(self):
+        """Retrieves and processes data for the weekly report.
+
+        This method calculates detection statistics for the current and prior weeks,
+        identifies top species, and finds new species.
+
+        Returns:
+            dict: A dictionary containing weekly report data, including total detections,
+                  unique species, percentage differences, top 10 species, and new species.
+        """
+        today = datetime.date.today()
+        # Sunday of the week that just finished
+        last_sunday = today - datetime.timedelta(days=today.weekday() + 1)
+        start_date = last_sunday - datetime.timedelta(days=6)
+        end_date = last_sunday
+
+        # Calculate dates for the prior week
+        prior_start_date = start_date - datetime.timedelta(days=7)
+        prior_end_date = end_date - datetime.timedelta(days=7)
+
+        current_week_stats, prior_week_stats = self._get_weekly_stats(
+            start_date, end_date, prior_start_date, prior_end_date
+        )
+
+        top_10_species = self._get_top_species_data(
+            start_date, end_date, prior_start_date, prior_end_date
+        )
+
+        new_species = self._get_new_species_data(start_date, end_date)
+
+        # Extract counts
+        total_detections_current = (
+            current_week_stats["total_count"] if current_week_stats else 0
+        )
+        unique_species_current = (
+            current_week_stats["unique_species"] if current_week_stats else 0
+        )
+        total_detections_prior = (
+            prior_week_stats["total_count"] if prior_week_stats else 0
+        )
+        unique_species_prior = (
+            prior_week_stats["unique_species"] if prior_week_stats else 0
+        )
+
+        percentage_diff_total, percentage_diff_unique_species = (
+            self._calculate_percentage_differences(
+                total_detections_current,
+                unique_species_current,
+                total_detections_prior,
+                unique_species_prior,
+            )
+        )
 
         return {
             "start_date": str(start_date),
@@ -189,147 +266,6 @@ class ReportingManager:
             "new_species": new_species,
         }
 
-    def generate_multi_day_species_and_hourly_plot(
-        self, df, resample_sel, start_date, end_date, top_N, specie
-    ):
-        df5 = self.time_resample(df, resample_sel)
-        hourly = self.get_hourly_crosstab(df5)
-        top_N_species = self.get_species_counts(df5)[:top_N]
-
-        df_counts = int(hourly[hourly.index == specie]["All"].iloc[0])
-        fig = make_subplots(
-            rows=3,
-            cols=2,
-            specs=[
-                [{"type": "xy", "rowspan": 3}, {"type": "polar", "rowspan": 2}],
-                [{"rowspan": 1}, {"rowspan": 1}],
-                [None, {"type": "xy", "rowspan": 1}],
-            ],
-            subplot_titles=(
-                "<b>Top "
-                + str(top_N)
-                + " Species in Date Range "
-                + str(start_date)
-                + " to "
-                + str(end_date)
-                + "<br>for "
-                + str(resample_sel)
-                + " sampling interval."
-                + "</b>",
-                "Total Detect:" + str("{:,}".format(df_counts)),
-            ),
-        )
-        fig.layout.annotations[1].update(x=0.7, y=0.25, font_size=15)
-
-        fig.add_trace(
-            go.Bar(
-                y=top_N_species.index,
-                x=top_N_species,
-                orientation="h",
-                marker_color="seagreen",
-            ),
-            row=1,
-            col=1,
-        )
-
-        fig.update_layout(
-            margin=dict(l=0, r=0, t=50, b=0),
-            yaxis={"categoryorder": "total ascending"},
-        )
-
-        theta = np.linspace(0.0, 360, 24, endpoint=False)
-
-        detections = hourly.loc[specie]
-        fig.add_trace(
-            go.Barpolar(r=detections, theta=theta, marker_color="seagreen"),
-            row=1,
-            col=2,
-        )
-        fig.update_layout(
-            autosize=False,
-            width=1000,
-            height=500,
-            showlegend=False,
-            polar=dict(
-                radialaxis=dict(
-                    tickfont_size=15,
-                    showticklabels=False,
-                    hoverformat="#%{theta}: <br>Popularity: %{percent} </br> %{r}",
-                ),
-                angularaxis=dict(
-                    tickfont_size=15,
-                    rotation=-90,
-                    direction="clockwise",
-                    tickmode="array",
-                    tickvals=[
-                        0,
-                        15,
-                        35,
-                        45,
-                        60,
-                        75,
-                        90,
-                        105,
-                        120,
-                        135,
-                        150,
-                        165,
-                        180,
-                        195,
-                        210,
-                        225,
-                        240,
-                        255,
-                        270,
-                        285,
-                        300,
-                        315,
-                        330,
-                        345,
-                    ],
-                    ticktext=[
-                        "12am",
-                        "1am",
-                        "2am",
-                        "3am",
-                        "4am",
-                        "5am",
-                        "6am",
-                        "7am",
-                        "8am",
-                        "9am",
-                        "10am",
-                        "11am",
-                        "12pm",
-                        "1pm",
-                        "2pm",
-                        "3pm",
-                        "4pm",
-                        "5pm",
-                        "6pm",
-                        "7pm",
-                        "8pm",
-                        "9pm",
-                        "10pm",
-                        "11pm",
-                    ],
-                    hoverformat="#%{theta}: <br>Popularity: %{percent} </br> %{r}",
-                ),
-            ),
-        )
-
-        daily = self.get_daily_crosstab(df5)
-        fig.add_trace(
-            go.Bar(
-                x=daily.columns[:-1],
-                y=daily.loc[specie][:-1],
-                marker_color="seagreen",
-            ),
-            row=3,
-            col=2,
-        )
-        return fig
-
     def _prepare_daily_detection_data(self, df, resample_sel, specie):
         df4 = df["Com_Name"][df["Com_Name"] == specie].resample("15min").count()
         df4.index = [df4.index.date, df4.index.time]
@@ -341,16 +277,30 @@ class ReportingManager:
 
         return day_hour_freq, saved_time_labels, fig_dec_y, fig_x
 
-    def generate_daily_detections_plot(
-        self, df, resample_sel, start_date, specie, num_days_to_display, selected_pal
+    def _create_daily_detections_heatmap(
+        self,
+        fig_x,
+        day_hour_freq,
+        fig_z,
+        selected_pal,
+        sunrise_list,
+        sunrise_text_list,
+        daysback_range,
     ):
-        day_hour_freq, saved_time_labels, fig_dec_y, fig_x = (
-            self._prepare_daily_detection_data(df, resample_sel, specie)
-        )
+        """Creates a Plotly heatmap figure for daily detections.
 
-        day_hour_freq.columns = fig_dec_y
-        fig_z = day_hour_freq.values.transpose()
+        Args:
+            fig_x (list): Formatted dates for plotting.
+            day_hour_freq (pd.DataFrame): Daily frequency data.
+            fig_z (np.ndarray): Transposed 2D array of detection counts.
+            selected_pal (str): Color palette for the heatmap.
+            sunrise_list (list): List of sunrise times for plotting.
+            sunrise_text_list (list): List of sunrise text labels for plotting.
+            daysback_range (list): Range of days for plotting.
 
+        Returns:
+            go.Figure: A Plotly Figure object containing the heatmap and sunrise/sunset traces.
+        """
         heatmap = go.Heatmap(
             x=fig_x,
             y=day_hour_freq.columns,
@@ -360,14 +310,6 @@ class ReportingManager:
             autocolorscale=False,
             colorscale=selected_pal,
         )
-
-        sunrise_week_list, sunrise_list, sunrise_text_list = (
-            self.get_sunrise_sunset_data(num_days_to_display)
-        )
-        daysback_range = fig_x
-        daysback_range.append(None)
-        daysback_range.extend(daysback_range)
-        daysback_range = daysback_range[:-1]
 
         sunrise_sunset = go.Scatter(
             x=daysback_range,
@@ -381,6 +323,19 @@ class ReportingManager:
         )
 
         fig = go.Figure(data=[heatmap, sunrise_sunset])
+        return fig
+
+    def _update_daily_plot_layout(self, fig, saved_time_labels, day_hour_freq):
+        """Updates the layout of the daily detections plot, specifically the y-axis ticks.
+
+        Args:
+            fig (go.Figure): The Plotly Figure object to update.
+            saved_time_labels (list): Formatted time labels.
+            day_hour_freq (pd.DataFrame): Daily frequency data.
+
+        Returns:
+            go.Figure: The updated Plotly Figure object.
+        """
         number_of_y_ticks = 12
         y_downscale_factor = int(len(saved_time_labels) / number_of_y_ticks)
         fig.update_layout(
@@ -393,92 +348,28 @@ class ReportingManager:
         )
         return fig
 
-    def get_species_counts(self, df):
-        # This will eventually replace the Specie_Count logic
-        return df["Com_Name"].value_counts()
+    def _prepare_sunrise_sunset_data_for_plot(self, num_days_to_display, fig_x):
+        """Prepares sunrise and sunset data for plotting.
 
-    def get_hourly_crosstab(self, df):
-        # This will eventually replace the hourly crosstab logic
-        return pd.crosstab(df["Com_Name"], df.index.hour, dropna=True, margins=True)
+        Args:
+            num_days_to_display (int): Number of days to display data for.
+            fig_x (list): Formatted dates for plotting.
 
-    def get_daily_crosstab(self, df):
-        # This will eventually replace the daily crosstab logic
-        return pd.crosstab(df["Com_Name"], df.index.date, dropna=True, margins=True)
-
-    def date_filter(self, df, start_date, end_date):
-        # This will eventually replace the date_filter function
-        filt = (df.index >= pd.Timestamp(start_date)) & (
-            df.index <= pd.Timestamp(end_date + timedelta(days=1))
+        Returns:
+            tuple: A tuple containing:
+                - sunrise_week_list (list): List of days for sunrise data.
+                - sunrise_list (list): List of sunrise times.
+                - sunrise_text_list (list): List of sunrise text labels.
+                - daysback_range (list): Range of days for plotting.
+        """
+        sunrise_week_list, sunrise_list, sunrise_text_list = (
+            self.get_sunrise_sunset_data(num_days_to_display)
         )
-        df = df[filt]
-        return df
-
-    def time_resample(self, df, resample_time):
-        # This will eventually replace the time_resample function
-        if resample_time == "Raw":
-            df_resample = df["Com_Name"]
-        else:
-            df_resample = (
-                df.resample(resample_time)["Com_Name"].aggregate("unique").explode()
-            )
-        return df_resample
-
-    def get_sunrise_sunset_data(self, num_days_to_display: int):
-        latitude = self.config.latitude
-        longitude = self.config.longitude
-
-        sun = Sun(latitude, longitude)
-
-        sunrise_list = []
-        sunset_list = []
-        sunrise_week_list = []
-        sunset_week_list = []
-        sunrise_text_list = []
-        sunset_text_list = []
-
-        now = datetime.datetime.now()
-
-        for past_day in range(num_days_to_display):
-            d = timedelta(days=num_days_to_display - past_day - 1)
-
-            current_date = now - d
-            sun_rise = sun.get_local_sunrise_time(current_date)
-            sun_dusk = sun.get_local_sunset_time(current_date)
-
-            sun_rise_time = float(sun_rise.hour) + float(sun_rise.minute) / 60.0
-            sun_dusk_time = float(sun_dusk.hour) + float(sun_dusk.minute) / 60.0
-
-            temp_time = str(sun_rise)[-14:-9] + " Sunrise"
-            sunrise_text_list.append(temp_time)
-            temp_time = str(sun_dusk)[-14:-9] + " Sunset"
-            sunset_text_list.append(temp_time)
-            sunrise_list.append(sun_rise_time)
-            sunset_list.append(sun_dusk_time)
-            sunrise_week_list.append(past_day)
-            sunset_week_list.append(past_day)
-
-        sunrise_week_list.append(None)
-        sunrise_list.append(None)
-        sunrise_text_list.append(None)
-        sunrise_list.extend(sunset_list)
-        sunrise_week_list.extend(sunset_week_list)
-        sunrise_text_list.extend(sunset_text_list)
-
-        return sunrise_week_list, sunrise_list, sunrise_text_list
-
-    @staticmethod
-    def hms_to_dec(t):
-        h = t.hour
-        m = t.minute / 60
-        s = t.second / 3600
-        result = h + m + s
-        return result
-
-    @staticmethod
-    def hms_to_str(t):
-        h = t.hour
-        m = t.minute
-        return "%02d:%02d" % (h, m)
+        daysback_range = fig_x
+        daysback_range.append(None)
+        daysback_range.extend(daysback_range)
+        daysback_range = daysback_range[:-1]
+        return sunrise_week_list, sunrise_list, sunrise_text_list, daysback_range
 
     def get_most_recent_detections(self, limit: int = 10):
         self.db_manager.connect()

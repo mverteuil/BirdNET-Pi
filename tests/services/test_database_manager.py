@@ -50,9 +50,11 @@ def test_initialize_database_success(db_manager, mock_db_path):
     assert db_manager.SessionLocal is not None
 
 
-@patch("services.database_manager.create_engine", side_effect=SQLAlchemyError)
+@patch(
+    "services.database_manager.os.makedirs", side_effect=SQLAlchemyError("Test Error")
+)
 def test_initialize_database_failure(
-    mock_create_engine,
+    mock_makedirs,
     db_manager,
     capsys,
 ):
