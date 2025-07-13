@@ -1,4 +1,6 @@
 import datetime
+from datetime import timedelta
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -57,7 +59,9 @@ class PlottingManager:
         """
         return df["Com_Name"].value_counts()
 
-    def _prepare_multi_day_plot_data(self, df: pd.DataFrame, resample_sel: str, specie: str, top_N: int):
+    def _prepare_multi_day_plot_data(
+        self, df: pd.DataFrame, resample_sel: str, specie: str, top_N: int
+    ):
         """Prepares data for the multi-day species and hourly plot.
 
         Args:
@@ -81,7 +85,13 @@ class PlottingManager:
         return df5, hourly, top_N_species, df_counts
 
     def generate_multi_day_species_and_hourly_plot(
-        self, df: pd.DataFrame, resample_sel: str, start_date: str, end_date: str, top_N: int, specie: str
+        self,
+        df: pd.DataFrame,
+        resample_sel: str,
+        start_date: str,
+        end_date: str,
+        top_N: int,
+        specie: str,
     ) -> go.Figure:
         """Generates a multi-day species and hourly plot.
 
@@ -96,9 +106,21 @@ class PlottingManager:
         Returns:
             go.Figure: A Plotly Figure object.
         """
-        df5, hourly, top_N_species, df_counts = self._prepare_multi_day_plot_data(df, resample_sel, specie, top_N)
+        df5, hourly, top_N_species, df_counts = self._prepare_multi_day_plot_data(
+            df, resample_sel, specie, top_N
+        )
 
-        fig = self._create_multi_day_plot_figure(df_counts, top_N, start_date, end_date, resample_sel, top_N_species, hourly, specie, df5)
+        fig = self._create_multi_day_plot_figure(
+            df_counts,
+            top_N,
+            start_date,
+            end_date,
+            resample_sel,
+            top_N_species,
+            hourly,
+            specie,
+            df5,
+        )
         return fig
 
     def get_hourly_crosstab(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -123,7 +145,18 @@ class PlottingManager:
         """
         return pd.crosstab(df["Com_Name"], df.index.date, dropna=True, margins=True)
 
-    def _create_multi_day_plot_figure(self, df_counts: int, top_N: int, start_date: str, end_date: str, resample_sel: str, top_N_species: pd.Series, hourly: pd.DataFrame, specie: str, df5: pd.DataFrame) -> go.Figure:
+    def _create_multi_day_plot_figure(
+        self,
+        df_counts: int,
+        top_N: int,
+        start_date: str,
+        end_date: str,
+        resample_sel: str,
+        top_N_species: pd.Series,
+        hourly: pd.DataFrame,
+        specie: str,
+        df5: pd.DataFrame,
+    ) -> go.Figure:
         """Creates a Plotly figure for multi-day species and hourly plots.
 
         Args:
@@ -192,30 +225,10 @@ class PlottingManager:
             row=3,
             col=2,
         )
-        return fig
 
-    def generate_multi_day_species_and_hourly_plot(
-        self, df: pd.DataFrame, resample_sel: str, start_date: str, end_date: str, top_N: int, specie: str
-    ) -> go.Figure:
-        """Generates a multi-day species and hourly plot.
-
-        Args:
-            df (pd.DataFrame): The input DataFrame containing detection data.
-            resample_sel (str): Resampling interval (e.g., "15min").
-            start_date (str): Start date of the data range.
-            end_date (str): End date of the data range.
-            top_N (int): The number of top species to retrieve.
-            specie (str): The species to focus on for hourly data.
-
-        Returns:
-            go.Figure: A Plotly Figure object.
-        """
-        df5, hourly, top_N_species, df_counts = self._prepare_multi_day_plot_data(df, resample_sel, specie, top_N)
-
-        fig = self._create_multi_day_plot_figure(df_counts, top_N, start_date, end_date, resample_sel, top_N_species, hourly, specie, df5)
-        return fig
-
-    def _prepare_daily_plot_data(self, df: pd.DataFrame, resample_sel: str, specie: str):
+    def _prepare_daily_plot_data(
+        self, df: pd.DataFrame, resample_sel: str, specie: str
+    ):
         """Prepares data for the daily detections plot.
 
         Args:
@@ -240,7 +253,16 @@ class PlottingManager:
 
         return day_hour_freq, saved_time_labels, fig_dec_y, fig_x
 
-    def _create_daily_detections_heatmap(self, fig_x: list, day_hour_freq: pd.DataFrame, fig_z: np.ndarray, selected_pal: str, sunrise_list: list, sunrise_text_list: list, daysback_range: list) -> go.Figure:
+    def _create_daily_detections_heatmap(
+        self,
+        fig_x: list,
+        day_hour_freq: pd.DataFrame,
+        fig_z: np.ndarray,
+        selected_pal: str,
+        sunrise_list: list,
+        sunrise_text_list: list,
+        daysback_range: list,
+    ) -> go.Figure:
         """Creates a Plotly heatmap figure for daily detections.
 
         Args:
@@ -279,7 +301,9 @@ class PlottingManager:
         fig = go.Figure(data=[heatmap, sunrise_sunset])
         return fig
 
-    def date_filter(self, df: pd.DataFrame, start_date: str, end_date: str) -> pd.DataFrame:
+    def date_filter(
+        self, df: pd.DataFrame, start_date: str, end_date: str
+    ) -> pd.DataFrame:
         """Filters a DataFrame by date range.
 
         Args:
@@ -366,7 +390,13 @@ class PlottingManager:
         return sunrise_week_list, sunrise_list, sunrise_text_list
 
     def generate_daily_detections_plot(
-        self, df: pd.DataFrame, resample_sel: str, start_date: str, specie: str, num_days_to_display: int, selected_pal: str
+        self,
+        df: pd.DataFrame,
+        resample_sel: str,
+        start_date: str,
+        specie: str,
+        num_days_to_display: int,
+        selected_pal: str,
     ) -> go.Figure:
         """Generates a daily detections plot.
 
@@ -392,7 +422,15 @@ class PlottingManager:
             self._prepare_sunrise_sunset_data_for_plot(num_days_to_display, fig_x)
         )
 
-        fig = self._create_daily_detections_heatmap(fig_x, day_hour_freq, fig_z, selected_pal, sunrise_list, sunrise_text_list, daysback_range)
+        fig = self._create_daily_detections_heatmap(
+            fig_x,
+            day_hour_freq,
+            fig_z,
+            selected_pal,
+            sunrise_list,
+            sunrise_text_list,
+            daysback_range,
+        )
 
         fig = self._update_daily_plot_layout(fig, saved_time_labels, day_hour_freq)
         return fig
