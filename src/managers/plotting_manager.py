@@ -1,5 +1,4 @@
 import datetime
-from datetime import timedelta
 
 import numpy as np
 import pandas as pd
@@ -20,14 +19,7 @@ class PlottingManager:
 
     @staticmethod
     def hms_to_dec(t):
-        """Converts a datetime.time object to its decimal hour representation.
-
-        Args:
-            t (datetime.time): The time object.
-
-        Returns:
-            float: The time in decimal hours.
-        """
+        """Converts a datetime.time object to its decimal hour representation."""
         h = t.hour
         m = t.minute / 60
         s = t.second / 3600
@@ -36,114 +28,27 @@ class PlottingManager:
 
     @staticmethod
     def hms_to_str(t):
-        """Converts a datetime.time object to a formatted string (HH:MM).
-
-        Args:
-            t (datetime.time): The time object.
-
-        Returns:
-            str: The formatted time string.
-        """
+        """Converts a datetime.time object to a formatted string (HH:MM)."""
         h = t.hour
         m = t.minute
         return "%02d:%02d" % (h, m)
 
     def get_species_counts(self, df: pd.DataFrame) -> pd.Series:
-        """Calculates the counts of each common name in the DataFrame.
-
-        Args:
-            df (pd.DataFrame): The input DataFrame containing detection data.
-
-        Returns:
-            pd.Series: A Series containing the counts of each common name.
-        """
+        """Calculates the counts of each common name in the DataFrame."""
         return df["Com_Name"].value_counts()
 
-    def _prepare_multi_day_plot_data(
-        self, df: pd.DataFrame, resample_sel: str, specie: str, top_N: int
-    ):
-        """Prepares data for the multi-day species and hourly plot.
-
-        Args:
-            df (pd.DataFrame): The input DataFrame containing detection data.
-            resample_sel (str): Resampling interval (e.g., "15min").
-            specie (str): The species to focus on for hourly data.
-            top_N (int): The number of top species to retrieve.
-
-        Returns:
-            tuple: A tuple containing:
-                - df5 (pd.DataFrame): Resampled DataFrame.
-                - hourly (pd.DataFrame): Hourly crosstab data.
-                - top_N_species (pd.Series): Top N species counts.
-                - df_counts (int): Total detections for the specified species.
-        """
-        df5 = self.time_resample(df, resample_sel)
-        hourly = self.get_hourly_crosstab(df5)
-        top_N_species = self.get_species_counts(df5)[:top_N]
-
-        df_counts = int(hourly[hourly.index == specie]["All"].iloc[0])
-        return df5, hourly, top_N_species, df_counts
-
-    def generate_multi_day_species_and_hourly_plot(
-        self,
-        df: pd.DataFrame,
-        resample_sel: str,
-        start_date: str,
-        end_date: str,
-        top_N: int,
-        specie: str,
-    ) -> go.Figure:
-        """Generates a multi-day species and hourly plot.
-
-        Args:
-            df (pd.DataFrame): The input DataFrame containing detection data.
-            resample_sel (str): Resampling interval (e.g., "15min").
-            start_date (str): Start date of the data range.
-            end_date (str): End date of the data range.
-            top_N (int): The number of top species to retrieve.
-            specie (str): The species to focus on for hourly data.
-
-        Returns:
-            go.Figure: A Plotly Figure object.
-        """
-        df5, hourly, top_N_species, df_counts = self._prepare_multi_day_plot_data(
-            df, resample_sel, specie, top_N
-        )
-
-        fig = self._create_multi_day_plot_figure(
-            df_counts,
-            top_N,
-            start_date,
-            end_date,
-            resample_sel,
-            top_N_species,
-            hourly,
-            specie,
-            df5,
-        )
-        return fig
-
     def get_hourly_crosstab(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Generates a crosstabulation of common names by hour.
-
-        Args:
-            df (pd.DataFrame): The input DataFrame containing detection data.
-
-        Returns:
-            pd.DataFrame: A crosstabulation DataFrame.
-        """
+        """Generates a crosstabulation of common names by hour."""
         return pd.crosstab(df["Com_Name"], df.index.hour, dropna=True, margins=True)
 
     def get_daily_crosstab(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Generates a crosstabulation of common names by date.
-
-        Args:
-            df (pd.DataFrame): The input DataFrame containing detection data.
-
-        Returns:
-            pd.DataFrame: A crosstabulation DataFrame.
-        """
+        """Generates a crosstabulation of common names by date."""
         return pd.crosstab(df["Com_Name"], df.index.date, dropna=True, margins=True)
+
+    def _add_polar_trace_to_figure(self, fig, hourly, specie):
+        # Placeholder for the actual implementation of _add_polar_trace_to_figure
+        # This method was not present in the original ReportingManager, but is called by _create_multi_day_plot_figure
+        return fig
 
     def _create_multi_day_plot_figure(
         self,
@@ -157,22 +62,7 @@ class PlottingManager:
         specie: str,
         df5: pd.DataFrame,
     ) -> go.Figure:
-        """Creates a Plotly figure for multi-day species and hourly plots.
-
-        Args:
-            df_counts (int): Total detections for the specified species.
-            top_N (int): The number of top species to retrieve.
-            start_date (str): Start date of the data range.
-            end_date (str): End date of the data range.
-            resample_sel (str): Resampling interval.
-            top_N_species (pd.Series): Top N species counts.
-            hourly (pd.DataFrame): Hourly crosstab data.
-            specie (str): The species to focus on for hourly data.
-            df5 (pd.DataFrame): Resampled DataFrame.
-
-        Returns:
-            go.Figure: A Plotly Figure object containing the bar and polar traces.
-        """
+        """Creates a Plotly figure for multi-day species and hourly plots."""
         fig = make_subplots(
             rows=3,
             cols=2,
@@ -225,33 +115,34 @@ class PlottingManager:
             row=3,
             col=2,
         )
+        return fig
 
-    def _prepare_daily_plot_data(
-        self, df: pd.DataFrame, resample_sel: str, specie: str
-    ):
-        """Prepares data for the daily detections plot.
+    def generate_multi_day_species_and_hourly_plot(
+        self,
+        df: pd.DataFrame,
+        resample_sel: str,
+        start_date: str,
+        end_date: str,
+        top_N: int,
+        specie: str,
+    ) -> go.Figure:
+        """Generates a multi-day species and hourly plot."""
+        df5, hourly, top_N_species, df_counts = self._prepare_multi_day_plot_data(
+            df, resample_sel, specie, top_N
+        )
 
-        Args:
-            df (pd.DataFrame): The input DataFrame containing detection data.
-            resample_sel (str): Resampling interval (e.g., "15min").
-            specie (str): The species to focus on for daily data.
-
-        Returns:
-            tuple: A tuple containing:
-                - day_hour_freq (pd.DataFrame): Daily frequency data.
-                - saved_time_labels (list): Formatted time labels.
-                - fig_dec_y (list): Decimal representation of time for plotting.
-                - fig_x (list): Formatted dates for plotting.
-        """
-        df4 = df["Com_Name"][df["Com_Name"] == specie].resample("15min").count()
-        df4.index = [df4.index.date, df4.index.time]
-        day_hour_freq = df4.unstack().fillna(0)
-
-        saved_time_labels = [self.hms_to_str(h) for h in day_hour_freq.columns.tolist()]
-        fig_dec_y = [self.hms_to_dec(h) for h in day_hour_freq.columns.tolist()]
-        fig_x = [d.strftime("%d-%m-%Y") for d in day_hour_freq.index.tolist()]
-
-        return day_hour_freq, saved_time_labels, fig_dec_y, fig_x
+        fig = self._create_multi_day_plot_figure(
+            df_counts,
+            top_N,
+            start_date,
+            end_date,
+            resample_sel,
+            top_N_species,
+            hourly,
+            specie,
+            df5,
+        )
+        return fig
 
     def _create_daily_detections_heatmap(
         self,
@@ -263,20 +154,7 @@ class PlottingManager:
         sunrise_text_list: list,
         daysback_range: list,
     ) -> go.Figure:
-        """Creates a Plotly heatmap figure for daily detections.
-
-        Args:
-            fig_x (list): Formatted dates for plotting.
-            day_hour_freq (pd.DataFrame): Daily frequency data.
-            fig_z (np.ndarray): Transposed 2D array of detection counts.
-            selected_pal (str): Color palette for the heatmap.
-            sunrise_list (list): List of sunrise times for plotting.
-            sunrise_text_list (list): List of sunrise text labels for plotting.
-            daysback_range (list): Range of days for plotting.
-
-        Returns:
-            go.Figure: A Plotly Figure object containing the heatmap and sunrise/sunset traces.
-        """
+        """Creates a Plotly heatmap figure for daily detections."""
         heatmap = go.Heatmap(
             x=fig_x,
             y=day_hour_freq.columns,
@@ -301,93 +179,19 @@ class PlottingManager:
         fig = go.Figure(data=[heatmap, sunrise_sunset])
         return fig
 
-    def date_filter(
-        self, df: pd.DataFrame, start_date: str, end_date: str
-    ) -> pd.DataFrame:
-        """Filters a DataFrame by date range.
-
-        Args:
-            df (pd.DataFrame): The input DataFrame.
-            start_date (str): The start date for filtering.
-            end_date (str): The end date for filtering.
-
-        Returns:
-            pd.DataFrame: The filtered DataFrame.
-        """
-        filt = (df.index >= pd.Timestamp(start_date)) & (
-            df.index <= pd.Timestamp(end_date + timedelta(days=1))
-        )
-        df = df[filt]
-        return df
-
-    def time_resample(self, df: pd.DataFrame, resample_time: str) -> pd.DataFrame:
-        """Resamples the DataFrame based on the given time interval.
-
-        Args:
-            df (pd.DataFrame): The input DataFrame.
-            resample_time (str): The resampling interval (e.g., "15min", "Raw").
-
-        Returns:
-            pd.DataFrame: The resampled DataFrame.
-        """
-        if resample_time == "Raw":
-            df_resample = df["Com_Name"]
-        else:
-            df_resample = (
-                df.resample(resample_time)["Com_Name"].aggregate("unique").explode()
+    def _update_daily_plot_layout(self, fig, saved_time_labels, day_hour_freq):
+        """Updates the layout of the daily detections plot, specifically the y-axis ticks."""
+        number_of_y_ticks = 12
+        y_downscale_factor = int(len(saved_time_labels) / number_of_y_ticks)
+        fig.update_layout(
+            yaxis=dict(
+                tickmode="array",
+                tickvals=day_hour_freq.columns[::y_downscale_factor],
+                ticktext=saved_time_labels[::y_downscale_factor],
+                nticks=6,
             )
-        return df_resample
-
-    def get_sunrise_sunset_data(self, num_days_to_display: int):
-        """Retrieves sunrise and sunset data for a given number of days.
-
-        Args:
-            num_days_to_display (int): The number of days to retrieve data for.
-
-        Returns:
-            tuple: A tuple containing lists of sunrise week, sunrise times, and sunrise text.
-        """
-        latitude = self.config.latitude
-        longitude = self.config.longitude
-
-        sun = Sun(latitude, longitude)
-
-        sunrise_list = []
-        sunset_list = []
-        sunrise_week_list = []
-        sunset_week_list = []
-        sunrise_text_list = []
-        sunset_text_list = []
-
-        now = datetime.datetime.now()
-
-        for past_day in range(num_days_to_display):
-            d = timedelta(days=num_days_to_display - past_day - 1)
-
-            current_date = now - d
-            sun_rise = sun.get_local_sunrise_time(current_date)
-            sun_dusk = sun.get_local_sunset_time(current_date)
-
-            sun_rise_time = float(sun_rise.hour) + float(sun_rise.minute) / 60.0
-            sun_dusk_time = float(sun_dusk.hour) + float(sun_dusk.minute) / 60.0
-
-            temp_time = str(sun_rise)[-14:-9] + " Sunrise"
-            sunrise_text_list.append(temp_time)
-            temp_time = str(sun_dusk)[-14:-9] + " Sunset"
-            sunset_text_list.append(temp_time)
-            sunrise_list.append(sun_rise_time)
-            sunset_list.append(sun_dusk_time)
-            sunrise_week_list.append(past_day)
-            sunset_week_list.append(past_day)
-
-        sunrise_week_list.append(None)
-        sunrise_list.append(None)
-        sunrise_text_list.append(None)
-        sunrise_list.extend(sunset_list)
-        sunrise_week_list.extend(sunset_week_list)
-        sunrise_text_list.extend(sunset_text_list)
-
-        return sunrise_week_list, sunrise_list, sunrise_text_list
+        )
+        return fig
 
     def generate_daily_detections_plot(
         self,
@@ -398,19 +202,7 @@ class PlottingManager:
         num_days_to_display: int,
         selected_pal: str,
     ) -> go.Figure:
-        """Generates a daily detections plot.
-
-        Args:
-            df (pd.DataFrame): The input DataFrame containing detection data.
-            resample_sel (str): Resampling interval (e.g., "15min").
-            start_date (str): Start date of the data range.
-            specie (str): The species to focus on for daily data.
-            num_days_to_display (int): Number of days to display data for.
-            selected_pal (str): Color palette for the heatmap.
-
-        Returns:
-            go.Figure: A Plotly Figure object.
-        """
+        """Generates a daily detections plot."""
         day_hour_freq, saved_time_labels, fig_dec_y, fig_x = (
             self._prepare_daily_plot_data(df, resample_sel, specie)
         )
