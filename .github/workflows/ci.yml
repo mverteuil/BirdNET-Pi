@@ -22,7 +22,9 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install uv
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Install pre-commit hooks
         run: ~/.cargo/bin/uv run pre-commit install
       - name: Run pre-commit checks
@@ -38,7 +40,9 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install uv
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Install dependencies
         run: ~/.cargo/bin/uv sync
         working-directory: BirdNET-Pi
