@@ -30,8 +30,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pre-commit-
       - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --prefix /usr/local
+        run: UV_INSTALL_DIR=/usr/local curl -LsSf https://astral.sh/uv/install.sh | sh
       - name: Install pre-commit hooks
         run: uv run pre-commit install
       - name: Run pre-commit checks
@@ -47,8 +46,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --prefix /usr/local
+        run: UV_INSTALL_DIR=/usr/local curl -LsSf https://astral.sh/uv/install.sh | sh
       - name: Install dependencies
         run: uv sync
         working-directory: BirdNET-Pi
