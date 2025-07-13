@@ -22,6 +22,7 @@ RUN useradd -m -s /bin/bash birdnetpi
 
 # Stage 2: Runtime
 FROM debian:bullseye-slim
+ARG TARGETARCH
 
 ENV DNS_SERVER=8.8.8.8
 
