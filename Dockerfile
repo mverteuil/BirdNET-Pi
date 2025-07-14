@@ -61,20 +61,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     python3 \
-    python3-venv \
-    supervisor \
-    && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    python3-venv     supervisor     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh &&     mv /root/.local/bin/uv /usr/local/bin/uv
 
 COPY scripts/install_deps.sh /usr/local/bin/install_deps.sh
-
-RUN install_deps.sh
+RUN chmod +x /usr/local/bin/install_deps.sh && install_deps.sh
 
 # Create dedicated user for BirdNET-Pi and set up directories/permissions
-RUN useradd -m -s /bin/bash birdnetpi && \
-    usermod -aG audio,video,dialout birdnetpi && \
-    mkdir -p /var/log /app/tmp && \
-    chmod 777 /var/log && \
-    chown birdnetpi:birdnetpi /app/tmp
+RUN useradd -m -s /bin/bash birdnetpi &&     usermod -aG audio,video,dialout birdnetpi &&     mkdir -p /var/log /app/tmp /var/log/supervisor &&     chmod 777 /var/log &&     chown birdnetpi:birdnetpi /app/tmp /var/log/supervisor
 
 # Copy application code to runtime stage
 COPY . /app
@@ -91,7 +87,7 @@ RUN /usr/local/bin/uv sync --no-cache
 # Copy Caddyfile and supervisor config
 USER root
 COPY scripts/setup_configs.sh /usr/local/bin/setup_configs.sh
-RUN setup_configs.sh
+RUN chmod +x /usr/local/bin/setup_configs.sh && setup_configs.sh
 USER birdnetpi
 
 # Expose the port for Caddy (80)
