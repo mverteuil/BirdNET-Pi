@@ -8,6 +8,7 @@ from managers.system_monitor import SystemMonitor
 
 @pytest.fixture
 def system_monitor():
+    """SystemMonitor instance for testing."""
     return SystemMonitor()
 
 
@@ -65,7 +66,7 @@ def test_dump_logs_read_error(
 ):  # Add mock_open to args
     """Should print error when log file cannot be read"""
     mock_exists.return_value = True
-    mock_open.side_effect = IOError("Permission denied")  # Corrected
+    mock_open.side_effect = OSError("Permission denied")  # Corrected
     result = system_monitor.dump_logs("/var/log/protected.log")
     assert "Error reading log file: Permission denied" in result
 
@@ -75,7 +76,8 @@ def test_get_extra_info_success(mock_check_output, system_monitor):
     """Should return CPU temperature and memory usage successfully"""
     mock_check_output.side_effect = [
         b"temp=50.0'C\n",  # vcgencmd measure_temp
-        b"              total        used        free      shared  buff/cache   available\nMem:        1.0G        0.5G        0.5G        0.0G        0.0G        0.5G\n",  # free -h
+        b"              total        used        free      shared  buff/cache   available\n"  # free -h
+        + b"Mem:        1.0G        0.5G        0.5G        0.0G        0.0G        0.5G\n",
     ]
     info = system_monitor.get_extra_info()
     assert info["cpu_temperature"] == "50.0'C"

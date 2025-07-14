@@ -6,6 +6,8 @@ Base = declarative_base()
 
 
 class Detection(Base):
+    """Represents a bird detection record in the database."""
+
     __tablename__ = "detections"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -18,6 +20,8 @@ class Detection(Base):
 
 
 class AudioFile(Base):
+    """Represents an audio file record in the database."""
+
     __tablename__ = "audio_files"
 
     id = Column(Integer, primary_key=True, index=True)

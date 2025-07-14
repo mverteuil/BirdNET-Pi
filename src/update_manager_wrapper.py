@@ -4,7 +4,8 @@ import sys
 from .managers.update_manager import UpdateManager
 
 
-def main():
+def main() -> None:
+    """Run the main function for the update manager wrapper script."""
     update_manager = UpdateManager()
 
     if len(sys.argv) > 1:
@@ -29,7 +30,8 @@ def main():
             # This would call a method in UpdateManager for snippets
             # For now, it just prints a message
             print(
-                "update_birdnet_snippets called. (Implementation pending in UpdateManager)"
+                "update_birdnet_snippets called. "
+                "(Implementation pending in UpdateManager)"
             )
         elif command == "update_caddyfile":
             birdnetpi_url = os.environ.get("BIRDNETPI_URL")
@@ -37,7 +39,8 @@ def main():
             caddy_pwd = os.environ.get("CADDY_PWD")
             if not birdnetpi_url or not extracted_path:
                 print(
-                    "Error: BIRDNETPI_URL and EXTRACTED environment variables must be set."
+                    "Error: BIRDNETPI_URL and EXTRACTED environment variables "
+                    "must be set."
                 )
                 sys.exit(1)
             update_manager.update_caddyfile(

@@ -1,19 +1,21 @@
 import csv
 from datetime import datetime
-import os
 
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import sessionmaker
 
-from models.database_models import Detection, Base
+from models.database_models import Base, Detection
 
 
 class DatabaseService:
-    def __init__(self, SessionLocal):
-        self.SessionLocal = SessionLocal
+    """Provides an interface for database operations."""
+
+    def __init__(self, session_local: sessionmaker):
+        self.session_local = session_local
 
     def add_detection(self, detection_data: dict) -> Detection:
-        """Adds a new detection record to the database."""
-        db = self.SessionLocal()
+        """Add a new detection record to the database."""
+        db = self.session_local()
         try:
             detection = Detection(**detection_data)
             db.add(detection)
@@ -27,9 +29,9 @@ class DatabaseService:
         finally:
             db.close()
 
-    def get_all_detections(self):
-        """Retrieves all detection records from the database."""
-        db = self.SessionLocal()
+    def get_all_detections(self) -> list[Detection]:
+        """Retrieve all detection records from the database."""
+        db = self.session_local()
         try:
             return db.query(Detection).all()
         except SQLAlchemyError as e:
@@ -38,11 +40,11 @@ class DatabaseService:
         finally:
             db.close()
 
-    def import_detections_from_csv(self, csv_file_path: str):
-        """Imports detection records from a CSV file into the database."""
-        db = self.SessionLocal()
+    def import_detections_from_csv(self, csv_file_path: str) -> None:
+        """Import detection records from a CSV file into the database."""
+        db = self.session_local()
         try:
-            with open(csv_file_path, "r") as f:
+            with open(csv_file_path) as f:
                 reader = csv.reader(f, delimiter=";")
                 next(reader)  # Skip header row
                 for row in reader:
@@ -98,9 +100,9 @@ class DatabaseService:
         finally:
             db.close()
 
-    def clear_database(self):
-        """Clears all data from the database tables."""
-        db = self.SessionLocal()
+    def clear_database(self) -> None:
+        """Clear all data from the database tables."""
+        db = self.session_local()
         try:
             for table in Base.metadata.sorted_tables:
                 db.execute(table.delete())

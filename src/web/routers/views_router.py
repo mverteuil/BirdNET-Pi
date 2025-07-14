@@ -14,18 +14,18 @@ templates = Jinja2Templates(directory="src/web/templates")
 
 
 @router.get("/views", response_class=HTMLResponse)
-async def read_views(request: Request):
-    update_manager = UpdateManager(
-        repo_path="./"
-    )  # Assuming repo_path is current directory for now
-    commits_behind = update_manager.get_commits_behind()
+async def read_views(request: Request) -> Jinja2Templates.TemplateResponse:
+    """Render the main views page, displaying repository update status."""
+    update_manager = UpdateManager()
+    commits_behind_count = update_manager.get_commits_behind()
     return templates.TemplateResponse(
-        "views.html", {"request": request, "commits_behind": commits_behind}
+        "views.html", {"request": request, "commits_behind": commits_behind_count}
     )
 
 
 @router.get("/views/weekly-report", response_class=HTMLResponse)
-async def get_weekly_report(request: Request):
+async def get_weekly_report(request: Request) -> Jinja2Templates.TemplateResponse:
+    """Generate and display a weekly report of bird detections."""
     db_manager = DatabaseManager()
     reporting_manager = ReportingManager(db_manager)
     report_data = reporting_manager.get_weekly_report_data()
@@ -35,7 +35,8 @@ async def get_weekly_report(request: Request):
 
 
 @router.get("/views/charts", response_class=HTMLResponse)
-async def get_charts(request: Request):
+async def get_charts(request: Request) -> Jinja2Templates.TemplateResponse:
+    """Generate and display various charts related to bird detections."""
     db_manager = DatabaseManager()
     reporting_manager = ReportingManager(db_manager)
     df = reporting_manager.get_data()
@@ -43,14 +44,15 @@ async def get_charts(request: Request):
     # Default values for plot generation
     start_date = pd.to_datetime(df.index.min()).date()
     end_date = pd.to_datetime(df.index.max()).date()
-    top_N = 10
+    top_n = 10
+
     specie = "All"
     num_days_to_display = 7  # Arbitrary for now
     selected_pal = "Viridis"  # Arbitrary for now
 
     # Generate multi-day plot
     multi_day_fig = reporting_manager.generate_multi_day_species_and_hourly_plot(
-        df, "Hourly", start_date, end_date, top_N, specie
+        df, "Hourly", start_date, end_date, top_n, specie
     )
     multi_day_plot_json = pio.to_json(multi_day_fig)
 

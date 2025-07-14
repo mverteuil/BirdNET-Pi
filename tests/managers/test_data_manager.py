@@ -11,6 +11,7 @@ from services.file_manager import FileManager
 
 @pytest.fixture
 def mock_config():
+    """Provide a mock BirdNETConfig instance with mock data paths."""
     config = Mock(spec=BirdNETConfig)
     config.data = Mock(spec=DataConfig)
     config.data.processed_dir = "/mock/processed"
@@ -22,6 +23,7 @@ def mock_config():
 
 @pytest.fixture
 def mock_file_manager(mock_config):
+    """Provide a mock FileManager instance with get_full_path side effect."""
     fm = Mock(spec=FileManager)
     # Simulate get_full_path behavior: it should return the absolute path
     fm.get_full_path.side_effect = lambda p: p
@@ -30,11 +32,13 @@ def mock_file_manager(mock_config):
 
 @pytest.fixture
 def mock_database_manager():
+    """Provide a mock DatabaseManager instance."""
     return Mock(spec=DatabaseManager)
 
 
 @pytest.fixture
 def data_manager(mock_config, mock_file_manager, mock_database_manager):
+    """Provide a DataManager instance with mocked dependencies."""
     return DataManager(
         config=mock_config,
         file_manager=mock_file_manager,

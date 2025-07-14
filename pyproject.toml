@@ -53,3 +53,42 @@ build-backend = "setuptools.build_meta"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 markers = ["expensive"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+select = [
+    "E",  # Error
+    "W",  # Warning
+    "F",  # Pyflakes
+    "C",  # Complexity
+    "I",  # Isort
+    "N",  # Naming
+    "D",  # Docstrings (optional, but good for clarity)
+    "ANN", # Annoyance (missing type annotations)
+    "B",  # Bugbear
+    "A",  # Builtin shadowing
+    "TID", # flake8-tidy-imports
+    "UP", # pyupgrade
+    "RUF", # Ruff-specific rules
+]
+ignore = [
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+    "D105", # Missing docstring in public method
+    "D107", # Missing docstring in __init__
+    "D203", # 1 blank line required before class docstring
+    "D213", # Multi-line docstring summary should start on the second line
+    "D406", # Section name should end with a colon
+    "D407", # Missing dashed underline after section header
+    "D413", # Missing blank line after last section
+    "ANN101", # Missing type annotation for `self` in method
+    "ANN102", # Missing type annotation for `cls` in classmethod
+    "D400", # First line should end with a period
+    "D415", # First line should end with a period, question mark, or exclamation point
+    "ANN204", # Missing return type annotation for special method `__init__`
+]
+unfixable = ["TID252"] # Disallow `from ... import *`
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["ANN"]

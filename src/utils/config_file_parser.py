@@ -4,11 +4,14 @@ from models.birdnet_config import BirdNETConfig
 
 
 class ConfigFileParser:
-    def __init__(self, config_path: str):
+    """Parses and manages BirdNET-Pi configuration files in YAML format."""
+
+    def __init__(self, config_path: str) -> None:
         self.config_path = config_path
 
     def load_config(self) -> BirdNETConfig:
-        with open(self.config_path, "r") as f:
+        """Load the configuration from the specified YAML file into a BirdNETConfig object."""
+        with open(self.config_path) as f:
             config_data = yaml.safe_load(f)
 
         # Explicitly map config_data to BirdNETConfig fields
@@ -52,7 +55,8 @@ class ConfigFileParser:
             ),
         )
 
-    def save_config(self, config: BirdNETConfig):
+    def save_config(self, config: BirdNETConfig) -> None:
+        """Save the provided BirdNETConfig object to the specified YAML file."""
         config_data = {
             "site_name": config.site_name,
             "latitude": config.latitude,

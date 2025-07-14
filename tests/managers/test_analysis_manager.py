@@ -12,26 +12,31 @@ from services.file_manager import FileManager
 
 @pytest.fixture
 def mock_config():
+    """Provide a mock BirdNETConfig instance."""
     return Mock(spec=BirdNETConfig)
 
 
 @pytest.fixture
 def mock_file_manager():
+    """Provide a mock FileManager instance."""
     return Mock(spec=FileManager)
 
 
 @pytest.fixture
 def mock_database_manager():
+    """Provide a mock DatabaseManager instance."""
     return Mock(spec=DatabaseManager)
 
 
 @pytest.fixture
 def mock_analysis_client_service():
+    """Provide a mock AnalysisClientService instance."""
     return Mock(spec=AnalysisClientService)
 
 
 @pytest.fixture
 def mock_detection_event_publisher():
+    """Provide a mock DetectionEventPublisher instance."""
     return Mock(spec=DetectionEventPublisher)
 
 
@@ -43,6 +48,7 @@ def analysis_manager(
     mock_analysis_client_service,
     mock_detection_event_publisher,
 ):
+    """Provide an AnalysisManager instance with mocked dependencies."""
     return AnalysisManager(
         config=mock_config,
         file_manager=mock_file_manager,

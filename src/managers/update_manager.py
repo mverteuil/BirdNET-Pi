@@ -4,11 +4,14 @@ import subprocess
 
 
 class UpdateManager:
-    def __init__(self):
+    """Manages updates and Git operations for the BirdNET-Pi repository."""
+
+    def __init__(self) -> None:
         script_dir = os.path.dirname(__file__)
         self.repo_path = os.path.abspath(os.path.join(script_dir, "..", ".."))
 
     def get_commits_behind(self) -> int:
+        """Check how many commits the local repository is behind the remote."""
         try:
             # Git fetch to update remote tracking branches
             subprocess.run(
@@ -44,7 +47,8 @@ class UpdateManager:
             print(f"An unexpected error occurred: {e}")
             return -1  # Indicate an error
 
-    def update_birdnet(self, remote: str = "origin", branch: str = "main"):
+    def update_birdnet(self, remote: str = "origin", branch: str = "main") -> None:
+        """Update the BirdNET-Pi repository to the latest version."""
         try:
             # Get current HEAD hash
             current_commit_hash = subprocess.run(
@@ -132,8 +136,9 @@ class UpdateManager:
             raise
 
     def update_caddyfile(
-        self, birdnetpi_url: str, extracted_path: str, caddy_pwd: str = None
-    ):
+        self, birdnetpi_url: str, extracted_path: str, caddy_pwd: str | None = None
+    ) -> None:
+        """Update the Caddyfile with new configuration and reload Caddy."""
         try:
             # Ensure /etc/caddy exists
             subprocess.run(["sudo", "mkdir", "-p", "/etc/caddy"], check=True)
@@ -147,13 +152,14 @@ class UpdateManager:
                     check=True,
                 )
 
-            caddyfile_content = """http:// {birdnetpi_url} {
-  reverse_proxy localhost:8000
-  reverse_proxy /log* localhost:8080
-  reverse_proxy /stats* localhost:8501
-  reverse_proxy /terminal* localhost:8888
-}
-"""
+            caddyfile_content = (
+                f"http:// {birdnetpi_url} {{\n"
+                "  reverse_proxy localhost:8000\n"
+                "  reverse_proxy /log* localhost:8080\n"
+                "  reverse_proxy /stats* localhost:8501\n"
+                "  reverse_proxy /terminal* localhost:8888\n"
+                "}\n"
+            )
 
             # Write the Caddyfile content
             # Using a temporary file and then moving it with sudo to handle permissions

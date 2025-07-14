@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 
 @dataclass
 class DataConfig:
+    """Configuration for data storage paths."""
+
     recordings_dir: str = "/mnt/birdnet/recordings"
     extracted_dir: str = "/mnt/birdnet/extracted"
     processed_dir: str = "/mnt/birdnet/processed"
@@ -13,6 +15,8 @@ class DataConfig:
 
 @dataclass
 class BirdNETConfig:
+    """Represents the configuration settings for the BirdNET-Pi application."""
+
     # Basic Settings
     site_name: str = "BirdNET-Pi"
     latitude: float = 0.0

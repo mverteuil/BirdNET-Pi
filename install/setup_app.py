@@ -13,7 +13,9 @@ from utils.file_path_resolver import FilePathResolver
 
 
 class AppSetup:
-    def __init__(self, repo_root: str):
+    """Manages the setup process for the BirdNET-Pi application."""
+
+    def __init__(self, repo_root: str) -> None:
         self.repo_root = repo_root
         self.file_path_resolver = FilePathResolver(repo_root)
         self.config_file_path = self.file_path_resolver.get_absolute_path(
@@ -25,7 +27,7 @@ class AppSetup:
         self.database_manager = DatabaseManager(self.config.data.db_path)
         self.venv_path = self.file_path_resolver.get_absolute_path("birdnet")
 
-    def _run_command(self, command: list[str], description: str):
+    def _run_command(self, command: list[str], description: str) -> None:
         print(f"\n{description}...")
         try:
             subprocess.run(command, check=True, capture_output=True, text=True)
@@ -37,7 +39,8 @@ class AppSetup:
             print(f"An unexpected error occurred during {description}: {e}")
             sys.exit(1)
 
-    def setup_virtual_environment(self):
+    def setup_virtual_environment(self) -> None:
+        """Set up the Python virtual environment and install dependencies."""
         venv_path = self.file_path_resolver.get_absolute_path("birdnet")
         self._run_command(
             [sys.executable, "-m", "venv", venv_path],
@@ -52,7 +55,8 @@ class AppSetup:
             "Installing Python dependencies",
         )
 
-    def create_directories(self):
+    def create_directories(self) -> None:
+        """Create necessary directories for the application."""
         print("\nCreating necessary directories...")
         self.file_manager.create_directory(self.config.data.recordings_dir)
         self.file_manager.create_directory(self.config.data.extracted_dir)
@@ -65,12 +69,14 @@ class AppSetup:
         self.file_manager.create_directory(self.config.data.processed_dir)
         print("Necessary directories created.")
 
-    def initialize_database(self):
+    def initialize_database(self) -> None:
+        """Initialize the application database."""
         print("\nInitializing database...")
         self.database_manager.initialize_database()
         print("Database initialized.")
 
-    def setup_systemd_services(self):
+    def setup_systemd_services(self) -> None:
+        """Set up systemd services for the application."""
         print("\nSetting up systemd services...")
         systemd_dir = "/etc/systemd/system/"
         user = "birdnetpi"  # Assuming 'birdnetpi' user is created by install.sh
@@ -90,12 +96,19 @@ class AppSetup:
                 "name": "birdnet_server.service",
                 "description": "BirdNET Analysis Server",
                 "before": "birdnet_analysis.service",
-                "exec_start": f"{python_exec} {self.file_path_resolver.get_absolute_path('src/main.py')}",  # Assuming main.py is the server entry
+                "exec_start": (
+                    f"{python_exec} "
+                    f"{self.file_path_resolver.get_absolute_path('src/main.py')}"
+                ),  # Assuming main.py is the server entry
             },
             {
                 "name": "extraction.service",
                 "description": "BirdNET BirdSound Extraction",
-                "exec_start": f"/usr/bin/env bash -c 'while true;do {self.file_path_resolver.get_absolute_path('scripts/extract_new_birdsounds.sh')};sleep 3;done'",
+                "exec_start": (
+                    f"/usr/bin/env bash -c 'while true;do "
+                    f"{self.file_path_resolver.get_absolute_path('scripts/extract_new_birdsounds.sh')};"
+                    f"sleep 3;done'"
+                ),
                 "restart": "on-failure",
             },
             {
@@ -117,7 +130,12 @@ class AppSetup:
             {
                 "name": "birdnet_stats.service",
                 "description": "BirdNET Stats",
-                "exec_start": f"{python_exec} -m streamlit run {self.file_path_resolver.get_absolute_path('src/reporting_dashboard.py')} --browser.gatherUsageStats false --server.address localhost --server.baseUrlPath \"/stats\"",
+                "exec_start": (
+                    f"{python_exec} -m streamlit run "
+                    f"{self.file_path_resolver.get_absolute_path('src/reporting_dashboard.py')}"
+                    f" --browser.gatherUsageStats false --server.address localhost "
+                    f' --server.baseUrlPath "/stats"'
+                ),
                 "restart": "on-failure",
             },
             {
@@ -130,19 +148,29 @@ class AppSetup:
             {
                 "name": "chart_viewer.service",
                 "description": "BirdNET-Pi Chart Viewer Service",
-                "exec_start": f"{python_exec} {self.file_path_resolver.get_absolute_path('scripts/daily_plot.py')}",  # Assuming daily_plot.py exists
+                "exec_start": (
+                    f"{python_exec} "
+                    f"{self.file_path_resolver.get_absolute_path('scripts/daily_plot.py')}"
+                ),  # Assuming daily_plot.py exists
             },
             {
                 "name": "birdnet_log.service",
                 "description": "BirdNET Analysis Log",
-                "exec_start": f"/usr/local/bin/gotty --address localhost -p 8080 -P log --title-format \"BirdNET-Pi Log\" {self.file_path_resolver.get_absolute_path('scripts/birdnet_log.sh')}",
+                "exec_start": (
+                    f"/usr/local/bin/gotty --address localhost -p 8080 -P log "
+                    f'--title-format "BirdNET-Pi Log" '
+                    f"{self.file_path_resolver.get_absolute_path('scripts/birdnet_log.sh')}"
+                ),
                 "restart": "on-failure",
                 "environment": "TERM=xterm-256color",
             },
             {
                 "name": "web_terminal.service",
                 "description": "BirdNET-Pi Web Terminal",
-                "exec_start": '/usr/local/bin/gotty --address localhost -w -p 8888 -P terminal --title-format "BirdNET-Pi Terminal" login',
+                "exec_start": (
+                    "/usr/local/bin/gotty --address localhost -w -p 8888 -P terminal "
+                    '--title-format "BirdNET-Pi Terminal" login'
+                ),
                 "restart": "on-failure",
                 "environment": "TERM=xterm-256color",
             },
@@ -201,7 +229,8 @@ class AppSetup:
         )
         print("Systemd services setup complete.")
 
-    def run_setup(self):
+    def run_setup(self) -> None:
+        """Run the complete application setup process."""
         print("\nStarting BirdNET-Pi application setup...")
         self.setup_virtual_environment()
         self.create_directories()

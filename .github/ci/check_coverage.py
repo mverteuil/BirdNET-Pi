@@ -15,12 +15,14 @@ try:
 
         if coverage_percentage < COVERAGE_THRESHOLD:
             print(
-                f"Error: Code coverage ({coverage_percentage:.2f}%) is below the required threshold of {COVERAGE_THRESHOLD}%"
+                f"Error: Code coverage ({coverage_percentage:.2f}%) is below the "
+                f"required threshold of {COVERAGE_THRESHOLD}%"
             )
             sys.exit(1)
         else:
             print(
-                f"Code coverage ({coverage_percentage:.2f}%) meets or exceeds the required threshold of {COVERAGE_THRESHOLD}%"
+                f"Code coverage ({coverage_percentage:.2f}%) meets or exceeds the "
+                f"required threshold of {COVERAGE_THRESHOLD}%"
             )
     else:
         print(f"Error: 'coverage' element not found in {COVERAGE_FILE}.")
@@ -28,7 +30,8 @@ try:
 
 except FileNotFoundError:
     print(
-        f"Error: Coverage report file not found at {COVERAGE_FILE}. Make sure pytest --cov generated it."
+        f"Error: Coverage report file not found at {COVERAGE_FILE}. "
+        "Make sure pytest --cov generated it."
     )
     sys.exit(1)
 except Exception as e:

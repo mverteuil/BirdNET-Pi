@@ -7,17 +7,20 @@ from services.file_manager import FileManager
 
 
 class DataManager:
+    """Manages data operations, including cleanup and clearing of processed files and directories."""
+
     def __init__(
         self,
         config: BirdNETConfig,
         file_manager: FileManager,
         database_manager: DatabaseManager,
-    ):
+    ) -> None:
         self.config = config
         self.file_manager = file_manager
         self.database_manager = database_manager
 
-    def cleanup_processed_files(self):
+    def cleanup_processed_files(self) -> None:
+        """Clean up processed audio and CSV files, removing empty or old entries."""
         processed_dir = self.file_manager.get_full_path(self.config.data.processed_dir)
 
         for filename in self.file_manager.list_directory_contents(processed_dir):
@@ -51,7 +54,8 @@ class DataManager:
                     self.file_manager.get_full_path(os.path.join(processed_dir, f))
                 )
 
-    def clear_all_data(self):
+    def clear_all_data(self) -> None:
+        """Clear all BirdNET-Pi data, stopping services, removing files, and re-creating directories."""
         print("Stopping services...")
         subprocess.run(["sudo", "systemctl", "stop", "birdnet_recording.service"])
         subprocess.run(["sudo", "systemctl", "stop", "birdnet_analysis.service"])

@@ -9,11 +9,13 @@ from services.database_manager import DatabaseManager
 
 @pytest.fixture
 def mock_db_path():
+    """Provide a mock database path."""
     return "/tmp/test_birdnetpi.db"
 
 
 @pytest.fixture
 def db_manager(mock_db_path):
+    """Provide a DatabaseManager instance with mocked dependencies."""
     with (
         patch("services.database_manager.os.makedirs"),
         patch("services.database_manager.create_engine") as mock_create_engine,
@@ -33,11 +35,13 @@ def db_manager(mock_db_path):
 
 @pytest.fixture
 def mock_session():
+    """Provide a mock SQLAlchemy session."""
     return MagicMock()
 
 
 @pytest.fixture
 def mock_session_local(mock_session):
+    """Provide a mock SQLAlchemy sessionmaker that returns a mock session."""
     mock_session_local = MagicMock()
     mock_session_local.return_value = mock_session
     return mock_session_local
@@ -165,6 +169,7 @@ def test_clear_database_failure(db_manager, mock_session, capsys):
 
 @pytest.fixture
 def mock_csv_file(tmp_path):
+    """Provide a mock CSV file for testing database import."""
     csv_content = (
         "Date;Time;Sci_Name;Com_Name;Confidence;Lat;Lon;Cutoff;Week;Sens;Overlap\n"
         "2023-01-01;10:00:00;SciName1;ComName1;0.9;1.0;2.0;0.5;1;1.0;0.0\n"

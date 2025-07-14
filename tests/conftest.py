@@ -7,9 +7,9 @@ from src.utils.file_path_resolver import FilePathResolver
 
 @pytest.fixture
 def file_path_resolver(tmp_path: Path) -> FilePathResolver:
-    """
-    Creates a FilePathResolver pointing to a temporary directory
-    with mock config files read from the actual templates.
+    """Create a FilePathResolver pointing to a temporary directory.
+
+    With mock config files read from the actual templates.
     """
     # Create a realistic runtime config directory
     config_dir = tmp_path / "config"

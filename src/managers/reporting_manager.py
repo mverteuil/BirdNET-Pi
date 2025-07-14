@@ -1,6 +1,8 @@
 import datetime
+from typing import Any
 
 import pandas as pd
+from suntime import Sun
 
 from managers.database_manager import DatabaseManager
 from utils.config_file_parser import ConfigFileParser
@@ -8,33 +10,32 @@ from utils.file_path_resolver import FilePathResolver
 
 
 class ReportingManager:
+    """Manages data retrieval, processing, and reporting functionalities."""
+
     def __init__(
         self, db_manager: DatabaseManager, file_path_resolver: FilePathResolver
-    ):
+    ) -> None:
         self.db_manager = db_manager
         self.file_path_resolver = file_path_resolver
         self.config = ConfigFileParser(
             self.file_path_resolver.get_birdnet_pi_config_path()
         ).load_config()
 
-    def get_data(self):
+    def get_data(self) -> pd.DataFrame:
+        """Retrieve all detection data from the database and format it into a DataFrame."""
         df = self.db_manager.get_all_detections()
         df["DateTime"] = pd.to_datetime(df["Date"] + " " + df["Time"])
         df = df.set_index("DateTime")
         return df
 
-    def _get_weekly_stats(self, start_date, end_date, prior_start_date, prior_end_date):
-        """Fetches total detection counts and unique species counts for the current and prior weeks.
-
-        Args:
-            start_date (datetime.date): Start date of the current week.
-            end_date (datetime.date): End date of the current week.
-            prior_start_date (datetime.date): Start date of the prior week.
-            prior_end_date (datetime.date): End date of the prior week.
-
-        Returns:
-            tuple: A tuple containing (current_week_stats, prior_week_stats) dictionaries.
-        """
+    def _get_weekly_stats(
+        self,
+        start_date: datetime.date,
+        end_date: datetime.date,
+        prior_start_date: datetime.date,
+        prior_end_date: datetime.date,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Fetch total detection counts and unique species counts for the current and prior weeks."""
         # Connect to the database
         self.db_manager.connect()
 
@@ -61,19 +62,13 @@ class ReportingManager:
         return current_week_stats, prior_week_stats
 
     def _get_top_species_data(
-        self, start_date, end_date, prior_start_date, prior_end_date
-    ):
-        """Fetches the top 10 species for the current week and their counts from the prior week.
-
-        Args:
-            start_date (datetime.date): Start date of the current week.
-            end_date (datetime.date): End date of the current week.
-            prior_start_date (datetime.date): Start date of the prior week.
-            prior_end_date (datetime.date): End date of the prior week.
-
-        Returns:
-            list: A list of dictionaries, each containing species common name, current count, and percentage difference from the prior week.
-        """
+        self,
+        start_date: datetime.date,
+        end_date: datetime.date,
+        prior_start_date: datetime.date,
+        prior_end_date: datetime.date,
+    ) -> list[dict[str, Any]]:
+        """Fetch the top 10 species for the current week and their counts from the prior week."""
         top_species_query = """
         WITH CurrentWeekCounts AS (
             SELECT Com_Name, COUNT(*) as count
@@ -126,16 +121,10 @@ class ReportingManager:
                 )
         return top_10_species
 
-    def _get_new_species_data(self, start_date, end_date):
-        """Fetches new species detected in the current week that were not present in prior data.
-
-        Args:
-            start_date (datetime.date): Start date of the current week.
-            end_date (datetime.date): End date of the current week.
-
-        Returns:
-            list: A list of dictionaries, each containing new species common name and count.
-        """
+    def _get_new_species_data(
+        self, start_date: datetime.date, end_date: datetime.date
+    ) -> list[dict[str, Any]]:
+        """Fetch new species detected in the current week that were not present in prior data."""
         new_species_query = """
         SELECT Com_Name, COUNT(*) as count
         FROM detections
@@ -163,22 +152,12 @@ class ReportingManager:
 
     def _calculate_percentage_differences(
         self,
-        total_detections_current,
-        unique_species_current,
-        total_detections_prior,
-        unique_species_prior,
-    ):
-        """Calculates percentage differences for total detections and unique species.
-
-        Args:
-            total_detections_current (int): Total detections in the current period.
-            unique_species_current (int): Unique species in the current period.
-            total_detections_prior (int): Total detections in the prior period.
-            unique_species_prior (int): Unique species in the prior period.
-
-        Returns:
-            tuple: A tuple containing (percentage_diff_total, percentage_diff_unique_species).
-        """
+        total_detections_current: int,
+        unique_species_current: int,
+        total_detections_prior: int,
+        unique_species_prior: int,
+    ) -> tuple[int, int]:
+        """Calculate percentage differences for total detections and unique species."""
         percentage_diff_total = 0
         if total_detections_prior > 0:
             percentage_diff_total = round(
@@ -197,16 +176,8 @@ class ReportingManager:
             )
         return percentage_diff_total, percentage_diff_unique_species
 
-    def get_weekly_report_data(self):
-        """Retrieves and processes data for the weekly report.
-
-        This method calculates detection statistics for the current and prior weeks,
-        identifies top species, and finds new species.
-
-        Returns:
-            dict: A dictionary containing weekly report data, including total detections,
-                  unique species, percentage differences, top 10 species, and new species.
-        """
+    def get_weekly_report_data(self) -> dict[str, Any]:
+        """Retrieve and process data for the weekly report."""
         today = datetime.date.today()
         # Sunday of the week that just finished
         last_sunday = today - datetime.timedelta(days=today.weekday() + 1)
@@ -264,32 +235,100 @@ class ReportingManager:
             "new_species": new_species,
         }
 
-    def _prepare_sunrise_sunset_data_for_plot(self, num_days_to_display, fig_x):
-        """Prepares sunrise and sunset data for plotting.
-
-        Args:
-            num_days_to_display (int): Number of days to display data for.
-            fig_x (list): Formatted dates for plotting.
-
-        Returns:
-            tuple: A tuple containing:
-                - sunrise_week_list (list): List of days for sunrise data.
-                - sunrise_list (list): List of sunrise times.
-                - sunrise_text_list (list): List of sunrise text labels.
-                - daysback_range (list): Range of days for plotting.
-        """
-        sunrise_week_list, sunrise_list, sunrise_text_list = (
-            self.get_sunrise_sunset_data(num_days_to_display)
-        )
-        daysback_range = fig_x
-        daysback_range.append(None)
-        daysback_range.extend(daysback_range)
-        daysback_range = daysback_range[:-1]
-        return sunrise_week_list, sunrise_list, sunrise_text_list, daysback_range
-
-    def get_most_recent_detections(self, limit: int = 10):
+    def get_most_recent_detections(self, limit: int = 10) -> list[dict[str, Any]]:
+        """Retrieve the most recent detection records from the database."""
         self.db_manager.connect()
         query = "SELECT * FROM detections ORDER BY Date DESC, Time DESC LIMIT ?"
         recent_detections = self.db_manager.fetch_all(query, (limit,))
         self.db_manager.disconnect()
         return recent_detections
+
+    def date_filter(
+        self, df: pd.DataFrame, start_date: str, end_date: str
+    ) -> pd.DataFrame:
+        """Filter a DataFrame by date range."""
+        filt = (df.index >= pd.Timestamp(start_date)) & (
+            df.index <= pd.Timestamp(end_date + datetime.timedelta(days=1))
+        )
+        df = df[filt]
+        return df
+
+    def time_resample(self, df: pd.DataFrame, resample_time: str) -> pd.DataFrame:
+        """Resamples the DataFrame based on the given time interval."""
+        if resample_time == "Raw":
+            df_resample = df["Com_Name"]
+        else:
+            df_resample = (
+                df.resample(resample_time)["Com_Name"].aggregate("unique").explode()
+            )
+        return df_resample
+
+    def get_sunrise_sunset_data(
+        self, num_days_to_display: int
+    ) -> tuple[list[Any], list[Any], list[Any]]:
+        """Retrieve sunrise and sunset data for a given number of days."""
+        latitude = self.config.latitude
+        longitude = self.config.longitude
+
+        sun = Sun(latitude, longitude)
+
+        sunrise_list = []
+        sunset_list = []
+        sunrise_week_list = []
+        sunset_week_list = []
+        sunrise_text_list = []
+        sunset_text_list = []
+
+        now = datetime.datetime.now()
+
+        for past_day in range(num_days_to_display):
+            d = datetime.timedelta(days=num_days_to_display - past_day - 1)
+
+            current_date = now - d
+            sun_rise = sun.get_local_sunrise_time(current_date)
+            sun_dusk = sun.get_local_sunset_time(current_date)
+
+            sun_rise_time = float(sun_rise.hour) + float(sun_rise.minute) / 60.0
+            sun_dusk_time = float(sun_dusk.hour) + float(sun_dusk.minute) / 60.0
+
+            temp_time = str(sun_rise)[-14:-9] + " Sunrise"
+            sunrise_text_list.append(temp_time)
+            temp_time = str(sun_dusk)[-14:-9] + " Sunset"
+            sunset_text_list.append(temp_time)
+            sunrise_list.append(sun_rise_time)
+            sunset_list.append(sun_dusk_time)
+            sunrise_week_list.append(past_day)
+            sunset_week_list.append(past_day)
+
+        sunrise_week_list.append(None)
+        sunrise_list.append(None)
+        sunrise_text_list.append(None)
+        sunrise_list.extend(sunset_list)
+        sunrise_week_list.extend(sunset_week_list)
+        sunrise_text_list.extend(sunset_text_list)
+
+        return sunrise_week_list, sunrise_list, sunrise_text_list
+
+    def get_daily_detection_data_for_plotting(
+        self, df: pd.DataFrame, resample_sel: str, specie: str
+    ) -> tuple[pd.DataFrame, list[str], list[float], list[str]]:
+        """Prepare daily detection data for plotting."""
+        df4 = df["Com_Name"][df["Com_Name"] == specie].resample("15min").count()
+        df4.index = [df4.index.date, df4.index.time]
+        day_hour_freq = df4.unstack().fillna(0)
+
+        # These methods are from PlottingManager and should be called from there
+        # For now, keeping them here as a placeholder
+        from managers.plotting_manager import PlottingManager
+
+        plotting_manager = PlottingManager()
+
+        saved_time_labels = [
+            plotting_manager.hms_to_str(h) for h in day_hour_freq.columns.tolist()
+        ]
+        fig_dec_y = [
+            plotting_manager.hms_to_dec(h) for h in day_hour_freq.columns.tolist()
+        ]
+        fig_x = [d.strftime("%d-%m-%Y") for d in day_hour_freq.index.tolist()]
+
+        return day_hour_freq, saved_time_labels, fig_dec_y, fig_x

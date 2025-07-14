@@ -8,11 +8,13 @@ from services.file_manager import FileManager
 
 @pytest.fixture
 def mock_file_manager():
+    """Provide a mock FileManager instance."""
     return Mock(spec=FileManager)
 
 
 @pytest.fixture
 def audio_manager(mock_file_manager):
+    """Provide an AudioManager instance with a mocked FileManager."""
     return AudioManager(file_manager=mock_file_manager)
 
 

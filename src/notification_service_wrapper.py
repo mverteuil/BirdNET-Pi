@@ -21,7 +21,8 @@ if __name__ == "__main__":
     if args.action == "species_notifier":
         if args.species_name is None or args.confidence is None:
             parser.error(
-                "--species_name and --confidence are required for species_notifier action."
+                "--species_name and --confidence are required for "
+                "species_notifier action."
             )
         notification_service.species_notifier(args.species_name, args.confidence)
     else:

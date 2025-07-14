@@ -1,3 +1,4 @@
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
@@ -13,7 +14,8 @@ from .routers import settings_router
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Context manager for application startup and shutdown events."""
     # Load configuration
     config_parser = ConfigFileParser(FilePathResolver().get_birdnet_pi_config_path())
     app.state.config = config_parser.load_config()
@@ -30,14 +32,16 @@ templates = Jinja2Templates(directory="src/web/templates")
 
 
 @app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
+async def read_root(request: Request) -> Jinja2Templates.TemplateResponse:
+    """Render the main index page."""
     return templates.TemplateResponse(
         request, "index.html", {"site_name": request.app.state.config.site_name}
     )
 
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket) -> None:
+    """Handle WebSocket connections for real-time updates."""
     await websocket.accept()
     try:
         while True:
@@ -54,6 +58,7 @@ publisher = DetectionEventPublisher()
 
 
 @app.get("/test-detection")
-async def test_detection():
+async def test_detection() -> dict[str, str]:
+    """Publishes a test detection event for demonstration purposes."""
     publisher.publish_detection({"species": "Test Bird", "confidence": 0.99})
     return {"message": "Test detection published"}

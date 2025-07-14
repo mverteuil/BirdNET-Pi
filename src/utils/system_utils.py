@@ -2,11 +2,14 @@ import subprocess
 
 
 class SystemUtils:
+    """Provides utility methods for interacting with the underlying operating system."""
+
     @staticmethod
-    def get_system_timezone():
+    def get_system_timezone() -> str:
+        """Attempt to determine the system's timezone."""
         try:
             # Try to get timezone from /etc/timezone
-            with open("/etc/timezone", "r") as f:
+            with open("/etc/timezone") as f:
                 tz_data = f.read().strip()
                 if tz_data:
                     return tz_data

@@ -4,30 +4,39 @@ import subprocess
 
 
 class SystemMonitor:
-    def get_disk_usage(self, path: str = "."):
+    """Monitors system resources like disk usage, logs, and hardware information."""
+
+    def get_disk_usage(self, path: str = ".") -> dict[str, int]:
+        """Return disk usage statistics for a given path."""
         total, used, free = shutil.disk_usage(path)
         return {"total": total, "used": used, "free": free}
 
-    def check_disk_space(self, path: str = ".", threshold_percent: int = 10):
+    def check_disk_space(
+        self, path: str = ".", threshold_percent: int = 10
+    ) -> tuple[bool, str]:
+        """Check if free disk space is below a specified threshold."""
         total, used, free = shutil.disk_usage(path)
         free_percent = (free / total) * 100
         if free_percent < threshold_percent:
             return (
                 False,
-                f"Low disk space: {free_percent:.2f}% free, below {threshold_percent}% threshold.",
+                f"Low disk space: {free_percent:.2f}% free, "
+                f"below {threshold_percent}% threshold.",
             )
         return True, f"Disk space is sufficient: {free_percent:.2f}% free."
 
-    def dump_logs(self, log_file_path: str = "/var/log/syslog"):  # Placeholder path
+    def dump_logs(self, log_file_path: str = "/var/log/syslog") -> str:
+        """Dump the content of a specified log file."""
         if not os.path.exists(log_file_path):
             return f"Error: Log file not found at {log_file_path}"
         try:
-            with open(log_file_path, "r") as f:
+            with open(log_file_path) as f:
                 return "\n".join([line.strip() for line in f])
         except Exception as e:
             return f"Error reading log file: {e}"
 
-    def get_extra_info(self):
+    def get_extra_info(self) -> dict[str, str]:
+        """Retrieve extra system information like CPU temperature and memory usage."""
         info = {}
         try:
             # Get CPU temperature (Raspberry Pi specific)

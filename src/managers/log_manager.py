@@ -3,10 +3,13 @@ import subprocess
 
 
 class LogManager:
-    def __init__(self):
+    """Manages the retrieval and processing of system logs related to BirdNET-Pi services."""
+
+    def __init__(self) -> None:
         self.home_dir = os.path.expanduser("~")
 
-    def get_logs(self):
+    def get_logs(self) -> str:
+        """Retrieve and format BirdNET-Pi service logs using journalctl and sed."""
         try:
             journalctl_command = [
                 "journalctl",
@@ -21,11 +24,14 @@ class LogManager:
                 "-u",
                 "extraction",
             ]
+            sed_pattern = (
+                r"s/{}/g;s/Line/d;/find/d;/systemd/d;s/ .*\[.*\]: /---/".format(
+                    self.home_dir.replace("/", r"\/")
+                )
+            )
             sed_command = [
                 "sed",
-                r"s/{}/g;s/Line/d;/find/d;/systemd/d;s/ .*\[.*\]: /---/".format(
-                    self.home_dir.replace("/", "\/")
-                ),
+                sed_pattern,
             ]
 
             journalctl_process = subprocess.Popen(
