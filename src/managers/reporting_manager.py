@@ -4,6 +4,7 @@ from typing import Any
 import pandas as pd
 from suntime import Sun
 
+from managers.data_preparation_manager import DataPreparationManager
 from managers.database_manager import DatabaseManager
 from utils.config_file_parser import ConfigFileParser
 from utils.file_path_resolver import FilePathResolver
@@ -20,6 +21,7 @@ class ReportingManager:
         self.config = ConfigFileParser(
             self.file_path_resolver.get_birdnet_pi_config_path()
         ).load_config()
+        self.data_preparation_manager = DataPreparationManager()
 
     def get_data(self) -> pd.DataFrame:
         """Retrieve all detection data from the database and format it into a DataFrame."""
@@ -36,29 +38,12 @@ class ReportingManager:
         prior_end_date: datetime.date,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Fetch total detection counts and unique species counts for the current and prior weeks."""
-        # Connect to the database
-        self.db_manager.connect()
-
-        # Get stats for the current week
-        current_week_stats_query = """
-            SELECT COUNT(*) as total_count, COUNT(DISTINCT Com_Name) as unique_species
-            FROM detections
-            WHERE Date BETWEEN ? AND ?
-        """
-        current_week_stats = self.db_manager.fetch_one(
-            current_week_stats_query, (str(start_date), str(end_date))
+        current_week_stats = self.db_manager.get_detection_counts_by_date_range(
+            start_date, end_date
         )
-
-        # Get stats for the prior week
-        prior_week_stats_query = """
-            SELECT COUNT(*) as total_count, COUNT(DISTINCT Com_Name) as unique_species
-            FROM detections
-            WHERE Date BETWEEN ? AND ?
-        """
-        prior_week_stats = self.db_manager.fetch_one(
-            prior_week_stats_query, (str(prior_start_date), str(prior_end_date))
+        prior_week_stats = self.db_manager.get_detection_counts_by_date_range(
+            prior_start_date, prior_end_date
         )
-        self.db_manager.disconnect()
         return current_week_stats, prior_week_stats
 
     def _get_top_species_data(
@@ -69,36 +54,8 @@ class ReportingManager:
         prior_end_date: datetime.date,
     ) -> list[dict[str, Any]]:
         """Fetch the top 10 species for the current week and their counts from the prior week."""
-        top_species_query = """
-        WITH CurrentWeekCounts AS (
-            SELECT Com_Name, COUNT(*) as count
-            FROM detections
-            WHERE Date BETWEEN ? AND ?
-            GROUP BY Com_Name
-        ),
-        PriorWeekCounts AS (
-            SELECT Com_Name, COUNT(*) as count
-            FROM detections
-            WHERE Date BETWEEN ? AND ?
-            GROUP BY Com_Name
-        )
-        SELECT
-            c.Com_Name,
-            c.count as current_count,
-            COALESCE(p.count, 0) as prior_count
-        FROM CurrentWeekCounts c
-        LEFT JOIN PriorWeekCounts p ON c.Com_Name = p.Com_Name
-        ORDER BY current_count DESC
-        LIMIT 10
-        """
-        top_10_species_rows = self.db_manager.fetch_all(
-            top_species_query,
-            (
-                str(start_date),
-                str(end_date),
-                str(prior_start_date),
-                str(prior_end_date),
-            ),
+        top_10_species_rows = self.db_manager.get_top_species_with_prior_counts(
+            start_date, end_date, prior_start_date, prior_end_date
         )
 
         top_10_species = []
@@ -114,7 +71,7 @@ class ReportingManager:
 
                 top_10_species.append(
                     {
-                        "com_name": row["Com_Name"],
+                        "com_name": row["com_name"],
                         "count": current_count,
                         "percentage_diff": percentage_diff,
                     }
@@ -125,24 +82,10 @@ class ReportingManager:
         self, start_date: datetime.date, end_date: datetime.date
     ) -> list[dict[str, Any]]:
         """Fetch new species detected in the current week that were not present in prior data."""
-        new_species_query = """
-        SELECT Com_Name, COUNT(*) as count
-        FROM detections
-        WHERE Date BETWEEN ? AND ?
-          AND Com_Name NOT IN (
-            SELECT DISTINCT Com_Name
-            FROM detections
-            WHERE Date < ?
-          )
-        GROUP BY Com_Name
-        ORDER BY count DESC
-        """
-        new_species_rows = self.db_manager.fetch_all(
-            new_species_query, (str(start_date), str(end_date), str(start_date))
-        )
+        new_species_rows = self.db_manager.get_new_species_data(start_date, end_date)
         new_species = (
             [
-                {"com_name": row["Com_Name"], "count": row["count"]}
+                {"com_name": row["com_name"], "count": row["count"]}
                 for row in new_species_rows
             ]
             if new_species_rows
@@ -237,10 +180,7 @@ class ReportingManager:
 
     def get_most_recent_detections(self, limit: int = 10) -> list[dict[str, Any]]:
         """Retrieve the most recent detection records from the database."""
-        self.db_manager.connect()
-        query = "SELECT * FROM detections ORDER BY Date DESC, Time DESC LIMIT ?"
-        recent_detections = self.db_manager.fetch_all(query, (limit,))
-        self.db_manager.disconnect()
+        recent_detections = self.db_manager.get_most_recent_detections(limit)
         return recent_detections
 
     def date_filter(
@@ -252,16 +192,6 @@ class ReportingManager:
         )
         df = df[filt]
         return df
-
-    def time_resample(self, df: pd.DataFrame, resample_time: str) -> pd.DataFrame:
-        """Resamples the DataFrame based on the given time interval."""
-        if resample_time == "Raw":
-            df_resample = df["Com_Name"]
-        else:
-            df_resample = (
-                df.resample(resample_time)["Com_Name"].aggregate("unique").explode()
-            )
-        return df_resample
 
     def get_sunrise_sunset_data(
         self, num_days_to_display: int
@@ -317,17 +247,13 @@ class ReportingManager:
         df4.index = [df4.index.date, df4.index.time]
         day_hour_freq = df4.unstack().fillna(0)
 
-        # These methods are from PlottingManager and should be called from there
-        # For now, keeping them here as a placeholder
-        from managers.plotting_manager import PlottingManager
-
-        plotting_manager = PlottingManager()
-
         saved_time_labels = [
-            plotting_manager.hms_to_str(h) for h in day_hour_freq.columns.tolist()
+            self.data_preparation_manager.hms_to_str(h)
+            for h in day_hour_freq.columns.tolist()
         ]
         fig_dec_y = [
-            plotting_manager.hms_to_dec(h) for h in day_hour_freq.columns.tolist()
+            self.data_preparation_manager.hms_to_dec(h)
+            for h in day_hour_freq.columns.tolist()
         ]
         fig_x = [d.strftime("%d-%m-%Y") for d in day_hour_freq.index.tolist()]
 

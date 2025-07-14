@@ -1,6 +1,7 @@
 import csv
 from datetime import datetime
 
+from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
@@ -111,6 +112,165 @@ class DatabaseService:
         except SQLAlchemyError as e:
             db.rollback()
             print(f"Error clearing database: {e}")
+            raise
+        finally:
+            db.close()
+
+    def get_detection_counts_by_date_range(
+        self, start_date: datetime, end_date: datetime
+    ) -> dict:
+        """Get total detection count and unique species count within a date range."""
+        db = self.session_local()
+        try:
+            total_count = (
+                db.query(Detection)
+                .filter(Detection.timestamp.between(start_date, end_date))
+                .count()
+            )
+            unique_species_count = (
+                db.query(Detection.com_name)
+                .filter(Detection.timestamp.between(start_date, end_date))
+                .distinct()
+                .count()
+            )
+            return {"total_count": total_count, "unique_species": unique_species_count}
+        except SQLAlchemyError as e:
+            print(f"Error getting detection counts by date range: {e}")
+            raise
+        finally:
+            db.close()
+
+    def get_top_species_with_prior_counts(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        prior_start_date: datetime,
+        prior_end_date: datetime,
+    ) -> list[dict]:
+        """Fetch the top 10 species for the current week and their counts from the prior week."""
+        db = self.session_local()
+        try:
+            current_week_subquery = (
+                db.query(
+                    Detection.com_name,
+                    func.count(Detection.com_name).label("current_count"),
+                )
+                .filter(Detection.timestamp.between(start_date, end_date))
+                .group_by(Detection.com_name)
+                .subquery()
+            )
+
+            prior_week_subquery = (
+                db.query(
+                    Detection.com_name,
+                    func.count(Detection.com_name).label("prior_count"),
+                )
+                .filter(Detection.timestamp.between(prior_start_date, prior_end_date))
+                .group_by(Detection.com_name)
+                .subquery()
+            )
+
+            results = (
+                db.query(
+                    current_week_subquery.c.com_name,
+                    current_week_subquery.c.current_count,
+                    func.coalesce(prior_week_subquery.c.prior_count, 0).label(
+                        "prior_count"
+                    ),
+                )
+                .outerjoin(
+                    prior_week_subquery,
+                    current_week_subquery.c.com_name == prior_week_subquery.c.com_name,
+                )
+                .order_by(current_week_subquery.c.current_count.desc())
+                .limit(10)
+                .all()
+            )
+
+            return [
+                {
+                    "com_name": row.com_name,
+                    "current_count": row.current_count,
+                    "prior_count": row.prior_count,
+                }
+                for row in results
+            ]
+        except SQLAlchemyError as e:
+            print(f"Error getting top species with prior counts: {e}")
+            raise
+        finally:
+            db.close()
+
+    def get_new_species_data(
+        self, start_date: datetime, end_date: datetime
+    ) -> list[dict]:
+        """Fetch new species detected in the current week that were not present in prior data."""
+        db = self.session_local()
+        try:
+            # Subquery to find all species detected before the start_date
+            prior_species_subquery = (
+                db.query(Detection.com_name)
+                .filter(Detection.timestamp < start_date)
+                .distinct()
+                .subquery()
+            )
+
+            # Query for new species in the current range, excluding those in the prior_species_subquery
+            new_species_results = (
+                db.query(
+                    Detection.com_name, func.count(Detection.com_name).label("count")
+                )
+                .filter(
+                    Detection.timestamp.between(start_date, end_date),
+                    ~Detection.com_name.in_(prior_species_subquery),
+                )
+                .group_by(Detection.com_name)
+                .order_by(func.count(Detection.com_name).desc())
+                .all()
+            )
+
+            return [
+                {"com_name": row.com_name, "count": row.count}
+                for row in new_species_results
+            ]
+        except SQLAlchemyError as e:
+            print(f"Error getting new species data: {e}")
+            raise
+        finally:
+            db.close()
+
+    def get_most_recent_detections(self, limit: int = 10) -> list[dict]:
+        """Retrieve the most recent detection records from the database."""
+        db = self.session_local()
+        try:
+            recent_detections = (
+                db.query(Detection)
+                .order_by(Detection.timestamp.desc())
+                .limit(limit)
+                .all()
+            )
+            return [
+                {
+                    "Date": d.timestamp.strftime("%Y-%m-%d"),
+                    "Time": d.timestamp.strftime("%H:%M:%S"),
+                    "Sci_Name": (
+                        d.species.split(" (")[1][:-1] if " (" in d.species else ""
+                    ),
+                    "Com_Name": (
+                        d.species.split(" (")[0] if " (" in d.species else d.species
+                    ),
+                    "Confidence": d.confidence,
+                    "Lat": d.latitude,
+                    "Lon": d.longitude,
+                    "Cutoff": d.cutoff,
+                    "Week": d.week,
+                    "Sens": d.sensitivity,
+                    "Overlap": d.overlap,
+                }
+                for d in recent_detections
+            ]
+        except SQLAlchemyError as e:
+            print(f"Error getting most recent detections: {e}")
             raise
         finally:
             db.close()

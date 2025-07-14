@@ -1,44 +1,16 @@
-import datetime
-
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+from managers.data_preparation_manager import DataPreparationManager
 
 
 class PlottingManager:
     """Manages the creation and manipulation of various plots and visualizations."""
 
     def __init__(self) -> None:
-        pass
-
-    @staticmethod
-    def hms_to_dec(time_obj: datetime.time) -> float:
-        """Convert a datetime.time object to its decimal hour representation."""
-        hour = time_obj.hour
-        minute = time_obj.minute / 60
-        second = time_obj.second / 3600
-        result = hour + minute + second
-        return result
-
-    @staticmethod
-    def hms_to_str(time_obj: datetime.time) -> str:
-        """Convert a datetime.time object to a formatted string (HH:MM)."""
-        hour = time_obj.hour
-        minute = time_obj.minute
-        return f"{hour:02d}:{minute:02d}"
-
-    def get_species_counts(self, df: pd.DataFrame) -> pd.Series:
-        """Calculate the counts of each common name in the DataFrame."""
-        return df["Com_Name"].value_counts()
-
-    def get_hourly_crosstab(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Generate a crosstabulation of common names by hour."""
-        return pd.crosstab(df["Com_Name"], df.index.hour, dropna=True, margins=True)
-
-    def get_daily_crosstab(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Generate a crosstabulation of common names by date."""
-        return pd.crosstab(df["Com_Name"], df.index.date, dropna=True, margins=True)
+        self.data_preparation_manager = DataPreparationManager()
 
     def _add_polar_trace_to_figure(
         self, fig: go.Figure, hourly: pd.DataFrame, species: str
@@ -97,7 +69,7 @@ class PlottingManager:
 
         # Assuming get_daily_crosstab is now in ReportingManager and passed as part of df5 or similar
         # For now, keeping it as a method that takes df5
-        daily_crosstab = self.get_daily_crosstab(
+        daily_crosstab = self.data_preparation_manager.get_daily_crosstab(
             df5
         )  # This method should be moved to ReportingManager
 
@@ -226,28 +198,6 @@ class PlottingManager:
         fig = self._update_daily_plot_layout(fig, saved_time_labels, day_hour_freq)
         return fig
 
-    # These methods are for data preparation and should be moved to ReportingManager
-    def _prepare_multi_day_plot_data(
-        self, df: pd.DataFrame, resample_sel: str, specie: str, top_n: int
-    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, int]:
-        """Prepare data for the multi-day species and hourly plot."""
-        df5 = self.time_resample(df, resample_sel)
-        hourly = self.get_hourly_crosstab(df5)
-        top_n_species = self.get_species_counts(df5)[:top_n]
-
-        df_counts = int(hourly[hourly.index == specie]["All"].iloc[0])
-        return df5, hourly, top_n_species, df_counts
-
-    def time_resample(self, df: pd.DataFrame, resample_time: str) -> pd.DataFrame:
-        """Resamples the DataFrame based on the given time interval."""
-        if resample_time == "Raw":
-            df_resample = df["Com_Name"]
-        else:
-            df_resample = (
-                df.resample(resample_time)["Com_Name"].aggregate("unique").explode()
-            )
-        return df_resample
-
     def _prepare_sunrise_sunset_data_for_plot(
         self, num_days_to_display: int, fig_x: list[str]
     ) -> tuple[list, list, list, list]:
@@ -313,8 +263,14 @@ class PlottingManager:
         df4.index = [df4.index.date, df4.index.time]
         day_hour_freq = df4.unstack().fillna(0)
 
-        saved_time_labels = [self.hms_to_str(h) for h in day_hour_freq.columns.tolist()]
-        fig_dec_y = [self.hms_to_dec(h) for h in day_hour_freq.columns.tolist()]
+        saved_time_labels = [
+            self.data_preparation_manager.hms_to_str(h)
+            for h in day_hour_freq.columns.tolist()
+        ]
+        fig_dec_y = [
+            self.data_preparation_manager.hms_to_dec(h)
+            for h in day_hour_freq.columns.tolist()
+        ]
         fig_x = [d.strftime("%d-%m-%Y") for d in day_hour_freq.index.tolist()]
 
         return day_hour_freq, saved_time_labels, fig_dec_y, fig_x
