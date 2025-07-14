@@ -16,7 +16,7 @@ def data_preparation_manager():
 def sample_dataframe():
     """Provide a sample DataFrame for testing data preparation methods."""
     data = {
-        "Com_Name": [
+        "com_name": [
             "Common Blackbird",
             "Eurasian Robin",
             "Common Blackbird",
@@ -87,15 +87,15 @@ def test_time_resample_should_resample_dataframe_correctly(
     data_preparation_manager, sample_dataframe
 ):
     """Should resample the DataFrame based on the given time interval."""
-    resampled_df = data_preparation_manager.time_resample(sample_dataframe, "H")
-    assert len(resampled_df) == 5  # Still 5 entries, but now grouped by hour
-    assert resampled_df.iloc[0] == "Common Blackbird"
+    resampled_df = data_preparation_manager.time_resample(sample_dataframe, "h")
+    assert len(resampled_df) == 26
+    assert resampled_df.iloc[0]["com_name"] == "Common Blackbird"
 
 
 def test_time_resample_should_handle_raw_resample(
     data_preparation_manager, sample_dataframe
 ):
-    """Should handle 'Raw' resample option by returning the 'Com_Name' series."""
+    """Should handle 'Raw' resample option by returning the 'com_name' series."""
     resampled_df = data_preparation_manager.time_resample(sample_dataframe, "Raw")
-    assert isinstance(resampled_df, pd.Series)
-    assert resampled_df.iloc[0] == "Common Blackbird"
+    assert isinstance(resampled_df, pd.DataFrame)
+    assert resampled_df.iloc[0]["com_name"] == "Common Blackbird"

@@ -2,7 +2,6 @@ import datetime
 from typing import Any
 
 import pandas as pd
-from suntime import Sun
 
 from managers.data_preparation_manager import DataPreparationManager
 from managers.database_manager import DatabaseManager
@@ -192,52 +191,6 @@ class ReportingManager:
         )
         df = df[filt]
         return df
-
-    def get_sunrise_sunset_data(
-        self, num_days_to_display: int
-    ) -> tuple[list[Any], list[Any], list[Any]]:
-        """Retrieve sunrise and sunset data for a given number of days."""
-        latitude = self.config.latitude
-        longitude = self.config.longitude
-
-        sun = Sun(latitude, longitude)
-
-        sunrise_list = []
-        sunset_list = []
-        sunrise_week_list = []
-        sunset_week_list = []
-        sunrise_text_list = []
-        sunset_text_list = []
-
-        now = datetime.datetime.now()
-
-        for past_day in range(num_days_to_display):
-            d = datetime.timedelta(days=num_days_to_display - past_day - 1)
-
-            current_date = now - d
-            sun_rise = sun.get_local_sunrise_time(current_date)
-            sun_dusk = sun.get_local_sunset_time(current_date)
-
-            sun_rise_time = float(sun_rise.hour) + float(sun_rise.minute) / 60.0
-            sun_dusk_time = float(sun_dusk.hour) + float(sun_dusk.minute) / 60.0
-
-            temp_time = str(sun_rise)[-14:-9] + " Sunrise"
-            sunrise_text_list.append(temp_time)
-            temp_time = str(sun_dusk)[-14:-9] + " Sunset"
-            sunset_text_list.append(temp_time)
-            sunrise_list.append(sun_rise_time)
-            sunset_list.append(sun_dusk_time)
-            sunrise_week_list.append(past_day)
-            sunset_week_list.append(past_day)
-
-        sunrise_week_list.append(None)
-        sunrise_list.append(None)
-        sunrise_text_list.append(None)
-        sunrise_list.extend(sunset_list)
-        sunrise_week_list.extend(sunset_week_list)
-        sunrise_text_list.extend(sunset_text_list)
-
-        return sunrise_week_list, sunrise_list, sunrise_text_list
 
     def get_daily_detection_data_for_plotting(
         self, df: pd.DataFrame, resample_sel: str, specie: str

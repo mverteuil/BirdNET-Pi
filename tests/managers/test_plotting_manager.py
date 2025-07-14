@@ -25,7 +25,7 @@ def plotting_manager(mock_data_preparation_manager):
 def sample_dataframe():
     """Provide a sample DataFrame for testing plotting methods."""
     data = {
-        "Com_Name": [
+        "com_name": [
             "Common Blackbird",
             "Eurasian Robin",
             "Common Blackbird",
@@ -67,11 +67,16 @@ def test_create_multi_day_plot_figure_should_return_figure(
     top_n_species = pd.Series([5, 3], index=["SpeciesA", "SpeciesB"])
     hourly = pd.DataFrame({"All": [1, 2, 3]}, index=[0, 1, 2])
     species = "SpeciesA"
-    df5 = pd.DataFrame()
+    df5 = pd.DataFrame(
+        {
+            "com_name": ["SpeciesA", "SpeciesB"],
+            "DateTime": [datetime.datetime(2023, 1, 1), datetime.datetime(2023, 1, 2)],
+        }
+    ).set_index("DateTime")
 
     # Mock the delegated calls
-    mock_data_preparation_manager.get_daily_crosstab.return_value = pd.DataFrame(
-        {"All": [1, 2, 3]}, index=["SpeciesA", "SpeciesB"]
+    mock_data_preparation_manager.get_hourly_crosstab.return_value = pd.DataFrame(
+        {"All": [1, 2]}, index=["SpeciesA", "SpeciesB"]
     )
 
     fig = plotting_manager._create_multi_day_plot_figure(
@@ -99,13 +104,31 @@ def test_generate_multi_day_species_and_hourly_plot_should_return_figure(
     top_n = 3
     species = "Common Blackbird"
 
-    # Mock the delegated calls from _prepare_multi_day_plot_data
-    mock_data_preparation_manager.time_resample.return_value = df
-    mock_data_preparation_manager.get_hourly_crosstab.return_value = pd.DataFrame(
-        {"All": [1, 2, 3]}, index=[0, 1, 2]
-    )
-    mock_data_preparation_manager.get_species_counts.return_value = pd.Series(
-        [5, 3], index=["SpeciesA", "SpeciesB"]
+    # Mock the internal data preparation method that PlottingManager calls
+    mock_data_preparation_manager.prepare_multi_day_plot_data.return_value = (
+        pd.DataFrame(
+            {
+                "com_name": [
+                    "Common Blackbird",
+                    "Eurasian Robin",
+                    "Common Blackbird",
+                    "Eurasian Robin",
+                    "House Sparrow",
+                ],
+                "DateTime": [
+                    datetime.datetime(2023, 1, 1, 8, 0, 0),
+                    datetime.datetime(2023, 1, 1, 9, 0, 0),
+                    datetime.datetime(2023, 1, 1, 10, 0, 0),
+                    datetime.datetime(2023, 1, 2, 8, 0, 0),
+                    datetime.datetime(2023, 1, 2, 9, 0, 0),
+                ],
+            }
+        )
+        .set_index("DateTime")
+        .reset_index(),
+        pd.DataFrame({"All": [1, 2, 3]}, index=[0, 1, 2]),
+        pd.Series([5, 3], index=["SpeciesA", "SpeciesB"]),
+        10,
     )
 
     fig = plotting_manager.generate_multi_day_species_and_hourly_plot(
@@ -160,9 +183,19 @@ def test_generate_daily_detections_plot_should_return_figure(
     num_days_to_display = 7
     selected_pal = "Viridis"
 
-    # Mock the delegated calls from _prepare_daily_plot_data
-    mock_data_preparation_manager.hms_to_str.return_value = "08:00"
-    mock_data_preparation_manager.hms_to_dec.return_value = 8.0
+    # Mock the internal data preparation method that PlottingManager calls
+    mock_data_preparation_manager.prepare_daily_plot_data.return_value = (
+        pd.DataFrame(),
+        [],
+        [],
+        [],
+    )
+    mock_data_preparation_manager.prepare_sunrise_sunset_data_for_plot.return_value = (
+        [],
+        [],
+        [],
+        [],
+    )
 
     fig = plotting_manager.generate_daily_detections_plot(
         df, resample_sel, start_date, species, num_days_to_display, selected_pal
