@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
+from managers.database_manager import DatabaseManager
 from models.database_models import Detection
-from services.database_manager import DatabaseManager
 
 
 @pytest.fixture
@@ -17,10 +17,10 @@ def mock_db_path():
 def db_manager(mock_db_path):
     """Provide a DatabaseManager instance with mocked dependencies."""
     with (
-        patch("services.database_manager.os.makedirs"),
-        patch("services.database_manager.create_engine") as mock_create_engine,
-        patch("services.database_manager.Base.metadata.create_all"),
-        patch("services.database_manager.sessionmaker") as mock_sessionmaker,
+        patch("managers.database_manager.os.makedirs"),
+        patch("managers.database_manager.create_engine") as mock_create_engine,
+        patch("managers.database_manager.Base.metadata.create_all"),
+        patch("managers.database_manager.sessionmaker") as mock_sessionmaker,
     ):
 
         manager = DatabaseManager(db_path=mock_db_path)
@@ -55,7 +55,7 @@ def test_initialize_database_success(db_manager, mock_db_path):
 
 
 @patch(
-    "services.database_manager.os.makedirs", side_effect=SQLAlchemyError("Test Error")
+    "managers.database_manager.os.makedirs", side_effect=SQLAlchemyError("Test Error")
 )
 def test_initialize_database_failure(
     mock_makedirs,

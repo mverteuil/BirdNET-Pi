@@ -24,8 +24,26 @@ class ReportingManager:
 
     def get_data(self) -> pd.DataFrame:
         """Retrieve all detection data from the database and format it into a DataFrame."""
-        df = self.db_manager.get_all_detections()
-        df["DateTime"] = pd.to_datetime(df["Date"] + " " + df["Time"])
+        detections = self.db_manager.get_all_detections()
+        data = [
+            {
+                "Com_Name": d.com_name,
+                "DateTime": d.timestamp,
+                "Date": d.timestamp.strftime("%Y-%m-%d"),
+                "Time": d.timestamp.strftime("%H:%M:%S"),
+                "Sci_Name": d.species.split(" (")[1][:-1] if " (" in d.species else "",
+                "Confidence": d.confidence,
+                "Lat": d.latitude,
+                "Lon": d.longitude,
+                "Cutoff": d.cutoff,
+                "Week": d.week,
+                "Sens": d.sensitivity,
+                "Overlap": d.overlap,
+            }
+            for d in detections
+        ]
+        df = pd.DataFrame(data)
+        df["DateTime"] = pd.to_datetime(df["DateTime"])
         df = df.set_index("DateTime")
         return df
 
@@ -196,7 +214,7 @@ class ReportingManager:
         self, df: pd.DataFrame, resample_sel: str, specie: str
     ) -> tuple[pd.DataFrame, list[str], list[float], list[str]]:
         """Prepare daily detection data for plotting."""
-        df4 = df["Com_Name"][df["Com_Name"] == specie].resample("15min").count()
+        df4 = df["com_name"][df["com_name"] == specie].resample("15min").count()
         df4.index = [df4.index.date, df4.index.time]
         day_hour_freq = df4.unstack().fillna(0)
 

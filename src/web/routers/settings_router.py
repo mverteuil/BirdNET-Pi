@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Form, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.status import HTTP_303_SEE_OTHER
@@ -14,7 +14,7 @@ file_path_resolver = FilePathResolver()
 
 
 @router.get("/settings", response_class=HTMLResponse)
-async def get_settings(request: Request) -> Jinja2Templates.TemplateResponse:
+async def get_settings(request: Request) -> Response:
     """Render the settings page with the current configuration."""
     config_parser = ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path())
     app_config: BirdNETConfig = config_parser.load_config()

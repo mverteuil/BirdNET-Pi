@@ -94,10 +94,10 @@ class PlottingManager:
         species: str,
     ) -> go.Figure:
         """Generate a multi-day species and hourly plot."""
-        # _prepare_multi_day_plot_data should be in ReportingManager and its output passed here
-        # For now, keeping it as a method that takes df, resample_sel, species, top_n
-        df5, hourly, top_n_species, df_counts = self._prepare_multi_day_plot_data(
-            df, resample_sel, species, top_n
+        df5, hourly, top_n_species, df_counts = (
+            self.data_preparation_manager.prepare_multi_day_plot_data(
+                df, resample_sel, species, top_n
+            )
         )
 
         fig = self._create_multi_day_plot_figure(
@@ -153,7 +153,7 @@ class PlottingManager:
     ) -> go.Figure:
         """Update the layout of the daily detections plot, specifically the y-axis ticks."""
         number_of_y_ticks = 12
-        y_downscale_factor = int(len(saved_time_labels) / number_of_y_ticks)
+        y_downscale_factor = max(1, int(len(saved_time_labels) / number_of_y_ticks))
         fig.update_layout(
             yaxis={
                 "tickmode": "array",
@@ -175,14 +175,18 @@ class PlottingManager:
     ) -> go.Figure:
         """Generate a daily detections plot."""
         day_hour_freq, saved_time_labels, fig_dec_y, fig_x = (
-            self._prepare_daily_plot_data(df, resample_sel, species)
+            self.data_preparation_manager.prepare_daily_plot_data(
+                df, resample_sel, species
+            )
         )
 
         day_hour_freq.columns = fig_dec_y
         fig_z = day_hour_freq.values.transpose()
 
         sunrise_week_list, sunrise_list, sunrise_text_list, daysback_range = (
-            self._prepare_sunrise_sunset_data_for_plot(num_days_to_display, fig_x)
+            self.data_preparation_manager.prepare_sunrise_sunset_data_for_plot(
+                num_days_to_display, fig_x
+            )
         )
 
         fig = self._create_daily_detections_heatmap(
@@ -197,80 +201,3 @@ class PlottingManager:
 
         fig = self._update_daily_plot_layout(fig, saved_time_labels, day_hour_freq)
         return fig
-
-    def _prepare_sunrise_sunset_data_for_plot(
-        self, num_days_to_display: int, fig_x: list[str]
-    ) -> tuple[list, list, list, list]:
-        """Prepare sunrise and sunset data for plotting."""
-        # This method relies on get_sunrise_sunset_data which should be in ReportingManager
-        # For now, keeping it here as a placeholder
-        sunrise_week_list, sunrise_list, sunrise_text_list = (
-            self.get_sunrise_sunset_data(num_days_to_display)
-        )
-        daysback_range = fig_x
-        daysback_range.append(None)
-        daysback_range.extend(daysback_range)
-        daysback_range = daysback_range[:-1]
-        return sunrise_week_list, sunrise_list, sunrise_text_list, daysback_range
-
-    def get_sunrise_sunset_data(
-        self, num_days_to_display: int
-    ) -> tuple[list, list, list]:
-        """Retrieve sunrise and sunset data for a given number of days."""
-        # This method relies on self.config which PlottingManager should not have
-        # For now, keeping it here as a placeholder
-
-        # sun = Sun(latitude, longitude) # Sun import removed from PlottingManager
-
-        sunrise_list = []
-        sunset_list = []
-        sunrise_week_list = []
-        sunset_week_list = []
-        sunrise_text_list = []
-        sunset_text_list = []
-
-        for past_day in range(num_days_to_display):
-
-            # sun_rise = sun.get_local_sunrise_time(current_date) # Sun import removed
-            # sun_dusk = sun.get_local_sunset_time(current_date) # Sun import removed
-
-            sun_rise_time = 0.0  # Placeholder
-            sun_dusk_time = 0.0  # Placeholder
-
-            temp_time = "00:00 Sunrise"  # Placeholder
-            sunrise_text_list.append(temp_time)
-            temp_time = "00:00 Sunset"  # Placeholder
-            sunset_text_list.append(temp_time)
-            sunrise_list.append(sun_rise_time)
-            sunset_list.append(sun_dusk_time)
-            sunrise_week_list.append(past_day)
-            sunset_week_list.append(past_day)
-
-        sunrise_week_list.append(None)
-        sunrise_list.append(None)
-        sunrise_text_list.append(None)
-        sunrise_list.extend(sunset_list)
-        sunrise_week_list.extend(sunset_week_list)
-        sunrise_text_list.extend(sunset_text_list)
-
-        return sunrise_week_list, sunrise_list, sunrise_text_list
-
-    def _prepare_daily_plot_data(
-        self, df: pd.DataFrame, resample_sel: str, specie: str
-    ) -> tuple[pd.DataFrame, list[str], list[float], list[str]]:
-        """Prepare data for the daily detections plot."""
-        df4 = df["Com_Name"][df["Com_Name"] == specie].resample("15min").count()
-        df4.index = [df4.index.date, df4.index.time]
-        day_hour_freq = df4.unstack().fillna(0)
-
-        saved_time_labels = [
-            self.data_preparation_manager.hms_to_str(h)
-            for h in day_hour_freq.columns.tolist()
-        ]
-        fig_dec_y = [
-            self.data_preparation_manager.hms_to_dec(h)
-            for h in day_hour_freq.columns.tolist()
-        ]
-        fig_x = [d.strftime("%d-%m-%Y") for d in day_hour_freq.index.tolist()]
-
-        return day_hour_freq, saved_time_labels, fig_dec_y, fig_x

@@ -4,8 +4,8 @@ from unittest.mock import Mock, patch
 import pytest
 
 from managers.data_manager import DataManager
+from managers.database_manager import DatabaseManager
 from models.birdnet_config import BirdNETConfig, DataConfig
-from services.database_manager import DatabaseManager
 from services.file_manager import FileManager
 
 
