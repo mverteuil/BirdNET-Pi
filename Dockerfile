@@ -72,6 +72,8 @@ RUN chmod +x /usr/local/bin/install_deps.sh && install_deps.sh
 # Create dedicated user for BirdNET-Pi and set up directories/permissions
 RUN useradd -m -s /bin/bash birdnetpi &&     usermod -aG audio,video,dialout birdnetpi &&     mkdir -p /var/log /app/tmp /var/log/supervisor &&     chmod 777 /var/log &&     chown birdnetpi:birdnetpi /app/tmp /var/log/supervisor
 
+RUN mkdir -p /var/run/supervisor && chown birdnetpi:birdnetpi /var/run/supervisor
+
 # Copy application code to runtime stage
 COPY . /app
 RUN chown -R birdnetpi:birdnetpi /app
