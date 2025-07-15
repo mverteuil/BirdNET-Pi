@@ -34,6 +34,26 @@ class ServiceManager:
         except FileNotFoundError:
             print("Error: systemctl command not found. Is systemd installed?")
 
+    def enable_service(self, service_name: str) -> None:
+        """Enable a specified system service."""
+        try:
+            subprocess.run(["sudo", "systemctl", "enable", service_name], check=True)
+            print(f"Service {service_name} enabled successfully.")
+        except subprocess.CalledProcessError as e:
+            print(f"Error enabling service {service_name}: {e}")
+        except FileNotFoundError:
+            print("Error: systemctl command not found. Is systemd installed?")
+
+    def disable_service(self, service_name: str) -> None:
+        """Disable a specified system service."""
+        try:
+            subprocess.run(["sudo", "systemctl", "disable", service_name], check=True)
+            print(f"Service {service_name} disabled successfully.")
+        except subprocess.CalledProcessError as e:
+            print(f"Error disabling service {service_name}: {e}")
+        except FileNotFoundError:
+            print("Error: systemctl command not found. Is systemd installed?")
+
     def restart_services(self, services: list[str]) -> None:
         """Restarts a list of specified system services."""
         for service in services:

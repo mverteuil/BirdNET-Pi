@@ -1,10 +1,12 @@
 import argparse
 
-from .managers.audio_manager import AudioManager
-from .utils.config_file_parser import ConfigFileParser
-from .utils.file_path_resolver import FilePathResolver
+from birdnetpi.managers.audio_manager import AudioManager
+from birdnetpi.utils.config_file_parser import ConfigFileParser
+from birdnetpi.utils.file_path_resolver import FilePathResolver
 
-if __name__ == "__main__":
+
+def main_cli() -> None:
+    """Provide the main entry point for the Audio Manager Wrapper CLI."""
     parser = argparse.ArgumentParser(description="Audio Manager Wrapper")
     parser.add_argument(
         "action",
@@ -21,10 +23,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # This is a placeholder for where the config would be loaded
-    # In a real application, this would be handled by a config loader
     file_path_resolver = FilePathResolver()
-    config = ConfigFileParser(file_path_resolver.get_birdnet_conf_path()).parse()
+    config = ConfigFileParser(
+        file_path_resolver.get_birdnet_pi_config_path()
+    ).load_config()
 
     audio_manager = AudioManager(config)
 
@@ -42,3 +44,7 @@ if __name__ == "__main__":
         audio_manager.livestream(args.output_url)
     else:
         parser.error(f"Unknown action: {args.action}")
+
+
+if __name__ == "__main__":
+    main_cli()

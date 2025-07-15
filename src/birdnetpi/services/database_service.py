@@ -41,6 +41,43 @@ class DatabaseService:
         finally:
             db.close()
 
+    def get_detection(self, detection_id: int) -> Detection:
+        """Retrieve a single detection record from the database."""
+        db = self.session_local()
+        try:
+            return db.query(Detection).get(detection_id)
+        except SQLAlchemyError as e:
+            print(f"Error retrieving detection: {e}")
+            raise
+        finally:
+            db.close()
+
+    def delete_detection(self, detection_id: int) -> None:
+        """Delete a detection record from the database."""
+        db = self.session_local()
+        try:
+            detection = db.query(Detection).get(detection_id)
+            if detection:
+                db.delete(detection)
+                db.commit()
+        except SQLAlchemyError as e:
+            db.rollback()
+            print(f"Error deleting detection: {e}")
+            raise
+        finally:
+            db.close()
+
+    def get_detections_by_species(self, species_name: str) -> list[Detection]:
+        """Retrieve all detection records for a given species from the database."""
+        db = self.session_local()
+        try:
+            return db.query(Detection).filter_by(species=species_name).all()
+        except SQLAlchemyError as e:
+            print(f"Error retrieving detections by species: {e}")
+            raise
+        finally:
+            db.close()
+
     def import_detections_from_csv(self, csv_file_path: str) -> None:
         """Import detection records from a CSV file into the database."""
         db = self.session_local()
@@ -128,7 +165,7 @@ class DatabaseService:
                 .count()
             )
             unique_species_count = (
-                db.query(Detection.com_name)
+                db.query(Detection.species)
                 .filter(Detection.timestamp.between(start_date, end_date))
                 .distinct()
                 .count()
@@ -152,27 +189,27 @@ class DatabaseService:
         try:
             current_week_subquery = (
                 db.query(
-                    Detection.com_name,
-                    func.count(Detection.com_name).label("current_count"),
+                    Detection.species,
+                    func.count(Detection.species).label("current_count"),
                 )
                 .filter(Detection.timestamp.between(start_date, end_date))
-                .group_by(Detection.com_name)
+                .group_by(Detection.species)
                 .subquery()
             )
 
             prior_week_subquery = (
                 db.query(
-                    Detection.com_name,
-                    func.count(Detection.com_name).label("prior_count"),
+                    Detection.species,
+                    func.count(Detection.species).label("prior_count"),
                 )
                 .filter(Detection.timestamp.between(prior_start_date, prior_end_date))
-                .group_by(Detection.com_name)
+                .group_by(Detection.species)
                 .subquery()
             )
 
             results = (
                 db.query(
-                    current_week_subquery.c.com_name,
+                    current_week_subquery.c.species,
                     current_week_subquery.c.current_count,
                     func.coalesce(prior_week_subquery.c.prior_count, 0).label(
                         "prior_count"
@@ -180,7 +217,7 @@ class DatabaseService:
                 )
                 .outerjoin(
                     prior_week_subquery,
-                    current_week_subquery.c.com_name == prior_week_subquery.c.com_name,
+                    current_week_subquery.c.species == prior_week_subquery.c.species,
                 )
                 .order_by(current_week_subquery.c.current_count.desc())
                 .limit(10)
@@ -189,7 +226,7 @@ class DatabaseService:
 
             return [
                 {
-                    "com_name": row.com_name,
+                    "species": row.species,
                     "current_count": row.current_count,
                     "prior_count": row.prior_count,
                 }
@@ -209,7 +246,7 @@ class DatabaseService:
         try:
             # Subquery to find all species detected before the start_date
             prior_species_subquery = (
-                db.query(Detection.com_name)
+                db.query(Detection.species)
                 .filter(Detection.timestamp < start_date)
                 .distinct()
                 .subquery()
@@ -218,19 +255,19 @@ class DatabaseService:
             # Query for new species in the current range, excluding those in the prior_species_subquery
             new_species_results = (
                 db.query(
-                    Detection.com_name, func.count(Detection.com_name).label("count")
+                    Detection.species, func.count(Detection.species).label("count")
                 )
                 .filter(
                     Detection.timestamp.between(start_date, end_date),
-                    ~Detection.com_name.in_(prior_species_subquery),
+                    ~Detection.species.in_(prior_species_subquery),
                 )
-                .group_by(Detection.com_name)
-                .order_by(func.count(Detection.com_name).desc())
+                .group_by(Detection.species)
+                .order_by(func.count(Detection.species).desc())
                 .all()
             )
 
             return [
-                {"com_name": row.com_name, "count": row.count}
+                {"species": row.species, "count": row.count}
                 for row in new_species_results
             ]
         except SQLAlchemyError as e:

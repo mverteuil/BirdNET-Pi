@@ -1,8 +1,10 @@
 import argparse
 
-from .managers.service_manager import ServiceManager
+from birdnetpi.managers.service_manager import ServiceManager
 
-if __name__ == "__main__":
+
+def main_cli() -> None:
+    """Provide the main entry point for the Service Manager Wrapper CLI."""
     parser = argparse.ArgumentParser(description="Service Manager Wrapper")
     parser.add_argument(
         "action", type=str, help="Action to perform (e.g., restart_services)"
@@ -21,3 +23,7 @@ if __name__ == "__main__":
         service_manager.restart_services(args.services)
     else:
         parser.error(f"Unknown action: {args.action}")
+
+
+if __name__ == "__main__":
+    main_cli()

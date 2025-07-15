@@ -1,10 +1,12 @@
 import argparse
 
-from .services.notification_service import NotificationService
-from .utils.config_file_parser import ConfigFileParser
-from .utils.file_path_resolver import FilePathResolver
+from birdnetpi.services.notification_service import NotificationService
+from birdnetpi.utils.config_file_parser import ConfigFileParser
+from birdnetpi.utils.file_path_resolver import FilePathResolver
 
-if __name__ == "__main__":
+
+def main_cli() -> None:
+    """Provide the main entry point for the Notification Service Wrapper CLI."""
     parser = argparse.ArgumentParser(description="Notification Service Wrapper")
     parser.add_argument(
         "action", type=str, help="Action to perform (e.g., species_notifier)"
@@ -15,7 +17,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     file_path_resolver = FilePathResolver()
-    config = ConfigFileParser(file_path_resolver.get_birdnet_conf_path()).parse()
+    config = ConfigFileParser(
+        file_path_resolver.get_birdnet_pi_config_path()
+    ).load_config()
     notification_service = NotificationService(config)
 
     if args.action == "species_notifier":
@@ -27,3 +31,7 @@ if __name__ == "__main__":
         notification_service.species_notifier(args.species_name, args.confidence)
     else:
         parser.error(f"Unknown action: {args.action}")
+
+
+if __name__ == "__main__":
+    main_cli()

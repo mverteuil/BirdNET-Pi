@@ -7,8 +7,9 @@ class UpdateManager:
     """Manages updates and Git operations for the BirdNET-Pi repository."""
 
     def __init__(self) -> None:
-        script_dir = os.path.dirname(__file__)
-        self.repo_path = os.path.abspath(os.path.join(script_dir, "..", ".."))
+        self.repo_path = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "..", "..")
+        )
 
     def get_commits_behind(self) -> int:
         """Check how many commits the local repository is behind the remote."""

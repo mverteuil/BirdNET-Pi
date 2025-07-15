@@ -1,11 +1,13 @@
 import argparse
 
-from .managers.reporting_manager import ReportingManager
-from .services.database_manager import DatabaseManager
-from .utils.config_file_parser import ConfigFileParser
-from .utils.file_path_resolver import FilePathResolver
+from birdnetpi.managers.database_manager import DatabaseManager
+from birdnetpi.managers.reporting_manager import ReportingManager
+from birdnetpi.utils.config_file_parser import ConfigFileParser
+from birdnetpi.utils.file_path_resolver import FilePathResolver
 
-if __name__ == "__main__":
+
+def main_cli() -> None:
+    """Provide the main entry point for the Reporting Manager Wrapper CLI."""
     parser = argparse.ArgumentParser(description="Reporting Manager Wrapper")
     parser.add_argument(
         "action", type=str, help="Action to perform (e.g., most_recent, spectrogram)"
@@ -25,7 +27,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     file_path_resolver = FilePathResolver()
-    config = ConfigFileParser(file_path_resolver.get_birdnet_conf_path()).parse()
+    config = ConfigFileParser(
+        file_path_resolver.get_birdnet_pi_config_path()
+    ).load_config()
     db_manager = DatabaseManager(config.database.path)
 
     reporting_manager = ReportingManager(db_manager)
@@ -42,3 +46,7 @@ if __name__ == "__main__":
         reporting_manager.generate_spectrogram(args.audio_file, args.output_image)
     else:
         parser.error(f"Unknown action: {args.action}")
+
+
+if __name__ == "__main__":
+    main_cli()

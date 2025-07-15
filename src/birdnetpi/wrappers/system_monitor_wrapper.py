@@ -1,9 +1,11 @@
 import argparse
 import sys
 
-from .managers.system_monitor import SystemMonitor
+from birdnetpi.managers.system_monitor import SystemMonitor
 
-if __name__ == "__main__":
+
+def main_cli() -> None:
+    """Provide the main entry point for the System Monitor Wrapper CLI."""
     parser = argparse.ArgumentParser(description="System Monitor Wrapper")
     parser.add_argument(
         "action", type=str, help="Action to perform (e.g., disk_check, dump_logs)"
@@ -40,3 +42,7 @@ if __name__ == "__main__":
             print(f"{key}: {value}")
     else:
         parser.error(f"Unknown action: {args.action}")
+
+
+if __name__ == "__main__":
+    main_cli()
