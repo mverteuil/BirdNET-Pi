@@ -45,7 +45,19 @@ class DatabaseManager:
 
     def add_detection(self, detection_data: dict) -> Detection:
         """Add a new detection record to the database."""
-        return self.db_service.add_detection(detection_data)
+        db = self.SessionLocal()
+        try:
+            detection = Detection(**detection_data)
+            db.add(detection)
+            db.commit()
+            db.refresh(detection)
+            return detection
+        except SQLAlchemyError as e:
+            db.rollback()
+            print(f"Error adding detection: {e}")
+            raise
+        finally:
+            db.close()
 
     def get_all_detections(self) -> list[Detection]:
         """Retrieve all detection records from the database."""

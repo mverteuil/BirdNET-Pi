@@ -14,22 +14,6 @@ class DatabaseService:
     def __init__(self, session_local: sessionmaker):
         self.session_local = session_local
 
-    def add_detection(self, detection_data: dict) -> Detection:
-        """Add a new detection record to the database."""
-        db = self.session_local()
-        try:
-            detection = Detection(**detection_data)
-            db.add(detection)
-            db.commit()
-            db.refresh(detection)
-            return detection
-        except SQLAlchemyError as e:
-            db.rollback()
-            print(f"Error adding detection: {e}")
-            raise
-        finally:
-            db.close()
-
     def get_all_detections(self) -> list[Detection]:
         """Retrieve all detection records from the database."""
         db = self.session_local()
