@@ -1,10 +1,11 @@
 import pytest
 
-from services.birdweather_service import BirdWeatherService
+from birdnetpi.services.birdweather_service import BirdWeatherService
 
 
 @pytest.fixture
-def birdweather_service():
+def birdweather_service() -> BirdWeatherService:
+    """Provide a BirdWeatherService instance for testing."""
     return BirdWeatherService()
 
 

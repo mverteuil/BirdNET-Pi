@@ -3,23 +3,24 @@ from typing import Any
 
 import pandas as pd
 
-from managers.data_preparation_manager import DataPreparationManager
-from managers.database_manager import DatabaseManager
-from utils.config_file_parser import ConfigFileParser
-from utils.file_path_resolver import FilePathResolver
+from birdnetpi.managers.data_preparation_manager import DataPreparationManager
+from birdnetpi.managers.database_manager import DatabaseManager
+from birdnetpi.utils.config_file_parser import ConfigFileParser
+from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
 class ReportingManager:
     """Manages data retrieval, processing, and reporting functionalities."""
 
     def __init__(
-        self, db_manager: DatabaseManager, file_path_resolver: FilePathResolver
+        self,
+        db_manager: DatabaseManager,
+        file_path_resolver: FilePathResolver,
+        config_parser: ConfigFileParser,
     ) -> None:
         self.db_manager = db_manager
         self.file_path_resolver = file_path_resolver
-        self.config = ConfigFileParser(
-            self.file_path_resolver.get_birdnet_pi_config_path()
-        ).load_config()
+        self.config = config_parser.load_config()
         self.data_preparation_manager = DataPreparationManager()
 
     def get_data(self) -> pd.DataFrame:

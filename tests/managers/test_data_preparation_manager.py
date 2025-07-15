@@ -3,7 +3,7 @@ import datetime
 import pandas as pd
 import pytest
 
-from managers.data_preparation_manager import DataPreparationManager
+from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 
 
 @pytest.fixture

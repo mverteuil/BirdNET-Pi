@@ -1,11 +1,14 @@
-from models.birdnet_config import BirdNETConfig
+from birdnetpi.models.birdnet_config import BirdNETConfig
 
 
 class NotificationService:
-    def __init__(self, config: BirdNETConfig):
+    """Manages sending notifications based on detection events."""
+
+    def __init__(self, config: BirdNETConfig) -> None:
         self.config = config
 
-    def species_notifier(self, species_name: str, confidence: float):
+    def species_notifier(self, species_name: str, confidence: float) -> None:
+        """Notify about a new species detection."""
         # Placeholder for actual notification logic
         # This would involve checking config.apprise_input, etc.
         print(

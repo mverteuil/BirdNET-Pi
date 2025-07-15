@@ -3,10 +3,10 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from managers.data_manager import DataManager
-from managers.database_manager import DatabaseManager
-from models.birdnet_config import BirdNETConfig, DataConfig
-from services.file_manager import FileManager
+from birdnetpi.managers.data_manager import DataManager
+from birdnetpi.managers.database_manager import DatabaseManager
+from birdnetpi.models.birdnet_config import BirdNETConfig, DataConfig
+from birdnetpi.services.file_manager import FileManager
 
 
 @pytest.fixture
@@ -56,9 +56,11 @@ def test_cleanup_processed_files_empty_csv(
     ]
     mock_file_manager.file_exists.return_value = True  # Assume WAV file exists
 
-    with patch("managers.data_manager.os.path.getsize") as mock_getsize:
+    with patch("birdnetpi.managers.data_manager.os.path.getsize") as mock_getsize:
         mock_getsize.side_effect = lambda x: 57 if x.endswith(".csv") else 100
-        with patch("managers.data_manager.os.path.getmtime", return_value=1.0):
+        with patch(
+            "birdnetpi.managers.data_manager.os.path.getmtime", return_value=1.0
+        ):
             data_manager.cleanup_processed_files()
 
     mock_file_manager.delete_file.assert_any_call("/mock/processed/test.csv")
@@ -78,11 +80,13 @@ def test_cleanup_processed_files_limit_exceeded(
     mock_file_manager.list_directory_contents.return_value = files
 
     # Mock getmtime to simulate different modification times
-    with patch("managers.data_manager.os.path.getmtime") as mock_getmtime:
+    with patch("birdnetpi.managers.data_manager.os.path.getmtime") as mock_getmtime:
         # Assign unique mtimes to ensure consistent sorting
         mock_getmtime.side_effect = lambda x: float(x.split("_")[1].split(".")[0])
         # Ensure ALL files are NOT considered empty (size > 57)
-        with patch("managers.data_manager.os.path.getsize", return_value=1000):
+        with patch(
+            "birdnetpi.managers.data_manager.os.path.getsize", return_value=1000
+        ):
             data_manager.cleanup_processed_files()
 
     # Expect 20 oldest files (csv and wav) to be deleted
@@ -101,7 +105,7 @@ def test_cleanup_processed_files_limit_exceeded(
     assert mock_file_manager.delete_file.call_count == 140
 
 
-@patch("managers.data_manager.subprocess.run")
+@patch("birdnetpi.managers.data_manager.subprocess.run")
 def test_clear_all_data(
     mock_subprocess_run,
     data_manager,

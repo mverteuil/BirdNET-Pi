@@ -1,4 +1,4 @@
-from services.file_manager import FileManager
+from birdnetpi.services.file_manager import FileManager
 
 
 class AudioManager:

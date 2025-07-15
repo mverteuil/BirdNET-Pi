@@ -1,10 +1,11 @@
 import pytest
 
-from services.analysis_client_service import AnalysisClientService
+from birdnetpi.services.analysis_client_service import AnalysisClientService
 
 
 @pytest.fixture
-def analysis_client_service():
+def analysis_client_service() -> AnalysisClientService:
+    """Provide an AnalysisClientService instance for testing."""
     return AnalysisClientService()
 
 

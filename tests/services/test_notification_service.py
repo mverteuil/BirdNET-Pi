@@ -2,12 +2,13 @@ from unittest.mock import Mock
 
 import pytest
 
-from models.birdnet_config import BirdNETConfig
-from services.notification_service import NotificationService
+from birdnetpi.models.birdnet_config import BirdNETConfig
+from birdnetpi.services.notification_service import NotificationService
 
 
 @pytest.fixture
 def mock_config():
+    """Provide a mock BirdNETConfig instance for testing."""
     config = Mock(spec=BirdNETConfig)
     config.apprise_notify_each_detection = False
     return config
@@ -15,6 +16,7 @@ def mock_config():
 
 @pytest.fixture
 def notification_service(mock_config):
+    """Provide a NotificationService instance for testing."""
     return NotificationService(config=mock_config)
 
 

@@ -2,12 +2,13 @@ from unittest.mock import Mock
 
 import pytest
 
-from services.detection_event_publisher import DetectionEventPublisher
-from utils.signals import detection_event
+from birdnetpi.services.detection_event_publisher import DetectionEventPublisher
+from birdnetpi.utils.signals import detection_event
 
 
 @pytest.fixture
 def publisher():
+    """Provide a DetectionEventPublisher instance for testing."""
     return DetectionEventPublisher()
 
 

@@ -1,10 +1,11 @@
 import pytest
 
-from services.file_manager import FileManager
+from birdnetpi.services.file_manager import FileManager
 
 
 @pytest.fixture
 def file_manager(tmp_path):
+    """Provide a FileManager instance for testing."""
     return FileManager(base_path=str(tmp_path))
 
 

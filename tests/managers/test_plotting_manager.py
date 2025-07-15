@@ -5,8 +5,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
-from managers.data_preparation_manager import DataPreparationManager
-from managers.plotting_manager import PlottingManager
+from birdnetpi.managers.data_preparation_manager import DataPreparationManager
+from birdnetpi.managers.plotting_manager import PlottingManager
 
 
 @pytest.fixture

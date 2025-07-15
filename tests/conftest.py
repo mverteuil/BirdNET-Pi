@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from src.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
 @pytest.fixture
@@ -16,10 +16,14 @@ def file_path_resolver(tmp_path: Path) -> FilePathResolver:
     config_dir.mkdir()
 
     # Read content from actual template files
-    birdnet_pi_config_template = Path(
-        "config_templates/birdnet_pi_config.yaml.template"
+    birdnet_pi_config_template = (
+        Path(__file__).parent.parent
+        / "config_templates"
+        / "birdnet_pi_config.yaml.template"
     ).read_text()
-    birdnet_conf_template = Path("config_templates/birdnet.conf.template").read_text()
+    birdnet_conf_template = (
+        Path(__file__).parent.parent / "config_templates" / "birdnet.conf.template"
+    ).read_text()
 
     # Write content to runtime-named files in the temp config dir
     (config_dir / "birdnet_pi_config.yaml").write_text(birdnet_pi_config_template)

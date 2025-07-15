@@ -5,7 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
-from models.database_models import Base, Detection
+from birdnetpi.models.database_models import Base, Detection
 
 
 class DatabaseService:

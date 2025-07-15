@@ -6,9 +6,9 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from services.detection_event_publisher import DetectionEventPublisher
-from utils.config_file_parser import ConfigFileParser
-from utils.file_path_resolver import FilePathResolver
+from birdnetpi.services.detection_event_publisher import DetectionEventPublisher
+from birdnetpi.utils.config_file_parser import ConfigFileParser
+from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 from .routers import settings_router
 
@@ -17,18 +17,20 @@ from .routers import settings_router
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Context manager for application startup and shutdown events."""
     # Load configuration
-    config_parser = ConfigFileParser(FilePathResolver().get_birdnet_pi_config_path())
+    config_parser = ConfigFileParser(
+        FilePathResolver(base_dir="/app").get_birdnet_pi_config_path()
+    )
     app.state.config = config_parser.load_config()
     yield
 
 
 app = FastAPI(lifespan=lifespan)
 
-app.mount("/static", StaticFiles(directory="src/web/static"), name="static")
+app.mount("/static", StaticFiles(directory="src/birdnetpi/web/static"), name="static")
 
 app.include_router(settings_router.router)
 
-templates = Jinja2Templates(directory="src/web/templates")
+templates = Jinja2Templates(directory="src/birdnetpi/web/templates")
 
 
 @app.get("/", response_class=HTMLResponse)

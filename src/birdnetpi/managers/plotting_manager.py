@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from managers.data_preparation_manager import DataPreparationManager
+from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 
 
 class PlottingManager:

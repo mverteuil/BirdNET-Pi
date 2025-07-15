@@ -3,7 +3,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from managers.system_monitor import SystemMonitor
+from birdnetpi.managers.system_monitor import SystemMonitor
 
 
 @pytest.fixture
@@ -12,7 +12,7 @@ def system_monitor():
     return SystemMonitor()
 
 
-@patch("managers.system_monitor.shutil.disk_usage")
+@patch("birdnetpi.managers.system_monitor.shutil.disk_usage")
 def test_get_disk_usage(mock_disk_usage, system_monitor):
     """Should return correct disk usage information"""
     mock_disk_usage.return_value = (1000, 500, 500)  # total, used, free
@@ -22,7 +22,7 @@ def test_get_disk_usage(mock_disk_usage, system_monitor):
     assert result == {"total": 1000, "used": 500, "free": 500}
 
 
-@patch("managers.system_monitor.shutil.disk_usage")
+@patch("birdnetpi.managers.system_monitor.shutil.disk_usage")
 def test_check_disk_space_sufficient(mock_disk_usage, system_monitor):
     """Should return True for sufficient disk space"""
     mock_disk_usage.return_value = (1000, 200, 800)  # 80% free
@@ -31,7 +31,7 @@ def test_check_disk_space_sufficient(mock_disk_usage, system_monitor):
     assert "Disk space is sufficient: 80.00% free." in message
 
 
-@patch("managers.system_monitor.shutil.disk_usage")
+@patch("birdnetpi.managers.system_monitor.shutil.disk_usage")
 def test_check_disk_space_low(mock_disk_usage, system_monitor):
     """Should return False for low disk space"""
     mock_disk_usage.return_value = (1000, 950, 50)  # 5% free
@@ -40,15 +40,21 @@ def test_check_disk_space_low(mock_disk_usage, system_monitor):
     assert "Low disk space: 5.00% free, below 10% threshold." in message
 
 
-@patch("managers.system_monitor.os.path.exists", return_value=True)
-@patch("builtins.open", new_callable=mock_open, read_data="line1\nline2\n")
+@patch("birdnetpi.managers.system_monitor.os.path.exists", return_value=True)
+@patch(
+    "builtins.open",
+    new_callable=mock_open,
+    read_data="""line1
+line2
+""",
+)
 def test_dump_logs_success(mock_open, mock_exists, system_monitor):
     """Should dump log file content when file exists"""
     result = system_monitor.dump_logs("/var/log/test.log")
     assert result == "line1\nline2"
 
 
-@patch("managers.system_monitor.os.path.exists")
+@patch("birdnetpi.managers.system_monitor.os.path.exists")
 @patch("builtins.open", new_callable=mock_open)  # Add mock_open here as well
 def test_dump_logs_file_not_found(
     mock_open, mock_exists, system_monitor
@@ -59,7 +65,7 @@ def test_dump_logs_file_not_found(
     assert result == "Error: Log file not found at /var/log/nonexistent.log"
 
 
-@patch("managers.system_monitor.os.path.exists")
+@patch("birdnetpi.managers.system_monitor.os.path.exists")
 @patch("builtins.open", new_callable=mock_open)  # Ensure mock_open is used
 def test_dump_logs_read_error(
     mock_open, mock_exists, system_monitor
@@ -71,7 +77,7 @@ def test_dump_logs_read_error(
     assert "Error reading log file: Permission denied" in result
 
 
-@patch("managers.system_monitor.subprocess.check_output")
+@patch("birdnetpi.managers.system_monitor.subprocess.check_output")
 def test_get_extra_info_success(mock_check_output, system_monitor):
     """Should return CPU temperature and memory usage successfully"""
     mock_check_output.side_effect = [
@@ -84,7 +90,10 @@ def test_get_extra_info_success(mock_check_output, system_monitor):
     assert "Mem:        1.0G" in info["memory_usage"]
 
 
-@patch("managers.system_monitor.subprocess.check_output", side_effect=FileNotFoundError)
+@patch(
+    "birdnetpi.managers.system_monitor.subprocess.check_output",
+    side_effect=FileNotFoundError,
+)
 def test_get_extra_info_vcgencmd_not_found(mock_check_output, system_monitor):
     """Should handle vcgencmd not found"""
     info = system_monitor.get_extra_info()
@@ -93,7 +102,7 @@ def test_get_extra_info_vcgencmd_not_found(mock_check_output, system_monitor):
 
 
 @patch(
-    "managers.system_monitor.subprocess.check_output",
+    "birdnetpi.managers.system_monitor.subprocess.check_output",
     side_effect=subprocess.CalledProcessError(1, "cmd"),
 )
 def test_get_extra_info_vcgencmd_error(mock_check_output, system_monitor):
@@ -104,7 +113,7 @@ def test_get_extra_info_vcgencmd_error(mock_check_output, system_monitor):
 
 
 @patch(
-    "managers.system_monitor.subprocess.check_output",
+    "birdnetpi.managers.system_monitor.subprocess.check_output",
     side_effect=[b"temp=50.0'C\n", FileNotFoundError],
 )
 def test_get_extra_info_free_not_found(mock_check_output, system_monitor):
@@ -115,7 +124,7 @@ def test_get_extra_info_free_not_found(mock_check_output, system_monitor):
 
 
 @patch(
-    "managers.system_monitor.subprocess.check_output",
+    "birdnetpi.managers.system_monitor.subprocess.check_output",
     side_effect=[b"temp=50.0'C\n", subprocess.CalledProcessError(1, "cmd")],
 )
 def test_get_extra_info_free_error(mock_check_output, system_monitor):

@@ -3,9 +3,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.status import HTTP_303_SEE_OTHER
 
-from models.birdnet_config import BirdNETConfig
-from utils.config_file_parser import ConfigFileParser
-from utils.file_path_resolver import FilePathResolver
+from birdnetpi.models.birdnet_config import BirdNETConfig
+from birdnetpi.utils.config_file_parser import ConfigFileParser
+from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 router = APIRouter()
 

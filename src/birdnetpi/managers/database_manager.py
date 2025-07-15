@@ -6,8 +6,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.database_models import Base, Detection
-from services.database_service import DatabaseService
+from birdnetpi.models.database_models import Base, Detection
+from birdnetpi.services.database_service import DatabaseService
 
 
 class DatabaseManager:

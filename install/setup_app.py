@@ -9,7 +9,8 @@ from models.birdnet_config import BirdNETConfig
 from services.database_manager import DatabaseManager
 from services.file_manager import FileManager
 from utils.config_file_parser import ConfigFileParser
-from utils.file_path_resolver import FilePathResolver
+
+from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
 class AppSetup:

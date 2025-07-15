@@ -3,8 +3,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from managers.plotting_manager import PlottingManager
-from managers.reporting_manager import ReportingManager
+from birdnetpi.managers.plotting_manager import PlottingManager
+from birdnetpi.managers.reporting_manager import ReportingManager
+from birdnetpi.utils.config_file_parser import ConfigFileParser
 
 
 @pytest.fixture
@@ -22,7 +23,33 @@ def db_manager():
 @pytest.fixture
 def reporting_manager(db_manager, file_path_resolver, mock_plotting_manager):
     """Provide a ReportingManager instance with mocked dependencies."""
-    return ReportingManager(db_manager, file_path_resolver)
+    mock_config_parser = MagicMock(spec=ConfigFileParser)
+    mock_config_parser.load_config.return_value = MagicMock(
+        site_name="Test Site",
+        latitude=0.0,
+        longitude=0.0,
+        model="test_model",
+        sf_thresh=0.0,
+        birdweather_id="test_id",
+        apprise_input="test_input",
+        apprise_notification_title="test_title",
+        apprise_notification_body="test_body",
+        apprise_notify_each_detection=False,
+        apprise_notify_new_species=False,
+        apprise_notify_new_species_each_day=False,
+        apprise_weekly_report=False,
+        minimum_time_limit=0,
+        flickr_api_key="test_key",
+        flickr_filter_email="test_email",
+        database_lang="en",
+        timezone="UTC",
+        caddy_pwd="test_pwd",
+        silence_update_indicator=False,
+        birdnetpi_url="test_url",
+        apprise_only_notify_species_names="",
+        apprise_only_notify_species_names_2="",
+    )
+    return ReportingManager(db_manager, file_path_resolver, mock_config_parser)
 
 
 def test_get_most_recent_detections(reporting_manager, db_manager):
@@ -43,7 +70,7 @@ def test_get_weekly_report_data(reporting_manager, db_manager):
     """Should return a dictionary of weekly report data."""
     today = datetime.date(2025, 7, 12)  # Saturday
     with patch(
-        "managers.reporting_manager.datetime.date", wraps=datetime.date
+        "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
     ) as mock_date:
         mock_date.today.return_value = today
 

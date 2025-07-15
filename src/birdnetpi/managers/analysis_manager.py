@@ -1,8 +1,8 @@
-from managers.database_manager import DatabaseManager
-from models.birdnet_config import BirdNETConfig
-from services.analysis_client_service import AnalysisClientService
-from services.detection_event_publisher import DetectionEventPublisher
-from services.file_manager import FileManager
+from birdnetpi.managers.database_manager import DatabaseManager
+from birdnetpi.models.birdnet_config import BirdNETConfig
+from birdnetpi.services.analysis_client_service import AnalysisClientService
+from birdnetpi.services.detection_event_publisher import DetectionEventPublisher
+from birdnetpi.services.file_manager import FileManager
 
 
 class AnalysisManager:

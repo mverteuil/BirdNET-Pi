@@ -2,8 +2,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from managers.audio_manager import AudioManager
-from services.file_manager import FileManager
+from birdnetpi.managers.audio_manager import AudioManager
+from birdnetpi.services.file_manager import FileManager
 
 
 @pytest.fixture

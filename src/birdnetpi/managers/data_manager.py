@@ -1,9 +1,9 @@
 import os
 import subprocess
 
-from managers.database_manager import DatabaseManager
-from models.birdnet_config import BirdNETConfig
-from services.file_manager import FileManager
+from birdnetpi.managers.database_manager import DatabaseManager
+from birdnetpi.models.birdnet_config import BirdNETConfig
+from birdnetpi.services.file_manager import FileManager
 
 
 class DataManager:
