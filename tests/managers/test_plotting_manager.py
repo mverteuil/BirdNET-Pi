@@ -7,6 +7,7 @@ import pytest
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.plotting_manager import PlottingManager
+from birdnetpi.models.multi_day_plot_config import MultiDayPlotConfig
 
 
 @pytest.fixture
@@ -104,6 +105,9 @@ def test_generate_multi_day_species_and_hourly_plot_should_return_figure(
     top_n = 3
     species = "Common Blackbird"
 
+    # Create a MultiDayPlotConfig instance
+    config = MultiDayPlotConfig(resample_sel=resample_sel, specie=species, top_n=top_n)
+
     # Mock the internal data preparation method that PlottingManager calls
     mock_data_preparation_manager.prepare_multi_day_plot_data.return_value = (
         pd.DataFrame(
@@ -132,7 +136,7 @@ def test_generate_multi_day_species_and_hourly_plot_should_return_figure(
     )
 
     fig = plotting_manager.generate_multi_day_species_and_hourly_plot(
-        df, resample_sel, start_date, end_date, top_n, species
+        df, config.resample_sel, start_date, end_date, config.top_n, config.specie
     )
     assert isinstance(fig, go.Figure)
 
