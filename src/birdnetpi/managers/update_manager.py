@@ -48,7 +48,9 @@ class UpdateManager:
             print(f"An unexpected error occurred: {e}")
             return -1  # Indicate an error
 
-    def update_birdnet(self, remote: str = "origin", branch: str = "main") -> None:
+    from birdnetpi.models.git_update_config import GitUpdateConfig
+
+    def update_birdnet(self, config: GitUpdateConfig) -> None:
         """Update the BirdNET-Pi repository to the latest version."""
         try:
             # Get current HEAD hash
@@ -68,7 +70,7 @@ class UpdateManager:
 
             # Fetches latest changes
             subprocess.run(
-                ["git", "-C", self.repo_path, "fetch", remote, branch],
+                ["git", "-C", self.repo_path, "fetch", config.remote, config.branch],
                 check=True,
                 capture_output=True,
             )
@@ -81,9 +83,9 @@ class UpdateManager:
                     self.repo_path,
                     "switch",
                     "-C",
-                    branch,
+                    config.branch,
                     "--track",
-                    f"{remote}/{branch}",
+                    f"{config.remote}/{config.branch}",
                 ],
                 check=True,
                 capture_output=True,
