@@ -3,7 +3,7 @@ from unittest.mock import Mock
 import pytest
 
 from birdnetpi.managers.analysis_manager import AnalysisManager
-from birdnetpi.managers.database_manager import DatabaseManager
+from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.models.birdnet_config import BirdNETConfig
 from birdnetpi.services.analysis_client_service import AnalysisClientService
 from birdnetpi.services.detection_event_publisher import DetectionEventPublisher
@@ -23,9 +23,9 @@ def mock_file_manager():
 
 
 @pytest.fixture
-def mock_database_manager():
+def mock_detection_manager():
     """Provide a mock DatabaseManager instance."""
-    return Mock(spec=DatabaseManager)
+    return Mock(spec=DetectionManager)
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ def mock_detection_event_publisher():
 def analysis_manager(
     mock_config,
     mock_file_manager,
-    mock_database_manager,
+    mock_detection_manager,
     mock_analysis_client_service,
     mock_detection_event_publisher,
 ):
@@ -52,7 +52,7 @@ def analysis_manager(
     return AnalysisManager(
         config=mock_config,
         file_manager=mock_file_manager,
-        database_manager=mock_database_manager,
+        detection_manager=mock_detection_manager,
         analysis_client_service=mock_analysis_client_service,
         detection_event_publisher=mock_detection_event_publisher,
     )
@@ -61,19 +61,19 @@ def analysis_manager(
 def test_process_audio_for_analysis_with_results(
     analysis_manager,
     mock_analysis_client_service,
-    mock_database_manager,
+    mock_detection_manager,
     mock_detection_event_publisher,
     capsys,
 ):
     """Should process audio, add detection, and publish event when analysis results are present"""
     audio_file_path = "/path/to/audio.wav"
     mock_analysis_client_service.analyze_audio.return_value = {"some": "results"}
-    mock_database_manager.add_detection.return_value = Mock(species="Test Species")
+    mock_detection_manager.add_detection.return_value = Mock(species="Test Species")
 
     analysis_manager.process_audio_for_analysis(audio_file_path)
 
     mock_analysis_client_service.analyze_audio.assert_called_once_with(audio_file_path)
-    mock_database_manager.add_detection.assert_called_once()
+    mock_detection_manager.add_detection.assert_called_once()
     mock_detection_event_publisher.publish_detection.assert_called_once()
     captured = capsys.readouterr()
     assert f"Processing audio for analysis: {audio_file_path}" in captured.out
@@ -83,7 +83,7 @@ def test_process_audio_for_analysis_with_results(
 def test_process_audio_for_analysis_no_results(
     analysis_manager,
     mock_analysis_client_service,
-    mock_database_manager,
+    mock_detection_manager,
     mock_detection_event_publisher,
     capsys,
 ):
@@ -94,7 +94,7 @@ def test_process_audio_for_analysis_no_results(
     analysis_manager.process_audio_for_analysis(audio_file_path)
 
     mock_analysis_client_service.analyze_audio.assert_called_once_with(audio_file_path)
-    mock_database_manager.add_detection.assert_not_called()
+    mock_detection_manager.add_detection.assert_not_called()
     mock_detection_event_publisher.publish_detection.assert_not_called()
     captured = capsys.readouterr()
     assert f"Processing audio for analysis: {audio_file_path}" in captured.out

@@ -19,8 +19,8 @@ def mock_dependencies(tmp_path):
             "birdnetpi.wrappers.data_manager_wrapper.ConfigFileParser"
         ) as mock_config_file_parser,
         patch(
-            "birdnetpi.wrappers.data_manager_wrapper.DatabaseManager"
-        ) as mock_database_manager,
+            "birdnetpi.wrappers.data_manager_wrapper.DatabaseService"
+        ) as mock_database_service,
         patch(
             "birdnetpi.wrappers.data_manager_wrapper.FileManager"
         ) as mock_file_manager,
@@ -34,7 +34,7 @@ def mock_dependencies(tmp_path):
             "mock_data_manager": mock_data_manager,
             "mock_file_path_resolver": mock_file_path_resolver,
             "mock_config_file_parser": mock_config_file_parser,
-            "mock_database_manager": mock_database_manager,
+            "mock_database_service": mock_database_service,
             "mock_file_manager": mock_file_manager,
         }
 

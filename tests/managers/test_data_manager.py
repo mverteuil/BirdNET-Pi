@@ -4,9 +4,10 @@ from unittest.mock import Mock, patch
 import pytest
 
 from birdnetpi.managers.data_manager import DataManager
-from birdnetpi.managers.database_manager import DatabaseManager
+from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.models.birdnet_config import BirdNETConfig, DataConfig
 from birdnetpi.services.file_manager import FileManager
+from birdnetpi.services.database_service import DatabaseService
 
 
 @pytest.fixture
@@ -31,18 +32,18 @@ def mock_file_manager(mock_config):
 
 
 @pytest.fixture
-def mock_database_manager():
-    """Provide a mock DatabaseManager instance."""
-    return Mock(spec=DatabaseManager)
+def mock_db_service():
+    """Provide a mock DatabaseService instance."""
+    return Mock(spec=DatabaseService)
 
 
 @pytest.fixture
-def data_manager(mock_config, mock_file_manager, mock_database_manager):
+def data_manager(mock_config, mock_file_manager, mock_db_service):
     """Provide a DataManager instance with mocked dependencies."""
     return DataManager(
         config=mock_config,
         file_manager=mock_file_manager,
-        database_manager=mock_database_manager,
+        db_service=mock_db_service,
     )
 
 
@@ -110,7 +111,7 @@ def test_clear_all_data(
     mock_subprocess_run,
     data_manager,
     mock_file_manager,
-    mock_database_manager,
+    mock_db_service,
     mock_config,
     capsys,
 ):
@@ -135,7 +136,7 @@ def test_clear_all_data(
         mock_config.data.recordings_dir
     )
     mock_file_manager.delete_file.assert_called_once_with(mock_config.data.id_file)
-    mock_database_manager.clear_database.assert_called_once()
+    mock_db_service.clear_database.assert_called_once()
 
     # Verify directory recreation
     mock_file_manager.create_directory.assert_any_call(mock_config.data.extracted_dir)

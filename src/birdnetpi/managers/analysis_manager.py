@@ -1,4 +1,4 @@
-from birdnetpi.managers.database_manager import DatabaseManager
+from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.models.birdnet_config import BirdNETConfig
 from birdnetpi.services.analysis_client_service import AnalysisClientService
 from birdnetpi.services.detection_event_publisher import DetectionEventPublisher
@@ -12,13 +12,13 @@ class AnalysisManager:
         self,
         config: BirdNETConfig,
         file_manager: FileManager,
-        database_manager: DatabaseManager,
+        detection_manager: DetectionManager,
         analysis_client_service: AnalysisClientService,
         detection_event_publisher: DetectionEventPublisher,
     ) -> None:
         self.config = config
         self.file_manager = file_manager
-        self.database_manager = database_manager
+        self.detection_manager = detection_manager
         self.analysis_client_service = analysis_client_service
         self.detection_event_publisher = detection_event_publisher
 
@@ -38,7 +38,7 @@ class AnalysisManager:
                 "timestamp": "2025-01-01 12:00:00",  # Placeholder
                 "audio_file_path": audio_file_path,
             }
-            new_detection = self.database_manager.add_detection(detection_data)
+            new_detection = self.detection_manager.add_detection(detection_data)
             print(f"Added detection to DB: {new_detection.species}")
 
             # 3. Publish detection event

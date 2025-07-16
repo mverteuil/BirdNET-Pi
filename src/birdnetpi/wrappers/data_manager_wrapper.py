@@ -1,7 +1,11 @@
 import argparse
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from birdnetpi.models.database_models import Base
 
 from birdnetpi.managers.data_manager import DataManager
-from birdnetpi.managers.database_manager import DatabaseManager
+from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.file_manager import FileManager
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
@@ -24,10 +28,16 @@ def main_cli() -> None:
     ).load_config()
 
     file_manager = FileManager(config.data.recordings_dir)
-    database_manager = DatabaseManager(config.database.path)
-    database_manager.initialize_database()
 
-    data_manager = DataManager(config, file_manager, database_manager)
+    # Database setup
+    db_path = config.database.path
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    engine = create_engine(f"sqlite:///{db_path}")
+    Base.metadata.create_all(engine)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db_service = DatabaseService(SessionLocal)
+
+    data_manager = DataManager(config, file_manager, db_service)
 
     if args.action == "cleanup":
         data_manager.cleanup()

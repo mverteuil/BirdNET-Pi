@@ -1,9 +1,10 @@
 import os
 import subprocess
 
-from birdnetpi.managers.database_manager import DatabaseManager
+from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.models.birdnet_config import BirdNETConfig
 from birdnetpi.services.file_manager import FileManager
+from birdnetpi.services.database_service import DatabaseService
 
 
 class DataManager:
@@ -13,11 +14,11 @@ class DataManager:
         self,
         config: BirdNETConfig,
         file_manager: FileManager,
-        database_manager: DatabaseManager,
+        db_service: DatabaseService,
     ) -> None:
         self.config = config
         self.file_manager = file_manager
-        self.database_manager = database_manager
+        self.db_service = db_service
 
     def cleanup_processed_files(self) -> None:
         """Clean up processed audio and CSV files, removing empty or old entries."""
@@ -67,7 +68,7 @@ class DataManager:
             self.file_manager.delete_file(self.config.data.id_file)
 
         # Clear the database instead of removing BirdDB.txt
-        self.database_manager.clear_database()
+        self.db_service.clear_database()
 
         print("Re-creating necessary directories...")
         self.file_manager.create_directory(self.config.data.extracted_dir)

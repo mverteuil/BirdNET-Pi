@@ -12,8 +12,8 @@ def mock_dependencies(tmp_path):
     """Fixture to mock all external dependencies."""
     with (
         patch(
-            "birdnetpi.managers.database_manager.DatabaseManager"
-        ) as mock_database_manager,
+            "birdnetpi.managers.detection_manager.DetectionManager"
+        ) as mock_detection_manager,
         patch("birdnetpi.services.file_manager.FileManager") as mock_file_manager,
         patch(
             "birdnetpi.utils.file_path_resolver.FilePathResolver"
@@ -24,6 +24,12 @@ def mock_dependencies(tmp_path):
         patch(
             "birdnetpi.wrappers.analysis_manager_wrapper.AnalysisManager"
         ) as mock_analysis_manager,
+        patch(
+            "birdnetpi.wrappers.analysis_manager_wrapper.AnalysisClientService"
+        ) as mock_analysis_client_service,
+        patch(
+            "birdnetpi.wrappers.analysis_manager_wrapper.DetectionEventPublisher"
+        ) as mock_detection_event_publisher,
     ):
         # Configure mocks
         mock_config_instance = MagicMock(spec=BirdNETConfig)
@@ -43,19 +49,20 @@ def mock_dependencies(tmp_path):
             tmp_path / "birdnet_pi_config.yaml"
         )
 
+        # Mock the instance returned by AnalysisManager()
         mock_analysis_manager_instance = MagicMock()
-        mock_analysis_manager_instance.process_recordings = MagicMock()
-        mock_analysis_manager_instance.extract_new_birdsounds = MagicMock()
         mock_analysis_manager.return_value = mock_analysis_manager_instance
 
         yield {
             "mock_config_file_parser": mock_config_file_parser,
-            "mock_database_manager": mock_database_manager,
+            "mock_detection_manager": mock_detection_manager,
             "mock_file_manager": mock_file_manager,
             "mock_analysis_manager": mock_analysis_manager,
             "mock_file_path_resolver": mock_file_path_resolver,
             "mock_analysis_manager_instance": mock_analysis_manager_instance,
             "mock_config_instance": mock_config_instance,
+            "mock_analysis_client_service": mock_analysis_client_service,
+            "mock_detection_event_publisher": mock_detection_event_publisher,
         }
 
 
@@ -65,13 +72,12 @@ def test_process_recordings_action(mock_dependencies):
         "argparse.ArgumentParser.parse_args",
         return_value=argparse.Namespace(action="process_recordings"),
     ):
-        main_cli()
-        mock_dependencies[
-            "mock_analysis_manager_instance"
-        ].process_recordings.assert_called_once()
-        mock_dependencies[
-            "mock_analysis_manager_instance"
-        ].extract_new_birdsounds.assert_not_called()
+        main_cli(
+            analysis_client_service=mock_dependencies["mock_analysis_client_service"].return_value,
+            detection_event_publisher=mock_dependencies["mock_detection_event_publisher"].return_value,
+        )
+        mock_dependencies["mock_analysis_manager"].return_value.process_recordings.assert_called_once()
+        mock_dependencies["mock_analysis_manager"].return_value.extract_new_birdsounds.assert_not_called()
 
 
 def test_extract_new_birdsounds_action(mock_dependencies):
@@ -80,13 +86,12 @@ def test_extract_new_birdsounds_action(mock_dependencies):
         "argparse.ArgumentParser.parse_args",
         return_value=argparse.Namespace(action="extract_new_birdsounds"),
     ):
-        main_cli()
-        mock_dependencies[
-            "mock_analysis_manager_instance"
-        ].extract_new_birdsounds.assert_called_once()
-        mock_dependencies[
-            "mock_analysis_manager_instance"
-        ].process_recordings.assert_not_called()
+        main_cli(
+            analysis_client_service=mock_dependencies["mock_analysis_client_service"].return_value,
+            detection_event_publisher=mock_dependencies["mock_detection_event_publisher"].return_value,
+        )
+        mock_dependencies["mock_analysis_manager"].return_value.extract_new_birdsounds.assert_called_once()
+        mock_dependencies["mock_analysis_manager"].return_value.process_recordings.assert_not_called()
 
 
 def test_unknown_action_raises_error(mock_dependencies):
@@ -98,5 +103,8 @@ def test_unknown_action_raises_error(mock_dependencies):
         ),
         patch("argparse.ArgumentParser.error") as mock_error,
     ):
-        main_cli()
+        main_cli(
+            analysis_client_service=mock_dependencies["mock_analysis_client_service"].return_value,
+            detection_event_publisher=mock_dependencies["mock_detection_event_publisher"].return_value,
+        )
         mock_error.assert_called_once_with("Unknown action: unknown_action")

@@ -4,7 +4,7 @@ from typing import Any
 import pandas as pd
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
-from birdnetpi.managers.database_manager import DatabaseManager
+from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
@@ -14,18 +14,18 @@ class ReportingManager:
 
     def __init__(
         self,
-        db_manager: DatabaseManager,
+        db_manager: DetectionManager,
         file_path_resolver: FilePathResolver,
         config_parser: ConfigFileParser,
     ) -> None:
-        self.db_manager = db_manager
+        self.detection_manager = db_manager
         self.file_path_resolver = file_path_resolver
         self.config = config_parser.load_config()
         self.data_preparation_manager = DataPreparationManager()
 
     def get_data(self) -> pd.DataFrame:
         """Retrieve all detection data from the database and format it into a DataFrame."""
-        detections = self.db_manager.get_all_detections()
+        detections = self.detection_manager.get_all_detections()
         data = [
             {
                 "Com_Name": d.com_name,
@@ -56,10 +56,10 @@ class ReportingManager:
         prior_end_date: datetime.date,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Fetch total detection counts and unique species counts for the current and prior weeks."""
-        current_week_stats = self.db_manager.get_detection_counts_by_date_range(
+        current_week_stats = self.detection_manager.get_detection_counts_by_date_range(
             start_date, end_date
         )
-        prior_week_stats = self.db_manager.get_detection_counts_by_date_range(
+        prior_week_stats = self.detection_manager.get_detection_counts_by_date_range(
             prior_start_date, prior_end_date
         )
         return current_week_stats, prior_week_stats
@@ -72,7 +72,7 @@ class ReportingManager:
         prior_end_date: datetime.date,
     ) -> list[dict[str, Any]]:
         """Fetch the top 10 species for the current week and their counts from the prior week."""
-        top_10_species_rows = self.db_manager.get_top_species_with_prior_counts(
+        top_10_species_rows = self.detection_manager.get_top_species_with_prior_counts(
             start_date, end_date, prior_start_date, prior_end_date
         )
 
@@ -100,7 +100,7 @@ class ReportingManager:
         self, start_date: datetime.date, end_date: datetime.date
     ) -> list[dict[str, Any]]:
         """Fetch new species detected in the current week that were not present in prior data."""
-        new_species_rows = self.db_manager.get_new_species_data(start_date, end_date)
+        new_species_rows = self.detection_manager.get_new_species_data(start_date, end_date)
         new_species = (
             [
                 {"com_name": row["com_name"], "count": row["count"]}
@@ -198,7 +198,7 @@ class ReportingManager:
 
     def get_most_recent_detections(self, limit: int = 10) -> list[dict[str, Any]]:
         """Retrieve the most recent detection records from the database."""
-        recent_detections = self.db_manager.get_most_recent_detections(limit)
+        recent_detections = self.detection_manager.get_most_recent_detections(limit)
         return recent_detections
 
     def date_filter(
