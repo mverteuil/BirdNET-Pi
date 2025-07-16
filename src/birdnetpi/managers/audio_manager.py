@@ -1,3 +1,4 @@
+from birdnetpi.models.livestream_config import LivestreamConfig
 from birdnetpi.services.file_manager import FileManager
 
 
@@ -15,9 +16,9 @@ class AudioManager:
         # self.file_manager.write_file(output_path, "dummy audio data")
         pass
 
-    def livestream(self, input_device: str, output_url: str) -> None:
+    def livestream(self, config: LivestreamConfig) -> None:
         """Start an audio livestream from the input device to the output URL."""
-        print(f"Starting livestream from {input_device} to {output_url}")
+        print(f"Starting livestream from {config.input_device} to {config.output_url}")
         # This will involve using a library or subprocess to stream audio
         # For now, it's a placeholder.
         pass

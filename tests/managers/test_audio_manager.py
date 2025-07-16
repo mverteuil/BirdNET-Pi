@@ -3,6 +3,7 @@ from unittest.mock import Mock
 import pytest
 
 from birdnetpi.managers.audio_manager import AudioManager
+from birdnetpi.models.livestream_config import LivestreamConfig
 from birdnetpi.services.file_manager import FileManager
 
 
@@ -29,8 +30,12 @@ def test_custom_record(audio_manager, capsys):
 
 def test_livestream(audio_manager, capsys):
     """Should print a message indicating livestreaming"""
-    input_device = "hw:0,0"
-    output_url = "rtsp://localhost:8554/live.stream"
-    audio_manager.livestream(input_device, output_url)
+    config = LivestreamConfig(
+        input_device="hw:0,0", output_url="rtsp://localhost:8554/live.stream"
+    )
+    audio_manager.livestream(config)
     captured = capsys.readouterr()
-    assert f"Starting livestream from {input_device} to {output_url}" in captured.out
+    assert (
+        f"Starting livestream from {config.input_device} to {config.output_url}"
+        in captured.out
+    )
