@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
+from birdnetpi.models.multi_day_plot_config import MultiDayPlotConfig
 
 
 class PlottingManager:
@@ -94,10 +95,11 @@ class PlottingManager:
         species: str,
     ) -> go.Figure:
         """Generate a multi-day species and hourly plot."""
+        config = MultiDayPlotConfig(
+            resample_sel=resample_sel, specie=species, top_n=top_n
+        )
         df5, hourly, top_n_species, df_counts = (
-            self.data_preparation_manager.prepare_multi_day_plot_data(
-                df, resample_sel, species, top_n
-            )
+            self.data_preparation_manager.prepare_multi_day_plot_data(df, config)
         )
 
         fig = self._create_multi_day_plot_figure(
