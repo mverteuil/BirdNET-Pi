@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
+from birdnetpi.models.daily_plot_config import DailyPlotConfig
 from birdnetpi.models.multi_day_plot_config import MultiDayPlotConfig
 
 
@@ -176,10 +177,9 @@ class PlottingManager:
         selected_pal: str,
     ) -> go.Figure:
         """Generate a daily detections plot."""
+        config = DailyPlotConfig(resample_sel=resample_sel, specie=species)
         day_hour_freq, saved_time_labels, fig_dec_y, fig_x = (
-            self.data_preparation_manager.prepare_daily_plot_data(
-                df, resample_sel, species
-            )
+            self.data_preparation_manager.prepare_daily_plot_data(df, config)
         )
 
         day_hour_freq.columns = fig_dec_y
