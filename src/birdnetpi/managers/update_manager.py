@@ -2,6 +2,8 @@ import os
 import re
 import subprocess
 
+from birdnetpi.models.git_update_config import GitUpdateConfig
+
 
 class UpdateManager:
     """Manages updates and Git operations for the BirdNET-Pi repository."""
@@ -47,8 +49,6 @@ class UpdateManager:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
             return -1  # Indicate an error
-
-    from birdnetpi.models.git_update_config import GitUpdateConfig
 
     def update_birdnet(self, config: GitUpdateConfig) -> None:
         """Update the BirdNET-Pi repository to the latest version."""

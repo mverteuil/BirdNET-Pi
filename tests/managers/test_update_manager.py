@@ -3,6 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from birdnetpi.managers.update_manager import UpdateManager
+from birdnetpi.models.git_update_config import GitUpdateConfig
 
 
 @pytest.fixture
@@ -14,7 +15,8 @@ def update_manager(tmp_path):
 @patch("birdnetpi.managers.update_manager.subprocess.run")
 def test_update_birdnet_success(mock_run, update_manager):
     """Should update BirdNET successfully."""
-    update_manager.update_birdnet()
+    config = GitUpdateConfig()
+    update_manager.update_birdnet(config)
     assert mock_run.call_count == 12
 
 
