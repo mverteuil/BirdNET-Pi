@@ -2,6 +2,8 @@ import datetime
 
 import pandas as pd
 
+from birdnetpi.models.multi_day_plot_config import MultiDayPlotConfig
+
 
 class DataPreparationManager:
     """Manages data preparation and manipulation for reporting and plotting."""
@@ -48,14 +50,14 @@ class DataPreparationManager:
         return df_resample
 
     def prepare_multi_day_plot_data(
-        self, df: pd.DataFrame, resample_sel: str, specie: str, top_n: int
+        self, df: pd.DataFrame, config: MultiDayPlotConfig
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, int]:
         """Prepare data for the multi-day species and hourly plot."""
-        df5 = self.time_resample(df, resample_sel)
+        df5 = self.time_resample(df, config.resample_sel)
         hourly = self.get_hourly_crosstab(df5)
-        top_n_species = self.get_species_counts(df5)[:top_n]
+        top_n_species = self.get_species_counts(df5)[: config.top_n]
 
-        df_counts = int(hourly[hourly.index == specie]["All"].iloc[0])
+        df_counts = int(hourly[hourly.index == config.specie]["All"].iloc[0])
         return df5, hourly, top_n_species, df_counts
 
     def prepare_daily_plot_data(
