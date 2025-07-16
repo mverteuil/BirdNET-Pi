@@ -138,9 +138,9 @@ class UpdateManager:
             print(f"An unexpected error occurred during update: {e}")
             raise
 
-    def update_caddyfile(
-        self, birdnetpi_url: str, extracted_path: str, caddy_pwd: str | None = None
-    ) -> None:
+    from birdnetpi.models.caddy_config import CaddyConfig
+
+    def update_caddyfile(self, config: CaddyConfig) -> None:
         """Update the Caddyfile with new configuration and reload Caddy."""
         try:
             # Ensure /etc/caddy exists
@@ -156,7 +156,7 @@ class UpdateManager:
                 )
 
             caddyfile_content = (
-                f"http:// {birdnetpi_url} {{\n"
+                f"http:// {config.birdnetpi_url} {{\n"
                 "  reverse_proxy localhost:8000\n"
                 "  reverse_proxy /log* localhost:8080\n"
                 "  reverse_proxy /stats* localhost:8501\n"
