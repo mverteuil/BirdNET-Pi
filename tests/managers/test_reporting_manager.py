@@ -48,6 +48,7 @@ def reporting_manager(detection_manager, file_path_resolver, mock_plotting_manag
         birdnetpi_url="test_url",
         apprise_only_notify_species_names="",
         apprise_only_notify_species_names_2="",
+        database=MagicMock(path=file_path_resolver.get_database_path()),
     )
     return ReportingManager(detection_manager, file_path_resolver, mock_config_parser)
 
