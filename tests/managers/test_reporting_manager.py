@@ -1,10 +1,13 @@
 import datetime
 from unittest.mock import MagicMock, patch
 
+import pandas as pd
 import pytest
 
+from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
+from birdnetpi.models.database_models import Detection
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 
 
@@ -15,13 +18,27 @@ def mock_plotting_manager():
 
 
 @pytest.fixture
+def mock_data_preparation_manager():
+    """Provide a mock DataPreparationManager instance."""
+    mock = MagicMock(spec=DataPreparationManager)
+    mock.hms_to_str.side_effect = lambda h: h.strftime("%H:%M:%S")
+    mock.hms_to_dec.side_effect = lambda h: h.hour + h.minute / 60.0
+    return mock
+
+
+@pytest.fixture
 def detection_manager():
     """Provide a mock DatabaseManager instance."""
     return MagicMock()
 
 
 @pytest.fixture
-def reporting_manager(detection_manager, file_path_resolver, mock_plotting_manager):
+def reporting_manager(
+    detection_manager,
+    file_path_resolver,
+    mock_plotting_manager,
+    mock_data_preparation_manager,
+):
     """Provide a ReportingManager instance with mocked dependencies."""
     mock_config_parser = MagicMock(spec=ConfigFileParser)
     mock_config_parser.load_config.return_value = MagicMock(
@@ -48,9 +65,13 @@ def reporting_manager(detection_manager, file_path_resolver, mock_plotting_manag
         birdnetpi_url="test_url",
         apprise_only_notify_species_names="",
         apprise_only_notify_species_names_2="",
-        database=MagicMock(path=file_path_resolver.get_database_path()),
+        database=MagicMock(path=file_path_resolver.get_birds_db_path()),
     )
-    return ReportingManager(detection_manager, file_path_resolver, mock_config_parser)
+    manager = ReportingManager(
+        detection_manager, file_path_resolver, mock_config_parser
+    )
+    manager.data_preparation_manager = mock_data_preparation_manager
+    return manager
 
 
 def test_get_most_recent_detections(reporting_manager, detection_manager):
@@ -133,3 +154,72 @@ def test_get_weekly_report_data(reporting_manager, detection_manager):
         detection_manager.get_new_species_data.assert_called_once_with(
             datetime.date(2025, 6, 30), datetime.date(2025, 7, 6)
         )
+
+
+def test_get_daily_detection_data_for_plotting(reporting_manager, detection_manager):
+    """Should prepare daily detection data for plotting."""
+    # Mock the return value of get_all_detections
+    mock_detections = [
+        Detection(
+            id=1,
+            species="American Robin",
+            timestamp=datetime.datetime(2025, 7, 15, 8, 0, 0),
+            confidence=0.9,
+            audio_file_path="test1.wav",
+        ),
+        Detection(
+            id=2,
+            species="American Robin",
+            timestamp=datetime.datetime(2025, 7, 15, 8, 15, 0),
+            confidence=0.8,
+            audio_file_path="test2.wav",
+        ),
+        Detection(
+            id=3,
+            species="Northern Cardinal",
+            timestamp=datetime.datetime(2025, 7, 15, 9, 0, 0),
+            confidence=0.95,
+            audio_file_path="test3.wav",
+        ),
+    ]
+    detection_manager.get_all_detections.return_value = mock_detections
+
+    # Call get_data to get the DataFrame
+    df = reporting_manager.get_data()
+
+    # Call the method under test
+    day_hour_freq, saved_time_labels, fig_dec_y, fig_x = (
+        reporting_manager.get_daily_detection_data_for_plotting(
+            df, resample_sel="15min", specie="American Robin"
+        )
+    )
+
+    # Assertions
+    assert isinstance(day_hour_freq, pd.DataFrame)
+    assert "American Robin" in df["Com_Name"].unique()
+    assert "Northern Cardinal" in df["Com_Name"].unique()
+
+    # Check the shape and content of day_hour_freq
+    # Expecting one row for the date and columns for the hours with detections
+    assert day_hour_freq.shape == (1, 2)  # One day, two 15-min intervals
+    assert day_hour_freq.loc[(datetime.date(2025, 7, 15),), datetime.time(8, 0, 0)] == 1
+    assert (
+        day_hour_freq.loc[(datetime.date(2025, 7, 15),), datetime.time(8, 15, 0)] == 1
+    )
+
+    # Check saved_time_labels
+    assert saved_time_labels == ["08:00:00", "08:15:00"]
+
+    # Check fig_dec_y
+    assert fig_dec_y == [8.0, 8.25]
+
+    # Check fig_x
+    assert fig_x == ["15-07-2025"]
+
+    # Test with a species that has no detections
+    day_hour_freq_no_detection, _, _, _ = (
+        reporting_manager.get_daily_detection_data_for_plotting(
+            df, resample_sel="15min", specie="NonExistentBird"
+        )
+    )
+    assert day_hour_freq_no_detection.empty

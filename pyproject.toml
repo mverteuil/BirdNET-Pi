@@ -59,6 +59,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 markers = ["expensive"]
 
+
 [tool.ruff]
 line-length = 120
 target-version = "py311"

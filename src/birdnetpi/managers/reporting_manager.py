@@ -28,7 +28,7 @@ class ReportingManager:
         detections = self.detection_manager.get_all_detections()
         data = [
             {
-                "Com_Name": d.com_name,
+                "Com_Name": d.species,
                 "DateTime": d.timestamp,
                 "Date": d.timestamp.strftime("%Y-%m-%d"),
                 "Time": d.timestamp.strftime("%H:%M:%S"),
@@ -215,7 +215,7 @@ class ReportingManager:
         self, df: pd.DataFrame, resample_sel: str, specie: str
     ) -> tuple[pd.DataFrame, list[str], list[float], list[str]]:
         """Prepare daily detection data for plotting."""
-        df4 = df["com_name"][df["com_name"] == specie].resample("15min").count()
+        df4 = df["Com_Name"][df["Com_Name"] == specie].resample("15min").count()
         df4.index = [df4.index.date, df4.index.time]
         day_hour_freq = df4.unstack().fillna(0)
 

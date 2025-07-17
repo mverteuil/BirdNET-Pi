@@ -16,7 +16,12 @@ class Detection(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
     audio_file_path = Column(String)
     spectrogram_path = Column(String, nullable=True)
-    # Add more fields as needed, e.g., latitude, longitude, site_name from config
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+    cutoff = Column(Float, nullable=True)
+    week = Column(Integer, nullable=True)
+    sensitivity = Column(Float, nullable=True)
+    overlap = Column(Float, nullable=True)
 
 
 class AudioFile(Base):
