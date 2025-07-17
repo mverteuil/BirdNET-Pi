@@ -105,6 +105,24 @@ def test_cleanup_processed_files_limit_exceeded(
         mock_file_manager.delete_file.assert_any_call(f)
     assert mock_file_manager.delete_file.call_count == 140
 
+def test_cleanup_processed_files_no_files(data_manager, mock_file_manager):
+    """Should not attempt to delete files if no processed files exist."""
+    mock_file_manager.list_directory_contents.return_value = []
+    data_manager.cleanup_processed_files()
+    mock_file_manager.delete_file.assert_not_called()
+
+def test_cleanup_processed_files_no_deletion_criteria(data_manager, mock_file_manager):
+    """Should not delete files if they are not empty and do not exceed the limit."""
+    files = [f"file_{i}.csv" for i in range(50)]
+    files.extend([f"file_{i}.wav" for i in range(50)])
+    mock_file_manager.list_directory_contents.return_value = files
+
+    with patch("birdnetpi.managers.data_manager.os.path.getsize", return_value=1000):
+        with patch("birdnetpi.managers.data_manager.os.path.getmtime", return_value=1.0):
+            data_manager.cleanup_processed_files()
+
+    mock_file_manager.delete_file.assert_not_called()
+
 
 @patch("birdnetpi.managers.data_manager.subprocess.run")
 def test_clear_all_data(
@@ -167,4 +185,66 @@ def test_clear_all_data(
     assert (
         "Re-establishing symlinks..." in captured.out
     )  # This line is printed by the manager
+    assert "Restarting services..." in captured.out
+
+
+@patch("birdnetpi.managers.data_manager.subprocess.run")
+def test_clear_all_data_no_id_file(
+    mock_subprocess_run,
+    data_manager,
+    mock_file_manager,
+    mock_db_service,
+    mock_config,
+    capsys,
+):
+    """Should clear all data even if id_file does not exist."""
+    mock_file_manager.file_exists.return_value = False  # id_file does not exist
+
+    data_manager.clear_all_data()
+
+    # Verify services are stopped
+    mock_subprocess_run.assert_any_call(
+        ["sudo", "systemctl", "stop", "birdnet_recording.service"]
+    )
+    mock_subprocess_run.assert_any_call(
+        ["sudo", "systemctl", "stop", "birdnet_analysis.service"]
+    )
+    mock_subprocess_run.assert_any_call(
+        ["sudo", "systemctl", "stop", "birdnet_server.service"]
+    )
+
+    # Verify data removal (delete_file for id_file should not be called)
+    mock_file_manager.delete_directory.assert_called_once_with(
+        mock_config.data.recordings_dir
+    )
+    mock_file_manager.delete_file.assert_not_called()  # id_file does not exist
+    mock_db_service.clear_database.assert_called_once()
+
+    # Verify directory recreation
+    mock_file_manager.create_directory.assert_any_call(mock_config.data.extracted_dir)
+    mock_file_manager.create_directory.assert_any_call(
+        os.path.join(mock_config.data.extracted_dir, "By_Date")
+    )
+    mock_file_manager.create_directory.assert_any_call(
+        os.path.join(mock_config.data.extracted_dir, "Charts")
+    )
+    mock_file_manager.create_directory.assert_any_call(mock_config.data.processed_dir)
+    assert mock_file_manager.create_directory.call_count == 4
+
+    # Verify services are restarted
+    mock_subprocess_run.assert_any_call(
+        ["sudo", "systemctl", "start", "birdnet_recording.service"]
+    )
+    mock_subprocess_run.assert_any_call(
+        ["sudo", "systemctl", "start", "birdnet_analysis.service"]
+    )
+    mock_subprocess_run.assert_any_call(
+        ["sudo", "systemctl", "start", "birdnet_server.service"]
+    )
+
+    captured = capsys.readouterr()
+    assert "Stopping services..." in captured.out
+    assert "Removing all data..." in captured.out
+    assert "Re-creating necessary directories..." in captured.out
+    assert "Re-establishing symlinks..." in captured.out
     assert "Restarting services..." in captured.out
