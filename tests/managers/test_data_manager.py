@@ -5,6 +5,7 @@ import pytest
 
 from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.service_manager import ServiceManager
 from birdnetpi.models.birdnet_config import BirdNETConfig, DataConfig
 from birdnetpi.services.file_manager import FileManager
 from birdnetpi.services.database_service import DatabaseService
@@ -38,12 +39,19 @@ def mock_db_service():
 
 
 @pytest.fixture
-def data_manager(mock_config, mock_file_manager, mock_db_service):
+def mock_service_manager():
+    """Provide a mock ServiceManager instance."""
+    return Mock(spec=ServiceManager)
+
+
+@pytest.fixture
+def data_manager(mock_config, mock_file_manager, mock_db_service, mock_service_manager):
     """Provide a DataManager instance with mocked dependencies."""
     return DataManager(
         config=mock_config,
         file_manager=mock_file_manager,
         db_service=mock_db_service,
+        service_manager=mock_service_manager,
     )
 
 
@@ -126,13 +134,12 @@ def test_cleanup_processed_files_no_deletion_criteria(data_manager, mock_file_ma
     mock_file_manager.delete_file.assert_not_called()
 
 
-@patch("birdnetpi.managers.data_manager.subprocess.run")
 def test_clear_all_data(
-    mock_subprocess_run,
     data_manager,
     mock_file_manager,
     mock_db_service,
     mock_config,
+    mock_service_manager,
     capsys,
 ):
     """Should clear all data, stop/start services, and recreate directories"""
@@ -141,15 +148,9 @@ def test_clear_all_data(
     data_manager.clear_all_data()
 
     # Verify services are stopped
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "stop", "birdnet_recording.service"]
-    )
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "stop", "birdnet_analysis.service"]
-    )
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "stop", "birdnet_server.service"]
-    )
+    mock_service_manager.stop_service.assert_any_call("birdnet_recording.service")
+    mock_service_manager.stop_service.assert_any_call("birdnet_analysis.service")
+    mock_service_manager.stop_service.assert_any_call("birdnet_server.service")
 
     # Verify data removal
     mock_file_manager.delete_directory.assert_called_once_with(
@@ -170,15 +171,9 @@ def test_clear_all_data(
     assert mock_file_manager.create_directory.call_count == 4
 
     # Verify services are restarted
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "start", "birdnet_recording.service"]
-    )
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "start", "birdnet_analysis.service"]
-    )
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "start", "birdnet_server.service"]
-    )
+    mock_service_manager.start_service.assert_any_call("birdnet_recording.service")
+    mock_service_manager.start_service.assert_any_call("birdnet_analysis.service")
+    mock_service_manager.start_service.assert_any_call("birdnet_server.service")
 
     captured = capsys.readouterr()
     assert "Stopping services..." in captured.out
@@ -190,13 +185,12 @@ def test_clear_all_data(
     assert "Restarting services..." in captured.out
 
 
-@patch("birdnetpi.managers.data_manager.subprocess.run")
 def test_clear_all_data_no_id_file(
-    mock_subprocess_run,
     data_manager,
     mock_file_manager,
     mock_db_service,
     mock_config,
+    mock_service_manager,
     capsys,
 ):
     """Should clear all data even if id_file does not exist."""
@@ -205,15 +199,9 @@ def test_clear_all_data_no_id_file(
     data_manager.clear_all_data()
 
     # Verify services are stopped
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "stop", "birdnet_recording.service"]
-    )
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "stop", "birdnet_analysis.service"]
-    )
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "stop", "birdnet_server.service"]
-    )
+    mock_service_manager.stop_service.assert_any_call("birdnet_recording.service")
+    mock_service_manager.stop_service.assert_any_call("birdnet_analysis.service")
+    mock_service_manager.stop_service.assert_any_call("birdnet_server.service")
 
     # Verify data removal (delete_file for id_file should not be called)
     mock_file_manager.delete_directory.assert_called_once_with(
@@ -234,77 +222,9 @@ def test_clear_all_data_no_id_file(
     assert mock_file_manager.create_directory.call_count == 4
 
     # Verify services are restarted
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "start", "birdnet_recording.service"]
-    )
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "start", "birdnet_analysis.service"]
-    )
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "start", "birdnet_server.service"]
-    )
-
-    captured = capsys.readouterr()
-    assert "Stopping services..." in captured.out
-    assert "Removing all data..." in captured.out
-    assert "Re-creating necessary directories..." in captured.out
-    assert "Re-establishing symlinks..." in captured.out
-    assert "Restarting services..." in captured.out
-
-
-@patch("birdnetpi.managers.data_manager.subprocess.run")
-def test_clear_all_data_no_id_file(
-    mock_subprocess_run,
-    data_manager,
-    mock_file_manager,
-    mock_db_service,
-    mock_config,
-    capsys,
-):
-    """Should clear all data even if id_file does not exist."""
-    mock_file_manager.file_exists.return_value = False  # id_file does not exist
-
-    data_manager.clear_all_data()
-
-    # Verify services are stopped
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "stop", "birdnet_recording.service"]
-    )
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "stop", "birdnet_analysis.service"]
-    )
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "stop", "birdnet_server.service"]
-    )
-
-    # Verify data removal (delete_file for id_file should not be called)
-    mock_file_manager.delete_directory.assert_called_once_with(
-        mock_config.data.recordings_dir
-    )
-    mock_file_manager.delete_file.assert_not_called()  # id_file does not exist
-    mock_db_service.clear_database.assert_called_once()
-
-    # Verify directory recreation
-    mock_file_manager.create_directory.assert_any_call(mock_config.data.extracted_dir)
-    mock_file_manager.create_directory.assert_any_call(
-        os.path.join(mock_config.data.extracted_dir, "By_Date")
-    )
-    mock_file_manager.create_directory.assert_any_call(
-        os.path.join(mock_config.data.extracted_dir, "Charts")
-    )
-    mock_file_manager.create_directory.assert_any_call(mock_config.data.processed_dir)
-    assert mock_file_manager.create_directory.call_count == 4
-
-    # Verify services are restarted
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "start", "birdnet_recording.service"]
-    )
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "start", "birdnet_analysis.service"]
-    )
-    mock_subprocess_run.assert_any_call(
-        ["sudo", "systemctl", "start", "birdnet_server.service"]
-    )
+    mock_service_manager.start_service.assert_any_call("birdnet_recording.service")
+    mock_service_manager.start_service.assert_any_call("birdnet_analysis.service")
+    mock_service_manager.start_service.assert_any_call("birdnet_server.service")
 
     captured = capsys.readouterr()
     assert "Stopping services..." in captured.out

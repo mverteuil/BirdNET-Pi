@@ -4,7 +4,14 @@ import subprocess
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.models.birdnet_config import BirdNETConfig
 from birdnetpi.services.file_manager import FileManager
+import os
+import subprocess
+
+from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.models.birdnet_config import BirdNETConfig
+from birdnetpi.services.file_manager import FileManager
 from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.managers.service_manager import ServiceManager
 
 
 class DataManager:
@@ -15,10 +22,12 @@ class DataManager:
         config: BirdNETConfig,
         file_manager: FileManager,
         db_service: DatabaseService,
+        service_manager: ServiceManager,
     ) -> None:
         self.config = config
         self.file_manager = file_manager
         self.db_service = db_service
+        self.service_manager = service_manager
 
     def cleanup_processed_files(self) -> None:
         """Clean up processed audio and CSV files, removing empty or old entries."""
@@ -58,9 +67,9 @@ class DataManager:
     def clear_all_data(self) -> None:
         """Clear all BirdNET-Pi data, stopping services, removing files, and re-creating directories."""
         print("Stopping services...")
-        subprocess.run(["sudo", "systemctl", "stop", "birdnet_recording.service"])
-        subprocess.run(["sudo", "systemctl", "stop", "birdnet_analysis.service"])
-        subprocess.run(["sudo", "systemctl", "stop", "birdnet_server.service"])
+        self.service_manager.stop_service("birdnet_recording.service")
+        self.service_manager.stop_service("birdnet_analysis.service")
+        self.service_manager.stop_service("birdnet_server.service")
 
         print("Removing all data...")
         self.file_manager.delete_directory(self.config.data.recordings_dir)
@@ -88,6 +97,6 @@ class DataManager:
         # More detailed symlink management might be handled by the installer.
 
         print("Restarting services...")
-        subprocess.run(["sudo", "systemctl", "start", "birdnet_recording.service"])
-        subprocess.run(["sudo", "systemctl", "start", "birdnet_analysis.service"])
-        subprocess.run(["sudo", "systemctl", "start", "birdnet_server.service"])
+        self.service_manager.start_service("birdnet_recording.service")
+        self.service_manager.start_service("birdnet_analysis.service")
+        self.service_manager.start_service("birdnet_server.service")
