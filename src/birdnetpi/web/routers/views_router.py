@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from birdnetpi.managers.database_manager import DatabaseManager
+from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.managers.update_manager import UpdateManager
 
@@ -39,6 +40,7 @@ async def get_charts(request: Request) -> Jinja2Templates.TemplateResponse:
     """Generate and display various charts related to bird detections."""
     db_manager = DatabaseManager()
     reporting_manager = ReportingManager(db_manager)
+    plotting_manager = PlottingManager()
     df = reporting_manager.get_data()
 
     # Default values for plot generation
@@ -51,13 +53,13 @@ async def get_charts(request: Request) -> Jinja2Templates.TemplateResponse:
     selected_pal = "Viridis"  # Arbitrary for now
 
     # Generate multi-day plot
-    multi_day_fig = reporting_manager.generate_multi_day_species_and_hourly_plot(
+    multi_day_fig = plotting_manager.generate_multi_day_species_and_hourly_plot(
         df, "Hourly", start_date, end_date, top_n, specie
     )
     multi_day_plot_json = pio.to_json(multi_day_fig)
 
     # Generate daily plot
-    daily_fig = reporting_manager.generate_daily_detections_plot(
+    daily_fig = plotting_manager.generate_daily_detections_plot(
         df,
         "15 minutes",
         start_date,
