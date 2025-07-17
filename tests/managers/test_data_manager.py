@@ -105,11 +105,13 @@ def test_cleanup_processed_files_limit_exceeded(
         mock_file_manager.delete_file.assert_any_call(f)
     assert mock_file_manager.delete_file.call_count == 140
 
+
 def test_cleanup_processed_files_no_files(data_manager, mock_file_manager):
     """Should not attempt to delete files if no processed files exist."""
     mock_file_manager.list_directory_contents.return_value = []
     data_manager.cleanup_processed_files()
     mock_file_manager.delete_file.assert_not_called()
+
 
 def test_cleanup_processed_files_no_deletion_criteria(data_manager, mock_file_manager):
     """Should not delete files if they are not empty and do not exceed the limit."""
