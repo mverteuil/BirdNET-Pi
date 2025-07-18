@@ -55,6 +55,29 @@ class AudioManager:
     def livestream(self, config: LivestreamConfig) -> None:
         """Start an audio livestream from the input device to the output URL."""
         print(f"Starting livestream from {config.input_device} to {config.output_url}")
-        # This will involve using a library or subprocess to stream audio
-        # For now, it's a placeholder.
-        pass
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-f",
+                    "alsa",  # Input format for ALSA devices
+                    "-i",
+                    config.input_device,  # Input device
+                    "-f",
+                    "mp3",  # Output format
+                    "-acodec",
+                    "libmp3lame",  # MP3 audio codec
+                    "-ab",
+                    "128k",  # Audio bitrate
+                    config.output_url,  # Output URL (e.g., Icecast server)
+                ],
+                check=True,  # Raise CalledProcessError if the command returns a non-zero exit code
+                capture_output=True,  # Capture stdout and stderr
+            )
+            print(f"Successfully started livestream to {config.output_url}")
+        except FileNotFoundError:
+            print("Error: ffmpeg command not found. Please ensure ffmpeg is installed.")
+            raise
+        except subprocess.CalledProcessError as e:
+            print(f"Error livestreaming audio: {e.stderr.decode()}")
+            raise
