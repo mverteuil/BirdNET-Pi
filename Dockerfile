@@ -66,6 +66,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh &&     mv /root/.local/bin/uv /usr/local/bin/uv
 
+# Install Caddy
+RUN apt-get update && apt-get install -y \
+    debian-keyring \
+    debian-archive-keyring \
+    apt-transport-https \
+    gnupg \
+    curl \
+    ca-certificates \
+    && \
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg && \
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list && \
+    apt-get update && apt-get install -y caddy && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+
 COPY scripts/install_deps.sh /usr/local/bin/install_deps.sh
 RUN chmod +x /usr/local/bin/install_deps.sh && install_deps.sh
 
@@ -76,6 +91,8 @@ RUN mkdir -p /var/run/supervisor && chown birdnetpi:birdnetpi /var/run/superviso
 
 # Copy application code to runtime stage
 COPY . /app
+COPY config_templates/Caddyfile.template /etc/caddy/Caddyfile
+RUN chown root:root /etc/caddy/Caddyfile
 RUN chown -R birdnetpi:birdnetpi /app
 
 # Switch to the birdnetpi user and set up Python environment

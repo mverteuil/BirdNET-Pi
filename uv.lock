@@ -101,6 +101,7 @@ dependencies = [
     { name = "pytz" },
     { name = "seaborn" },
     { name = "setuptools" },
+    { name = "sqladmin" },
     { name = "sqlalchemy" },
     { name = "streamlit" },
     { name = "suntime" },
@@ -144,6 +145,7 @@ requires-dist = [
     { name = "pytz" },
     { name = "seaborn" },
     { name = "setuptools" },
+    { name = "sqladmin", specifier = ">=0.21.0" },
     { name = "sqlalchemy" },
     { name = "streamlit", specifier = "==1.19.0" },
     { name = "suntime" },
@@ -1318,6 +1320,22 @@ wheels = [
 ]
 
 [[package]]
+name = "sqladmin"
+version = "0.21.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jinja2" },
+    { name = "python-multipart" },
+    { name = "sqlalchemy" },
+    { name = "starlette" },
+    { name = "wtforms" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5b/0c/614041e1b544e0de1f43b58f0105b3e2795b80369d5b0ff7412882d42fff/sqladmin-0.21.0.tar.gz", hash = "sha256:cb455b79eb79ef7d904680dd83817bf7750675147400b5b7cc401d04bda7ef2c", size = 1428312, upload-time = "2025-07-02T09:41:21.207Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ed/8d/81b2a48cc6f5479cb1148292518e3006ec8f5fbe3b0829ef165984e9d7b9/sqladmin-0.21.0-py3-none-any.whl", hash = "sha256:2b1802c49bdd3128c6452625705693cf32d5d33e7db30e63f409bd20a9c05b53", size = 1443585, upload-time = "2025-07-02T09:41:19.205Z" },
+]
+
+[[package]]
 name = "sqlalchemy"
 version = "2.0.41"
 source = { registry = "https://pypi.org/simple" }
@@ -1561,6 +1579,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/8a/98/2d9906746cdc6a6ef809ae6338005b3f21bb568bea3165cfc6a243fdc25c/wheel-0.45.1.tar.gz", hash = "sha256:661e1abd9198507b1409a20c02106d9670b2576e916d58f520316666abca6729", size = 107545, upload-time = "2024-11-23T00:18:23.513Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0b/2c/87f3254fd8ffd29e4c02732eee68a83a1d3c346ae39bc6822dcbcb697f2b/wheel-0.45.1-py3-none-any.whl", hash = "sha256:708e7481cc80179af0e556bbf0cc00b8444c7321e2700b8d8580231d13017248", size = 72494, upload-time = "2024-11-23T00:18:21.207Z" },
+]
+
+[[package]]
+name = "wtforms"
+version = "3.1.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markupsafe" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6a/c7/96d10183c3470f1836846f7b9527d6cb0b6c2226ebca40f36fa29f23de60/wtforms-3.1.2.tar.gz", hash = "sha256:f8d76180d7239c94c6322f7990ae1216dae3659b7aa1cee94b6318bdffb474b9", size = 134705, upload-time = "2024-01-06T07:52:41.075Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/18/19/c3232f35e24dccfad372e9f341c4f3a1166ae7c66e4e1351a9467c921cc1/wtforms-3.1.2-py3-none-any.whl", hash = "sha256:bf831c042829c8cdbad74c27575098d541d039b1faa74c771545ecac916f2c07", size = 145961, upload-time = "2024-01-06T07:52:43.023Z" },
 ]
 
 [[package]]
