@@ -2,12 +2,22 @@ import datetime
 
 import pandas as pd
 
+from birdnetpi.models.birdnet_config import BirdNETConfig
 from birdnetpi.models.daily_plot_config import DailyPlotConfig
 from birdnetpi.models.multi_day_plot_config import MultiDayPlotConfig
+from birdnetpi.services.location_service import LocationService
 
 
 class DataPreparationManager:
     """Manages data preparation and manipulation for reporting and plotting."""
+
+    def __init__(
+        self,
+        config: BirdNETConfig,
+        location_service: LocationService,
+    ) -> None:
+        self.config = config
+        self.location_service = location_service
 
     @staticmethod
     def hms_to_dec(time_obj: datetime.time) -> float:
@@ -79,8 +89,6 @@ class DataPreparationManager:
         self, num_days_to_display: int, fig_x: list[str]
     ) -> tuple[list, list, list, list]:
         """Prepare sunrise and sunset data for plotting."""
-        # This method relies on get_sunrise_sunset_data which should be in ReportingManager
-        # For now, keeping it here as a placeholder
         sunrise_week_list, sunrise_list, sunrise_text_list = (
             self.get_sunrise_sunset_data(num_days_to_display)
         )
@@ -94,11 +102,6 @@ class DataPreparationManager:
         self, num_days_to_display: int
     ) -> tuple[list, list, list]:
         """Retrieve sunrise and sunset data for a given number of days."""
-        # This method relies on self.config which PlottingManager should not have
-        # For now, keeping it here as a placeholder
-
-        # sun = Sun(latitude, longitude) # Sun import removed from PlottingManager
-
         sunrise_list = []
         sunset_list = []
         sunrise_week_list = []
@@ -107,19 +110,15 @@ class DataPreparationManager:
         sunset_text_list = []
 
         for past_day in range(num_days_to_display):
+            current_date = datetime.now().date() - datetime.timedelta(days=past_day)
+            sunrise_time, sunset_time = self.location_service.get_sunrise_sunset_times(
+                current_date
+            )
 
-            # sun_rise = sun.get_local_sunrise_time(current_date) # Sun import removed
-            # sun_dusk = sun.get_local_sunset_time(current_date) # Sun import removed
-
-            sun_rise_time = 0.0  # Placeholder
-            sun_dusk_time = 0.0  # Placeholder
-
-            temp_time = "00:00 Sunrise"  # Placeholder
-            sunrise_text_list.append(temp_time)
-            temp_time = "00:00 Sunset"  # Placeholder
-            sunset_text_list.append(temp_time)
-            sunrise_list.append(sun_rise_time)
-            sunset_list.append(sun_dusk_time)
+            sunrise_list.append(self.hms_to_dec(sunrise_time.time()))
+            sunset_list.append(self.hms_to_dec(sunset_time.time()))
+            sunrise_text_list.append(f"{self.hms_to_str(sunrise_time.time())} Sunrise")
+            sunset_text_list.append(f"{self.hms_to_str(sunset_time.time())} Sunset")
             sunrise_week_list.append(past_day)
             sunset_week_list.append(past_day)
 
