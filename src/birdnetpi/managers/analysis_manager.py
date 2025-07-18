@@ -1,5 +1,8 @@
+from datetime import datetime  # Import datetime for timestamp conversion
+
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.models.birdnet_config import BirdNETConfig
+from birdnetpi.models.database_models import Detection  # Import Detection model
 from birdnetpi.services.analysis_client_service import AnalysisClientService
 from birdnetpi.services.detection_event_publisher import DetectionEventPublisher
 from birdnetpi.services.file_manager import FileManager
@@ -28,21 +31,29 @@ class AnalysisManager:
         # 1. Send to analysis client
         analysis_results = self.analysis_client_service.analyze_audio(audio_file_path)
 
-        # 2. Store in database (example, adjust based on actual results structure)
-        # For now, assuming analysis_results contains data suitable for Detection model
+        # 2. Store in database
         if analysis_results:
-            # Example: create a dummy detection for now
-            detection_data = {
-                "species": "Example Species",
-                "confidence": 0.9,
-                "timestamp": "2025-01-01 12:00:00",  # Placeholder
-                "audio_file_path": audio_file_path,
-            }
-            new_detection = self.detection_manager.add_detection(detection_data)
-            print(f"Added detection to DB: {new_detection.species}")
+            for result in analysis_results:
+                # Assuming result is a dict with 'species', 'confidence', 'timestamp'
+                # Convert timestamp string to datetime object if necessary
+                timestamp_dt = (
+                    datetime.fromisoformat(result["timestamp"])
+                    if isinstance(result["timestamp"], str)
+                    else result["timestamp"]
+                )
 
-            # 3. Publish detection event
-            self.detection_event_publisher.publish_detection(new_detection)
+                detection = Detection(
+                    species=result["species"],
+                    confidence=result["confidence"],
+                    timestamp=timestamp_dt,
+                    audio_file_path=audio_file_path,
+                    # Add other fields from analysis_results if available and relevant
+                )
+                new_detection = self.detection_manager.add_detection(detection)
+                print(f"Added detection to DB: {new_detection.species}")
+
+                # 3. Publish detection event
+                self.detection_event_publisher.publish_detection(new_detection)
 
     def extract_new_birdsounds(self) -> None:
         """Extract new birdsounds based on analysis results."""
