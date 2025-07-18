@@ -1,17 +1,10 @@
 import os
-import subprocess
+import shutil  # Import shutil
 
-from birdnetpi.managers.detection_manager import DetectionManager
-from birdnetpi.models.birdnet_config import BirdNETConfig
-from birdnetpi.services.file_manager import FileManager
-import os
-import subprocess
-
-from birdnetpi.managers.detection_manager import DetectionManager
-from birdnetpi.models.birdnet_config import BirdNETConfig
-from birdnetpi.services.file_manager import FileManager
-from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.managers.service_manager import ServiceManager
+from birdnetpi.models.birdnet_config import BirdNETConfig
+from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.services.file_manager import FileManager
 
 
 class DataManager:
@@ -90,11 +83,26 @@ class DataManager:
         self.file_manager.create_directory(self.config.data.processed_dir)
 
         print("Re-establishing symlinks...")
-        # Symlinks from original script, adjust paths as necessary
-        # This part needs careful consideration of the new directory structure
-        # and what symlinks are actually necessary for the Python implementation.
-        # For now, I'll just put placeholders for the most critical ones.
-        # More detailed symlink management might be handled by the installer.
+        # Define symlink targets and destinations
+        symlinks = {
+            self.config.data.recordings_dir: "/var/www/html/BirdSongs",
+            self.config.data.processed_dir: "/var/www/html/Processed",
+            self.config.data.extracted_dir: "/var/www/html/Extracted",
+        }
+
+        for target, link_name in symlinks.items():
+            try:
+                # Remove existing symlink or directory at link_name if it exists
+                if os.path.islink(link_name):
+                    os.unlink(link_name)
+                elif os.path.isdir(link_name):
+                    shutil.rmtree(link_name)
+
+                # Create new symlink
+                os.symlink(target, link_name)
+                print(f"Created symlink: {link_name} -> {target}")
+            except Exception as e:
+                print(f"Error creating symlink {link_name} -> {target}: {e}")
 
         print("Restarting services...")
         self.service_manager.start_service("birdnet_recording.service")
