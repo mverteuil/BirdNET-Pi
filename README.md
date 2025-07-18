@@ -85,24 +85,20 @@ Currently listening in these countries . . . that I know of . . .
 ## Installation
 [A comprehensive installation guide is available here](https://github.com/mcguirepr89/BirdNET-Pi/wiki/Installation-Guide).
 
-Please note that installing BirdNET-Pi on top of other servers is not supported. If this is something that you require, please open a discussion for your idea and inquire about how to contribute to development.
+The system is installed by executing the `newinstaller.sh` script, which handles all necessary dependencies and configurations.
 
-[Raspberry Pi 3B[+] and 0W2 installation guide available here](https://github.com/mcguirepr89/BirdNET-Pi/wiki/RPi0W2-Installation-Guide)
-
-The system can be installed with:
 ```bash
 curl -s https://raw.githubusercontent.com/mcguirepr89/BirdNET-Pi/main/newinstaller.sh | bash
 ```
-The installer takes care of any and all necessary updates, so you can run that as the very first command upon the first boot, if you'd like.
-
-The installation creates a log in `$HOME/installation-$(date "+%F").txt`.
 
 **For Developers:**
-If you are a developer and wish to set up the environment manually, you can use `uv` for dependency management.
+To set up a development environment, clone the repository and use `uv` to sync the dependencies specified in `pyproject.toml`.
+
 ```bash
 # From the BirdNET-Pi directory
+git clone https://github.com/mcguirepr89/BirdNET-Pi.git
+cd BirdNET-Pi
 uv sync
-uv run pytest
 ```
 
 ## Architecture and Development
@@ -117,6 +113,7 @@ BirdNET-Pi has undergone a significant architectural refactoring to enhance main
 *   **Continuous Integration:** GitHub Actions are configured for automated testing, code quality checks, and coverage enforcement.
 
 **Directory Structure:**
+*   `src/birdnetpi/`: The primary Python package.
 *   `src/birdnetpi/managers/`: High-level classes orchestrating specific domains (e.g., `AnalysisManager`, `AudioManager`).
 *   `src/birdnetpi/services/`: Classes for external systems or low-level functions (e.g., `FileManager`, `NotificationService`).
 *   `src/birdnetpi/models/`: Dataclasses and Enums for data modeling.
@@ -126,9 +123,10 @@ BirdNET-Pi has undergone a significant architectural refactoring to enhance main
 *   `tests/`: `pytest` tests, mirroring the `src/birdnetpi/` structure.
 *   `config/`: Application configuration files (ignored by Git).
 *   `config_templates/`: Templates for configuration files.
+*   `pyproject.toml`: Project metadata and dependencies, managed by `uv`.
 
-**Service Management Strategy (Planned):**
-A future enhancement will introduce a Strategy Pattern for managing system services (like FastAPI and Caddy) across different deployment environments (Docker containers and embedded Raspberry Pi deployments). This will provide a flexible and extensible way to handle service lifecycle management.
+**Service Management Strategy:**
+The system utilizes a Strategy Pattern for managing system services (like FastAPI and Caddy) across different deployment environments (Docker containers and embedded Raspberry Pi deployments). This provides a flexible and extensible way to handle service lifecycle management.
 
 ## Access
 The BirdNET-Pi can be accessed from any web browser on the same network:
