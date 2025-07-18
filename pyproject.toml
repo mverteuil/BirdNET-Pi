@@ -26,6 +26,7 @@ dependencies = [
     "uvicorn",
     "fastapi",
     "python-multipart",
+    "sqladmin>=0.21.0",
 ]
 
 [project.optional-dependencies]

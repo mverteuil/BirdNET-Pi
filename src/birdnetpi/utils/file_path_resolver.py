@@ -4,16 +4,13 @@ import os
 class FilePathResolver:
     """Resolves absolute file paths within the BirdNET-Pi project structure."""
 
-    def __init__(self, base_dir: str | None = None) -> None:
-        if base_dir:
-            self.base_dir = base_dir
-        else:
-            # Determine the repository root dynamically
-            # This file is in BirdNET-Pi/src/utils/
-            # So, go up two directories to reach BirdNET-Pi/
-            self.base_dir = os.path.abspath(
-                os.path.join(os.path.dirname(__file__), "..", "..")
-            )
+    def __init__(self) -> None:
+        # Determine the repository root dynamically
+        # This file is in BirdNET-Pi/src/birdnetpi/utils/
+        # So, go up three directories to reach BirdNET-Pi/
+        self.base_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "..", "..")
+        )
 
     def resolve(self, *paths: str) -> str:
         """Resolve an absolute path from the base directory and given subpaths."""
