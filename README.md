@@ -67,15 +67,15 @@ Currently listening in these countries . . . that I know of . . .
 * **Live audio stream and spectrogram**
 * **Automatic disk space management** that periodically purges old audio files
 * [BirdWeather](https://app.birdweather.com) integration -- you can request a BirdWeather ID from BirdNET-Pi's "Tools" > "Settings" page
-* Web interface access to all data and logs provided by [Caddy](https://caddyserver.com)
+* **Modern Web Interface (FastAPI/Python):** Access to all data and logs provided by a FastAPI web application, served via [Caddy](https://caddyserver.com).
 * [GoTTY](https://github.com/yudai/gotty) Web Terminal
 * [Tiny File Manager](https://tinyfilemanager.github.io/)
 * FTP server included
 * SQLite3 Database
-* [Adminer](https://www.adminer.org/) database maintenance
-* [phpSysInfo](https://github.com/phpsysinfo/phpsysinfo)
+* **SQLAdmin for Database Management:** Web-based interface for SQLite database maintenance.
 * [Apprise Notifications](https://github.com/caronc/apprise) supporting 70+ notification platforms
 * Localization supported
+* **Centralized YAML Configuration:** Robust and easy-to-manage application settings.
 
 ## Requirements
 * A Raspberry Pi 4B, Raspberry Pi 400, Raspberry Pi 3B+, or Raspberry Pi 0W2 (The 3B+ and 0W2 must run on RaspiOS-ARM64-**Lite**)
@@ -90,12 +90,46 @@ Please note that installing BirdNET-Pi on top of other servers is not supported.
 [Raspberry Pi 3B[+] and 0W2 installation guide available here](https://github.com/mcguirepr89/BirdNET-Pi/wiki/RPi0W2-Installation-Guide)
 
 The system can be installed with:
-```
+```bash
 curl -s https://raw.githubusercontent.com/mcguirepr89/BirdNET-Pi/main/newinstaller.sh | bash
 ```
 The installer takes care of any and all necessary updates, so you can run that as the very first command upon the first boot, if you'd like.
 
 The installation creates a log in `$HOME/installation-$(date "+%F").txt`.
+
+**For Developers:**
+If you are a developer and wish to set up the environment manually, you can use `uv` for dependency management.
+```bash
+# From the BirdNET-Pi directory
+uv sync
+uv run pytest
+```
+
+## Architecture and Development
+
+BirdNET-Pi has undergone a significant architectural refactoring to enhance maintainability, scalability, and developer experience.
+
+**Key Architectural Principles:**
+*   **Python-centric:** The core application logic and web interface are now built with Python, leveraging FastAPI for the web API.
+*   **Modular Design:** The codebase is organized into distinct managers, services, and models, promoting separation of concerns.
+*   **Centralized Configuration:** Application settings are managed through a robust YAML-based configuration system.
+*   **Modern Tooling:** Utilizes `uv` for efficient dependency management and `pytest` for testing.
+*   **Continuous Integration:** GitHub Actions are configured for automated testing, code quality checks, and coverage enforcement.
+
+**Directory Structure:**
+*   `src/birdnetpi/managers/`: High-level classes orchestrating specific domains (e.g., `AnalysisManager`, `AudioManager`).
+*   `src/birdnetpi/services/`: Classes for external systems or low-level functions (e.g., `FileManager`, `NotificationService`).
+*   `src/birdnetpi/models/`: Dataclasses and Enums for data modeling.
+*   `src/birdnetpi/utils/`: General helper functions and utilities.
+*   `src/birdnetpi/wrappers/`: Python entry points called by shell scripts.
+*   `src/birdnetpi/web/`: The FastAPI web application, including routers, templates, and static files.
+*   `tests/`: `pytest` tests, mirroring the `src/birdnetpi/` structure.
+*   `config/`: Application configuration files (ignored by Git).
+*   `config_templates/`: Templates for configuration files.
+
+**Service Management Strategy (Planned):**
+A future enhancement will introduce a Strategy Pattern for managing system services (like FastAPI and Caddy) across different deployment environments (Docker containers and embedded Raspberry Pi deployments). This will provide a flexible and extensible way to handle service lifecycle management.
+
 ## Access
 The BirdNET-Pi can be accessed from any web browser on the same network:
 - http://birdnetpi.local OR your Pi's IP address
