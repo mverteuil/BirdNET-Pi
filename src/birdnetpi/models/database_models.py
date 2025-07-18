@@ -22,6 +22,7 @@ class Detection(Base):
     week = Column(Integer, nullable=True)
     sensitivity = Column(Float, nullable=True)
     overlap = Column(Float, nullable=True)
+    is_extracted = Column(Boolean, default=False)
 
 
 class AudioFile(Base):

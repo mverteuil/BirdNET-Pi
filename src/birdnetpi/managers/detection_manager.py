@@ -1,10 +1,8 @@
-import csv
-from datetime import datetime
+from sqlalchemy import Column, DateTime, Float, Integer, String, Boolean
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.sql import func
 
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import func
-
-from birdnetpi.models.database_models import Detection
+from birdnetpi.models.database_models import Detection, AudioFile
 from birdnetpi.services.database_service import DatabaseService
 
 
@@ -99,7 +97,15 @@ class DetectionManager:
             finally:
                 db.close()
 
-    
+    def get_audio_file_by_path(self, file_path: str) -> AudioFile | None:
+        """Retrieve an AudioFile record by its file path."""
+        with self.db_service.get_db() as db:
+            try:
+                return db.query(AudioFile).filter_by(file_path=file_path).first()
+            except SQLAlchemyError as e:
+                db.rollback()
+                print(f"Error retrieving audio file: {e}")
+                raise
 
     def delete_detection(self, detection_id: int) -> None:
         """Delete a detection record from the database."""
@@ -287,6 +293,22 @@ class DetectionManager:
             except SQLAlchemyError as e:
                 db.rollback()
                 print(f"Error retrieving detection: {e}")
+                raise
+
+    def update_detection_extracted_status(self, detection_id: int, is_extracted: bool) -> None:
+        """Update the extracted status of a detection record in the database."
+        with self.db_service.get_db() as db:
+            try:
+                detection = db.query(Detection).filter_by(id=detection_id).first()
+                if detection:
+                    detection.is_extracted = is_extracted
+                    db.commit()
+                    print(f"Detection {detection_id} extracted status updated to {is_extracted}.")
+                else:
+                    print(f"Detection with ID {detection_id} not found.")
+            except SQLAlchemyError as e:
+                db.rollback()
+                print(f"Error updating detection extracted status: {e}")
                 raise
 
     

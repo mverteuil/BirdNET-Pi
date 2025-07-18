@@ -21,6 +21,8 @@ class ConfigFileParser:
             longitude=float(config_data.get("longitude", 0.0)),
             model=config_data.get("model", "BirdNET_GLOBAL_6K_V2.4_Model_FP16"),
             sf_thresh=float(config_data.get("sf_thresh", 0.03)),
+            audio_format=config_data.get("audio_format", "mp3"),
+            extraction_length=float(config_data.get("extraction_length", 6.0)),
             birdweather_id=config_data.get("birdweather_id", ""),
             apprise_input=config_data.get("apprise_input", ""),
             apprise_notification_title=config_data.get(
@@ -63,6 +65,8 @@ class ConfigFileParser:
             "longitude": config.longitude,
             "model": config.model,
             "sf_thresh": config.sf_thresh,
+            "audio_format": config.audio_format,
+            "extraction_length": config.extraction_length,
             "birdweather_id": config.birdweather_id,
             "apprise_input": config.apprise_input,
             "apprise_notification_title": config.apprise_notification_title,

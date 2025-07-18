@@ -23,6 +23,8 @@ class BirdNETConfig:
     longitude: float = 0.0
     model: str = "BirdNET_GLOBAL_6K_V2.4_Model_FP16"
     sf_thresh: float = 0.03  # Default from config.php example
+    audio_format: str = "mp3" # Default from birdnet.conf.template
+    extraction_length: float = 6.0 # Default from birdnet.conf.template
 
     # Data paths
     data: DataConfig = field(default_factory=DataConfig)
