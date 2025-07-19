@@ -92,11 +92,11 @@ class DataPreparationManager:
         sunrise_week_list, sunrise_list, sunrise_text_list = (
             self.get_sunrise_sunset_data(num_days_to_display)
         )
-        daysback_range = fig_x
+        daysback_range = list(fig_x) # Create a copy to avoid modifying original list
         daysback_range.append(None)
         daysback_range.extend(daysback_range)
         daysback_range = daysback_range[:-1]
-        return sunrise_week_list, sunrise_list, sunrise_text_list, daysback_range
+        return sunrise_week_list, sunrise_list, sunrise_text_list, daysback_range, daysback_range
 
     def get_sunrise_sunset_data(
         self, num_days_to_display: int

@@ -18,8 +18,41 @@ class PlottingManager:
         self, fig: go.Figure, hourly: pd.DataFrame, species: str
     ) -> go.Figure:
         """Add a polar trace to the given Plotly figure."""
-        # Placeholder for the actual implementation of _add_polar_trace_to_figure
-        # This method was not present in the original ReportingManager, but is called by _create_multi_day_plot_figure
+        # Check if the species exists in the hourly data
+        if species in hourly.index:
+            r_values = hourly.loc[species][:-1]  # Exclude 'All' column
+            theta_values = hourly.columns[:-1]  # Exclude 'All' column
+
+            # Convert theta_values (hours) to degrees for polar plot (0-24h to 0-360 degrees)
+            theta_degrees = [h * 15 for h in theta_values]  # 24 hours * 15 degrees/hour = 360 degrees
+
+            fig.add_trace(
+                go.Scatterpolar(
+                    r=r_values,
+                    theta=theta_degrees,
+                    mode="lines",
+                    name=species,
+                    thetaunit="degrees",
+                    line_color="darkgreen",
+                    fill="toself",
+                    fillcolor="rgba(0,100,0,0.2)",
+                ),
+                row=1,
+                col=2,
+            )
+
+            fig.update_layout(
+                polar=dict(
+                    radialaxis_visible=True,
+                    angularaxis=dict(
+                        tickmode="array",
+                        tickvals=[0, 90, 180, 270],
+                        ticktext=["0h", "6h", "12h", "18h"],
+                        direction="clockwise",
+                        rotation=90,
+                    ),
+                )
+            )
         return fig
 
     def _create_multi_day_plot_figure(
@@ -69,11 +102,10 @@ class PlottingManager:
 
         fig = self._add_polar_trace_to_figure(fig, hourly, species)
 
-        # Assuming get_daily_crosstab is now in ReportingManager and passed as part of df5 or similar
-        # For now, keeping it as a method that takes df5
+        # get_daily_crosstab is in DataPreparationManager and takes df5 as input
         daily_crosstab = self.data_preparation_manager.get_daily_crosstab(
             df5
-        )  # This method should be moved to ReportingManager
+        )
 
         fig.add_trace(
             go.Bar(

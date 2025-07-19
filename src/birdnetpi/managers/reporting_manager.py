@@ -215,18 +215,5 @@ class ReportingManager:
         self, df: pd.DataFrame, resample_sel: str, specie: str
     ) -> tuple[pd.DataFrame, list[str], list[float], list[str]]:
         """Prepare daily detection data for plotting."""
-        df4 = df["Com_Name"][df["Com_Name"] == specie].resample("15min").count()
-        df4.index = [df4.index.date, df4.index.time]
-        day_hour_freq = df4.unstack().fillna(0)
-
-        saved_time_labels = [
-            self.data_preparation_manager.hms_to_str(h)
-            for h in day_hour_freq.columns.tolist()
-        ]
-        fig_dec_y = [
-            self.data_preparation_manager.hms_to_dec(h)
-            for h in day_hour_freq.columns.tolist()
-        ]
-        fig_x = [d.strftime("%d-%m-%Y") for d in day_hour_freq.index.tolist()]
-
-        return day_hour_freq, saved_time_labels, fig_dec_y, fig_x
+        config = DailyPlotConfig(resample_sel=resample_sel, specie=specie)
+        return self.data_preparation_manager.prepare_daily_plot_data(df, config)
