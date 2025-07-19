@@ -1,3 +1,4 @@
+import datetime
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import ClassVar
@@ -118,8 +119,23 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 publisher = DetectionEventPublisher()
 
 
-@app.get("/test-detection")
-async def test_detection() -> dict[str, str]:
+@app.get("/test_detection_form", response_class=HTMLResponse)
+async def test_detection_form(request: Request) -> HTMLResponse:
+    """Render the form for testing detections."""
+    return templates.TemplateResponse(request, "test_detection_modal.html", {})
+
+
+@app.get("/test_detection")
+async def test_detection(
+    species: str = "Test Bird",
+    confidence: float = 0.99,
+    timestamp: str | None = None,
+) -> dict[str, str]:
     """Publishes a test detection event for demonstration purposes."""
-    publisher.publish_detection({"species": "Test Bird", "confidence": 0.99})
-    return {"message": "Test detection published"}
+    detection_data = {
+        "species": species,
+        "confidence": confidence,
+        "timestamp": timestamp if timestamp else datetime.datetime.now().isoformat(),
+    }
+    publisher.publish_detection(detection_data)
+    return {"message": "Test detection published", "data": detection_data}

@@ -23,6 +23,12 @@
       </form>
       <button type="button" onclick="loadRecordings()">Recordings</button>
       <button type="button" onclick="loadLog()">View Log</button>
+      <button
+        type="button"
+        onclick="window.open('/test_detection_form', '_blank', 'width=600,height=400')"
+      >
+        Test Detection
+      </button>
       <form action="" id="toolsbtn" method="GET" id="views">
         <button type="submit" name="view" value="Tools" form="views">
           Tools{% if commits_behind > 0 %}
