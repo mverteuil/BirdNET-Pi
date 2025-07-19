@@ -21,7 +21,7 @@
     <div id="messages"></div>
 
     <script>
-      var ws = new WebSocket("ws://localhost:8000/ws");
+      var ws = new WebSocket("{{ websocket_url }}");
       ws.onmessage = function (event) {
         var messages = document.getElementById("messages");
         var message = document.createElement("div");

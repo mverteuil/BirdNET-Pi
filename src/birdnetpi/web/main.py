@@ -91,7 +91,12 @@ templates = Jinja2Templates(directory="/app/src/birdnetpi/web/templates")
 async def read_root(request: Request) -> HTMLResponse:
     """Render the main index page."""
     return templates.TemplateResponse(
-        request, "index.html", {"site_name": request.app.state.config.site_name}
+        request,
+        "index.html",
+        {
+            "site_name": request.app.state.config.site_name,
+            "websocket_url": f"ws://{request.url.hostname}:8000/ws",
+        },
     )
 
 
