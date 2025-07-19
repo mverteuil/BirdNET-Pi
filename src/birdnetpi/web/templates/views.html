@@ -27,11 +27,9 @@
           Spectrogram
         </button>
       </form>
-      <form action="" method="GET" id="views">
-        <button type="submit" name="view" value="Species Stats" form="views">
-          Best Recordings
-        </button>
-      </form>
+      <button type="button" onclick="loadBestRecordings()">
+        Best Recordings
+      </button>
 
       <form action="" method="GET" id="views">
         <button type="submit" name="view" value="Daily Charts" form="views">
@@ -66,6 +64,7 @@
     <div class="views">
       <pre id="logContent"></pre>
       <ul id="recordingsList"></ul>
+      <ul id="bestRecordingsList"></ul>
     </div>
 
     <script>
@@ -84,6 +83,19 @@
           const listItem = document.createElement("li");
           listItem.textContent = recording;
           recordingsList.appendChild(listItem);
+        });
+      }
+
+      async function loadBestRecordings() {
+        const response = await fetch("/best_recordings");
+        const data = await response.json();
+        const bestRecordingsList =
+          document.getElementById("bestRecordingsList");
+        bestRecordingsList.innerHTML = ""; // Clear previous list
+        data.best_recordings.forEach((recording) => {
+          const listItem = document.createElement("li");
+          listItem.textContent = `${recording.species} - ${recording.confidence} - ${recording.timestamp}`;
+          bestRecordingsList.appendChild(listItem);
         });
       }
     </script>
