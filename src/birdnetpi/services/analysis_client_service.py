@@ -1,8 +1,13 @@
+import datetime
 import os
 
 import librosa
 import numpy as np
-import tflite_runtime.interpreter as tflite  # Assuming tflite-runtime is installed
+
+try:
+    import tflite_runtime.interpreter as tflite
+except ImportError:
+    import tensorflow.lite as tflite
 
 from birdnetpi.models.birdnet_config import BirdNETConfig
 
@@ -12,7 +17,6 @@ class AnalysisClientService:
 
     def __init__(self, config: BirdNETConfig) -> None:
         self.config = config
-        # self.analyzer_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "BirdNET-Analyzer", "BirdNET-Analyzer"))
         self.interpreter = tflite.Interpreter(model_path=self.config.model)
         self.interpreter.allocate_tensors()
         self.input_details = self.interpreter.get_input_details()
@@ -50,9 +54,10 @@ class AnalysisClientService:
             output_data = self.interpreter.get_tensor(self.output_details[0]["index"])
 
             # Post-process results
-            # Assuming output_data is a 2D array where rows are detections and columns are probabilities for each species
+            # Assuming output_data is a 2D array where rows are detections and
+            # columns are probabilities for each species
             # This part needs to be adapted based on the actual model output format
-            for i, detection_probabilities in enumerate(output_data):
+            for _i, detection_probabilities in enumerate(output_data):
                 # Get top species and confidence
                 top_confidence = np.max(detection_probabilities)
                 top_species_idx = np.argmax(detection_probabilities)
