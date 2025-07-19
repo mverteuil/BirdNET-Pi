@@ -1,6 +1,6 @@
 import pandas as pd
 import plotly.io as pio
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -14,8 +14,16 @@ router = APIRouter()
 templates = Jinja2Templates(directory="src/web/templates")
 
 
+def get_database_manager(request: Request) -> DatabaseManager:
+    """Return the DatabaseManager instance from the app state."""
+    return request.app.state.db_manager
+
+
 @router.get("/views", response_class=HTMLResponse)
-async def read_views(request: Request) -> Jinja2Templates.TemplateResponse:
+async def read_views(
+    request: Request,
+    db_manager: DatabaseManager = Depends(get_database_manager),  # noqa: B008
+) -> Jinja2Templates.TemplateResponse:
     """Render the main views page, displaying repository update status."""
     update_manager = UpdateManager()
     commits_behind_count = update_manager.get_commits_behind()
@@ -25,9 +33,11 @@ async def read_views(request: Request) -> Jinja2Templates.TemplateResponse:
 
 
 @router.get("/views/weekly-report", response_class=HTMLResponse)
-async def get_weekly_report(request: Request) -> Jinja2Templates.TemplateResponse:
+async def get_weekly_report(
+    request: Request,
+    db_manager: DatabaseManager = Depends(get_database_manager),  # noqa: B008
+) -> Jinja2Templates.TemplateResponse:
     """Generate and display a weekly report of bird detections."""
-    db_manager = DatabaseManager()
     reporting_manager = ReportingManager(db_manager)
     report_data = reporting_manager.get_weekly_report_data()
     return templates.TemplateResponse(
@@ -36,9 +46,11 @@ async def get_weekly_report(request: Request) -> Jinja2Templates.TemplateRespons
 
 
 @router.get("/views/charts", response_class=HTMLResponse)
-async def get_charts(request: Request) -> Jinja2Templates.TemplateResponse:
+async def get_charts(
+    request: Request,
+    db_manager: DatabaseManager = Depends(get_database_manager),  # noqa: B008
+) -> Jinja2Templates.TemplateResponse:
     """Generate and display various charts related to bird detections."""
-    db_manager = DatabaseManager()
     reporting_manager = ReportingManager(db_manager)
     plotting_manager = PlottingManager()
     df = reporting_manager.get_data()

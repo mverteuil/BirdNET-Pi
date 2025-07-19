@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 from sqladmin import Admin, ModelView
 from sqlalchemy import create_engine
 
+from birdnetpi.managers.database_manager import DatabaseManager
 from birdnetpi.managers.service_manager import ServiceManager
 from birdnetpi.models.database_models import AudioFile, Base, Detection
 from birdnetpi.services.database_service import DatabaseService
@@ -45,6 +46,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Initialize core services and managers
     app.state.file_manager = FileManager(FilePathResolver().repo_root)
     app.state.db_service = DatabaseService(app.state.config.data.db_path)
+    app.state.db_manager = DatabaseManager(app.state.db_service)
     app.state.service_manager = ServiceManager(app.state.config)
 
     class DetectionAdmin(ModelView, model=Detection):
