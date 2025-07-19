@@ -5,6 +5,7 @@ import pandas as pd
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.models.daily_plot_config import DailyPlotConfig
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
@@ -100,7 +101,9 @@ class ReportingManager:
         self, start_date: datetime.date, end_date: datetime.date
     ) -> list[dict[str, Any]]:
         """Fetch new species detected in the current week that were not present in prior data."""
-        new_species_rows = self.detection_manager.get_new_species_data(start_date, end_date)
+        new_species_rows = self.detection_manager.get_new_species_data(
+            start_date, end_date
+        )
         new_species = (
             [
                 {"com_name": row["com_name"], "count": row["count"]}
@@ -200,6 +203,14 @@ class ReportingManager:
         """Retrieve the most recent detection records from the database."""
         recent_detections = self.detection_manager.get_most_recent_detections(limit)
         return recent_detections
+
+    def get_todays_detections(self) -> list[dict[str, Any]]:
+        """Retrieve all detection records from the database for the current day."""
+        today = datetime.date.today()
+        todays_detections = self.detection_manager.get_detections_by_date_range(
+            today, today
+        )
+        return todays_detections
 
     def date_filter(
         self, df: pd.DataFrame, start_date: str, end_date: str

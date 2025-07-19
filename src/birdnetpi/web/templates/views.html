@@ -12,16 +12,9 @@
           Overview
         </button>
       </form>
-      <form action="" method="GET" id="views">
-        <button
-          type="submit"
-          name="view"
-          value="Todays Detections"
-          form="views"
-        >
-          Today's Detections
-        </button>
-      </form>
+      <button type="button" onclick="loadTodaysDetections()">
+        Today's Detections
+      </button>
       <button type="button" onclick="loadSpectrogram()">Spectrogram</button>
       <button type="button" onclick="loadBestRecordings()">
         Best Recordings
@@ -67,6 +60,7 @@
         alt="Spectrogram"
         style="display: none"
       />
+      <ul id="todaysDetectionsList"></ul>
     </div>
 
     <script>
@@ -113,6 +107,20 @@
         const spectrogramImage = document.getElementById("spectrogramImage");
         spectrogramImage.src = imageUrl;
         spectrogramImage.style.display = "block";
+      }
+
+      async function loadTodaysDetections() {
+        const response = await fetch("/todays_detections");
+        const data = await response.json();
+        const todaysDetectionsList = document.getElementById(
+          "todaysDetectionsList",
+        );
+        todaysDetectionsList.innerHTML = ""; // Clear previous list
+        data.todays_detections.forEach((detection) => {
+          const listItem = document.createElement("li");
+          listItem.textContent = `${detection.species} - ${detection.confidence} - ${detection.timestamp}`;
+          todaysDetectionsList.appendChild(listItem);
+        });
       }
     </script>
   </body>

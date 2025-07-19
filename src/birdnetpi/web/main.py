@@ -23,6 +23,7 @@ from .routers import (
     reporting_router,
     settings_router,
     spectrogram_router,
+    todays_detections_router,
 )
 
 
@@ -79,6 +80,7 @@ app.include_router(log_router.router)
 app.include_router(recordings_router.router)
 app.include_router(reporting_router.router)
 app.include_router(spectrogram_router.router)
+app.include_router(todays_detections_router.router)
 
 templates = Jinja2Templates(directory="/app/src/birdnetpi/web/templates")
 
