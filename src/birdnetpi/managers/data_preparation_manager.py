@@ -86,47 +86,49 @@ class DataPreparationManager:
         return day_hour_freq, saved_time_labels, fig_dec_y, fig_x
 
     def prepare_sunrise_sunset_data_for_plot(
-        self, num_days_to_display: int, fig_x: list[str]
+        self, num_days_to_display: int
     ) -> tuple[list, list, list, list]:
         """Prepare sunrise and sunset data for plotting."""
-        sunrise_week_list, sunrise_list, sunrise_text_list = (
+        (sunrise_times_dec, sunset_times_dec, dates_str, sunrise_text, sunset_text) = (
             self.get_sunrise_sunset_data(num_days_to_display)
         )
-        daysback_range = list(fig_x) # Create a copy to avoid modifying original list
-        daysback_range.append(None)
-        daysback_range.extend(daysback_range)
-        daysback_range = daysback_range[:-1]
-        return sunrise_week_list, sunrise_list, sunrise_text_list, daysback_range, daysback_range
+
+        # Prepare data for plotting
+        # The x-axis for both sunrise and sunset will be the dates_str, but we need to repeat them
+        # to create a continuous line for each (sunrise and sunset).
+        # The y-axis will be the decimal hour representation of sunrise/sunset times.
+        # The text labels will be used for hover information on the plot.
+
+        # Combine sunrise and sunset data for plotting
+        plot_x = dates_str + dates_str
+        plot_y = sunrise_times_dec + sunset_times_dec
+        plot_text = sunrise_text + sunset_text
+
+        # Create a list of colors for the plot, e.g., 'orange' for sunrise and 'purple' for sunset
+        plot_colors = ['orange'] * len(sunrise_times_dec) + ['purple'] * len(sunset_times_dec)
+
+        return plot_x, plot_y, plot_text, plot_colors
 
     def get_sunrise_sunset_data(
         self, num_days_to_display: int
-    ) -> tuple[list, list, list]:
+    ) -> tuple[list, list, list, list, list]:
         """Retrieve sunrise and sunset data for a given number of days."""
-        sunrise_list = []
-        sunset_list = []
-        sunrise_week_list = []
-        sunset_week_list = []
-        sunrise_text_list = []
-        sunset_text_list = []
+        sunrise_times_dec = []
+        sunset_times_dec = []
+        dates_str = []
+        sunrise_text = []
+        sunset_text = []
 
         for past_day in range(num_days_to_display):
-            current_date = datetime.now().date() - datetime.timedelta(days=past_day)
+            current_date = datetime.date.today() - datetime.timedelta(days=past_day)
             sunrise_time, sunset_time = self.location_service.get_sunrise_sunset_times(
                 current_date
             )
 
-            sunrise_list.append(self.hms_to_dec(sunrise_time.time()))
-            sunset_list.append(self.hms_to_dec(sunset_time.time()))
-            sunrise_text_list.append(f"{self.hms_to_str(sunrise_time.time())} Sunrise")
-            sunset_text_list.append(f"{self.hms_to_str(sunset_time.time())} Sunset")
-            sunrise_week_list.append(past_day)
-            sunset_week_list.append(past_day)
+            sunrise_times_dec.append(self.hms_to_dec(sunrise_time.time()))
+            sunset_times_dec.append(self.hms_to_dec(sunset_time.time()))
+            dates_str.append(current_date.strftime("%Y-%m-%d"))
+            sunrise_text.append(f"{self.hms_to_str(sunrise_time.time())} Sunrise")
+            sunset_text.append(f"{self.hms_to_str(sunset_time.time())} Sunset")
 
-        sunrise_week_list.append(None)
-        sunrise_list.append(None)
-        sunrise_text_list.append(None)
-        sunrise_list.extend(sunset_list)
-        sunrise_week_list.extend(sunset_week_list)
-        sunrise_text_list.extend(sunset_text_list)
-
-        return sunrise_week_list, sunrise_list, sunrise_text_list
+        return sunrise_times_dec, sunset_times_dec, dates_str, sunrise_text, sunset_text
