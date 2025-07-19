@@ -22,11 +22,7 @@
           Today's Detections
         </button>
       </form>
-      <form action="" method="GET" id="views">
-        <button type="submit" name="view" value="Spectrogram" form="views">
-          Spectrogram
-        </button>
-      </form>
+      <button type="button" onclick="loadSpectrogram()">Spectrogram</button>
       <button type="button" onclick="loadBestRecordings()">
         Best Recordings
       </button>
@@ -65,6 +61,12 @@
       <pre id="logContent"></pre>
       <ul id="recordingsList"></ul>
       <ul id="bestRecordingsList"></ul>
+      <img
+        id="spectrogramImage"
+        src=""
+        alt="Spectrogram"
+        style="display: none"
+      />
     </div>
 
     <script>
@@ -97,6 +99,20 @@
           listItem.textContent = `${recording.species} - ${recording.confidence} - ${recording.timestamp}`;
           bestRecordingsList.appendChild(listItem);
         });
+      }
+
+      async function loadSpectrogram() {
+        // For demonstration, let's assume a sample audio file path
+        // In a real scenario, this would come from user selection or a recording list
+        const sampleAudioPath = "/path/to/your/audio.wav"; // TODO: Replace with dynamic audio path
+        const response = await fetch(
+          `/spectrogram?audio_path=${encodeURIComponent(sampleAudioPath)}`,
+        );
+        const imageBlob = await response.blob();
+        const imageUrl = URL.createObjectURL(imageBlob);
+        const spectrogramImage = document.getElementById("spectrogramImage");
+        spectrogramImage.src = imageUrl;
+        spectrogramImage.style.display = "block";
       }
     </script>
   </body>

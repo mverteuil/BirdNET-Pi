@@ -1,3 +1,8 @@
+import io
+
+import librosa
+import librosa.display
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -14,6 +19,26 @@ class PlottingManager:
     def __init__(self) -> None:
         self.data_preparation_manager = DataPreparationManager()
 
+    def generate_spectrogram(self, audio_path: str) -> bytes:
+        """Generate a spectrogram for a given audio file and return it as a PNG image in bytes."""
+        y, sr = librosa.load(audio_path)
+
+        # Compute spectrogram
+        d = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)
+
+        # Create plot
+        fig, ax = plt.subplots(figsize=(10, 5))
+        librosa.display.specshow(d, sr=sr, x_axis="time", y_axis="log", ax=ax)
+        ax.set(title="Spectrogram")
+        fig.tight_layout()
+
+        # Save plot to a bytes buffer
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png")
+        plt.close(fig)  # Close the figure to free memory
+        buf.seek(0)
+        return buf.getvalue()
+
     def _add_polar_trace_to_figure(
         self, fig: go.Figure, hourly: pd.DataFrame, species: str
     ) -> go.Figure:
@@ -24,7 +49,9 @@ class PlottingManager:
             theta_values = hourly.columns[:-1]  # Exclude 'All' column
 
             # Convert theta_values (hours) to degrees for polar plot (0-24h to 0-360 degrees)
-            theta_degrees = [h * 15 for h in theta_values]  # 24 hours * 15 degrees/hour = 360 degrees
+            theta_degrees = [
+                h * 15 for h in theta_values
+            ]  # 24 hours * 15 degrees/hour = 360 degrees
 
             fig.add_trace(
                 go.Scatterpolar(
@@ -42,16 +69,16 @@ class PlottingManager:
             )
 
             fig.update_layout(
-                polar=dict(
-                    radialaxis_visible=True,
-                    angularaxis=dict(
-                        tickmode="array",
-                        tickvals=[0, 90, 180, 270],
-                        ticktext=["0h", "6h", "12h", "18h"],
-                        direction="clockwise",
-                        rotation=90,
-                    ),
-                )
+                polar={
+                    "radialaxis_visible": True,
+                    "angularaxis": {
+                        "tickmode": "array",
+                        "tickvals": [0, 90, 180, 270],
+                        "ticktext": ["0h", "6h", "12h", "18h"],
+                        "direction": "clockwise",
+                        "rotation": 90,
+                    },
+                }
             )
         return fig
 
@@ -103,9 +130,7 @@ class PlottingManager:
         fig = self._add_polar_trace_to_figure(fig, hourly, species)
 
         # get_daily_crosstab is in DataPreparationManager and takes df5 as input
-        daily_crosstab = self.data_preparation_manager.get_daily_crosstab(
-            df5
-        )
+        daily_crosstab = self.data_preparation_manager.get_daily_crosstab(df5)
 
         fig.add_trace(
             go.Bar(

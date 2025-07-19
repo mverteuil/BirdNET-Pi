@@ -17,7 +17,13 @@ from birdnetpi.services.file_manager import FileManager
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
-from .routers import log_router, recordings_router, reporting_router, settings_router
+from .routers import (
+    log_router,
+    recordings_router,
+    reporting_router,
+    settings_router,
+    spectrogram_router,
+)
 
 
 @asynccontextmanager
@@ -72,6 +78,7 @@ app.include_router(settings_router.router)
 app.include_router(log_router.router)
 app.include_router(recordings_router.router)
 app.include_router(reporting_router.router)
+app.include_router(spectrogram_router.router)
 
 templates = Jinja2Templates(directory="/app/src/birdnetpi/web/templates")
 
