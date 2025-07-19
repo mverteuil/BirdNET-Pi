@@ -7,11 +7,7 @@
   </head>
   <body>
     <div class="topnav" id="myTopnav">
-      <form action="" method="GET" id="views">
-        <button type="submit" name="view" value="Overview" form="views">
-          Overview
-        </button>
-      </form>
+      <button type="button" onclick="loadOverview()">Overview</button>
       <button type="button" onclick="loadTodaysDetections()">
         Today's Detections
       </button>
@@ -61,6 +57,7 @@
         style="display: none"
       />
       <ul id="todaysDetectionsList"></ul>
+      <div id="overviewContent"></div>
     </div>
 
     <script>
@@ -121,6 +118,23 @@
           listItem.textContent = `${detection.species} - ${detection.confidence} - ${detection.timestamp}`;
           todaysDetectionsList.appendChild(listItem);
         });
+      }
+
+      async function loadOverview() {
+        const response = await fetch("/overview");
+        const data = await response.json();
+        const overviewContent = document.getElementById("overviewContent");
+        overviewContent.innerHTML = `
+          <h3>Disk Usage:</h3>
+          <p>Total: ${data.disk_usage.total}</p>
+          <p>Used: ${data.disk_usage.used}</p>
+          <p>Free: ${data.disk_usage.free}</p>
+          <h3>Extra Info:</h3>
+          <p>CPU Temperature: ${data.extra_info.cpu_temperature}</p>
+          <p>Memory Usage: ${data.extra_info.memory_usage}</p>
+          <h3>Total Detections:</h3>
+          <p>${data.total_detections}</p>
+        `;
       }
     </script>
   </body>

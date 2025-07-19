@@ -19,6 +19,7 @@ from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 from .routers import (
     log_router,
+    overview_router,
     recordings_router,
     reporting_router,
     settings_router,
@@ -81,6 +82,7 @@ app.include_router(recordings_router.router)
 app.include_router(reporting_router.router)
 app.include_router(spectrogram_router.router)
 app.include_router(todays_detections_router.router)
+app.include_router(overview_router.router)
 
 templates = Jinja2Templates(directory="/app/src/birdnetpi/web/templates")
 
