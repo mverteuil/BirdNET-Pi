@@ -42,11 +42,7 @@
           Daily Charts
         </button>
       </form>
-      <form action="" method="GET" id="views">
-        <button type="submit" name="view" value="Recordings" form="views">
-          Recordings
-        </button>
-      </form>
+      <button type="button" onclick="loadRecordings()">Recordings</button>
       <button type="button" onclick="loadLog()">View Log</button>
       <form action="" id="toolsbtn" method="GET" id="views">
         <button type="submit" name="view" value="Tools" form="views">
@@ -73,6 +69,7 @@
 
     <div class="views">
       <pre id="logContent"></pre>
+      <ul id="recordingsList"></ul>
     </div>
 
     <script>
@@ -80,6 +77,18 @@
         const response = await fetch("/log");
         const logText = await response.text();
         document.getElementById("logContent").textContent = logText;
+      }
+
+      async function loadRecordings() {
+        const response = await fetch("/recordings");
+        const data = await response.json();
+        const recordingsList = document.getElementById("recordingsList");
+        recordingsList.innerHTML = ""; // Clear previous list
+        data.recordings.forEach((recording) => {
+          const listItem = document.createElement("li");
+          listItem.textContent = recording;
+          recordingsList.appendChild(listItem);
+        });
       }
     </script>
   </body>

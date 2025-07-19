@@ -22,6 +22,13 @@ class DataManager:
         self.db_service = db_service
         self.service_manager = service_manager
 
+    def get_recordings(self) -> list[str]:
+        """Retrieve a list of recording file paths."""
+        recordings_dir = self.file_manager.get_full_path(
+            self.config.data.recordings_dir
+        )
+        return self.file_manager.list_directory_contents(recordings_dir)
+
     def cleanup_processed_files(self) -> None:
         """Clean up processed audio and CSV files, removing empty or old entries."""
         processed_dir = self.file_manager.get_full_path(self.config.data.processed_dir)

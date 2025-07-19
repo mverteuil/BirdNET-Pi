@@ -9,12 +9,15 @@ from fastapi.templating import Jinja2Templates
 from sqladmin import Admin, ModelView
 from sqlalchemy import create_engine
 
+from birdnetpi.managers.service_manager import ServiceManager
 from birdnetpi.models.database_models import AudioFile, Base, Detection
+from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.detection_event_publisher import DetectionEventPublisher
+from birdnetpi.services.file_manager import FileManager
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
-from .routers import log_router, settings_router
+from .routers import log_router, recordings_router, settings_router
 
 
 @asynccontextmanager
@@ -29,6 +32,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Base.metadata.create_all(engine)  # Create tables
     admin = Admin(app, engine)
     app.mount("/admin", admin.app, name="sqladmin")
+
+    # Initialize core services and managers
+    app.state.file_manager = FileManager(FilePathResolver().repo_root)
+    app.state.db_service = DatabaseService(app.state.config.data.db_path)
+    app.state.service_manager = ServiceManager(app.state.config)
 
     class DetectionAdmin(ModelView, model=Detection):
         column_list: ClassVar[list] = [
@@ -62,6 +70,7 @@ app.mount(
 
 app.include_router(settings_router.router)
 app.include_router(log_router.router)
+app.include_router(recordings_router.router)
 
 templates = Jinja2Templates(directory="/app/src/birdnetpi/web/templates")
 
