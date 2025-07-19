@@ -1,6 +1,7 @@
 import argparse
 
 from birdnetpi.managers.audio_manager import AudioManager
+from birdnetpi.services.file_manager import FileManager
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
@@ -27,8 +28,9 @@ def main_cli() -> None:
     config = ConfigFileParser(
         file_path_resolver.get_birdnet_pi_config_path()
     ).load_config()
+    file_manager = FileManager(file_path_resolver.repo_root)
 
-    audio_manager = AudioManager(config)
+    audio_manager = AudioManager(file_manager, config)
 
     if args.action == "record":
         audio_manager.record()

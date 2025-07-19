@@ -1,6 +1,7 @@
 import os
 import subprocess
 
+from birdnetpi.models.birdnet_config import BirdNETConfig
 from birdnetpi.models.livestream_config import LivestreamConfig
 from birdnetpi.services.file_manager import FileManager
 
@@ -8,8 +9,15 @@ from birdnetpi.services.file_manager import FileManager
 class AudioManager:
     """Manages audio recording and livestreaming functionalities."""
 
-    def __init__(self, file_manager: FileManager) -> None:
+    def __init__(self, file_manager: FileManager, config: BirdNETConfig) -> None:
         self.file_manager = file_manager
+        self.config = config
+
+    def record(self) -> None:
+        """Record audio using default settings from configuration."""
+        output_path = self.file_manager.get_full_path(self.config.audio.recordings_dir)
+        duration = self.config.audio.default_recording_duration
+        self.custom_record(duration, os.path.join(output_path, "default_recording.wav"))
 
     def custom_record(self, duration: int, output_path: str) -> None:
         """Record audio for a specified duration and save it to the output path."""
