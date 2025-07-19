@@ -47,11 +47,7 @@
           Recordings
         </button>
       </form>
-      <form action="" method="GET" id="views">
-        <button type="submit" name="view" value="View Log" form="views">
-          View Log
-        </button>
-      </form>
+      <button type="button" onclick="loadLog()">View Log</button>
       <form action="" id="toolsbtn" method="GET" id="views">
         <button type="submit" name="view" value="Tools" form="views">
           Tools{% if commits_behind > 0 %}
@@ -75,6 +71,16 @@
       }
     </script>
 
-    <div class="views"></div>
+    <div class="views">
+      <pre id="logContent"></pre>
+    </div>
+
+    <script>
+      async function loadLog() {
+        const response = await fetch("/log");
+        const logText = await response.text();
+        document.getElementById("logContent").textContent = logText;
+      }
+    </script>
   </body>
 </html>
