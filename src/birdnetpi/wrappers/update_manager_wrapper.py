@@ -2,6 +2,7 @@ import argparse
 import os
 
 from birdnetpi.managers.update_manager import UpdateManager
+from birdnetpi.models.caddy_config import CaddyConfig
 from birdnetpi.models.git_update_config import GitUpdateConfig
 
 
@@ -39,11 +40,12 @@ def main_cli() -> None:
                 "--birdnetpi_url and --extracted_path are required for "
                 "update_caddyfile action."
             )
-        update_manager.update_caddyfile(
+        caddy_config = CaddyConfig(
             birdnetpi_url=birdnetpi_url,
             extracted_path=extracted_path,
             caddy_pwd=caddy_pwd,
         )
+        update_manager.update_caddyfile(caddy_config)
     else:
         parser.error(f"Unknown action: {args.action}")
 
