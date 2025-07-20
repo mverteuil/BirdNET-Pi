@@ -193,3 +193,23 @@ class AnalysisClientService:
                     )
 
         return p_sorted[:human_cutoff]
+
+    def get_analysis_results(
+        self,
+        audio_chunk: np.ndarray,
+        lat: float,
+        lon: float,
+        week: int,
+        sensitivity: float,
+    ) -> list[tuple[str, float]]:
+        """Perform analysis on an audio chunk and return filtered (species, confidence) pairs."""
+        raw_predictions = self.get_raw_prediction(
+            audio_chunk, lat, lon, week, sensitivity
+        )
+
+        filtered_results = []
+        for species, confidence in raw_predictions:
+            if confidence >= self.sf_threshold:
+                filtered_results.append((species, confidence))
+
+        return filtered_results
