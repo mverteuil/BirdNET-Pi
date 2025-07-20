@@ -63,6 +63,9 @@ where = ["src"]
 markers = ["expensive"]
 testpaths = ["tests"]
 
+[tool.coverage.run]
+omit = ["tests/*"]
+
 
 [tool.ruff]
 line-length = 120
