@@ -14,6 +14,20 @@ class DataConfig:
 
 
 @dataclass
+class LoggingConfig:
+    """Configuration for logging settings."""
+
+    syslog_enabled: bool = False
+    syslog_host: str = "localhost"
+    syslog_port: int = 514
+    file_logging_enabled: bool = False
+    log_file_path: str = "~/BirdNET-Pi/birdnetpi.log"
+    max_log_file_size_mb: int = 10  # 10 MB
+    log_file_backup_count: int = 5
+    log_level: str = "INFO"
+
+
+@dataclass
 class BirdNETConfig:
     """Represents the configuration settings for the BirdNET-Pi application."""
 
@@ -23,14 +37,17 @@ class BirdNETConfig:
     longitude: float = 0.0
     model: str = "BirdNET_GLOBAL_6K_V2.4_Model_FP16"
     sf_thresh: float = 0.03  # Default from config.php example
-    confidence: float = 0.7 # Default from birdnet.conf.template
-    sensitivity: float = 1.25 # Default from birdnet.conf.template
-    week: int = 0 # Default from birdnet.conf.template
-    audio_format: str = "mp3" # Default from birdnet.conf.template
-    extraction_length: float = 6.0 # Default from birdnet.conf.template
+    confidence: float = 0.7  # Default from birdnet.conf.template
+    sensitivity: float = 1.25  # Default from birdnet.conf.template
+    week: int = 0  # Default from birdnet.conf.template
+    audio_format: str = "mp3"  # Default from birdnet.conf.template
+    extraction_length: float = 6.0  # Default from birdnet.conf.template
 
     # Data paths
     data: DataConfig = field(default_factory=DataConfig)
+
+    # Logging settings
+    logging: LoggingConfig = field(default_factory=LoggingConfig)
 
     # BirdWeather
     birdweather_id: str = ""

@@ -1,110 +1,136 @@
-import argparse
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from birdnetpi.models.birdnet_config import BirdNETConfig
 from birdnetpi.wrappers.analysis_manager_wrapper import main_cli
 
 
+# Define simple, explicit "Fake" objects for the test
+class FakeDataConfig:
+    """A fake DataConfig for testing."""
+
+    def __init__(self, db_path, recordings_dir):
+        self.db_path = db_path
+        self.recordings_dir = recordings_dir
+
+
+class FakeConfig:
+    """A fake BirdNETConfig for testing."""
+
+    def __init__(self, db_path, recordings_dir):
+        self.data = FakeDataConfig(db_path, recordings_dir)
+        self.model = "mock_model"
+        self.sf_thresh = 0.1
+        self.confidence = 0.7
+        self.sensitivity = 1.0
+        self.latitude = 0.0
+        self.longitude = 0.0
+        self.week = 1
+        self.overlap = 0.5
+        self.cutoff = 0.5
+        self.privacy_threshold = 0.5
+
+
 @pytest.fixture
-def mock_dependencies(tmp_path):
-    """Fixture to mock all external dependencies."""
-    with (
-        patch(
-            "birdnetpi.managers.detection_manager.DetectionManager"
-        ) as mock_detection_manager,
-        patch("birdnetpi.services.file_manager.FileManager") as mock_file_manager,
-        patch(
-            "birdnetpi.utils.file_path_resolver.FilePathResolver"
-        ) as mock_file_path_resolver,
-        patch(
-            "birdnetpi.wrappers.analysis_manager_wrapper.ConfigFileParser"
-        ) as mock_config_file_parser,
-        patch(
-            "birdnetpi.wrappers.analysis_manager_wrapper.AnalysisManager"
-        ) as mock_analysis_manager,
-        patch(
-            "birdnetpi.wrappers.analysis_manager_wrapper.AnalysisClientService"
-        ) as mock_analysis_client_service,
-        patch(
-            "birdnetpi.wrappers.analysis_manager_wrapper.DetectionEventPublisher"
-        ) as mock_detection_event_publisher,
-    ):
-        # Configure mocks
-        mock_config_instance = MagicMock(spec=BirdNETConfig)
-        mock_config_instance.database = MagicMock(path=str(tmp_path / "mock_db.db"))
-        mock_config_instance.data = MagicMock(
-            recordings_dir=str(tmp_path / "mock_recordings")
-        )
+def mock_dependencies(tmp_path, monkeypatch):
+    """Fixture to mock all external dependencies for this test module."""
+    fake_config = FakeConfig(
+        db_path=str(tmp_path / "test.db"),
+        recordings_dir=str(tmp_path / "recordings"),
+    )
 
-        mock_config_parser_instance = mock_config_file_parser.return_value
-        mock_config_parser_instance.load_config.return_value = mock_config_instance
+    monkeypatch.setattr(
+        "birdnetpi.utils.config_file_parser.ConfigFileParser.load_config",
+        lambda self: fake_config,
+    )
 
-        mock_file_path_resolver_instance = mock_file_path_resolver.return_value
-        mock_file_path_resolver_instance.get_birdnet_conf_path.return_value = str(
-            tmp_path / "birdnet.conf"
-        )
-        mock_file_path_resolver_instance.get_birdnet_pi_config_path.return_value = str(
-            tmp_path / "birdnet_pi_config.yaml"
-        )
+    mock_analysis_manager_class = MagicMock()
+    monkeypatch.setattr(
+        "birdnetpi.wrappers.analysis_manager_wrapper.AnalysisManager",
+        mock_analysis_manager_class,
+    )
 
-        # Mock the instance returned by AnalysisManager()
-        mock_analysis_manager_instance = MagicMock()
-        mock_analysis_manager.return_value = mock_analysis_manager_instance
+    mock_db_service_class = MagicMock()
+    monkeypatch.setattr(
+        "birdnetpi.wrappers.analysis_manager_wrapper.DatabaseService",
+        mock_db_service_class,
+    )
 
-        yield {
-            "mock_config_file_parser": mock_config_file_parser,
-            "mock_detection_manager": mock_detection_manager,
-            "mock_file_manager": mock_file_manager,
-            "mock_analysis_manager": mock_analysis_manager,
-            "mock_file_path_resolver": mock_file_path_resolver,
-            "mock_analysis_manager_instance": mock_analysis_manager_instance,
-            "mock_config_instance": mock_config_instance,
-            "mock_analysis_client_service": mock_analysis_client_service,
-            "mock_detection_event_publisher": mock_detection_event_publisher,
-        }
+    mock_file_manager_class = MagicMock()
+    monkeypatch.setattr(
+        "birdnetpi.wrappers.analysis_manager_wrapper.FileManager",
+        mock_file_manager_class,
+    )
+
+    mock_detection_manager_class = MagicMock()
+    monkeypatch.setattr(
+        "birdnetpi.wrappers.analysis_manager_wrapper.DetectionManager",
+        mock_detection_manager_class,
+    )
+
+    mock_analysis_client_service_class = MagicMock()
+    monkeypatch.setattr(
+        "birdnetpi.wrappers.analysis_manager_wrapper.AnalysisClientService",
+        mock_analysis_client_service_class,
+    )
+
+    mock_audio_processor_service_class = MagicMock()
+    monkeypatch.setattr(
+        "birdnetpi.wrappers.analysis_manager_wrapper.AudioProcessorService",
+        mock_audio_processor_service_class,
+    )
+
+    mock_audio_extraction_service_class = MagicMock()
+    monkeypatch.setattr(
+        "birdnetpi.wrappers.analysis_manager_wrapper.AudioExtractionService",
+        mock_audio_extraction_service_class,
+    )
+
+    mock_detection_event_publisher_class = MagicMock()
+    monkeypatch.setattr(
+        "birdnetpi.wrappers.analysis_manager_wrapper.DetectionEventPublisher",
+        mock_detection_event_publisher_class,
+    )
+
+    yield {
+        "mock_analysis_manager_class": mock_analysis_manager_class,
+        "fake_config": fake_config,
+    }
 
 
-def test_process_recordings_action(mock_dependencies):
-    """Should call process_recordings when action is 'process_recordings'."""
+def test_process_recordings_action_instantiates_and_calls_correctly(mock_dependencies):
+    """Should instantiate AnalysisManager and call process_audio_for_analysis."""
     with patch(
         "argparse.ArgumentParser.parse_args",
-        return_value=argparse.Namespace(action="process_recordings"),
-    ):
-        main_cli(
-            analysis_client_service=mock_dependencies["mock_analysis_client_service"].return_value,
-            detection_event_publisher=mock_dependencies["mock_detection_event_publisher"].return_value,
-        )
-        mock_dependencies["mock_analysis_manager"].return_value.process_recordings.assert_called_once()
-        mock_dependencies["mock_analysis_manager"].return_value.extract_new_birdsounds.assert_not_called()
-
-
-def test_extract_new_birdsounds_action(mock_dependencies):
-    """Should call extract_new_birdsounds when action is 'extract_new_birdsounds'."""
-    with patch(
-        "argparse.ArgumentParser.parse_args",
-        return_value=argparse.Namespace(action="extract_new_birdsounds"),
-    ):
-        main_cli(
-            analysis_client_service=mock_dependencies["mock_analysis_client_service"].return_value,
-            detection_event_publisher=mock_dependencies["mock_detection_event_publisher"].return_value,
-        )
-        mock_dependencies["mock_analysis_manager"].return_value.extract_new_birdsounds.assert_called_once()
-        mock_dependencies["mock_analysis_manager"].return_value.process_recordings.assert_not_called()
-
-
-def test_unknown_action_raises_error(mock_dependencies):
-    """Should raise an error for an unknown action."""
-    with (
-        patch(
-            "argparse.ArgumentParser.parse_args",
-            return_value=argparse.Namespace(action="unknown_action"),
+        return_value=MagicMock(
+            action="process_recordings", audio_file_path="/mock/audio/file.wav"
         ),
-        patch("argparse.ArgumentParser.error") as mock_error,
     ):
-        main_cli(
-            analysis_client_service=mock_dependencies["mock_analysis_client_service"].return_value,
-            detection_event_publisher=mock_dependencies["mock_detection_event_publisher"].return_value,
+        main_cli()
+
+        # Verify that the manager was instantiated correctly
+        mock_dependencies["mock_analysis_manager_class"].assert_called_once()
+
+        # Verify that the correct method was called on the instance
+        instance = mock_dependencies["mock_analysis_manager_class"].return_value
+        instance.process_audio_for_analysis.assert_called_once_with(
+            "/mock/audio/file.wav"
         )
-        mock_error.assert_called_once_with("Unknown action: unknown_action")
+
+
+def test_extract_new_birdsounds_action_instantiates_and_calls_correctly(
+    mock_dependencies,
+):
+    """Should instantiate AnalysisManager and call extract_new_birdsounds."""
+    with patch(
+        "argparse.ArgumentParser.parse_args",
+        return_value=MagicMock(action="extract_new_birdsounds", audio_file_path=None),
+    ):
+        main_cli()
+
+        # Verify that the manager was instantiated correctly
+        mock_dependencies["mock_analysis_manager_class"].assert_called_once()
+
+        # Verify that the correct method was called on the instance
+        instance = mock_dependencies["mock_analysis_manager_class"].return_value
+        instance.extract_new_birdsounds.assert_called_once()

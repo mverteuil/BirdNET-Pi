@@ -5,8 +5,10 @@ import pandas as pd
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.plotting_manager import PlottingManager
+from birdnetpi.models.birdnet_config import BirdNETConfig
 from birdnetpi.models.daily_plot_config import DailyPlotConfig
-from birdnetpi.utils.config_file_parser import ConfigFileParser
+from birdnetpi.services.location_service import LocationService
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
@@ -17,12 +19,17 @@ class ReportingManager:
         self,
         db_manager: DetectionManager,
         file_path_resolver: FilePathResolver,
-        config_parser: ConfigFileParser,
+        config: BirdNETConfig,
+        plotting_manager: PlottingManager,
+        data_preparation_manager: DataPreparationManager,
+        location_service: LocationService,
     ) -> None:
         self.detection_manager = db_manager
         self.file_path_resolver = file_path_resolver
-        self.config = config_parser.load_config()
-        self.data_preparation_manager = DataPreparationManager()
+        self.config = config
+        self.plotting_manager = plotting_manager
+        self.data_preparation_manager = data_preparation_manager
+        self.location_service = location_service
 
     def get_data(self) -> pd.DataFrame:
         """Retrieve all detection data from the database and format it into a DataFrame."""

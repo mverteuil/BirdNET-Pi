@@ -1,8 +1,10 @@
-from sqlalchemy import Column, DateTime, Float, Integer, String, Boolean
-from sqlalchemy.orm import declarative_base
+import csv
+import datetime
+
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import func
 
-from birdnetpi.models.database_models import Detection, AudioFile
+from birdnetpi.models.database_models import AudioFile, Detection
 from birdnetpi.services.database_service import DatabaseService
 
 
@@ -47,7 +49,8 @@ class DetectionManager:
                         if not row:  # Skip empty rows
                             continue
                         try:
-                            # Assuming the order: Date;Time;Sci_Name;Com_Name;Confidence;Lat;Lon;Cutoff;Week;Sens;Overlap
+                            # Assuming the order:
+                            # Date;Time;Sci_Name;Com_Name;Confidence;Lat;Lon;Cutoff;Week;Sens;Overlap
                             (
                                 date_str,
                                 time_str,
@@ -64,7 +67,7 @@ class DetectionManager:
 
                             # Combine date and time strings and parse
                             timestamp_str = f"{date_str} {time_str}"
-                            timestamp = datetime.strptime(
+                            timestamp = datetime.datetime.strptime(
                                 timestamp_str, "%Y-%m-%d %H:%M:%S"
                             )
 
@@ -93,7 +96,7 @@ class DetectionManager:
                 raise
             except FileNotFoundError:
                 print(f"CSV file not found at {csv_file_path}")
-                raise # Re-raise the FileNotFoundError
+                raise  # Re-raise the FileNotFoundError
             finally:
                 db.close()
 
@@ -147,7 +150,10 @@ class DetectionManager:
                     .distinct()
                     .count()
                 )
-                return {"total_count": total_count, "unique_species": unique_species_count}
+                return {
+                    "total_count": total_count,
+                    "unique_species": unique_species_count,
+                }
             except SQLAlchemyError as e:
                 db.rollback()
                 print(f"Error getting detection counts by date range: {e}")
@@ -178,7 +184,9 @@ class DetectionManager:
                         Detection.species,
                         func.count(Detection.species).label("prior_count"),
                     )
-                    .filter(Detection.timestamp.between(prior_start_date, prior_end_date))
+                    .filter(
+                        Detection.timestamp.between(prior_start_date, prior_end_date)
+                    )
                     .group_by(Detection.species)
                     .subquery()
                 )
@@ -193,7 +201,8 @@ class DetectionManager:
                     )
                     .outerjoin(
                         prior_week_subquery,
-                        current_week_subquery.c.species == prior_week_subquery.c.species,
+                        current_week_subquery.c.species
+                        == prior_week_subquery.c.species,
                     )
                     .order_by(current_week_subquery.c.current_count.desc())
                     .limit(10)
@@ -295,22 +304,22 @@ class DetectionManager:
                 print(f"Error retrieving detection: {e}")
                 raise
 
-    def update_detection_extracted_status(self, detection_id: int, is_extracted: bool) -> None:
-        """Update the extracted status of a detection record in the database."
+    def update_detection_extracted_status(
+        self, detection_id: int, is_extracted: bool
+    ) -> None:
+        """Update the extracted status of a detection record in the database."""
         with self.db_service.get_db() as db:
             try:
                 detection = db.query(Detection).filter_by(id=detection_id).first()
                 if detection:
                     detection.is_extracted = is_extracted
                     db.commit()
-                    print(f"Detection {detection_id} extracted status updated to {is_extracted}.")
+                    print(
+                        f"Detection {detection_id} extracted status updated to {is_extracted}."
+                    )
                 else:
                     print(f"Detection with ID {detection_id} not found.")
             except SQLAlchemyError as e:
                 db.rollback()
                 print(f"Error updating detection extracted status: {e}")
                 raise
-
-    
-
-    

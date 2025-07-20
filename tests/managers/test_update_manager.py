@@ -24,9 +24,7 @@ def test_update_birdnet_success(mock_run, update_manager):
 @patch("birdnetpi.managers.update_manager.subprocess.run")
 def test_update_caddyfile_success(mock_run, update_manager):
     """Should update the Caddyfile successfully."""
-    config = CaddyConfig(
-        birdnetpi_url="test_url", extracted_path="test_path", caddy_pwd=None
-    )
+    config = CaddyConfig(birdnetpi_url="test_url")
     update_manager.update_caddyfile(config)
     assert mock_run.call_count == 4
 

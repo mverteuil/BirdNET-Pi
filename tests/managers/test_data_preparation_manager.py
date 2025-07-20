@@ -1,15 +1,34 @@
 import datetime
+from unittest.mock import Mock
 
 import pandas as pd
 import pytest
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
+from birdnetpi.models.birdnet_config import BirdNETConfig  # Added import
+from birdnetpi.services.location_service import LocationService  # Added import
 
 
 @pytest.fixture
-def data_preparation_manager():
-    """Provide a DataPreparationManager instance for testing."""
-    return DataPreparationManager()
+def mock_config():
+    """Provide a mock BirdNETConfig instance."""
+    mock = Mock(spec=BirdNETConfig)
+    # Add any necessary attributes that DataPreparationManager might access from config
+    return mock
+
+
+@pytest.fixture
+def mock_location_service():
+    """Provide a mock LocationService instance."""
+    return Mock(spec=LocationService)
+
+
+@pytest.fixture
+def data_preparation_manager(mock_config, mock_location_service):
+    """Provide a DataPreparationManager instance with mocked dependencies."""
+    return DataPreparationManager(
+        config=mock_config, location_service=mock_location_service
+    )
 
 
 @pytest.fixture

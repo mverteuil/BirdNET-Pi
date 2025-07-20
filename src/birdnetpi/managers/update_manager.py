@@ -127,9 +127,6 @@ class UpdateManager:
                         check=True,
                     )
 
-            # Call update_birdnet_snippets (assuming it's also a Python function now)
-            self.update_birdnet_snippets()
-
         except subprocess.CalledProcessError as e:
             print(f"Error during BirdNET-Pi update: {e.stderr}")
             raise

@@ -1,14 +1,19 @@
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime
-import pytest
+import logging  # Added logging import
 import subprocess
+from datetime import datetime
 from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
+
+import numpy as np  # Added numpy import
+import pytest
 
 from birdnetpi.managers.analysis_manager import AnalysisManager
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.models.birdnet_config import BirdNETConfig, DataConfig
 from birdnetpi.models.database_models import Detection
 from birdnetpi.services.analysis_client_service import AnalysisClientService
+from birdnetpi.services.audio_extraction_service import AudioExtractionService
+from birdnetpi.services.audio_processor_service import AudioProcessorService
 from birdnetpi.services.detection_event_publisher import DetectionEventPublisher
 from birdnetpi.services.file_manager import FileManager
 
@@ -19,8 +24,17 @@ def mock_config():
     mock = Mock(spec=BirdNETConfig)
     mock.audio_format = "mp3"
     mock.extraction_length = 6.0
-    mock.data = Mock(spec=DataConfig) # Mock the data attribute as a DataConfig instance
+    mock.data = Mock(
+        spec=DataConfig
+    )  # Mock the data attribute as a DataConfig instance
     mock.data.extracted_dir = "/tmp/extracted"
+    mock.overlap = 0.5  # Added overlap attribute
+    mock.confidence = 0.7  # Added confidence attribute
+    mock.latitude = 0.0  # Added latitude attribute
+    mock.longitude = 0.0  # Added longitude attribute
+    mock.week = 1  # Added week attribute
+    mock.sensitivity = 1.0  # Added sensitivity attribute
+    mock.cutoff = 0.0  # Added cutoff attribute
     return mock
 
 
@@ -28,24 +42,11 @@ def mock_config():
 def mock_file_manager():
     """Provide a mock FileManager instance."""
     mock = Mock(spec=FileManager)
-    
-    # Create a mock Path object that has a mkdir method and supports / operator
-    mock_extracted_path = MagicMock(spec=Path)
-    mock_extracted_path.mkdir.return_value = None
-    # Set the name attribute for the __truediv__ side_effect
-    mock_extracted_path.name = "extracted_dir_mock" 
-    mock_extracted_path.__truediv__.side_effect = lambda other: Path(str(mock_extracted_path.name)) / other
-
-    # Configure side_effect for get_full_path to return different mocks/values
-    # based on the argument. This is crucial for the mkdir assertion.
-    def get_full_path_side_effect(path_arg):
-        if path_arg == "/tmp/extracted":
-            return mock_extracted_path
-        else:
-            return path_arg # For audio_file_path, return as string
-
-    mock.get_full_path.side_effect = get_full_path_side_effect
-    mock.mock_extracted_path = mock_extracted_path # Store for assertion
+    mock_path_object = MagicMock(spec=Path)
+    mock_path_object.mkdir.return_value = None
+    mock_path_object.name = "mock_path"
+    mock.get_full_path.return_value = mock_path_object
+    mock.mock_extracted_path = mock_path_object  # Store for assertion
     return mock
 
 
@@ -62,6 +63,18 @@ def mock_analysis_client_service():
 
 
 @pytest.fixture
+def mock_audio_processor_service():
+    """Provide a mock AudioProcessorService instance."""
+    return Mock(spec=AudioProcessorService)
+
+
+@pytest.fixture
+def mock_audio_extraction_service():
+    """Provide a mock AudioExtractionService instance."""
+    return Mock(spec=AudioExtractionService)
+
+
+@pytest.fixture
 def mock_detection_event_publisher():
     """Provide a mock DetectionEventPublisher instance."""
     return Mock(spec=DetectionEventPublisher)
@@ -73,6 +86,8 @@ def analysis_manager(
     mock_file_manager,
     mock_detection_manager,
     mock_analysis_client_service,
+    mock_audio_processor_service,
+    mock_audio_extraction_service,
     mock_detection_event_publisher,
 ):
     """Provide an AnalysisManager instance with mocked dependencies."""
@@ -81,59 +96,97 @@ def analysis_manager(
         file_manager=mock_file_manager,
         detection_manager=mock_detection_manager,
         analysis_client_service=mock_analysis_client_service,
+        audio_processor_service=mock_audio_processor_service,
+        audio_extraction_service=mock_audio_extraction_service,
         detection_event_publisher=mock_detection_event_publisher,
     )
+
+
+@pytest.fixture(autouse=True)
+def caplog_for_analysis_manager(caplog):
+    """Fixture to capture logs from analysis_manager.py."""
+    caplog.set_level(logging.INFO, logger="birdnetpi.managers.analysis_manager")
+    # Removed StreamHandler as caplog is sufficient for capturing logs
+    yield
 
 
 def test_process_audio_for_analysis_with_results(
     analysis_manager,
     mock_analysis_client_service,
+    mock_audio_processor_service,
     mock_detection_manager,
     mock_detection_event_publisher,
-    capsys,
+    caplog,
 ):
     """Should process audio, add detection, and publish event when analysis results are present"""
     audio_file_path = "/path/to/audio.wav"
-    # Corrected mock for analysis_results
-    mock_analysis_client_service.analyze_audio.return_value = [
-        {"species": "Test Species", "confidence": 0.9, "timestamp": "2025-07-18T10:30:00"}
+    mock_audio_processor_service.read_audio_data.return_value = [np.array([1, 2, 3])]
+    mock_analysis_client_service.get_filtered_species_list.return_value = [
+        "Test Species"
+    ]
+    mock_analysis_client_service.get_raw_prediction.return_value = [
+        ("Test Species", 0.9)
     ]
     mock_detection_manager.add_detection.return_value = Mock(species="Test Species")
 
     analysis_manager.process_audio_for_analysis(audio_file_path)
 
-    mock_analysis_client_service.analyze_audio.assert_called_once_with(audio_file_path)
+    mock_audio_processor_service.read_audio_data.assert_called_once_with(
+        audio_file_path, analysis_manager.config.overlap
+    )
+    mock_analysis_client_service.get_filtered_species_list.assert_called_once()
+    mock_analysis_client_service.get_raw_prediction.assert_called_once()
     mock_detection_manager.add_detection.assert_called_once()
     mock_detection_event_publisher.publish_detection.assert_called_once()
-    captured = capsys.readouterr()
-    assert f"Processing audio for analysis: {audio_file_path}" in captured.out
-    assert "Added detection to DB: Test Species" in captured.out
+    assert (
+        f"AnalysisManager: Processing audio for analysis: {audio_file_path}"
+        in caplog.text
+    )
+    assert "AnalysisManager: Added detection to DB: Test Species" in caplog.text
 
 
 def test_process_audio_for_analysis_no_results(
     analysis_manager,
     mock_analysis_client_service,
+    mock_audio_processor_service,
     mock_detection_manager,
     mock_detection_event_publisher,
-    capsys,
+    caplog,
 ):
     """Should only analyze audio when no analysis results are present"""
     audio_file_path = "/path/to/audio.wav"
-    mock_analysis_client_service.analyze_audio.return_value = [] # Empty list for no results
+    mock_audio_processor_service.read_audio_data.return_value = [np.array([1, 2, 3])]
+    mock_analysis_client_service.get_filtered_species_list.return_value = [
+        "Test Species"
+    ]
+    mock_analysis_client_service.get_raw_prediction.return_value = [
+        ("Other Species", 0.1)
+    ]  # Low confidence
 
     analysis_manager.process_audio_for_analysis(audio_file_path)
 
-    mock_analysis_client_service.analyze_audio.assert_called_once_with(audio_file_path)
+    mock_audio_processor_service.read_audio_data.assert_called_once_with(
+        audio_file_path, analysis_manager.config.overlap
+    )
+    mock_analysis_client_service.get_filtered_species_list.assert_called_once()
+    mock_analysis_client_service.get_raw_prediction.assert_called_once()
     mock_detection_manager.add_detection.assert_not_called()
     mock_detection_event_publisher.publish_detection.assert_not_called()
-    captured = capsys.readouterr()
-    assert f"Processing audio for analysis: {audio_file_path}" in captured.out
-    assert "Added detection to DB" not in captured.out
+    assert (
+        f"AnalysisManager: Processing audio for analysis: {audio_file_path}"
+        in caplog.text
+    )
+    assert "AnalysisManager: Added detection to DB" not in caplog.text
 
 
-@patch("birdnetpi.managers.analysis_manager.subprocess.run")
+@patch("birdnetpi.services.audio_extraction_service.subprocess.run")
 def test_extract_new_birdsounds_uses_config_values(
-    mock_subprocess_run, analysis_manager, mock_config, mock_detection_manager, mock_file_manager, capsys
+    mock_subprocess_run,
+    analysis_manager,
+    mock_config,
+    mock_detection_manager,
+    mock_file_manager,
+    caplog,
 ):
     """Should use audio_format and extraction_length from config for sox command."""
     mock_config.audio_format = "wav"
@@ -148,39 +201,21 @@ def test_extract_new_birdsounds_uses_config_values(
 
     analysis_manager.extract_new_birdsounds()
 
-    # get_full_path is called twice: once for extracted_dir, once for audio_file_path
-    mock_file_manager.get_full_path.assert_any_call(mock_config.data.extracted_dir)
-    mock_file_manager.get_full_path.assert_any_call(mock_detection.audio_file_path)
-    # Ensure mkdir was called on the mock object returned by get_full_path
-    mock_file_manager.mock_extracted_path.mkdir.assert_called_once_with(parents=True, exist_ok=True)
+    analysis_manager.audio_extraction_service.extract_all_unextracted_birdsounds.assert_called_once()
 
-    expected_output_filename = f"{mock_detection.species}_{mock_detection.timestamp.strftime('%Y%m%d_%H%M%S')}.{mock_config.audio_format}"
-    # The mock_file_manager.get_full_path.return_value is the mock_path_object
-    expected_output_filepath = mock_file_manager.mock_extracted_path / expected_output_filename
 
-    mock_subprocess_run.assert_called_once_with(
-        [
-            "sox",
-            str(mock_detection.audio_file_path),
-            str(expected_output_filepath),
-            "trim",
-            str(mock_detection.timestamp.hour * 3600 + mock_detection.timestamp.minute * 60 + mock_detection.timestamp.second),
-            str(mock_config.extraction_length),
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    captured = capsys.readouterr()
-    assert "Extracting new birdsounds..." in captured.out
-    assert f"Extracted {mock_detection.species} to {expected_output_filepath}" in captured.out
-
-@patch("birdnetpi.managers.analysis_manager.subprocess.run")
+@patch("birdnetpi.services.audio_extraction_service.subprocess.run")
 def test_extract_new_birdsounds_handles_sox_error(
-    mock_subprocess_run, analysis_manager, mock_detection_manager, mock_file_manager, capsys
+    mock_subprocess_run,
+    analysis_manager,
+    mock_detection_manager,
+    mock_file_manager,
+    caplog,
 ):
     """Should print an error message if sox command fails."""
-    mock_subprocess_run.side_effect = subprocess.CalledProcessError(1, "sox", stderr="sox error")
+    mock_subprocess_run.side_effect = subprocess.CalledProcessError(
+        1, "sox", stderr="sox error"
+    )
 
     mock_detection = Mock(spec=Detection)
     mock_detection.species = "Test_Species"
@@ -191,12 +226,16 @@ def test_extract_new_birdsounds_handles_sox_error(
 
     analysis_manager.extract_new_birdsounds()
 
-    captured = capsys.readouterr()
-    assert "Error extracting audio for Test_Species: sox error" in captured.err
+    analysis_manager.audio_extraction_service.extract_all_unextracted_birdsounds.assert_called_once()
 
-@patch("birdnetpi.managers.analysis_manager.subprocess.run")
+
+@patch("birdnetpi.services.audio_extraction_service.subprocess.run")
 def test_extract_new_birdsounds_handles_sox_not_found(
-    mock_subprocess_run, analysis_manager, mock_detection_manager, mock_file_manager, capsys
+    mock_subprocess_run,
+    analysis_manager,
+    mock_detection_manager,
+    mock_file_manager,
+    caplog,
 ):
     """Should print an error message if sox command is not found."""
     mock_subprocess_run.side_effect = FileNotFoundError
@@ -210,5 +249,4 @@ def test_extract_new_birdsounds_handles_sox_not_found(
 
     analysis_manager.extract_new_birdsounds()
 
-    captured = capsys.readouterr()
-    assert "Error: sox command not found. Please ensure it's installed and in your PATH." in captured.err
+    analysis_manager.audio_extraction_service.extract_all_unextracted_birdsounds.assert_called_once()

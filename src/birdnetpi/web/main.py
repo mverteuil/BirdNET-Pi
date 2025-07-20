@@ -1,4 +1,5 @@
 import datetime
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import ClassVar
@@ -8,16 +9,16 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqladmin import Admin, ModelView
-from sqlalchemy import create_engine
 
-from birdnetpi.managers.database_manager import DatabaseManager
+from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.service_manager import ServiceManager
-from birdnetpi.models.database_models import AudioFile, Base, Detection
+from birdnetpi.models.database_models import AudioFile, Detection
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.detection_event_publisher import DetectionEventPublisher
 from birdnetpi.services.file_manager import FileManager
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.logging_configurator import configure_logging  # Added import
 
 from .routers import (
     log_router,
@@ -37,17 +38,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     config_parser = ConfigFileParser(FilePathResolver().get_birdnet_pi_config_path())
     app.state.config = config_parser.load_config()
 
-    # Initialize SQLAlchemy engine and SQLAdmin
-    engine = create_engine(f"sqlite:///{app.state.config.data.db_path}")
-    Base.metadata.create_all(engine)  # Create tables
-    admin = Admin(app, engine)
-    app.mount("/admin", admin.app, name="sqladmin")
+    # Configure logging based on loaded config
+    configure_logging(app.state.config)  # Added logging configuration
 
     # Initialize core services and managers
-    app.state.file_manager = FileManager(FilePathResolver().repo_root)
     app.state.db_service = DatabaseService(app.state.config.data.db_path)
-    app.state.db_manager = DatabaseManager(app.state.db_service)
-    app.state.service_manager = ServiceManager(app.state.config)
+    app.state.file_manager = FileManager(FilePathResolver().base_dir)
+    app.state.db_manager = DetectionManager(
+        app.state.db_service
+    )  # Corrected from DatabaseManager
+    app.state.service_manager = ServiceManager()
+
+    # Initialize SQLAdmin
+    admin = Admin(app, app.state.db_service.engine)
+    app.mount("/admin", admin.app, name="sqladmin")
 
     class DetectionAdmin(ModelView, model=Detection):
         column_list: ClassVar[list] = [
@@ -75,9 +79,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(lifespan=lifespan)
 
-app.mount(
-    "/static", StaticFiles(directory="/app/src/birdnetpi/web/static"), name="static"
-)
+# Get the directory of the current file (main.py)
+current_file_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Construct the absolute path to the static and templates directories
+static_dir = os.path.join(current_file_dir, "static")
+templates_dir = os.path.join(current_file_dir, "templates")
+
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 app.include_router(settings_router.router)
 app.include_router(log_router.router)
@@ -87,7 +96,7 @@ app.include_router(spectrogram_router.router)
 app.include_router(todays_detections_router.router)
 app.include_router(overview_router.router)
 
-templates = Jinja2Templates(directory="/app/src/birdnetpi/web/templates")
+templates = Jinja2Templates(directory=templates_dir)
 
 
 @app.get("/", response_class=HTMLResponse)

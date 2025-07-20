@@ -1,20 +1,25 @@
-import csv
-from datetime import datetime
-
-from sqlalchemy import func
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import sessionmaker, Session
+import os
 from collections.abc import Generator
 from typing import Any
 
-from birdnetpi.models.database_models import Base, Detection
+from sqlalchemy import create_engine
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session, sessionmaker
+
+from birdnetpi.models.database_models import Base
 
 
 class DatabaseService:
-    """Provides an interface for database operations."""
+    """Provides an interface for database operations, including initialization."""
 
-    def __init__(self, session_local: sessionmaker):
-        self.session_local = session_local
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        self.engine = create_engine(f"sqlite:///{self.db_path}")
+        Base.metadata.create_all(self.engine)
+        self.session_local = sessionmaker(
+            autocommit=False, autoflush=False, bind=self.engine
+        )
 
     def get_db(self) -> Generator[Session, Any, None]:
         """Provide a database session for dependency injection."""
@@ -38,11 +43,3 @@ class DatabaseService:
             raise
         finally:
             db.close()
-
-    
-
-    
-
-    
-
-    

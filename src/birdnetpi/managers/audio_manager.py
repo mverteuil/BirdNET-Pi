@@ -25,8 +25,8 @@ class AudioManager:
 
         # Ensure the output directory exists
         output_dir = os.path.dirname(output_path)
-        if output_dir and not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
 
         try:
             # Using arecord for simplicity, common on Raspberry Pi
@@ -63,24 +63,33 @@ class AudioManager:
     def livestream(self, config: LivestreamConfig) -> None:
         """Start an audio livestream from the input device to the output URL."""
         print(f"Starting livestream from {config.input_device} to {config.output_url}")
+        output_format = "rtsp" if config.output_url.startswith("rtsp://") else "mp3"
         try:
+            command = [
+                "ffmpeg",
+                "-f",
+                "alsa",  # Input format for ALSA devices
+                "-i",
+                config.input_device,  # Input device
+                "-f",
+                output_format,  # Output format
+            ]
+            if output_format == "mp3":
+                command.extend(
+                    [
+                        "-acodec",
+                        "libmp3lame",  # MP3 audio codec
+                        "-ab",
+                        "128k",  # Audio bitrate
+                    ]
+                )
+            command.append(config.output_url)
+
             subprocess.run(
-                [
-                    "ffmpeg",
-                    "-f",
-                    "alsa",  # Input format for ALSA devices
-                    "-i",
-                    config.input_device,  # Input device
-                    "-f",
-                    "mp3",  # Output format
-                    "-acodec",
-                    "libmp3lame",  # MP3 audio codec
-                    "-ab",
-                    "128k",  # Audio bitrate
-                    config.output_url,  # Output URL (e.g., Icecast server)
-                ],
+                command,
                 check=True,  # Raise CalledProcessError if the command returns a non-zero exit code
                 capture_output=True,  # Capture stdout and stderr
+                text=True,  # Add this to ensure stderr is decoded as text
             )
             print(f"Successfully started livestream to {config.output_url}")
         except FileNotFoundError:

@@ -1,5 +1,5 @@
 # Stage 1: Builder
-FROM debian:bullseye as builder
+FROM debian:bookworm as builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -21,7 +21,7 @@ RUN useradd -m -s /bin/bash birdnetpi
 
 
 # Stage 2: Runtime
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 ARG TARGETARCH
 
 ENV DNS_SERVER=8.8.8.8
@@ -61,39 +61,32 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     python3 \
-    python3-venv     supervisor     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh &&     mv /root/.local/bin/uv /usr/local/bin/uv
-
-# Install Caddy
-RUN apt-get update && apt-get install -y \
-    debian-keyring \
-    debian-archive-keyring \
-    apt-transport-https \
-    gnupg \
-    curl \
-    ca-certificates \
+    python3-venv \
+    supervisor \
+    caddy \
     && \
+    curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    mv /root/.local/bin/uv /usr/local/bin/uv && \
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg && \
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list && \
-    apt-get update && apt-get install -y caddy && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 
 COPY scripts/install_deps.sh /usr/local/bin/install_deps.sh
-RUN chmod +x /usr/local/bin/install_deps.sh && install_deps.sh
-
-# Create dedicated user for BirdNET-Pi and set up directories/permissions
-RUN useradd -m -s /bin/bash birdnetpi &&     usermod -aG audio,video,dialout birdnetpi &&     mkdir -p /var/log /app/tmp /var/log/supervisor /var/log/birdnet &&     chmod 777 /var/log &&     chown birdnetpi:birdnetpi /app/tmp /var/log/supervisor /var/log/birdnet
-
-RUN mkdir -p /var/run/supervisor && chown birdnetpi:birdnetpi /var/run/supervisor
+RUN chmod +x /usr/local/bin/install_deps.sh && \
+    install_deps.sh && \
+    useradd -m -s /bin/bash birdnetpi && \
+    usermod -aG audio,video,dialout birdnetpi && \
+    mkdir -p /var/log /app/tmp /var/log/supervisor /var/log/birdnet && \
+    chmod 777 /var/log && \
+    chown birdnetpi:birdnetpi /app/tmp /var/log/supervisor /var/log/birdnet && \
+    mkdir -p /var/run/supervisor && \
+    chown birdnetpi:birdnetpi /var/run/supervisor
 
 # Copy application code to runtime stage
 COPY . /app
 COPY config_templates/Caddyfile.template /etc/caddy/Caddyfile
-RUN chown root:root /etc/caddy/Caddyfile
-RUN chown -R birdnetpi:birdnetpi /app
+RUN chown root:root /etc/caddy/Caddyfile &&     chown -R birdnetpi:birdnetpi /app
 
 # Switch to the birdnetpi user and set up Python environment
 USER birdnetpi

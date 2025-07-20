@@ -1,5 +1,5 @@
 import datetime
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -7,7 +7,9 @@ import pytest
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.plotting_manager import PlottingManager
+from birdnetpi.models.birdnet_config import BirdNETConfig
 from birdnetpi.models.multi_day_plot_config import MultiDayPlotConfig
+from birdnetpi.services.location_service import LocationService
 
 
 @pytest.fixture
@@ -17,9 +19,25 @@ def mock_data_preparation_manager():
 
 
 @pytest.fixture
-def plotting_manager(mock_data_preparation_manager):
+def mock_config():
+    """Provide a mock BirdNETConfig instance."""
+    mock = Mock(spec=BirdNETConfig)
+    # Add any necessary attributes that PlottingManager might access from config
+    return mock
+
+
+@pytest.fixture
+def mock_location_service():
+    """Provide a mock LocationService instance."""
+    return Mock(spec=LocationService)
+
+
+@pytest.fixture
+def plotting_manager():  # Removed mock_data_preparation_manager, mock_config, mock_location_service from arguments
     """Provide a PlottingManager instance with mocked dependencies."""
-    return PlottingManager()
+    with patch("birdnetpi.managers.plotting_manager.DataPreparationManager"):
+        # Instantiate PlottingManager without passing these as arguments
+        return PlottingManager()
 
 
 @pytest.fixture
@@ -76,9 +94,10 @@ def test_create_multi_day_plot_figure_should_return_figure(
     ).set_index("DateTime")
 
     # Mock the delegated calls
-    mock_data_preparation_manager.get_hourly_crosstab.return_value = pd.DataFrame(
-        {"All": [1, 2]}, index=["SpeciesA", "SpeciesB"]
+    mock_data_preparation_manager.get_daily_crosstab.return_value = pd.DataFrame(
+        {"col1": [1, 2]}, index=["SpeciesA", "SpeciesB"]
     )
+    plotting_manager.data_preparation_manager = mock_data_preparation_manager
 
     fig = plotting_manager._create_multi_day_plot_figure(
         df_counts,
@@ -110,30 +129,15 @@ def test_generate_multi_day_species_and_hourly_plot_should_return_figure(
 
     # Mock the internal data preparation method that PlottingManager calls
     mock_data_preparation_manager.prepare_multi_day_plot_data.return_value = (
-        pd.DataFrame(
-            {
-                "com_name": [
-                    "Common Blackbird",
-                    "Eurasian Robin",
-                    "Common Blackbird",
-                    "Eurasian Robin",
-                    "House Sparrow",
-                ],
-                "DateTime": [
-                    datetime.datetime(2023, 1, 1, 8, 0, 0),
-                    datetime.datetime(2023, 1, 1, 9, 0, 0),
-                    datetime.datetime(2023, 1, 1, 10, 0, 0),
-                    datetime.datetime(2023, 1, 2, 8, 0, 0),
-                    datetime.datetime(2023, 1, 2, 9, 0, 0),
-                ],
-            }
-        )
-        .set_index("DateTime")
-        .reset_index(),
-        pd.DataFrame({"All": [1, 2, 3]}, index=[0, 1, 2]),
-        pd.Series([5, 3], index=["SpeciesA", "SpeciesB"]),
-        10,
+        pd.DataFrame(),
+        pd.DataFrame({"col1": [1, 2]}, index=["SpeciesA", "Common Blackbird"]),
+        pd.Series(),
+        0,
     )
+    mock_data_preparation_manager.get_daily_crosstab.return_value = pd.DataFrame(
+        {"col1": [1, 2]}, index=["SpeciesA", "Common Blackbird"]
+    )
+    plotting_manager.data_preparation_manager = mock_data_preparation_manager
 
     fig = plotting_manager.generate_multi_day_species_and_hourly_plot(
         df, config.resample_sel, start_date, end_date, config.top_n, config.specie
@@ -200,6 +204,7 @@ def test_generate_daily_detections_plot_should_return_figure(
         [],
         [],
     )
+    plotting_manager.data_preparation_manager = mock_data_preparation_manager
 
     fig = plotting_manager.generate_daily_detections_plot(
         df, resample_sel, start_date, species, num_days_to_display, selected_pal
