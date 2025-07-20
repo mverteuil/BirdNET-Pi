@@ -24,7 +24,20 @@ class BirdWeatherService:
 
     def get_birdweather_data(self, location: dict) -> dict:
         """Retrieve BirdWeather data for a given location."""
-        # This will involve making HTTP requests to the BirdWeather API
-        # For now, it's a placeholder.
-        print(f"Getting BirdWeather data for location: {location}")
-        return {}
+        import requests
+
+        birdweather_api_key = self.config.birdweather_id
+        headers = {"X-API-Key": birdweather_api_key}
+        try:
+            response = requests.get(
+                "https://api.birdweather.com/data",
+                params=location,
+                headers=headers,
+                timeout=5,
+            )
+            response.raise_for_status()  # Raise an exception for HTTP errors
+            print(f"Successfully retrieved BirdWeather data: {response.status_code}")
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Failed to retrieve BirdWeather data: {e}")
+            return {}
