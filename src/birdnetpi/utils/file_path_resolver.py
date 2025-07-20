@@ -31,3 +31,11 @@ class FilePathResolver:
     def get_birdnet_pi_config_path(self) -> str:
         """Return the absolute path to the birdnet_pi_config.yaml file."""
         return self.resolve("config", "birdnet_pi_config.yaml")
+
+    def get_static_dir(self) -> str:
+        """Return the absolute path to the static files directory."""
+        return self.resolve("src", "birdnetpi", "web", "static")
+
+    def get_templates_dir(self) -> str:
+        """Return the absolute path to the templates directory."""
+        return self.resolve("src", "birdnetpi", "web", "templates")

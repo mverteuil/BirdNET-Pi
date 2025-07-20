@@ -1,5 +1,5 @@
-import datetime
 import os
+import datetime
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import ClassVar
@@ -35,8 +35,10 @@ from .routers import (
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Context manager for application startup and shutdown events."""
     # Load configuration
-    config_parser = ConfigFileParser(FilePathResolver().get_birdnet_pi_config_path())
+    file_resolver = FilePathResolver()
+    config_parser = ConfigFileParser(file_resolver.get_birdnet_pi_config_path())
     app.state.config = config_parser.load_config()
+    app.mount("/static", StaticFiles(directory=file_resolver.get_static_dir()), name="static")
 
     # Configure logging based on loaded config
     configure_logging(app.state.config)  # Added logging configuration
@@ -79,15 +81,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(lifespan=lifespan)
 
-# Get the directory of the current file (main.py)
-current_file_dir = os.path.dirname(os.path.abspath(__file__))
-
-# Construct the absolute path to the static and templates directories
-static_dir = os.path.join(current_file_dir, "static")
-templates_dir = os.path.join(current_file_dir, "templates")
-
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
 app.include_router(settings_router.router)
 app.include_router(log_router.router)
 app.include_router(recordings_router.router)
@@ -96,7 +89,7 @@ app.include_router(spectrogram_router.router)
 app.include_router(todays_detections_router.router)
 app.include_router(overview_router.router)
 
-templates = Jinja2Templates(directory=templates_dir)
+templates = Jinja2Templates(directory=os.path.dirname(__file__) + "/templates")
 
 
 @app.get("/", response_class=HTMLResponse)
