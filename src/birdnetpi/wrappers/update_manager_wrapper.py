@@ -2,6 +2,7 @@ import argparse
 import os
 
 from birdnetpi.managers.update_manager import UpdateManager
+from birdnetpi.models.git_update_config import GitUpdateConfig
 
 
 def main_cli() -> None:
@@ -27,7 +28,8 @@ def main_cli() -> None:
     update_manager = UpdateManager()
 
     if args.action == "update_birdnet":
-        update_manager.update_birdnet(remote=args.remote, branch=args.branch)
+        git_update_config = GitUpdateConfig(remote=args.remote, branch=args.branch)
+        update_manager.update_birdnet(git_update_config)
     elif args.action == "update_caddyfile":
         birdnetpi_url = args.birdnetpi_url or os.environ.get("BIRDNETPI_URL")
         extracted_path = args.extracted_path or os.environ.get("EXTRACTED")

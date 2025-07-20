@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from birdnetpi.models.git_update_config import GitUpdateConfig
 from birdnetpi.wrappers.update_manager_wrapper import main_cli
 
 
@@ -27,4 +28,6 @@ def test_update_birdnet_action_instantiates_and_calls_correctly(mock_dependencie
 
         mock_dependencies["mock_update_manager_class"].assert_called_once()
         instance = mock_dependencies["mock_update_manager_class"].return_value
-        instance.update_birdnet.assert_called_once_with(remote="origin", branch="main")
+        instance.update_birdnet.assert_called_once_with(
+            GitUpdateConfig(remote="origin", branch="main")
+        )
