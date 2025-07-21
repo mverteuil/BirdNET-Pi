@@ -28,7 +28,7 @@ class ServiceManager:
         self.strategy.disable_service(service_name)
 
     def get_service_status(self, service_name: str) -> str:
-        """Returns the status of a specified system service."""
+        """Get the status of a specified system service."""
         return self.strategy.get_service_status(service_name)
 
     def restart_services(self, services: list[str]) -> None:

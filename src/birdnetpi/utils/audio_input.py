@@ -11,7 +11,7 @@ class AudioInput:
         self.blocksize = blocksize
         self.stream = None
 
-    def start_stream(self):
+    def start_stream(self) -> None:
         """Starts the audio input stream."""
         if self.stream is None:
             self.stream = sd.InputStream(
@@ -31,7 +31,7 @@ class AudioInput:
             print("AudioInput: Audio buffer overflowed!")
         return data
 
-    def stop_stream(self):
+    def stop_stream(self) -> None:
         """Stops the audio input stream."""
         if self.stream is not None:
             self.stream.stop()
@@ -43,5 +43,5 @@ class AudioInput:
         self.start_stream()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any):
         self.stop_stream()
