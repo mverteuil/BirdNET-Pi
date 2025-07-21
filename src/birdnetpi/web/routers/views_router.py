@@ -61,7 +61,7 @@ async def get_charts(
     top_n = 10
 
     specie = "All"
-    num_days_to_display = 7  # Arbitrary for now
+    num_days_to_display = request.app.state.config.data.num_days_to_display
     selected_pal = "Viridis"  # Arbitrary for now
 
     # Generate multi-day plot
