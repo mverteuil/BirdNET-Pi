@@ -6,4 +6,3 @@ class CaddyConfig:
     """Configuration for Caddy web server settings."""
 
     birdnetpi_url: str
-    

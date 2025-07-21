@@ -1,12 +1,13 @@
-import pytest
-from unittest.mock import MagicMock, patch
 import os
 import subprocess
+from unittest.mock import patch
+
+import pytest
 
 from birdnetpi.utils.service_strategies import (
-    ServiceManagementStrategy,
-    EmbeddedSystemdStrategy,
     DockerSupervisordStrategy,
+    EmbeddedSystemdStrategy,
+    ServiceManagementStrategy,
     ServiceStrategySelector,
 )
 
@@ -28,35 +29,45 @@ class TestEmbeddedSystemdStrategy:
         """Should call systemctl start for the given service."""
         strategy = EmbeddedSystemdStrategy()
         strategy.start_service("test_service")
-        mock_run.assert_called_once_with(["sudo", "systemctl", "start", "test_service"], check=True)
+        mock_run.assert_called_once_with(
+            ["sudo", "systemctl", "start", "test_service"], check=True
+        )
 
     @patch("subprocess.run")
     def test_should_stop_service(self, mock_run):
         """Should call systemctl stop for the given service."""
         strategy = EmbeddedSystemdStrategy()
         strategy.stop_service("test_service")
-        mock_run.assert_called_once_with(["sudo", "systemctl", "stop", "test_service"], check=True)
+        mock_run.assert_called_once_with(
+            ["sudo", "systemctl", "stop", "test_service"], check=True
+        )
 
     @patch("subprocess.run")
     def test_should_restart_service(self, mock_run):
         """Should call systemctl restart for the given service."""
         strategy = EmbeddedSystemdStrategy()
         strategy.restart_service("test_service")
-        mock_run.assert_called_once_with(["sudo", "systemctl", "restart", "test_service"], check=True)
+        mock_run.assert_called_once_with(
+            ["sudo", "systemctl", "restart", "test_service"], check=True
+        )
 
     @patch("subprocess.run")
     def test_should_enable_service(self, mock_run):
         """Should call systemctl enable for the given service."""
         strategy = EmbeddedSystemdStrategy()
         strategy.enable_service("test_service")
-        mock_run.assert_called_once_with(["sudo", "systemctl", "enable", "test_service"], check=True)
+        mock_run.assert_called_once_with(
+            ["sudo", "systemctl", "enable", "test_service"], check=True
+        )
 
     @patch("subprocess.run")
     def test_should_disable_service(self, mock_run):
         """Should call systemctl disable for the given service."""
         strategy = EmbeddedSystemdStrategy()
         strategy.disable_service("test_service")
-        mock_run.assert_called_once_with(["sudo", "systemctl", "disable", "test_service"], check=True)
+        mock_run.assert_called_once_with(
+            ["sudo", "systemctl", "disable", "test_service"], check=True
+        )
 
     @patch("subprocess.run")
     def test_should_get_service_status_active(self, mock_run):
@@ -65,9 +76,17 @@ class TestEmbeddedSystemdStrategy:
         strategy = EmbeddedSystemdStrategy()
         status = strategy.get_service_status("test_service")
         assert status == "active"
-        mock_run.assert_called_once_with(["systemctl", "is-active", "test_service"], capture_output=True, text=True, check=True)
+        mock_run.assert_called_once_with(
+            ["systemctl", "is-active", "test_service"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
 
-    @patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "cmd", stderr="inactive\n"))
+    @patch(
+        "subprocess.run",
+        side_effect=subprocess.CalledProcessError(1, "cmd", stderr="inactive\n"),
+    )
     def test_should_get_service_status_inactive(self, mock_run):
         """Should return error message for an inactive service."""
         strategy = EmbeddedSystemdStrategy()
@@ -90,21 +109,27 @@ class TestDockerSupervisordStrategy:
         """Should call supervisorctl start for the given service."""
         strategy = DockerSupervisordStrategy()
         strategy.start_service("test_service")
-        mock_run.assert_called_once_with(["supervisorctl", "start", "test_service"], check=True)
+        mock_run.assert_called_once_with(
+            ["supervisorctl", "start", "test_service"], check=True
+        )
 
     @patch("subprocess.run")
     def test_should_stop_service(self, mock_run):
         """Should call supervisorctl stop for the given service."""
         strategy = DockerSupervisordStrategy()
         strategy.stop_service("test_service")
-        mock_run.assert_called_once_with(["supervisorctl", "stop", "test_service"], check=True)
+        mock_run.assert_called_once_with(
+            ["supervisorctl", "stop", "test_service"], check=True
+        )
 
     @patch("subprocess.run")
     def test_should_restart_service(self, mock_run):
         """Should call supervisorctl restart for the given service."""
         strategy = DockerSupervisordStrategy()
         strategy.restart_service("test_service")
-        mock_run.assert_called_once_with(["supervisorctl", "restart", "test_service"], check=True)
+        mock_run.assert_called_once_with(
+            ["supervisorctl", "restart", "test_service"], check=True
+        )
 
     @patch("builtins.print")
     def test_should_inform_on_enable_service(self, mock_print):
@@ -125,13 +150,25 @@ class TestDockerSupervisordStrategy:
     @patch("subprocess.run")
     def test_should_get_service_status_running(self, mock_run):
         """Should return status for a running service."""
-        mock_run.return_value.stdout = "test_service                 RUNNING   pid 1234, uptime 0:01:00\n"
+        mock_run.return_value.stdout = (
+            "test_service                 RUNNING   pid 1234, uptime 0:01:00\n"
+        )
         strategy = DockerSupervisordStrategy()
         status = strategy.get_service_status("test_service")
         assert "RUNNING" in status
-        mock_run.assert_called_once_with(["supervisorctl", "status", "test_service"], capture_output=True, text=True, check=True)
+        mock_run.assert_called_once_with(
+            ["supervisorctl", "status", "test_service"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
 
-    @patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "cmd", stderr="test_service                 STOPPED\n"))
+    @patch(
+        "subprocess.run",
+        side_effect=subprocess.CalledProcessError(
+            1, "cmd", stderr="test_service                 STOPPED\n"
+        ),
+    )
     def test_should_get_service_status_stopped(self, mock_run):
         """Should return error message for a stopped service."""
         strategy = DockerSupervisordStrategy()
@@ -151,15 +188,19 @@ class TestServiceStrategySelector:
 
     @patch.dict(os.environ, {"DOCKER_CONTAINER": "true"})
     @patch("os.path.exists", return_value=True)
-    def test_should_return_docker_supervisord_strategy_if_docker_env_var_set(self, mock_exists):
+    def test_should_return_docker_supervisord_strategy_if_docker_env_var_set(
+        self, mock_exists
+    ):
         """Should return DockerSupervisordStrategy if DOCKER_CONTAINER env var is 'true'."""
         strategy = ServiceStrategySelector.get_strategy()
         assert isinstance(strategy, DockerSupervisordStrategy)
-        mock_exists.assert_not_called() # Should short-circuit due to env var
+        mock_exists.assert_not_called()  # Should short-circuit due to env var
 
     @patch.dict(os.environ, {}, clear=True)
     @patch("os.path.exists", return_value=True)
-    def test_should_return_docker_supervisord_strategy_if_dockerenv_file_exists(self, mock_exists):
+    def test_should_return_docker_supervisord_strategy_if_dockerenv_file_exists(
+        self, mock_exists
+    ):
         """Should return DockerSupervisordStrategy if /.dockerenv file exists."""
         strategy = ServiceStrategySelector.get_strategy()
         assert isinstance(strategy, DockerSupervisordStrategy)

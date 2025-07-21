@@ -1,5 +1,6 @@
-import sounddevice as sd
 import numpy as np
+import sounddevice as sd
+
 
 class AudioInput:
     """A wrapper class to abstract audio capture functions using sounddevice."""
@@ -16,7 +17,7 @@ class AudioInput:
             self.stream = sd.InputStream(
                 samplerate=self.samplerate,
                 channels=self.channels,
-                blocksize=self.blocksize
+                blocksize=self.blocksize,
             )
             self.stream.start()
             print("Audio input stream started.")

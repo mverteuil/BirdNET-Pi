@@ -33,7 +33,7 @@ def test_sqladmin_detection_list_e2e(docker_compose_up_down) -> None:
     response = httpx.get("http://localhost:80/admin/detection/list")
     assert response.status_code == 200
     assert "Detections" in response.text
-    
+
     assert "id" in response.text
     assert "species" in response.text
     assert "confidence" in response.text

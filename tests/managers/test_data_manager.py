@@ -4,11 +4,10 @@ from unittest.mock import Mock, patch
 import pytest
 
 from birdnetpi.managers.data_manager import DataManager
-from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.service_manager import ServiceManager
 from birdnetpi.models.birdnet_config import BirdNETConfig, DataConfig
-from birdnetpi.services.file_manager import FileManager
 from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.services.file_manager import FileManager
 
 
 @pytest.fixture
@@ -128,7 +127,9 @@ def test_cleanup_processed_files_no_deletion_criteria(data_manager, mock_file_ma
     mock_file_manager.list_directory_contents.return_value = files
 
     with patch("birdnetpi.managers.data_manager.os.path.getsize", return_value=1000):
-        with patch("birdnetpi.managers.data_manager.os.path.getmtime", return_value=1.0):
+        with patch(
+            "birdnetpi.managers.data_manager.os.path.getmtime", return_value=1.0
+        ):
             data_manager.cleanup_processed_files()
 
     mock_file_manager.delete_file.assert_not_called()

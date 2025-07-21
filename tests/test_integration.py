@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
+
 from fastapi.testclient import TestClient
+
 from birdnetpi.web.main import app
 
 
@@ -41,7 +43,6 @@ def test_read_main(file_path_resolver, tmp_path) -> None:
 
         # Create the mocked directories
         (tmp_path / "static").mkdir()
-
 
         with TestClient(app) as client:
             response = client.get("/")

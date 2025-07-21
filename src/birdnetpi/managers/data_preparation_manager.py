@@ -105,7 +105,9 @@ class DataPreparationManager:
         plot_text = sunrise_text + sunset_text
 
         # Create a list of colors for the plot, e.g., 'orange' for sunrise and 'purple' for sunset
-        plot_colors = ['orange'] * len(sunrise_times_dec) + ['purple'] * len(sunset_times_dec)
+        plot_colors = ["orange"] * len(sunrise_times_dec) + ["purple"] * len(
+            sunset_times_dec
+        )
 
         return plot_x, plot_y, plot_text, plot_colors
 

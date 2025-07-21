@@ -1,4 +1,3 @@
-import os
 import datetime
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -38,7 +37,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     file_resolver = FilePathResolver()
     config_parser = ConfigFileParser(file_resolver.get_birdnet_pi_config_path())
     app.state.config = config_parser.load_config()
-    app.mount("/static", StaticFiles(directory=file_resolver.get_static_dir()), name="static")
+    app.mount(
+        "/static", StaticFiles(directory=file_resolver.get_static_dir()), name="static"
+    )
 
     # Initialize Jinja2Templates and store it in app.state
     app.state.templates = Jinja2Templates(directory=file_resolver.get_templates_dir())
@@ -93,8 +94,6 @@ app.include_router(todays_detections_router.router)
 app.include_router(overview_router.router)
 
 
-
-
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request) -> HTMLResponse:
     """Render the main index page."""
@@ -129,7 +128,9 @@ publisher = DetectionEventPublisher()
 @app.get("/test_detection_form", response_class=HTMLResponse)
 async def test_detection_form(request: Request) -> HTMLResponse:
     """Render the form for testing detections."""
-    return request.app.state.templates.TemplateResponse(request, "test_detection_modal.html", {})
+    return request.app.state.templates.TemplateResponse(
+        request, "test_detection_modal.html", {}
+    )
 
 
 @app.get("/test_detection")

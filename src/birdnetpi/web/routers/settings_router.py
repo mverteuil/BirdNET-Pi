@@ -1,21 +1,19 @@
 from fastapi import APIRouter, Form, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from starlette.status import HTTP_303_SEE_OTHER
 
 from birdnetpi.models.birdnet_config import BirdNETConfig
 from birdnetpi.utils.config_file_parser import ConfigFileParser
-from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 router = APIRouter()
-
-
 
 
 @router.get("/settings", response_class=HTMLResponse)
 async def get_settings(request: Request) -> Response:
     """Render the settings page with the current configuration."""
-    config_parser = ConfigFileParser(request.app.state.file_manager.file_path_resolver.get_birdnet_pi_config_path())
+    config_parser = ConfigFileParser(
+        request.app.state.file_manager.file_path_resolver.get_birdnet_pi_config_path()
+    )
     app_config: BirdNETConfig = config_parser.load_config()
     return request.app.state.templates.TemplateResponse(
         "settings.html", {"request": request, "config": app_config}
@@ -50,7 +48,9 @@ async def post_settings(
     apprise_only_notify_species_names_2: str = Form(""),
 ) -> RedirectResponse:
     """Process the submitted settings form and save the updated configuration."""
-    config_parser = ConfigFileParser(request.app.state.file_manager.file_path_resolver.get_birdnet_pi_config_path())
+    config_parser = ConfigFileParser(
+        request.app.state.file_manager.file_path_resolver.get_birdnet_pi_config_path()
+    )
     updated_config = BirdNETConfig(
         site_name=site_name,
         latitude=latitude,
