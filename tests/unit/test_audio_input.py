@@ -8,6 +8,7 @@ from birdnetpi.utils.audio_input import AudioInput
 
 @pytest.fixture
 def mock_sounddevice_stream():
+    """Mock sounddevice.InputStream for testing."""
     with patch("sounddevice.InputStream") as mock_stream_class:
         mock_stream_instance = MagicMock()
         mock_stream_class.return_value = mock_stream_instance
@@ -15,6 +16,7 @@ def mock_sounddevice_stream():
 
 
 def test_audio_input_init():
+    """Should correctly initialize AudioInput attributes."""
     audio_input = AudioInput(samplerate=44100, channels=1, blocksize=1024)
     assert audio_input.samplerate == 44100
     assert audio_input.channels == 1
@@ -23,6 +25,7 @@ def test_audio_input_init():
 
 
 def test_audio_input_start_stream(mock_sounddevice_stream):
+    """Should start the audio input stream."""
     audio_input = AudioInput(samplerate=44100, channels=1, blocksize=1024)
     audio_input.start_stream()
     mock_sounddevice_stream.start.assert_called_once()
@@ -30,6 +33,7 @@ def test_audio_input_start_stream(mock_sounddevice_stream):
 
 
 def test_audio_input_read_block(mock_sounddevice_stream):
+    """Should read a block of audio data from the stream."""
     audio_input = AudioInput(samplerate=44100, channels=1, blocksize=1024)
     audio_input.start_stream()
 
@@ -42,6 +46,7 @@ def test_audio_input_read_block(mock_sounddevice_stream):
 
 
 def test_audio_input_stop_stream(mock_sounddevice_stream):
+    """Should stop the audio input stream."""
     audio_input = AudioInput(samplerate=44100, channels=1, blocksize=1024)
     audio_input.start_stream()
     audio_input.stop_stream()
@@ -51,6 +56,7 @@ def test_audio_input_stop_stream(mock_sounddevice_stream):
 
 
 def test_audio_input_context_manager(mock_sounddevice_stream):
+    """Should correctly manage the audio stream using a context manager."""
     with AudioInput(samplerate=44100, channels=1, blocksize=1024) as audio_input:
         mock_sounddevice_stream.start.assert_called_once()
         assert audio_input.stream is not None
