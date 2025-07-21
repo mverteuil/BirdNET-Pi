@@ -9,16 +9,15 @@ from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 router = APIRouter()
 
-templates = Jinja2Templates(directory="src/web/templates")
-file_path_resolver = FilePathResolver()
+
 
 
 @router.get("/settings", response_class=HTMLResponse)
 async def get_settings(request: Request) -> Response:
     """Render the settings page with the current configuration."""
-    config_parser = ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path())
+    config_parser = ConfigFileParser(request.app.state.file_manager.file_path_resolver.get_birdnet_pi_config_path())
     app_config: BirdNETConfig = config_parser.load_config()
-    return templates.TemplateResponse(
+    return request.app.state.templates.TemplateResponse(
         "settings.html", {"request": request, "config": app_config}
     )
 
@@ -51,7 +50,7 @@ async def post_settings(
     apprise_only_notify_species_names_2: str = Form(""),
 ) -> RedirectResponse:
     """Process the submitted settings form and save the updated configuration."""
-    config_parser = ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path())
+    config_parser = ConfigFileParser(request.app.state.file_manager.file_path_resolver.get_birdnet_pi_config_path())
     updated_config = BirdNETConfig(
         site_name=site_name,
         latitude=latitude,

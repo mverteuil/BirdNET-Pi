@@ -40,6 +40,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.config = config_parser.load_config()
     app.mount("/static", StaticFiles(directory=file_resolver.get_static_dir()), name="static")
 
+    # Initialize Jinja2Templates and store it in app.state
+    app.state.templates = Jinja2Templates(directory=file_resolver.get_templates_dir())
+
     # Configure logging based on loaded config
     configure_logging(app.state.config)  # Added logging configuration
 
@@ -89,13 +92,13 @@ app.include_router(spectrogram_router.router)
 app.include_router(todays_detections_router.router)
 app.include_router(overview_router.router)
 
-templates = Jinja2Templates(directory=os.path.dirname(__file__) + "/templates")
+
 
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request) -> HTMLResponse:
     """Render the main index page."""
-    return templates.TemplateResponse(
+    return request.app.state.templates.TemplateResponse(
         request,
         "index.html",
         {
@@ -126,7 +129,7 @@ publisher = DetectionEventPublisher()
 @app.get("/test_detection_form", response_class=HTMLResponse)
 async def test_detection_form(request: Request) -> HTMLResponse:
     """Render the form for testing detections."""
-    return templates.TemplateResponse(request, "test_detection_modal.html", {})
+    return request.app.state.templates.TemplateResponse(request, "test_detection_modal.html", {})
 
 
 @app.get("/test_detection")
