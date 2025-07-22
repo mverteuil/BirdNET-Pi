@@ -1,3 +1,5 @@
+from types import TracebackType
+
 import numpy as np
 import sounddevice as sd
 
@@ -12,7 +14,7 @@ class AudioInput:
         self.stream = None
 
     def start_stream(self) -> None:
-        """Starts the audio input stream."""
+        """Start the audio input stream."""
         if self.stream is None:
             self.stream = sd.InputStream(
                 samplerate=self.samplerate,
@@ -23,7 +25,7 @@ class AudioInput:
             print("Audio input stream started.")
 
     def read_block(self) -> np.ndarray:
-        """Reads a block of audio data from the stream."""
+        """Read a block of audio data from the stream."""
         if self.stream is None:
             raise RuntimeError("Audio stream not started. Call start_stream() first.")
         data, overflowed = self.stream.read(self.blocksize)
@@ -32,7 +34,7 @@ class AudioInput:
         return data
 
     def stop_stream(self) -> None:
-        """Stops the audio input stream."""
+        """Stop the audio input stream."""
         if self.stream is not None:
             self.stream.stop()
             self.stream.close()
@@ -43,5 +45,10 @@ class AudioInput:
         self.start_stream()
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ):
         self.stop_stream()
