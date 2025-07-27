@@ -42,9 +42,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Copy service configuration file templates
-COPY config_templates/Caddyfile.template /etc/caddy/Caddyfile
+COPY config_templates/Caddyfile /etc/caddy/Caddyfile
 RUN chown root:root /etc/caddy/Caddyfile
-COPY config_templates/supervisor/supervisord.conf /etc/supervisor/supervisord.conf
+COPY config_templates/supervisord.conf /etc/supervisor/supervisord.conf
 
 # Create birdnetpi user and set up necessary directories
 RUN useradd -m -s /bin/bash birdnetpi && \
@@ -71,7 +71,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev
 
 # Copy the configuration template for BirdNET-Pi
-COPY --chown=birdnetpi:birdnetpi config_templates/birdnet_pi_config.yaml.template /app/config/birdnet_pi_config.yaml
+COPY --chown=birdnetpi:birdnetpi config_templates/birdnet_pi_config.yaml /app/config/birdnet_pi_config.yaml
 
 # Add the BirdNET-Pi virtual environment to the PATH
 ENV PATH="/app/.venv/bin:${PATH}"
