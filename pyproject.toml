@@ -90,8 +90,6 @@ ignore = [
     "D406", # Section name should end with a colon
     "D407", # Missing dashed underline after section header
     "D413", # Missing blank line after last section
-    "ANN101", # Missing type annotation for `self` in method
-    "ANN102", # Missing type annotation for `cls` in classmethod
     "D400", # First line should end with a period
     "D415", # First line should end with a period, question mark, or exclamation point
     "ANN204", # Missing return type annotation for special method `__init__`
