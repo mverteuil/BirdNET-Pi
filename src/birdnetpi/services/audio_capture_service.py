@@ -32,8 +32,7 @@ class AudioCaptureService:
         """
         if status:
             logger.warning(f"Audio stream status: {status}")
-        # For now, just print the shape of the incoming data
-        logger.info(f"Audio data shape: {indata.shape}")
+        
 
     def start_capture(self) -> None:
         """
@@ -62,7 +61,7 @@ class AudioCaptureService:
         """
         Stops the audio capture stream.
         """
-        if self.stream and self.stream.running:
+        if self.stream and not self.stream.stopped:
             self.stream.stop()
             self.stream.close()
             logger.info("Audio capture stream stopped and closed.")

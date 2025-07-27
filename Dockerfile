@@ -44,7 +44,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy service configuration file templates
 COPY config_templates/Caddyfile.template /etc/caddy/Caddyfile
 RUN chown root:root /etc/caddy/Caddyfile
-COPY config_templates/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY config_templates/supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
 # Create birdnetpi user and set up necessary directories
 RUN useradd -m -s /bin/bash birdnetpi && \
@@ -52,10 +52,7 @@ RUN useradd -m -s /bin/bash birdnetpi && \
     mkdir -p /var/log /app/tmp /var/log/supervisor /var/log/birdnet && \
     chmod 777 /var/log && \
     chown birdnetpi:birdnetpi /app/tmp /var/log/supervisor /var/log/birdnet && \
-    mkdir -p /var/run/supervisor && \
-    chown birdnetpi:birdnetpi /var/run/supervisor && \
-    mkdir -p /app && \
-    chown birdnetpi:birdnetpi /app
+    mkdir -p /var/run/supervisor &&     chown birdnetpi:birdnetpi /var/run/supervisor &&     chmod 777 /var/run/supervisor &&     mkdir -p /app &&     chown birdnetpi:birdnetpi /app
 
 # Switch to birdnetpi user for all application-related operations
 USER birdnetpi
@@ -83,4 +80,4 @@ ENV PATH="/app/.venv/bin:${PATH}"
 EXPOSE 8000
 
 # Command to run supervisord
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf", "-u", "birdnetpi"]
