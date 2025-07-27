@@ -1,5 +1,4 @@
 import os
-import sys
 
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.services.database_service import DatabaseService
@@ -7,7 +6,9 @@ from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.dummy_data_generator import generate_dummy_detections
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
+
 def main() -> None:
+    """Generate dummy data for the application."""
     file_resolver = FilePathResolver()
     config_parser = ConfigFileParser(file_resolver.get_birdnet_pi_config_path())
     config = config_parser.load_config()
@@ -27,6 +28,7 @@ def main() -> None:
     detection_manager = DetectionManager(db_service)
     generate_dummy_detections(detection_manager)
     print("Dummy data generation complete.")
+
 
 if __name__ == "__main__":
     main()

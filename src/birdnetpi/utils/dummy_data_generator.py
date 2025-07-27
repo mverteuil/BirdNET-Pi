@@ -1,13 +1,13 @@
 import datetime
 import random
-from typing import List
 
 from birdnetpi.managers.detection_manager import DetectionManager
-from birdnetpi.models.database_models import Detection
 
 
-def generate_dummy_detections(detection_manager: DetectionManager, num_detections: int = 100) -> None:
-    """Generates and adds dummy detection data to the database."""
+def generate_dummy_detections(
+    detection_manager: DetectionManager, num_detections: int = 100
+) -> None:
+    """Generate and add dummy detection data to the database."""
     species_list = [
         "American Robin (Turdus migratorius)",
         "Northern Cardinal (Cardinalis cardinalis)",
@@ -39,16 +39,16 @@ def generate_dummy_detections(detection_manager: DetectionManager, num_detection
             "week": timestamp.isocalendar()[1],
             "sensitivity": random.uniform(0.5, 0.9),
             "overlap": random.uniform(0.0, 0.5),
-            
             "is_extracted": False,
         }
         detection_manager.add_detection(detection_data)
     print(f"Generated {num_detections} dummy detections.")
 
+
 if __name__ == "__main__":
     from birdnetpi.services.database_service import DatabaseService
-    from birdnetpi.utils.file_path_resolver import FilePathResolver
     from birdnetpi.utils.config_file_parser import ConfigFileParser
+    from birdnetpi.utils.file_path_resolver import FilePathResolver
 
     file_resolver = FilePathResolver()
     config_parser = ConfigFileParser(file_resolver.get_birdnet_pi_config_path())

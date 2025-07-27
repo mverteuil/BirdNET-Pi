@@ -48,9 +48,7 @@ class AppSetup:
             "Setting up Python virtual environment",
         )
         pip_path = os.path.join(venv_path, "bin", "pip")
-        requirements_path = self.file_path_resolver.get_absolute_path(
-            "requirements.txt"
-        )
+        requirements_path = self.file_path_resolver.get_absolute_path("requirements.txt")
         self._run_command(
             [pip_path, "install", "-r", requirements_path],
             "Installing Python dependencies",
@@ -61,12 +59,8 @@ class AppSetup:
         print("\nCreating necessary directories...")
         self.file_manager.create_directory(self.config.data.recordings_dir)
         self.file_manager.create_directory(self.config.data.extracted_dir)
-        self.file_manager.create_directory(
-            os.path.join(self.config.data.extracted_dir, "By_Date")
-        )
-        self.file_manager.create_directory(
-            os.path.join(self.config.data.extracted_dir, "Charts")
-        )
+        self.file_manager.create_directory(os.path.join(self.config.data.extracted_dir, "By_Date"))
+        self.file_manager.create_directory(os.path.join(self.config.data.extracted_dir, "Charts"))
         self.file_manager.create_directory(self.config.data.processed_dir)
         print("Necessary directories created.")
 
@@ -98,8 +92,7 @@ class AppSetup:
                 "description": "BirdNET Analysis Server",
                 "before": "birdnet_analysis.service",
                 "exec_start": (
-                    f"{python_exec} "
-                    f"{self.file_path_resolver.get_absolute_path('src/main.py')}"
+                    f"{python_exec} {self.file_path_resolver.get_absolute_path('src/main.py')}"
                 ),  # Assuming main.py is the server entry
             },
             {
@@ -142,9 +135,7 @@ class AppSetup:
             {
                 "name": "spectrogram_viewer.service",
                 "description": "BirdNET-Pi Spectrogram Viewer",
-                "exec_start": self.file_path_resolver.get_absolute_path(
-                    "scripts/spectrogram.sh"
-                ),
+                "exec_start": self.file_path_resolver.get_absolute_path("scripts/spectrogram.sh"),
             },
             {
                 "name": "chart_viewer.service",
@@ -178,9 +169,7 @@ class AppSetup:
             {
                 "name": "livestream.service",
                 "description": "BirdNET-Pi Live Stream",
-                "exec_start": self.file_path_resolver.get_absolute_path(
-                    "scripts/livestream.sh"
-                ),
+                "exec_start": self.file_path_resolver.get_absolute_path("scripts/livestream.sh"),
                 "after": "network-online.target",
                 "requires": "network-online.target",
                 "environment": "XDG_RUNTIME_DIR=/run/user/1000",
@@ -225,9 +214,7 @@ class AppSetup:
                 ["sudo", "systemctl", "start", service_name], f"Starting {service_name}"
             )
 
-        self._run_command(
-            ["sudo", "systemctl", "daemon-reload"], "Reloading systemd daemon"
-        )
+        self._run_command(["sudo", "systemctl", "daemon-reload"], "Reloading systemd daemon")
         print("Systemd services setup complete.")
 
     def run_setup(self) -> None:

@@ -28,9 +28,7 @@ def main_cli() -> None:
     args = parser.parse_args()
 
     file_path_resolver = FilePathResolver()
-    config = ConfigFileParser(
-        file_path_resolver.get_birdnet_pi_config_path()
-    ).load_config()
+    config = ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path()).load_config()
 
     db_service = DatabaseService(config.data.db_path)
 
@@ -48,9 +46,7 @@ def main_cli() -> None:
             print(detection)
     elif args.action == "spectrogram":
         if args.audio_file is None or args.output_image is None:
-            parser.error(
-                "--audio_file and --output_image are required for spectrogram action."
-            )
+            parser.error("--audio_file and --output_image are required for spectrogram action.")
         reporting_manager.generate_spectrogram(args.audio_file, args.output_image)
     else:
         parser.error(f"Unknown action: {args.action}")

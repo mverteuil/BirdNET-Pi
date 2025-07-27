@@ -20,9 +20,7 @@ def main_cli() -> None:
     args = parser.parse_args()
 
     file_path_resolver = FilePathResolver()
-    config = ConfigFileParser(
-        file_path_resolver.get_birdnet_pi_config_path()
-    ).load_config()
+    config = ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path()).load_config()
 
     file_manager = FileManager(config.data.recordings_dir)
     db_service = DatabaseService(config.data.db_path)

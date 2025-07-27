@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 
 class AnalysisClientService:
-    """Manages communication with the BirdNET analysis backend by encapsulating TensorFlow Lite model interactions."""
+    """Manage BirdNET analysis involving TensorFlow Lite model interactions."""
 
     def __init__(self, config: BirdNETConfig) -> None:
         self.config = config
@@ -51,9 +51,7 @@ class AnalysisClientService:
     def _load_model(self) -> None:
         log.info("AnalysisClientService: LOADING TF LITE MODEL...")
 
-        modelpath = os.path.join(
-            self.user_dir, "BirdNET-Pi/model", self.model_name + ".tflite"
-        )
+        modelpath = os.path.join(self.user_dir, "BirdNET-Pi/model", self.model_name + ".tflite")
         self.interpreter = tflite.Interpreter(model_path=modelpath, num_threads=2)
         self.interpreter.allocate_tensors()
 
@@ -144,7 +142,7 @@ class AnalysisClientService:
         week: int,
         sensitivity: float,
     ) -> list[tuple[str, float]]:
-        """Perform raw prediction on an audio chunk and return sorted (species, confidence) pairs."""
+        """Perform raw prediction on an audio chunk."""
         # Prepare metadata for the main model
         if self.mdata_params != [lat, lon, week]:
             self.mdata_params = [lat, lon, week]
@@ -155,9 +153,7 @@ class AnalysisClientService:
         sig = np.expand_dims(audio_chunk, 0)
 
         # Make a prediction
-        self.interpreter.set_tensor(
-            self.input_layer_index, np.array(sig, dtype="float32")
-        )
+        self.interpreter.set_tensor(self.input_layer_index, np.array(sig, dtype="float32"))
         if self.model_name == "BirdNET_6K_GLOBAL_MODEL":
             self.interpreter.set_tensor(
                 self.mdata_input_index, np.array(self.mdata, dtype="float32")
@@ -181,9 +177,7 @@ class AnalysisClientService:
 
         for i in range(min(10, len(p_sorted))):
             if p_sorted[i][0] == "Human_Human":
-                with open(
-                    os.path.join(self.user_dir, "BirdNET-Pi/HUMAN.txt"), "a"
-                ) as rfile:
+                with open(os.path.join(self.user_dir, "BirdNET-Pi/HUMAN.txt"), "a") as rfile:
                     rfile.write(
                         str(datetime.datetime.now())
                         + str(p_sorted[i])
@@ -203,9 +197,7 @@ class AnalysisClientService:
         sensitivity: float,
     ) -> list[tuple[str, float]]:
         """Perform analysis on an audio chunk and return filtered (species, confidence) pairs."""
-        raw_predictions = self.get_raw_prediction(
-            audio_chunk, lat, lon, week, sensitivity
-        )
+        raw_predictions = self.get_raw_prediction(audio_chunk, lat, lon, week, sensitivity)
 
         filtered_results = []
         for species, confidence in raw_predictions:

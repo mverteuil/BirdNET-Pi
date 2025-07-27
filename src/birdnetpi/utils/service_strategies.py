@@ -6,7 +6,8 @@ import subprocess
 class ServiceManagementStrategy(abc.ABC):
     """Abstract Base Class for service management strategies.
 
-    Defines the interface for different service management implementations (e.g., systemd, supervisord).
+    Defines the interface for different service management implementations
+    (e.g., systemd, supervisord).
     """
 
     @abc.abstractmethod
@@ -122,15 +123,19 @@ class DockerSupervisordStrategy(ServiceManagementStrategy):
     def enable_service(self, service_name: str) -> None:
         """Enable a specified system service to start on boot."""
         print(
-            f"Enabling service {service_name} is not directly supported by supervisorctl in the same way as systemd. "
-            "Supervisor manages processes based on its configuration."
+            "Enabling service "
+            f"{service_name} is not directly supported by supervisorctl in the "
+            "same way as systemd. Supervisor manages processes based on its "
+            "configuration."
         )
 
     def disable_service(self, service_name: str) -> None:
         """Disable a specified system service from starting on boot."""
         print(
-            f"Disabling service {service_name} is not directly supported by supervisorctl in the same way as systemd. "
-            "To disable, remove it from Supervisor's configuration."
+            "Disabling service "
+            f"{service_name} is not directly supported by supervisorctl in the "
+            "same way as systemd. To disable, remove it from Supervisor's "
+            "configuration."
         )
 
     def get_service_status(self, service_name: str) -> str:
@@ -143,9 +148,9 @@ class DockerSupervisordStrategy(ServiceManagementStrategy):
                 check=False,
             )
             output = result.stdout.strip()
-            if f"{service_name} RUNNING" in output:
+            if "RUNNING" in output:
                 return "active"
-            elif f"{service_name} STOPPED" in output:
+            elif "STOPPED" in output:
                 return "inactive"
             else:
                 return "unknown"

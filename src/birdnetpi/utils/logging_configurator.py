@@ -20,9 +20,7 @@ def configure_logging(config: BirdNETConfig) -> None:
         root_logger.removeHandler(handler)
         handler.close()
 
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     # Console Handler (always add for basic visibility)
     console_handler = logging.StreamHandler()

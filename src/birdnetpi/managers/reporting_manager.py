@@ -17,14 +17,14 @@ class ReportingManager:
 
     def __init__(
         self,
-        db_manager: DetectionManager,
+        detection_manager: DetectionManager,
         file_path_resolver: FilePathResolver,
         config: BirdNETConfig,
         plotting_manager: PlottingManager,
         data_preparation_manager: DataPreparationManager,
         location_service: LocationService,
     ) -> None:
-        self.detection_manager = db_manager
+        self.detection_manager = detection_manager
         self.file_path_resolver = file_path_resolver
         self.config = config
         self.plotting_manager = plotting_manager
@@ -63,7 +63,7 @@ class ReportingManager:
         prior_start_date: datetime.date,
         prior_end_date: datetime.date,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
-        """Fetch total detection counts and unique species counts for the current and prior weeks."""
+        """Get total detection counts and unique species counts for the current and prior weeks."""
         current_week_stats = self.detection_manager.get_detection_counts_by_date_range(
             start_date, end_date
         )
@@ -91,9 +91,7 @@ class ReportingManager:
                 prior_count = row["prior_count"]
                 percentage_diff = 0
                 if prior_count > 0:
-                    percentage_diff = round(
-                        ((current_count - prior_count) / prior_count) * 100
-                    )
+                    percentage_diff = round(((current_count - prior_count) / prior_count) * 100)
 
                 top_10_species.append(
                     {
@@ -108,14 +106,9 @@ class ReportingManager:
         self, start_date: datetime.date, end_date: datetime.date
     ) -> list[dict[str, Any]]:
         """Fetch new species detected in the current week that were not present in prior data."""
-        new_species_rows = self.detection_manager.get_new_species_data(
-            start_date, end_date
-        )
+        new_species_rows = self.detection_manager.get_new_species_data(start_date, end_date)
         new_species = (
-            [
-                {"com_name": row["com_name"], "count": row["count"]}
-                for row in new_species_rows
-            ]
+            [{"com_name": row["com_name"], "count": row["count"]} for row in new_species_rows]
             if new_species_rows
             else []
         )
@@ -132,18 +125,13 @@ class ReportingManager:
         percentage_diff_total = 0
         if total_detections_prior > 0:
             percentage_diff_total = round(
-                (
-                    (total_detections_current - total_detections_prior)
-                    / total_detections_prior
-                )
-                * 100
+                ((total_detections_current - total_detections_prior) / total_detections_prior) * 100
             )
 
         percentage_diff_unique_species = 0
         if unique_species_prior > 0:
             percentage_diff_unique_species = round(
-                ((unique_species_current - unique_species_prior) / unique_species_prior)
-                * 100
+                ((unique_species_current - unique_species_prior) / unique_species_prior) * 100
             )
         return percentage_diff_total, percentage_diff_unique_species
 
@@ -170,18 +158,10 @@ class ReportingManager:
         new_species = self._get_new_species_data(start_date, end_date)
 
         # Extract counts
-        total_detections_current = (
-            current_week_stats["total_count"] if current_week_stats else 0
-        )
-        unique_species_current = (
-            current_week_stats["unique_species"] if current_week_stats else 0
-        )
-        total_detections_prior = (
-            prior_week_stats["total_count"] if prior_week_stats else 0
-        )
-        unique_species_prior = (
-            prior_week_stats["unique_species"] if prior_week_stats else 0
-        )
+        total_detections_current = current_week_stats["total_count"] if current_week_stats else 0
+        unique_species_current = current_week_stats["unique_species"] if current_week_stats else 0
+        total_detections_prior = prior_week_stats["total_count"] if prior_week_stats else 0
+        unique_species_prior = prior_week_stats["unique_species"] if prior_week_stats else 0
 
         percentage_diff_total, percentage_diff_unique_species = (
             self._calculate_percentage_differences(
@@ -214,14 +194,10 @@ class ReportingManager:
     def get_todays_detections(self) -> list[dict[str, Any]]:
         """Retrieve all detection records from the database for the current day."""
         today = datetime.date.today()
-        todays_detections = self.detection_manager.get_detections_by_date_range(
-            today, today
-        )
+        todays_detections = self.detection_manager.get_detections_by_date_range(today, today)
         return todays_detections
 
-    def date_filter(
-        self, df: pd.DataFrame, start_date: str, end_date: str
-    ) -> pd.DataFrame:
+    def date_filter(self, df: pd.DataFrame, start_date: str, end_date: str) -> pd.DataFrame:
         """Filter a DataFrame by date range."""
         filt = (df.index >= pd.Timestamp(start_date)) & (
             df.index <= pd.Timestamp(end_date + datetime.timedelta(days=1))
@@ -236,7 +212,7 @@ class ReportingManager:
         config = DailyPlotConfig(resample_sel=resample_sel, specie=specie)
         return self.data_preparation_manager.prepare_daily_plot_data(df, config)
 
-    def get_best_detections(self, limit=20) -> list[dict]:
+    def get_best_detections(self, limit: int = 20) -> list[dict]:
         """Retrieve the best detections from the database."""
         best_detections = self.detection_manager.get_best_detections(limit)
         return best_detections

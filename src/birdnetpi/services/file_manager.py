@@ -50,9 +50,7 @@ class FileManager:
         full_path = self.get_full_path(relative_path)
         return full_path.is_dir()
 
-    def read_file(
-        self, relative_path: str, mode: str = "r", encoding: str = "utf-8"
-    ) -> str:
+    def read_file(self, relative_path: str, mode: str = "r", encoding: str = "utf-8") -> str:
         """Read content from a file within the base_path."""
         full_path = self.get_full_path(relative_path)
         return full_path.read_text(encoding=encoding)

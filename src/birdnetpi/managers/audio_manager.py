@@ -52,9 +52,7 @@ class AudioManager:
             )
             print(f"Successfully recorded audio to {output_path}")
         except FileNotFoundError:
-            print(
-                "Error: arecord command not found. Please ensure ALSA utilities are installed."
-            )
+            print("Error: arecord command not found. Please ensure ALSA utilities are installed.")
             raise
         except subprocess.CalledProcessError as e:
             print(f"Error recording audio: {e.stderr.decode()}")

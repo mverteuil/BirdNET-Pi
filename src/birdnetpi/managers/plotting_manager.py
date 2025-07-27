@@ -153,9 +153,7 @@ class PlottingManager:
         species: str,
     ) -> go.Figure:
         """Generate a multi-day species and hourly plot."""
-        config = MultiDayPlotConfig(
-            resample_sel=resample_sel, specie=species, top_n=top_n
-        )
+        config = MultiDayPlotConfig(resample_sel=resample_sel, specie=species, top_n=top_n)
         df5, hourly, top_n_species, df_counts = (
             self.data_preparation_manager.prepare_multi_day_plot_data(df, config)
         )

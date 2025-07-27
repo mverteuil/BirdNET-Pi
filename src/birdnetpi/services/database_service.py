@@ -1,5 +1,5 @@
-import os
 import contextlib
+import os
 from collections.abc import Generator
 from typing import Any
 
@@ -18,9 +18,7 @@ class DatabaseService:
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         self.engine = create_engine(f"sqlite:///{self.db_path}")
         Base.metadata.create_all(self.engine)
-        self.session_local = sessionmaker(
-            autocommit=False, autoflush=False, bind=self.engine
-        )
+        self.session_local = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
 
     @contextlib.contextmanager
     def get_db(self) -> Generator[Session, Any, None]:

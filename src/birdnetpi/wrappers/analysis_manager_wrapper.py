@@ -31,9 +31,7 @@ def main_cli() -> None:
     args = parser.parse_args()
 
     file_path_resolver = FilePathResolver()
-    config = ConfigFileParser(
-        file_path_resolver.get_birdnet_pi_config_path()
-    ).load_config()
+    config = ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path()).load_config()
 
     db_service = DatabaseService(config.data.db_path)
 
@@ -43,9 +41,7 @@ def main_cli() -> None:
     # Instantiate services with config
     analysis_client_service = AnalysisClientService(config)
     audio_processor_service = AudioProcessorService()
-    audio_extraction_service = AudioExtractionService(
-        config, file_manager, detection_manager
-    )
+    audio_extraction_service = AudioExtractionService(config, file_manager, detection_manager)
     detection_event_publisher = DetectionEventPublisher()
 
     analysis_manager = AnalysisManager(
@@ -60,9 +56,7 @@ def main_cli() -> None:
 
     if args.action == "process_recordings":
         if not args.audio_file_path:
-            parser.error(
-                "--audio_file_path is required for 'process_recordings' action."
-            )
+            parser.error("--audio_file_path is required for 'process_recordings' action.")
         analysis_manager.process_audio_for_analysis(args.audio_file_path)
     elif args.action == "extract_new_birdsounds":
         analysis_manager.extract_new_birdsounds()

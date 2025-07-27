@@ -63,7 +63,8 @@ class AnalysisManager:
             if entry[1] >= self.config.confidence:
                 if entry[0] not in self.include_list and len(self.include_list) != 0:
                     log.warning(
-                        "AnalysisManager: Excluded as INCLUDE_LIST is active but this species is not in it: %s",
+                        "AnalysisManager: Excluded as INCLUDE_LIST is active but this "
+                        "species is not in it: %s",
                         entry[0],
                     )
                 elif entry[0] in self.exclude_list and len(self.exclude_list) != 0:
@@ -77,7 +78,8 @@ class AnalysisManager:
                     and entry[0] not in self.whitelist_list
                 ):
                     log.warning(
-                        "AnalysisManager: Excluded as below Species Occurrence Frequency Threshold: %s",
+                        "AnalysisManager: Excluded as below Species Occurrence Frequency "
+                        "Threshold: %s",
                         entry[0],
                     )
                 else:
@@ -96,14 +98,11 @@ class AnalysisManager:
             d = {
                 "species": entry[0],
                 "confidence": entry[1],
-                "timestamp": datetime.datetime.now(),  # Placeholder, needs actual timestamp from audio_file_path
+                # Placeholder, needs actual timestamp from audio_file_path
+                "timestamp": datetime.datetime.now(),
                 "audio_file_path": audio_file_path,
-                "Com_Name": entry[
-                    0
-                ],  # Assuming common name is the same as species for now
-                "Sci_Name": entry[
-                    0
-                ],  # Assuming scientific name is the same as species for now
+                "Com_Name": entry[0],  # Assuming common name is the same as species for now
+                "Sci_Name": entry[0],  # Assuming scientific name is the same as species for now
                 "Lat": self.config.latitude,
                 "Lon": self.config.longitude,
                 "Cutoff": self.config.cutoff,
@@ -178,9 +177,7 @@ class AnalysisManager:
                     audio_file_path=result_dict["audio_file_path"],
                 )
                 new_detection = self.detection_manager.add_detection(detection)
-                log.info(
-                    f"AnalysisManager: Added detection to DB: {new_detection.species}"
-                )
+                log.info(f"AnalysisManager: Added detection to DB: {new_detection.species}")
 
                 self.detection_event_publisher.publish_detection(new_detection)
 

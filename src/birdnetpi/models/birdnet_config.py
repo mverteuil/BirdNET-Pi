@@ -67,9 +67,7 @@ class BirdNETConfig:
     flickr_filter_email: str = ""
 
     # Localization
-    database_lang: str = (
-        "en"  # Renamed from 'language' to avoid conflict with Python keyword
-    )
+    database_lang: str = "en"  # Renamed from 'language' to avoid conflict with Python keyword
     timezone: str = "UTC"  # Default from SystemUtils
 
     # Other settings from config.php / views.php that are read from config files

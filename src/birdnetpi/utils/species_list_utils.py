@@ -14,9 +14,7 @@ class SpeciesListUtils:
             return self._species_list
 
         if not os.path.exists(self.species_list_path):
-            raise FileNotFoundError(
-                f"Species list file not found at: {self.species_list_path}"
-            )
+            raise FileNotFoundError(f"Species list file not found at: {self.species_list_path}")
 
         species = []
         with open(self.species_list_path, encoding="utf-8") as f:

@@ -16,7 +16,7 @@ templates = Jinja2Templates(directory="src/web/templates")
 
 def get_database_manager(request: Request) -> DatabaseManager:
     """Return the DatabaseManager instance from the app state."""
-    return request.app.state.db_manager
+    return request.app.state.detections
 
 
 @router.get("/views", response_class=HTMLResponse)
@@ -83,6 +83,4 @@ async def get_charts(
 
     plot_data = {"multi_day_plot": multi_day_plot_json, "daily_plot": daily_plot_json}
 
-    return templates.TemplateResponse(
-        "charts.html", {"request": request, "plot_data": plot_data}
-    )
+    return templates.TemplateResponse("charts.html", {"request": request, "plot_data": plot_data})

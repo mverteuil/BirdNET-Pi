@@ -26,19 +26,19 @@ class AudioExtractionService:
         detection = self.detection_manager.get_detection_by_id(detection_id)
         if not detection:
             log.warning(
-                f"AudioExtractionService: Detection with ID {detection_id} not found. Skipping extraction."
+                "AudioExtractionService: "
+                f"Detection with ID {detection_id} not found. Skipping extraction."
             )
             return
 
         input_audio_path = self.file_manager.get_full_path(detection.audio_file_path)
-        audio_file = self.detection_manager.get_audio_file_by_path(
-            detection.audio_file_path
-        )
+        audio_file = self.detection_manager.get_audio_file_by_path(detection.audio_file_path)
 
         if not audio_file:
             log.error(
-                f"AudioExtractionService: AudioFile record not found for {detection.audio_file_path}. "
-                f"Skipping extraction."
+                "AudioExtractionService: "
+                f"AudioFile record not found for {detection.audio_file_path}. "
+                "Skipping extraction."
             )
             return
 
@@ -46,9 +46,7 @@ class AudioExtractionService:
         extracted_dir.mkdir(parents=True, exist_ok=True)
 
         extraction_length = (
-            float(self.config.extraction_length)
-            if self.config.extraction_length
-            else 6.0
+            float(self.config.extraction_length) if self.config.extraction_length else 6.0
         )
 
         # Calculate the start time for sox trim based on recording_start_time
@@ -76,24 +74,22 @@ class AudioExtractionService:
                 capture_output=True,
                 text=True,
             )
-            log.info(
-                f"AudioExtractionService: Extracted {detection.species} to {output_filepath}"
-            )
+            log.info(f"AudioExtractionService: Extracted {detection.species} to {output_filepath}")
             self.detection_manager.update_detection_extracted_status(detection.id, True)
         except subprocess.CalledProcessError as e:
             log.error(
-                f"AudioExtractionService: Error extracting audio for {detection.species}: {e.stderr}"
+                "AudioExtractionService: "
+                f"Error extracting audio for {detection.species}: {e.stderr}"
             )
         except FileNotFoundError:
             log.error(
-                "AudioExtractionService: Error: sox command not found. Please ensure it's installed and in your PATH."
+                "AudioExtractionService: Error: sox command not found. "
+                "Please ensure it's installed and in your PATH."
             )
 
     def extract_all_unextracted_birdsounds(self) -> None:
         """Extract all birdsounds that have not yet been extracted."""
         log.info("AudioExtractionService: Extracting all unextracted birdsounds...")
-        unextracted_detections = self.detection_manager.get_all_detections(
-            extracted=False
-        )
+        unextracted_detections = self.detection_manager.get_all_detections(extracted=False)
         for detection in unextracted_detections:
             self.extract_birdsounds_for_detection(detection.id)

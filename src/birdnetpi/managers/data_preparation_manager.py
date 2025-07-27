@@ -105,9 +105,7 @@ class DataPreparationManager:
         plot_text = sunrise_text + sunset_text
 
         # Create a list of colors for the plot, e.g., 'orange' for sunrise and 'purple' for sunset
-        plot_colors = ["orange"] * len(sunrise_times_dec) + ["purple"] * len(
-            sunset_times_dec
-        )
+        plot_colors = ["orange"] * len(sunrise_times_dec) + ["purple"] * len(sunset_times_dec)
 
         return plot_x, plot_y, plot_text, plot_colors
 
@@ -123,9 +121,7 @@ class DataPreparationManager:
 
         for past_day in range(num_days_to_display):
             current_date = datetime.date.today() - datetime.timedelta(days=past_day)
-            sunrise_time, sunset_time = self.location_service.get_sunrise_sunset_times(
-                current_date
-            )
+            sunrise_time, sunset_time = self.location_service.get_sunrise_sunset_times(current_date)
 
             sunrise_times_dec.append(self.hms_to_dec(sunrise_time.time()))
             sunset_times_dec.append(self.hms_to_dec(sunset_time.time()))

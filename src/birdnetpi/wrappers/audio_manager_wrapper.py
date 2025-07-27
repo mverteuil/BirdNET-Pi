@@ -14,20 +14,14 @@ def main_cli() -> None:
         type=str,
         help="Action to perform (e.g., record, custom_record, livestream)",
     )
-    parser.add_argument(
-        "--duration", type=int, help="Duration for custom recording in seconds"
-    )
-    parser.add_argument(
-        "--output_file", type=str, help="Output file path for custom recording"
-    )
+    parser.add_argument("--duration", type=int, help="Duration for custom recording in seconds")
+    parser.add_argument("--output_file", type=str, help="Output file path for custom recording")
     parser.add_argument("--output_url", type=str, help="Output URL for livestreaming")
 
     args = parser.parse_args()
 
     file_path_resolver = FilePathResolver()
-    config = ConfigFileParser(
-        file_path_resolver.get_birdnet_pi_config_path()
-    ).load_config()
+    config = ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path()).load_config()
     file_manager = FileManager(file_path_resolver.repo_root)
 
     audio_manager = AudioManager(file_manager, config)
@@ -36,9 +30,7 @@ def main_cli() -> None:
         audio_manager.record()
     elif args.action == "custom_record":
         if args.duration is None or args.output_file is None:
-            parser.error(
-                "--duration and --output_file are required for custom_record action."
-            )
+            parser.error("--duration and --output_file are required for custom_record action.")
         audio_manager.custom_record(args.duration, args.output_file)
     elif args.action == "livestream":
         if args.output_url is None:

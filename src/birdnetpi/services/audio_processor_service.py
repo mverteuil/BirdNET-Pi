@@ -46,16 +46,12 @@ class AudioProcessorService:
         log.info("AudioProcessorService: READING AUDIO DATA...")
         try:
             # Open file with librosa (uses ffmpeg or libav)
-            sig, rate = librosa.load(
-                path, sr=sample_rate, mono=True, res_type="kaiser_fast"
-            )
+            sig, rate = librosa.load(path, sr=sample_rate, mono=True, res_type="kaiser_fast")
 
             # Split audio into 3-second chunks (default for BirdNET)
             chunks = self._split_signal(sig, rate, overlap)
 
-            log.info(
-                "AudioProcessorService: READING DONE! READ %d CHUNKS.", len(chunks)
-            )
+            log.info("AudioProcessorService: READING DONE! READ %d CHUNKS.", len(chunks))
             return chunks
         except Exception as e:
             log.error(f"AudioProcessorService: Error reading audio file {path}: {e}")

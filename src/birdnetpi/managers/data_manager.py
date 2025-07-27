@@ -8,7 +8,7 @@ from birdnetpi.services.file_manager import FileManager
 
 
 class DataManager:
-    """Manages data operations, including cleanup and clearing of processed files and directories."""
+    """Manage data operations, including cleanup and clearing of processed files and directories."""
 
     def __init__(
         self,
@@ -24,9 +24,7 @@ class DataManager:
 
     def get_recordings(self) -> list[str]:
         """Retrieve a list of recording file paths."""
-        recordings_dir = self.file_manager.get_full_path(
-            self.config.data.recordings_dir
-        )
+        recordings_dir = self.file_manager.get_full_path(self.config.data.recordings_dir)
         return self.file_manager.list_directory_contents(recordings_dir)
 
     def cleanup_processed_files(self) -> None:
@@ -35,9 +33,7 @@ class DataManager:
 
         for filename in self.file_manager.list_directory_contents(processed_dir):
             if filename.endswith(".csv"):
-                csv_path = self.file_manager.get_full_path(
-                    os.path.join(processed_dir, filename)
-                )
+                csv_path = self.file_manager.get_full_path(os.path.join(processed_dir, filename))
                 wav_path = self.file_manager.get_full_path(
                     os.path.join(processed_dir, filename.replace(".csv", ""))
                 )
@@ -65,7 +61,7 @@ class DataManager:
                 )
 
     def clear_all_data(self) -> None:
-        """Clear all BirdNET-Pi data, stopping services, removing files, and re-creating directories."""
+        """Clear all BirdNET-Pi data, stop services, remove files, and re-create directories."""
         print("Stopping services...")
         self.service_manager.stop_service("birdnet_recording.service")
         self.service_manager.stop_service("birdnet_analysis.service")
@@ -81,12 +77,8 @@ class DataManager:
 
         print("Re-creating necessary directories...")
         self.file_manager.create_directory(self.config.data.extracted_dir)
-        self.file_manager.create_directory(
-            os.path.join(self.config.data.extracted_dir, "By_Date")
-        )
-        self.file_manager.create_directory(
-            os.path.join(self.config.data.extracted_dir, "Charts")
-        )
+        self.file_manager.create_directory(os.path.join(self.config.data.extracted_dir, "By_Date"))
+        self.file_manager.create_directory(os.path.join(self.config.data.extracted_dir, "Charts"))
         self.file_manager.create_directory(self.config.data.processed_dir)
 
         print("Re-establishing symlinks...")

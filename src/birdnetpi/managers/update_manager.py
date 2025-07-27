@@ -9,17 +9,13 @@ class UpdateManager:
     """Manages updates and Git operations for the BirdNET-Pi repository."""
 
     def __init__(self) -> None:
-        self.repo_path = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..", "..", "..")
-        )
+        self.repo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
     def get_commits_behind(self) -> int:
         """Check how many commits the local repository is behind the remote."""
         try:
             # Git fetch to update remote tracking branches
-            subprocess.run(
-                ["git", "-C", self.repo_path, "fetch"], check=True, capture_output=True
-            )
+            subprocess.run(["git", "-C", self.repo_path, "fetch"], check=True, capture_output=True)
 
             # Git status to get the status of the repository
             result = subprocess.run(
@@ -36,9 +32,7 @@ class UpdateManager:
                 return int(match_behind.group(1))
 
             # Regex to find "X and Y different commits each"
-            match_diverged = re.search(
-                r"(\d+) and (\d+) different commits each", status_output
-            )
+            match_diverged = re.search(r"(\d+) and (\d+) different commits each", status_output)
             if match_diverged:
                 return int(match_diverged.group(1)) + int(match_diverged.group(2))
 
@@ -165,14 +159,10 @@ class UpdateManager:
             temp_caddyfile_path = "/tmp/Caddyfile_temp"
             with open(temp_caddyfile_path, "w") as f:
                 f.write(caddyfile_content)
-            subprocess.run(
-                ["sudo", "mv", temp_caddyfile_path, caddyfile_path], check=True
-            )
+            subprocess.run(["sudo", "mv", temp_caddyfile_path, caddyfile_path], check=True)
 
             # Format and reload Caddy
-            subprocess.run(
-                ["sudo", "caddy", "fmt", "--overwrite", caddyfile_path], check=True
-            )
+            subprocess.run(["sudo", "caddy", "fmt", "--overwrite", caddyfile_path], check=True)
             subprocess.run(["sudo", "systemctl", "reload", "caddy"], check=True)
 
             print("Caddyfile updated and Caddy reloaded successfully.")

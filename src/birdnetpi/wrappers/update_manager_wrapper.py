@@ -14,12 +14,8 @@ def main_cli() -> None:
         type=str,
         help="Action to perform (e.g., update_birdnet, update_caddyfile)",
     )
-    parser.add_argument(
-        "-r", "--remote", type=str, default="origin", help="Git remote to use"
-    )
-    parser.add_argument(
-        "-b", "--branch", type=str, default="main", help="Git branch to use"
-    )
+    parser.add_argument("-r", "--remote", type=str, default="origin", help="Git remote to use")
+    parser.add_argument("-b", "--branch", type=str, default="main", help="Git branch to use")
     parser.add_argument("--birdnetpi_url", type=str, help="URL for BirdNET-Pi")
     parser.add_argument("--extracted_path", type=str, help="Path to extracted files")
     parser.add_argument("--caddy_pwd", type=str, help="Password for Caddy")
@@ -37,8 +33,7 @@ def main_cli() -> None:
         caddy_pwd = args.caddy_pwd or os.environ.get("CADDY_PWD")
         if not birdnetpi_url or not extracted_path:
             parser.error(
-                "--birdnetpi_url and --extracted_path are required for "
-                "update_caddyfile action."
+                "--birdnetpi_url and --extracted_path are required for update_caddyfile action."
             )
         caddy_config = CaddyConfig(
             birdnetpi_url=birdnetpi_url,
