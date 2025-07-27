@@ -101,6 +101,82 @@ cd BirdNET-Pi
 uv sync
 ```
 
+## Docker Usage and Audio Configuration
+
+BirdNET-Pi requires access to an audio input device (microphone) for real-time analysis. Due to differences in how Docker interacts with host audio hardware on various operating systems, the setup varies slightly for Linux and macOS.
+
+#### For Linux Hosts (Recommended for direct hardware access)
+
+On Linux, Docker can directly access host audio devices.
+
+1.  **Ensure your Linux host has a working microphone** and that it's recognized by your system's audio server (ALSA or PulseAudio). You can test this using tools like `arecord -l` or `pactl list sources`.
+
+2.  **Modify your `docker-compose.yml` file** to grant the `birdnet-pi` service access to your host's audio devices. Add the `privileged: true` flag and mount the `/dev/snd` directory.
+
+    ```yaml
+    services:
+      birdnet-pi:
+        # ... other configurations ...
+        privileged: true # Grants full access to host devices, including audio
+        volumes:
+          - birdnet-data:/mnt/birdnet # Persistent data storage
+          - /dev/snd:/dev/snd # Expose host audio devices to the container
+        # ... rest of your service configuration ...
+    ```
+
+    *   **Security Note:** `privileged: true` grants extensive access to the host. For production environments, consider using more granular `cap_add` capabilities (e.g., `CAP_SYS_RAWIO`, `CAP_IPC_LOCK`) instead of `privileged: true`.
+
+3.  **Rebuild and restart your Docker containers:**
+    ```bash
+    docker-compose build
+    docker-compose up -d
+    ```
+
+#### For macOS Hosts (Network Audio Streaming)
+
+On macOS, Docker Desktop runs a Linux virtual machine, so direct hardware passthrough is not possible. Instead, we'll stream audio from your macOS host to the Docker container over the network using PulseAudio.
+
+1.  **Install PulseAudio on your macOS host:**
+    If you don't have it, install it using Homebrew:
+    ```bash
+    brew install pulseaudio
+    ```
+
+2.  **Start PulseAudio with the TCP module enabled:**
+    This allows the Docker container to connect to your host's PulseAudio server over the network.
+    ```bash
+    pulseaudio --load=module-native-protocol-tcp --exit-idle-time=-1 --daemon
+    ```
+    *   You might want to add this command to your shell's startup script (e.g., `.bash_profile`, `.zshrc`) if you want PulseAudio to start automatically.
+
+3.  **Identify your PulseAudio authentication cookie path:**
+    PulseAudio uses a cookie for authentication. You'll need to mount this into your Docker container. It's typically located at `~/.config/pulse/cookie`.
+
+4.  **Modify your `docker-compose.yml` file** to configure the `birdnet-pi` service to connect to your host's PulseAudio server.
+
+    ```yaml
+    services:
+      birdnet-pi:
+        # ... other configurations ...
+        environment:
+          # Tells applications in the container where to find the PulseAudio server on the host
+          PULSE_SERVER: host.docker.internal
+        volumes:
+          - birdnet-data:/mnt/birdnet # Persistent data storage
+          # Mount the PulseAudio authentication cookie for the container to authenticate with the host's PulseAudio
+          - ~/.config/pulse:/home/birdnetpi/.config/pulse
+        # ... rest of your service configuration ...
+    ```
+
+    *   **Important:** Replace `~/.config/pulse` with the actual path to your PulseAudio cookie directory on your macOS host.
+    *   Ensure the path inside the container (`/home/birdnetpi/.config/pulse`) is writable by the `birdnetpi` user within the container.
+
+5.  **Rebuild and restart your Docker containers:**
+    ```bash
+    docker-compose build
+    docker-compose up -d
+    ```
+
 ## Architecture and Development
 
 BirdNET-Pi has undergone a significant architectural refactoring to enhance maintainability, scalability, and developer experience.
