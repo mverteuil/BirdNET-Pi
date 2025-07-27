@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Today's Detections</title>
+  </head>
+  <body>
+    <h1>Today's Detections</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Scientific Name</th>
+          <th>Common Name</th>
+          <th>Confidence</th>
+          <th>Latitude</th>
+          <th>Longitude</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for detection in todays_detections %}
+        <tr>
+          <td>{{ detection.Date }}</td>
+          <td>{{ detection.Time }}</td>
+          <td>{{ detection.Sci_Name }}</td>
+          <td>{{ detection.Com_Name }}</td>
+          <td>{{ detection.Confidence }}</td>
+          <td>{{ detection.Lat }}</td>
+          <td>{{ detection.Lon }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </body>
+</html>

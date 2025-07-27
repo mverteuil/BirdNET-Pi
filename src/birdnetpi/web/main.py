@@ -9,18 +9,18 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqladmin import Admin, ModelView
 
+from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.service_manager import ServiceManager
 from birdnetpi.models.database_models import AudioFile, Detection
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.detection_event_publisher import DetectionEventPublisher
 from birdnetpi.services.file_manager import FileManager
-from birdnetpi.managers.data_preparation_manager import DataPreparationManager
-from birdnetpi.managers.plotting_manager import PlottingManager
+from birdnetpi.services.location_service import LocationService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 from birdnetpi.utils.logging_configurator import configure_logging  # Added import
-from birdnetpi.services.location_service import LocationService
 
 from .routers import (
     log_router,
@@ -29,7 +29,6 @@ from .routers import (
     reporting_router,
     settings_router,
     spectrogram_router,
-    todays_detections_router,
 )
 
 
@@ -55,7 +54,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Initialize core services and managers
     app.state.db_service = DatabaseService(app.state.config.data.db_path)
     app.state.file_manager = FileManager(app.state.file_resolver.base_dir)
-    app.state.db_manager = DetectionManager(app.state.db_service)
+    app.state.detections = DetectionManager(app.state.db_service)
     app.state.location_service = LocationService(
         app.state.config.latitude, app.state.config.longitude
     )
@@ -100,7 +99,7 @@ app.include_router(log_router.router)
 app.include_router(recordings_router.router)
 app.include_router(reporting_router.router)
 app.include_router(spectrogram_router.router)
-app.include_router(todays_detections_router.router)
+
 app.include_router(overview_router.router)
 
 
@@ -138,16 +137,14 @@ publisher = DetectionEventPublisher()
 @app.get("/test_detection_form", response_class=HTMLResponse)
 async def test_detection_form(request: Request) -> HTMLResponse:
     """Render the form for testing detections."""
-    return request.app.state.templates.TemplateResponse(
-        request, "test_detection_modal.html", {}
-    )
+    return request.app.state.templates.TemplateResponse(request, "test_detection_modal.html", {})
 
 
 @app.get("/test_detection")
 async def test_detection(
-        species: str = "Test Bird",
-        confidence: float = 0.99,
-        timestamp: str | None = None,
+    species: str = "Test Bird",
+    confidence: float = 0.99,
+    timestamp: str | None = None,
 ) -> dict[str, str]:
     """Publishes a test detection event for demonstration purposes."""
     detection_data = {
