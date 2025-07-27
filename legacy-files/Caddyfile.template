@@ -1,6 +1,0 @@
-http://localhost:80 {
-  reverse_proxy localhost:8000
-  reverse_proxy /log* localhost:8080
-  reverse_proxy /stats* localhost:8501
-  reverse_proxy /terminal* localhost:8888
-}

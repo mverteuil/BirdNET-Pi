@@ -51,25 +51,17 @@ dev = [
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
-[tool.uv]
 
 
-[tool.setuptools]
-package-dir = {"" = "src"}
-
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.coverage.run]
+omit = ["tests/*"]
 
 [tool.pytest.ini_options]
 markers = ["expensive"]
 testpaths = ["tests"]
 
-[tool.coverage.run]
-omit = ["tests/*"]
-
-
 [tool.ruff]
-line-length = 120
+line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
@@ -108,6 +100,12 @@ unfixable = ["TID252"] # Disallow `from ... import *`
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [dependency-groups]
 dev = [

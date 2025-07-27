@@ -1,0 +1,3 @@
+http://localhost:80 {
+  reverse_proxy localhost:8000
+}

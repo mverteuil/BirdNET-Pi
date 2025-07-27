@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Best Recordings</title>
+  </head>
+  <body>
+    <h1>Best Recordings</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Scientific Name</th>
+          <th>Common Name</th>
+          <th>Confidence</th>
+          <th>Latitude</th>
+          <th>Longitude</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for recording in best_recordings %}
+        <tr>
+          <td>{{ recording.Date }}</td>
+          <td>{{ recording.Time }}</td>
+          <td>{{ recording.Sci_Name }}</td>
+          <td>{{ recording.Com_Name }}</td>
+          <td>{{ recording.Confidence }}</td>
+          <td>{{ recording.Lat }}</td>
+          <td>{{ recording.Lon }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </body>
+</html>
