@@ -1,9 +1,6 @@
-
-import os
 import pytest
 import yaml
 
-from birdnetpi.models.birdnet_config import BirdNETConfig
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 
 

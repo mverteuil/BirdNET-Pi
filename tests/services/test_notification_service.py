@@ -27,21 +27,19 @@ def test_species_notifier_basic(notification_service, capsys):
     notification_service.species_notifier(detection)
     captured = capsys.readouterr()
     assert (
-        f"Notification: New species detected - {detection.species} with confidence {detection.confidence:.2f}"
-        in captured.out
+        "Notification: New species detected - "
+        f"{detection.species} with confidence {detection.confidence:.2f}" in captured.out
     )
 
 
-def test_species_notifier_with_apprise_enabled(
-    mock_config, notification_service, capsys
-):
+def test_species_notifier_with_apprise_enabled(mock_config, notification_service, capsys):
     """Should print an Apprise notification message when enabled"""
     mock_config.apprise_notify_each_detection = True
     detection = Detection(species="European Robin", confidence=0.88)
     notification_service.species_notifier(detection)
     captured = capsys.readouterr()
     assert (
-        f"Notification: New species detected - {detection.species} with confidence {detection.confidence:.2f}"
-        in captured.out
+        "Notification: New species detected - "
+        f"{detection.species} with confidence {detection.confidence:.2f}" in captured.out
     )
     assert f"Sending Apprise notification for {detection.species}" in captured.out

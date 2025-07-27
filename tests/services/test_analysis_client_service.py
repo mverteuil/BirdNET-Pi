@@ -30,9 +30,7 @@ def analysis_client_service(mock_config) -> AnalysisClientService:
             "birdnetpi.services.analysis_client_service.tflite.Interpreter"
         ) as mock_interpreter_class,
         patch("os.path.expanduser", return_value="/mock/home"),
-        patch(
-            "builtins.open", new_callable=mock_open, read_data="species1\nspecies2\n"
-        ),
+        patch("builtins.open", new_callable=mock_open, read_data="species1\nspecies2\n"),
         patch("os.path.join", side_effect=lambda *args: "/".join(args)),
     ):
         # Configure the mock interpreter instance
@@ -49,9 +47,7 @@ def analysis_client_service(mock_config) -> AnalysisClientService:
         mock_interpreter_class.return_value = mock_interpreter_instance
 
         service = AnalysisClientService(mock_config)
-        service.interpreter = (
-            mock_interpreter_instance  # Ensure the service uses the mock
-        )
+        service.interpreter = mock_interpreter_instance  # Ensure the service uses the mock
         service.m_interpreter = (
             mock_interpreter_instance  # Ensure the service uses the mock for meta-model
         )

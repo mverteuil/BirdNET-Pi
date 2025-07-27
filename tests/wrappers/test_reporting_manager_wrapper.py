@@ -103,6 +103,4 @@ def test_spectrogram_action_instantiates_and_calls_correctly(mock_dependencies):
 
         # Verify that the correct method was called on the instance
         instance = mock_dependencies["mock_reporting_manager_class"].return_value
-        instance.generate_spectrogram.assert_called_once_with(
-            "/mock/audio.wav", "/mock/image.png"
-        )
+        instance.generate_spectrogram.assert_called_once_with("/mock/audio.wav", "/mock/image.png")

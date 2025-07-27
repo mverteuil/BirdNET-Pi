@@ -24,9 +24,7 @@ def mock_config():
     mock = Mock(spec=BirdNETConfig)
     mock.audio_format = "mp3"
     mock.extraction_length = 6.0
-    mock.data = Mock(
-        spec=DataConfig
-    )  # Mock the data attribute as a DataConfig instance
+    mock.data = Mock(spec=DataConfig)  # Mock the data attribute as a DataConfig instance
     mock.data.extracted_dir = "/tmp/extracted"
     mock.overlap = 0.5  # Added overlap attribute
     mock.confidence = 0.7  # Added confidence attribute
@@ -121,12 +119,8 @@ def test_process_audio_for_analysis_with_results(
     """Should process audio, add detection, and publish event when analysis results are present"""
     audio_file_path = "/path/to/audio.wav"
     mock_audio_processor_service.read_audio_data.return_value = [np.array([1, 2, 3])]
-    mock_analysis_client_service.get_filtered_species_list.return_value = [
-        "Test Species"
-    ]
-    mock_analysis_client_service.get_raw_prediction.return_value = [
-        ("Test Species", 0.9)
-    ]
+    mock_analysis_client_service.get_filtered_species_list.return_value = ["Test Species"]
+    mock_analysis_client_service.get_raw_prediction.return_value = [("Test Species", 0.9)]
     mock_detection_manager.add_detection.return_value = Mock(species="Test Species")
 
     analysis_manager.process_audio_for_analysis(audio_file_path)
@@ -138,10 +132,7 @@ def test_process_audio_for_analysis_with_results(
     mock_analysis_client_service.get_raw_prediction.assert_called_once()
     mock_detection_manager.add_detection.assert_called_once()
     mock_detection_event_publisher.publish_detection.assert_called_once()
-    assert (
-        f"AnalysisManager: Processing audio for analysis: {audio_file_path}"
-        in caplog.text
-    )
+    assert f"AnalysisManager: Processing audio for analysis: {audio_file_path}" in caplog.text
     assert "AnalysisManager: Added detection to DB: Test Species" in caplog.text
 
 
@@ -156,9 +147,7 @@ def test_process_audio_for_analysis_no_results(
     """Should only analyze audio when no analysis results are present"""
     audio_file_path = "/path/to/audio.wav"
     mock_audio_processor_service.read_audio_data.return_value = [np.array([1, 2, 3])]
-    mock_analysis_client_service.get_filtered_species_list.return_value = [
-        "Test Species"
-    ]
+    mock_analysis_client_service.get_filtered_species_list.return_value = ["Test Species"]
     mock_analysis_client_service.get_raw_prediction.return_value = [
         ("Other Species", 0.1)
     ]  # Low confidence
@@ -172,10 +161,7 @@ def test_process_audio_for_analysis_no_results(
     mock_analysis_client_service.get_raw_prediction.assert_called_once()
     mock_detection_manager.add_detection.assert_not_called()
     mock_detection_event_publisher.publish_detection.assert_not_called()
-    assert (
-        f"AnalysisManager: Processing audio for analysis: {audio_file_path}"
-        in caplog.text
-    )
+    assert f"AnalysisManager: Processing audio for analysis: {audio_file_path}" in caplog.text
     assert "AnalysisManager: Added detection to DB" not in caplog.text
 
 
@@ -213,9 +199,7 @@ def test_extract_new_birdsounds_handles_sox_error(
     caplog,
 ):
     """Should print an error message if sox command fails."""
-    mock_subprocess_run.side_effect = subprocess.CalledProcessError(
-        1, "sox", stderr="sox error"
-    )
+    mock_subprocess_run.side_effect = subprocess.CalledProcessError(1, "sox", stderr="sox error")
 
     mock_detection = Mock(spec=Detection)
     mock_detection.species = "Test_Species"

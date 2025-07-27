@@ -17,9 +17,7 @@ class TestServiceManager:
     @pytest.fixture(autouse=True)
     def setup_service_manager(self, mock_strategy):
         """Set up ServiceManager with a mocked strategy for each test."""
-        with patch.object(
-            ServiceStrategySelector, "get_strategy", return_value=mock_strategy
-        ):
+        with patch.object(ServiceStrategySelector, "get_strategy", return_value=mock_strategy):
             self.service_manager = ServiceManager()
             self.mock_strategy = mock_strategy
 
@@ -54,7 +52,7 @@ class TestServiceManager:
         self.mock_strategy.disable_service.assert_called_once_with(service_name)
 
     def test_should_call_get_service_status_on_strategy(self):
-        """Should delegate get_service_status call to the selected strategy and return its result."""
+        """Should delegate get_service_status call to strategy and return its result."""
         service_name = "test_service"
         self.mock_strategy.get_service_status.return_value = "active"
         status = self.service_manager.get_service_status(service_name)

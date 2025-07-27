@@ -33,11 +33,9 @@ def mock_location_service():
 
 
 @pytest.fixture
-def plotting_manager():  # Removed mock_data_preparation_manager, mock_config, mock_location_service from arguments
+def plotting_manager(mock_data_preparation_manager):
     """Provide a PlottingManager instance with mocked dependencies."""
-    with patch("birdnetpi.managers.plotting_manager.DataPreparationManager"):
-        # Instantiate PlottingManager without passing these as arguments
-        return PlottingManager()
+    return PlottingManager(mock_data_preparation_manager)
 
 
 @pytest.fixture
@@ -97,7 +95,7 @@ def test_create_multi_day_plot_figure_should_return_figure(
     mock_data_preparation_manager.get_daily_crosstab.return_value = pd.DataFrame(
         {"col1": [1, 2]}, index=["SpeciesA", "SpeciesB"]
     )
-    plotting_manager.data_preparation_manager = mock_data_preparation_manager
+
 
     fig = plotting_manager._create_multi_day_plot_figure(
         df_counts,
@@ -137,7 +135,7 @@ def test_generate_multi_day_species_and_hourly_plot_should_return_figure(
     mock_data_preparation_manager.get_daily_crosstab.return_value = pd.DataFrame(
         {"col1": [1, 2]}, index=["SpeciesA", "Common Blackbird"]
     )
-    plotting_manager.data_preparation_manager = mock_data_preparation_manager
+
 
     fig = plotting_manager.generate_multi_day_species_and_hourly_plot(
         df, config.resample_sel, start_date, end_date, config.top_n, config.specie
@@ -173,9 +171,7 @@ def test_update_daily_plot_layout_should_update_figure_layout(plotting_manager):
     saved_time_labels = ["08:00", "09:00"]
     day_hour_freq = pd.DataFrame({"08:00": [1], "09:00": [2]}, index=["2023-01-01"])
 
-    result_fig = plotting_manager._update_daily_plot_layout(
-        fig, saved_time_labels, day_hour_freq
-    )
+    result_fig = plotting_manager._update_daily_plot_layout(fig, saved_time_labels, day_hour_freq)
     assert isinstance(result_fig, go.Figure)
     assert "yaxis" in result_fig.layout
 
@@ -204,7 +200,7 @@ def test_generate_daily_detections_plot_should_return_figure(
         [],
         [],
     )
-    plotting_manager.data_preparation_manager = mock_data_preparation_manager
+
 
     fig = plotting_manager.generate_daily_detections_plot(
         df, resample_sel, start_date, species, num_days_to_display, selected_pal

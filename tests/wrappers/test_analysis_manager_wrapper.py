@@ -102,9 +102,7 @@ def test_process_recordings_action_instantiates_and_calls_correctly(mock_depende
     """Should instantiate AnalysisManager and call process_audio_for_analysis."""
     with patch(
         "argparse.ArgumentParser.parse_args",
-        return_value=MagicMock(
-            action="process_recordings", audio_file_path="/mock/audio/file.wav"
-        ),
+        return_value=MagicMock(action="process_recordings", audio_file_path="/mock/audio/file.wav"),
     ):
         main_cli()
 
@@ -113,9 +111,7 @@ def test_process_recordings_action_instantiates_and_calls_correctly(mock_depende
 
         # Verify that the correct method was called on the instance
         instance = mock_dependencies["mock_analysis_manager_class"].return_value
-        instance.process_audio_for_analysis.assert_called_once_with(
-            "/mock/audio/file.wav"
-        )
+        instance.process_audio_for_analysis.assert_called_once_with("/mock/audio/file.wav")
 
 
 def test_extract_new_birdsounds_action_instantiates_and_calls_correctly(

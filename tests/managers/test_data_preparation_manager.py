@@ -26,9 +26,7 @@ def mock_location_service():
 @pytest.fixture
 def data_preparation_manager(mock_config, mock_location_service):
     """Provide a DataPreparationManager instance with mocked dependencies."""
-    return DataPreparationManager(
-        config=mock_config, location_service=mock_location_service
-    )
+    return DataPreparationManager(config=mock_config, location_service=mock_location_service)
 
 
 @pytest.fixture
@@ -111,9 +109,7 @@ def test_time_resample_should_resample_dataframe_correctly(
     assert resampled_df.iloc[0]["com_name"] == "Common Blackbird"
 
 
-def test_time_resample_should_handle_raw_resample(
-    data_preparation_manager, sample_dataframe
-):
+def test_time_resample_should_handle_raw_resample(data_preparation_manager, sample_dataframe):
     """Should handle 'Raw' resample option by returning the 'com_name' series."""
     resampled_df = data_preparation_manager.time_resample(sample_dataframe, "Raw")
     assert isinstance(resampled_df, pd.DataFrame)

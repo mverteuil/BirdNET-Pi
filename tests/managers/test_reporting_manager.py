@@ -82,7 +82,7 @@ def reporting_manager(
 ):
     """Provide a ReportingManager instance with mocked dependencies."""
     manager = ReportingManager(
-        db_manager=detection_manager,
+        detection_manager=detection_manager,
         file_path_resolver=file_path_resolver,
         config=mock_config,
         plotting_manager=mock_plotting_manager,

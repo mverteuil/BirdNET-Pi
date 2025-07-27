@@ -56,9 +56,7 @@ def test_dump_logs_success(mock_open, mock_exists, system_monitor):
 
 @patch("birdnetpi.managers.system_monitor.os.path.exists")
 @patch("builtins.open", new_callable=mock_open)  # Add mock_open here as well
-def test_dump_logs_file_not_found(
-    mock_open, mock_exists, system_monitor
-):  # Add mock_open to args
+def test_dump_logs_file_not_found(mock_open, mock_exists, system_monitor):  # Add mock_open to args
     """Should print error when log file does not exist"""
     mock_exists.return_value = False
     result = system_monitor.dump_logs("/var/log/nonexistent.log")
@@ -67,9 +65,7 @@ def test_dump_logs_file_not_found(
 
 @patch("birdnetpi.managers.system_monitor.os.path.exists")
 @patch("builtins.open", new_callable=mock_open)  # Ensure mock_open is used
-def test_dump_logs_read_error(
-    mock_open, mock_exists, system_monitor
-):  # Add mock_open to args
+def test_dump_logs_read_error(mock_open, mock_exists, system_monitor):  # Add mock_open to args
     """Should print error when log file cannot be read"""
     mock_exists.return_value = True
     mock_open.side_effect = OSError("Permission denied")  # Corrected
@@ -81,8 +77,10 @@ def test_dump_logs_read_error(
 def test_get_extra_info_success(mock_check_output, system_monitor):
     """Should return CPU temperature and memory usage successfully"""
     mock_check_output.side_effect = [
-        b"temp=50.0'C\n",  # vcgencmd measure_temp
-        b"              total        used        free      shared  buff/cache   available\n"  # free -h
+        # vcgencmd measure_temp
+        b"temp=50.0'C\n",
+        # free -h
+        b"              total        used        free      shared  buff/cache   available\n"
         + b"Mem:        1.0G        0.5G        0.5G        0.0G        0.0G        0.5G\n",
     ]
     info = system_monitor.get_extra_info()

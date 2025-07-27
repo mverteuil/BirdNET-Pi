@@ -27,9 +27,7 @@ def mock_config():  # Added mock_config fixture
 @pytest.fixture
 def audio_manager(mock_file_manager, mock_config):  # Added mock_config dependency
     """Provide an AudioManager instance with a mocked FileManager and Config."""
-    return AudioManager(
-        file_manager=mock_file_manager, config=mock_config
-    )  # Pass config
+    return AudioManager(file_manager=mock_file_manager, config=mock_config)  # Pass config
 
 
 @patch("birdnetpi.managers.audio_manager.os.makedirs")
@@ -67,18 +65,13 @@ def test_custom_record(mock_subprocess_run, mock_makedirs, audio_manager, capsys
 @patch("birdnetpi.managers.audio_manager.subprocess.run")
 def test_livestream(mock_subprocess_run, audio_manager, capsys):
     """Should print a message indicating livestreaming and call subprocess.run."""
-    config = LivestreamConfig(
-        input_device="hw:0,0", output_url="rtsp://localhost:8554/live.stream"
-    )
+    config = LivestreamConfig(input_device="hw:0,0", output_url="rtsp://localhost:8554/live.stream")
     # Mock the return value of subprocess.run for livestream
     mock_subprocess_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
     audio_manager.livestream(config)
     captured = capsys.readouterr()
-    assert (
-        f"Starting livestream from {config.input_device} to {config.output_url}"
-        in captured.out
-    )
+    assert f"Starting livestream from {config.input_device} to {config.output_url}" in captured.out
     mock_subprocess_run.assert_called_once_with(
         [
             "ffmpeg",

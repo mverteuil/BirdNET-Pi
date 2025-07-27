@@ -10,7 +10,14 @@ from birdnetpi.models.git_update_config import GitUpdateConfig
 @pytest.fixture
 def update_manager(tmp_path):
     """Provide an UpdateManager instance for testing."""
-    return UpdateManager()
+    manager = UpdateManager()
+    manager.repo_path = str(tmp_path)
+    scripts_dir = tmp_path / "scripts"
+    scripts_dir.mkdir()
+    # Create dummy script files for testing the symlink loop
+    for i in range(6):
+        (scripts_dir / f"script{i}.sh").touch()
+    return manager
 
 
 @patch("birdnetpi.managers.update_manager.subprocess.run")

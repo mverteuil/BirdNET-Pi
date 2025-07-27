@@ -54,9 +54,7 @@ def data_manager(mock_config, mock_file_manager, mock_db_service, mock_service_m
     )
 
 
-def test_cleanup_processed_files_empty_csv(
-    data_manager, mock_file_manager, mock_config
-):
+def test_cleanup_processed_files_empty_csv(data_manager, mock_file_manager, mock_config):
     """Should delete empty CSV files and their corresponding WAV files"""
     mock_file_manager.list_directory_contents.return_value = [
         "test.csv",
@@ -66,9 +64,7 @@ def test_cleanup_processed_files_empty_csv(
 
     with patch("birdnetpi.managers.data_manager.os.path.getsize") as mock_getsize:
         mock_getsize.side_effect = lambda x: 57 if x.endswith(".csv") else 100
-        with patch(
-            "birdnetpi.managers.data_manager.os.path.getmtime", return_value=1.0
-        ):
+        with patch("birdnetpi.managers.data_manager.os.path.getmtime", return_value=1.0):
             data_manager.cleanup_processed_files()
 
     mock_file_manager.delete_file.assert_any_call("/mock/processed/test.csv")
@@ -78,9 +74,7 @@ def test_cleanup_processed_files_empty_csv(
     assert mock_file_manager.delete_file.call_count == 4
 
 
-def test_cleanup_processed_files_limit_exceeded(
-    data_manager, mock_file_manager, mock_config
-):
+def test_cleanup_processed_files_limit_exceeded(data_manager, mock_file_manager, mock_config):
     """Should delete oldest files when processed file limit is exceeded"""
     # Create more than 100 files, ensuring they are not considered 'empty'
     files = [f"file_{i}.csv" for i in range(120)]
@@ -92,9 +86,7 @@ def test_cleanup_processed_files_limit_exceeded(
         # Assign unique mtimes to ensure consistent sorting
         mock_getmtime.side_effect = lambda x: float(x.split("_")[1].split(".")[0])
         # Ensure ALL files are NOT considered empty (size > 57)
-        with patch(
-            "birdnetpi.managers.data_manager.os.path.getsize", return_value=1000
-        ):
+        with patch("birdnetpi.managers.data_manager.os.path.getsize", return_value=1000):
             data_manager.cleanup_processed_files()
 
     # Expect 20 oldest files (csv and wav) to be deleted
@@ -102,10 +94,7 @@ def test_cleanup_processed_files_limit_exceeded(
         os.path.join(mock_config.data.processed_dir, f"file_{i}.csv") for i in range(20)
     ]
     expected_deletions.extend(
-        [
-            os.path.join(mock_config.data.processed_dir, f"file_{i}.wav")
-            for i in range(20)
-        ]
+        [os.path.join(mock_config.data.processed_dir, f"file_{i}.wav") for i in range(20)]
     )
 
     for f in expected_deletions:
@@ -127,9 +116,7 @@ def test_cleanup_processed_files_no_deletion_criteria(data_manager, mock_file_ma
     mock_file_manager.list_directory_contents.return_value = files
 
     with patch("birdnetpi.managers.data_manager.os.path.getsize", return_value=1000):
-        with patch(
-            "birdnetpi.managers.data_manager.os.path.getmtime", return_value=1.0
-        ):
+        with patch("birdnetpi.managers.data_manager.os.path.getmtime", return_value=1.0):
             data_manager.cleanup_processed_files()
 
     mock_file_manager.delete_file.assert_not_called()
@@ -154,9 +141,7 @@ def test_clear_all_data(
     mock_service_manager.stop_service.assert_any_call("birdnet_server.service")
 
     # Verify data removal
-    mock_file_manager.delete_directory.assert_called_once_with(
-        mock_config.data.recordings_dir
-    )
+    mock_file_manager.delete_directory.assert_called_once_with(mock_config.data.recordings_dir)
     mock_file_manager.delete_file.assert_called_once_with(mock_config.data.id_file)
     mock_db_service.clear_database.assert_called_once()
 
@@ -180,9 +165,7 @@ def test_clear_all_data(
     assert "Stopping services..." in captured.out
     assert "Removing all data..." in captured.out
     assert "Re-creating necessary directories..." in captured.out
-    assert (
-        "Re-establishing symlinks..." in captured.out
-    )  # This line is printed by the manager
+    assert "Re-establishing symlinks..." in captured.out  # This line is printed by the manager
     assert "Restarting services..." in captured.out
 
 
@@ -205,9 +188,7 @@ def test_clear_all_data_no_id_file(
     mock_service_manager.stop_service.assert_any_call("birdnet_server.service")
 
     # Verify data removal (delete_file for id_file should not be called)
-    mock_file_manager.delete_directory.assert_called_once_with(
-        mock_config.data.recordings_dir
-    )
+    mock_file_manager.delete_directory.assert_called_once_with(mock_config.data.recordings_dir)
     mock_file_manager.delete_file.assert_not_called()  # id_file does not exist
     mock_db_service.clear_database.assert_called_once()
 
