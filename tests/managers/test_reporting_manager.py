@@ -81,14 +81,13 @@ def reporting_manager(
     mock_location_service,  # Added mock_location_service
 ):
     """Provide a ReportingManager instance with mocked dependencies."""
-    # No need for mock_config_parser here, pass mock_config directly
     manager = ReportingManager(
-        db_manager=detection_manager,  # Renamed from detection_manager to db_manager for clarity
+        db_manager=detection_manager,
         file_path_resolver=file_path_resolver,
-        config=mock_config,  # Pass mock_config directly
-        plotting_manager=mock_plotting_manager,  # Pass mock_plotting_manager
-        data_preparation_manager=mock_data_preparation_manager,  # Pass mock_data_preparation_manager
-        location_service=mock_location_service,  # Pass mock_location_service
+        config=mock_config,
+        plotting_manager=mock_plotting_manager,
+        data_preparation_manager=mock_data_preparation_manager,
+        location_service=mock_location_service,
     )
     return manager
 
@@ -133,9 +132,7 @@ def test_get_weekly_report_data(reporting_manager, detection_manager):
             },
         ]
 
-        detection_manager.get_new_species_data.return_value = [
-            {"com_name": "Blue Jay", "count": 5}
-        ]
+        detection_manager.get_new_species_data.return_value = [{"com_name": "Blue Jay", "count": 5}]
 
         report_data = reporting_manager.get_weekly_report_data()
 
@@ -225,3 +222,18 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
     assert isinstance(day_hour_freq, pd.DataFrame)
     assert "American Robin" in df["Com_Name"].unique()
     assert "Northern Cardinal" in df["Com_Name"].unique()
+
+
+def test_get_best_detections(reporting_manager, detection_manager):
+    """Should return a list of best detections sorted by confidence."""
+    detection_manager.get_best_detections.return_value = [
+        {"com_name": "Northern Cardinal", "Confidence": 0.95},
+        {"com_name": "American Robin", "Confidence": 0.9},
+    ]
+
+    best_detections = reporting_manager.get_best_detections(limit=2)
+
+    assert len(best_detections) == 2
+    assert best_detections[0]["com_name"] == "Northern Cardinal"
+    assert best_detections[0]["Confidence"] == 0.95
+    detection_manager.get_best_detections.assert_called_once_with(2)

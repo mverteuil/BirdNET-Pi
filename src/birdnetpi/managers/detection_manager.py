@@ -9,7 +9,7 @@ from birdnetpi.services.database_service import DatabaseService
 
 
 class DetectionManager:
-    """Manages detection-related operations, delegating database interactions to DatabaseService."""
+    """Manages detection operations via DatabaseService."""
 
     def __init__(self, db_service: DatabaseService) -> None:
         self.db_service = db_service
@@ -49,8 +49,8 @@ class DetectionManager:
                         if not row:  # Skip empty rows
                             continue
                         try:
-                            # Assuming the order:
-                            # Date;Time;Sci_Name;Com_Name;Confidence;Lat;Lon;Cutoff;Week;Sens;Overlap
+                            # Date;Time;Sci_Name;Com_Name;Confidence;Lat;Lon;
+                            # Cutoff;Week;Sens;Overlap
                             (
                                 date_str,
                                 time_str,
@@ -72,22 +72,18 @@ class DetectionManager:
                             )
 
                             detection = Detection(
-                                species=f"{com_name} ({sci_name})",  # Combine for species name
+                                species=f"{com_name} ({sci_name})",  # Combine species name
                                 confidence=float(confidence_str),
                                 timestamp=timestamp,
-                                audio_file_path="",  # This information is not in BirdDB.txt
+                                audio_file_path="",  # Not in BirdDB.txt
                                 # Add other fields if they map directly to Detection model
                             )
                             db.add(detection)
                         except IndexError as ie:
-                            print(
-                                f"Skipping row due to incorrect column count: {row} - {ie}"
-                            )
+                            print(f"Skipping row: incorrect column count ({row}) - {ie}")
                             continue  # Skip to the next row if IndexError occurs
                         except ValueError as ve:
-                            print(
-                                f"Skipping row due to data conversion error: {row} - {ve}"
-                            )
+                            print(f"Skipping row due to data conversion error: {row} - {ve}")
                 db.commit()
                 print(f"Successfully imported detections from {csv_file_path}")
             except SQLAlchemyError as e:
@@ -133,9 +129,7 @@ class DetectionManager:
                 print(f"Error retrieving detections by species: {e}")
                 raise
 
-    def get_detection_counts_by_date_range(
-        self, start_date: datetime, end_date: datetime
-    ) -> dict:
+    def get_detection_counts_by_date_range(self, start_date: datetime, end_date: datetime) -> dict:
         """Get total detection count and unique species count within a date range."""
         with self.db_service.get_db() as db:
             try:
@@ -166,7 +160,7 @@ class DetectionManager:
         prior_start_date: datetime,
         prior_end_date: datetime,
     ) -> list[dict]:
-        """Fetch the top 10 species for the current week and their counts from the prior week."""
+        """Fetch top 10 species for current and prior weeks."""
         with self.db_service.get_db() as db:
             try:
                 current_week_subquery = (
@@ -184,9 +178,7 @@ class DetectionManager:
                         Detection.species,
                         func.count(Detection.species).label("prior_count"),
                     )
-                    .filter(
-                        Detection.timestamp.between(prior_start_date, prior_end_date)
-                    )
+                    .filter(Detection.timestamp.between(prior_start_date, prior_end_date))
                     .group_by(Detection.species)
                     .subquery()
                 )
@@ -195,14 +187,11 @@ class DetectionManager:
                     db.query(
                         current_week_subquery.c.species,
                         current_week_subquery.c.current_count,
-                        func.coalesce(prior_week_subquery.c.prior_count, 0).label(
-                            "prior_count"
-                        ),
+                        func.coalesce(prior_week_subquery.c.prior_count, 0).label("prior_count"),
                     )
                     .outerjoin(
                         prior_week_subquery,
-                        current_week_subquery.c.species
-                        == prior_week_subquery.c.species,
+                        current_week_subquery.c.species == prior_week_subquery.c.species,
                     )
                     .order_by(current_week_subquery.c.current_count.desc())
                     .limit(10)
@@ -222,10 +211,8 @@ class DetectionManager:
                 print(f"Error getting top species with prior counts: {e}")
                 raise
 
-    def get_new_species_data(
-        self, start_date: datetime, end_date: datetime
-    ) -> list[dict]:
-        """Fetch new species detected in the current week that were not present in prior data."""
+    def get_new_species_data(self, start_date: datetime, end_date: datetime) -> list[dict]:
+        """Fetch new species not present in prior data."""
         with self.db_service.get_db() as db:
             try:
                 # Subquery to find all species detected before the start_date
@@ -236,11 +223,9 @@ class DetectionManager:
                     .subquery()
                 )
 
-                # Query for new species in the current range, excluding those in the prior_species_subquery
+                # Query for new species in current range, excluding prior_species_subquery
                 new_species_results = (
-                    db.query(
-                        Detection.species, func.count(Detection.species).label("count")
-                    )
+                    db.query(Detection.species, func.count(Detection.species).label("count"))
                     .filter(
                         Detection.timestamp.between(start_date, end_date),
                         ~Detection.species.in_(prior_species_subquery),
@@ -250,10 +235,7 @@ class DetectionManager:
                     .all()
                 )
 
-                return [
-                    {"species": row.species, "count": row.count}
-                    for row in new_species_results
-                ]
+                return [{"species": row.species, "count": row.count} for row in new_species_results]
             except SQLAlchemyError as e:
                 db.rollback()
                 print(f"Error getting new species data: {e}")
@@ -264,21 +246,14 @@ class DetectionManager:
         with self.db_service.get_db() as db:
             try:
                 recent_detections = (
-                    db.query(Detection)
-                    .order_by(Detection.timestamp.desc())
-                    .limit(limit)
-                    .all()
+                    db.query(Detection).order_by(Detection.timestamp.desc()).limit(limit).all()
                 )
                 return [
                     {
                         "Date": d.timestamp.strftime("%Y-%m-%d"),
                         "Time": d.timestamp.strftime("%H:%M:%S"),
-                        "Sci_Name": (
-                            d.species.split(" (")[1][:-1] if " (" in d.species else ""
-                        ),
-                        "Com_Name": (
-                            d.species.split(" (")[0] if " (" in d.species else d.species
-                        ),
+                        "Sci_Name": (d.species.split(" (")[1][:-1] if " (" in d.species else ""),
+                        "Com_Name": (d.species.split(" (")[0] if " (" in d.species else d.species),
                         "Confidence": d.confidence,
                         "Lat": d.latitude,
                         "Lon": d.longitude,
@@ -294,6 +269,56 @@ class DetectionManager:
                 print(f"Error getting most recent detections: {e}")
                 raise
 
+    def get_best_detections(self, limit: int = 10) -> list[dict]:
+        """Retrieve the best detection for each species, sorted by confidence."""
+        with self.db_service.get_db() as db:
+            try:
+                # Subquery to rank detections by confidence for each species
+                ranked_subquery = db.query(
+                    Detection.id,
+                    func.row_number()
+                    .over(
+                        partition_by=Detection.species,
+                        order_by=Detection.confidence.desc(),
+                    )
+                    .label("rn"),
+                ).subquery()
+
+                # Get the IDs of the top-ranked detection for each species
+                best_detection_ids_query = db.query(ranked_subquery.c.id).filter(
+                    ranked_subquery.c.rn == 1
+                )
+
+                # Get the full detection objects for those IDs
+                best_detections = (
+                    db.query(Detection)
+                    .filter(Detection.id.in_(best_detection_ids_query))
+                    .order_by(Detection.confidence.desc())
+                    .limit(limit)
+                    .all()
+                )
+
+                return [
+                    {
+                        "Date": d.timestamp.strftime("%Y-%m-%d"),
+                        "Time": d.timestamp.strftime("%H:%M:%S"),
+                        "Sci_Name": (d.species.split(" (")[1][:-1] if " (" in d.species else ""),
+                        "Com_Name": (d.species.split(" (")[0] if " (" in d.species else d.species),
+                        "Confidence": d.confidence,
+                        "Lat": d.latitude,
+                        "Lon": d.longitude,
+                        "Cutoff": d.cutoff,
+                        "Week": d.week,
+                        "Sens": d.sensitivity,
+                        "Overlap": d.overlap,
+                    }
+                    for d in best_detections
+                ]
+            except SQLAlchemyError as e:
+                db.rollback()
+                print(f"Error getting best detections: {e}")
+                raise
+
     def get_detection(self, detection_id: int) -> Detection:
         """Retrieve a single detection record from the database."""
         with self.db_service.get_db() as db:
@@ -304,9 +329,7 @@ class DetectionManager:
                 print(f"Error retrieving detection: {e}")
                 raise
 
-    def update_detection_extracted_status(
-        self, detection_id: int, is_extracted: bool
-    ) -> None:
+    def update_detection_extracted_status(self, detection_id: int, is_extracted: bool) -> None:
         """Update the extracted status of a detection record in the database."""
         with self.db_service.get_db() as db:
             try:
@@ -314,9 +337,7 @@ class DetectionManager:
                 if detection:
                     detection.is_extracted = is_extracted
                     db.commit()
-                    print(
-                        f"Detection {detection_id} extracted status updated to {is_extracted}."
-                    )
+                    print(f"Detection {detection_id} extracted status: {is_extracted}.")
                 else:
                     print(f"Detection with ID {detection_id} not found.")
             except SQLAlchemyError as e:

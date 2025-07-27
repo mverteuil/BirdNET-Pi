@@ -15,9 +15,12 @@ from birdnetpi.models.database_models import AudioFile, Detection
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.detection_event_publisher import DetectionEventPublisher
 from birdnetpi.services.file_manager import FileManager
+from birdnetpi.managers.data_preparation_manager import DataPreparationManager
+from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 from birdnetpi.utils.logging_configurator import configure_logging  # Added import
+from birdnetpi.services.location_service import LocationService
 
 from .routers import (
     log_router,
@@ -34,25 +37,32 @@ from .routers import (
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Context manager for application startup and shutdown events."""
     # Load configuration
-    file_resolver = FilePathResolver()
-    config_parser = ConfigFileParser(file_resolver.get_birdnet_pi_config_path())
+    app.state.file_resolver = FilePathResolver()
+    config_parser = ConfigFileParser(app.state.file_resolver.get_birdnet_pi_config_path())
     app.state.config = config_parser.load_config()
     app.mount(
-        "/static", StaticFiles(directory=file_resolver.get_static_dir()), name="static"
+        "/static",
+        StaticFiles(directory=app.state.file_resolver.get_static_dir()),
+        name="static",
     )
 
     # Initialize Jinja2Templates and store it in app.state
-    app.state.templates = Jinja2Templates(directory=file_resolver.get_templates_dir())
+    app.state.templates = Jinja2Templates(directory=app.state.file_resolver.get_templates_dir())
 
     # Configure logging based on loaded config
     configure_logging(app.state.config)  # Added logging configuration
 
     # Initialize core services and managers
     app.state.db_service = DatabaseService(app.state.config.data.db_path)
-    app.state.file_manager = FileManager(FilePathResolver().base_dir)
-    app.state.db_manager = DetectionManager(
-        app.state.db_service
-    )  # Corrected from DatabaseManager
+    app.state.file_manager = FileManager(app.state.file_resolver.base_dir)
+    app.state.db_manager = DetectionManager(app.state.db_service)
+    app.state.location_service = LocationService(
+        app.state.config.latitude, app.state.config.longitude
+    )
+    app.state.data_preparation_manager = DataPreparationManager(
+        app.state.config, app.state.location_service
+    )
+    app.state.plotting_manager = PlottingManager(app.state.data_preparation_manager)
     app.state.service_manager = ServiceManager()
 
     # Initialize SQLAdmin
@@ -135,9 +145,9 @@ async def test_detection_form(request: Request) -> HTMLResponse:
 
 @app.get("/test_detection")
 async def test_detection(
-    species: str = "Test Bird",
-    confidence: float = 0.99,
-    timestamp: str | None = None,
+        species: str = "Test Bird",
+        confidence: float = 0.99,
+        timestamp: str | None = None,
 ) -> dict[str, str]:
     """Publishes a test detection event for demonstration purposes."""
     detection_data = {

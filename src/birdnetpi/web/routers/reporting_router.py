@@ -1,35 +1,38 @@
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 
-from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.reporting_manager import ReportingManager
-from birdnetpi.utils.config_file_parser import ConfigFileParser
-from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 router = APIRouter()
 
 
 def get_reporting_manager(request: Request) -> ReportingManager:
     """Return a ReportingManager instance with injected dependencies."""
-    # TODO: Properly inject DetectionManager, FilePathResolver, and ConfigFileParser
-    # These should ideally be initialized once in the lifespan and passed via app.state
-    db_manager = DetectionManager(
-        request.app.state.config.data.db_path
-    )  # Assuming db_path is available in app.state.config.data
-    file_path_resolver = FilePathResolver(
-        request.app.state.repo_root
-    )  # Assuming repo_root is available in app.state
-    config_parser = ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path())
-    return ReportingManager(db_manager, file_path_resolver, config_parser)
+    db_manager = request.app.state.db_manager
+    file_path_resolver = request.app.state.file_resolver
+    config = request.app.state.config
+    plotting_manager = request.app.state.plotting_manager
+    data_preparation_manager = request.app.state.data_preparation_manager
+    location_service = request.app.state.location_service
+
+    return ReportingManager(
+        db_manager,
+        file_path_resolver,
+        config,
+        plotting_manager,
+        data_preparation_manager,
+        location_service,
+    )
 
 
-@router.get("/best_recordings")
+@router.get("/best_recordings", response_class=HTMLResponse)
 async def get_best_recordings(
+    request: Request,
     reporting_manager: ReportingManager = Depends(get_reporting_manager),  # noqa: B008
-) -> dict:
+):
     """Retrieve a list of the best recorded audio files based on confidence."""
-    # TODO: Assuming 'best' means highest confidence, you might want to add a confidence threshold
-    # or sort by confidence in get_most_recent_detections if it doesn't already.
-    best_recordings = reporting_manager.get_most_recent_detections(
-        limit=20
-    )  # Adjust limit as needed
-    return {"best_recordings": best_recordings}
+    best_recordings = reporting_manager.get_best_detections(limit=20)
+    return request.app.state.templates.TemplateResponse(
+        "reports/best_recordings.html", {"request": request, "best_recordings": best_recordings}
+    )

@@ -1,4 +1,5 @@
 import os
+import contextlib
 from collections.abc import Generator
 from typing import Any
 
@@ -21,6 +22,7 @@ class DatabaseService:
             autocommit=False, autoflush=False, bind=self.engine
         )
 
+    @contextlib.contextmanager
     def get_db(self) -> Generator[Session, Any, None]:
         """Provide a database session for dependency injection."""
         db = self.session_local()

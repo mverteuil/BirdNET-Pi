@@ -107,6 +107,12 @@ package-dir = { "" = "src" }
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[project.scripts]
+analysis-manager = "birdnetpi.wrappers.analysis_manager_wrapper:main"
+data-manager = "birdnetpi.wrappers.data_manager_wrapper:main"
+reporting-manager = "birdnetpi.wrappers.reporting_manager_wrapper:main"
+generate-dummy-data = "birdnetpi.wrappers.generate_dummy_data:main"
+
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",

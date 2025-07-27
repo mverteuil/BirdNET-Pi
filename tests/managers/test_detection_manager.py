@@ -39,9 +39,7 @@ def test_add_detection_success(detection_manager):
         "audio_file_path": "/path/to/audio.wav",
     }
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_detection = MagicMock(spec=Detection)
     mock_db_session.add.return_value = mock_detection
 
@@ -57,9 +55,7 @@ def test_add_detection_success(detection_manager):
 def test_add_detection_failure(detection_manager):
     """Should handle add detection failure"""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_db_session.add.side_effect = SQLAlchemyError("Test Error")
     detection_data = {
         "species": "Test Species",
@@ -77,9 +73,7 @@ def test_add_detection_failure(detection_manager):
 def test_get_all_detections_success(detection_manager):
     """Should retrieve all detection records successfully"""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_detections = [MagicMock(spec=Detection), MagicMock(spec=Detection)]
     mock_db_session.query.return_value.all.return_value = mock_detections
 
@@ -94,9 +88,7 @@ def test_get_all_detections_success(detection_manager):
 def test_get_all_detections_failure(detection_manager):
     """Should handle get all detections failure"""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
@@ -108,9 +100,7 @@ def test_get_all_detections_failure(detection_manager):
 def test_import_detections_from_csv_success(detection_manager, mock_csv_file):
     """Should import detection records from a CSV file successfully."""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
 
     detection_manager.import_detections_from_csv(mock_csv_file)
 
@@ -120,8 +110,8 @@ def test_import_detections_from_csv_success(detection_manager, mock_csv_file):
 
 def test_import_detections_from_csv_file_not_found(detection_manager):
     """Should handle FileNotFoundError when CSV file is not found."""
-    detection_manager.db_service.get_db.return_value.__enter__.side_effect = (
-        FileNotFoundError("File not found")
+    detection_manager.db_service.get_db.return_value.__enter__.side_effect = FileNotFoundError(
+        "File not found"
     )
 
     with pytest.raises(FileNotFoundError):
@@ -138,9 +128,7 @@ def test_import_detections_from_csv_value_error(detection_manager, tmp_path):
     csv_path.write_text(csv_content)
 
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
 
     detection_manager.import_detections_from_csv(str(csv_path))
 
@@ -158,9 +146,7 @@ def test_import_detections_from_csv_unpacking_value_error(detection_manager, tmp
     csv_path.write_text(csv_content)
 
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
 
     detection_manager.import_detections_from_csv(str(csv_path))
 
@@ -171,9 +157,7 @@ def test_import_detections_from_csv_unpacking_value_error(detection_manager, tmp
 def test_import_detections_from_csv_sqlalchemy_error(detection_manager, mock_csv_file):
     """Should handle SQLAlchemyError during CSV import and rollback."""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_db_session.commit.side_effect = SQLAlchemyError("DB Error")
 
     with pytest.raises(SQLAlchemyError):
@@ -185,9 +169,7 @@ def test_import_detections_from_csv_sqlalchemy_error(detection_manager, mock_csv
 def test_get_detection_success(detection_manager):
     """Should retrieve a detection record successfully."""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_detection = MagicMock(spec=Detection)
     mock_db_session.query.return_value.get.return_value = mock_detection
 
@@ -202,9 +184,7 @@ def test_get_detection_success(detection_manager):
 def test_get_detection_failure(detection_manager):
     """Should handle get detection failure."""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
@@ -216,9 +196,7 @@ def test_get_detection_failure(detection_manager):
 def test_delete_detection_success(detection_manager):
     """Should delete a detection record successfully."""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_detection = MagicMock(spec=Detection)
     mock_db_session.query.return_value.get.return_value = mock_detection
 
@@ -234,9 +212,7 @@ def test_delete_detection_success(detection_manager):
 def test_delete_detection_failure(detection_manager):
     """Should handle delete detection failure."""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
@@ -248,21 +224,15 @@ def test_delete_detection_failure(detection_manager):
 def test_get_detections_by_species_success(detection_manager):
     """Should retrieve all detection records for a species successfully."""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_detections = [MagicMock(spec=Detection), MagicMock(spec=Detection)]
-    mock_db_session.query.return_value.filter_by.return_value.all.return_value = (
-        mock_detections
-    )
+    mock_db_session.query.return_value.filter_by.return_value.all.return_value = mock_detections
 
     result = detection_manager.get_detections_by_species("Test Species")
 
     detection_manager.db_service.get_db.assert_called_once_with()
     mock_db_session.query.assert_called_once_with(Detection)
-    mock_db_session.query.return_value.filter_by.assert_called_once_with(
-        species="Test Species"
-    )
+    mock_db_session.query.return_value.filter_by.assert_called_once_with(species="Test Species")
     mock_db_session.query.return_value.filter_by.return_value.all.assert_called_once()
     assert result == mock_detections
 
@@ -270,9 +240,7 @@ def test_get_detections_by_species_success(detection_manager):
 def test_get_detections_by_species_failure(detection_manager):
     """Should handle get detections by species failure."""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
@@ -284,13 +252,11 @@ def test_get_detections_by_species_failure(detection_manager):
 def test_get_detection_counts_by_date_range_success(detection_manager):
     """Should retrieve detection counts by date range successfully."""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_db_session.query.return_value.filter.return_value.count.side_effect = [10, 5]
-    mock_db_session.query.return_value.filter.return_value.distinct.return_value.count.return_value = (
-        5
-    )
+    (
+        mock_db_session.query.return_value.filter.return_value.distinct.return_value.count.return_value
+    ) = 5
 
     result = detection_manager.get_detection_counts_by_date_range(
         datetime(2023, 1, 1), datetime(2023, 1, 31)
@@ -304,9 +270,7 @@ def test_get_detection_counts_by_date_range_success(detection_manager):
 def test_get_detection_counts_by_date_range_failure(detection_manager):
     """Should handle get detection counts by date range failure."""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
@@ -320,10 +284,8 @@ def test_get_detection_counts_by_date_range_failure(detection_manager):
 def test_get_top_species_with_prior_counts_success(detection_manager):
     """Should retrieve top species with prior counts successfully."""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
-    mock_db_session.query.return_value.outerjoin.return_value.order_by.return_value.limit.return_value.all.return_value = [
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
+    (mock_db_session.query().outerjoin().order_by().limit().all.return_value) = [
         MagicMock(species="species1", current_count=10, prior_count=5),
         MagicMock(species="species2", current_count=8, prior_count=2),
     ]
@@ -344,9 +306,7 @@ def test_get_top_species_with_prior_counts_success(detection_manager):
 def test_get_top_species_with_prior_counts_failure(detection_manager):
     """Should handle get top species with prior counts failure."""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
@@ -363,20 +323,14 @@ def test_get_top_species_with_prior_counts_failure(detection_manager):
 def test_get_new_species_data_success(detection_manager):
     """Should retrieve new species data successfully."""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
-    mock_db_session.query.return_value.filter.return_value.distinct.return_value.subquery.return_value = (
-        MagicMock()
-    )
-    mock_db_session.query.return_value.filter.return_value.group_by.return_value.order_by.return_value.all.return_value = [
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
+    (mock_db_session.query().filter().distinct().subquery().return_value) = MagicMock()
+    (mock_db_session.query().filter().group_by().order_by().all.return_value) = [
         MagicMock(species="species1", count=10),
         MagicMock(species="species2", count=8),
     ]
 
-    result = detection_manager.get_new_species_data(
-        datetime(2023, 1, 1), datetime(2023, 1, 31)
-    )
+    result = detection_manager.get_new_species_data(datetime(2023, 1, 1), datetime(2023, 1, 31))
 
     detection_manager.db_service.get_db.assert_called_once_with()
     mock_db_session.query.assert_called()  # Called multiple times for subquery and main query
@@ -387,15 +341,11 @@ def test_get_new_species_data_success(detection_manager):
 def test_get_new_species_data_failure(detection_manager):
     """Should handle get new species data failure."""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
-        detection_manager.get_new_species_data(
-            datetime(2023, 1, 1), datetime(2023, 1, 31)
-        )
+        detection_manager.get_new_species_data(datetime(2023, 1, 1), datetime(2023, 1, 31))
 
     mock_db_session.rollback.assert_called_once()
 
@@ -403,9 +353,7 @@ def test_get_new_species_data_failure(detection_manager):
 def test_get_most_recent_detections_success(detection_manager):
     """Should retrieve most recent detections successfully."""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_detection = MagicMock(spec=Detection)
     mock_detection.timestamp.strftime.side_effect = ["2023-01-01", "12:00:00"]
     mock_detection.species = "Common Blackbird (Turdus merula)"
@@ -425,9 +373,7 @@ def test_get_most_recent_detections_success(detection_manager):
     detection_manager.db_service.get_db.assert_called_once_with()
     mock_db_session.query.assert_called_once_with(Detection)
     mock_db_session.query.return_value.order_by.assert_called_once()
-    mock_db_session.query.return_value.order_by.return_value.limit.assert_called_once_with(
-        1
-    )
+    mock_db_session.query.return_value.order_by.return_value.limit.assert_called_once_with(1)
     mock_db_session.query.return_value.order_by.return_value.limit.return_value.all.assert_called_once()
     assert len(result) == 1
     assert result[0]["Com_Name"] == "Common Blackbird"
@@ -437,12 +383,56 @@ def test_get_most_recent_detections_success(detection_manager):
 def test_get_most_recent_detections_failure(detection_manager):
     """Should handle get most recent detections failure."""
     mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = (
-        mock_db_session
-    )
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
         detection_manager.get_most_recent_detections(1)
 
     mock_db_session.rollback.assert_called_once()
+
+
+def test_get_best_detections_success(detection_manager):
+    """Should retrieve the best detection for each species, sorted by confidence."""
+    mock_db_session = MagicMock()
+    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
+
+    # Create multiple mock detections with varying confidence levels for each species
+    mock_cardinal_high = MagicMock(spec=Detection)
+    mock_cardinal_high.id = 1
+    mock_cardinal_high.timestamp.strftime.side_effect = ["2023-01-01", "12:00:00"]
+    mock_cardinal_high.species = "Northern Cardinal (Cardinalis cardinalis)"
+    mock_cardinal_high.confidence = 0.95
+
+    mock_cardinal_low = MagicMock(spec=Detection)
+    mock_cardinal_low.id = 2
+    mock_cardinal_low.timestamp.strftime.side_effect = ["2023-01-01", "12:01:00"]
+    mock_cardinal_low.species = "Northern Cardinal (Cardinalis cardinalis)"
+    mock_cardinal_low.confidence = 0.85
+
+    mock_robin_high = MagicMock(spec=Detection)
+    mock_robin_high.id = 3
+    mock_robin_high.timestamp.strftime.side_effect = ["2023-01-02", "14:00:00"]
+    mock_robin_high.species = "American Robin (Turdus migratorius)"
+    mock_robin_high.confidence = 0.9
+
+    mock_robin_low = MagicMock(spec=Detection)
+    mock_robin_low.id = 4
+    mock_robin_low.timestamp.strftime.side_effect = ["2023-01-02", "14:01:00"]
+    mock_robin_low.species = "American Robin (Turdus migratorius)"
+    mock_robin_low.confidence = 0.8
+
+    # Mock the final query to return the best detection for each species
+    (mock_db_session.query().filter().order_by().limit().all.return_value) = [
+        mock_cardinal_high,
+        mock_robin_high,
+    ]
+
+    result = detection_manager.get_best_detections(2)
+
+    # Assertions
+    assert len(result) == 2
+    assert result[0]["Confidence"] == 0.95
+    assert result[1]["Confidence"] == 0.9
+    assert result[0]["Com_Name"] == "Northern Cardinal"
+    assert result[1]["Com_Name"] == "American Robin"

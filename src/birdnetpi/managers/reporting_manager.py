@@ -235,3 +235,8 @@ class ReportingManager:
         """Prepare daily detection data for plotting."""
         config = DailyPlotConfig(resample_sel=resample_sel, specie=specie)
         return self.data_preparation_manager.prepare_daily_plot_data(df, config)
+
+    def get_best_detections(self, limit=20) -> list[dict]:
+        """Retrieve the best detections from the database."""
+        best_detections = self.detection_manager.get_best_detections(limit)
+        return best_detections

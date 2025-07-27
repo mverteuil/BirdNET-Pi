@@ -16,7 +16,7 @@ def get_reporting_manager(request: Request) -> ReportingManager:
         request.app.state.config.data.db_path
     )  # Assuming db_path is available in app.state.config.data
     file_path_resolver = FilePathResolver(
-        request.app.state.repo_root
+        request.app.state.file_resolver.repo_root
     )  # Assuming repo_root is available in app.state
     config_parser = ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path())
     return ReportingManager(db_manager, file_path_resolver, config_parser)

@@ -16,8 +16,8 @@ from birdnetpi.models.multi_day_plot_config import MultiDayPlotConfig
 class PlottingManager:
     """Manages the creation and manipulation of various plots and visualizations."""
 
-    def __init__(self) -> None:
-        self.data_preparation_manager = DataPreparationManager()
+    def __init__(self, data_preparation_manager: DataPreparationManager) -> None:
+        self.data_preparation_manager = data_preparation_manager
 
     def generate_spectrogram(self, audio_path: str) -> bytes:
         """Generate a spectrogram for a given audio file and return it as a PNG image in bytes."""
