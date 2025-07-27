@@ -22,7 +22,7 @@ def docker_compose_up_down() -> None:
 @pytest.mark.expensive
 def test_root_endpoint_e2e(docker_compose_up_down) -> None:
     """Test the root endpoint of the BirdNET-Pi application."""
-    response = httpx.get("http://localhost:80")
+    response = httpx.get("http://localhost:8000")
     assert response.status_code == 200
     assert "BirdNET-Pi" in response.text
 
@@ -30,7 +30,7 @@ def test_root_endpoint_e2e(docker_compose_up_down) -> None:
 @pytest.mark.expensive
 def test_sqladmin_detection_list_e2e(docker_compose_up_down) -> None:
     """Test the SQLAdmin Detection list endpoint."""
-    response = httpx.get("http://localhost:80/admin/detection/list")
+    response = httpx.get("http://localhost:8000/admin/detection/list")
     assert response.status_code == 200
     assert "Detections" in response.text
 
