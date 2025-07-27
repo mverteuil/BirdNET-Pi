@@ -1,3 +1,6 @@
 site_name: BirdNET-Pi
 latitude: 0.0
 longitude: 0.0
+audio_device_index: -1
+sample_rate: 48000
+audio_channels: 1

@@ -1,26 +1,15 @@
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
+import pytest
+from fastapi.templating import Jinja2Templates
 from fastapi.testclient import TestClient
 
 from birdnetpi.web.main import app
-from fastapi.templating import Jinja2Templates
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 @pytest.fixture(autouse=True)
 def mock_app_state_managers(file_path_resolver):
+    """Fixture to mock app.state managers for testing purposes."""
     # Create mock objects
     mock_detections = MagicMock()
     mock_config = MagicMock()
@@ -34,7 +23,7 @@ def mock_app_state_managers(file_path_resolver):
     app.state.templates = Jinja2Templates(directory=file_path_resolver.get_templates_dir())
 
     # Configure mock_detections methods as needed by ReportingManager
-    mock_detections.get_detections_by_date_range.return_value = [] # Default empty list
+    mock_detections.get_detections_by_date_range.return_value = []  # Default empty list
 
     # Configure mock_config attributes as needed by ReportingManager
     mock_config.site_name = "Test Site"
@@ -63,15 +52,23 @@ def mock_app_state_managers(file_path_resolver):
     mock_config.logging.max_log_file_size_mb = 10
     mock_config.logging.log_file_backup_count = 5
 
-    
-
     # Store original app.state attributes
-    original_detections = app.state.detections if hasattr(app.state, 'detections') else None
-    original_config = app.state.config if hasattr(app.state, 'config') else None
-    original_file_resolver = app.state.file_resolver if hasattr(app.state, 'file_resolver') else None
-    original_plotting_manager = app.state.plotting_manager if hasattr(app.state, 'plotting_manager') else None
-    original_data_preparation_manager = app.state.data_preparation_manager if hasattr(app.state, 'data_preparation_manager') else None
-    original_location_service = app.state.location_service if hasattr(app.state, 'location_service') else None
+    original_detections = app.state.detections if hasattr(app.state, "detections") else None
+    original_config = app.state.config if hasattr(app.state, "config") else None
+    original_file_resolver = (
+        app.state.file_resolver if hasattr(app.state, "file_resolver") else None
+    )
+    original_plotting_manager = (
+        app.state.plotting_manager if hasattr(app.state, "plotting_manager") else None
+    )
+    original_data_preparation_manager = (
+        app.state.data_preparation_manager
+        if hasattr(app.state, "data_preparation_manager")
+        else None
+    )
+    original_location_service = (
+        app.state.location_service if hasattr(app.state, "location_service") else None
+    )
 
     # Assign mock objects to app.state
     app.state.detections = mock_detections
@@ -109,11 +106,8 @@ def mock_app_state_managers(file_path_resolver):
     else:
         del app.state.location_service
 
+
 client = TestClient(app)
-
-
-
-
 
 
 def test_get_best_recordings(mock_app_state_managers):
@@ -166,4 +160,3 @@ def test_get_todays_detections(mock_app_state_managers):
 
     # Assert that get_detections_by_date_range was called
     app.state.detections.get_detections_by_date_range.assert_called_once()
-

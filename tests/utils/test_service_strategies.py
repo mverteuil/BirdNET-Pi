@@ -82,7 +82,9 @@ class TestEmbeddedSystemdStrategy:
 
     @patch(
         "subprocess.run",
-        return_value=subprocess.CompletedProcess(args="cmd", returncode=3, stdout="inactive\n", stderr=""),
+        return_value=subprocess.CompletedProcess(
+            args="cmd", returncode=3, stdout="inactive\n", stderr=""
+        ),
     )
     def test_should_get_service_status_inactive(self, mock_run):
         """Should return 'inactive' for an inactive service."""
@@ -157,7 +159,9 @@ class TestDockerSupervisordStrategy:
 
     @patch(
         "subprocess.run",
-        return_value=subprocess.CompletedProcess(args="cmd", returncode=1, stdout="test_service                 STOPPED\n", stderr=""),
+        return_value=subprocess.CompletedProcess(
+            args="cmd", returncode=1, stdout="test_service                 STOPPED\n", stderr=""
+        ),
     )
     def test_should_get_service_status_stopped(self, mock_run):
         """Should return 'inactive' for a stopped service."""

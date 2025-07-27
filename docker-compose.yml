@@ -6,20 +6,23 @@ services:
     container_name: birdnet-pi
     restart: unless-stopped
     ports:
-      - "80:80"   # Caddy
+      - "8000:8000"   # Caddy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80"]
       interval: 5s
       timeout: 10s
       retries: 5
+    privileged: true
     volumes:
       - birdnet-data:/mnt/birdnet # Persistent data storage
-    environment:
-      # Add any necessary environment variables here
-      - BIRDNETPI_URL=http://localhost
-      - EXTRACTED=/mnt/birdnet/extracted
-      - CADDY_PWD=your_caddy_password # Replace with a strong password or use secrets
+      - /dev/snd:/dev/snd # Expose host audio devices
+    networks:
+      - birdnetpi-network
 
 volumes:
   birdnet-data:
     driver: local
+
+networks:
+  birdnetpi-network:
+    external: true

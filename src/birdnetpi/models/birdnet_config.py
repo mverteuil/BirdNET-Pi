@@ -42,6 +42,9 @@ class BirdNETConfig:
     week: int = 0  # Default from birdnet.conf.template
     audio_format: str = "mp3"  # Default from birdnet.conf.template
     extraction_length: float = 6.0  # Default from birdnet.conf.template
+    audio_device_index: int = -1  # Default to -1 for system default or auto-detection
+    sample_rate: int = 48000  # Default sample rate
+    audio_channels: int = 1  # Default to mono
 
     # Data paths
     data: DataConfig = field(default_factory=DataConfig)

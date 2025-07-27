@@ -13,11 +13,6 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     sqlite3 \
-    php \
-    php-fpm \
-    php-curl \
-    php-xml \
-    php-zip \
     icecast2 \
     lsof \
     net-tools \
@@ -39,6 +34,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     supervisor \
     caddy \
     iproute2 \
+    libportaudio2 \
+    portaudio19-dev \
     && \
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg && \
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list && \

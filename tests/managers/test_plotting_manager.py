@@ -1,5 +1,5 @@
 import datetime
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -96,7 +96,6 @@ def test_create_multi_day_plot_figure_should_return_figure(
         {"col1": [1, 2]}, index=["SpeciesA", "SpeciesB"]
     )
 
-
     fig = plotting_manager._create_multi_day_plot_figure(
         df_counts,
         top_n,
@@ -135,7 +134,6 @@ def test_generate_multi_day_species_and_hourly_plot_should_return_figure(
     mock_data_preparation_manager.get_daily_crosstab.return_value = pd.DataFrame(
         {"col1": [1, 2]}, index=["SpeciesA", "Common Blackbird"]
     )
-
 
     fig = plotting_manager.generate_multi_day_species_and_hourly_plot(
         df, config.resample_sel, start_date, end_date, config.top_n, config.specie
@@ -200,7 +198,6 @@ def test_generate_daily_detections_plot_should_return_figure(
         [],
         [],
     )
-
 
     fig = plotting_manager.generate_daily_detections_plot(
         df, resample_sel, start_date, species, num_days_to_display, selected_pal

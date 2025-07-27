@@ -52,6 +52,9 @@ class ConfigFileParser:
             apprise_only_notify_species_names_2=config_data.get(
                 "apprise_only_notify_species_names_2", ""
             ),
+            audio_device_index=int(config_data.get("audio_device_index", -1)),
+            sample_rate=int(config_data.get("sample_rate", 48000)),
+            audio_channels=int(config_data.get("audio_channels", 1)),
         )
 
     def save_config(self, config: BirdNETConfig) -> None:
@@ -85,6 +88,9 @@ class ConfigFileParser:
             "birdnetpi_url": config.birdnetpi_url,
             "apprise_only_notify_species_names": config.apprise_only_notify_species_names,
             "apprise_only_notify_species_names_2": config.apprise_only_notify_species_names_2,
+            "audio_device_index": config.audio_device_index,
+            "sample_rate": config.sample_rate,
+            "audio_channels": config.audio_channels,
         }
         with open(self.config_path, "w") as f:
             yaml.safe_dump(config_data, f, sort_keys=False)

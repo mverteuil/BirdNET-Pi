@@ -23,9 +23,9 @@ from birdnetpi.utils.file_path_resolver import FilePathResolver
 from birdnetpi.utils.logging_configurator import configure_logging  # Added import
 
 from .routers import (
+    audio_router,
     log_router,
     overview_router,
-    recordings_router,
     reporting_router,
     settings_router,
     spectrogram_router,
@@ -96,7 +96,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.include_router(settings_router.router)
 app.include_router(log_router.router)
-app.include_router(recordings_router.router)
+app.include_router(audio_router.router)
 app.include_router(reporting_router.router)
 app.include_router(spectrogram_router.router)
 
