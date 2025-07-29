@@ -1,5 +1,10 @@
 import shutil
+from datetime import datetime
 from pathlib import Path
+
+import soundfile as sf
+
+from birdnetpi.models.database_models import AudioFile
 
 
 class FileManager:
@@ -61,3 +66,30 @@ class FileManager:
         """Write content to a file within the base_path."""
         full_path = self.get_full_path(relative_path)
         full_path.write_text(content, encoding=encoding)
+
+    def save_detection_audio(
+        self,
+        relative_path: str,
+        raw_audio_bytes: bytes,
+        sample_rate: int,
+        channels: int,
+        recording_start_time: datetime,
+    ) -> AudioFile:
+        """Save raw audio bytes to a WAV file and return an in-memory AudioFile instance."""
+        full_path = self.get_full_path(relative_path)
+        self.create_directory(str(full_path.parent), exist_ok=True)
+
+        # Assuming raw_audio_bytes is int16 data
+        sf.write(full_path, raw_audio_bytes, sample_rate, subtype="PCM_16")
+
+        duration = len(raw_audio_bytes) / (
+            sample_rate * channels * 2
+        )  # 2 bytes per sample for int16
+        size_bytes = len(raw_audio_bytes)
+
+        return AudioFile(
+            file_path=relative_path,
+            duration=duration,
+            size_bytes=size_bytes,
+            recording_start_time=recording_start_time,
+        )

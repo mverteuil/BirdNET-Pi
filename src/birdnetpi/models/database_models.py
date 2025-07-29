@@ -1,5 +1,5 @@
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy.orm import backref, declarative_base, relationship
 from sqlalchemy.sql import func
 
 Base = declarative_base()
@@ -14,15 +14,14 @@ class Detection(Base):
     species = Column(String, index=True)
     confidence = Column(Float)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
-    audio_file_path = Column(String)
-    spectrogram_path = Column(String, nullable=True)
+    audio_file_id = Column(Integer, ForeignKey("audio_files.id"), unique=True)
+    audio_file = relationship("AudioFile", backref=backref("detection", uselist=False))
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     cutoff = Column(Float, nullable=True)
     week = Column(Integer, nullable=True)
     sensitivity = Column(Float, nullable=True)
     overlap = Column(Float, nullable=True)
-    is_extracted = Column(Boolean, default=False)
 
 
 class AudioFile(Base):

@@ -1,9 +1,9 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
 from birdnetpi.services.detection_event_publisher import DetectionEventPublisher
-from birdnetpi.utils.signals import detection_event
+from birdnetpi.utils.signals import detection_signal
 
 
 @pytest.fixture
@@ -15,11 +15,12 @@ def publisher():
 def test_publish_detection(publisher):
     """Should publish a detection event with the correct data"""
     mock_listener = Mock()
-    detection_event.connect(mock_listener)
+    detection_signal.connect(mock_listener)
 
     test_data = {"species": "Test Bird", "confidence": 0.99}
-    publisher.publish_detection(test_data)
+    with patch("birdnetpi.services.detection_event_publisher.Detection") as mock_detection_class:
+        mock_detection_instance = mock_detection_class.return_value
+        publisher.publish_detection(test_data)
+        mock_listener.assert_called_once_with(publisher, detection=mock_detection_instance)
 
-    mock_listener.assert_called_once_with(publisher, data=test_data)
-
-    detection_event.disconnect(mock_listener)
+    detection_signal.disconnect(mock_listener)

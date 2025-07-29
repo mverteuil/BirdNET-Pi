@@ -6,6 +6,8 @@ from sqlalchemy.sql import func
 
 from birdnetpi.models.database_models import AudioFile, Detection
 from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.utils.signals import detection_signal
+from birdnetpi.web.routers.api_router import DetectionEvent
 
 
 class DetectionManager:
@@ -14,18 +16,44 @@ class DetectionManager:
     def __init__(self, db_service: DatabaseService) -> None:
         self.db_service = db_service
 
-    def add_detection(self, detection_data: dict) -> Detection:
-        """Add a new detection record to the database."""
+    def create_detection(self, detection_event: DetectionEvent) -> Detection:
+        """Create a new detection record and associated audio file record in the database."""
         with self.db_service.get_db() as db:
             try:
-                detection = Detection(**detection_data)
+                # Create AudioFile record
+                audio_file = AudioFile(
+                    file_path=detection_event.audio_file_path,
+                    duration=detection_event.duration,
+                    size_bytes=detection_event.size_bytes,
+                    recording_start_time=detection_event.recording_start_time,
+                )
+                db.add(audio_file)
+                db.flush()  # Flush to get audio_file.id before committing
+
+                # Create Detection record
+                detection = Detection(
+                    species=detection_event.species,
+                    confidence=detection_event.confidence,
+                    timestamp=detection_event.timestamp,
+                    audio_file_id=audio_file.id,
+                    latitude=detection_event.latitude,
+                    longitude=detection_event.longitude,
+                    cutoff=detection_event.cutoff,
+                    week=detection_event.week,
+                    sensitivity=detection_event.sensitivity,
+                    overlap=detection_event.overlap,
+                )
                 db.add(detection)
                 db.commit()
                 db.refresh(detection)
+
+                # Emit Blinker signal
+                detection_signal.send(self, detection=detection)
+
                 return detection
             except SQLAlchemyError as e:
                 db.rollback()
-                print(f"Error adding detection: {e}")
+                print(f"Error creating detection: {e}")
                 raise
 
     def get_all_detections(self) -> list[Detection]:
@@ -71,12 +99,28 @@ class DetectionManager:
                                 timestamp_str, "%Y-%m-%d %H:%M:%S"
                             )
 
+                            # Create a dummy AudioFile record for the detection
+                            # Since CSV doesn't contain full audio file info, we use placeholders
+                            audio_file = AudioFile(
+                                file_path=f"csv_import_{timestamp.strftime('%Y%m%d%H%M%S')}.wav",
+                                duration=0.0,  # Placeholder
+                                size_bytes=0,  # Placeholder
+                                recording_start_time=timestamp,
+                            )
+                            db.add(audio_file)
+                            db.flush()  # Flush to get audio_file.id
+
                             detection = Detection(
                                 species=f"{com_name} ({sci_name})",  # Combine species name
                                 confidence=float(confidence_str),
                                 timestamp=timestamp,
-                                audio_file_path="",  # Not in BirdDB.txt
-                                # Add other fields if they map directly to Detection model
+                                audio_file_id=audio_file.id,
+                                latitude=float(lat_str),
+                                longitude=float(lon_str),
+                                cutoff=float(cutoff_str),
+                                week=int(week_str),
+                                sensitivity=float(sens_str),
+                                overlap=float(overlap_str),
                             )
                             db.add(detection)
                         except IndexError as ie:
@@ -327,20 +371,4 @@ class DetectionManager:
             except SQLAlchemyError as e:
                 db.rollback()
                 print(f"Error retrieving detection: {e}")
-                raise
-
-    def update_detection_extracted_status(self, detection_id: int, is_extracted: bool) -> None:
-        """Update the extracted status of a detection record in the database."""
-        with self.db_service.get_db() as db:
-            try:
-                detection = db.query(Detection).filter_by(id=detection_id).first()
-                if detection:
-                    detection.is_extracted = is_extracted
-                    db.commit()
-                    print(f"Detection {detection_id} extracted status: {is_extracted}.")
-                else:
-                    print(f"Detection with ID {detection_id} not found.")
-            except SQLAlchemyError as e:
-                db.rollback()
-                print(f"Error updating detection extracted status: {e}")
                 raise

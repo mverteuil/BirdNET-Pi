@@ -1,3 +1,4 @@
+# THIS FILE IS MARKED FOR DEATH
 import logging
 import subprocess
 

@@ -1,5 +1,5 @@
 from blinker import Namespace
 
-birdnet_signals = Namespace()
+signals = Namespace()
 
-detection_event = birdnet_signals.signal("detection-event")
+detection_signal = signals.signal("detection")

@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import Mock
 
 import pytest
@@ -16,30 +17,36 @@ def mock_config():
 
 
 @pytest.fixture
-def notification_service(mock_config):
+def mock_active_websockets():
+    """Provide a mock set of active websockets."""
+    return set()
+
+
+@pytest.fixture
+def notification_service(mock_active_websockets, mock_config):
     """Provide a NotificationService instance for testing."""
-    return NotificationService(config=mock_config)
+    service = NotificationService(active_websockets=mock_active_websockets, config=mock_config)
+    service.register_listeners()  # Listeners
+    return service
 
 
-def test_species_notifier_basic(notification_service, capsys):
-    """Should print a basic notification message"""
-    detection = Detection(species="Common Blackbird", confidence=0.95)
-    notification_service.species_notifier(detection)
-    captured = capsys.readouterr()
-    assert (
-        "Notification: New species detected - "
-        f"{detection.species} with confidence {detection.confidence:.2f}" in captured.out
-    )
+def test_handle_detection_event_basic(notification_service, caplog):
+    """Should log a basic notification message for detection event."""
+    with caplog.at_level(logging.INFO):
+        detection = Detection(species="Common Blackbird", confidence=0.95)
+        notification_service.active_websockets.add(Mock())  # Add a mock websocket
+        notification_service._handle_detection_event(None, detection)
+        assert f"NotificationService received detection: {detection.species}" in caplog.text
+        assert f"Simulating sending detection to websocket: {detection.species}" in caplog.text
 
 
-def test_species_notifier_with_apprise_enabled(mock_config, notification_service, capsys):
-    """Should print an Apprise notification message when enabled"""
-    mock_config.apprise_notify_each_detection = True
-    detection = Detection(species="European Robin", confidence=0.88)
-    notification_service.species_notifier(detection)
-    captured = capsys.readouterr()
-    assert (
-        "Notification: New species detected - "
-        f"{detection.species} with confidence {detection.confidence:.2f}" in captured.out
-    )
-    assert f"Sending Apprise notification for {detection.species}" in captured.out
+def test_handle_detection_event_with_apprise_enabled(mock_config, notification_service, caplog):
+    """Should log an Apprise notification message when enabled for detection event."""
+    mock_config.apprise_notify_each_detection = True  # Correctly set the nested attribute
+    with caplog.at_level(logging.INFO):
+        detection = Detection(species="European Robin", confidence=0.88)
+        notification_service.active_websockets.add(Mock())  # Add a mock websocket
+        notification_service._handle_detection_event(None, detection)
+        assert f"NotificationService received detection: {detection.species}" in caplog.text
+        assert f"Simulating sending detection to websocket: {detection.species}" in caplog.text
+        assert f"Simulating sending Apprise notification for: {detection.species}" in caplog.text

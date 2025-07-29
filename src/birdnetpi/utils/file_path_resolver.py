@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 
 class FilePathResolver:
@@ -33,3 +34,17 @@ class FilePathResolver:
     def get_templates_dir(self) -> str:
         """Return the absolute path to the templates directory."""
         return self.resolve("src", "birdnetpi", "web", "templates")
+
+    def get_fifo_base_path(self) -> str:
+        """Return the base path for FIFOs, /dev/shm in Docker, /tmp otherwise."""
+        if os.path.exists("/.dockerenv"):
+            return "/dev/shm"
+        else:
+            return "/tmp"
+
+    def get_detection_audio_path(self, species: str, timestamp: datetime) -> str:
+        """Return the relative path for a detection audio file."""
+        # Format: detections/species_timestamp.wav
+        timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
+        filename = f"{species.replace(' ', '_')}_{timestamp_str}.wav"
+        return os.path.join("detections", filename)

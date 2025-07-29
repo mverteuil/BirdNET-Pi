@@ -1,4 +1,5 @@
 import datetime
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import ClassVar
@@ -15,14 +16,16 @@ from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.service_manager import ServiceManager
 from birdnetpi.models.database_models import AudioFile, Detection
 from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.services.detection_event_publisher import DetectionEventPublisher
 from birdnetpi.services.file_manager import FileManager
 from birdnetpi.services.location_service import LocationService
+from birdnetpi.services.notification_service import NotificationService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
-from birdnetpi.utils.logging_configurator import configure_logging  # Added import
+from birdnetpi.utils.logging_configurator import configure_logging
+from birdnetpi.web.routers.api_router import DetectionEvent
 
 from .routers import (
+    api_router,
     audio_router,
     log_router,
     overview_router,
@@ -30,6 +33,8 @@ from .routers import (
     settings_router,
     spectrogram_router,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -63,6 +68,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     )
     app.state.plotting_manager = PlottingManager(app.state.data_preparation_manager)
     app.state.service_manager = ServiceManager()
+    app.state.active_websockets = set()  # Initialize set for active WebSocket connections
+
+    # Initialize NotificationService and register listeners
+    app.state.notification_service = NotificationService(
+        app.state.active_websockets, app.state.config
+    )
+    app.state.notification_service.register_listeners()
 
     # Initialize SQLAdmin
     admin = Admin(app, app.state.db_service.engine)
@@ -101,6 +113,8 @@ app.include_router(reporting_router.router)
 app.include_router(spectrogram_router.router)
 
 app.include_router(overview_router.router)
+app.include_router(api_router.router, prefix="/api")  # Include the new API router
+app.include_router(api_router.router, prefix="/api")  # Include the new API router
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -120,18 +134,13 @@ async def read_root(request: Request) -> HTMLResponse:
 async def websocket_endpoint(websocket: WebSocket) -> None:
     """Handle WebSocket connections for real-time updates."""
     await websocket.accept()
+    app.state.active_websockets.add(websocket)  # Add new connection
     try:
         while True:
-            # This example just keeps the connection open. Real-time updates
-            # would be pushed from the DetectionEventPublisher.
-            await websocket.receive_text()
+            await websocket.receive_text()  # Keep connection alive
     except WebSocketDisconnect:
-        print("Client disconnected")
-
-
-# Example of how to use the publisher (for testing/demonstration)
-# In a real scenario, this would be triggered by actual detection events.
-publisher = DetectionEventPublisher()
+        app.state.active_websockets.remove(websocket)  # Remove disconnected client
+        logger.info("Client disconnected")
 
 
 @app.get("/test_detection_form", response_class=HTMLResponse)
@@ -145,12 +154,36 @@ async def test_detection(
     species: str = "Test Bird",
     confidence: float = 0.99,
     timestamp: str | None = None,
+    file_path: str = "test_audio/test_bird.wav",
+    duration: float = 3.0,
+    size_bytes: int = 1024,
+    recording_start_time: str | None = None,
+    latitude: float = 0.0,
+    longitude: float = 0.0,
+    cutoff: float = 0.0,
+    week: int = 0,
+    sensitivity: float = 0.0,
+    overlap: float = 0.0,
 ) -> dict[str, str]:
     """Publishes a test detection event for demonstration purposes."""
-    detection_data = {
-        "species": species,
-        "confidence": confidence,
-        "timestamp": timestamp if timestamp else datetime.datetime.now().isoformat(),
-    }
-    publisher.publish_detection(detection_data)
-    return {"message": "Test detection published", "data": detection_data}
+    detection_event_data = DetectionEvent(
+        species=species,
+        confidence=confidence,
+        timestamp=datetime.datetime.fromisoformat(timestamp)
+        if timestamp
+        else datetime.datetime.now(),
+        file_path=file_path,
+        duration=duration,
+        size_bytes=size_bytes,
+        recording_start_time=datetime.datetime.fromisoformat(recording_start_time)
+        if recording_start_time
+        else datetime.datetime.now(),
+        latitude=latitude,
+        longitude=longitude,
+        cutoff=cutoff,
+        week=week,
+        sensitivity=sensitivity,
+        overlap=overlap,
+    )
+    app.state.detections.create_detection(detection_event_data)
+    return {"message": "Test detection published", "data": detection_event_data.model_dump_json()}

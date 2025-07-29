@@ -5,8 +5,9 @@ import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from birdnetpi.managers.detection_manager import DetectionManager
-from birdnetpi.models.database_models import Detection
+from birdnetpi.models.database_models import AudioFile, Detection
 from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.web.routers.api_router import DetectionEvent
 
 
 @pytest.fixture
@@ -30,42 +31,48 @@ def mock_csv_file(tmp_path):
     return str(csv_path)
 
 
-def test_add_detection_success(detection_manager):
-    """Should add a detection record successfully"""
-    detection_data = {
-        "species": "Test Species",
-        "confidence": 0.9,
-        "timestamp": "2023-01-01 12:00:00",
-        "audio_file_path": "/path/to/audio.wav",
-    }
+def test_create_detection_success(detection_manager):
+    """Should create a detection record and associated audio file successfully"""
+    detection_event = DetectionEvent(
+        species="Test Species",
+        confidence=0.9,
+        timestamp=datetime(2023, 1, 1, 12, 0, 0),
+        audio_file_path="/path/to/audio.wav",
+        duration=10.0,
+        size_bytes=1024,
+        recording_start_time=datetime(2023, 1, 1, 11, 59, 50),
+    )
     mock_db_session = MagicMock()
     detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_detection = MagicMock(spec=Detection)
-    mock_db_session.add.return_value = mock_detection
 
-    result = detection_manager.add_detection(detection_data)
+    mock_db_session.add.side_effect = [None, None]  # For audio_file and detection
+    mock_db_session.flush.return_value = None
+    mock_db_session.commit.return_value = None
+    mock_db_session.refresh.return_value = mock_detection
 
-    detection_manager.db_service.get_db.assert_called_once_with()
-    mock_db_session.add.assert_called_once()
+    result = detection_manager.create_detection(detection_event)
     mock_db_session.commit.assert_called_once()
-    mock_db_session.refresh.assert_called_once()
     assert isinstance(result, Detection)
 
 
-def test_add_detection_failure(detection_manager):
-    """Should handle add detection failure"""
+def test_create_detection_failure(detection_manager):
+    """Should handle create detection failure"""
+    detection_event = DetectionEvent(
+        species="Test Species",
+        confidence=0.9,
+        timestamp=datetime(2023, 1, 1, 12, 0, 0),
+        audio_file_path="/path/to/audio.wav",
+        duration=10.0,
+        size_bytes=1024,
+        recording_start_time=datetime(2023, 1, 1, 11, 59, 50),
+    )
     mock_db_session = MagicMock()
     detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     mock_db_session.add.side_effect = SQLAlchemyError("Test Error")
-    detection_data = {
-        "species": "Test Species",
-        "confidence": 0.9,
-        "timestamp": "2023-01-01 12:00:00",
-        "audio_file_path": "/path/to/audio.wav",
-    }
 
     with pytest.raises(SQLAlchemyError):
-        detection_manager.add_detection(detection_data)
+        detection_manager.create_detection(detection_event)
 
     mock_db_session.rollback.assert_called_once()
 
@@ -104,8 +111,57 @@ def test_import_detections_from_csv_success(detection_manager, mock_csv_file):
 
     detection_manager.import_detections_from_csv(mock_csv_file)
 
-    mock_db_session.add.assert_called()
+    # Assertions for the first detection
+    # Check the AudioFile object added
+    audio_file_call_1 = mock_db_session.add.call_args_list[0]
+    audio_file_obj_1 = audio_file_call_1.args[0]
+    assert isinstance(audio_file_obj_1, AudioFile)
+    assert audio_file_obj_1.file_path == "csv_import_20230101100000.wav"
+    assert audio_file_obj_1.duration == 0.0
+    assert audio_file_obj_1.size_bytes == 0
+    assert audio_file_obj_1.recording_start_time == datetime(2023, 1, 1, 10, 0, 0)
+
+    # Check the Detection object added
+    detection_call_1 = mock_db_session.add.call_args_list[1]
+    detection_obj_1 = detection_call_1.args[0]
+    assert isinstance(detection_obj_1, Detection)
+    assert detection_obj_1.species == "ComName1 (SciName1)"
+    assert detection_obj_1.confidence == 0.9
+    assert detection_obj_1.timestamp == datetime(2023, 1, 1, 10, 0, 0)
+    assert detection_obj_1.latitude == 1.0
+    assert detection_obj_1.longitude == 2.0
+    assert detection_obj_1.cutoff == 0.5
+    assert detection_obj_1.week == 1
+    assert detection_obj_1.sensitivity == 1.0
+    assert detection_obj_1.overlap == 0.0
+    assert detection_obj_1.audio_file_id == audio_file_obj_1.id  # Should be linked
+
+    # Assertions for the second detection
+    audio_file_call_2 = mock_db_session.add.call_args_list[2]
+    audio_file_obj_2 = audio_file_call_2.args[0]
+    assert isinstance(audio_file_obj_2, AudioFile)
+    assert audio_file_obj_2.file_path == "csv_import_20230102110000.wav"
+    assert audio_file_obj_2.duration == 0.0
+    assert audio_file_obj_2.size_bytes == 0
+    assert audio_file_obj_2.recording_start_time == datetime(2023, 1, 2, 11, 0, 0)
+
+    detection_call_2 = mock_db_session.add.call_args_list[3]
+    detection_obj_2 = detection_call_2.args[0]
+    assert isinstance(detection_obj_2, Detection)
+    assert detection_obj_2.species == "ComName2 (SciName2)"
+    assert detection_obj_2.confidence == 0.8
+    assert detection_obj_2.timestamp == datetime(2023, 1, 2, 11, 0, 0)
+    assert detection_obj_2.latitude == 3.0
+    assert detection_obj_2.longitude == 4.0
+    assert detection_obj_2.cutoff == 0.6
+    assert detection_obj_2.week == 2
+    assert detection_obj_2.sensitivity == 1.1
+    assert detection_obj_2.overlap == 0.1
+    assert detection_obj_2.audio_file_id == audio_file_obj_2.id  # Should be linked
+
+    mock_db_session.flush.assert_called()  # Called twice, once for each AudioFile
     mock_db_session.commit.assert_called_once()
+    assert mock_db_session.add.call_count == 4  # Two AudioFile, two Detection
 
 
 def test_import_detections_from_csv_file_not_found(detection_manager):
@@ -132,7 +188,8 @@ def test_import_detections_from_csv_value_error(detection_manager, tmp_path):
 
     detection_manager.import_detections_from_csv(str(csv_path))
 
-    mock_db_session.add.assert_not_called()
+    mock_db_session.add.assert_called_once()
+    assert isinstance(mock_db_session.add.call_args[0][0], AudioFile)
     mock_db_session.commit.assert_called_once()
 
 

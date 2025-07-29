@@ -1,4 +1,5 @@
-from birdnetpi.utils.signals import detection_event
+from birdnetpi.models.database_models import Detection
+from birdnetpi.utils.signals import detection_signal
 
 
 class DetectionEventPublisher:
@@ -6,4 +7,5 @@ class DetectionEventPublisher:
 
     def publish_detection(self, detection_data: dict) -> None:
         """Publish a detection event."""
-        detection_event.send(self, data=detection_data)
+        detection_obj = Detection(**detection_data)
+        detection_signal.send(self, detection=detection_obj)

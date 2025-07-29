@@ -1,26 +1,32 @@
+import logging
+
 from birdnetpi.models.birdnet_config import BirdNETConfig
 from birdnetpi.models.database_models import Detection
+from birdnetpi.utils.signals import detection_signal
+
+logger = logging.getLogger(__name__)
 
 
 class NotificationService:
-    """Manages sending notifications based on detection events."""
+    """Handles sending notifications for detection events."""
 
-    def __init__(self, config: BirdNETConfig) -> None:
+    def __init__(self, active_websockets: set, config: BirdNETConfig) -> None:
+        self.active_websockets = active_websockets
         self.config = config
 
-    def species_notifier(self, detection: Detection) -> None:
-        """Notify about a new species detection."""
-        species_name = detection.species
-        confidence = detection.confidence
+    def register_listeners(self) -> None:
+        """Register Blinker signal listeners."""
+        detection_signal.connect(self._handle_detection_event)
+        logger.info("NotificationService listeners registered.")
 
-        # Placeholder for actual notification logic
-        # This would involve checking config.apprise_input, etc.
-        print(
-            f"Notification: New species detected - {species_name} with confidence {confidence:.2f}"
-        )
+    def _handle_detection_event(self, sender: object, detection: Detection) -> None:
+        """Handle a new detection event by sending notifications."""
+        logger.info(f"NotificationService received detection: {detection.species}")
+        # TODO: Implement WebSocket and Apprise notifications here
+        # For now, just log
+        for _ws in self.active_websockets:
+            # In a real async app, you'd await ws.send_json or similar
+            logger.info(f"Simulating sending detection to websocket: {detection.species}")
 
         if self.config.apprise_notify_each_detection:
-            print(f"Sending Apprise notification for {species_name}")
-            # Actual Apprise call would go here
-
-        # More complex logic for new species, weekly reports, etc. would be added here
+            logger.info(f"Simulating sending Apprise notification for: {detection.species}")

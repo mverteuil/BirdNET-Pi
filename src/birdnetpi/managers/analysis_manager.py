@@ -1,3 +1,4 @@
+# THIS FILE IS MARKED FOR DEATH
 import datetime
 import logging
 import os

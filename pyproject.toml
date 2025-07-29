@@ -31,6 +31,8 @@ dependencies = [
     "tflite-runtime>=2.14.0 ; platform_machine == 'aarch64' and sys_platform == 'linux'",
     "sounddevice>=0.5.2",
     "wtforms>=3.1.2",
+    "pydub>=0.25.1",
+    "httpx>=0.28.1",
 ]
 
 [project.optional-dependencies]
@@ -38,7 +40,6 @@ dev = [
     "pytest==7.1.2",
     "pytest-mock==3.7.0",
     "pytest-cov",
-    "httpx",
 ]
 
 
@@ -111,13 +112,17 @@ analysis-manager = "birdnetpi.wrappers.analysis_manager_wrapper:main"
 data-manager = "birdnetpi.wrappers.data_manager_wrapper:main"
 reporting-manager = "birdnetpi.wrappers.reporting_manager_wrapper:main"
 generate-dummy-data = "birdnetpi.wrappers.generate_dummy_data:main"
+audio-analysis-continuous = "birdnetpi.wrappers.audio_analysis_continuous:main"
+audio-livestream-continuous = "birdnetpi.wrappers.audio_livestream_continuous:main"
 
 [dependency-groups]
 dev = [
+    "ast-grep-cli>=0.39.2",
     "httpx>=0.28.1",
     "pytest>=7.1.2",
     "pytest-asyncio>=0.23.8",
     "pytest-cov>=6.2.1",
     "pytest-mock==3.7.0",
+    "ruff>=0.12.5",
     "tensorflow>=2.19.0 ; sys_platform == 'darwin'",
 ]
