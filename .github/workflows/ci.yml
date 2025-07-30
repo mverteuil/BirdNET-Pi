@@ -43,7 +43,7 @@ jobs:
       - name: Install pre-commit
         run: uv pip install pre-commit
       - name: Run pre-commit checks
-        run: pre-commit run
+        run: uv run pre-commit run
 
   test:
     runs-on: ubuntu-latest
