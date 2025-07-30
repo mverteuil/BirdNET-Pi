@@ -2,6 +2,7 @@ import datetime
 import random
 
 from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.web.routers.api_router import DetectionEvent
 
 
 def generate_dummy_detections(
@@ -40,8 +41,13 @@ def generate_dummy_detections(
             "sensitivity": random.uniform(0.5, 0.9),
             "overlap": random.uniform(0.0, 0.5),
             "is_extracted": False,
+            "duration": 5.0,  # Added for DetectionEvent
+            "size_bytes": 1024,  # Added for DetectionEvent
+            "recording_start_time": timestamp,  # Added for DetectionEvent
         }
-        detection_manager.add_detection(detection_data)
+        # Convert dict to DetectionEvent object
+        detection_event = DetectionEvent(**detection_data)
+        detection_manager.create_detection(detection_event)
     print(f"Generated {num_detections} dummy detections.")
 
 

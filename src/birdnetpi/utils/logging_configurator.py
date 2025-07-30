@@ -55,6 +55,12 @@ def configure_logging(config: BirdNETConfig) -> None:
 
     # Set log level from config if available
     if config.logging.log_level:
-        root_logger.setLevel(config.logging.log_level.upper())
+        try:
+            root_logger.setLevel(config.logging.log_level.upper())
+        except ValueError:
+            root_logger.warning(
+                f"Invalid log level '{config.logging.log_level}'. Defaulting to INFO."
+            )
+            root_logger.setLevel(logging.INFO)
 
     root_logger.info("Logging configured successfully.")

@@ -32,6 +32,7 @@ def _cleanup_fifo_and_service() -> None:
     if _fifo_livestream_fd:
         os.close(_fifo_livestream_fd)
         logger.info("Closed FIFO: %s", _fifo_livestream_path)
+        _fifo_livestream_fd = None
     if _audio_livestream_service:
         _audio_livestream_service.stop_livestream()
 
@@ -63,8 +64,8 @@ def main() -> None:
 
         # Instantiate and start the AudioLivestreamService
         icecast_url = "icecast://source:hackme@icecast:8000/stream.mp3"  # TODO: Make configurable
-        samplerate = config.sample_rate
-        channels = config.audio_channels
+        samplerate = config["sample_rate"]
+        channels = config["audio_channels"]
 
         _audio_livestream_service = AudioLivestreamService(icecast_url, samplerate, channels)
         _audio_livestream_service.start_livestream()
@@ -84,7 +85,6 @@ def main() -> None:
                 time.sleep(0.01)
             except Exception as e:
                 logger.error("Error reading from FIFO or streaming audio: %s", e, exc_info=True)
-                time.sleep(1)
 
     except FileNotFoundError:
         logger.error(

@@ -32,9 +32,11 @@ def _cleanup_fifos() -> None:
     if _fifo_analysis_fd:
         os.close(_fifo_analysis_fd)
         logger.info(f"Closed FIFO: {_fifo_analysis_path}")
+        _fifo_analysis_fd = None
     if _fifo_livestream_fd:
         os.close(_fifo_livestream_fd)
         logger.info(f"Closed FIFO: {_fifo_livestream_path}")
+        _fifo_livestream_fd = None
     if _fifo_analysis_path and os.path.exists(_fifo_analysis_path):
         pass  # os.unlink(_fifo_analysis_path) # Do not unlink, let readers reconnect
     if _fifo_livestream_path and os.path.exists(_fifo_livestream_path):

@@ -30,7 +30,7 @@ class DetectionEventProcessor:
         # Assuming duration and size_bytes can be derived or passed
         # For now, dummy values or derive from raw_audio_bytes if still available
         logger.info(f"Simulating saving detection to DB: {detection_data['species']}")
-        # self.detection_manager.create_detection(detection_data) # Actual call
+        self.detection_manager.create_detection(detection_data)  # Actual call
 
         # 2. Send WebSocket notification
         await self.notification_service.send_websocket_notification(

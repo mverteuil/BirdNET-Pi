@@ -66,6 +66,6 @@ class AudioWebSocketService:
 
         Streaming is driven by stream_audio_chunk calls.
         """
-        logger.info("AudioWebSocketService streaming loop started (passive)...")
+        logger.info("AudioWebSocketService streaming loop started (passive)....")
         while True:
             await asyncio.sleep(1)  # Keep alive

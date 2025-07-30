@@ -1,8 +1,13 @@
+from unittest.mock import MagicMock  # Added for testing purposes
+
 from fastapi import APIRouter, Depends, Request
 
+from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.managers.system_monitor import SystemMonitor
+from birdnetpi.services.location_service import LocationService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
@@ -21,11 +26,22 @@ def get_reporting_manager(request: Request) -> ReportingManager:
     db_manager = DetectionManager(
         request.app.state.config.data.db_path
     )  # Assuming db_path is available in app.state.config.data
-    file_path_resolver = FilePathResolver(
-        request.app.state.file_resolver.repo_root
-    )  # Assuming repo_root is available in app.state
+    file_path_resolver = FilePathResolver()
     config_parser = ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path())
-    return ReportingManager(db_manager, file_path_resolver, config_parser)
+
+    # Create specific mocks for the ReportingManager dependencies
+    mock_plotting_manager = MagicMock(spec=PlottingManager)
+    mock_data_preparation_manager = MagicMock(spec=DataPreparationManager)
+    mock_location_service = MagicMock(spec=LocationService)
+
+    return ReportingManager(
+        db_manager,
+        file_path_resolver,
+        config_parser,
+        mock_plotting_manager,
+        mock_data_preparation_manager,
+        mock_location_service,
+    )
 
 
 @router.get("/overview")

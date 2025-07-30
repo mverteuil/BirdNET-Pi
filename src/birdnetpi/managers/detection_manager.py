@@ -372,3 +372,13 @@ class DetectionManager:
                 db.rollback()
                 print(f"Error retrieving detection: {e}")
                 raise
+
+    def get_total_detections(self) -> int:
+        """Retrieve the total count of all detection records from the database."""
+        with self.db_service.get_db() as db:
+            try:
+                return db.query(Detection).count()
+            except SQLAlchemyError as e:
+                db.rollback()
+                print(f"Error retrieving total detections: {e}")
+                raise

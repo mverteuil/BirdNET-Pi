@@ -61,6 +61,8 @@ omit = ["tests/*"]
 [tool.pytest.ini_options]
 markers = ["expensive"]
 testpaths = ["tests"]
+addopts = "--cov=src"
+asyncio_mode = "auto"
 
 [tool.ruff]
 line-length = 100
@@ -108,12 +110,12 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [project.scripts]
-analysis-manager = "birdnetpi.wrappers.analysis_manager_wrapper:main"
 data-manager = "birdnetpi.wrappers.data_manager_wrapper:main"
 reporting-manager = "birdnetpi.wrappers.reporting_manager_wrapper:main"
 generate-dummy-data = "birdnetpi.wrappers.generate_dummy_data:main"
-audio-analysis-continuous = "birdnetpi.wrappers.audio_analysis_continuous:main"
-audio-livestream-continuous = "birdnetpi.wrappers.audio_livestream_continuous:main"
+audio-analysis-daemon = "birdnetpi.wrappers.audio_analysis_daemon:main"
+audio-capture-daemon = "birdnetpi.wrappers.audio_capture_daemon:main"
+audio-websocket-daemon = "birdnetpi.wrappers.audio_websocket_daemon:main"
 
 [dependency-groups]
 dev = [
