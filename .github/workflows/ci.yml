@@ -40,10 +40,12 @@ jobs:
           curl -L https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 -o hadolint
           sudo mv hadolint /usr/local/bin/hadolint
           sudo chmod +x /usr/local/bin/hadolint
+      - name: Create uv venv
+        run: ~/.local/bin/uv venv
       - name: Install pre-commit
-        run: uv pip install pre-commit
+        run: ~/.local/bin/uv pip install pre-commit
       - name: Run pre-commit checks
-        run: uv run pre-commit run
+        run: ~/.local/bin/uv run pre-commit run
 
   test:
     runs-on: ubuntu-latest
@@ -58,16 +60,23 @@ jobs:
           python-version: '3.11'
       - name: Setup uv
         uses: ./.github/actions/setup-uv
+      - name: Create Docker network
+        run: docker network create birdnetpi-network || true
       - name: Install dependencies
-        run: uv sync --all-extras
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libportaudio2 portaudio19-dev pulseaudio
+          uv sync --all-extras
       - name: Run pytest tests
-        run: uv run pytest --cov=src --cov-report=xml --cov-report=term-missing -m "not expensive"
+        run: uv run pytest --cov=src -m "not expensive"
       - name: Run expensive pytest tests
-        run: uv run pytest --cov=src --cov-report=xml --cov-report=term-missing -m expensive
+        run: uv run pytest --cov=src --cov-append -m expensive
+      - name: Generate coverage XML report
+        run: uv run coverage xml
       - name: Check code coverage
         run: python .github/ci/check_coverage.py
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: BirdNET-Pi/coverage.xml
+          path: coverage.xml

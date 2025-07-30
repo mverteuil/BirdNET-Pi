@@ -48,6 +48,6 @@ HUMAN.txt
 include_species_list.txt
 build/
 /config/
-.coverage
+.coverage*
 coverage.xml
 .git_commit_message.txt

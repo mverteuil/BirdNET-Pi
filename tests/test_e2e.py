@@ -1,5 +1,4 @@
 import subprocess
-import time
 
 import httpx
 import pytest
@@ -9,9 +8,8 @@ import pytest
 def docker_compose_up_down() -> None:
     """Bring up and tear down Docker Compose services for e2e tests."""
     # Bring up Docker Compose
-    subprocess.run(["docker", "compose", "up", "-d", "--build"], check=True)
-    # Wait for services to be ready
-    time.sleep(10)  # Adjust as needed
+    # Bring up Docker Compose and wait for services to be healthy
+    subprocess.run(["docker", "compose", "up", "-d", "--build", "--wait"], check=True)
     subprocess.run(["docker", "ps"], check=True)
     subprocess.run(["docker", "logs", "birdnet-pi"], check=True)
     yield

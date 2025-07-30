@@ -28,6 +28,7 @@ dependencies = [
     "fastapi",
     "python-multipart",
     "sqladmin>=0.21.0",
+    "tensorflow>=2.19.0 ; platform_machine != 'aarch64' or sys_platform == 'darwin'",
     "tflite-runtime>=2.14.0 ; platform_machine == 'aarch64' and sys_platform == 'linux'",
     "sounddevice>=0.5.2",
     "wtforms>=3.1.2",
@@ -126,5 +127,5 @@ dev = [
     "pytest-cov>=6.2.1",
     "pytest-mock==3.7.0",
     "ruff>=0.12.5",
-    "tensorflow>=2.19.0 ; sys_platform == 'darwin'",
+
 ]

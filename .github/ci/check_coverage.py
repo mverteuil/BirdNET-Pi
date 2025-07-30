@@ -2,12 +2,12 @@ import sys
 import xml.etree.ElementTree as ET
 
 COVERAGE_THRESHOLD = 80.0
-COVERAGE_FILE = "coverage.xml"  # Relative to the working-directory of the step
+COVERAGE_FILE = "coverage.xml"
 
 try:
     tree = ET.parse(COVERAGE_FILE)
     root = tree.getroot()
-    coverage_element = root.find("coverage")
+    coverage_element = root
     if coverage_element is not None:
         line_rate = float(coverage_element.attrib.get("line-rate", 0))
         coverage_percentage = line_rate * 100
