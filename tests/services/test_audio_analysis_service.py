@@ -39,13 +39,26 @@ def mock_config():
     mock = MagicMock(spec=BirdNETConfig)
     mock.sample_rate = 48000
     mock.audio_channels = 1
+    mock.latitude = 40.7128
+    mock.longitude = -74.0060
+    mock.sensitivity = 1.25
+    mock.confidence = 0.7
     return mock
 
 
 @pytest.fixture
-def audio_analysis_service(mock_file_manager, mock_file_path_resolver, mock_config):
+@patch("birdnetpi.services.audio_analysis_service.AnalysisClientService")
+def audio_analysis_service(
+    mock_analysis_client_class, mock_file_manager, mock_file_path_resolver, mock_config
+):
     """Return an AudioAnalysisService instance with mocked dependencies."""
-    return AudioAnalysisService(mock_file_manager, mock_file_path_resolver, mock_config)
+    # Mock the AnalysisClientService constructor to avoid model loading
+    mock_analysis_client = MagicMock()
+    mock_analysis_client_class.return_value = mock_analysis_client
+
+    service = AudioAnalysisService(mock_file_manager, mock_file_path_resolver, mock_config)
+    service.analysis_client = mock_analysis_client
+    return service
 
 
 @pytest.fixture(autouse=True)
@@ -65,31 +78,72 @@ class TestAudioAnalysisService:
         assert audio_analysis_service.file_manager == mock_file_manager
         assert audio_analysis_service.file_path_resolver == mock_file_path_resolver
         assert audio_analysis_service.config == mock_config
-        assert audio_analysis_service.detection_counter == 0
+        assert hasattr(audio_analysis_service, "analysis_client")
+        assert hasattr(audio_analysis_service, "audio_buffer")
 
     @pytest.mark.asyncio
-    async def test_process_audio_chunk_increments_counter(self, audio_analysis_service):
-        """Should increment detection_counter for each chunk."""
-        initial_counter = audio_analysis_service.detection_counter
-        await audio_analysis_service.process_audio_chunk(b"\x00\x01\x02\x03")
-        assert audio_analysis_service.detection_counter == initial_counter + 1
+    async def test_process_audio_chunk_accumulates_buffer(self, audio_analysis_service):
+        """Should accumulate audio data in buffer."""
+        initial_buffer_length = len(audio_analysis_service.audio_buffer)
+        audio_data = b"\x00\x01\x02\x03"
+        await audio_analysis_service.process_audio_chunk(audio_data)
+        assert len(audio_analysis_service.audio_buffer) > initial_buffer_length
+
+    @pytest.mark.asyncio
+    @patch(
+        "birdnetpi.services.audio_analysis_service.AudioAnalysisService._analyze_audio_chunk",
+        new_callable=AsyncMock,
+    )
+    async def test_process_audio_chunk_calls_analyze_when_buffer_full(
+        self, mock_analyze_audio_chunk, audio_analysis_service
+    ):
+        """Should call _analyze_audio_chunk when buffer has enough data."""
+        # Mock config for known sample rate
+        audio_analysis_service.config.sample_rate = 48000
+        audio_analysis_service.buffer_size_samples = 48000 * 3  # 3 seconds
+
+        # Create enough audio data to trigger analysis
+        chunk_size = 1024
+        audio_chunk = np.zeros(chunk_size, dtype=np.int16).tobytes()
+
+        # Feed chunks until buffer is full
+        chunks_needed = (audio_analysis_service.buffer_size_samples // chunk_size) + 1
+        for _ in range(chunks_needed):
+            await audio_analysis_service.process_audio_chunk(audio_chunk)
+
+        # Should have called analyze at least once when buffer was full
+        assert mock_analyze_audio_chunk.call_count >= 1
 
     @pytest.mark.asyncio
     @patch(
         "birdnetpi.services.audio_analysis_service.AudioAnalysisService._send_detection_event",
         new_callable=AsyncMock,
     )
-    async def test_process_audio_chunk_calls_send_detection_event(
+    async def test_analyze_audio_chunk_with_detections(
         self, mock_send_detection_event, audio_analysis_service
     ):
-        """Should call _send_detection_event when detection_counter is a multiple of 100."""
-        audio_data_bytes = b"\x00\x01\x02\x03"
-        for _ in range(99):
-            await audio_analysis_service.process_audio_chunk(audio_data_bytes)
-            mock_send_detection_event.assert_not_called()  # Should not be called yet
+        """Should send detection events for confident detections."""
+        # Mock the analysis client to return some detections
+        audio_analysis_service.analysis_client.get_analysis_results.return_value = [
+            ("Robin", 0.85),
+            ("Crow", 0.72),
+            ("Human", 0.65),  # Below confidence threshold
+        ]
 
-        await audio_analysis_service.process_audio_chunk(audio_data_bytes)  # 100th call
-        mock_send_detection_event.assert_called_once_with("Simulated Bird", 0.95, audio_data_bytes)
+        # Create a mock audio chunk
+        audio_chunk = np.zeros(48000 * 3, dtype=np.float32)  # 3 seconds of silence
+
+        await audio_analysis_service._analyze_audio_chunk(audio_chunk)
+
+        # Should have called send_detection_event twice (for Robin and Crow, not Human)
+        assert mock_send_detection_event.call_count == 2
+
+        # Check the calls
+        calls = mock_send_detection_event.call_args_list
+        assert calls[0][0][0] == "Robin"  # species
+        assert calls[0][0][1] == 0.85  # confidence
+        assert calls[1][0][0] == "Crow"  # species
+        assert calls[1][0][1] == 0.72  # confidence
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient")

@@ -190,7 +190,7 @@ BirdNET-Pi has undergone a significant architectural refactoring to enhance main
 
 **Directory Structure:**
 *   `src/birdnetpi/`: The primary Python package.
-*   `src/birdnetpi/managers/`: High-level classes orchestrating specific domains (e.g., `AnalysisManager`, `AudioManager`).
+*   `src/birdnetpi/managers/`: High-level classes orchestrating specific domains (e.g., `AnalysisManager`).
 *   `src/birdnetpi/services/`: Classes for external systems or low-level functions (e.g., `FileManager`, `NotificationService`).
 *   `src/birdnetpi/models/`: Dataclasses and Enums for data modeling.
 *   `src/birdnetpi/utils/`: General helper functions and utilities.

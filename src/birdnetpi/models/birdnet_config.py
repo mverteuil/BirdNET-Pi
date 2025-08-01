@@ -81,3 +81,8 @@ class BirdNETConfig:
     # Species filtering
     apprise_only_notify_species_names: str = ""  # comma separated string
     apprise_only_notify_species_names_2: str = ""  # comma separated string
+
+    # Analysis model configuration
+    sf_threshold: float = 0.03  # Species filter threshold
+    privacy_threshold: float = 10.0  # Privacy threshold percentage for human detection cutoff
+    data_model_version: int = 2  # Data model version (1 or 2)
