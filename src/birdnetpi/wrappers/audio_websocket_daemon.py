@@ -1,3 +1,4 @@
+import asyncio
 import atexit
 import logging
 import os
@@ -5,7 +6,7 @@ import signal
 import time
 from types import FrameType
 
-from birdnetpi.services.audio_livestream_service import AudioLivestreamService
+from birdnetpi.services.audio_websocket_service import AudioWebSocketService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 _shutdown_flag = False
 _fifo_livestream_path = None
 _fifo_livestream_fd = None
-_audio_livestream_service = None
+_audio_websocket_service = None
 
 
 def _signal_handler(signum: int, frame: FrameType) -> None:
@@ -28,19 +29,18 @@ def _signal_handler(signum: int, frame: FrameType) -> None:
 
 
 def _cleanup_fifo_and_service() -> None:
-    global _fifo_livestream_fd, _fifo_livestream_path, _audio_livestream_service
+    global _fifo_livestream_fd, _fifo_livestream_path, _audio_websocket_service
     if _fifo_livestream_fd:
         os.close(_fifo_livestream_fd)
         logger.info("Closed FIFO: %s", _fifo_livestream_path)
         _fifo_livestream_fd = None
-    if _audio_livestream_service:
-        _audio_livestream_service.stop_livestream()
+    # WebSocket service doesn't need explicit cleanup (connections handle themselves)
 
 
 def main() -> None:
-    """Run the audio livestream wrapper."""
-    global _fifo_livestream_path, _fifo_livestream_fd, _audio_livestream_service
-    logger.info("Starting audio livestream wrapper.")
+    """Run the audio websocket wrapper."""
+    global _fifo_livestream_path, _fifo_livestream_fd, _audio_websocket_service
+    logger.info("Starting audio websocket wrapper.")
 
     # Register signal handlers and atexit for cleanup
     signal.signal(signal.SIGTERM, _signal_handler)
@@ -62,29 +62,31 @@ def main() -> None:
         _fifo_livestream_fd = os.open(_fifo_livestream_path, os.O_RDONLY | os.O_NONBLOCK)
         logger.info("Opened FIFO for reading: %s", _fifo_livestream_path)
 
-        # Instantiate and start the AudioLivestreamService
-        icecast_url = "icecast://source:hackme@icecast:8000/stream.mp3"  # TODO: Make configurable
+        # Instantiate the AudioWebSocketService
         samplerate = config["sample_rate"]
         channels = config["audio_channels"]
 
-        _audio_livestream_service = AudioLivestreamService(icecast_url, samplerate, channels)
-        _audio_livestream_service.start_livestream()
+        _audio_websocket_service = AudioWebSocketService(samplerate, channels)
+        logger.info("AudioWebSocketService instantiated and ready for connections.")
 
-        # Read from FIFO and write to FFmpeg's stdin via the service
+        # Read from FIFO and stream to WebSocket clients
         while not _shutdown_flag:
             try:
                 buffer_size = 4096  # Must match producer's write size
                 audio_data_bytes = os.read(_fifo_livestream_fd, buffer_size)
 
                 if audio_data_bytes:
-                    _audio_livestream_service.stream_audio_chunk(audio_data_bytes)
+                    # Use asyncio.run for the async WebSocket streaming
+                    asyncio.run(_audio_websocket_service.stream_audio_chunk(audio_data_bytes))
                 else:
                     time.sleep(0.01)
 
             except BlockingIOError:
                 time.sleep(0.01)
             except Exception as e:
-                logger.error("Error reading from FIFO or streaming audio: %s", e, exc_info=True)
+                logger.error(
+                    "Error reading from FIFO or streaming to WebSocket: %s", e, exc_info=True
+                )
 
     except FileNotFoundError:
         logger.error(
@@ -92,7 +94,7 @@ def main() -> None:
             _fifo_livestream_path,
         )
     except Exception as e:
-        logger.error("An error occurred in the audio livestream wrapper: %s", e, exc_info=True)
+        logger.error("An error occurred in the audio websocket wrapper: %s", e, exc_info=True)
     finally:
         _cleanup_fifo_and_service()
 

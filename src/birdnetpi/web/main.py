@@ -15,6 +15,7 @@ from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.service_manager import ServiceManager
 from birdnetpi.models.database_models import AudioFile, Detection
+from birdnetpi.services.audio_fifo_reader_service import AudioFifoReaderService
 from birdnetpi.services.audio_websocket_service import AudioWebSocketService
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.file_manager import FileManager
@@ -75,6 +76,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         samplerate=app.state.config.sample_rate, channels=app.state.config.audio_channels
     )
 
+    # Initialize and start the FIFO reader service for WebSocket streaming
+    fifo_base_path = app.state.file_resolver.get_fifo_base_path()
+    livestream_fifo_path = f"{fifo_base_path}/birdnet_audio_livestream.fifo"
+    app.state.audio_fifo_reader_service = AudioFifoReaderService(
+        livestream_fifo_path, app.state.audio_websocket_service
+    )
+
     # Initialize NotificationService and register listeners
     app.state.notification_service = NotificationService(
         app.state.active_websockets, app.state.config
@@ -106,7 +114,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     admin.add_view(DetectionAdmin)
     admin.add_view(AudioFileAdmin)
 
+    # Start the FIFO reader service
+    await app.state.audio_fifo_reader_service.start()
+
     yield
+
+    # Cleanup: Stop the FIFO reader service
+    await app.state.audio_fifo_reader_service.stop()
 
 
 app = FastAPI(lifespan=lifespan)
