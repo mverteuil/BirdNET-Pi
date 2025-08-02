@@ -1,16 +1,17 @@
 import io
 
+import matplotlib
+
+# Ensure matplotlib uses non-GUI backend BEFORE any other matplotlib imports
+matplotlib.use("Agg")
+
 import librosa
 import librosa.display
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-
-# Ensure matplotlib uses non-GUI backend
-matplotlib.use("Agg")
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.models.config import DailyPlotConfig, MultiDayPlotConfig
@@ -22,8 +23,8 @@ class PlottingManager:
     def __init__(self, data_preparation_manager: DataPreparationManager) -> None:
         self.data_preparation_manager = data_preparation_manager
 
-    def generate_spectrogram(self, audio_path: str) -> bytes:
-        """Generate a spectrogram for a given audio file and return it as a PNG image in bytes."""
+    def generate_spectrogram(self, audio_path: str) -> io.BytesIO:
+        """Generate a spectrogram for a given audio file and return it as a BytesIO buffer."""
         y, sr = librosa.load(audio_path)
 
         # Compute spectrogram
@@ -40,7 +41,7 @@ class PlottingManager:
         plt.savefig(buf, format="png")
         plt.close(fig)  # Close the figure to free memory
         buf.seek(0)
-        return buf.getvalue()
+        return buf
 
     def _add_polar_trace_to_figure(
         self, fig: go.Figure, hourly: pd.DataFrame, species: str
