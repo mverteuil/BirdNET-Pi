@@ -4,7 +4,7 @@ from unittest.mock import Mock, mock_open, patch
 import numpy as np
 import pytest
 
-from birdnetpi.models.birdnet_config import BirdNETConfig
+from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.analysis_client_service import AnalysisClientService
 
 log = logging.getLogger(__name__)

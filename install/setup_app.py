@@ -5,11 +5,10 @@ import sys
 # Add the src directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
-from models.birdnet_config import BirdNETConfig
-from services.database_manager import DatabaseManager
-from services.file_manager import FileManager
-from utils.config_file_parser import ConfigFileParser
-
+from birdnetpi.models.config import BirdNETConfig
+from birdnetpi.services.database_manager import DatabaseManager
+from birdnetpi.services.file_manager import FileManager
+from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 

@@ -3,8 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from birdnetpi.managers.update_manager import UpdateManager
-from birdnetpi.models.caddy_config import CaddyConfig
-from birdnetpi.models.git_update_config import GitUpdateConfig
+from birdnetpi.models.config import CaddyConfig, GitUpdateConfig
 
 
 @pytest.fixture

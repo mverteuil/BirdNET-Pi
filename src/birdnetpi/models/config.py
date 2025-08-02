@@ -1,3 +1,9 @@
+"""Consolidated configuration models for BirdNET-Pi.
+
+This module contains all configuration-related dataclasses and models
+used throughout the application.
+"""
+
 from dataclasses import dataclass, field
 
 
@@ -87,6 +93,11 @@ class BirdNETConfig:
     gps_update_interval: float = 5.0  # GPS update interval in seconds
     hardware_check_interval: float = 10.0  # Hardware monitoring interval in seconds
 
+    # Hardware monitoring settings
+    enable_audio_device_check: bool = True  # Enable audio device monitoring
+    enable_system_resource_check: bool = True  # Enable system resource monitoring
+    enable_gps_check: bool = False  # Enable GPS device monitoring
+
     # Analysis model configuration
     sf_threshold: float = 0.03  # Species filter threshold
     privacy_threshold: float = 10.0  # Privacy threshold percentage for human detection cutoff
@@ -105,3 +116,35 @@ class BirdNETConfig:
     enable_webhooks: bool = False  # Enable webhook notifications
     webhook_urls: str = ""  # Comma-separated list of webhook URLs
     webhook_events: str = "detection,health,gps,system"  # Events to send via webhooks
+
+
+@dataclass
+class CaddyConfig:
+    """Configuration for Caddy web server settings."""
+
+    birdnetpi_url: str
+
+
+@dataclass
+class GitUpdateConfig:
+    """Configuration for Git repository updates."""
+
+    remote: str = "origin"
+    branch: str = "main"
+
+
+@dataclass
+class DailyPlotConfig:
+    """Dataclass to hold configuration for the daily plot."""
+
+    resample_sel: str
+    specie: str
+
+
+@dataclass
+class MultiDayPlotConfig:
+    """Configuration for multi-day plot data preparation."""
+
+    resample_sel: str
+    specie: str
+    top_n: int

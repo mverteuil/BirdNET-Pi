@@ -2,7 +2,7 @@ import os
 import shutil  # Import shutil
 
 from birdnetpi.managers.service_manager import ServiceManager
-from birdnetpi.models.birdnet_config import BirdNETConfig
+from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.file_manager import FileManager
 

@@ -11,7 +11,7 @@ try:
 except ImportError:
     import tensorflow.lite as tflite
 
-from birdnetpi.models.birdnet_config import BirdNETConfig
+from birdnetpi.models.config import BirdNETConfig
 
 log = logging.getLogger(__name__)
 

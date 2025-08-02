@@ -9,8 +9,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
-from birdnetpi.models.daily_plot_config import DailyPlotConfig
-from birdnetpi.models.multi_day_plot_config import MultiDayPlotConfig
+from birdnetpi.models.config import DailyPlotConfig, MultiDayPlotConfig
 
 
 class PlottingManager:

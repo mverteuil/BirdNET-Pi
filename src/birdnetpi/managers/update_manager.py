@@ -2,7 +2,7 @@ import os
 import re
 import subprocess
 
-from birdnetpi.models.git_update_config import GitUpdateConfig
+from birdnetpi.models.config import GitUpdateConfig
 
 
 class UpdateManager:
@@ -128,7 +128,7 @@ class UpdateManager:
             print(f"An unexpected error occurred during update: {e}")
             raise
 
-    from birdnetpi.models.caddy_config import CaddyConfig
+    from birdnetpi.models.config import CaddyConfig
 
     def update_caddyfile(self, config: CaddyConfig) -> None:
         """Update the Caddyfile with new configuration and reload Caddy."""

@@ -2,9 +2,7 @@ import datetime
 
 import pandas as pd
 
-from birdnetpi.models.birdnet_config import BirdNETConfig
-from birdnetpi.models.daily_plot_config import DailyPlotConfig
-from birdnetpi.models.multi_day_plot_config import MultiDayPlotConfig
+from birdnetpi.models.config import BirdNETConfig, DailyPlotConfig, MultiDayPlotConfig
 from birdnetpi.services.location_service import LocationService
 
 

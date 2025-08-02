@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from birdnetpi.models.git_update_config import GitUpdateConfig
+from birdnetpi.models.config import GitUpdateConfig
 from birdnetpi.wrappers.update_manager_wrapper import main_cli
 
 

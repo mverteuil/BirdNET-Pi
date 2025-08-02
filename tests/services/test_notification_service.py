@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from birdnetpi.models.birdnet_config import BirdNETConfig
+from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.models.database_models import Detection
 from birdnetpi.services.notification_service import NotificationService
 

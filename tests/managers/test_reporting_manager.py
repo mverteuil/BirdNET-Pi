@@ -7,7 +7,7 @@ import pytest
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
-from birdnetpi.models.birdnet_config import BirdNETConfig  # Added import
+from birdnetpi.models.config import BirdNETConfig  # Added import
 from birdnetpi.models.database_models import Detection
 from birdnetpi.services.location_service import LocationService  # Added import
 

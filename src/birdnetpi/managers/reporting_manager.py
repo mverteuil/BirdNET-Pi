@@ -6,8 +6,7 @@ import pandas as pd
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.plotting_manager import PlottingManager
-from birdnetpi.models.birdnet_config import BirdNETConfig
-from birdnetpi.models.daily_plot_config import DailyPlotConfig
+from birdnetpi.models.config import BirdNETConfig, DailyPlotConfig
 from birdnetpi.services.location_service import LocationService
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 

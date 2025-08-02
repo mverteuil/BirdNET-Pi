@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from birdnetpi.models.birdnet_config import BirdNETConfig
+from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.models.database_models import Detection
 from birdnetpi.services.mqtt_service import MQTTService
 from birdnetpi.services.webhook_service import WebhookService

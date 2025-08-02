@@ -2,7 +2,7 @@ import logging
 import logging.handlers
 import os
 
-from birdnetpi.models.birdnet_config import BirdNETConfig
+from birdnetpi.models.config import BirdNETConfig
 
 
 def configure_logging(config: BirdNETConfig) -> None:

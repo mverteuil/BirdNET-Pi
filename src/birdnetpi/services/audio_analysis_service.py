@@ -4,7 +4,7 @@ import logging
 import httpx
 import numpy as np
 
-from birdnetpi.models.birdnet_config import BirdNETConfig
+from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.analysis_client_service import AnalysisClientService
 from birdnetpi.services.file_manager import FileManager
 from birdnetpi.utils.file_path_resolver import FilePathResolver
