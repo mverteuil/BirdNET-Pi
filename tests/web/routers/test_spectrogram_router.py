@@ -92,7 +92,9 @@ class TestSpectrogramRouterIntegration:
 
     def test_spectrogram_endpoint_creates_plotting_manager_instance(self, client, temp_audio_file):
         """Should create PlottingManager instance for each request."""
-        with patch("birdnetpi.managers.plotting_manager.PlottingManager") as mock_plotting_manager:
+        with patch(
+            "birdnetpi.web.routers.spectrogram_router.PlottingManager"
+        ) as mock_plotting_manager:
             mock_instance = MagicMock()
             fake_png_data = b"\x89PNG\r\n\x1a\n"
             mock_instance.generate_spectrogram.return_value = io.BytesIO(fake_png_data)

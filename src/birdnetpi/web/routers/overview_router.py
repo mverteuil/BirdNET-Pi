@@ -6,6 +6,7 @@ from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
+from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.location_service import LocationService
 from birdnetpi.services.system_monitor_service import SystemMonitorService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
@@ -23,9 +24,8 @@ def get_reporting_manager(request: Request) -> ReportingManager:
     """Return a ReportingManager instance with injected dependencies."""
     # TODO: Properly inject DetectionManager, FilePathResolver, and ConfigFileParser
     # These should ideally be initialized once in the lifespan and passed via app.state
-    db_manager = DetectionManager(
-        request.app.state.config.data.db_path
-    )  # Assuming db_path is available in app.state.config.data
+    db_service = DatabaseService(request.app.state.config.data.db_path)
+    db_manager = DetectionManager(db_service)
     file_path_resolver = FilePathResolver()
     config_parser = ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path())
 
