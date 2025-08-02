@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from birdnetpi.managers.detection_event_manager import DetectionEventManager
 from birdnetpi.managers.detection_manager import DetectionManager
-from birdnetpi.services.detection_event_processor import DetectionEventProcessor
 from birdnetpi.services.notification_service import NotificationService
 from birdnetpi.utils.signals import detection_signal
 
@@ -26,30 +26,30 @@ def mock_notification_service():
 
 
 @pytest.fixture
-def detection_event_processor(mock_detection_manager, mock_notification_service):
-    """Return a DetectionEventProcessor instance for testing."""
-    processor = DetectionEventProcessor(
+def detection_event_manager(mock_detection_manager, mock_notification_service):
+    """Return a DetectionEventManager instance for testing."""
+    manager = DetectionEventManager(
         detection_manager=mock_detection_manager,
         notification_service=mock_notification_service,
     )
-    yield processor
+    yield manager
     # Disconnect the signal after the test to prevent interference
-    detection_signal.disconnect(processor.handle_detection_event)
+    detection_signal.disconnect(manager.handle_detection_event)
 
 
 @pytest.fixture(autouse=True)
-def caplog_for_detection_event_processor(caplog):
-    """Fixture to capture logs from detection_event_processor.py."""
-    caplog.set_level(logging.INFO, logger="birdnetpi.services.detection_event_processor")
+def caplog_for_detection_event_manager(caplog):
+    """Fixture to capture logs from detection_event_manager.py."""
+    caplog.set_level(logging.INFO, logger="birdnetpi.managers.detection_event_manager")
     yield
 
 
-class TestDetectionEventProcessor:
-    """Test the DetectionEventProcessor class."""
+class TestDetectionEventManager:
+    """Test the DetectionEventManager class."""
 
     @pytest.mark.asyncio
     async def test_handle_detection_event(
-        self, detection_event_processor, mock_detection_manager, mock_notification_service, caplog
+        self, detection_event_manager, mock_detection_manager, mock_notification_service, caplog
     ):
         """Should process detection event, save to DB, and send notifications."""
         detection_data = {
@@ -64,7 +64,7 @@ class TestDetectionEventProcessor:
         # Trigger the signal and await its processing
         # We need to explicitly run the async receiver within the event loop
         task = asyncio.create_task(
-            detection_event_processor.handle_detection_event(self, detection_data=detection_data)
+            detection_event_manager.handle_detection_event(self, detection_data=detection_data)
         )
         await task
 

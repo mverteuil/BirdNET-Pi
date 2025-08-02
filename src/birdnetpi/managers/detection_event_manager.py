@@ -7,8 +7,8 @@ from birdnetpi.utils.signals import detection_signal
 logger = logging.getLogger(__name__)
 
 
-class DetectionEventProcessor:
-    """Processes detection events, saving them to the database and triggering notifications."""
+class DetectionEventManager:
+    """Manages detection events, saving them to the database and triggering notifications."""
 
     def __init__(
         self, detection_manager: DetectionManager, notification_service: NotificationService
@@ -16,7 +16,7 @@ class DetectionEventProcessor:
         self.detection_manager = detection_manager
         self.notification_service = notification_service
         detection_signal.connect(self.handle_detection_event)  # Register signal handler
-        logger.info("DetectionEventProcessor initialized and listening for signals.")
+        logger.info("DetectionEventManager initialized and listening for signals.")
 
     async def handle_detection_event(self, sender: object, detection_data: dict) -> None:
         """Handle a detection event received via the Blinker signal."""
