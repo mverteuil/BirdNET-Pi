@@ -11,7 +11,7 @@ from birdnetpi.managers.update_manager import UpdateManager
 
 router = APIRouter()
 
-templates = Jinja2Templates(directory="src/web/templates")
+templates = Jinja2Templates(directory="src/birdnetpi/web/templates")
 
 
 def get_detection_manager(request: Request) -> DetectionManager:
