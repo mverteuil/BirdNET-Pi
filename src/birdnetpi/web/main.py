@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import ClassVar
 
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -41,6 +41,7 @@ from .routers import (
     reporting_router,
     settings_router,
     spectrogram_router,
+    websocket_router,
 )
 
 logger = logging.getLogger(__name__)
@@ -199,6 +200,7 @@ app.include_router(iot_router.router)  # Include IoT integration router
 
 app.include_router(overview_router.router)
 app.include_router(detections_router.router, prefix="/api/detections")  # Include detections router
+app.include_router(websocket_router.router)  # Include WebSocket endpoints
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -212,47 +214,6 @@ async def read_root(request: Request) -> HTMLResponse:
             "websocket_url": f"ws://{request.url.hostname}:8000/ws",
         },
     )
-
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket) -> None:
-    """Handle WebSocket connections for real-time updates."""
-    await websocket.accept()
-    app.state.active_websockets.add(websocket)  # Add new connection
-    try:
-        while True:
-            await websocket.receive_text()  # Keep connection alive
-    except WebSocketDisconnect:
-        app.state.active_websockets.remove(websocket)  # Remove disconnected client
-        logger.info("Client disconnected")
-
-
-@app.websocket("/ws/audio")
-async def audio_websocket_endpoint(websocket: WebSocket) -> None:
-    """Handle WebSocket connections for real-time audio streaming."""
-    await websocket.accept()
-    await app.state.audio_websocket_service.connect_websocket(websocket)
-    try:
-        while True:
-            # Keep the connection alive by receiving ping messages
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        await app.state.audio_websocket_service.disconnect_websocket(websocket)
-        logger.info("Audio WebSocket client disconnected")
-
-
-@app.websocket("/ws/spectrogram")
-async def spectrogram_websocket_endpoint(websocket: WebSocket) -> None:
-    """Handle WebSocket connections for real-time spectrogram streaming."""
-    await websocket.accept()
-    await app.state.spectrogram_service.connect_websocket(websocket)
-    try:
-        while True:
-            # Keep the connection alive by receiving ping messages
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        await app.state.spectrogram_service.disconnect_websocket(websocket)
-        logger.info("Spectrogram WebSocket client disconnected")
 
 
 @app.get("/test_detection_form", response_class=HTMLResponse)
