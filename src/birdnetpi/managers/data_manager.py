@@ -1,9 +1,9 @@
 import os
 import shutil  # Import shutil
 
+from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.services.file_manager import FileManager
 from birdnetpi.services.system_control_service import SystemControlService
 
 

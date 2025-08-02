@@ -4,9 +4,9 @@ import logging
 import httpx
 import numpy as np
 
+from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.bird_detection_service import BirdDetectionService
-from birdnetpi.services.file_manager import FileManager
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 logger = logging.getLogger(__name__)

@@ -6,9 +6,9 @@ import httpx
 import numpy as np
 import pytest
 
+from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.audio_analysis_service import AudioAnalysisService
-from birdnetpi.services.file_manager import FileManager
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 

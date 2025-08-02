@@ -1,6 +1,6 @@
 import pytest
 
-from birdnetpi.services.file_manager import FileManager
+from birdnetpi.managers.file_manager import FileManager
 
 
 @pytest.fixture

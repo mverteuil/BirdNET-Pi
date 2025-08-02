@@ -1,8 +1,8 @@
 import argparse
 
 from birdnetpi.managers.data_manager import DataManager
+from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.services.file_manager import FileManager
 from birdnetpi.services.system_control_service import SystemControlService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
