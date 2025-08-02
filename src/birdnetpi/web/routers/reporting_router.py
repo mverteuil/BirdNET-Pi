@@ -1,3 +1,5 @@
+import pandas as pd
+import plotly.io as pio
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 
@@ -48,4 +50,55 @@ async def get_todays_detections(
         request,
         "reports/todays_detections.html",
         {"todays_detections": todays_detections},
+    )
+
+
+@router.get("/reports/charts", response_class=HTMLResponse)
+async def get_charts(
+    request: Request,
+    reporting_manager: ReportingManager = Depends(get_reporting_manager),  # noqa: B008
+) -> HTMLResponse:
+    """Generate and display various charts related to bird detections."""
+    # Get plotting manager from app state
+    plotting_manager = request.app.state.plotting_manager
+    df = reporting_manager.get_data()
+
+    # Default values for plot generation
+    start_date = (
+        pd.to_datetime(df.index.min()).date() if not df.empty else pd.Timestamp.now().date()
+    )
+    end_date = pd.to_datetime(df.index.max()).date() if not df.empty else pd.Timestamp.now().date()
+    top_n = 10
+
+    specie = "All"
+    num_days_to_display = getattr(
+        request.app.state.config, "num_days_to_display", 7
+    )  # Default to 7 days
+    selected_pal = "Viridis"  # Arbitrary for now
+
+    # Generate multi-day plot
+    multi_day_fig = plotting_manager.generate_multi_day_species_and_hourly_plot(
+        df, "Hourly", start_date, end_date, top_n, specie
+    )
+    multi_day_plot_json = pio.to_json(multi_day_fig)
+
+    # Generate daily plot
+    # Handle empty DataFrame case for species selection
+    most_common_species = (
+        df["Com_Name"].mode()[0] if not df.empty and len(df["Com_Name"].mode()) > 0 else "All"
+    )
+    daily_fig = plotting_manager.generate_daily_detections_plot(
+        df,
+        "15 minutes",
+        start_date,
+        most_common_species,
+        num_days_to_display,
+        selected_pal,
+    )
+    daily_plot_json = pio.to_json(daily_fig)
+
+    plot_data = {"multi_day_plot": multi_day_plot_json, "daily_plot": daily_plot_json}
+
+    return request.app.state.templates.TemplateResponse(
+        request, "charts.html", {"plot_data": plot_data}
     )

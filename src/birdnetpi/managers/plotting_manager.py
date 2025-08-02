@@ -23,6 +23,25 @@ class PlottingManager:
     def __init__(self, data_preparation_manager: DataPreparationManager) -> None:
         self.data_preparation_manager = data_preparation_manager
 
+    def _create_empty_plot(self, message: str) -> go.Figure:
+        """Create an empty plot with a message when no data is available."""
+        fig = go.Figure()
+        fig.add_annotation(
+            x=0.5,
+            y=0.5,
+            text=message,
+            showarrow=False,
+            font={"size": 16},
+            xref="paper",
+            yref="paper",
+        )
+        fig.update_layout(
+            xaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
+            yaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
+            plot_bgcolor="white",
+        )
+        return fig
+
     def generate_spectrogram(self, audio_path: str) -> io.BytesIO:
         """Generate a spectrogram for a given audio file and return it as a BytesIO buffer."""
         y, sr = librosa.load(audio_path)
@@ -157,6 +176,10 @@ class PlottingManager:
         species: str,
     ) -> go.Figure:
         """Generate a multi-day species and hourly plot."""
+        # Handle empty DataFrame case or DataFrame with no actual data
+        if df.empty or len(df) == 0:
+            return self._create_empty_plot("No data available for multi-day plot")
+
         config = MultiDayPlotConfig(resample_sel=resample_sel, specie=species, top_n=top_n)
         df5, hourly, top_n_species, df_counts = (
             self.data_preparation_manager.prepare_multi_day_plot_data(df, config)
@@ -236,6 +259,10 @@ class PlottingManager:
         selected_pal: str,
     ) -> go.Figure:
         """Generate a daily detections plot."""
+        # Handle empty DataFrame case or DataFrame with no actual data
+        if df.empty or len(df) == 0:
+            return self._create_empty_plot("No data available for daily plot")
+
         config = DailyPlotConfig(resample_sel=resample_sel, specie=species)
         day_hour_freq, saved_time_labels, fig_dec_y, fig_x = (
             self.data_preparation_manager.prepare_daily_plot_data(df, config)

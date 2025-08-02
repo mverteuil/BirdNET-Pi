@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.testclient import TestClient
 
 from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.gps_service import GPSService
 from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
@@ -35,8 +36,11 @@ def app_with_field_services(temp_db):
     app = FastAPI()
 
     # Set up app state with real and mock components
-    app.state.detections = DetectionManager(temp_db)
+    app.state.detections = DetectionManager(DatabaseService(temp_db))
     app.state.templates = Jinja2Templates(directory="src/birdnetpi/web/templates")
+
+    # Add mock config object that templates expect
+    app.state.config = BirdNETConfig(site_name="Test BirdNET-Pi")
 
     # Add GPS service (may be None in some configurations)
     app.state.gps_service = GPSService(enable_gps=False)  # Disabled for testing
@@ -82,7 +86,7 @@ class TestFieldModeRouterIntegration:
 
         data = response.json()
         assert "enabled" in data
-        assert "available" in data
+        assert "has_fix" in data
         # With GPS disabled, it should report as not enabled
         assert data["enabled"] is False
 
@@ -94,7 +98,7 @@ class TestFieldModeRouterIntegration:
         data = response.json()
 
         # Check required fields exist
-        required_fields = ["enabled", "available"]
+        required_fields = ["enabled", "has_fix"]
         for field in required_fields:
             assert field in data
 

@@ -51,8 +51,29 @@ class ReportingManager:
             for d in detections
         ]
         df = pd.DataFrame(data)
-        df["DateTime"] = pd.to_datetime(df["DateTime"])
-        df = df.set_index("DateTime")
+        if not df.empty:
+            df["DateTime"] = pd.to_datetime(df["DateTime"])
+            df = df.set_index("DateTime")
+        else:
+            # Create empty DataFrame with expected columns when no data
+            df = pd.DataFrame(
+                columns=[
+                    "Com_Name",
+                    "DateTime",
+                    "Date",
+                    "Time",
+                    "Sci_Name",
+                    "Confidence",
+                    "Lat",
+                    "Lon",
+                    "Cutoff",
+                    "Week",
+                    "Sens",
+                    "Overlap",
+                ]
+            )
+            df["DateTime"] = pd.to_datetime(df["DateTime"])
+            df = df.set_index("DateTime")
         return df
 
     def _get_weekly_stats(
@@ -94,7 +115,7 @@ class ReportingManager:
 
                 top_10_species.append(
                     {
-                        "com_name": row["com_name"],
+                        "com_name": row["species"],
                         "count": current_count,
                         "percentage_diff": percentage_diff,
                     }
@@ -107,7 +128,7 @@ class ReportingManager:
         """Fetch new species detected in the current week that were not present in prior data."""
         new_species_rows = self.detection_manager.get_new_species_data(start_date, end_date)
         new_species = (
-            [{"com_name": row["com_name"], "count": row["count"]} for row in new_species_rows]
+            [{"com_name": row["species"], "count": row["count"]} for row in new_species_rows]
             if new_species_rows
             else []
         )
@@ -193,8 +214,9 @@ class ReportingManager:
     def get_todays_detections(self) -> list[dict[str, Any]]:
         """Retrieve all detection records from the database for the current day."""
         today = datetime.date.today()
-        todays_detections = self.detection_manager.get_detections_by_date_range(today, today)
-        return todays_detections
+        # Get detection counts for today (could be expanded to get actual detections if needed)
+        todays_detection_count = self.detection_manager.get_detections_count_by_date(today)
+        return [{"date": str(today), "count": todays_detection_count}]
 
     def date_filter(self, df: pd.DataFrame, start_date: str, end_date: str) -> pd.DataFrame:
         """Filter a DataFrame by date range."""

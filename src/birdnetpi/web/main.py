@@ -41,7 +41,6 @@ from .routers import (
     reporting_router,
     settings_router,
     spectrogram_router,
-    views_router,
 )
 
 logger = logging.getLogger(__name__)
@@ -195,7 +194,6 @@ app.include_router(log_router.router)
 app.include_router(audio_router.router)
 app.include_router(reporting_router.router)
 app.include_router(spectrogram_router.router)
-app.include_router(views_router.router)
 app.include_router(field_mode_router.router)
 app.include_router(iot_router.router)  # Include IoT integration router
 
