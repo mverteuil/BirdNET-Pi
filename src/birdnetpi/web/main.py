@@ -13,7 +13,6 @@ from sqladmin import Admin, ModelView
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.plotting_manager import PlottingManager
-from birdnetpi.managers.service_manager import ServiceManager
 from birdnetpi.models.database_models import AudioFile, Detection
 from birdnetpi.services.audio_fifo_reader_service import AudioFifoReaderService
 from birdnetpi.services.audio_websocket_service import AudioWebSocketService
@@ -25,6 +24,7 @@ from birdnetpi.services.location_service import LocationService
 from birdnetpi.services.mqtt_service import MQTTService
 from birdnetpi.services.notification_service import NotificationService
 from birdnetpi.services.spectrogram_service import SpectrogramService
+from birdnetpi.services.system_control_service import SystemControlService
 from birdnetpi.services.webhook_service import WebhookService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
@@ -77,7 +77,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         app.state.config, app.state.location_service
     )
     app.state.plotting_manager = PlottingManager(app.state.data_preparation_manager)
-    app.state.service_manager = ServiceManager()
+    app.state.service_manager = SystemControlService()
     app.state.active_websockets = set()  # Initialize set for active WebSocket connections
     app.state.audio_websocket_service = AudioWebSocketService(
         samplerate=app.state.config.sample_rate, channels=app.state.config.audio_channels

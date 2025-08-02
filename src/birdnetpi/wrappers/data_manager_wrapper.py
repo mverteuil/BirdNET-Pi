@@ -1,9 +1,9 @@
 import argparse
 
 from birdnetpi.managers.data_manager import DataManager
-from birdnetpi.managers.service_manager import ServiceManager
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.file_manager import FileManager
+from birdnetpi.services.system_control_service import SystemControlService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
@@ -24,7 +24,7 @@ def main_cli() -> None:
 
     file_manager = FileManager(config.data.recordings_dir)
     db_service = DatabaseService(config.data.db_path)
-    service_manager = ServiceManager()
+    service_manager = SystemControlService()
 
     data_manager = DataManager(config, file_manager, db_service, service_manager)
 

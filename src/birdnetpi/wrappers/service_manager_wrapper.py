@@ -1,6 +1,6 @@
 import argparse
 
-from birdnetpi.managers.service_manager import ServiceManager
+from birdnetpi.services.system_control_service import SystemControlService
 
 
 def main_cli() -> None:
@@ -11,7 +11,7 @@ def main_cli() -> None:
 
     args = parser.parse_args()
 
-    service_manager = ServiceManager()
+    service_manager = SystemControlService()
 
     if args.action == "restart_services":
         if not args.services:

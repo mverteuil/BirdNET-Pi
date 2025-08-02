@@ -1,8 +1,8 @@
 from birdnetpi.utils.service_strategies import ServiceStrategySelector
 
 
-class ServiceManager:
-    """Manages system services, providing methods to start, stop, and restart them."""
+class SystemControlService:
+    """Service for controlling system services with methods to start, stop, and restart them."""
 
     def __init__(self):
         self.strategy = ServiceStrategySelector.get_strategy()

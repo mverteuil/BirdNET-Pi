@@ -1,10 +1,10 @@
 import os
 import shutil  # Import shutil
 
-from birdnetpi.managers.service_manager import ServiceManager
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.file_manager import FileManager
+from birdnetpi.services.system_control_service import SystemControlService
 
 
 class DataManager:
@@ -15,7 +15,7 @@ class DataManager:
         config: BirdNETConfig,
         file_manager: FileManager,
         db_service: DatabaseService,
-        service_manager: ServiceManager,
+        service_manager: SystemControlService,
     ) -> None:
         self.config = config
         self.file_manager = file_manager

@@ -2,12 +2,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from birdnetpi.managers.service_manager import ServiceManager
+from birdnetpi.services.system_control_service import SystemControlService
 from birdnetpi.utils.service_strategies import ServiceStrategySelector
 
 
-class TestServiceManager:
-    """Tests for the ServiceManager class, ensuring it correctly uses the strategy pattern."""
+class TestSystemControlService:
+    """Tests for the SystemControlService class, ensuring it correctly uses the strategy pattern."""
 
     @pytest.fixture
     def mock_strategy(self):
@@ -15,10 +15,10 @@ class TestServiceManager:
         return MagicMock()
 
     @pytest.fixture(autouse=True)
-    def setup_service_manager(self, mock_strategy):
-        """Set up ServiceManager with a mocked strategy for each test."""
+    def setup_system_control_service(self, mock_strategy):
+        """Set up SystemControlService with a mocked strategy for each test."""
         with patch.object(ServiceStrategySelector, "get_strategy", return_value=mock_strategy):
-            self.service_manager = ServiceManager()
+            self.service_manager = SystemControlService()
             self.mock_strategy = mock_strategy
 
     def test_should_call_start_service_on_strategy(self):

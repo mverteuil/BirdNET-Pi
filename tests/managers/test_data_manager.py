@@ -4,10 +4,10 @@ from unittest.mock import Mock, patch
 import pytest
 
 from birdnetpi.managers.data_manager import DataManager
-from birdnetpi.managers.service_manager import ServiceManager
 from birdnetpi.models.config import BirdNETConfig, DataConfig
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.file_manager import FileManager
+from birdnetpi.services.system_control_service import SystemControlService
 
 
 @pytest.fixture
@@ -39,8 +39,8 @@ def mock_db_service():
 
 @pytest.fixture
 def mock_service_manager():
-    """Provide a mock ServiceManager instance."""
-    return Mock(spec=ServiceManager)
+    """Provide a mock SystemControlService instance."""
+    return Mock(spec=SystemControlService)
 
 
 @pytest.fixture

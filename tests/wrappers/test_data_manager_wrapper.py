@@ -52,7 +52,7 @@ def mock_dependencies(tmp_path, monkeypatch):
 
     mock_service_manager_class = MagicMock()
     monkeypatch.setattr(
-        "birdnetpi.wrappers.data_manager_wrapper.ServiceManager",
+        "birdnetpi.wrappers.data_manager_wrapper.SystemControlService",
         mock_service_manager_class,
     )
 

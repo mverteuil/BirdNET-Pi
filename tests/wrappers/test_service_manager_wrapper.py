@@ -46,7 +46,7 @@ def mock_dependencies(monkeypatch, tmp_path):
 
     mock_service_manager_class = MagicMock()
     monkeypatch.setattr(
-        "birdnetpi.wrappers.service_manager_wrapper.ServiceManager",
+        "birdnetpi.wrappers.service_manager_wrapper.SystemControlService",
         mock_service_manager_class,
     )
 
@@ -54,7 +54,7 @@ def mock_dependencies(monkeypatch, tmp_path):
 
 
 def test_restart_services_action_instantiates_and_calls_correctly(mock_dependencies):
-    """Should instantiate ServiceManager and call restart_services."""
+    """Should instantiate SystemControlService and call restart_services."""
     with patch(
         "argparse.ArgumentParser.parse_args",
         return_value=MagicMock(action="restart_services", services=["test.service"]),
