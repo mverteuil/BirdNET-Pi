@@ -1,6 +1,96 @@
+# BirdNET-Pi Configuration Template
+# This file provides default configuration values for a new BirdNET-Pi installation
+
+# Basic Settings
 site_name: BirdNET-Pi
 latitude: 0.0
 longitude: 0.0
-audio_device_index: 0
+model: BirdNET_GLOBAL_6K_V2.4_Model_FP16
+sf_thresh: 0.03
+confidence: 0.7
+sensitivity: 1.25
+week: 0
+audio_format: mp3
+extraction_length: 6.0
+audio_device_index: -1  # -1 for system default
 sample_rate: 48000
 audio_channels: 1
+
+# Data Storage Paths
+data:
+  recordings_dir: /mnt/birdnet/recordings
+  extracted_dir: /mnt/birdnet/extracted
+  processed_dir: /mnt/birdnet/processed
+  id_file: /var/log/birdnet/id.txt
+  bird_db_file: /var/log/birdnet/BirdDB.txt
+  db_path: /var/log/birdnet/birdnetpi.db
+
+# Logging Configuration
+logging:
+  syslog_enabled: false
+  syslog_host: localhost
+  syslog_port: 514
+  file_logging_enabled: false
+  log_file_path: ~/BirdNET-Pi/birdnetpi.log
+  max_log_file_size_mb: 10
+  log_file_backup_count: 5
+  log_level: INFO
+
+# External Service Integration
+birdweather_id: ""
+
+# Notification Settings
+apprise_input: ""
+apprise_notification_title: ""
+apprise_notification_body: ""
+apprise_notify_each_detection: false
+apprise_notify_new_species: false
+apprise_notify_new_species_each_day: false
+apprise_weekly_report: false
+minimum_time_limit: 0
+
+# Flickr Integration
+flickr_api_key: ""
+flickr_filter_email: ""
+
+# Localization
+database_lang: en
+timezone: UTC
+
+# Web Interface Settings
+caddy_pwd: ""
+silence_update_indicator: false
+birdnetpi_url: ""
+
+# Species Filtering
+apprise_only_notify_species_names: ""
+apprise_only_notify_species_names_2: ""
+
+# Field Mode and GPS Settings
+enable_gps: false
+gps_update_interval: 5.0
+
+# Hardware Monitoring
+hardware_check_interval: 10.0
+enable_audio_device_check: true
+enable_system_resource_check: true
+enable_gps_check: false
+
+# Analysis Configuration
+sf_threshold: 0.03
+privacy_threshold: 10.0
+data_model_version: 2
+
+# MQTT Integration Settings
+enable_mqtt: false
+mqtt_broker_host: localhost
+mqtt_broker_port: 1883
+mqtt_username: ""
+mqtt_password: ""
+mqtt_topic_prefix: birdnet
+mqtt_client_id: birdnet-pi
+
+# Webhook Integration Settings
+enable_webhooks: false
+webhook_urls: ""
+webhook_events: detection,health,gps,system
