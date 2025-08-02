@@ -5,7 +5,7 @@ import logging
 import numpy as np
 import pytest
 
-from birdnetpi.services.filters import (
+from birdnetpi.utils.filters import (
     AudioFilter,
     FilterChain,
     HighPassFilter,
@@ -421,4 +421,4 @@ class TestFilterErrorHandling:
 @pytest.fixture(autouse=True)
 def setup_logging(caplog):
     """Set up logging for tests."""
-    caplog.set_level(logging.DEBUG, logger="birdnetpi.services.filters")
+    caplog.set_level(logging.DEBUG, logger="birdnetpi.utils.filters")
