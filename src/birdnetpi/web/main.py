@@ -15,6 +15,7 @@ from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.models.database_models import AudioFile, Detection
+from birdnetpi.models.detection_event import DetectionEvent
 from birdnetpi.services.audio_fifo_reader_service import AudioFifoReaderService
 from birdnetpi.services.audio_websocket_service import AudioWebSocketService
 from birdnetpi.services.database_service import DatabaseService
@@ -29,7 +30,6 @@ from birdnetpi.services.webhook_service import WebhookService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 from birdnetpi.utils.logging_configurator import configure_logging
-from birdnetpi.web.routers.api_router import DetectionEvent
 
 from .routers import (
     api_router,

@@ -2,7 +2,7 @@ import datetime
 import random
 
 from birdnetpi.managers.detection_manager import DetectionManager
-from birdnetpi.web.routers.api_router import DetectionEvent
+from birdnetpi.models.detection_event import DetectionEvent
 
 
 def generate_dummy_detections(

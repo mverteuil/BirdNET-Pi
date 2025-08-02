@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.models.detection_event import DetectionEvent
 from birdnetpi.utils.dummy_data_generator import generate_dummy_detections
-from birdnetpi.web.routers.api_router import DetectionEvent
 
 
 @pytest.fixture
