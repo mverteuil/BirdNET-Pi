@@ -131,8 +131,8 @@ FastAPI provides the same endpoints as the PHP implementation, plus new features
 
 ## Migration Timeline
 
-- **Legacy Support**: PHP files moved to `legacy-files/` directory
+- **Legacy Support**: ~~PHP files moved to `legacy-files/` directory~~ (REMOVED)
 - **Current Version**: Full FastAPI implementation
-- **Future Versions**: PHP support will be completely removed
+- **Future Versions**: PHP support completely removed
 
 This migration ensures BirdNET-Pi remains modern, maintainable, and performant for years to come.
