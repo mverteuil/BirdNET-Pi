@@ -1,9 +1,13 @@
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import matplotlib
 import pytest
 
 from birdnetpi.utils.file_path_resolver import FilePathResolver
+
+# Configure matplotlib to use non-GUI backend for testing
+matplotlib.use("Agg")
 
 
 @pytest.fixture

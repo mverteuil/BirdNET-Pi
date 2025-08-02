@@ -2,11 +2,15 @@ import io
 
 import librosa
 import librosa.display
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+# Ensure matplotlib uses non-GUI backend
+matplotlib.use("Agg")
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.models.config import DailyPlotConfig, MultiDayPlotConfig
