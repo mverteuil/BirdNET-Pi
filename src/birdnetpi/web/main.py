@@ -19,6 +19,8 @@ from birdnetpi.services.audio_fifo_reader_service import AudioFifoReaderService
 from birdnetpi.services.audio_websocket_service import AudioWebSocketService
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.file_manager import FileManager
+from birdnetpi.services.gps_service import GPSService
+from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
 from birdnetpi.services.location_service import LocationService
 from birdnetpi.services.notification_service import NotificationService
 from birdnetpi.services.spectrogram_service import SpectrogramService
@@ -30,6 +32,7 @@ from birdnetpi.web.routers.api_router import DetectionEvent
 from .routers import (
     api_router,
     audio_router,
+    field_mode_router,
     log_router,
     overview_router,
     reporting_router,
@@ -84,6 +87,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         update_rate=15.0,  # 15 FPS for smooth real-time display
     )
 
+    # Initialize GPS service for field mode
+    app.state.gps_service = GPSService(
+        enable_gps=getattr(app.state.config, "enable_gps", False),
+        update_interval=getattr(app.state.config, "gps_update_interval", 5.0),
+    )
+
+    # Initialize hardware monitoring service
+    app.state.hardware_monitor = HardwareMonitorService(
+        check_interval=getattr(app.state.config, "hardware_check_interval", 10.0),
+        audio_device_check=True,
+        system_resource_check=True,
+        gps_check=getattr(app.state.config, "enable_gps", False),
+    )
+
     # Initialize and start the FIFO reader service for WebSocket streaming
     fifo_base_path = app.state.file_resolver.get_fifo_base_path()
     livestream_fifo_path = f"{fifo_base_path}/birdnet_audio_livestream.fifo"
@@ -125,10 +142,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Start the FIFO reader service
     await app.state.audio_fifo_reader_service.start()
 
+    # Start field mode services
+    await app.state.gps_service.start()
+    await app.state.hardware_monitor.start()
+
     yield
 
-    # Cleanup: Stop the FIFO reader service
+    # Cleanup: Stop services
     await app.state.audio_fifo_reader_service.stop()
+    await app.state.gps_service.stop()
+    await app.state.hardware_monitor.stop()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -139,6 +162,7 @@ app.include_router(audio_router.router)
 app.include_router(reporting_router.router)
 app.include_router(spectrogram_router.router)
 app.include_router(views_router.router)
+app.include_router(field_mode_router.router)
 
 app.include_router(overview_router.router)
 app.include_router(api_router.router, prefix="/api")  # Include the new API router

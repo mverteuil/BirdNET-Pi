@@ -1,5 +1,6 @@
 import csv
 import datetime
+from datetime import date
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import func
@@ -381,4 +382,60 @@ class DetectionManager:
             except SQLAlchemyError as e:
                 db.rollback()
                 print(f"Error retrieving total detections: {e}")
+                raise
+
+    def get_recent_detections(self, limit: int = 10) -> list[Detection]:
+        """Retrieve recent detection records from the database."""
+        with self.db_service.get_db() as db:
+            try:
+                return db.query(Detection).order_by(Detection.timestamp.desc()).limit(limit).all()
+            except SQLAlchemyError as e:
+                db.rollback()
+                print(f"Error retrieving recent detections: {e}")
+                raise
+
+    def get_detection_by_id(self, detection_id: int) -> Detection | None:
+        """Retrieve a detection by its ID."""
+        with self.db_service.get_db() as db:
+            try:
+                return db.query(Detection).filter(Detection.id == detection_id).first()
+            except SQLAlchemyError as e:
+                db.rollback()
+                print(f"Error retrieving detection by ID: {e}")
+                raise
+
+    def get_detections_count_by_date(self, target_date: date) -> int:
+        """Get count of detections for a specific date."""
+        with self.db_service.get_db() as db:
+            try:
+                start_datetime = datetime.datetime.combine(target_date, datetime.time.min)
+                end_datetime = datetime.datetime.combine(target_date, datetime.time.max)
+
+                return (
+                    db.query(Detection)
+                    .filter(Detection.timestamp >= start_datetime)
+                    .filter(Detection.timestamp <= end_datetime)
+                    .count()
+                )
+            except SQLAlchemyError as e:
+                db.rollback()
+                print(f"Error retrieving detection count by date: {e}")
+                raise
+
+    def update_detection_location(
+        self, detection_id: int, latitude: float, longitude: float
+    ) -> bool:
+        """Update the location for a specific detection."""
+        with self.db_service.get_db() as db:
+            try:
+                detection = db.query(Detection).filter(Detection.id == detection_id).first()
+                if detection:
+                    detection.latitude = latitude
+                    detection.longitude = longitude
+                    db.commit()
+                    return True
+                return False
+            except SQLAlchemyError as e:
+                db.rollback()
+                print(f"Error updating detection location: {e}")
                 raise

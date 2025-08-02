@@ -82,6 +82,11 @@ class BirdNETConfig:
     apprise_only_notify_species_names: str = ""  # comma separated string
     apprise_only_notify_species_names_2: str = ""  # comma separated string
 
+    # Field mode and GPS settings
+    enable_gps: bool = False  # Enable GPS tracking for field deployments
+    gps_update_interval: float = 5.0  # GPS update interval in seconds
+    hardware_check_interval: float = 10.0  # Hardware monitoring interval in seconds
+
     # Analysis model configuration
     sf_threshold: float = 0.03  # Species filter threshold
     privacy_threshold: float = 10.0  # Privacy threshold percentage for human detection cutoff
