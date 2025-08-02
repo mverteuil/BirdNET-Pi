@@ -36,7 +36,7 @@ class BirdNETConfig:
     latitude: float = 0.0
     longitude: float = 0.0
     model: str = "BirdNET_GLOBAL_6K_V2.4_Model_FP16"
-    sf_thresh: float = 0.03  # Default from config.php example
+    sf_thresh: float = 0.03  # Default species threshold
     confidence: float = 0.7  # Default from birdnet.conf.template
     sensitivity: float = 1.25  # Default from birdnet.conf.template
     week: int = 0  # Default from birdnet.conf.template
@@ -73,10 +73,10 @@ class BirdNETConfig:
     database_lang: str = "en"  # Renamed from 'language' to avoid conflict with Python keyword
     timezone: str = "UTC"  # Default from SystemUtils
 
-    # Other settings from config.php / views.php that are read from config files
+    # Other settings from legacy configuration files
     caddy_pwd: str = ""  # Used for authentication, but stored in config
-    silence_update_indicator: bool = False  # From views.php
-    birdnetpi_url: str = ""  # From views.php
+    silence_update_indicator: bool = False  # Controls update indicator display
+    birdnetpi_url: str = ""  # External URL for web hosting
 
     # Species filtering
     apprise_only_notify_species_names: str = ""  # comma separated string

@@ -62,9 +62,9 @@ sudo chmod 644 "/etc/caddy/Caddyfile"
 echo "Reloading Caddy service..."
 sudo systemctl reload caddy
 
-# Install SQLite3 and PHP dependencies (for backward compatibility/migration if needed)
-echo "Installing SQLite3 and PHP dependencies..."
-sudo apt install -y sqlite3 php-sqlite3 php php-fpm php-curl php-xml php-zip
+# Install SQLite3 (PHP dependencies removed - now using FastAPI)
+echo "Installing SQLite3..."
+sudo apt install -y sqlite3
 
 # Install Icecast2
 echo "Installing Icecast2..."

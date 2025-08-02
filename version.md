@@ -1,3 +1,11 @@
+# Current Development Version
+- Complete PHP deprecation - migrated to FastAPI web framework
+- Real-time spectrogram visualization with WebSocket streaming
+- WebSocket architecture refactoring for live audio and visualization
+- Scheduled audio filtering system for automated processing
+- Removed PHP dependencies from installation process
+- Added PHP cleanup script for existing installations
+
 # 0.13
 - Removed secondary and tertiary custom URLs
 - Added new custom-compiled GoTTY binary
