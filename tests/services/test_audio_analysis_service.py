@@ -47,12 +47,12 @@ def mock_config():
 
 
 @pytest.fixture
-@patch("birdnetpi.services.audio_analysis_service.AnalysisClientService")
+@patch("birdnetpi.services.audio_analysis_service.BirdDetectionService")
 def audio_analysis_service(
     mock_analysis_client_class, mock_file_manager, mock_file_path_resolver, mock_config
 ):
     """Return an AudioAnalysisService instance with mocked dependencies."""
-    # Mock the AnalysisClientService constructor to avoid model loading
+    # Mock the BirdDetectionService constructor to avoid model loading
     mock_analysis_client = MagicMock()
     mock_analysis_client_class.return_value = mock_analysis_client
 

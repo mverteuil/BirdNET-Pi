@@ -16,7 +16,7 @@ from birdnetpi.models.config import BirdNETConfig
 log = logging.getLogger(__name__)
 
 
-class AnalysisClientService:
+class BirdDetectionService:
     """Manage BirdNET analysis involving TensorFlow Lite model interactions."""
 
     def __init__(self, config: BirdNETConfig) -> None:
@@ -49,7 +49,7 @@ class AnalysisClientService:
         self._load_model()
 
     def _load_model(self) -> None:
-        log.info("AnalysisClientService: LOADING TF LITE MODEL...")
+        log.info("BirdDetectionService: LOADING TF LITE MODEL...")
 
         modelpath = os.path.join(self.user_dir, "BirdNET-Pi/model", self.model_name + ".tflite")
         self.interpreter = tflite.Interpreter(model_path=modelpath, num_threads=2)
@@ -69,7 +69,7 @@ class AnalysisClientService:
             for line in lfile.readlines():
                 self.classes.append(line.replace("\n", ""))
 
-        log.info("AnalysisClientService: LOADING DONE!")
+        log.info("BirdDetectionService: LOADING DONE!")
 
     def _load_meta_model(self) -> None:
         if self.config.data_model_version == 2:
@@ -88,7 +88,7 @@ class AnalysisClientService:
         self.m_input_layer_index = input_details[0]["index"]
         self.m_output_layer_index = output_details[0]["index"]
 
-        log.info("AnalysisClientService: loaded META model")
+        log.info("BirdDetectionService: loaded META model")
 
     def _predict_filter_raw(self, lat: float, lon: float, week: int) -> np.ndarray:
         if self.m_interpreter is None:
@@ -172,8 +172,8 @@ class AnalysisClientService:
 
         human_cutoff = max(10, int(len(p_sorted) * self.privacy_threshold / 100.0))
 
-        log.debug("AnalysisClientService: DATABASE SIZE: %d", len(p_sorted))
-        log.debug("AnalysisClientService: HUMAN-CUTOFF AT: %d", human_cutoff)
+        log.debug("BirdDetectionService: DATABASE SIZE: %d", len(p_sorted))
+        log.debug("BirdDetectionService: HUMAN-CUTOFF AT: %d", human_cutoff)
 
         for i in range(min(10, len(p_sorted))):
             if p_sorted[i][0] == "Human_Human":

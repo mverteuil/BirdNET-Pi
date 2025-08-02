@@ -5,7 +5,7 @@ import httpx
 import numpy as np
 
 from birdnetpi.models.config import BirdNETConfig
-from birdnetpi.services.analysis_client_service import AnalysisClientService
+from birdnetpi.services.bird_detection_service import BirdDetectionService
 from birdnetpi.services.file_manager import FileManager
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
@@ -25,7 +25,7 @@ class AudioAnalysisService:
         self.file_manager = file_manager
         self.file_path_resolver = file_path_resolver
         self.config = config
-        self.analysis_client = AnalysisClientService(config)
+        self.analysis_client = BirdDetectionService(config)
 
         # Buffer for accumulating audio chunks for analysis
         self.audio_buffer = np.array([], dtype=np.int16)
