@@ -56,7 +56,9 @@ def audio_analysis_service(
     mock_analysis_client = MagicMock()
     mock_analysis_client_class.return_value = mock_analysis_client
 
-    service = AudioAnalysisService(mock_file_manager, mock_file_path_resolver, mock_config)
+    service = AudioAnalysisService(
+        mock_file_manager, mock_file_path_resolver, mock_config, audio_websocket_service=None
+    )
     service.analysis_client = mock_analysis_client
     return service
 

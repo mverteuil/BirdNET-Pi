@@ -1,0 +1,166 @@
+<!doctype html>
+<html>
+  <head>
+    <title>{{ request.app.state.config.site_name }} - Audio Livestream</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="banner">
+      <div class="logo">
+        <a href="https://github.com/mcguirepr89/BirdNET-Pi.git" target="_blank"
+          ><img src="/static/images/bird.png"
+        /></a>
+      </div>
+      <h1>
+        <a href="/"><img class="topimage" src="/static/images/bnp.png" /></a>
+      </h1>
+    </div>
+    <div class="centered">
+      <h3>{{ request.app.state.config.site_name }} - Audio Livestream</h3>
+    </div>
+
+    <div class="centered">
+      <h2>Live Audio Stream</h2>
+      <div id="status">Disconnected</div>
+      <br />
+      <button id="connectBtn" onclick="connect()">Connect</button>
+      <button id="disconnectBtn" onclick="disconnect()" disabled>
+        Disconnect
+      </button>
+      <br /><br />
+      <audio
+        id="audioPlayer"
+        controls
+        autoplay
+        style="width: 100%; max-width: 600px"
+      >
+        Your browser does not support the audio element.
+      </audio>
+    </div>
+
+    <div class="centered">
+      <h3>Connection Info</h3>
+      <div id="messages"></div>
+    </div>
+
+    <script>
+      let ws = null;
+      let mediaSource = null;
+      let sourceBuffer = null;
+      let audioQueue = [];
+      let isInitialized = false;
+
+      const status = document.getElementById("status");
+      const messages = document.getElementById("messages");
+      const audioPlayer = document.getElementById("audioPlayer");
+      const connectBtn = document.getElementById("connectBtn");
+      const disconnectBtn = document.getElementById("disconnectBtn");
+
+      function addMessage(message) {
+        const messageDiv = document.createElement("div");
+        messageDiv.textContent =
+          new Date().toLocaleTimeString() + ": " + message;
+        messages.appendChild(messageDiv);
+        messages.scrollTop = messages.scrollHeight;
+      }
+
+      function connect() {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          addMessage("Already connected");
+          return;
+        }
+
+        status.textContent = "Connecting...";
+        addMessage("Connecting to WebSocket...");
+
+        ws = new WebSocket("{{ websocket_url }}");
+
+        ws.onopen = function (event) {
+          status.textContent = "Connected";
+          connectBtn.disabled = true;
+          disconnectBtn.disabled = false;
+          addMessage("WebSocket connected");
+
+          // Send periodic ping to keep connection alive
+          setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send("ping");
+            }
+          }, 30000);
+        };
+
+        ws.onmessage = function (event) {
+          if (event.data instanceof Blob) {
+            // Handle binary audio data
+            handleAudioData(event.data);
+          } else {
+            // Handle text messages
+            addMessage("Received: " + event.data);
+          }
+        };
+
+        ws.onclose = function (event) {
+          status.textContent = "Disconnected";
+          connectBtn.disabled = false;
+          disconnectBtn.disabled = true;
+          addMessage(
+            "WebSocket disconnected: " + event.code + " " + event.reason,
+          );
+
+          // Clean up audio resources
+          if (mediaSource && mediaSource.readyState === "open") {
+            mediaSource.endOfStream();
+          }
+          isInitialized = false;
+        };
+
+        ws.onerror = function (error) {
+          status.textContent = "Error";
+          addMessage("WebSocket error: " + error);
+        };
+      }
+
+      function disconnect() {
+        if (ws) {
+          ws.close();
+          ws = null;
+        }
+      }
+
+      function handleAudioData(audioBlob) {
+        // Create a blob URL and set it as the audio source
+        // This is a simple approach - for continuous streaming,
+        // MediaSource API would be more appropriate but requires more setup
+        const audioUrl = URL.createObjectURL(audioBlob);
+
+        // Create a new audio element for each chunk to enable continuous playback
+        const audio = new Audio(audioUrl);
+        audio.volume = 0.8;
+        audio.play().catch((e) => {
+          console.log("Audio play error:", e);
+        });
+
+        // Clean up the blob URL after playback
+        audio.addEventListener("ended", () => {
+          URL.revokeObjectURL(audioUrl);
+        });
+
+        addMessage("Received audio chunk (" + audioBlob.size + " bytes)");
+      }
+
+      // Auto-connect on page load
+      window.addEventListener("load", function () {
+        addMessage("Page loaded. Click Connect to start audio stream.");
+      });
+
+      // Handle page visibility changes to manage connection
+      document.addEventListener("visibilitychange", function () {
+        if (document.hidden && ws && ws.readyState === WebSocket.OPEN) {
+          addMessage("Page hidden - maintaining connection");
+        } else if (!document.hidden && ws && ws.readyState === WebSocket.OPEN) {
+          addMessage("Page visible - connection active");
+        }
+      });
+    </script>
+  </body>
+</html>

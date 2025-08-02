@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from birdnetpi.managers.database_manager import DatabaseManager
+from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.managers.update_manager import UpdateManager
@@ -14,16 +14,16 @@ router = APIRouter()
 templates = Jinja2Templates(directory="src/web/templates")
 
 
-def get_database_manager(request: Request) -> DatabaseManager:
-    """Return the DatabaseManager instance from the app state."""
+def get_detection_manager(request: Request) -> DetectionManager:
+    """Return the DetectionManager instance from the app state."""
     return request.app.state.detections
 
 
 @router.get("/views", response_class=HTMLResponse)
 async def read_views(
     request: Request,
-    db_manager: DatabaseManager = Depends(get_database_manager),  # noqa: B008
-) -> Jinja2Templates.TemplateResponse:
+    detection_manager: DetectionManager = Depends(get_detection_manager),  # noqa: B008
+) -> HTMLResponse:
     """Render the main views page, displaying repository update status."""
     update_manager = UpdateManager()
     commits_behind_count = update_manager.get_commits_behind()
@@ -35,10 +35,10 @@ async def read_views(
 @router.get("/views/weekly-report", response_class=HTMLResponse)
 async def get_weekly_report(
     request: Request,
-    db_manager: DatabaseManager = Depends(get_database_manager),  # noqa: B008
-) -> Jinja2Templates.TemplateResponse:
+    detection_manager: DetectionManager = Depends(get_detection_manager),  # noqa: B008
+) -> HTMLResponse:
     """Generate and display a weekly report of bird detections."""
-    reporting_manager = ReportingManager(db_manager)
+    reporting_manager = ReportingManager(detection_manager)
     report_data = reporting_manager.get_weekly_report_data()
     return templates.TemplateResponse(
         "weekly_report.html", {"request": request, "report": report_data}
@@ -48,10 +48,10 @@ async def get_weekly_report(
 @router.get("/views/charts", response_class=HTMLResponse)
 async def get_charts(
     request: Request,
-    db_manager: DatabaseManager = Depends(get_database_manager),  # noqa: B008
-) -> Jinja2Templates.TemplateResponse:
+    detection_manager: DetectionManager = Depends(get_detection_manager),  # noqa: B008
+) -> HTMLResponse:
     """Generate and display various charts related to bird detections."""
-    reporting_manager = ReportingManager(db_manager)
+    reporting_manager = ReportingManager(detection_manager)
     plotting_manager = PlottingManager()
     df = reporting_manager.get_data()
 
@@ -84,3 +84,12 @@ async def get_charts(
     plot_data = {"multi_day_plot": multi_day_plot_json, "daily_plot": daily_plot_json}
 
     return templates.TemplateResponse("charts.html", {"request": request, "plot_data": plot_data})
+
+
+@router.get("/livestream", response_class=HTMLResponse)
+async def get_livestream(request: Request) -> HTMLResponse:
+    """Render the audio livestream page."""
+    websocket_url = f"ws://{request.url.hostname}:{request.url.port}/ws/audio"
+    return templates.TemplateResponse(
+        "livestream.html", {"request": request, "websocket_url": websocket_url}
+    )

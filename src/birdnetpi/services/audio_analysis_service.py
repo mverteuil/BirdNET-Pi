@@ -1,5 +1,6 @@
 import datetime
 import logging
+from typing import TYPE_CHECKING
 
 import httpx
 import numpy as np
@@ -9,6 +10,9 @@ from birdnetpi.services.analysis_client_service import AnalysisClientService
 from birdnetpi.services.file_manager import FileManager
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
+if TYPE_CHECKING:
+    from birdnetpi.services.audio_websocket_service import AudioWebSocketService
+
 logger = logging.getLogger(__name__)
 
 
@@ -16,13 +20,18 @@ class AudioAnalysisService:
     """Service for processing audio data for analysis."""
 
     def __init__(
-        self, file_manager: FileManager, file_path_resolver: FilePathResolver, config: BirdNETConfig
+        self,
+        file_manager: FileManager,
+        file_path_resolver: FilePathResolver,
+        config: BirdNETConfig,
+        audio_websocket_service: "AudioWebSocketService | None" = None,
     ) -> None:
         logger.info("AudioAnalysisService initialized.")
         self.file_manager = file_manager
         self.file_path_resolver = file_path_resolver
         self.config = config
         self.analysis_client = AnalysisClientService(config)
+        self.audio_websocket_service = audio_websocket_service
 
         # Buffer for accumulating audio chunks for analysis
         self.audio_buffer = np.array([], dtype=np.int16)
@@ -33,6 +42,10 @@ class AudioAnalysisService:
         # Convert bytes to numpy array (assuming int16 from AudioCaptureService)
         audio_data = np.frombuffer(audio_data_bytes, dtype=np.int16)
         logger.debug(f"AudioAnalysisService received chunk. Shape: {audio_data.shape}")
+
+        # Stream audio to WebSocket clients if service is available
+        if self.audio_websocket_service:
+            await self.audio_websocket_service.stream_audio_chunk(audio_data_bytes)
 
         # Accumulate audio data in buffer
         self.audio_buffer = np.concatenate([self.audio_buffer, audio_data])

@@ -15,6 +15,7 @@ from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.service_manager import ServiceManager
 from birdnetpi.models.database_models import AudioFile, Detection
+from birdnetpi.services.audio_websocket_service import AudioWebSocketService
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.file_manager import FileManager
 from birdnetpi.services.location_service import LocationService
@@ -32,6 +33,7 @@ from .routers import (
     reporting_router,
     settings_router,
     spectrogram_router,
+    views_router,
 )
 
 logger = logging.getLogger(__name__)
@@ -69,6 +71,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.plotting_manager = PlottingManager(app.state.data_preparation_manager)
     app.state.service_manager = ServiceManager()
     app.state.active_websockets = set()  # Initialize set for active WebSocket connections
+    app.state.audio_websocket_service = AudioWebSocketService(
+        samplerate=app.state.config.sample_rate, channels=app.state.config.audio_channels
+    )
 
     # Initialize NotificationService and register listeners
     app.state.notification_service = NotificationService(
@@ -111,9 +116,9 @@ app.include_router(log_router.router)
 app.include_router(audio_router.router)
 app.include_router(reporting_router.router)
 app.include_router(spectrogram_router.router)
+app.include_router(views_router.router)
 
 app.include_router(overview_router.router)
-app.include_router(api_router.router, prefix="/api")  # Include the new API router
 app.include_router(api_router.router, prefix="/api")  # Include the new API router
 
 
@@ -141,6 +146,20 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     except WebSocketDisconnect:
         app.state.active_websockets.remove(websocket)  # Remove disconnected client
         logger.info("Client disconnected")
+
+
+@app.websocket("/ws/audio")
+async def audio_websocket_endpoint(websocket: WebSocket) -> None:
+    """Handle WebSocket connections for real-time audio streaming."""
+    await websocket.accept()
+    await app.state.audio_websocket_service.connect_websocket(websocket)
+    try:
+        while True:
+            # Keep the connection alive by receiving ping messages
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        await app.state.audio_websocket_service.disconnect_websocket(websocket)
+        logger.info("Audio WebSocket client disconnected")
 
 
 @app.get("/test_detection_form", response_class=HTMLResponse)
