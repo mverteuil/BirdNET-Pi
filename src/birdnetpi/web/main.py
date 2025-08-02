@@ -32,8 +32,8 @@ from birdnetpi.utils.file_path_resolver import FilePathResolver
 from birdnetpi.utils.logging_configurator import configure_logging
 
 from .routers import (
-    api_router,
     audio_router,
+    detections_router,
     field_mode_router,
     iot_router,
     log_router,
@@ -198,7 +198,7 @@ app.include_router(field_mode_router.router)
 app.include_router(iot_router.router)  # Include IoT integration router
 
 app.include_router(overview_router.router)
-app.include_router(api_router.router, prefix="/api")  # Include the new API router
+app.include_router(detections_router.router, prefix="/api/detections")  # Include detections router
 
 
 @app.get("/", response_class=HTMLResponse)
