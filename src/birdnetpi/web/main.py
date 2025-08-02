@@ -1,4 +1,3 @@
-import datetime
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -15,7 +14,6 @@ from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.models.database_models import AudioFile, Detection
-from birdnetpi.models.detection_event import DetectionEvent
 from birdnetpi.services.audio_fifo_reader_service import AudioFifoReaderService
 from birdnetpi.services.audio_websocket_service import AudioWebSocketService
 from birdnetpi.services.database_service import DatabaseService
@@ -32,14 +30,13 @@ from birdnetpi.utils.file_path_resolver import FilePathResolver
 from birdnetpi.utils.logging_configurator import configure_logging
 
 from .routers import (
+    admin_router,
     audio_router,
     detections_router,
     field_mode_router,
     iot_router,
-    log_router,
     overview_router,
     reporting_router,
-    settings_router,
     spectrogram_router,
     websocket_router,
 )
@@ -189,15 +186,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(lifespan=lifespan)
-
-app.include_router(settings_router.router)
-app.include_router(log_router.router)
+app.include_router(admin_router.router)  # Include admin functionality (settings, logs, testing)
 app.include_router(audio_router.router)
 app.include_router(reporting_router.router)
 app.include_router(spectrogram_router.router)
 app.include_router(field_mode_router.router)
 app.include_router(iot_router.router)  # Include IoT integration router
-
 app.include_router(overview_router.router)
 app.include_router(detections_router.router, prefix="/api/detections")  # Include detections router
 app.include_router(websocket_router.router)  # Include WebSocket endpoints
@@ -214,49 +208,3 @@ async def read_root(request: Request) -> HTMLResponse:
             "websocket_url": f"ws://{request.url.hostname}:8000/ws",
         },
     )
-
-
-@app.get("/test_detection_form", response_class=HTMLResponse)
-async def test_detection_form(request: Request) -> HTMLResponse:
-    """Render the form for testing detections."""
-    return request.app.state.templates.TemplateResponse(request, "test_detection_modal.html", {})
-
-
-@app.get("/test_detection")
-async def test_detection(
-    species: str = "Test Bird",
-    confidence: float = 0.99,
-    timestamp: str | None = None,
-    file_path: str = "test_audio/test_bird.wav",
-    duration: float = 3.0,
-    size_bytes: int = 1024,
-    recording_start_time: str | None = None,
-    latitude: float = 0.0,
-    longitude: float = 0.0,
-    cutoff: float = 0.0,
-    week: int = 0,
-    sensitivity: float = 0.0,
-    overlap: float = 0.0,
-) -> dict[str, str]:
-    """Publishes a test detection event for demonstration purposes."""
-    detection_event_data = DetectionEvent(
-        species=species,
-        confidence=confidence,
-        timestamp=datetime.datetime.fromisoformat(timestamp)
-        if timestamp
-        else datetime.datetime.now(),
-        file_path=file_path,
-        duration=duration,
-        size_bytes=size_bytes,
-        recording_start_time=datetime.datetime.fromisoformat(recording_start_time)
-        if recording_start_time
-        else datetime.datetime.now(),
-        latitude=latitude,
-        longitude=longitude,
-        cutoff=cutoff,
-        week=week,
-        sensitivity=sensitivity,
-        overlap=overlap,
-    )
-    app.state.detections.create_detection(detection_event_data)
-    return {"message": "Test detection published", "data": detection_event_data.model_dump_json()}
