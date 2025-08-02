@@ -71,7 +71,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev
 
 # Copy the configuration template for BirdNET-Pi
-COPY --chown=birdnetpi:birdnetpi config_templates/birdnet_pi_config.yaml /app/config/birdnet_pi_config.yaml
+COPY --chown=birdnetpi:birdnetpi config_templates/birdnetpi.yaml /app/config/birdnetpi.yaml
 
 # Add the BirdNET-Pi virtual environment to the PATH
 ENV PATH="/app/.venv/bin:${PATH}"

@@ -22,7 +22,7 @@ def mock_dependencies(mocker):
         mocks["FilePathResolver"].return_value.get_fifo_base_path.return_value = "/tmp/fifo"
         mocks[
             "FilePathResolver"
-        ].return_value.get_birdnet_pi_config_path.return_value = "/tmp/config.yaml"
+        ].return_value.get_birdnetpi_config_path.return_value = "/tmp/config.yaml"
         mocks["ConfigFileParser"].return_value.load_config.return_value = {"some_config": "value"}
         mocks["AudioCaptureService"].return_value = MagicMock(spec=AudioCaptureService)
 

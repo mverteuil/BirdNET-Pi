@@ -18,9 +18,7 @@ class AppSetup:
     def __init__(self, repo_root: str) -> None:
         self.repo_root = repo_root
         self.file_path_resolver = FilePathResolver(repo_root)
-        self.config_file_path = self.file_path_resolver.get_absolute_path(
-            "etc/birdnet_pi_config.yaml"
-        )
+        self.config_file_path = self.file_path_resolver.get_absolute_path("etc/birdnetpi.yaml")
         self.config_parser = ConfigFileParser(self.config_file_path)
         self.config: BirdNETConfig = self.config_parser.parse()
         self.file_manager = FileManager(self.repo_root)

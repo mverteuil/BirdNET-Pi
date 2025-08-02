@@ -23,9 +23,9 @@ class FilePathResolver:
         """Return the absolute path to the extracted birdsounds directory."""
         return self.resolve("BirdSongs", "Extracted", "By_Date")
 
-    def get_birdnet_pi_config_path(self) -> str:
-        """Return the absolute path to the birdnet_pi_config.yaml file."""
-        return self.resolve("config", "birdnet_pi_config.yaml")
+    def get_birdnetpi_config_path(self) -> str:
+        """Return the absolute path to the birdnetpi.yaml file."""
+        return self.resolve("config", "birdnetpi.yaml")
 
     def get_static_dir(self) -> str:
         """Return the absolute path to the static files directory."""

@@ -57,7 +57,7 @@ if __name__ == "__main__":
     from birdnetpi.utils.file_path_resolver import FilePathResolver
 
     file_resolver = FilePathResolver()
-    config_parser = ConfigFileParser(file_resolver.get_birdnet_pi_config_path())
+    config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())
     config = config_parser.load_config()
     db_service = DatabaseService(config.data.db_path)
     detection_manager = DetectionManager(db_service)

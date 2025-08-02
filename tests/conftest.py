@@ -31,8 +31,8 @@ def file_path_resolver(tmp_path: Path) -> FilePathResolver:
 
     # Mock methods that should return paths within the temporary directory
     mock_resolver.get_birds_db_path.return_value = str(repo_root / "scripts" / "birds.db")
-    mock_resolver.get_birdnet_pi_config_path.return_value = str(
-        repo_root / "config" / "birdnet_pi_config.yaml"
+    mock_resolver.get_birdnetpi_config_path.return_value = str(
+        repo_root / "config" / "birdnetpi.yaml"
     )
     mock_resolver.get_extracted_birdsounds_path.return_value = str(
         repo_root / "BirdSongs" / "Extracted" / "By_Date"
@@ -55,7 +55,7 @@ def test_config_file(tmp_path: Path) -> Path:
     """Create a test configuration file with sensible defaults and temp paths."""
     config_dir = tmp_path / "config"
     config_dir.mkdir(exist_ok=True)
-    config_file = config_dir / "birdnet_pi_config.yaml"
+    config_file = config_dir / "birdnetpi.yaml"
 
     # Create a config based on the actual config template with temp paths
     config_content = f"""

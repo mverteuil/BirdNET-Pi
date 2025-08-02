@@ -53,7 +53,7 @@ def main() -> None:
 
     try:
         # Load configuration
-        config_path = file_resolver.get_birdnet_pi_config_path()
+        config_path = file_resolver.get_birdnetpi_config_path()
         config_parser = ConfigFileParser(config_path)
         config = config_parser.load_config()
         logger.info("Configuration loaded successfully.")

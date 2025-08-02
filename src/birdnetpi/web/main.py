@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Context manager for application startup and shutdown events."""
     # Load configuration
     app.state.file_resolver = FilePathResolver()
-    config_parser = ConfigFileParser(app.state.file_resolver.get_birdnet_pi_config_path())
+    config_parser = ConfigFileParser(app.state.file_resolver.get_birdnetpi_config_path())
     app.state.config = config_parser.load_config()
     app.mount(
         "/static",

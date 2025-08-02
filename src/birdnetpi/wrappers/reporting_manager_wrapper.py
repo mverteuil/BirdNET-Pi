@@ -28,7 +28,7 @@ def main_cli() -> None:
     args = parser.parse_args()
 
     file_path_resolver = FilePathResolver()
-    config = ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path()).load_config()
+    config = ConfigFileParser(file_path_resolver.get_birdnetpi_config_path()).load_config()
 
     db_service = DatabaseService(config.data.db_path)
 
@@ -37,7 +37,7 @@ def main_cli() -> None:
     reporting_manager = ReportingManager(
         detection_manager,
         file_path_resolver,
-        ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path()),
+        ConfigFileParser(file_path_resolver.get_birdnetpi_config_path()),
     )
 
     if args.action == "most_recent":

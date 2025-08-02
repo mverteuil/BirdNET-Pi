@@ -15,7 +15,7 @@ def main_cli() -> None:
     args = parser.parse_args()
 
     file_path_resolver = FilePathResolver()
-    config = ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path()).load_config()
+    config = ConfigFileParser(file_path_resolver.get_birdnetpi_config_path()).load_config()
     notification_service = NotificationService(config)
 
     if args.action == "species_notifier":

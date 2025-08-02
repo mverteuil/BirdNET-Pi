@@ -40,7 +40,7 @@ def app_with_admin_router(tmp_path):
     # Create test config file for settings endpoint
     config_file = tmp_path / "config.yaml"
     config_file.write_text("site_name: Test BirdNET-Pi\nlatitude: 40.7128\nlongitude: -74.0060")
-    mock_resolver.get_birdnet_pi_config_path.return_value = str(config_file)
+    mock_resolver.get_birdnetpi_config_path.return_value = str(config_file)
 
     app.state.file_manager.file_path_resolver = mock_resolver
 

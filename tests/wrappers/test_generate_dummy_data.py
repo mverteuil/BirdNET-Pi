@@ -21,7 +21,7 @@ def mock_dependencies(mocker):
         # Configure mocks
         mocks[
             "FilePathResolver"
-        ].return_value.get_birdnet_pi_config_path.return_value = "/tmp/config.yaml"
+        ].return_value.get_birdnetpi_config_path.return_value = "/tmp/config.yaml"
         mocks[
             "ConfigFileParser"
         ].return_value.load_config.return_value.data.db_path = "/tmp/test.db"

@@ -27,7 +27,7 @@ async def read_admin() -> dict[str, str]:
 async def get_settings(request: Request) -> Response:
     """Render the settings page with the current configuration."""
     config_parser = ConfigFileParser(
-        request.app.state.file_manager.file_path_resolver.get_birdnet_pi_config_path()
+        request.app.state.file_manager.file_path_resolver.get_birdnetpi_config_path()
     )
     app_config: BirdNETConfig = config_parser.load_config()
     return request.app.state.templates.TemplateResponse(
@@ -64,7 +64,7 @@ async def post_settings(
 ) -> RedirectResponse:
     """Process the submitted settings form and save the updated configuration."""
     config_parser = ConfigFileParser(
-        request.app.state.file_manager.file_path_resolver.get_birdnet_pi_config_path()
+        request.app.state.file_manager.file_path_resolver.get_birdnetpi_config_path()
     )
     updated_config = BirdNETConfig(
         site_name=site_name,

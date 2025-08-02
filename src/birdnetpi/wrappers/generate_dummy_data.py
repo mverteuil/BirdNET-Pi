@@ -10,7 +10,7 @@ from birdnetpi.utils.file_path_resolver import FilePathResolver
 def main() -> None:
     """Generate dummy data for the application."""
     file_resolver = FilePathResolver()
-    config_parser = ConfigFileParser(file_resolver.get_birdnet_pi_config_path())
+    config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())
     config = config_parser.load_config()
     db_path = config.data.db_path
 

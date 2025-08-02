@@ -54,7 +54,7 @@ def main() -> None:
     atexit.register(_cleanup_fifos)
 
     file_resolver = FilePathResolver()
-    config_path = file_resolver.get_birdnet_pi_config_path()
+    config_path = file_resolver.get_birdnetpi_config_path()
     fifo_base_path = file_resolver.get_fifo_base_path()
 
     _fifo_analysis_path = os.path.join(fifo_base_path, "birdnet_audio_analysis.fifo")
