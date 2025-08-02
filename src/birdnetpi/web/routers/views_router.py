@@ -93,3 +93,18 @@ async def get_livestream(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         "livestream.html", {"request": request, "websocket_url": websocket_url}
     )
+
+
+@router.get("/spectrogram", response_class=HTMLResponse)
+async def get_spectrogram(request: Request) -> HTMLResponse:
+    """Render the real-time spectrogram visualization page."""
+    audio_websocket_url = f"ws://{request.url.hostname}:{request.url.port}/ws/audio"
+    spectrogram_websocket_url = f"ws://{request.url.hostname}:{request.url.port}/ws/spectrogram"
+    return templates.TemplateResponse(
+        "spectrogram.html",
+        {
+            "request": request,
+            "audio_websocket_url": audio_websocket_url,
+            "spectrogram_websocket_url": spectrogram_websocket_url,
+        },
+    )

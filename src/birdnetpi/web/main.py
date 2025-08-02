@@ -21,6 +21,7 @@ from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.file_manager import FileManager
 from birdnetpi.services.location_service import LocationService
 from birdnetpi.services.notification_service import NotificationService
+from birdnetpi.services.spectrogram_service import SpectrogramService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 from birdnetpi.utils.logging_configurator import configure_logging
@@ -75,12 +76,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.audio_websocket_service = AudioWebSocketService(
         samplerate=app.state.config.sample_rate, channels=app.state.config.audio_channels
     )
+    app.state.spectrogram_service = SpectrogramService(
+        sample_rate=app.state.config.sample_rate,
+        channels=app.state.config.audio_channels,
+        window_size=1024,  # Good balance of frequency/time resolution
+        overlap=0.75,  # High overlap for smooth visualization
+        update_rate=15.0,  # 15 FPS for smooth real-time display
+    )
 
     # Initialize and start the FIFO reader service for WebSocket streaming
     fifo_base_path = app.state.file_resolver.get_fifo_base_path()
     livestream_fifo_path = f"{fifo_base_path}/birdnet_audio_livestream.fifo"
     app.state.audio_fifo_reader_service = AudioFifoReaderService(
-        livestream_fifo_path, app.state.audio_websocket_service
+        livestream_fifo_path, app.state.audio_websocket_service, app.state.spectrogram_service
     )
 
     # Initialize NotificationService and register listeners
@@ -174,6 +182,20 @@ async def audio_websocket_endpoint(websocket: WebSocket) -> None:
     except WebSocketDisconnect:
         await app.state.audio_websocket_service.disconnect_websocket(websocket)
         logger.info("Audio WebSocket client disconnected")
+
+
+@app.websocket("/ws/spectrogram")
+async def spectrogram_websocket_endpoint(websocket: WebSocket) -> None:
+    """Handle WebSocket connections for real-time spectrogram streaming."""
+    await websocket.accept()
+    await app.state.spectrogram_service.connect_websocket(websocket)
+    try:
+        while True:
+            # Keep the connection alive by receiving ping messages
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        await app.state.spectrogram_service.disconnect_websocket(websocket)
+        logger.info("Spectrogram WebSocket client disconnected")
 
 
 @app.get("/test_detection_form", response_class=HTMLResponse)

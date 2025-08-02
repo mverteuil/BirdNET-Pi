@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from birdnetpi.services.audio_websocket_service import AudioWebSocketService
+    from birdnetpi.services.spectrogram_service import SpectrogramService
 
 logger = logging.getLogger(__name__)
 
@@ -12,9 +13,15 @@ logger = logging.getLogger(__name__)
 class AudioFifoReaderService:
     """Service for reading audio data from livestream FIFO and feeding it to WebSocket service."""
 
-    def __init__(self, fifo_path: str, audio_websocket_service: "AudioWebSocketService") -> None:
+    def __init__(
+        self,
+        fifo_path: str,
+        audio_websocket_service: "AudioWebSocketService",
+        spectrogram_service: "SpectrogramService | None" = None,
+    ) -> None:
         self.fifo_path = fifo_path
         self.audio_websocket_service = audio_websocket_service
+        self.spectrogram_service = spectrogram_service
         self.running = False
         self.task = None
         logger.info("AudioFifoReaderService initialized for FIFO: %s", fifo_path)
@@ -59,6 +66,9 @@ class AudioFifoReaderService:
                     if audio_data_bytes:
                         # Stream to WebSocket clients
                         await self.audio_websocket_service.stream_audio_chunk(audio_data_bytes)
+                        # Also send to spectrogram service if available
+                        if self.spectrogram_service:
+                            await self.spectrogram_service.process_audio_chunk(audio_data_bytes)
                     else:
                         # No data available, sleep to avoid busy waiting
                         await asyncio.sleep(0.01)
