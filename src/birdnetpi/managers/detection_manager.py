@@ -6,9 +6,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import func
 
 from birdnetpi.models.database_models import AudioFile, Detection
+from birdnetpi.models.detection_event import DetectionEvent
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.utils.signals import detection_signal
-from birdnetpi.web.routers.api_router import DetectionEvent
 
 
 class DetectionManager:

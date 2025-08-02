@@ -1,48 +1,46 @@
 import logging
-from datetime import datetime
 
-from fastapi import APIRouter, Depends, Request, status
-from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Request, status
 
-from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.models.api_models import DetectionEventRequest
+from birdnetpi.models.detection_event import DetectionEvent
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-class DetectionEvent(BaseModel):
-    """Represents a detection event received from the audio analysis service."""
-
-    species: str
-    confidence: float
-    timestamp: datetime
-
-    spectrogram_path: str | None = None
-    latitude: float | None = None
-    longitude: float | None = None
-    cutoff: float | None = None
-    week: int | None = None
-    sensitivity: float | None = None
-    overlap: float | None = None
-    is_extracted: bool = False
-    audio_file_path: str
-    duration: float
-    size_bytes: int
-    recording_start_time: datetime
-
-
 @router.post("/detections", status_code=status.HTTP_201_CREATED)
 async def create_detection(
-    detection: DetectionEvent,
+    detection_request: DetectionEventRequest,
     request: Request,
-    db: Session = Depends(DatabaseService.get_db),  # noqa: B008
 ) -> dict:
     """Receive a new detection event and dispatch it."""
-    logger.info(f"Received detection: {detection.species} with confidence {detection.confidence}")
+    logger.info(
+        f"Received detection: {detection_request.species} "
+        f"with confidence {detection_request.confidence}"
+    )
+
+    # Convert Pydantic model to dataclass
+    detection_event = DetectionEvent(
+        species=detection_request.species,
+        confidence=detection_request.confidence,
+        timestamp=detection_request.timestamp,
+        audio_file_path=detection_request.audio_file_path,
+        duration=detection_request.duration,
+        size_bytes=detection_request.size_bytes,
+        recording_start_time=detection_request.recording_start_time,
+        spectrogram_path=detection_request.spectrogram_path,
+        latitude=detection_request.latitude,
+        longitude=detection_request.longitude,
+        cutoff=detection_request.cutoff,
+        week=detection_request.week,
+        sensitivity=detection_request.sensitivity,
+        overlap=detection_request.overlap,
+        is_extracted=detection_request.is_extracted,
+    )
 
     # Delegate to DetectionManager to create detection and audio file records
-    saved_detection = request.app.state.detections.create_detection(detection, db)
+    saved_detection = request.app.state.detections.create_detection(detection_event)
 
     return {"message": "Detection received and dispatched", "detection_id": saved_detection.id}

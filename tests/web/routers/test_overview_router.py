@@ -1,140 +1,136 @@
-from unittest.mock import MagicMock, patch
+"""Integration tests for overview router that exercise real endpoints and dependencies."""
+
+import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
-from fastapi import Request
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
-from birdnetpi.managers.detection_manager import DetectionManager
-from birdnetpi.managers.reporting_manager import ReportingManager
-from birdnetpi.services.system_monitor_service import SystemMonitorService
-from birdnetpi.utils.config_file_parser import ConfigFileParser
-from birdnetpi.utils.file_path_resolver import FilePathResolver
-from birdnetpi.web.routers.overview_router import (
-    get_overview_data,
-    get_reporting_manager,
-    get_system_monitor,
-)
+from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.web.routers.overview_router import router
 
 
 @pytest.fixture
-def mock_system_monitor():
-    """Return a mock SystemMonitorService object."""
-    monitor = MagicMock(spec=SystemMonitorService)
-    monitor.get_disk_usage.return_value = {"total": "100GB", "used": "50GB"}
-    monitor.get_extra_info.return_value = {"cpu_temp": "45C"}
-    return monitor
+def temp_db():
+    """Create a temporary database for testing."""
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as temp_file:
+        db_path = temp_file.name
+
+    # Initialize the database
+    DatabaseService(db_path)
+    yield db_path
+
+    # Cleanup
+    Path(db_path).unlink(missing_ok=True)
 
 
 @pytest.fixture
-def mock_detection_manager():
-    """Return a mock DetectionManager object."""
-    manager_instance_mock = MagicMock(spec=DetectionManager)
-    manager_instance_mock.get_total_detections.return_value = 123
-    return manager_instance_mock
+def app_with_overview_services(temp_db):
+    """Create FastAPI app with overview router dependencies."""
+    app = FastAPI()
+
+    # Set up app state with minimal real components and necessary mocks
+    mock_config = MagicMock()
+    mock_config.data.db_path = temp_db
+    app.state.config = mock_config
+
+    app.include_router(router)
+    return app
 
 
 @pytest.fixture
-def mock_file_path_resolver():
-    """Return a mock FilePathResolver object."""
-    resolver = MagicMock(spec=FilePathResolver)
-    resolver.get_birdnet_pi_config_path.return_value = "/mock/config.yaml"
-    resolver.repo_root = "/mock/repo_root"  # Add this line
-    return resolver
+def client(app_with_overview_services):
+    """Create test client with real app."""
+    return TestClient(app_with_overview_services)
 
 
-@pytest.fixture
-def mock_config_file_parser():
-    """Return a mock ConfigFileParser object."""
-    parser = MagicMock(spec=ConfigFileParser)
-    parser.load_config.return_value = MagicMock()
-    parser.load_config.return_value.data = MagicMock()
-    parser.load_config.return_value.data.db_path = "/mock/test.db"
-    return parser
+class TestOverviewRouterIntegration:
+    """Integration tests for overview router with real endpoints."""
 
+    def test_overview_endpoint_returns_json(self, client):
+        """Should return JSON response with system overview data."""
+        response = client.get("/overview")
 
-@pytest.fixture
-def mock_request(mock_file_path_resolver, mock_config_file_parser):
-    """Return a mock Request object."""
-    request = MagicMock(spec=Request)
-    request.app.state.file_resolver = mock_file_path_resolver
-    request.app.state.file_resolver.repo_root = "/mock/repo_root"
-    request.app.state.config = mock_config_file_parser.load_config.return_value
-    return request
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/json"
 
+        data = response.json()
 
-@pytest.fixture
-def mock_reporting_manager(
-    mock_detection_manager, mock_file_path_resolver, mock_config_file_parser
-):
-    """Return a mock ReportingManager object."""
-    manager = MagicMock(spec=ReportingManager)
-    manager.detection_manager = mock_detection_manager
-    manager.file_path_resolver = mock_file_path_resolver
-    manager.config = mock_config_file_parser.load_config.return_value
-    manager.plotting_manager = MagicMock()
-    manager.data_preparation_manager = MagicMock()
-    manager.location_service = MagicMock()
-    return manager
+        # Check that required fields are present
+        required_fields = ["disk_usage", "extra_info", "total_detections"]
+        for field in required_fields:
+            assert field in data, f"Missing required field: {field}"
 
+    def test_overview_endpoint_disk_usage_structure(self, client):
+        """Should return properly structured disk usage information."""
+        response = client.get("/overview")
 
-class TestOverviewRouter:
-    """Test the overview router."""
+        assert response.status_code == 200
+        data = response.json()
 
-    def test_get_system_monitor(self):
-        """Test the get_system_monitor dependency."""
-        monitor = get_system_monitor()
-        assert isinstance(monitor, SystemMonitorService)
+        # Verify disk usage has expected structure
+        disk_usage = data["disk_usage"]
+        assert isinstance(disk_usage, dict)
+        # SystemMonitorService should return disk usage information
 
-    def test_get_reporting_manager(
-        self, mock_request, mock_detection_manager, mock_file_path_resolver, mock_config_file_parser
-    ):
-        """Test the get_reporting_manager dependency."""
-        # Create a mock DetectionManager instance with a mocked db_service
-        mock_dm_instance = MagicMock(spec=DetectionManager)
-        mock_dm_instance.db_service = MagicMock()
-        mock_dm_instance.db_service.get_total_detections.return_value = 123
+    def test_overview_endpoint_extra_info_structure(self, client):
+        """Should return system extra info."""
+        response = client.get("/overview")
 
-        # Patch the DetectionManager and ConfigFileParser within the function's scope
-        with (
-            patch(
-                "birdnetpi.web.routers.overview_router.DetectionManager"
-            ) as mock_detection_manager_class,
-            patch(
-                "birdnetpi.web.routers.overview_router.ConfigFileParser",
-                return_value=mock_config_file_parser,
-            ),
-            patch(
-                "birdnetpi.web.routers.overview_router.FilePathResolver",
-                return_value=mock_file_path_resolver,
-            ),
-        ):
-            mock_detection_manager_class.return_value = mock_dm_instance
-            manager = get_reporting_manager(mock_request)
-            assert isinstance(manager, ReportingManager)
-            mock_detection_manager_class.assert_called_once_with("/mock/test.db")
-            mock_file_path_resolver.get_birdnet_pi_config_path.assert_called_once()
+        assert response.status_code == 200
+        data = response.json()
 
-    @pytest.mark.asyncio
-    async def test_get_overview_data(
-        self, mock_system_monitor, mock_reporting_manager, mock_request
-    ):
-        """Test the get_overview_data endpoint."""
-        with (
-            patch(
-                "birdnetpi.web.routers.overview_router.get_system_monitor",
-                return_value=mock_system_monitor,
-            ),
-            patch(
-                "birdnetpi.web.routers.overview_router.get_reporting_manager",
-                return_value=mock_reporting_manager,
-            ),
-        ):
-            response = await get_overview_data(mock_system_monitor, mock_reporting_manager)
+        # Verify extra info exists (content depends on system)
+        extra_info = data["extra_info"]
+        assert isinstance(extra_info, dict)
 
-            mock_system_monitor.get_disk_usage.assert_called_once()
-            mock_system_monitor.get_extra_info.assert_called_once()
+    def test_overview_endpoint_total_detections(self, client, temp_db):
+        """Should return total detections from real detection manager."""
+        response = client.get("/overview")
 
-            assert response == {
-                "disk_usage": {"total": "100GB", "used": "50GB"},
-                "extra_info": {"cpu_temp": "45C"},
-                "total_detections": 123,
-            }
+        assert response.status_code == 200
+        data = response.json()
+
+        # With empty database, should return 0 detections
+        assert data["total_detections"] == 0
+        assert isinstance(data["total_detections"], int)
+
+    def test_overview_uses_real_system_monitor(self, client):
+        """Should use real SystemMonitorService for system information."""
+        response = client.get("/overview")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Real SystemMonitorService should provide actual system data
+        # The exact content varies by system, but should be present
+        assert "disk_usage" in data
+        assert "extra_info" in data
+
+    def test_overview_uses_real_detection_manager(self, client, temp_db):
+        """Should use real DetectionManager with actual database."""
+        response = client.get("/overview")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should connect to real database and return actual count
+        assert isinstance(data["total_detections"], int)
+        assert data["total_detections"] >= 0
+
+    def test_overview_endpoint_integration_flow(self, client):
+        """Should integrate all dependencies correctly."""
+        response = client.get("/overview")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Integration test: all components should work together
+        # - SystemMonitorService provides system info
+        # - ReportingManager with DetectionManager provides detection count
+        # - All data combined into single response
+
+        assert len(data) == 3  # Should have exactly 3 top-level fields
+        assert all(field in data for field in ["disk_usage", "extra_info", "total_detections"])

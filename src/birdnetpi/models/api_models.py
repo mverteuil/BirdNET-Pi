@@ -1,10 +1,12 @@
-from dataclasses import dataclass
+"""Pydantic models for API endpoints."""
+
 from datetime import datetime
 
+from pydantic import BaseModel
 
-@dataclass
-class DetectionEvent:
-    """Represents a detection event with associated metadata."""
+
+class DetectionEventRequest(BaseModel):
+    """Represents a detection event received from the audio analysis service."""
 
     species: str
     confidence: float

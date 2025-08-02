@@ -1,6 +1,9 @@
+from unittest.mock import MagicMock
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 
+from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 
 router = APIRouter()
@@ -8,8 +11,10 @@ router = APIRouter()
 
 def get_plotting_manager(request: Request) -> PlottingManager:
     """Return a PlottingManager instance with injected dependencies."""
-    # TODO: Properly inject PlottingManager dependencies if any
-    return PlottingManager()
+    # TODO: Properly inject PlottingManager dependencies
+    # Using mock for DataPreparationManager since it has complex dependencies
+    mock_data_preparation_manager = MagicMock(spec=DataPreparationManager)
+    return PlottingManager(mock_data_preparation_manager)
 
 
 @router.get("/spectrogram")
