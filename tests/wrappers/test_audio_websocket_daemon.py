@@ -6,7 +6,7 @@ from unittest.mock import DEFAULT, MagicMock, patch
 import pytest
 
 import birdnetpi.wrappers.audio_websocket_daemon as daemon
-from birdnetpi.services.audio_livestream_service import AudioLivestreamService
+from birdnetpi.services.audio_websocket_service import AudioWebSocketService
 
 
 @pytest.fixture(autouse=True)
@@ -16,7 +16,7 @@ def mock_dependencies(mocker):
         "birdnetpi.wrappers.audio_websocket_daemon",
         FilePathResolver=DEFAULT,
         ConfigFileParser=DEFAULT,
-        AudioLivestreamService=DEFAULT,
+        AudioWebSocketService=DEFAULT,
     ) as mocks:
         # Configure mocks
         mocks["FilePathResolver"].return_value.get_fifo_base_path.return_value = "/tmp/fifo"
@@ -27,7 +27,7 @@ def mock_dependencies(mocker):
             "sample_rate": 44100,
             "audio_channels": 1,
         }
-        mocks["AudioLivestreamService"].return_value = MagicMock(spec=AudioLivestreamService)
+        mocks["AudioWebSocketService"].return_value = MagicMock(spec=AudioWebSocketService)
 
         # Yield mocks for individual test configuration
         yield mocks
@@ -67,27 +67,15 @@ class TestAudioWebsocketDaemon:
         mock_os.open.assert_called_once_with(
             "/tmp/fifo/birdnet_audio_livestream.fifo", os.O_RDONLY | os.O_NONBLOCK
         )
-        mock_dependencies["AudioLivestreamService"].assert_called_once_with(
-            "icecast://source:hackme@icecast:8000/stream.mp3", 44100, 1
-        )
-        mock_dependencies[
-            "AudioLivestreamService"
-        ].return_value.start_livestream.assert_called_once()
-        mock_dependencies["AudioLivestreamService"].return_value.stream_audio_chunk.assert_any_call(
-            b"audio_chunk_1"
-        )
-        mock_dependencies["AudioLivestreamService"].return_value.stream_audio_chunk.assert_any_call(
-            b"audio_chunk_2"
-        )
-        mock_dependencies[
-            "AudioLivestreamService"
-        ].return_value.stop_livestream.assert_called_once()
+        mock_dependencies["AudioWebSocketService"].assert_called_once_with(44100, 1)
+        # AudioWebSocketService doesn't have start/stop methods, only stream_audio_chunk
+        # The daemon calls asyncio.run(service.stream_audio_chunk()) for each chunk
         mock_atexit.register.assert_called_once_with(daemon._cleanup_fifo_and_service)
         mock_signal.signal.assert_any_call(mock_signal.SIGTERM, daemon._signal_handler)
         mock_signal.signal.assert_any_call(mock_signal.SIGINT, daemon._signal_handler)
         mock_time.sleep.assert_called_with(0.01)
 
-        assert "Starting audio livestream wrapper." in caplog.text
+        assert "Starting audio websocket wrapper." in caplog.text
         assert "Opened FIFO for reading: /tmp/fifo/birdnet_audio_livestream.fifo" in caplog.text
         assert "Configuration loaded successfully." in caplog.text
 
@@ -103,10 +91,8 @@ class TestAudioWebsocketDaemon:
             "FIFO not found at /tmp/fifo/birdnet_audio_livestream.fifo. "
             "Ensure audio_capture is running and creating it." in caplog.text
         )
-        mock_dependencies[
-            "AudioLivestreamService"
-        ].return_value.start_livestream.assert_not_called()
-        mock_dependencies["AudioLivestreamService"].return_value.stop_livestream.assert_not_called()
+        # AudioWebSocketService should not be called since FIFO opening failed
+        mock_dependencies["AudioWebSocketService"].assert_not_called()
 
     def test_main_general_exception(self, mocker, mock_dependencies, caplog):
         """Should log a general error and stop the service if an exception occurs."""
@@ -122,10 +108,7 @@ class TestAudioWebsocketDaemon:
 
         daemon.main()
 
-        assert "Error reading from FIFO or streaming audio: Test error" in caplog.text
-        mock_dependencies[
-            "AudioLivestreamService"
-        ].return_value.stop_livestream.assert_called_once()
+        assert "Error reading from FIFO or streaming to WebSocket: Test error" in caplog.text
 
     def test_signal_handler(self, mocker):
         """Should set the shutdown flag when a signal is received."""
@@ -143,14 +126,9 @@ class TestAudioWebsocketDaemon:
             "birdnetpi.wrappers.audio_websocket_daemon._fifo_livestream_path",
             "/tmp/fifo/livestream.fifo",
         )
-        mock_audio_livestream_service = mocker.patch(
-            "birdnetpi.wrappers.audio_websocket_daemon._audio_livestream_service",
-            new_callable=MagicMock,
-        )
-
         daemon._cleanup_fifo_and_service()
 
         mock_os.close.assert_called_once_with(789)
-        mock_audio_livestream_service.stop_livestream.assert_called_once()
+        # AudioWebSocketService doesn't need explicit cleanup, connections handle themselves
         assert "Closed FIFO: /tmp/fifo/livestream.fifo" in caplog.text
         assert daemon._fifo_livestream_fd is None

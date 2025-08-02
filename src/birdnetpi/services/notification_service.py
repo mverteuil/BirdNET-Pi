@@ -43,12 +43,17 @@ class NotificationService:
         if self.config.apprise_notify_each_detection:
             logger.info(f"Simulating sending Apprise notification for: {detection.species}")
 
-        # Send IoT notifications asynchronously
-        task = asyncio.create_task(self._send_iot_notifications(detection))
-        # Store task reference to avoid potential garbage collection issues
-        self._background_tasks = getattr(self, "_background_tasks", set())
-        self._background_tasks.add(task)
-        task.add_done_callback(self._background_tasks.discard)
+        # Send IoT notifications asynchronously (only if there's a running event loop)
+        try:
+            loop = asyncio.get_running_loop()
+            task = loop.create_task(self._send_iot_notifications(detection))
+            # Store task reference to avoid potential garbage collection issues
+            self._background_tasks = getattr(self, "_background_tasks", set())
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
+        except RuntimeError:
+            # No event loop running, skip IoT notifications
+            logger.debug("No event loop running, skipping IoT notifications")
 
     async def _send_iot_notifications(self, detection: Detection) -> None:
         """Send MQTT and webhook notifications for a detection event."""
