@@ -1,6 +1,6 @@
 import argparse
 
-from birdnetpi.managers.log_manager import LogManager
+from birdnetpi.services.log_service import LogService
 
 
 def main_cli() -> None:
@@ -14,10 +14,10 @@ def main_cli() -> None:
 
     args = parser.parse_args()
 
-    log_manager = LogManager()
+    log_service = LogService()
 
     if args.action == "get_logs":
-        logs = log_manager.get_logs()
+        logs = log_service.get_logs()
         print(logs)
     else:
         parser.error(f"Unknown action: {args.action}")

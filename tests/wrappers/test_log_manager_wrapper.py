@@ -45,13 +45,13 @@ def mock_dependencies(monkeypatch, tmp_path):
     )
 
     mock_log_manager_class = MagicMock()
-    monkeypatch.setattr("birdnetpi.wrappers.log_manager_wrapper.LogManager", mock_log_manager_class)
+    monkeypatch.setattr("birdnetpi.wrappers.log_manager_wrapper.LogService", mock_log_manager_class)
 
     yield {"mock_log_manager_class": mock_log_manager_class}
 
 
 def test_get_logs_action_instantiates_and_calls_correctly(mock_dependencies):
-    """Should instantiate LogManager and call get_logs."""
+    """Should instantiate LogService and call get_logs."""
     with patch(
         "argparse.ArgumentParser.parse_args",
         return_value=MagicMock(action="get_logs", limit=100),

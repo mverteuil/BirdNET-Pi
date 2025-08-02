@@ -2,8 +2,8 @@ import os
 import subprocess
 
 
-class LogManager:
-    """Manages the retrieval and processing of system logs related to BirdNET-Pi services."""
+class LogService:
+    """Service for retrieving and processing system logs related to BirdNET-Pi services."""
 
     def __init__(self) -> None:
         self.home_dir = os.path.expanduser("~")
