@@ -8,6 +8,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.web.routers.overview_router import router
 
@@ -27,7 +28,7 @@ def temp_db():
 
 
 @pytest.fixture
-def app_with_overview_services(temp_db):
+def app_with_overview_services(file_path_resolver, temp_db):
     """Create FastAPI app with overview router dependencies."""
     app = FastAPI()
 
@@ -35,7 +36,12 @@ def app_with_overview_services(temp_db):
     mock_config = MagicMock()
     mock_config.data.db_path = temp_db
     app.state.config = mock_config
-
+    # Use real detection manager with the temp database
+    app.state.detections = DetectionManager(DatabaseService(temp_db))
+    app.state.plotting_manager = MagicMock()  # Mock plotting manager
+    app.state.file_path_resolver = file_path_resolver
+    app.state.data_preparation_manager = MagicMock()  # Mock data preparation manager
+    app.state.location_service = MagicMock()  # Mock location service
     app.include_router(router)
     return app
 

@@ -193,8 +193,8 @@ app.include_router(spectrogram_router.router)
 app.include_router(field_mode_router.router)
 app.include_router(iot_router.router)  # Include IoT integration router
 app.include_router(overview_router.router)
-app.include_router(detections_router.router, prefix="/api/detections")  # Include detections router
-app.include_router(websocket_router.router)  # Include WebSocket endpoints
+app.include_router(detections_router.router, prefix="/api/detections")
+app.include_router(websocket_router.router, prefix="/ws")
 
 
 @app.get("/", response_class=HTMLResponse)

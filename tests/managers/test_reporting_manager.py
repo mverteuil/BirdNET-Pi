@@ -121,18 +121,18 @@ def test_get_weekly_report_data(reporting_manager, detection_manager):
 
         detection_manager.get_top_species_with_prior_counts.return_value = [
             {
-                "com_name": "American Robin",
+                "species": "American Robin",
                 "current_count": 20,
                 "prior_count": 15,
             },
             {
-                "com_name": "Northern Cardinal",
+                "species": "Northern Cardinal",
                 "current_count": 15,
                 "prior_count": 10,
             },
         ]
 
-        detection_manager.get_new_species_data.return_value = [{"com_name": "Blue Jay", "count": 5}]
+        detection_manager.get_new_species_data.return_value = [{"species": "Blue Jay", "count": 5}]
 
         report_data = reporting_manager.get_weekly_report_data()
 

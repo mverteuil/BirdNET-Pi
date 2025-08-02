@@ -1,9 +1,9 @@
-from dataclasses import dataclass
 from datetime import datetime
 
+from pydantic import BaseModel
 
-@dataclass
-class DetectionEvent:
+
+class DetectionEvent(BaseModel):
     """Represents a detection event with associated metadata."""
 
     species: str

@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.websocket("/ws")
+@router.websocket("")
 async def websocket_endpoint(websocket: WebSocket, request: Request) -> None:
     """Handle WebSocket connections for real-time updates."""
     await websocket.accept()
@@ -22,7 +22,7 @@ async def websocket_endpoint(websocket: WebSocket, request: Request) -> None:
         logger.info("Client disconnected")
 
 
-@router.websocket("/ws/audio")
+@router.websocket("/audio")
 async def audio_websocket_endpoint(websocket: WebSocket, request: Request) -> None:
     """Handle WebSocket connections for real-time audio streaming."""
     await websocket.accept()
@@ -36,7 +36,7 @@ async def audio_websocket_endpoint(websocket: WebSocket, request: Request) -> No
         logger.info("Audio WebSocket client disconnected")
 
 
-@router.websocket("/ws/spectrogram")
+@router.websocket("/spectrogram")
 async def spectrogram_websocket_endpoint(websocket: WebSocket, request: Request) -> None:
     """Handle WebSocket connections for real-time spectrogram streaming."""
     await websocket.accept()

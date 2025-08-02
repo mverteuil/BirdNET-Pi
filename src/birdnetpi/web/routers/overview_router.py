@@ -1,16 +1,7 @@
-from unittest.mock import MagicMock  # Added for testing purposes
-
 from fastapi import APIRouter, Depends, Request
 
-from birdnetpi.managers.data_preparation_manager import DataPreparationManager
-from birdnetpi.managers.detection_manager import DetectionManager
-from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
-from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.services.location_service import LocationService
 from birdnetpi.services.system_monitor_service import SystemMonitorService
-from birdnetpi.utils.config_file_parser import ConfigFileParser
-from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 router = APIRouter()
 
@@ -22,25 +13,13 @@ def get_system_monitor() -> SystemMonitorService:
 
 def get_reporting_manager(request: Request) -> ReportingManager:
     """Return a ReportingManager instance with injected dependencies."""
-    # TODO: Properly inject DetectionManager, FilePathResolver, and ConfigFileParser
-    # These should ideally be initialized once in the lifespan and passed via app.state
-    db_service = DatabaseService(request.app.state.config.data.db_path)
-    db_manager = DetectionManager(db_service)
-    file_path_resolver = FilePathResolver()
-    config_parser = ConfigFileParser(file_path_resolver.get_birdnet_pi_config_path())
-
-    # Create specific mocks for the ReportingManager dependencies
-    mock_plotting_manager = MagicMock(spec=PlottingManager)
-    mock_data_preparation_manager = MagicMock(spec=DataPreparationManager)
-    mock_location_service = MagicMock(spec=LocationService)
-
     return ReportingManager(
-        db_manager,
-        file_path_resolver,
-        config_parser,
-        mock_plotting_manager,
-        mock_data_preparation_manager,
-        mock_location_service,
+        request.app.state.detections,
+        request.app.state.file_path_resolver,
+        request.app.state.config,
+        request.app.state.plotting_manager,
+        request.app.state.data_preparation_manager,
+        request.app.state.location_service,
     )
 
 

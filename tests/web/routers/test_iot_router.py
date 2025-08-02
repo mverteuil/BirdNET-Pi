@@ -25,7 +25,7 @@ def app_with_iot_services():
         enable_mqtt=False,  # Disabled for testing to avoid connection attempts
     )
 
-    app.state.webhook_service = WebhookService(enable_webhooks=False)
+    app.state.webhook_service = WebhookService(enable_webhooks=True)
 
     app.include_router(router)
     return app
@@ -71,8 +71,8 @@ class TestIoTRouterIntegration:
         assert "enabled" in data
         assert "webhook_count" in data
 
-        # With webhooks disabled, should show as disabled
-        assert data["enabled"] is False
+        # With webhooks enabled, should show as enabled
+        assert data["enabled"] is True
 
     def test_webhook_config_list_endpoint(self, client):
         """Should return list of webhook configurations."""

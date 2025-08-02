@@ -121,7 +121,7 @@ async def test_detection(
     species: str = "Test Bird",
     confidence: float = 0.99,
     timestamp: str | None = None,
-    file_path: str = "test_audio/test_bird.wav",
+    audio_file_path: str = "test_audio/test_bird.wav",
     duration: float = 3.0,
     size_bytes: int = 1024,
     recording_start_time: str | None = None,
@@ -139,7 +139,7 @@ async def test_detection(
         timestamp=datetime.datetime.fromisoformat(timestamp)
         if timestamp
         else datetime.datetime.now(),
-        file_path=file_path,
+        audio_file_path=audio_file_path,
         duration=duration,
         size_bytes=size_bytes,
         recording_start_time=datetime.datetime.fromisoformat(recording_start_time)

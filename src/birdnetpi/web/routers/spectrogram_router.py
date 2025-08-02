@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
@@ -19,10 +19,12 @@ def get_plotting_manager(request: Request) -> PlottingManager:
 
 @router.get("/spectrogram")
 async def get_spectrogram(
-    audio_path: str,
+    audio_path: str = Query(..., min_length=1, description="Path to the audio file"),
     plotting_manager: PlottingManager = Depends(get_plotting_manager),  # noqa: B008
 ) -> StreamingResponse:
     """Generate and return a spectrogram for a given audio file."""
-    # TODO: Add validation for audio_path to ensure it's a valid and safe path
-    spectrogram_buffer = plotting_manager.generate_spectrogram(audio_path)
-    return StreamingResponse(content=iter([spectrogram_buffer.read()]), media_type="image/png")
+    try:
+        spectrogram_buffer = plotting_manager.generate_spectrogram(audio_path)
+        return StreamingResponse(content=iter([spectrogram_buffer.read()]), media_type="image/png")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating spectrogram: {e}") from e

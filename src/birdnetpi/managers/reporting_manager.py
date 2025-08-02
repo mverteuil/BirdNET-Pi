@@ -214,9 +214,9 @@ class ReportingManager:
     def get_todays_detections(self) -> list[dict[str, Any]]:
         """Retrieve all detection records from the database for the current day."""
         today = datetime.date.today()
-        # Get detection counts for today (could be expanded to get actual detections if needed)
-        todays_detection_count = self.detection_manager.get_detections_count_by_date(today)
-        return [{"date": str(today), "count": todays_detection_count}]
+        start_datetime = datetime.datetime.combine(today, datetime.time.min)
+        end_datetime = datetime.datetime.combine(today, datetime.time.max)
+        return self.detection_manager.get_detections_by_date_range(start_datetime, end_datetime)
 
     def date_filter(self, df: pd.DataFrame, start_date: str, end_date: str) -> pd.DataFrame:
         """Filter a DataFrame by date range."""

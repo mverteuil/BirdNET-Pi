@@ -1,16 +1,49 @@
-"""Integration tests for admin router that exercise basic functionality."""
+"""Integration tests for admin router that exercise expanded functionality."""
+
+from unittest.mock import Mock, patch
 
 import pytest
 from fastapi import FastAPI
+from fastapi.templating import Jinja2Templates
 from fastapi.testclient import TestClient
 
+from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.file_manager import FileManager
+from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.utils.file_path_resolver import FilePathResolver
 from birdnetpi.web.routers.admin_router import router
 
 
 @pytest.fixture
-def app_with_admin_router():
-    """Create FastAPI app with admin router."""
+def app_with_admin_router(tmp_path):
+    """Create FastAPI app with admin router and dependencies."""
     app = FastAPI()
+
+    # Create a test database in temp directory
+    db_path = tmp_path / "test.db"
+    db_path.parent.mkdir(exist_ok=True)
+
+    # Set up app state with required dependencies
+    app.state.detections = DetectionManager(DatabaseService(str(db_path)))
+    app.state.templates = Jinja2Templates(directory="src/birdnetpi/web/templates")
+
+    # Create a simple test config with the temp db path
+    from birdnetpi.models.config import BirdNETConfig, DataConfig
+
+    test_config = BirdNETConfig(site_name="Test BirdNET-Pi", data=DataConfig(db_path=str(db_path)))
+    app.state.config = test_config
+
+    # Create file manager with a mock resolver
+    app.state.file_manager = FileManager(str(tmp_path))
+    mock_resolver = Mock(spec=FilePathResolver)
+
+    # Create test config file for settings endpoint
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("site_name: Test BirdNET-Pi\nlatitude: 40.7128\nlongitude: -74.0060")
+    mock_resolver.get_birdnet_pi_config_path.return_value = str(config_file)
+
+    app.state.file_manager.file_path_resolver = mock_resolver
+
     app.include_router(router)
     return app
 
@@ -155,3 +188,53 @@ class TestAdminRouterIntegration:
         assert final_response.status_code == 200
         data = final_response.json()
         assert data["message"] == "Admin router is working!"
+
+    def test_settings_page_renders(self, client):
+        """Should render settings page with configuration."""
+        response = client.get("/settings")
+
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/html")
+        # Check that some expected content is in the response
+        assert "Test BirdNET-Pi" in response.text
+
+    @patch("birdnetpi.web.routers.admin_router.LogService")
+    def test_log_endpoint_returns_logs(self, mock_log_service, client):
+        """Should return system logs as plain text."""
+        # Mock log service
+        mock_service_instance = Mock()
+        mock_service_instance.get_logs.return_value = "Test log content\nLine 2\n"
+        mock_log_service.return_value = mock_service_instance
+
+        response = client.get("/log")
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "text/plain; charset=utf-8"
+        assert "Test log content" in response.text
+
+    def test_test_detection_form_renders(self, client):
+        """Should render test detection form template."""
+        response = client.get("/test_detection_form")
+
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/html")
+
+    def test_test_detection_endpoint_creates_detection(self, client):
+        """Should create a test detection event."""
+        response = client.get("/test_detection?species=Test Bird&confidence=0.95")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "message" in data
+        assert "Test detection published" in data["message"]
+        assert "data" in data
+
+    def test_test_detection_endpoint_with_defaults(self, client):
+        """Should use default values when parameters are not provided."""
+        response = client.get("/test_detection")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["message"] == "Test detection published"
+        # Should have used default species "Test Bird"
+        assert "Test Bird" in data["data"]
