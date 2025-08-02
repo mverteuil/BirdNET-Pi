@@ -3,8 +3,8 @@ import shutil
 import subprocess
 
 
-class SystemMonitor:
-    """Monitors system resources like disk usage, logs, and hardware information."""
+class SystemMonitorService:
+    """Service for monitoring system resources like disk usage, logs, and hardware information."""
 
     def get_disk_usage(self, path: str = ".") -> dict[str, int]:
         """Return disk usage statistics for a given path."""

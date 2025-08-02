@@ -1,7 +1,7 @@
 import argparse
 import sys
 
-from birdnetpi.managers.system_monitor import SystemMonitor
+from birdnetpi.services.system_monitor_service import SystemMonitorService
 
 
 def main_cli() -> None:
@@ -19,7 +19,7 @@ def main_cli() -> None:
 
     args = parser.parse_args()
 
-    system_monitor = SystemMonitor()
+    system_monitor = SystemMonitorService()
 
     if args.action == "disk_check":
         is_sufficient, message = system_monitor.check_disk_space(args.path, args.threshold)

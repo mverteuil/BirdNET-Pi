@@ -6,17 +6,17 @@ from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
-from birdnetpi.managers.system_monitor import SystemMonitor
 from birdnetpi.services.location_service import LocationService
+from birdnetpi.services.system_monitor_service import SystemMonitorService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 router = APIRouter()
 
 
-def get_system_monitor() -> SystemMonitor:
-    """Return a SystemMonitor instance."""
-    return SystemMonitor()
+def get_system_monitor() -> SystemMonitorService:
+    """Return a SystemMonitorService instance."""
+    return SystemMonitorService()
 
 
 def get_reporting_manager(request: Request) -> ReportingManager:
@@ -46,7 +46,7 @@ def get_reporting_manager(request: Request) -> ReportingManager:
 
 @router.get("/overview")
 async def get_overview_data(
-    system_monitor: SystemMonitor = Depends(get_system_monitor),  # noqa: B008
+    system_monitor: SystemMonitorService = Depends(get_system_monitor),  # noqa: B008
     reporting_manager: ReportingManager = Depends(get_reporting_manager),  # noqa: B008
 ) -> dict:
     """Retrieve various system and application overview data."""

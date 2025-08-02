@@ -46,7 +46,7 @@ def mock_dependencies(monkeypatch, tmp_path):
 
     mock_system_monitor_class = MagicMock()
     monkeypatch.setattr(
-        "birdnetpi.wrappers.system_monitor_wrapper.SystemMonitor",
+        "birdnetpi.wrappers.system_monitor_wrapper.SystemMonitorService",
         mock_system_monitor_class,
     )
 
@@ -54,7 +54,7 @@ def mock_dependencies(monkeypatch, tmp_path):
 
 
 def test_extra_info_action_instantiates_and_calls_correctly(mock_dependencies):
-    """Should instantiate SystemMonitor and call get_extra_info."""
+    """Should instantiate SystemMonitorService and call get_extra_info."""
     with patch(
         "argparse.ArgumentParser.parse_args",
         return_value=MagicMock(action="extra_info"),

@@ -5,7 +5,7 @@ from fastapi import Request
 
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.reporting_manager import ReportingManager
-from birdnetpi.managers.system_monitor import SystemMonitor
+from birdnetpi.services.system_monitor_service import SystemMonitorService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 from birdnetpi.web.routers.overview_router import (
@@ -17,8 +17,8 @@ from birdnetpi.web.routers.overview_router import (
 
 @pytest.fixture
 def mock_system_monitor():
-    """Return a mock SystemMonitor object."""
-    monitor = MagicMock(spec=SystemMonitor)
+    """Return a mock SystemMonitorService object."""
+    monitor = MagicMock(spec=SystemMonitorService)
     monitor.get_disk_usage.return_value = {"total": "100GB", "used": "50GB"}
     monitor.get_extra_info.return_value = {"cpu_temp": "45C"}
     return monitor
@@ -82,7 +82,7 @@ class TestOverviewRouter:
     def test_get_system_monitor(self):
         """Test the get_system_monitor dependency."""
         monitor = get_system_monitor()
-        assert isinstance(monitor, SystemMonitor)
+        assert isinstance(monitor, SystemMonitorService)
 
     def test_get_reporting_manager(
         self, mock_request, mock_detection_manager, mock_file_path_resolver, mock_config_file_parser
