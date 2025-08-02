@@ -1,9 +1,7 @@
 """Tests for the GPSService."""
 
-import asyncio
-import sys
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -21,7 +19,7 @@ def enabled_gps_service():
     """Create an enabled GPSService instance for testing."""
     # Mock the gpsd module at import time
     mock_gpsd = MagicMock()
-    with patch.dict('sys.modules', {'gpsd': mock_gpsd}):
+    with patch.dict("sys.modules", {"gpsd": mock_gpsd}):
         service = GPSService(enable_gps=True, update_interval=1.0)
         return service
 
@@ -42,7 +40,7 @@ class TestGPSService:
         """Test GPSService initialization when GPS is enabled."""
         # Mock the gpsd module at import time
         mock_gpsd = MagicMock()
-        with patch.dict('sys.modules', {'gpsd': mock_gpsd}):
+        with patch.dict("sys.modules", {"gpsd": mock_gpsd}):
             service = GPSService(enable_gps=True, update_interval=2.0)
             assert service.enable_gps
             assert service.update_interval == 2.0
@@ -83,9 +81,9 @@ class TestGPSService:
     def test_get_current_location_with_fix(self, enabled_gps_service):
         """Test getting current location with valid GPS fix."""
         service = enabled_gps_service
-        
+
         # Create a recent location
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         test_location = GPSCoordinates(
             latitude=40.7128,
             longitude=-74.0060,
@@ -107,13 +105,13 @@ class TestGPSService:
     def test_get_last_known_location(self, enabled_gps_service):
         """Test getting last known location."""
         service = enabled_gps_service
-        
+
         test_location = GPSCoordinates(
             latitude=40.7128,
             longitude=-74.0060,
             altitude=10.0,
             accuracy=5.0,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             satellite_count=8,
         )
         service.last_known_location = test_location
@@ -126,9 +124,9 @@ class TestGPSService:
     def test_get_location_at_time(self, enabled_gps_service):
         """Test getting location at a specific time."""
         service = enabled_gps_service
-        
+
         # Create test locations with different timestamps
-        base_time = datetime.now(timezone.utc)
+        base_time = datetime.now(UTC)
         locations = [
             GPSCoordinates(40.0, -74.0, 10.0, 5.0, base_time, 8),
             GPSCoordinates(40.1, -74.1, 11.0, 4.0, base_time.replace(second=30), 7),
@@ -142,7 +140,9 @@ class TestGPSService:
         assert location.latitude == 40.1
 
         # Test closest match within tolerance
-        location = service.get_location_at_time(base_time.replace(second=25), tolerance_seconds=10.0)
+        location = service.get_location_at_time(
+            base_time.replace(second=25), tolerance_seconds=10.0
+        )
         assert location is not None
         assert location.latitude == 40.1
 
@@ -153,9 +153,9 @@ class TestGPSService:
     def test_get_location_history(self, enabled_gps_service):
         """Test getting location history."""
         service = enabled_gps_service
-        
+
         # Create test locations
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         locations = [
             GPSCoordinates(40.0, -74.0, 10.0, 5.0, now, 8),
             GPSCoordinates(40.1, -74.1, 11.0, 4.0, now, 7),
@@ -177,7 +177,7 @@ class TestGPSService:
 
         # Enabled service with fix
         enabled_gps_service.current_location = GPSCoordinates(
-            40.0, -74.0, 10.0, 5.0, datetime.now(timezone.utc), 8
+            40.0, -74.0, 10.0, 5.0, datetime.now(UTC), 8
         )
         assert enabled_gps_service.is_gps_available()
 
@@ -193,13 +193,13 @@ class TestGPSService:
         """Test GPS status when enabled with GPS fix."""
         service = enabled_gps_service
         service.is_running = True
-        
+
         test_location = GPSCoordinates(
             latitude=40.7128,
             longitude=-74.0060,
             altitude=10.0,
             accuracy=5.0,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             satellite_count=8,
         )
         service.current_location = test_location
@@ -218,7 +218,7 @@ class TestGPSService:
         """Test location update when no GPSD client is available."""
         service = enabled_gps_service
         service.gpsd_client = None
-        
+
         await service._update_location()
         # Should not raise an exception and should not update location
         assert service.current_location is None
@@ -227,12 +227,12 @@ class TestGPSService:
     async def test_update_location_no_fix(self, enabled_gps_service):
         """Test location update when GPS has no fix."""
         service = enabled_gps_service
-        
+
         # Mock GPS packet with no fix
         mock_packet = MagicMock()
         mock_packet.mode = 1  # No valid fix
         service.gpsd_client.get_current.return_value = mock_packet
-        
+
         await service._update_location()
         assert service.current_location is None
 
@@ -240,7 +240,7 @@ class TestGPSService:
     async def test_update_location_with_fix(self, enabled_gps_service):
         """Test location update with valid GPS fix."""
         service = enabled_gps_service
-        
+
         # Mock GPS packet with valid fix
         mock_packet = MagicMock()
         mock_packet.mode = 3  # 3D fix
@@ -250,9 +250,9 @@ class TestGPSService:
         mock_packet.eps = 5.0
         mock_packet.sats = 8
         service.gpsd_client.get_current.return_value = mock_packet
-        
+
         await service._update_location()
-        
+
         assert service.current_location is not None
         assert service.current_location.latitude == 40.7128
         assert service.current_location.longitude == -74.0060
@@ -265,13 +265,13 @@ class TestGPSService:
     async def test_update_location_history_limit(self, enabled_gps_service):
         """Test that location history is limited to 100 entries."""
         service = enabled_gps_service
-        
+
         # Fill history with 100 locations
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         service.location_history = [
             GPSCoordinates(40.0, -74.0, 10.0, 5.0, now, 8) for _ in range(100)
         ]
-        
+
         # Mock GPS packet with valid fix
         mock_packet = MagicMock()
         mock_packet.mode = 3
@@ -281,9 +281,9 @@ class TestGPSService:
         mock_packet.eps = 3.0
         mock_packet.sats = 9
         service.gpsd_client.get_current.return_value = mock_packet
-        
+
         await service._update_location()
-        
+
         # History should still be 100 entries, with oldest removed
         assert len(service.location_history) == 100
         assert service.location_history[-1].latitude == 41.0  # New location at end

@@ -22,8 +22,10 @@ from birdnetpi.services.file_manager import FileManager
 from birdnetpi.services.gps_service import GPSService
 from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
 from birdnetpi.services.location_service import LocationService
+from birdnetpi.services.mqtt_service import MQTTService
 from birdnetpi.services.notification_service import NotificationService
 from birdnetpi.services.spectrogram_service import SpectrogramService
+from birdnetpi.services.webhook_service import WebhookService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 from birdnetpi.utils.logging_configurator import configure_logging
@@ -33,6 +35,7 @@ from .routers import (
     api_router,
     audio_router,
     field_mode_router,
+    iot_router,
     log_router,
     overview_router,
     reporting_router,
@@ -101,6 +104,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         gps_check=getattr(app.state.config, "enable_gps", False),
     )
 
+    # Initialize MQTT service for IoT integration
+    app.state.mqtt_service = MQTTService(
+        broker_host=getattr(app.state.config, "mqtt_broker_host", "localhost"),
+        broker_port=getattr(app.state.config, "mqtt_broker_port", 1883),
+        username=getattr(app.state.config, "mqtt_username", "") or None,
+        password=getattr(app.state.config, "mqtt_password", "") or None,
+        topic_prefix=getattr(app.state.config, "mqtt_topic_prefix", "birdnet"),
+        client_id=getattr(app.state.config, "mqtt_client_id", "birdnet-pi"),
+        enable_mqtt=getattr(app.state.config, "enable_mqtt", False),
+    )
+
+    # Initialize webhook service for HTTP integrations
+    app.state.webhook_service = WebhookService(
+        enable_webhooks=getattr(app.state.config, "enable_webhooks", False)
+    )
+
+    # Configure webhooks from config
+    webhook_urls = getattr(app.state.config, "webhook_urls", "")
+    if webhook_urls:
+        webhook_url_list = [url.strip() for url in webhook_urls.split(",") if url.strip()]
+        app.state.webhook_service.configure_webhooks_from_urls(webhook_url_list)
+
     # Initialize and start the FIFO reader service for WebSocket streaming
     fifo_base_path = app.state.file_resolver.get_fifo_base_path()
     livestream_fifo_path = f"{fifo_base_path}/birdnet_audio_livestream.fifo"
@@ -110,7 +135,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Initialize NotificationService and register listeners
     app.state.notification_service = NotificationService(
-        app.state.active_websockets, app.state.config
+        app.state.active_websockets,
+        app.state.config,
+        app.state.mqtt_service,
+        app.state.webhook_service,
     )
     app.state.notification_service.register_listeners()
 
@@ -146,12 +174,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await app.state.gps_service.start()
     await app.state.hardware_monitor.start()
 
+    # Start IoT services
+    await app.state.mqtt_service.start()
+    await app.state.webhook_service.start()
+
     yield
 
     # Cleanup: Stop services
     await app.state.audio_fifo_reader_service.stop()
     await app.state.gps_service.stop()
     await app.state.hardware_monitor.stop()
+    await app.state.mqtt_service.stop()
+    await app.state.webhook_service.stop()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -163,6 +197,7 @@ app.include_router(reporting_router.router)
 app.include_router(spectrogram_router.router)
 app.include_router(views_router.router)
 app.include_router(field_mode_router.router)
+app.include_router(iot_router.router)  # Include IoT integration router
 
 app.include_router(overview_router.router)
 app.include_router(api_router.router, prefix="/api")  # Include the new API router

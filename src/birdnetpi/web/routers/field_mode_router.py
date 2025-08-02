@@ -1,10 +1,9 @@
 """Field mode API routes for mobile and field deployments."""
 
 import logging
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from birdnetpi.managers.detection_manager import DetectionManager
@@ -65,7 +64,9 @@ async def get_gps_status(gps_service: GPSService | None = Depends(get_gps_servic
 
 
 @router.get("/api/gps/location")
-async def get_current_location(gps_service: GPSService | None = Depends(get_gps_service)) -> JSONResponse:
+async def get_current_location(
+    gps_service: GPSService | None = Depends(get_gps_service),
+) -> JSONResponse:
     """Get current GPS coordinates."""
     if not gps_service:
         return JSONResponse({"error": "GPS service not available"}, status_code=404)
@@ -162,7 +163,9 @@ async def get_component_status(
                 }
             )
         else:
-            return JSONResponse({"error": f"Component '{component_name}' not found"}, status_code=404)
+            return JSONResponse(
+                {"error": f"Component '{component_name}' not found"}, status_code=404
+            )
     except Exception as e:
         logger.error("Error getting component status: %s", e)
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -204,9 +207,11 @@ async def get_detection_count(
             try:
                 target_date = datetime.fromisoformat(date).date()
             except ValueError:
-                return JSONResponse({"error": "Invalid date format. Use YYYY-MM-DD"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Invalid date format. Use YYYY-MM-DD"}, status_code=400
+                )
         else:
-            target_date = datetime.now(timezone.utc).date()
+            target_date = datetime.now(UTC).date()
 
         count = detection_manager.get_detections_count_by_date(target_date)
         return JSONResponse({"date": target_date.isoformat(), "count": count})
@@ -238,14 +243,16 @@ async def update_detection_location(
             return JSONResponse({"error": "Detection not found"}, status_code=404)
 
         # Update location
-        detection_manager.update_detection_location(detection_id, location.latitude, location.longitude)
+        detection_manager.update_detection_location(
+            detection_id, location.latitude, location.longitude
+        )
 
         return JSONResponse(
             {
                 "detection_id": detection_id,
                 "latitude": location.latitude,
                 "longitude": location.longitude,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(UTC).isoformat(),
             }
         )
     except Exception as e:
@@ -262,7 +269,7 @@ async def get_field_summary(
     """Get comprehensive field mode summary."""
     try:
         # Get today's detection count
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         today_count = detection_manager.get_detections_count_by_date(today)
 
         # Get recent detections
@@ -280,7 +287,7 @@ async def get_field_summary(
 
         return JSONResponse(
             {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "detections": {
                     "today_count": today_count,
                     "recent": [

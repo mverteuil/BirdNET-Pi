@@ -6,8 +6,7 @@ supporting both real-time location updates and retroactive location tagging.
 
 import asyncio
 import logging
-import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any, NamedTuple
 
 logger = logging.getLogger(__name__)
@@ -52,8 +51,7 @@ class GPSService:
                 logger.info("GPS support enabled with gpsd")
             except ImportError:
                 logger.warning(
-                    "GPS enabled but gpsd-py3 not installed. "
-                    "Install with: pip install gpsd-py3"
+                    "GPS enabled but gpsd-py3 not installed. Install with: pip install gpsd-py3"
                 )
                 self.enable_gps = False
 
@@ -125,7 +123,7 @@ class GPSService:
                 longitude=packet.lon,
                 altitude=getattr(packet, "alt", None),
                 accuracy=getattr(packet, "eps", None),
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 satellite_count=getattr(packet, "sats", None),
             )
 
@@ -160,7 +158,7 @@ class GPSService:
 
         # Return current location if recent (within 2x update interval)
         if self.current_location:
-            age = (datetime.now(timezone.utc) - self.current_location.timestamp).total_seconds()
+            age = (datetime.now(UTC) - self.current_location.timestamp).total_seconds()
             if age <= self.update_interval * 2:
                 return self.current_location
 
@@ -174,7 +172,9 @@ class GPSService:
         """
         return self.last_known_location
 
-    def get_location_at_time(self, target_time: datetime, tolerance_seconds: float = 30.0) -> GPSCoordinates | None:
+    def get_location_at_time(
+        self, target_time: datetime, tolerance_seconds: float = 30.0
+    ) -> GPSCoordinates | None:
         """Get GPS coordinates closest to a specific time.
 
         Args:
@@ -210,7 +210,7 @@ class GPSService:
         if not self.location_history:
             return []
 
-        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=hours)
         return [loc for loc in self.location_history if loc.timestamp >= cutoff_time]
 
     def is_gps_available(self) -> bool:

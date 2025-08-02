@@ -283,16 +283,10 @@
       <!-- GPS Information -->
       <div class="gps-info">
         <h3>Location</h3>
-        <div id="gpsCoordinates" class="coordinates">
-          GPS: Not available
-        </div>
-        <div id="gpsAccuracy" class="coordinates">
-          Accuracy: Unknown
-        </div>
+        <div id="gpsCoordinates" class="coordinates">GPS: Not available</div>
+        <div id="gpsAccuracy" class="coordinates">Accuracy: Unknown</div>
         <div id="gpsSatellites" class="coordinates">Satellites: --</div>
-        <div id="gpsLastUpdate" class="coordinates">
-          Last update: Never
-        </div>
+        <div id="gpsLastUpdate" class="coordinates">Last update: Never</div>
       </div>
 
       <!-- System Statistics -->
@@ -313,12 +307,8 @@
 
       <!-- Control Buttons -->
       <div class="control-buttons">
-        <a href="/livestream" class="field-button primary">
-          🔊 Live Audio
-        </a>
-        <a href="/spectrogram" class="field-button primary">
-          📊 Spectrogram
-        </a>
+        <a href="/livestream" class="field-button primary"> 🔊 Live Audio </a>
+        <a href="/spectrogram" class="field-button primary"> 📊 Spectrogram </a>
         <button id="refreshBtn" class="field-button" onclick="refreshStatus()">
           🔄 Refresh
         </button>
@@ -332,9 +322,7 @@
       </div>
 
       <!-- Detection Count -->
-      <div class="large-text">
-        Total Today: <span id="todayCount">--</span>
-      </div>
+      <div class="large-text">Total Today: <span id="todayCount">--</span></div>
     </div>
 
     <script>
@@ -607,9 +595,7 @@
       async function updateTodayCount() {
         try {
           const today = new Date().toISOString().split("T")[0];
-          const response = await fetch(
-            `/api/detections/count?date=${today}`,
-          );
+          const response = await fetch(`/api/detections/count?date=${today}`);
           const data = await response.json();
           document.getElementById("todayCount").textContent =
             data.count || "--";

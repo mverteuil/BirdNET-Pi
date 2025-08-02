@@ -6,10 +6,7 @@ and system resources to provide real-time status and alert on failures.
 
 import asyncio
 import logging
-import shutil
-import subprocess
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, NamedTuple
 
@@ -130,7 +127,7 @@ class HardwareMonitorService:
 
     async def _check_all_components(self) -> None:
         """Check status of all monitored components."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Check audio devices
         if self.audio_device_check:
@@ -261,7 +258,9 @@ class HardwareMonitorService:
 
                     if cpu_temp is not None:
                         temp_status = self._get_resource_status(
-                            cpu_temp, self.temperature_warning_threshold, self.temperature_critical_threshold
+                            cpu_temp,
+                            self.temperature_warning_threshold,
+                            self.temperature_critical_threshold,
                         )
 
                         temp_component = ComponentStatus(
@@ -284,7 +283,7 @@ class HardwareMonitorService:
         """Check GPS device availability."""
         if not self.gps_check:
             return
-            
+
         try:
             # Try to connect to gpsd
             result = await asyncio.create_subprocess_exec(
@@ -313,7 +312,7 @@ class HardwareMonitorService:
                     last_check=check_time,
                 )
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             status = ComponentStatus(
                 name="gps",
                 status=HealthStatus.CRITICAL,
@@ -330,7 +329,9 @@ class HardwareMonitorService:
 
         await self._update_component_status("gps", status)
 
-    def _get_resource_status(self, value: float, warning_threshold: float, critical_threshold: float) -> HealthStatus:
+    def _get_resource_status(
+        self, value: float, warning_threshold: float, critical_threshold: float
+    ) -> HealthStatus:
         """Get health status based on resource value and thresholds."""
         if value >= critical_threshold:
             return HealthStatus.CRITICAL
@@ -339,7 +340,9 @@ class HardwareMonitorService:
         else:
             return HealthStatus.HEALTHY
 
-    async def _update_component_status(self, component_name: str, new_status: ComponentStatus) -> None:
+    async def _update_component_status(
+        self, component_name: str, new_status: ComponentStatus
+    ) -> None:
         """Update component status and trigger alerts if needed."""
         old_status = self.component_status.get(component_name)
         self.component_status[component_name] = new_status
@@ -355,7 +358,9 @@ class HardwareMonitorService:
                         await asyncio.create_task(
                             callback(component_name, new_status)
                             if asyncio.iscoroutinefunction(callback)
-                            else asyncio.get_event_loop().run_in_executor(None, callback, component_name, new_status)
+                            else asyncio.get_event_loop().run_in_executor(
+                                None, callback, component_name, new_status
+                            )
                         )
                     except Exception as e:
                         logger.error("Error in hardware alert callback: %s", e)

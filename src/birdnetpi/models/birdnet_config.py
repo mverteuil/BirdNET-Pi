@@ -91,3 +91,17 @@ class BirdNETConfig:
     sf_threshold: float = 0.03  # Species filter threshold
     privacy_threshold: float = 10.0  # Privacy threshold percentage for human detection cutoff
     data_model_version: int = 2  # Data model version (1 or 2)
+
+    # MQTT Integration settings
+    enable_mqtt: bool = False  # Enable MQTT publishing
+    mqtt_broker_host: str = "localhost"  # MQTT broker hostname
+    mqtt_broker_port: int = 1883  # MQTT broker port
+    mqtt_username: str = ""  # MQTT username (optional)
+    mqtt_password: str = ""  # MQTT password (optional)
+    mqtt_topic_prefix: str = "birdnet"  # MQTT topic prefix
+    mqtt_client_id: str = "birdnet-pi"  # MQTT client identifier
+
+    # Webhook Integration settings
+    enable_webhooks: bool = False  # Enable webhook notifications
+    webhook_urls: str = ""  # Comma-separated list of webhook URLs
+    webhook_events: str = "detection,health,gps,system"  # Events to send via webhooks

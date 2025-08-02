@@ -1,7 +1,6 @@
 """Tests for the HardwareMonitorService."""
 
-import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -74,7 +73,7 @@ class TestHardwareMonitorService:
     async def test_check_audio_devices_success(self, hardware_monitor):
         """Test audio device check when audio is working."""
         service = hardware_monitor
-        check_time = datetime.now(timezone.utc)
+        check_time = datetime.now(UTC)
 
         with patch("asyncio.create_subprocess_exec") as mock_subprocess:
             # Mock successful audio test
@@ -94,7 +93,7 @@ class TestHardwareMonitorService:
     async def test_check_audio_devices_failure(self, hardware_monitor):
         """Test audio device check when audio fails."""
         service = hardware_monitor
-        check_time = datetime.now(timezone.utc)
+        check_time = datetime.now(UTC)
 
         with patch("asyncio.create_subprocess_exec") as mock_subprocess:
             # Mock failed audio test
@@ -117,12 +116,12 @@ class TestHardwareMonitorService:
     async def test_check_system_resources(self, mock_disk, mock_memory, mock_cpu, hardware_monitor):
         """Test system resource monitoring."""
         service = hardware_monitor
-        check_time = datetime.now(timezone.utc)
+        check_time = datetime.now(UTC)
 
         # Mock system resource data
         mock_cpu.return_value = 50.0
-        mock_memory.return_value = MagicMock(percent=60.0, used=1024**3, total=2*(1024**3))
-        mock_disk.return_value = MagicMock(used=10*(1024**3), total=100*(1024**3))
+        mock_memory.return_value = MagicMock(percent=60.0, used=1024**3, total=2 * (1024**3))
+        mock_disk.return_value = MagicMock(used=10 * (1024**3), total=100 * (1024**3))
 
         await service._check_system_resources(check_time)
 
@@ -149,14 +148,14 @@ class TestHardwareMonitorService:
     async def test_check_system_resources_high_cpu(self, mock_cpu, hardware_monitor):
         """Test system resource monitoring with high CPU usage."""
         service = hardware_monitor
-        check_time = datetime.now(timezone.utc)
+        check_time = datetime.now(UTC)
 
         # Mock high CPU usage
         mock_cpu.return_value = 95.0
 
         with patch("psutil.virtual_memory") as mock_memory, patch("psutil.disk_usage") as mock_disk:
-            mock_memory.return_value = MagicMock(percent=30.0, used=512**3, total=2*(1024**3))
-            mock_disk.return_value = MagicMock(used=10*(1024**3), total=100*(1024**3))
+            mock_memory.return_value = MagicMock(percent=30.0, used=512**3, total=2 * (1024**3))
+            mock_disk.return_value = MagicMock(used=10 * (1024**3), total=100 * (1024**3))
 
             await service._check_system_resources(check_time)
 
@@ -202,7 +201,7 @@ class TestHardwareMonitorService:
             name="test_component",
             status=HealthStatus.CRITICAL,
             message="Test critical error",
-            last_check=datetime.now(timezone.utc),
+            last_check=datetime.now(UTC),
         )
 
         await service._update_component_status("test_component", critical_status)
@@ -225,7 +224,7 @@ class TestHardwareMonitorService:
             name="test_component",
             status=HealthStatus.HEALTHY,
             message="Test message",
-            last_check=datetime.now(timezone.utc),
+            last_check=datetime.now(UTC),
         )
         service.component_status["test_component"] = test_status
 
@@ -244,9 +243,9 @@ class TestHardwareMonitorService:
         assert len(all_status) == 0
 
         # Add some statuses
-        status1 = ComponentStatus("comp1", HealthStatus.HEALTHY, "OK", datetime.now(timezone.utc))
-        status2 = ComponentStatus("comp2", HealthStatus.WARNING, "Warning", datetime.now(timezone.utc))
-        
+        status1 = ComponentStatus("comp1", HealthStatus.HEALTHY, "OK", datetime.now(UTC))
+        status2 = ComponentStatus("comp2", HealthStatus.WARNING, "Warning", datetime.now(UTC))
+
         service.component_status["comp1"] = status1
         service.component_status["comp2"] = status2
 
@@ -269,7 +268,7 @@ class TestHardwareMonitorService:
         service = hardware_monitor
 
         # Add various component statuses
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         service.component_status["healthy_comp"] = ComponentStatus(
             "healthy_comp", HealthStatus.HEALTHY, "OK", now
         )
@@ -304,7 +303,7 @@ class TestHardwareMonitorService:
         """Test GPS check when GPS monitoring is disabled."""
         service = hardware_monitor
         service.gps_check = False
-        check_time = datetime.now(timezone.utc)
+        check_time = datetime.now(UTC)
 
         await service._check_gps_device(check_time)
 
@@ -327,7 +326,7 @@ class TestHardwareMonitorService:
             name="test_component",
             status=HealthStatus.CRITICAL,
             message="Test critical error",
-            last_check=datetime.now(timezone.utc),
+            last_check=datetime.now(UTC),
         )
 
         # This should not raise an exception despite the failing callback
