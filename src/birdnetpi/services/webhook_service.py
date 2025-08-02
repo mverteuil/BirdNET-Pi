@@ -5,10 +5,9 @@ detection events occur, providing integration with external systems.
 """
 
 import asyncio
-import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime
+from typing import Any
 from urllib.parse import urlparse
 
 import httpx
@@ -25,11 +24,11 @@ class WebhookConfig:
         self,
         url: str,
         name: str = "",
-        headers: Dict[str, str] | None = None,
+        headers: dict[str, str] | None = None,
         enabled: bool = True,
         timeout: int = 10,
         retry_count: int = 3,
-        events: List[str] | None = None,
+        events: list[str] | None = None,
     ) -> None:
         """Initialize webhook configuration.
 
@@ -75,7 +74,7 @@ class WebhookService:
             enable_webhooks: Whether webhook sending is enabled globally
         """
         self.enable_webhooks = enable_webhooks
-        self.webhooks: List[WebhookConfig] = []
+        self.webhooks: list[WebhookConfig] = []
         self.client: httpx.AsyncClient | None = None
         self.stats = {
             "total_sent": 0,
@@ -90,7 +89,7 @@ class WebhookService:
             return
 
         logger.info("Starting webhook service...")
-        
+
         # Create HTTP client with reasonable defaults
         self.client = httpx.AsyncClient(
             timeout=httpx.Timeout(30.0),
@@ -139,14 +138,14 @@ class WebhookService:
                 return True
         return False
 
-    def configure_webhooks_from_urls(self, webhook_urls: List[str]) -> None:
+    def configure_webhooks_from_urls(self, webhook_urls: list[str]) -> None:
         """Configure webhooks from a list of URLs.
 
         Args:
             webhook_urls: List of webhook URLs to configure
         """
         self.webhooks.clear()
-        
+
         for url in webhook_urls:
             if url.strip():  # Skip empty URLs
                 try:
@@ -166,7 +165,7 @@ class WebhookService:
 
         payload = {
             "event_type": "detection",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "detection": {
                 "id": detection.id,
                 "timestamp": detection.timestamp.isoformat(),
@@ -175,7 +174,9 @@ class WebhookService:
                 "location": {
                     "latitude": detection.latitude,
                     "longitude": detection.longitude,
-                } if detection.latitude and detection.longitude else None,
+                }
+                if detection.latitude and detection.longitude
+                else None,
                 "analysis": {
                     "cutoff": detection.cutoff,
                     "week": detection.week,
@@ -187,7 +188,7 @@ class WebhookService:
 
         await self._send_to_webhooks("detection", payload)
 
-    async def send_health_webhook(self, health_data: Dict[str, Any]) -> None:
+    async def send_health_webhook(self, health_data: dict[str, Any]) -> None:
         """Send system health event to configured webhooks.
 
         Args:
@@ -198,13 +199,15 @@ class WebhookService:
 
         payload = {
             "event_type": "health",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "health": health_data,
         }
 
         await self._send_to_webhooks("health", payload)
 
-    async def send_gps_webhook(self, latitude: float, longitude: float, accuracy: float | None = None) -> None:
+    async def send_gps_webhook(
+        self, latitude: float, longitude: float, accuracy: float | None = None
+    ) -> None:
         """Send GPS location event to configured webhooks.
 
         Args:
@@ -217,7 +220,7 @@ class WebhookService:
 
         payload = {
             "event_type": "gps",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "location": {
                 "latitude": latitude,
                 "longitude": longitude,
@@ -227,7 +230,7 @@ class WebhookService:
 
         await self._send_to_webhooks("gps", payload)
 
-    async def send_system_webhook(self, system_data: Dict[str, Any]) -> None:
+    async def send_system_webhook(self, system_data: dict[str, Any]) -> None:
         """Send system statistics event to configured webhooks.
 
         Args:
@@ -238,13 +241,13 @@ class WebhookService:
 
         payload = {
             "event_type": "system",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "system": system_data,
         }
 
         await self._send_to_webhooks("system", payload)
 
-    async def _send_to_webhooks(self, event_type: str, payload: Dict[str, Any]) -> None:
+    async def _send_to_webhooks(self, event_type: str, payload: dict[str, Any]) -> None:
         """Send event payload to all relevant webhooks.
 
         Args:
@@ -256,8 +259,7 @@ class WebhookService:
 
         # Filter webhooks that should receive this event type
         relevant_webhooks = [
-            webhook for webhook in self.webhooks
-            if webhook.should_send_event(event_type)
+            webhook for webhook in self.webhooks if webhook.should_send_event(event_type)
         ]
 
         if not relevant_webhooks:
@@ -265,10 +267,7 @@ class WebhookService:
             return
 
         # Send to all relevant webhooks concurrently
-        tasks = [
-            self._send_webhook_request(webhook, payload)
-            for webhook in relevant_webhooks
-        ]
+        tasks = [self._send_webhook_request(webhook, payload) for webhook in relevant_webhooks]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -287,7 +286,7 @@ class WebhookService:
             failed,
         )
 
-    async def _send_webhook_request(self, webhook: WebhookConfig, payload: Dict[str, Any]) -> bool:
+    async def _send_webhook_request(self, webhook: WebhookConfig, payload: dict[str, Any]) -> bool:
         """Send HTTP POST request to a single webhook.
 
         Args:
@@ -359,7 +358,7 @@ class WebhookService:
 
             # Wait before retry (exponential backoff)
             if attempt < webhook.retry_count:
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
 
         logger.error("Webhook failed after %d attempts: %s", webhook.retry_count + 1, webhook.name)
         return False
@@ -368,7 +367,7 @@ class WebhookService:
         """Check if webhooks can be sent."""
         return self.enable_webhooks and self.client is not None and bool(self.webhooks)
 
-    def get_webhook_status(self) -> Dict[str, Any]:
+    def get_webhook_status(self) -> dict[str, Any]:
         """Get webhook service status and statistics."""
         return {
             "enabled": self.enable_webhooks,
@@ -385,7 +384,7 @@ class WebhookService:
             "statistics": self.stats.copy(),
         }
 
-    async def test_webhook(self, webhook_url: str) -> Dict[str, Any]:
+    async def test_webhook(self, webhook_url: str) -> dict[str, Any]:
         """Test a webhook URL by sending a test payload.
 
         Args:
@@ -400,22 +399,22 @@ class WebhookService:
         try:
             # Create temporary webhook config for testing
             test_webhook = WebhookConfig(webhook_url, name="test", timeout=10)
-            
+
             # Test payload
             test_payload = {
                 "event_type": "test",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "message": "This is a test webhook from BirdNET-Pi",
                 "test": True,
             }
 
             # Send test request
             success = await self._send_webhook_request(test_webhook, test_payload)
-            
+
             return {
                 "success": success,
                 "url": webhook_url,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
         except Exception as e:
@@ -423,5 +422,5 @@ class WebhookService:
                 "success": False,
                 "url": webhook_url,
                 "error": str(e),
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }

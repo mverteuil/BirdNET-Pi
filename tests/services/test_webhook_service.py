@@ -1,10 +1,7 @@
 """Tests for the WebhookService."""
 
-import asyncio
-import json
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
-from urllib.parse import urlparse
 
 import pytest
 
@@ -35,7 +32,7 @@ class TestWebhookConfig:
             enabled=True,
             timeout=15,
             retry_count=2,
-            events=["detection", "health"]
+            events=["detection", "health"],
         )
 
         assert config.url == "https://example.com/webhook"
@@ -65,7 +62,7 @@ class TestWebhookConfig:
         # Let's test with truly invalid URLs
         with pytest.raises(ValueError, match="Invalid webhook URL"):
             WebhookConfig(url="://no-scheme")
-            
+
         with pytest.raises(ValueError, match="Invalid webhook URL"):
             WebhookConfig(url="http://")
 
@@ -79,10 +76,7 @@ class TestWebhookConfig:
 
     def test_should_send_event(self):
         """Test event filtering logic."""
-        config = WebhookConfig(
-            url="https://example.com/webhook",
-            events=["detection", "health"]
-        )
+        config = WebhookConfig(url="https://example.com/webhook", events=["detection", "health"])
 
         assert config.should_send_event("detection") is True
         assert config.should_send_event("health") is True
@@ -129,7 +123,7 @@ class TestWebhookService:
 
         with patch("httpx.AsyncClient") as mock_client_class:
             await service.start()
-            
+
             mock_client_class.assert_called_once()
             assert service.client is not None
 
@@ -188,7 +182,7 @@ class TestWebhookService:
             "https://api.test.com/webhook2",
             "",  # Empty URL should be skipped
             "   ",  # Whitespace-only URL should be skipped
-            "https://third.com/webhook3"
+            "https://third.com/webhook3",
         ]
 
         service.configure_webhooks_from_urls(urls)
@@ -205,7 +199,7 @@ class TestWebhookService:
         urls = [
             "https://valid.com/webhook",
             "invalid-url",  # This should be skipped due to ValueError
-            "https://another-valid.com/webhook"
+            "https://another-valid.com/webhook",
         ]
 
         with patch("birdnetpi.services.webhook_service.logger") as mock_logger:
@@ -278,11 +272,7 @@ class TestWebhookService:
         config = WebhookConfig(url="https://example.com/webhook", events=["health"])
         service.add_webhook(config)
 
-        health_data = {
-            "cpu_usage": 45.2,
-            "memory_usage": 68.5,
-            "status": "healthy"
-        }
+        health_data = {"cpu_usage": 45.2, "memory_usage": 68.5, "status": "healthy"}
 
         with patch.object(service, "_send_webhook_request", return_value=True) as mock_send:
             await service.send_health_webhook(health_data)
@@ -325,11 +315,7 @@ class TestWebhookService:
         config = WebhookConfig(url="https://example.com/webhook", events=["system"])
         service.add_webhook(config)
 
-        system_data = {
-            "uptime": 86400,
-            "processes": 142,
-            "load_average": [0.5, 0.7, 0.8]
-        }
+        system_data = {"uptime": 86400, "processes": 142, "load_average": [0.5, 0.7, 0.8]}
 
         with patch.object(service, "_send_webhook_request", return_value=True) as mock_send:
             await service.send_system_webhook(system_data)
@@ -351,7 +337,9 @@ class TestWebhookService:
         # Add multiple webhooks
         config1 = WebhookConfig(url="https://webhook1.com/api", events=["detection"])
         config2 = WebhookConfig(url="https://webhook2.com/api", events=["detection"])
-        config3 = WebhookConfig(url="https://webhook3.com/api", events=["health"])  # Different event
+        config3 = WebhookConfig(
+            url="https://webhook3.com/api", events=["health"]
+        )  # Different event
 
         service.add_webhook(config1)
         service.add_webhook(config2)
@@ -378,7 +366,7 @@ class TestWebhookService:
     async def test_send_webhook_request_success(self, enabled_webhook_service):
         """Test successful webhook request."""
         service = enabled_webhook_service
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.text = "OK"
@@ -388,9 +376,7 @@ class TestWebhookService:
         service.client = mock_client
 
         config = WebhookConfig(
-            url="https://example.com/webhook",
-            headers={"Authorization": "Bearer token"},
-            timeout=15
+            url="https://example.com/webhook", headers={"Authorization": "Bearer token"}, timeout=15
         )
 
         payload = {"test": "data"}
@@ -404,16 +390,16 @@ class TestWebhookService:
             headers={
                 "Content-Type": "application/json",
                 "User-Agent": "BirdNET-Pi/1.0",
-                "Authorization": "Bearer token"
+                "Authorization": "Bearer token",
             },
-            timeout=15
+            timeout=15,
         )
 
     @pytest.mark.asyncio
     async def test_send_webhook_request_failure(self, enabled_webhook_service):
         """Test failed webhook request."""
         service = enabled_webhook_service
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 404
         mock_response.text = "Not Found"
@@ -435,7 +421,7 @@ class TestWebhookService:
         service = enabled_webhook_service
 
         mock_client = AsyncMock()
-        mock_client.post.side_effect = asyncio.TimeoutError("Request timeout")
+        mock_client.post.side_effect = TimeoutError("Request timeout")
         service.client = mock_client
 
         config = WebhookConfig(url="https://example.com/webhook", retry_count=1)
@@ -528,7 +514,7 @@ class TestWebhookService:
         service = enabled_webhook_service
         service.client = AsyncMock()
 
-        with patch.object(service, "_send_webhook_request", return_value=False) as mock_send:
+        with patch.object(service, "_send_webhook_request", return_value=False):
             result = await service.test_webhook("https://example.com/webhook")
 
             assert result["success"] is False
@@ -592,7 +578,9 @@ class TestWebhookService:
         # Webhook 2: Only health events
         config2 = WebhookConfig(url="https://webhook2.com/api", events=["health"])
         # Webhook 3: All events
-        config3 = WebhookConfig(url="https://webhook3.com/api", events=["detection", "health", "gps", "system"])
+        config3 = WebhookConfig(
+            url="https://webhook3.com/api", events=["detection", "health", "gps", "system"]
+        )
 
         service.add_webhook(config1)
         service.add_webhook(config2)

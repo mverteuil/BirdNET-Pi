@@ -214,7 +214,7 @@ class HardwareMonitorService:
             memory_component = ComponentStatus(
                 name="memory",
                 status=memory_status,
-                message=f"Memory usage: {memory.percent:.1f}% ({memory.used // 1024 // 1024}MB used)",
+                message=f"Memory usage: {memory.percent:.1f}% ({memory.used // 1024 // 1024}MB used)",  # noqa: E501
                 last_check=check_time,
                 details={
                     "usage_percent": memory.percent,
@@ -234,7 +234,7 @@ class HardwareMonitorService:
             disk_component = ComponentStatus(
                 name="disk",
                 status=disk_status,
-                message=f"Disk usage: {disk_percent:.1f}% ({disk.used // 1024 // 1024 // 1024}GB used)",
+                message=f"Disk usage: {disk_percent:.1f}% ({disk.used // 1024 // 1024 // 1024}GB used)",  # noqa: E501
                 last_check=check_time,
                 details={
                     "usage_percent": disk_percent,

@@ -37,7 +37,7 @@ async def get_field_mode(request: Request) -> HTMLResponse:
 
 
 @router.get("/api/gps/status")
-async def get_gps_status(gps_service: GPSService | None = Depends(get_gps_service)) -> JSONResponse:
+async def get_gps_status(gps_service: GPSService | None = Depends(get_gps_service)) -> JSONResponse:  # noqa: B008
     """Get current GPS status and location information."""
     if not gps_service:
         return JSONResponse(
@@ -65,7 +65,7 @@ async def get_gps_status(gps_service: GPSService | None = Depends(get_gps_servic
 
 @router.get("/api/gps/location")
 async def get_current_location(
-    gps_service: GPSService | None = Depends(get_gps_service),
+    gps_service: GPSService | None = Depends(get_gps_service),  # noqa: B008  # noqa: B008
 ) -> JSONResponse:
     """Get current GPS coordinates."""
     if not gps_service:
@@ -94,7 +94,7 @@ async def get_current_location(
 @router.get("/api/gps/history")
 async def get_location_history(
     hours: int = Query(default=24, ge=1, le=168),  # 1 hour to 1 week
-    gps_service: GPSService | None = Depends(get_gps_service),
+    gps_service: GPSService | None = Depends(get_gps_service),  # noqa: B008
 ) -> JSONResponse:
     """Get GPS location history."""
     if not gps_service:
@@ -121,7 +121,7 @@ async def get_location_history(
 
 @router.get("/api/hardware/status")
 async def get_hardware_status(
-    hardware_monitor: HardwareMonitorService | None = Depends(get_hardware_monitor),
+    hardware_monitor: HardwareMonitorService | None = Depends(get_hardware_monitor),  # noqa: B008
 ) -> JSONResponse:
     """Get comprehensive hardware status."""
     if not hardware_monitor:
@@ -144,7 +144,7 @@ async def get_hardware_status(
 @router.get("/api/hardware/component/{component_name}")
 async def get_component_status(
     component_name: str,
-    hardware_monitor: HardwareMonitorService | None = Depends(get_hardware_monitor),
+    hardware_monitor: HardwareMonitorService | None = Depends(get_hardware_monitor),  # noqa: B008
 ) -> JSONResponse:
     """Get status for a specific hardware component."""
     if not hardware_monitor:
@@ -174,7 +174,7 @@ async def get_component_status(
 @router.get("/api/detections/recent")
 async def get_recent_detections(
     limit: int = Query(default=10, ge=1, le=100),
-    detection_manager: DetectionManager = Depends(get_detection_manager),
+    detection_manager: DetectionManager = Depends(get_detection_manager),  # noqa: B008
 ) -> JSONResponse:
     """Get recent bird detections for field mode display."""
     try:
@@ -199,7 +199,7 @@ async def get_recent_detections(
 @router.get("/api/detections/count")
 async def get_detection_count(
     date: str | None = Query(default=None, description="Date in YYYY-MM-DD format"),
-    detection_manager: DetectionManager = Depends(get_detection_manager),
+    detection_manager: DetectionManager = Depends(get_detection_manager),  # noqa: B008
 ) -> JSONResponse:
     """Get detection count for a specific date (defaults to today)."""
     try:
@@ -224,8 +224,8 @@ async def get_detection_count(
 async def update_detection_location(
     detection_id: int,
     request: Request,
-    detection_manager: DetectionManager = Depends(get_detection_manager),
-    gps_service: GPSService | None = Depends(get_gps_service),
+    detection_manager: DetectionManager = Depends(get_detection_manager),  # noqa: B008
+    gps_service: GPSService | None = Depends(get_gps_service),  # noqa: B008
 ) -> JSONResponse:
     """Update detection location with current GPS coordinates."""
     try:
@@ -262,9 +262,9 @@ async def update_detection_location(
 
 @router.get("/api/field/summary")
 async def get_field_summary(
-    detection_manager: DetectionManager = Depends(get_detection_manager),
-    gps_service: GPSService | None = Depends(get_gps_service),
-    hardware_monitor: HardwareMonitorService | None = Depends(get_hardware_monitor),
+    detection_manager: DetectionManager = Depends(get_detection_manager),  # noqa: B008
+    gps_service: GPSService | None = Depends(get_gps_service),  # noqa: B008
+    hardware_monitor: HardwareMonitorService | None = Depends(get_hardware_monitor),  # noqa: B008
 ) -> JSONResponse:
     """Get comprehensive field mode summary."""
     try:

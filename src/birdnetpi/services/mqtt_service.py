@@ -7,8 +7,8 @@ to MQTT brokers for integration with home automation systems and IoT platforms.
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import UTC, datetime
+from typing import Any
 
 import paho.mqtt.client as mqtt
 
@@ -75,7 +75,7 @@ class MQTTService:
         try:
             # Create MQTT client
             self.client = mqtt.Client(client_id=self.client_id)
-            
+
             # Set callbacks
             self.client.on_connect = self._on_connect
             self.client.on_disconnect = self._on_disconnect
@@ -103,7 +103,7 @@ class MQTTService:
                 # Publish offline status
                 await self._publish_status("offline")
                 self.client.disconnect()
-            
+
             self.is_connected = False
             self.client = None
 
@@ -147,31 +147,38 @@ class MQTTService:
                     logger.error("Max MQTT connection retries reached. Giving up.")
                     raise
 
-    def _on_connect(self, client: mqtt.Client, userdata: Any, flags: Dict, rc: int) -> None:
-        """Callback for successful MQTT connection."""
+    def _on_connect(self, client: mqtt.Client, userdata: Any, flags: dict, rc: int) -> None:  # noqa: ANN401
+        """Handle successful MQTT connection callback."""
         if rc == 0:
             self.is_connected = True
             self.connection_retry_count = 0
             logger.info("Connected to MQTT broker successfully")
-            
+
+            # Store task references to avoid potential garbage collection issues
+            self._background_tasks = getattr(self, "_background_tasks", set())
+
             # Publish online status
-            asyncio.create_task(self._publish_status("online"))
-            
+            task1 = asyncio.create_task(self._publish_status("online"))
+            self._background_tasks.add(task1)
+            task1.add_done_callback(self._background_tasks.discard)
+
             # Publish system information
-            asyncio.create_task(self._publish_system_info())
+            task2 = asyncio.create_task(self._publish_system_info())
+            self._background_tasks.add(task2)
+            task2.add_done_callback(self._background_tasks.discard)
         else:
             logger.error("MQTT connection failed with code: %d", rc)
 
-    def _on_disconnect(self, client: mqtt.Client, userdata: Any, rc: int) -> None:
-        """Callback for MQTT disconnection."""
+    def _on_disconnect(self, client: mqtt.Client, userdata: Any, rc: int) -> None:  # noqa: ANN401
+        """Handle MQTT disconnection callback."""
         self.is_connected = False
         if rc != 0:
             logger.warning("Unexpected MQTT disconnection (code: %d)", rc)
         else:
             logger.info("MQTT disconnected gracefully")
 
-    def _on_publish(self, client: mqtt.Client, userdata: Any, mid: int) -> None:
-        """Callback for successful message publishing."""
+    def _on_publish(self, client: mqtt.Client, userdata: Any, mid: int) -> None:  # noqa: ANN401
+        """Handle successful message publishing callback."""
         logger.debug("MQTT message published (mid: %d)", mid)
 
     async def publish_detection(self, detection: Detection) -> bool:
@@ -195,7 +202,9 @@ class MQTTService:
                 "location": {
                     "latitude": detection.latitude,
                     "longitude": detection.longitude,
-                } if detection.latitude and detection.longitude else None,
+                }
+                if detection.latitude and detection.longitude
+                else None,
                 "analysis": {
                     "cutoff": detection.cutoff,
                     "week": detection.week,
@@ -214,7 +223,9 @@ class MQTTService:
             )
 
             if result.rc == mqtt.MQTT_ERR_SUCCESS:
-                logger.debug("Published detection: %s (%.2f)", detection.species, detection.confidence)
+                logger.debug(
+                    "Published detection: %s (%.2f)", detection.species, detection.confidence
+                )
                 return True
             else:
                 logger.error("Failed to publish detection (code: %d)", result.rc)
@@ -224,7 +235,9 @@ class MQTTService:
             logger.error("Error publishing detection to MQTT: %s", e)
             return False
 
-    async def publish_gps_location(self, latitude: float, longitude: float, accuracy: float | None = None) -> bool:
+    async def publish_gps_location(
+        self, latitude: float, longitude: float, accuracy: float | None = None
+    ) -> bool:
         """Publish GPS location update to MQTT.
 
         Args:
@@ -240,7 +253,7 @@ class MQTTService:
 
         try:
             payload = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "latitude": latitude,
                 "longitude": longitude,
                 "accuracy": accuracy,
@@ -259,7 +272,7 @@ class MQTTService:
             logger.error("Error publishing GPS location to MQTT: %s", e)
             return False
 
-    async def publish_system_health(self, health_data: Dict[str, Any]) -> bool:
+    async def publish_system_health(self, health_data: dict[str, Any]) -> bool:
         """Publish system health status to MQTT.
 
         Args:
@@ -273,7 +286,7 @@ class MQTTService:
 
         try:
             payload = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 **health_data,
             }
 
@@ -290,7 +303,7 @@ class MQTTService:
             logger.error("Error publishing system health to MQTT: %s", e)
             return False
 
-    async def publish_system_stats(self, stats: Dict[str, Any]) -> bool:
+    async def publish_system_stats(self, stats: dict[str, Any]) -> bool:
         """Publish system statistics to MQTT.
 
         Args:
@@ -304,7 +317,7 @@ class MQTTService:
 
         try:
             payload = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 **stats,
             }
 
@@ -335,7 +348,7 @@ class MQTTService:
 
         try:
             payload = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "status": status,
                 "client_id": self.client_id,
             }
@@ -360,10 +373,11 @@ class MQTTService:
 
         try:
             import platform
+
             import psutil
 
             payload = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "system": {
                     "platform": platform.system(),
                     "platform_release": platform.release(),
@@ -396,9 +410,9 @@ class MQTTService:
 
     def _can_publish(self) -> bool:
         """Check if MQTT publishing is possible."""
-        return self.enable_mqtt and self.client and self.is_connected
+        return self.enable_mqtt and self.client is not None and self.is_connected
 
-    def get_connection_status(self) -> Dict[str, Any]:
+    def get_connection_status(self) -> dict[str, Any]:
         """Get MQTT connection status information."""
         return {
             "enabled": self.enable_mqtt,

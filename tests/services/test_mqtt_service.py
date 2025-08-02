@@ -1,9 +1,8 @@
 """Tests for the MQTTService."""
 
-import asyncio
 import json
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -133,10 +132,7 @@ class TestMQTTService:
         """Test successful MQTT connection callback."""
         service = enabled_mqtt_service
 
-        with patch.object(service, "_publish_status", new_callable=AsyncMock) as mock_publish_status, \
-             patch.object(service, "_publish_system_info", new_callable=AsyncMock) as mock_publish_info, \
-             patch("asyncio.create_task") as mock_create_task:
-
+        with patch("asyncio.create_task") as mock_create_task:
             service._on_connect(None, None, None, 0)  # rc=0 means success
 
             assert service.is_connected is True
@@ -213,7 +209,7 @@ class TestMQTTService:
         service.client.publish.assert_called_once()
         call_args = service.client.publish.call_args
         assert call_args[0][0] == "test_birdnet/detections"  # Topic
-        
+
         # Verify payload structure
         payload = json.loads(call_args[0][1])
         assert payload["species"] == "Test Bird"
@@ -260,7 +256,7 @@ class TestMQTTService:
             "cpu_usage": 45.2,
             "memory_usage": 68.5,
             "disk_usage": 23.1,
-            "status": "healthy"
+            "status": "healthy",
         }
 
         result = await service.publish_system_health(health_data)
@@ -287,11 +283,7 @@ class TestMQTTService:
         mock_result.rc = 0
         service.client.publish.return_value = mock_result
 
-        stats_data = {
-            "uptime": 86400,
-            "processes": 142,
-            "load_average": [0.5, 0.7, 0.8]
-        }
+        stats_data = {"uptime": 86400, "processes": 142, "load_average": [0.5, 0.7, 0.8]}
 
         result = await service.publish_system_stats(stats_data)
 
@@ -334,14 +326,15 @@ class TestMQTTService:
         service.client.publish.return_value = mock_result
 
         # Mock platform and psutil
-        with patch("platform.system") as mock_system, \
-             patch("platform.release") as mock_release, \
-             patch("platform.machine") as mock_machine, \
-             patch("platform.node") as mock_node, \
-             patch("platform.python_version") as mock_python, \
-             patch("psutil.cpu_count") as mock_cpu_count, \
-             patch("psutil.virtual_memory") as mock_memory:
-
+        with (
+            patch("platform.system") as mock_system,
+            patch("platform.release") as mock_release,
+            patch("platform.machine") as mock_machine,
+            patch("platform.node") as mock_node,
+            patch("platform.python_version") as mock_python,
+            patch("psutil.cpu_count") as mock_cpu_count,
+            patch("psutil.virtual_memory") as mock_memory,
+        ):
             mock_system.return_value = "Linux"
             mock_release.return_value = "5.4.0"
             mock_machine.return_value = "x86_64"
@@ -461,7 +454,10 @@ class TestMQTTService:
 
                 # Should have called connect twice
                 assert mock_client.connect.call_count == 2
-                mock_sleep.assert_called_once_with(5)  # 5 * 1 (first retry)
+                # Should have slept twice: once for retry backoff, once for stabilization
+                assert mock_sleep.call_count == 2
+                mock_sleep.assert_any_call(5)  # 5 * 1 (first retry)
+                mock_sleep.assert_any_call(2)  # Connection stabilization
                 mock_client.loop_start.assert_called_once()
 
     @pytest.mark.asyncio
@@ -475,9 +471,13 @@ class TestMQTTService:
             mock_client_class.return_value = mock_client
 
             with patch("asyncio.sleep") as mock_sleep:
-                with pytest.raises(Exception, match="Connection failed"):
-                    await service.start()
+                # Start method should not raise (it catches and logs exceptions)
+                await service.start()
 
                 # Should have tried max_retries times
                 assert mock_client.connect.call_count == service.max_retries
                 assert service.connection_retry_count == service.max_retries
+                # Should still not be connected
+                assert service.is_connected is False
+                # Should have slept max_retries - 1 times for backoff (no sleep after last failure)
+                assert mock_sleep.call_count == service.max_retries - 1
