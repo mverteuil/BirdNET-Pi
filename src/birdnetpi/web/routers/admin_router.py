@@ -237,3 +237,19 @@ async def test_detection(
     )
     request.app.state.detections.create_detection(detection_event_data)
     return {"message": "Test detection published", "data": detection_event_data.model_dump_json()}
+
+
+# Advanced YAML Editor
+@router.get("/advanced-settings", response_class=HTMLResponse)
+async def get_advanced_settings(request: Request) -> Response:
+    """Render the advanced YAML configuration editor."""
+    config_parser = ConfigFileParser(
+        request.app.state.file_manager.file_path_resolver.get_birdnetpi_config_path()
+    )
+    # Load raw YAML content for editor
+    with open(config_parser.config_path) as f:
+        config_yaml = f.read()
+
+    return request.app.state.templates.TemplateResponse(
+        "yaml_editor.html", {"request": request, "config_yaml": config_yaml}
+    )
