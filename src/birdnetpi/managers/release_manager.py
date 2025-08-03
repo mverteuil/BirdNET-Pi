@@ -113,9 +113,13 @@ class ReleaseManager:
             target = self.repo_path / asset.target_name
 
             if source.is_file():
+                # Ensure parent directory exists
+                target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, target)
                 print(f"  Copied {source} -> {asset.target_name}")
             elif source.is_dir():
+                # Ensure parent directory exists
+                target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copytree(source, target, dirs_exist_ok=True)
                 print(f"  Copied directory {source} -> {asset.target_name}")
 
@@ -203,18 +207,39 @@ class ReleaseManager:
         Returns:
             List of default release assets
         """
+        # In development, prefer local data/ directory over production paths
+        models_path = self._get_asset_path("data/models", self.file_resolver.get_models_dir())
+        database_path = self._get_asset_path(
+            "data/database/ioc_reference.db", self.file_resolver.get_database_path()
+        )
+
         return [
             ReleaseAsset(
-                source_path=self.file_resolver.get_models_dir(),
+                source_path=models_path,
                 target_name="data/models",
                 description="BirdNET TensorFlow Lite models for bird identification",
             ),
             ReleaseAsset(
-                source_path=self.file_resolver.get_database_path(),
+                source_path=database_path,
                 target_name="data/ioc_reference.db",
                 description="IOC World Bird Names reference database",
             ),
         ]
+
+    def _get_asset_path(self, dev_path: str, prod_path: str) -> str:
+        """Get asset path, preferring development path over production path.
+
+        Args:
+            dev_path: Development environment path (relative to repo root)
+            prod_path: Production environment path
+
+        Returns:
+            Path to use for the asset
+        """
+        dev_full_path = self.repo_path / dev_path
+        if dev_full_path.exists():
+            return str(dev_full_path)
+        return prod_path
 
     def _create_asset_gitignore(self) -> None:
         """Create a minimal .gitignore file for the asset branch.
