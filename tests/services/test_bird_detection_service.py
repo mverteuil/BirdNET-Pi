@@ -32,6 +32,7 @@ def bird_detection_service(mock_config) -> BirdDetectionService:
         patch("os.path.expanduser", return_value="/mock/home"),
         patch("builtins.open", new_callable=mock_open, read_data="species1\nspecies2\n"),
         patch("os.path.join", side_effect=lambda *args: "/".join(args)),
+        patch("os.makedirs"),  # Mock directory creation
     ):
         # Configure the mock interpreter instance
         mock_interpreter_instance = Mock()
@@ -40,9 +41,14 @@ def bird_detection_service(mock_config) -> BirdDetectionService:
             {"index": 1},
         ]
         mock_interpreter_instance.get_output_details.return_value = [{"index": 0}]
-        mock_interpreter_instance.get_tensor.return_value = np.array(
-            [[0.9, 0.1, 0.0, 0.0]]
-        )  # Ensure it's a 2D array
+
+        # Mock different return values for different calls
+        def mock_get_tensor(index):
+            if index == 0:  # Output layer for both main model and meta-model
+                return np.array([[0.9, 0.1, 0.0, 0.0]])  # 2D array for batch predictions
+            return np.array([[0.9, 0.1, 0.0, 0.0]])  # 2D array for meta-model predictions too
+
+        mock_interpreter_instance.get_tensor.side_effect = mock_get_tensor
 
         mock_interpreter_class.return_value = mock_interpreter_instance
 
@@ -51,6 +57,13 @@ def bird_detection_service(mock_config) -> BirdDetectionService:
         service.m_interpreter = (
             mock_interpreter_instance  # Ensure the service uses the mock for meta-model
         )
+        # Mock the classes list with test species names (avoiding Human_Human to skip file write)
+        service.classes = [
+            "Corvus_corax American Crow",
+            "Turdus_migratorius American Robin",
+            "Passerina_cyanea Indigo Bunting",
+            "Sialia_sialis Eastern Bluebird",
+        ]
         return service
 
 
