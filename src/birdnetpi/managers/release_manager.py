@@ -154,7 +154,7 @@ class ReleaseManager:
             self._run_git_command(["add", asset.target_name])
         self._run_git_command(["add", "README.md"])
         self._run_git_command(["add", ".gitignore"])
-        self._run_git_command(["commit", "-m", config.commit_message])
+        self._run_git_command(["commit", "-m", config.commit_message, "--no-verify"])
 
     def _cleanup_and_return_to_branch(self, original_branch: str) -> None:
         """Return to original branch with proper cleanup."""
@@ -398,13 +398,20 @@ For installation instructions, see the main repository README.
             result = subprocess.run(
                 args,
                 cwd=self.repo_path,
-                capture_output=capture_output,
+                capture_output=True,
                 text=True,
                 check=check,
             )
+            if result.returncode != 0 and check:
+                print(f"Command failed: {' '.join(args)}")
+                print(f"Exit code: {result.returncode}")
+                print(f"Stdout: {result.stdout}")
+                print(f"Stderr: {result.stderr}")
+                raise subprocess.CalledProcessError(
+                    result.returncode, args, result.stdout, result.stderr
+                )
             return result.stdout if capture_output else ""
         except subprocess.CalledProcessError as e:
-            if capture_output:
-                print(f"Command failed: {' '.join(args)}")
-                print(f"Error output: {e.stderr}")
+            print(f"Command failed: {' '.join(args)}")
+            print(f"Error output: {e.stderr}")
             raise
