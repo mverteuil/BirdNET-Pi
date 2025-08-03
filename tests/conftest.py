@@ -190,10 +190,7 @@ def check_required_assets():
     if not models_dir.exists() or not any(models_dir.glob("*.tflite")):
         missing_assets.append("Model files (*.tflite)")
 
-    # Check for labels.txt
-    labels_path = Path(file_resolver.get_model_path("labels.txt"))
-    if not labels_path.exists():
-        missing_assets.append("labels.txt")
+    # Note: labels.txt is legacy - IOC database is now used for bird species names
 
     # Check for IOC database
     db_path = Path(file_resolver.get_database_path())
