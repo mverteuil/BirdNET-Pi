@@ -1,5 +1,4 @@
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import matplotlib
 import pytest
@@ -12,71 +11,25 @@ matplotlib.use("Agg")
 
 @pytest.fixture
 def file_path_resolver(tmp_path: Path) -> FilePathResolver:
-    """Provide a FilePathResolver with a temporary base directory
+    """Provide a FilePathResolver with test database isolation.
 
-    Still uses the legitimate templates and static files directories.
+    Uses the repo's ./data directory for models and assets (set by session fixture),
+    but temp directories for test databases to avoid conflicts.
     """
-    # Create a temporary directory for the repo root
-    repo_root = tmp_path / "BirdNET-Pi"
-    repo_root.mkdir(mode=0o755, exist_ok=True)
+    # Create a real FilePathResolver (environment is already set by session fixture)
+    resolver = FilePathResolver()
 
-    # Create necessary subdirectories
-    (repo_root / "database").mkdir(mode=0o755, exist_ok=True)
+    # Override database path to use temp directory for test isolation
+    def get_test_database_path():
+        # Create temp database directory
+        test_db_dir = tmp_path / "database"
+        test_db_dir.mkdir(exist_ok=True)
+        return str(test_db_dir / "birdnetpi.db")
 
-    # Set BIRDNETPI_APP for real resolver to find templates and static files in the project
-    import os
+    resolver.get_database_path = get_test_database_path
+    resolver.get_database_dir = lambda: str(tmp_path / "database")
 
-    original_app_env = os.environ.get("BIRDNETPI_APP")
-    project_root = Path(__file__).parent.parent
-    os.environ["BIRDNETPI_APP"] = str(project_root)
-
-    try:
-        # Create a real FilePathResolver to get actual static and template paths
-        real_resolver = FilePathResolver()
-    finally:
-        # Restore original environment
-        if original_app_env is not None:
-            os.environ["BIRDNETPI_APP"] = original_app_env
-        else:
-            os.environ.pop("BIRDNETPI_APP", None)
-
-    # Create a MagicMock for FilePathResolver
-    mock_resolver = MagicMock(spec=FilePathResolver)
-
-    # Set base_dir to the temporary repo root
-    mock_resolver.base_dir = str(repo_root)
-
-    # Use the real config template
-    mock_resolver.get_config_template_path.side_effect = real_resolver.get_config_template_path
-
-    # Use real config template for tests
-    mock_resolver.get_birdnetpi_config_path.side_effect = real_resolver.get_config_template_path
-    mock_resolver.get_database_dir.return_value = str(repo_root / "database")
-
-    # Use the real methods for directories that need actual data
-    mock_resolver.get_static_dir.side_effect = real_resolver.get_static_dir
-    mock_resolver.get_templates_dir.side_effect = real_resolver.get_templates_dir
-    mock_resolver.get_models_dir.side_effect = real_resolver.get_models_dir
-    mock_resolver.get_model_path.side_effect = real_resolver.get_model_path
-    mock_resolver.get_detection_audio_path.side_effect = real_resolver.get_detection_audio_path
-
-    # Special case: IOC database needs real path, but regular database uses temp
-    def get_database_path_mock():
-        # Check if this is for IOC database by looking at the real path
-        real_path = real_resolver.get_database_path()
-        if "ioc" in real_path.lower() or "birdnetpi.db" in real_path:
-            return real_path  # Use real IOC database
-        else:
-            return str(repo_root / "database" / "birdnetpi.db")  # Use temp for tests
-
-    mock_resolver.get_database_path.side_effect = get_database_path_mock
-
-    # Mock FIFO paths
-    fifo_dir = repo_root / "fifo"
-    fifo_dir.mkdir(mode=0o755, exist_ok=True)
-    mock_resolver.get_fifo_base_path.return_value = str(fifo_dir)
-
-    return mock_resolver
+    return resolver
 
 
 @pytest.fixture
@@ -202,6 +155,37 @@ def test_config(test_config_file: Path):
 
     parser = ConfigFileParser(str(test_config_file))
     return parser.load_config()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_environment():
+    """Set up test environment with proper paths to repo data directory."""
+    import os
+    from pathlib import Path
+
+    # Get project root directory
+    project_root = Path(__file__).parent.parent
+
+    # Store original environment variables
+    original_app_env = os.environ.get("BIRDNETPI_APP")
+    original_data_env = os.environ.get("BIRDNETPI_DATA")
+
+    # Set environment variables to point to real repo directories for the entire test session
+    os.environ["BIRDNETPI_APP"] = str(project_root)
+    os.environ["BIRDNETPI_DATA"] = str(project_root / "data")
+
+    yield
+
+    # Restore original environment variables
+    if original_app_env is not None:
+        os.environ["BIRDNETPI_APP"] = original_app_env
+    else:
+        os.environ.pop("BIRDNETPI_APP", None)
+
+    if original_data_env is not None:
+        os.environ["BIRDNETPI_DATA"] = original_data_env
+    else:
+        os.environ.pop("BIRDNETPI_DATA", None)
 
 
 @pytest.fixture(scope="session", autouse=True)
