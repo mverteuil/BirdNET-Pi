@@ -6,6 +6,7 @@ from unittest.mock import DEFAULT, MagicMock, patch
 import pytest
 
 import birdnetpi.wrappers.audio_websocket_daemon as daemon
+from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.audio_websocket_service import AudioWebSocketService
 
 
@@ -23,10 +24,10 @@ def mock_dependencies(mocker):
         mocks[
             "FilePathResolver"
         ].return_value.get_birdnetpi_config_path.return_value = "/tmp/config.yaml"
-        mocks["ConfigFileParser"].return_value.load_config.return_value = {
-            "sample_rate": 44100,
-            "audio_channels": 1,
-        }
+        mocks["ConfigFileParser"].return_value.load_config.return_value = BirdNETConfig(
+            sample_rate=44100,
+            audio_channels=1,
+        )
         mocks["AudioWebSocketService"].return_value = MagicMock(spec=AudioWebSocketService)
 
         # Yield mocks for individual test configuration

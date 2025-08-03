@@ -63,8 +63,8 @@ def main() -> None:
         logger.info("Opened FIFO for reading: %s", _fifo_livestream_path)
 
         # Instantiate the AudioWebSocketService
-        samplerate = config["sample_rate"]
-        channels = config["audio_channels"]
+        samplerate = config.sample_rate
+        channels = config.audio_channels
 
         _audio_websocket_service = AudioWebSocketService(samplerate, channels)
         logger.info("AudioWebSocketService instantiated and ready for connections.")

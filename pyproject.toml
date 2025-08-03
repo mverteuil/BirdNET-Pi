@@ -37,21 +37,8 @@ dependencies = [
     "psutil>=7.0.0",
     "tqdm>=4.67.1",
     "structlog>=25.4.0",
+    "numpy<2",
 ]
-
-[project.optional-dependencies]
-dev = [
-    "pytest==7.1.2",
-    "pytest-mock==3.7.0",
-    "pytest-cov",
-]
-
-
-# This is a placeholder for the tflite_runtime wheel.
-# In a real scenario, you might need to handle this as a direct URL dependency
-# or a separate installation step depending on uv's capabilities and the target platform.
-# For now, we'll assume uv can handle it if it's in the local wheelhouse or specified.
-# "tflite_runtime @ file:///path/to/tflite_runtime-2.6.0-cp39-none-linux_aarch64.whl"
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -63,7 +50,10 @@ build-backend = "setuptools.build_meta"
 omit = ["tests/*"]
 
 [tool.pytest.ini_options]
-markers = ["expensive"]
+markers = [
+    "expensive",
+    "no_leaks: detect asyncio task leaks, thread leaks, and event loop blocking"
+]
 testpaths = ["tests"]
 addopts = "--cov=src"
 asyncio_mode = "auto"
@@ -128,6 +118,7 @@ dev = [
     "ast-grep-cli>=0.39.2",
     "httpx>=0.28.1",
     "openpyxl>=3.1.5",
+    "pyleak>=0.1.14",
     "pytest>=7.1.2",
     "pytest-asyncio>=0.23.8",
     "pytest-cov>=6.2.1",

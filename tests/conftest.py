@@ -2,11 +2,15 @@ from pathlib import Path
 
 import matplotlib
 import pytest
+from pyleak import no_task_leaks, no_thread_leaks, no_event_loop_blocking
 
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 # Configure matplotlib to use non-GUI backend for testing
 matplotlib.use("Agg")
+
+# Pyleak is available for manual use in tests via @pytest.mark.no_leaks
+# The pytest plugin automatically handles this when tests are marked with @pytest.mark.no_leaks
 
 
 @pytest.fixture

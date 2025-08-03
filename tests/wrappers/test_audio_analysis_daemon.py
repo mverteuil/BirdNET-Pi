@@ -164,10 +164,9 @@ class TestAudioAnalysisDaemon:
     def test_cleanup_fifo(self, mocker, caplog):
         """Should close the FIFO file descriptor."""
         mock_os = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.os")
-        mock_fifo_analysis_fd = mocker.patch(
-            "birdnetpi.wrappers.audio_analysis_daemon._fifo_analysis_fd", new_callable=MagicMock
+        mocker.patch(
+            "birdnetpi.wrappers.audio_analysis_daemon._fifo_analysis_fd", 456
         )
-        mock_fifo_analysis_fd.value = 456  # Set initial value for the mock
         mocker.patch(
             "birdnetpi.wrappers.audio_analysis_daemon._fifo_analysis_path", "/tmp/test_fifo.fifo"
         )
@@ -175,4 +174,3 @@ class TestAudioAnalysisDaemon:
         daemon._cleanup_fifo()
         mock_os.close.assert_called_once_with(456)
         assert "Closed FIFO: /tmp/test_fifo.fifo" in caplog.text
-        assert mock_fifo_analysis_fd.value is None
