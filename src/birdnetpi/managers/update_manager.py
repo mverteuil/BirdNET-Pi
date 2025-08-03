@@ -234,7 +234,7 @@ class UpdateManager:
                 if include_ioc_db:
                     ioc_source = asset_source_dir / "data" / "ioc_reference.db"
                     if ioc_source.exists():
-                        ioc_target = Path(file_resolver.get_ioc_database_path())
+                        ioc_target = Path(file_resolver.get_database_path())
                         ioc_target.parent.mkdir(parents=True, exist_ok=True)
 
                         shutil.copy2(ioc_source, ioc_target)

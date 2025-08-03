@@ -34,7 +34,7 @@ def create_release(args: argparse.Namespace) -> None:
             print(f"Warning: Models directory not found at {models_dir}")
 
     if args.include_ioc_db:
-        ioc_db_path = file_resolver.get_ioc_database_path()
+        ioc_db_path = file_resolver.get_database_path()
         if Path(ioc_db_path).exists():
             assets.append(
                 ReleaseAsset(

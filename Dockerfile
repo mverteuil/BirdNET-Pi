@@ -74,7 +74,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY --chown=birdnetpi:birdnetpi config_templates/birdnetpi.yaml /app/config/birdnetpi.yaml
 
 # Set release version for asset downloads (this can be overridden via build arg)
-ARG BIRDNET_ASSETS_VERSION=v2.0.0
+ARG BIRDNET_ASSETS_VERSION=v2.1.0
 ENV BIRDNET_ASSETS_VERSION=${BIRDNET_ASSETS_VERSION}
 
 # Download release assets with Docker cache based on version

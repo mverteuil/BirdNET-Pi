@@ -102,7 +102,7 @@ def check_local_assets(args: argparse.Namespace) -> None:
     print()
 
     # Check IOC database
-    ioc_db_path = Path(file_resolver.get_ioc_database_path())
+    ioc_db_path = Path(file_resolver.get_database_path())
     if ioc_db_path.exists():
         file_size = ioc_db_path.stat().st_size / 1024 / 1024
         print(f"  ✓ IOC Database: {file_size:.1f} MB")

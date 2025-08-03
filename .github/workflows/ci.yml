@@ -74,13 +74,13 @@ jobs:
           path: |
             data/models
             data/ioc_reference.db
-          key: ${{ runner.os }}-birdnet-assets-v2.0.0
+          key: ${{ runner.os }}-birdnet-assets-v2.1.0
           restore-keys: |
             ${{ runner.os }}-birdnet-assets-
       - name: Install BirdNET assets
         if: steps.cache-assets.outputs.cache-hit != 'true'
         run: |
-          uv run asset-installer install v2.0.0 --include-models --include-ioc-db
+          uv run asset-installer install v2.1.0 --include-models --include-ioc-db
       - name: Run pytest tests
         run: uv run pytest --cov=src -m "not expensive"
       - name: Run expensive pytest tests

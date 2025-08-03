@@ -240,7 +240,7 @@ This release includes the following binary assets distributed via orphaned commi
         notes += f"""
 ### Asset Download
 
-Binary assets are available from the orphaned commit 
+Binary assets are available from the orphaned commit
 [{asset_commit_sha[:8]}](../../commit/{asset_commit_sha})
 and can be downloaded automatically during installation.
 
