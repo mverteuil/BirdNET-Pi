@@ -136,6 +136,85 @@ class UpdateManager:
             print(f"An unexpected error occurred during update: {e}")
             raise
 
+    def _resolve_version(self, version: str, github_repo: str) -> str:
+        """Resolve version string to actual release tag."""
+        if version != "latest":
+            return version
+
+        api_url = f"https://api.github.com/repos/{github_repo}/releases/latest"
+        with httpx.Client() as client:
+            response = client.get(api_url)
+            response.raise_for_status()
+            latest_release = response.json()
+            return latest_release["tag_name"]
+
+    def _validate_release_and_branch(self, version: str, github_repo: str) -> str:
+        """Validate release exists and get asset branch name."""
+        # Check if release exists
+        release_api_url = f"https://api.github.com/repos/{github_repo}/releases/tags/{version}"
+        with httpx.Client() as client:
+            response = client.get(release_api_url)
+            if response.status_code == 404:
+                raise RuntimeError(f"Release {version} not found in repository {github_repo}")
+            response.raise_for_status()
+            release_data = response.json()
+
+        # Check for direct release assets (future enhancement)
+        if release_data.get("assets"):
+            print(f"Found {len(release_data['assets'])} release assets for {version}")
+            # TODO: Implement direct release asset download
+
+        # Validate asset branch exists
+        asset_branch = f"assets-{version}"
+        branch_api_url = f"https://api.github.com/repos/{github_repo}/branches/{asset_branch}"
+        with httpx.Client() as client:
+            response = client.get(branch_api_url)
+            if response.status_code == 404:
+                available = ", ".join(self.list_available_versions(github_repo))
+                raise RuntimeError(
+                    f"Asset branch '{asset_branch}' not found. Available releases: {available}"
+                )
+            response.raise_for_status()
+
+        return asset_branch
+
+    def _download_and_extract_assets(self, asset_branch: str, github_repo: str) -> Path:
+        """Download and extract asset archive, return extracted directory."""
+        archive_url = f"https://github.com/{github_repo}/archive/{asset_branch}.tar.gz"
+        print(f"Downloading assets from orphaned commit branch {asset_branch}")
+
+        temp_dir = Path(tempfile.mkdtemp())
+        archive_path = temp_dir / "assets.tar.gz"
+
+        # Download with progress bar
+        with httpx.Client(follow_redirects=True, timeout=600.0) as client:
+            with client.stream("GET", archive_url) as response:
+                response.raise_for_status()
+                total_size = int(response.headers.get("content-length", 0))
+
+                with open(archive_path, "wb") as f:
+                    with tqdm(
+                        total=total_size,
+                        unit="B",
+                        unit_scale=True,
+                        unit_divisor=1024,
+                        desc="Downloading assets",
+                    ) as progress:
+                        for chunk in response.iter_bytes(chunk_size=8192):
+                            f.write(chunk)
+                            progress.update(len(chunk))
+
+        # Extract archive
+        extract_path = temp_dir / "extracted"
+        shutil.unpack_archive(archive_path, extract_path)
+
+        # Find extracted directory
+        extracted_dirs = list(extract_path.iterdir())
+        if not extracted_dirs:
+            raise RuntimeError("No extracted directory found")
+
+        return extracted_dirs[0]
+
     def download_release_assets(
         self,
         version: str = "latest",
@@ -158,91 +237,43 @@ class UpdateManager:
             Dictionary with download results and metadata
         """
         file_resolver = FilePathResolver()
+        version = self._resolve_version(version, github_repo)
         results = {"version": version, "downloaded_assets": [], "errors": []}
 
         try:
-            # Determine the commit SHA for the version
-            if version == "latest":
-                # Get the latest release tag
-                api_url = f"https://api.github.com/repos/{github_repo}/releases/latest"
-                with httpx.Client() as client:
-                    response = client.get(api_url)
-                    response.raise_for_status()
-                    latest_release = response.json()
-                    version = latest_release["tag_name"]
-                    results["version"] = version
+            asset_branch = self._validate_release_and_branch(version, github_repo)
+            asset_source_dir = self._download_and_extract_assets(asset_branch, github_repo)
 
-            # The asset branch follows the pattern "assets-{version}"
-            asset_branch = f"assets-{version}"
-            archive_url = f"https://github.com/{github_repo}/archive/{asset_branch}.tar.gz"
+            # Download models if requested
+            if include_models:
+                models_source = asset_source_dir / "data" / "models"
+                if models_source.exists():
+                    models_target = Path(file_resolver.get_models_dir())
+                    models_target.mkdir(parents=True, exist_ok=True)
 
-            print(f"Downloading assets for version {version} from {archive_url}")
+                    # Copy all model files
+                    for model_file in models_source.glob("*.tflite"):
+                        target_file = models_target / model_file.name
+                        shutil.copy2(model_file, target_file)
+                        results["downloaded_assets"].append(f"Model: {model_file.name}")
 
-            with tempfile.TemporaryDirectory() as temp_dir:
-                temp_path = Path(temp_dir)
-                archive_path = temp_path / "assets.tar.gz"
+                    print(f"Downloaded models to {models_target}")
+                else:
+                    results["errors"].append("Models directory not found in release")
 
-                # Download the asset archive with progress bar (extended timeout for large files)
-                with httpx.Client(follow_redirects=True, timeout=600.0) as client:
-                    with client.stream("GET", archive_url) as response:
-                        response.raise_for_status()
+            # Download IOC database if requested
+            if include_ioc_db:
+                ioc_source = asset_source_dir / "data" / "ioc_reference.db"
+                if ioc_source.exists():
+                    ioc_target = Path(file_resolver.get_database_path())
+                    ioc_target.parent.mkdir(parents=True, exist_ok=True)
 
-                        # Get the total file size if available
-                        total_size = int(response.headers.get("content-length", 0))
+                    shutil.copy2(ioc_source, ioc_target)
+                    results["downloaded_assets"].append("IOC reference database")
 
-                        with open(archive_path, "wb") as f:
-                            with tqdm(
-                                total=total_size,
-                                unit="B",
-                                unit_scale=True,
-                                unit_divisor=1024,
-                                desc="Downloading assets",
-                            ) as progress:
-                                for chunk in response.iter_bytes(chunk_size=8192):
-                                    f.write(chunk)
-                                    progress.update(len(chunk))
-
-                # Extract the archive
-                extract_path = temp_path / "extracted"
-                shutil.unpack_archive(archive_path, extract_path)
-
-                # Find the extracted directory (it will be named like "BirdNET-Pi-assets-v2.0.0")
-                extracted_dirs = list(extract_path.iterdir())
-                if not extracted_dirs:
-                    raise RuntimeError("No extracted directory found")
-
-                asset_source_dir = extracted_dirs[0]
-
-                # Download models if requested
-                if include_models:
-                    models_source = asset_source_dir / "data" / "models"
-                    if models_source.exists():
-                        models_target = Path(file_resolver.get_models_dir())
-                        models_target.mkdir(parents=True, exist_ok=True)
-
-                        # Copy all model files
-                        for model_file in models_source.glob("*.tflite"):
-                            target_file = models_target / model_file.name
-                            shutil.copy2(model_file, target_file)
-                            results["downloaded_assets"].append(f"Model: {model_file.name}")
-
-                        print(f"Downloaded models to {models_target}")
-                    else:
-                        results["errors"].append("Models directory not found in release")
-
-                # Download IOC database if requested
-                if include_ioc_db:
-                    ioc_source = asset_source_dir / "data" / "ioc_reference.db"
-                    if ioc_source.exists():
-                        ioc_target = Path(file_resolver.get_database_path())
-                        ioc_target.parent.mkdir(parents=True, exist_ok=True)
-
-                        shutil.copy2(ioc_source, ioc_target)
-                        results["downloaded_assets"].append("IOC reference database")
-
-                        print(f"Downloaded IOC database to {ioc_target}")
-                    else:
-                        results["errors"].append("IOC database not found in release")
+                    print(f"Downloaded IOC database to {ioc_target}")
+                else:
+                    results["errors"].append("IOC database not found in release")
 
             print(f"Asset download completed for version {version}")
             return results
