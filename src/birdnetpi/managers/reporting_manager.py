@@ -35,11 +35,11 @@ class ReportingManager:
         detections = self.detection_manager.get_all_detections()
         data = [
             {
-                "Com_Name": d.species,
+                "Com_Name": d.common_name_ioc or d.common_name_tensor or "",
                 "DateTime": d.timestamp,
                 "Date": d.timestamp.strftime("%Y-%m-%d"),
                 "Time": d.timestamp.strftime("%H:%M:%S"),
-                "Sci_Name": d.species.split(" (")[1][:-1] if " (" in d.species else "",
+                "Sci_Name": d.scientific_name or "",
                 "Confidence": d.confidence,
                 "Lat": d.latitude,
                 "Lon": d.longitude,

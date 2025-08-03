@@ -178,21 +178,30 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
     mock_detections = [
         Detection(
             id=1,
-            species="American Robin",
+            species_tensor="Turdus migratorius_American Robin",
+            scientific_name="Turdus migratorius",
+            common_name_tensor="American Robin",
+            common_name_ioc="American Robin",
             timestamp=datetime.datetime(2025, 7, 15, 8, 0, 0),
             confidence=0.9,
             audio_file_id=101,  # Assign a mock audio_file_id
         ),
         Detection(
             id=2,
-            species="American Robin",
+            species_tensor="Turdus migratorius_American Robin",
+            scientific_name="Turdus migratorius",
+            common_name_tensor="American Robin",
+            common_name_ioc="American Robin",
             timestamp=datetime.datetime(2025, 7, 15, 8, 15, 0),
             confidence=0.8,
             audio_file_id=102,  # Assign a mock audio_file_id
         ),
         Detection(
             id=3,
-            species="Northern Cardinal",
+            species_tensor="Cardinalis cardinalis_Northern Cardinal",
+            scientific_name="Cardinalis cardinalis",
+            common_name_tensor="Northern Cardinal",
+            common_name_ioc="Northern Cardinal",
             timestamp=datetime.datetime(2025, 7, 15, 9, 0, 0),
             confidence=0.95,
             audio_file_id=103,  # Assign a mock audio_file_id
