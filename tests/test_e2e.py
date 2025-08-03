@@ -28,11 +28,16 @@ def test_root_endpoint_e2e(docker_compose_up_down) -> None:
 @pytest.mark.expensive
 def test_sqladmin_detection_list_e2e(docker_compose_up_down) -> None:
     """Test the SQLAdmin Detection list endpoint."""
+    # Generate dummy data first to ensure the database has detection records
+    subprocess.run(
+        ["docker", "exec", "birdnet-pi", "/opt/birdnetpi/.venv/bin/generate-dummy-data"], check=True
+    )
+
     response = httpx.get("http://localhost:8000/admin/detection/list")
     assert response.status_code == 200
     assert "Detections" in response.text
 
     assert "id" in response.text
-    assert "species" in response.text
+    assert "scientific_name" in response.text or "common_name_ioc" in response.text
     assert "confidence" in response.text
     assert "timestamp" in response.text
