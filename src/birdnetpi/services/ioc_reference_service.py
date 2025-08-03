@@ -182,7 +182,7 @@ class IOCReferenceService:
         elem = parent.find(tag_name)
         return elem.text.strip() if elem is not None and elem.text else default
 
-    def _load_xlsx_translations(self, xlsx_file: Path) -> None:
+    def _load_xlsx_translations(self, xlsx_file: Path) -> None:  # noqa: C901
         """Load multilingual translations from IOC XLSX file.
 
         Args:
@@ -406,12 +406,15 @@ class IOCReferenceService:
 
         return self._ioc_version
 
-    def export_json(self, output_file: Path, include_translations: bool = True) -> None:
+    def export_json(
+        self, output_file: Path, include_translations: bool = True, compress: bool = False
+    ) -> None:
         """Export IOC data to JSON format for caching or distribution.
 
         Args:
             output_file: Path to output JSON file
             include_translations: Whether to include translation data
+            compress: Whether to gzip compress the output
         """
         if not self._loaded:
             self.load_ioc_data()
@@ -439,19 +442,37 @@ class IOCReferenceService:
             data["translations"] = self._translations
             data["available_languages"] = sorted(self.get_available_languages())
 
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+        if compress:
+            import gzip
 
-        print(f"Exported IOC data to {output_file}")
+            with gzip.open(output_file, "wt", encoding="utf-8") as f:
+                json.dump(data, f, separators=(",", ":"), ensure_ascii=False)
+        else:
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, separators=(",", ":"), ensure_ascii=False)
 
-    def load_from_json(self, json_file: Path) -> None:
+        file_size = output_file.stat().st_size
+        print(f"Exported IOC data to {output_file} ({file_size:,} bytes)")
+
+    def load_from_json(self, json_file: Path, compressed: bool | None = None) -> None:
         """Load IOC data from previously exported JSON file.
 
         Args:
             json_file: Path to JSON file
+            compressed: Whether file is gzip compressed (auto-detects if None)
         """
-        with open(json_file, encoding="utf-8") as f:
-            data = json.load(f)
+        # Auto-detect compression from file extension
+        if compressed is None:
+            compressed = json_file.suffix.lower() == ".gz" or str(json_file).endswith(".json.gz")
+
+        if compressed:
+            import gzip
+
+            with gzip.open(json_file, "rt", encoding="utf-8") as f:
+                data = json.load(f)
+        else:
+            with open(json_file, encoding="utf-8") as f:
+                data = json.load(f)
 
         self._ioc_version = data.get("version", "unknown")
         self._species_data = {}

@@ -1,0 +1,76 @@
+"""Translation service for BirdNET-Pi internationalization.
+
+Uses Python's gettext with Babel for extraction/compilation.
+"""
+
+from gettext import GNUTranslations, ngettext, translation
+from gettext import gettext as _
+from typing import TYPE_CHECKING
+
+from fastapi import Request
+
+from birdnetpi.utils.file_path_resolver import FilePathResolver
+
+if TYPE_CHECKING:
+    from starlette.templating import Jinja2Templates
+
+
+class TranslationManager:
+    """Manages translations for the application."""
+
+    def __init__(self, file_resolver: FilePathResolver):
+        self.file_resolver = file_resolver
+        self.locales_dir = self.file_resolver.resolve_data_file("locales")
+        self.translations: dict[str, GNUTranslations] = {}
+        self.default_language = "en"
+
+    def get_translation(self, language: str) -> GNUTranslations:
+        """Get translation object for a specific language."""
+        if language not in self.translations:
+            try:
+                self.translations[language] = translation(
+                    "messages", localedir=self.locales_dir, languages=[language], fallback=True
+                )
+            except FileNotFoundError:
+                # Fallback to default language
+                self.translations[language] = translation(
+                    "messages",
+                    localedir=self.locales_dir,
+                    languages=[self.default_language],
+                    fallback=True,
+                )
+        return self.translations[language]
+
+    def install_for_request(self, request: Request) -> GNUTranslations:
+        """Install translation for current request based on Accept-Language header."""
+        # Parse Accept-Language header
+        accept_language = request.headers.get("Accept-Language", self.default_language)
+        language = accept_language.split(",")[0].split("-")[0]  # Extract primary language code
+
+        # Get translation and install it
+        translation = self.get_translation(language)
+        translation.install()  # Makes _() available globally
+
+        return translation
+
+
+# FastAPI dependency
+def get_translation(request: Request) -> GNUTranslations:
+    """FastAPI dependency to get translation for current request."""
+    translation_manager = request.app.state.translation_manager
+    return translation_manager.install_for_request(request)
+
+
+# Jinja2 integration
+def setup_jinja2_i18n(templates: "Jinja2Templates") -> None:
+    """Configure Jinja2 templates with i18n support."""
+
+    def get_text(message: str) -> str:
+        """Template function for translations."""
+        return _(message)  # Uses the globally installed translation
+
+    templates.env.globals["_"] = get_text
+    templates.env.globals["gettext"] = get_text
+
+    # Add ngettext for pluralization
+    templates.env.globals["ngettext"] = ngettext

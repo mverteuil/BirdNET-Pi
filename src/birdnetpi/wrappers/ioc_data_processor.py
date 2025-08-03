@@ -15,16 +15,25 @@ import argparse
 import sys
 from pathlib import Path
 
+from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.services.ioc_reference_service import IOCReferenceService
 
 
-def process_ioc_files(xml_file: Path, xlsx_file: Path, output_file: Path) -> None:
-    """Process IOC XML and XLSX files into JSON format.
+def process_ioc_files(
+    xml_file: Path,
+    xlsx_file: Path,
+    output_file: Path,
+    compress: bool = False,
+    db_file: Path | None = None,
+) -> None:
+    """Process IOC XML and XLSX files into JSON and/or SQLite database format.
 
     Args:
         xml_file: Path to IOC XML file
         xlsx_file: Path to IOC multilingual XLSX file
         output_file: Path to output JSON file
+        compress: Whether to compress JSON output with gzip
+        db_file: Path to output SQLite database file (optional)
     """
     print("Processing IOC data files...")
     print(f"XML file: {xml_file}")
@@ -50,7 +59,16 @@ def process_ioc_files(xml_file: Path, xlsx_file: Path, output_file: Path) -> Non
         service.load_ioc_data(xml_file=xml_file, xlsx_file=xlsx_file)
 
         # Export to JSON
-        service.export_json(output_file, include_translations=True)
+        service.export_json(output_file, include_translations=True, compress=compress)
+        json_size = output_file.stat().st_size
+
+        # Export to SQLite database if requested
+        db_size = 0
+        if db_file:
+            print("Creating SQLite database...")
+            db_service = IOCDatabaseService(str(db_file))
+            db_service.populate_from_ioc_service(service)
+            db_size = db_service.get_database_size()
 
         # Print summary
         print()
@@ -58,7 +76,20 @@ def process_ioc_files(xml_file: Path, xlsx_file: Path, output_file: Path) -> Non
         print(f"IOC Version: {service.get_ioc_version()}")
         print(f"Species count: {service.get_species_count()}")
         print(f"Available languages: {len(service.get_available_languages())}")
-        print(f"Output file: {output_file} ({output_file.stat().st_size:,} bytes)")
+        compression_note = " (gzipped)" if compress else ""
+        print(f"JSON output: {output_file} ({json_size:,} bytes{compression_note})")
+        if db_file:
+            print(f"SQLite output: {db_file} ({db_size:,} bytes)")
+            if compress:
+                print(
+                    f"SQLite vs compressed JSON: "
+                    f"{((db_size - json_size) / json_size * 100):+.1f}% size difference"
+                )
+            else:
+                print(
+                    f"SQLite vs JSON: "
+                    f"{((db_size - json_size) / json_size * 100):+.1f}% size difference"
+                )
 
     except Exception as e:
         print(f"Error processing IOC files: {e}")
@@ -212,6 +243,12 @@ Examples:
     process_parser.add_argument(
         "--output", type=Path, required=True, help="Path to output JSON file"
     )
+    process_parser.add_argument(
+        "--compress", action="store_true", help="Compress JSON output with gzip"
+    )
+    process_parser.add_argument(
+        "--db-file", type=Path, help="Path to output SQLite database file (optional)"
+    )
 
     # Info command
     info_parser = subparsers.add_parser("info", help="Show information about IOC JSON file")
@@ -236,7 +273,7 @@ Examples:
         sys.exit(1)
 
     if args.command == "process":
-        process_ioc_files(args.xml_file, args.xlsx_file, args.output)
+        process_ioc_files(args.xml_file, args.xlsx_file, args.output, args.compress, args.db_file)
     elif args.command == "info":
         show_ioc_info(args.json_file)
     elif args.command == "lookup":

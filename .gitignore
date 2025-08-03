@@ -51,3 +51,9 @@ build/
 .coverage*
 coverage.xml
 .git_commit_message.txt
+
+# IOC World Bird Names data files (generated/downloaded, not committed)
+ioc_names_v*.xml
+ioc_multilingual_v*.xlsx
+data/ioc_data_v*.json
+data/ioc_reference_v*.db
