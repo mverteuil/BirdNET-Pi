@@ -1,5 +1,8 @@
 FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
 
+# Set release version for asset downloads (this can be overridden via build arg)
+ARG BIRDNET_ASSETS_VERSION=v1.0.2
+
 ENV DNS_SERVER=8.8.8.8
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
@@ -77,8 +80,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Copy the configuration template for BirdNET-Pi
 COPY --chown=birdnetpi:birdnetpi config_templates/birdnetpi.yaml /var/lib/birdnetpi/config/birdnetpi.yaml
 
-# Set release version for asset downloads (this can be overridden via build arg)
-ARG BIRDNET_ASSETS_VERSION=v2.1.0
 ENV BIRDNET_ASSETS_VERSION=${BIRDNET_ASSETS_VERSION}
 
 # Download release assets with Docker cache based on version

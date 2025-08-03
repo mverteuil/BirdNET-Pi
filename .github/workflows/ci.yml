@@ -81,8 +81,9 @@ jobs:
         if: steps.cache-assets.outputs.cache-hit != 'true'
         env:
           BIRDNETPI_DATA: ${{ github.workspace }}/data
+          ASSETS_VERSION: v1.0.2
         run: |
-          uv run asset-installer install v2.1.0 --include-models --include-ioc-db
+          uv run asset-installer install ${ASSETS_VERSION} --include-models --include-ioc-db
       - name: Run pytest tests
         run: uv run pytest --cov=src -m "not expensive"
       - name: Run expensive pytest tests
