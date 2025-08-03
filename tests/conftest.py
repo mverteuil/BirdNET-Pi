@@ -86,7 +86,7 @@ site_name: Test BirdNET-Pi
 latitude: 40.7128
 longitude: -74.0060
 model: BirdNET_GLOBAL_6K_V2.4_Model_FP16
-sf_thresh: 0.03
+species_confidence_threshold: 0.03
 confidence: 0.7
 sensitivity: 1.25
 week: 0
@@ -157,7 +157,7 @@ enable_system_resource_check: true
 enable_gps_check: false
 
 # Analysis Configuration
-sf_threshold: 0.03
+species_confidence_threshold: 0.03
 privacy_threshold: 10.0
 data_model_version: 2
 

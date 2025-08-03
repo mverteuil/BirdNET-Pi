@@ -36,6 +36,7 @@ dependencies = [
     "httpx>=0.28.1",
     "psutil>=7.0.0",
     "tqdm>=4.67.1",
+    "structlog>=25.4.0",
 ]
 
 [project.optional-dependencies]

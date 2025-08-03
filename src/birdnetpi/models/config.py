@@ -23,7 +23,7 @@ class LoggingConfig:
     syslog_host: str = "localhost"
     syslog_port: int = 514
     file_logging_enabled: bool = False
-    log_file_path: str = "~/BirdNET-Pi/birdnetpi.log"
+    log_file_path: str = ""  # Will be resolved by FilePathResolver if not specified
     max_log_file_size_mb: int = 10  # 10 MB
     log_file_backup_count: int = 5
     log_level: str = "INFO"
