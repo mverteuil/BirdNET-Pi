@@ -28,9 +28,7 @@ def main_cli() -> None:
     args = parser.parse_args()
 
     file_path_resolver = FilePathResolver()
-    config = ConfigFileParser(file_path_resolver.get_birdnetpi_config_path()).load_config()
-
-    db_service = DatabaseService(config.data.db_path)
+    db_service = DatabaseService(file_path_resolver.get_database_path())
 
     detection_manager = DetectionManager(db_service)
 

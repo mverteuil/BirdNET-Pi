@@ -41,8 +41,7 @@ class ConfigFileParser:
         with open(self.config_path) as f:
             config_data = yaml.safe_load(f)
 
-        # Load data section if present
-        data_section = config_data.get("data", {})
+        # Data section is no longer used - paths handled by FilePathResolver
 
         # Load logging section if present
         logging_section = config_data.get("logging", {})
@@ -95,9 +94,7 @@ class ConfigFileParser:
             audio_device_index=int(config_data.get("audio_device_index", -1)),
             sample_rate=int(config_data.get("sample_rate", 48000)),
             audio_channels=int(config_data.get("audio_channels", 1)),
-            # Data section paths - resolved via FilePathResolver
-            recordings_dir=data_section.get("recordings_dir", ""),
-            db_path=data_section.get("db_path", ""),
+            # Data paths now handled entirely by FilePathResolver based on environment variables
             # Additional config fields
             enable_gps=bool(config_data.get("enable_gps", False)),
             gps_update_interval=float(config_data.get("gps_update_interval", 5.0)),
@@ -181,13 +178,8 @@ class ConfigFileParser:
             "webhook_urls": config.webhook_urls,
         }
 
-        # Add data section if paths are configured
-        if config.recordings_dir or config.db_path:
-            config_data["data"] = {}
-            if config.recordings_dir:
-                config_data["data"]["recordings_dir"] = config.recordings_dir
-            if config.db_path:
-                config_data["data"]["db_path"] = config.db_path
+        # Data paths are now managed by FilePathResolver via environment variables
+        # No need to save them to config file
 
         # Add logging section - use modern structlog format
         config_data["logging"] = {

@@ -59,7 +59,7 @@ if __name__ == "__main__":
     file_resolver = FilePathResolver()
     config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())
     config = config_parser.load_config()
-    db_service = DatabaseService(config.data.db_path)
+    db_service = DatabaseService(file_resolver.get_database_path())
     detection_manager = DetectionManager(db_service)
 
     generate_dummy_detections(detection_manager)

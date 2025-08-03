@@ -22,7 +22,7 @@ class AppSetup:
         self.config_parser = ConfigFileParser(self.config_file_path)
         self.config: BirdNETConfig = self.config_parser.parse()
         self.file_manager = FileManager(self.repo_root)
-        self.database_manager = DatabaseManager(self.config.data.db_path)
+        self.database_manager = DatabaseManager(self.file_path_resolver.get_database_path())
         self.venv_path = self.file_path_resolver.get_absolute_path("birdnet")
 
     def _run_command(self, command: list[str], description: str) -> None:
@@ -54,7 +54,7 @@ class AppSetup:
     def create_directories(self) -> None:
         """Create necessary directories for the application."""
         print("\nCreating necessary directories...")
-        self.file_manager.create_directory(self.config.data.recordings_dir)
+        self.file_manager.create_directory(self.file_path_resolver.get_recordings_dir())
         self.file_manager.create_directory(self.config.data.extracted_dir)
         self.file_manager.create_directory(os.path.join(self.config.data.extracted_dir, "By_Date"))
         self.file_manager.create_directory(os.path.join(self.config.data.extracted_dir, "Charts"))
