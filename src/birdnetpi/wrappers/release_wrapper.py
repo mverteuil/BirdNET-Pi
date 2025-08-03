@@ -13,58 +13,82 @@ from birdnetpi.managers.release_manager import ReleaseAsset, ReleaseConfig, Rele
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
+def _build_asset_list(
+    args: argparse.Namespace, release_manager: ReleaseManager
+) -> list[ReleaseAsset]:
+    """Build the list of assets for the release."""
+    assets = []
+    default_assets = release_manager.get_default_assets()
+
+    if args.include_models:
+        models_asset = next((a for a in default_assets if "models" in a.target_name), None)
+        if models_asset and Path(models_asset.source_path).exists():
+            assets.append(models_asset)
+        else:
+            print("Warning: Models not found at expected locations")
+
+    if args.include_ioc_db:
+        db_asset = next((a for a in default_assets if "ioc_reference.db" in a.target_name), None)
+        if db_asset and Path(db_asset.source_path).exists():
+            assets.append(db_asset)
+        else:
+            print("Warning: IOC database not found at expected locations")
+
+    # Add custom assets
+    if args.custom_assets:
+        _add_custom_assets(args.custom_assets, assets)
+
+    if not assets:
+        print("Error: No assets specified for release")
+        sys.exit(1)
+
+    return assets
+
+
+def _add_custom_assets(custom_assets: list[str], assets: list[ReleaseAsset]) -> None:
+    """Add custom assets to the asset list."""
+    for asset_spec in custom_assets:
+        parts = asset_spec.split(":")
+        if len(parts) != 3:
+            print(f"Error: Invalid asset specification: {asset_spec}")
+            print("Format: source_path:target_name:description")
+            sys.exit(1)
+
+        source_path, target_name, description = parts
+        if not Path(source_path).exists():
+            print(f"Error: Asset not found: {source_path}")
+            sys.exit(1)
+
+        assets.append(ReleaseAsset(source_path, target_name, description))
+
+
+def _handle_github_release(
+    args: argparse.Namespace,
+    config: ReleaseConfig,
+    release_manager: ReleaseManager,
+    asset_result: dict,
+) -> dict | None:
+    """Create GitHub release if requested."""
+    if not args.create_github_release:
+        return None
+
+    print("\nCreating GitHub release...")
+    github_result = release_manager.create_github_release(config, asset_result["commit_sha"])
+
+    print(f"GitHub release created: {github_result['tag_name']}")
+    if github_result["release_url"]:
+        print(f"Release URL: {github_result['release_url']}")
+
+    return github_result
+
+
 def create_release(args: argparse.Namespace) -> None:
     """Create a new release with assets."""
     file_resolver = FilePathResolver()
     release_manager = ReleaseManager(file_resolver)
 
     # Build asset list
-    assets = []
-    if args.include_models:
-        models_dir = file_resolver.get_models_dir()
-        if Path(models_dir).exists():
-            assets.append(
-                ReleaseAsset(
-                    source_path=models_dir,
-                    target_name="data/models",
-                    description="BirdNET TensorFlow Lite models for bird identification",
-                )
-            )
-        else:
-            print(f"Warning: Models directory not found at {models_dir}")
-
-    if args.include_ioc_db:
-        ioc_db_path = file_resolver.get_database_path()
-        if Path(ioc_db_path).exists():
-            assets.append(
-                ReleaseAsset(
-                    source_path=ioc_db_path,
-                    target_name="data/ioc_reference.db",
-                    description="IOC World Bird Names reference database",
-                )
-            )
-        else:
-            print(f"Warning: IOC database not found at {ioc_db_path}")
-
-    # Add custom assets
-    if args.custom_assets:
-        for asset_spec in args.custom_assets:
-            parts = asset_spec.split(":")
-            if len(parts) != 3:
-                print(f"Error: Invalid asset specification: {asset_spec}")
-                print("Format: source_path:target_name:description")
-                sys.exit(1)
-
-            source_path, target_name, description = parts
-            if not Path(source_path).exists():
-                print(f"Error: Asset not found: {source_path}")
-                sys.exit(1)
-
-            assets.append(ReleaseAsset(source_path, target_name, description))
-
-    if not assets:
-        print("Error: No assets specified for release")
-        sys.exit(1)
+    assets = _build_asset_list(args, release_manager)
 
     # Create release configuration
     asset_branch_name = args.asset_branch or f"assets-{args.version}"
@@ -90,21 +114,13 @@ def create_release(args: argparse.Namespace) -> None:
         print(f"  Assets: {len(asset_result['assets'])}")
 
         # Create GitHub release if requested
-        if args.create_github_release:
-            print("\nCreating GitHub release...")
-            github_result = release_manager.create_github_release(
-                config, asset_result["commit_sha"]
-            )
-
-            print(f"GitHub release created: {github_result['tag_name']}")
-            if github_result["release_url"]:
-                print(f"Release URL: {github_result['release_url']}")
+        github_result = _handle_github_release(args, config, release_manager, asset_result)
 
         # Output JSON if requested
         if args.output_json:
             output_data = {
                 "asset_release": asset_result,
-                "github_release": github_result if args.create_github_release else None,
+                "github_release": github_result,
             }
             print(f"\nRelease data written to: {args.output_json}")
             Path(args.output_json).write_text(json.dumps(output_data, indent=2))
@@ -145,7 +161,7 @@ def list_assets(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    """Main entry point for release management CLI."""
+    """Run the release management CLI."""
     parser = argparse.ArgumentParser(
         description="BirdNET-Pi Release Management",
         formatter_class=argparse.RawDescriptionHelpFormatter,
