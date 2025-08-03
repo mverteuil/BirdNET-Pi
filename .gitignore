@@ -24,10 +24,15 @@
 .idea/**/uiDesigner.xml
 .idea/**/dbnavigator.xml
 
+.DS_Store
 */*.egg-info/*
 *.pyc
 *.flac
 .vscode
+.claude
+.gemini
+GEMINI.md
+AGENT.md
 model/*
 datasets/
 birdnet.conf
