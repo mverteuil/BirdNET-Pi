@@ -255,7 +255,7 @@ class ReleaseManager:
         # In development, prefer local data/ directory over production paths
         models_path = self._get_asset_path("data/models", self.file_resolver.get_models_dir())
         database_path = self._get_asset_path(
-            "data/database/ioc_reference.db", self.file_resolver.get_database_path()
+            "data/database/ioc_reference.db", self.file_resolver.get_ioc_database_path()
         )
 
         return [
