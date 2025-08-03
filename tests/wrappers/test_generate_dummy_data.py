@@ -13,18 +13,12 @@ def mock_dependencies(mocker):
     with patch.multiple(
         "birdnetpi.wrappers.generate_dummy_data",
         FilePathResolver=DEFAULT,
-        ConfigFileParser=DEFAULT,
         DatabaseService=DEFAULT,
         DetectionManager=DEFAULT,
         generate_dummy_detections=DEFAULT,
     ) as mocks:
         # Configure mocks
-        mocks[
-            "FilePathResolver"
-        ].return_value.get_birdnetpi_config_path.return_value = "/tmp/config.yaml"
-        mocks[
-            "ConfigFileParser"
-        ].return_value.load_config.return_value.data.db_path = "/tmp/test.db"
+        mocks["FilePathResolver"].return_value.get_database_path.return_value = "/tmp/test.db"
         mocks["DatabaseService"].return_value = MagicMock(spec=DatabaseService)
         mocks["DetectionManager"].return_value = MagicMock(spec=DetectionManager)
         mocks["generate_dummy_detections"].return_value = None
