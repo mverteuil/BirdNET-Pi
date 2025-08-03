@@ -135,7 +135,7 @@ def test_generate_multi_day_species_and_hourly_plot_should_return_figure(
     )
 
     fig = plotting_manager.generate_multi_day_species_and_hourly_plot(
-        df, config.resample_sel, start_date, end_date, config.top_n, config.specie
+        df, config.resample_sel, start_date, end_date, config.top_n, config.species
     )
     assert isinstance(fig, go.Figure)
 
