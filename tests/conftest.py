@@ -173,3 +173,52 @@ def test_config(test_config_file: Path):
 
     parser = ConfigFileParser(str(test_config_file))
     return parser.load_config()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def check_required_assets():
+    """Check that required assets are available for testing."""
+    from pathlib import Path
+
+    from birdnetpi.utils.file_path_resolver import FilePathResolver
+
+    file_resolver = FilePathResolver()
+    missing_assets = []
+
+    # Check for model files
+    models_dir = Path(file_resolver.get_models_dir())
+    if not models_dir.exists() or not any(models_dir.glob("*.tflite")):
+        missing_assets.append("Model files (*.tflite)")
+
+    # Check for labels.txt
+    labels_path = Path(file_resolver.get_model_path("labels.txt"))
+    if not labels_path.exists():
+        missing_assets.append("labels.txt")
+
+    # Check for IOC database
+    db_path = Path(file_resolver.get_database_path())
+    if not db_path.exists():
+        missing_assets.append("IOC reference database")
+
+    if missing_assets:
+        print()
+        print("┌" + "─" * 78 + "┐")
+        print("│" + " " * 78 + "│")
+        print("│  ⚠️  MISSING ASSETS FOR TESTING" + " " * 45 + "│")
+        print("│" + " " * 78 + "│")
+        print("│  The following required assets are missing for testing:" + " " * 22 + "│")
+        for asset in missing_assets:
+            spaces_needed = 76 - len(f"│    • {asset}")
+            print(f"│    • {asset}" + " " * spaces_needed + "│")
+        print("│" + " " * 78 + "│")
+        print("│  To run tests with assets, install them first:" + " " * 29 + "│")
+        print("│    export BIRDNETPI_DATA=./data" + " " * 43 + "│")
+        print("│    uv run asset-installer install v2.1.0 --include-models --include-ioc-db│")
+        print("│" + " " * 78 + "│")
+        print("│  Most tests will still pass without assets (mocked dependencies)." + " " * 9 + "│")
+        print(
+            "│  Only integration tests and some service tests require real assets." + " " * 10 + "│"
+        )
+        print("│" + " " * 78 + "│")
+        print("└" + "─" * 78 + "┘")
+        print()
