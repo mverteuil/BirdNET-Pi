@@ -6,6 +6,7 @@ site_name: BirdNET-Pi
 latitude: 0.0
 longitude: 0.0
 model: BirdNET_GLOBAL_6K_V2.4_Model_FP16.tflite
+metadata_model: BirdNET_GLOBAL_6K_V2.4_MData_Model_V2_FP16.tflite
 species_confidence_threshold: 0.03  # Minimum confidence threshold for species detection
 confidence: 0.7
 sensitivity: 1.25
@@ -16,14 +17,8 @@ audio_device_index: -1  # -1 for system default
 sample_rate: 48000
 audio_channels: 1
 
-# Data Storage Paths
-data:
-  recordings_dir: /mnt/birdnet/recordings
-  extracted_dir: /mnt/birdnet/extracted
-  processed_dir: /mnt/birdnet/processed
-  id_file: /var/log/birdnet/id.txt
-  bird_db_file: /var/log/birdnet/BirdDB.txt
-  db_path: /var/log/birdnet/birdnetpi.db
+# Data Storage Paths - now handled by FilePathResolver with environment variables
+# Use BIRDNETPI_DATA to configure the base data directory
 
 # Logging Configuration
 logging:
@@ -53,8 +48,10 @@ minimum_time_limit: 0
 flickr_api_key: ""
 flickr_filter_email: ""
 
-# Localization
+# Localization and Species Display
 database_lang: en
+language_code: en  # Language for species name translation (IOC multilingual support)
+species_display_mode: full  # Options: "full" (Common Name (Scientific Name)), "common_name", "scientific_name"
 timezone: UTC
 
 # Web Interface Settings
@@ -78,7 +75,7 @@ enable_gps_check: false
 
 # Analysis Configuration
 privacy_threshold: 10.0
-data_model_version: 2
+
 
 # MQTT Integration Settings
 enable_mqtt: false

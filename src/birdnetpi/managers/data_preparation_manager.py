@@ -66,14 +66,14 @@ class DataPreparationManager:
         hourly = self.get_hourly_crosstab(df5)
         top_n_species = self.get_species_counts(df5)[: config.top_n]
 
-        df_counts = int(hourly[hourly.index == config.specie]["All"].iloc[0])
+        df_counts = int(hourly[hourly.index == config.species]["All"].iloc[0])
         return df5, hourly, top_n_species, df_counts
 
     def prepare_daily_plot_data(
         self, df: pd.DataFrame, config: DailyPlotConfig
     ) -> tuple[pd.DataFrame, list[str], list[float], list[str]]:
         """Prepare data for the daily detections plot."""
-        df4 = df["com_name"][df["com_name"] == config.specie].resample("15min").count()
+        df4 = df["com_name"][df["com_name"] == config.species].resample("15min").count()
         df4.index = [df4.index.date, df4.index.time]
         day_hour_freq = df4.unstack().fillna(0)
 

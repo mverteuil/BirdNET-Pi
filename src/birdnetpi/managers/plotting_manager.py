@@ -180,7 +180,7 @@ class PlottingManager:
         if df.empty or len(df) == 0:
             return self._create_empty_plot("No data available for multi-day plot")
 
-        config = MultiDayPlotConfig(resample_sel=resample_sel, specie=species, top_n=top_n)
+        config = MultiDayPlotConfig(resample_sel=resample_sel, species=species, top_n=top_n)
         df5, hourly, top_n_species, df_counts = (
             self.data_preparation_manager.prepare_multi_day_plot_data(df, config)
         )
@@ -263,7 +263,7 @@ class PlottingManager:
         if df.empty or len(df) == 0:
             return self._create_empty_plot("No data available for daily plot")
 
-        config = DailyPlotConfig(resample_sel=resample_sel, specie=species)
+        config = DailyPlotConfig(resample_sel=resample_sel, species=species)
         day_hour_freq, saved_time_labels, fig_dec_y, fig_x = (
             self.data_preparation_manager.prepare_daily_plot_data(df, config)
         )

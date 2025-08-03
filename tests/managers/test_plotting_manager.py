@@ -121,7 +121,7 @@ def test_generate_multi_day_species_and_hourly_plot_should_return_figure(
     species = "Common Blackbird"
 
     # Create a MultiDayPlotConfig instance
-    config = MultiDayPlotConfig(resample_sel=resample_sel, specie=species, top_n=top_n)
+    config = MultiDayPlotConfig(resample_sel=resample_sel, species=species, top_n=top_n)
 
     # Mock the internal data preparation method that PlottingManager calls
     mock_data_preparation_manager.prepare_multi_day_plot_data.return_value = (

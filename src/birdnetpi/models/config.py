@@ -9,14 +9,10 @@ from dataclasses import dataclass, field
 
 @dataclass
 class DataConfig:
-    """Configuration for data storage paths."""
+    """Legacy data configuration - now handled by FilePathResolver."""
 
-    recordings_dir: str = "/mnt/birdnet/recordings"
-    extracted_dir: str = "/mnt/birdnet/extracted"
-    processed_dir: str = "/mnt/birdnet/processed"
-    id_file: str = "/var/log/birdnet/id.txt"
-    bird_db_file: str = "/var/log/birdnet/BirdDB.txt"
-    db_path: str = "/var/log/birdnet/birdnetpi.db"
+    # All data paths now resolved via FilePathResolver and environment variables
+    pass
 
 
 @dataclass
@@ -42,6 +38,9 @@ class BirdNETConfig:
     latitude: float = 0.0
     longitude: float = 0.0
     model: str = "BirdNET_GLOBAL_6K_V2.4_Model_FP16"
+    metadata_model: str = (
+        "BirdNET_GLOBAL_6K_V2.4_MData_Model_V2_FP16.tflite"  # Metadata model filename
+    )
     species_confidence_threshold: float = 0.03  # Minimum confidence threshold for species detection
     confidence: float = 0.7  # Default from birdnet.conf.template
     sensitivity: float = 1.25  # Default from birdnet.conf.template
@@ -75,8 +74,10 @@ class BirdNETConfig:
     flickr_api_key: str = ""
     flickr_filter_email: str = ""
 
-    # Localization
+    # Localization and Species Display
     database_lang: str = "en"  # Renamed from 'language' to avoid conflict with Python keyword
+    language_code: str = "en"  # Language code for species name translation (IOC multilingual)
+    species_display_mode: str = "full"  # Options: "full", "common_name", "scientific_name"
     timezone: str = "UTC"  # Default from SystemUtils
 
     # Other settings from legacy configuration files
@@ -101,7 +102,7 @@ class BirdNETConfig:
     # Analysis model configuration
     # Removed duplicate - use species_confidence_threshold instead
     privacy_threshold: float = 10.0  # Privacy threshold percentage for human detection cutoff
-    data_model_version: int = 2  # Data model version (1 or 2)
+    # Removed data_model_version - use metadata_model filename instead
 
     # MQTT Integration settings
     enable_mqtt: bool = False  # Enable MQTT publishing
@@ -138,7 +139,7 @@ class DailyPlotConfig:
     """Dataclass to hold configuration for the daily plot."""
 
     resample_sel: str
-    specie: str
+    species: str
 
 
 @dataclass
@@ -146,5 +147,5 @@ class MultiDayPlotConfig:
     """Configuration for multi-day plot data preparation."""
 
     resample_sel: str
-    specie: str
+    species: str
     top_n: int

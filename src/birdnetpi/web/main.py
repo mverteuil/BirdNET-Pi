@@ -96,9 +96,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Initialize hardware monitoring service
     app.state.hardware_monitor = HardwareMonitorService(
         check_interval=getattr(app.state.config, "hardware_check_interval", 10.0),
-        audio_device_check=True,
-        system_resource_check=True,
-        gps_check=getattr(app.state.config, "enable_gps", False),
+        audio_device_check=getattr(app.state.config, "enable_audio_device_check", True),
+        system_resource_check=getattr(app.state.config, "enable_system_resource_check", True),
+        gps_check=getattr(app.state.config, "enable_gps_check", False),
     )
 
     # Initialize MQTT service for IoT integration

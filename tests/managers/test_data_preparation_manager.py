@@ -147,7 +147,7 @@ class TestDataPreparationManager:
         config = MagicMock(spec=MultiDayPlotConfig)
         config.resample_sel = "H"
         config.top_n = 2
-        config.specie = "American Robin"
+        config.species = "American Robin"
 
         df5, hourly, top_n_species, df_counts = (
             data_preparation_manager.prepare_multi_day_plot_data(sample_dataframe, config)
@@ -161,7 +161,7 @@ class TestDataPreparationManager:
     def test_prepare_daily_plot_data(self, data_preparation_manager, sample_dataframe):
         """Test preparation of daily plot data."""
         config = MagicMock(spec=DailyPlotConfig)
-        config.specie = "American Robin"
+        config.species = "American Robin"
 
         day_hour_freq, saved_time_labels, fig_dec_y, fig_x = (
             data_preparation_manager.prepare_daily_plot_data(sample_dataframe, config)

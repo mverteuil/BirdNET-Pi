@@ -53,6 +53,9 @@ class ConfigFileParser:
             latitude=float(config_data.get("latitude", 0.0)),
             longitude=float(config_data.get("longitude", 0.0)),
             model=config_data.get("model", "BirdNET_GLOBAL_6K_V2.4_Model_FP16.tflite"),
+            metadata_model=config_data.get(
+                "metadata_model", "BirdNET_GLOBAL_6K_V2.4_MData_Model_V2_FP16.tflite"
+            ),
             species_confidence_threshold=float(
                 config_data.get("species_confidence_threshold", config_data.get("sf_thresh", 0.03))
             ),
@@ -77,6 +80,8 @@ class ConfigFileParser:
             flickr_api_key=config_data.get("flickr_api_key", ""),
             flickr_filter_email=config_data.get("flickr_filter_email", ""),
             database_lang=config_data.get("database_lang", "en"),
+            language_code=config_data.get("language_code", "en"),
+            species_display_mode=config_data.get("species_display_mode", "full"),
             timezone=config_data.get("timezone", "UTC"),
             caddy_pwd=config_data.get("caddy_pwd", ""),
             silence_update_indicator=bool(config_data.get("silence_update_indicator", False)),
@@ -97,8 +102,12 @@ class ConfigFileParser:
             enable_gps=bool(config_data.get("enable_gps", False)),
             gps_update_interval=float(config_data.get("gps_update_interval", 5.0)),
             hardware_check_interval=float(config_data.get("hardware_check_interval", 10.0)),
+            enable_audio_device_check=bool(config_data.get("enable_audio_device_check", True)),
+            enable_system_resource_check=bool(
+                config_data.get("enable_system_resource_check", True)
+            ),
+            enable_gps_check=bool(config_data.get("enable_gps_check", False)),
             privacy_threshold=float(config_data.get("privacy_threshold", 10.0)),
-            data_model_version=int(config_data.get("data_model_version", 2)),
             enable_mqtt=bool(config_data.get("enable_mqtt", False)),
             mqtt_broker_host=config_data.get("mqtt_broker_host", "localhost"),
             mqtt_broker_port=int(config_data.get("mqtt_broker_port", 1883)),
@@ -123,6 +132,7 @@ class ConfigFileParser:
             "latitude": config.latitude,
             "longitude": config.longitude,
             "model": config.model,
+            "metadata_model": config.metadata_model,
             "species_confidence_threshold": config.species_confidence_threshold,
             "confidence": config.confidence,
             "sensitivity": config.sensitivity,
@@ -141,6 +151,8 @@ class ConfigFileParser:
             "flickr_api_key": config.flickr_api_key,
             "flickr_filter_email": config.flickr_filter_email,
             "database_lang": config.database_lang,
+            "language_code": config.language_code,
+            "species_display_mode": config.species_display_mode,
             "timezone": config.timezone,
             "caddy_pwd": config.caddy_pwd,
             "silence_update_indicator": config.silence_update_indicator,
@@ -154,8 +166,10 @@ class ConfigFileParser:
             "enable_gps": config.enable_gps,
             "gps_update_interval": config.gps_update_interval,
             "hardware_check_interval": config.hardware_check_interval,
+            "enable_audio_device_check": config.enable_audio_device_check,
+            "enable_system_resource_check": config.enable_system_resource_check,
+            "enable_gps_check": config.enable_gps_check,
             "privacy_threshold": config.privacy_threshold,
-            "data_model_version": config.data_model_version,
             "enable_mqtt": config.enable_mqtt,
             "mqtt_broker_host": config.mqtt_broker_host,
             "mqtt_broker_port": config.mqtt_broker_port,

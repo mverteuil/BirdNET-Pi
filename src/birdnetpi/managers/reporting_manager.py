@@ -227,10 +227,10 @@ class ReportingManager:
         return df
 
     def get_daily_detection_data_for_plotting(
-        self, df: pd.DataFrame, resample_sel: str, specie: str
+        self, df: pd.DataFrame, resample_sel: str, species: str
     ) -> tuple[pd.DataFrame, list[str], list[float], list[str]]:
         """Prepare daily detection data for plotting."""
-        config = DailyPlotConfig(resample_sel=resample_sel, specie=specie)
+        config = DailyPlotConfig(resample_sel=resample_sel, species=species)
         return self.data_preparation_manager.prepare_daily_plot_data(df, config)
 
     def get_best_detections(self, limit: int = 20) -> list[dict]:

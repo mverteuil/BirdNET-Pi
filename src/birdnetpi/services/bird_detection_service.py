@@ -78,16 +78,13 @@ class BirdDetectionService:
         log.info("BirdDetectionService: LOADING DONE!")
 
     def _load_meta_model(self) -> None:
-        if self.config.data_model_version == 2:
-            data_model = "BirdNET_GLOBAL_6K_V2.4_MData_Model_V2_FP16.tflite"
-        else:
-            data_model = "BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16.tflite"
-
         # Use FilePathResolver for data model path
         from birdnetpi.utils.file_path_resolver import FilePathResolver
 
         file_resolver = FilePathResolver()
-        self.m_interpreter = tflite.Interpreter(model_path=file_resolver.get_model_path(data_model))
+        self.m_interpreter = tflite.Interpreter(
+            model_path=file_resolver.get_model_path(self.config.metadata_model)
+        )
         self.m_interpreter.allocate_tensors()
 
         input_details = self.m_interpreter.get_input_details()
