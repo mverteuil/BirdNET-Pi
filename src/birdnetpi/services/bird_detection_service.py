@@ -67,13 +67,8 @@ class BirdDetectionService:
             self.mdata_input_index = input_details[1]["index"]
         self.output_layer_index = output_details[0]["index"]
 
+        # Legacy labels.txt is no longer used - species names now come from IOC database
         self.classes = []
-        # Use FilePathResolver for labels path
-        file_resolver = FilePathResolver()
-        labelspath = file_resolver.get_model_path("labels.txt")
-        with open(labelspath) as lfile:
-            for line in lfile.readlines():
-                self.classes.append(line.replace("\n", ""))
 
         log.info("BirdDetectionService: LOADING DONE!")
 
