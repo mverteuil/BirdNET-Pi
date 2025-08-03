@@ -31,9 +31,8 @@ def _signal_handler(signum: int, frame: FrameType) -> None:
 def _cleanup_fifo() -> None:
     global _fifo_analysis_fd, _fifo_analysis_path
     if _fifo_analysis_fd:
-        os.close(_fifo_analysis_fd.value)
+        os.close(_fifo_analysis_fd)
         logger.info("Closed FIFO: %s", _fifo_analysis_path)
-        _fifo_analysis_fd.value = None
         _fifo_analysis_fd = None
 
 
@@ -82,3 +81,11 @@ def main() -> None:
             "FIFO not found at %s. Ensure audio_capture is running and creating it.",
             _fifo_analysis_path,
         )
+    except Exception as e:
+        logger.error("An error occurred in the audio analysis wrapper: %s", e, exc_info=True)
+    finally:
+        _cleanup_fifo()
+
+
+if __name__ == "__main__":
+    main()
