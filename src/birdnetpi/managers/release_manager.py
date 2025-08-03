@@ -1,0 +1,280 @@
+"""Release management for BirdNET-Pi using orphaned commit strategy.
+
+This module implements Ben Webber's orphaned commit strategy to distribute
+large binary assets (models, IOC database) without bloating the main repository.
+"""
+
+import shutil
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from birdnetpi.utils.file_path_resolver import FilePathResolver
+
+
+@dataclass
+class ReleaseAsset:
+    """Represents a release asset to be included in orphaned commit."""
+
+    source_path: str
+    target_name: str
+    description: str
+
+
+@dataclass
+class ReleaseConfig:
+    """Configuration for a release."""
+
+    version: str
+    asset_branch_name: str
+    commit_message: str
+    assets: list[ReleaseAsset]
+    tag_name: str | None = None
+
+
+class ReleaseManager:
+    """Manages creation of releases using orphaned commit strategy."""
+
+    def __init__(self, file_resolver: FilePathResolver, repo_path: Path | None = None):
+        """Initialize release manager.
+
+        Args:
+            file_resolver: File path resolver for asset locations
+            repo_path: Path to git repository (defaults to current directory)
+        """
+        self.file_resolver = file_resolver
+        self.repo_path = repo_path or Path.cwd()
+
+    def create_asset_release(self, config: ReleaseConfig) -> dict[str, Any]:
+        """Create an orphaned commit with release assets.
+
+        Args:
+            config: Release configuration
+
+        Returns:
+            Dictionary with release information including commit SHA
+        """
+        print(f"Creating asset release for version {config.version}")
+
+        # Verify all assets exist
+        missing_assets = []
+        for asset in config.assets:
+            if not Path(asset.source_path).exists():
+                missing_assets.append(asset.source_path)
+
+        if missing_assets:
+            raise FileNotFoundError(f"Missing assets: {missing_assets}")
+
+        # Create orphaned commit
+        original_branch = self._get_current_branch()
+        commit_sha = None
+
+        try:
+            # Create orphaned branch
+            print(f"Creating orphaned branch: {config.asset_branch_name}")
+            self._run_git_command(["checkout", "--orphan", config.asset_branch_name])
+
+            # Remove all files from the new orphaned branch
+            self._run_git_command(["rm", "-rf", "."], check=False)
+
+            # Copy assets to root of orphaned branch
+            print("Copying assets...")
+            for asset in config.assets:
+                source = Path(asset.source_path)
+                target = self.repo_path / asset.target_name
+
+                if source.is_file():
+                    shutil.copy2(source, target)
+                    print(f"  Copied {source} -> {asset.target_name}")
+                elif source.is_dir():
+                    shutil.copytree(source, target, dirs_exist_ok=True)
+                    print(f"  Copied directory {source} -> {asset.target_name}")
+
+            # Create README for the assets
+            self._create_asset_readme(config)
+
+            # Add and commit assets
+            self._run_git_command(["add", "."])
+            self._run_git_command(["commit", "-m", config.commit_message])
+
+            # Get commit SHA
+            commit_sha = self._run_git_command(["rev-parse", "HEAD"], capture_output=True).strip()
+            print(f"Created orphaned commit: {commit_sha}")
+
+            # Push the orphaned branch
+            print(f"Pushing branch: {config.asset_branch_name}")
+            self._run_git_command(["push", "origin", config.asset_branch_name, "--force"])
+
+        finally:
+            # Return to original branch
+            if original_branch:
+                print(f"Returning to original branch: {original_branch}")
+                self._run_git_command(["checkout", original_branch])
+
+        return {
+            "version": config.version,
+            "asset_branch": config.asset_branch_name,
+            "commit_sha": commit_sha,
+            "assets": [
+                {
+                    "name": asset.target_name,
+                    "description": asset.description,
+                    "source": asset.source_path,
+                }
+                for asset in config.assets
+            ],
+        }
+
+    def create_github_release(self, config: ReleaseConfig, asset_commit_sha: str) -> dict[str, Any]:
+        """Create a GitHub release referencing the asset commit.
+
+        Args:
+            config: Release configuration
+            asset_commit_sha: SHA of the orphaned commit with assets
+
+        Returns:
+            Dictionary with GitHub release information
+        """
+        tag_name = config.tag_name or f"v{config.version}"
+
+        # Create release notes
+        release_notes = self._generate_release_notes(config, asset_commit_sha)
+
+        print(f"Creating GitHub release: {tag_name}")
+
+        # Use GitHub CLI to create release
+        gh_command = [
+            "gh",
+            "release",
+            "create",
+            tag_name,
+            "--title",
+            f"BirdNET-Pi {config.version}",
+            "--notes",
+            release_notes,
+        ]
+
+        result = self._run_command(gh_command, capture_output=True)
+        print(f"GitHub release created: {tag_name}")
+
+        return {
+            "tag_name": tag_name,
+            "release_url": result.strip() if result else None,
+            "asset_commit_sha": asset_commit_sha,
+        }
+
+    def get_default_assets(self) -> list[ReleaseAsset]:
+        """Get the default list of assets for a BirdNET-Pi release.
+
+        Returns:
+            List of default release assets
+        """
+        return [
+            ReleaseAsset(
+                source_path=self.file_resolver.get_models_dir(),
+                target_name="models",
+                description="BirdNET TensorFlow Lite models for bird identification",
+            ),
+            ReleaseAsset(
+                source_path=self.file_resolver.get_ioc_database_path(),
+                target_name="ioc_reference.db",
+                description="IOC World Bird Names reference database",
+            ),
+        ]
+
+    def _get_current_branch(self) -> str:
+        """Get the current git branch name."""
+        try:
+            return self._run_git_command(["branch", "--show-current"], capture_output=True).strip()
+        except subprocess.CalledProcessError:
+            return "main"  # fallback
+
+    def _create_asset_readme(self, config: ReleaseConfig) -> None:
+        """Create a README file for the asset branch."""
+        readme_content = f"""# BirdNET-Pi Release Assets - {config.version}
+
+This branch contains binary assets for BirdNET-Pi version {config.version}.
+
+## Assets Included
+
+"""
+        for asset in config.assets:
+            readme_content += f"- **{asset.target_name}**: {asset.description}\n"
+
+        readme_content += f"""
+## Installation
+
+These assets are automatically downloaded during BirdNET-Pi installation.
+For manual installation:
+
+1. Clone the main BirdNET-Pi repository
+2. Download assets from this branch or the GitHub release
+3. Place assets in the appropriate directories as specified in the documentation
+
+## Technical Details
+
+This branch uses the orphaned commit strategy to distribute large binary files
+without bloating the main repository history. Credit to Ben Webber for this approach.
+
+- **Release Version**: {config.version}
+- **Asset Branch**: {config.asset_branch_name}
+- **Created**: Automated release system
+"""
+
+        readme_path = self.repo_path / "README.md"
+        readme_path.write_text(readme_content)
+
+    def _generate_release_notes(self, config: ReleaseConfig, asset_commit_sha: str) -> str:
+        """Generate release notes for GitHub release."""
+        notes = f"""## BirdNET-Pi {config.version}
+
+### Binary Assets
+
+This release includes the following binary assets distributed via orphaned commit:
+
+"""
+        for asset in config.assets:
+            notes += f"- **{asset.target_name}**: {asset.description}\n"
+
+        notes += f"""
+### Asset Download
+
+Binary assets are available from the orphaned commit 
+[{asset_commit_sha[:8]}](../../commit/{asset_commit_sha})
+and can be downloaded automatically during installation.
+
+### Technical Details
+
+- **Asset Branch**: `{config.asset_branch_name}`
+- **Asset Commit**: `{asset_commit_sha}`
+- **Distribution Strategy**: Orphaned commits (credit: Ben Webber)
+
+For installation instructions, see the main repository README.
+"""
+        return notes
+
+    def _run_git_command(
+        self, args: list[str], capture_output: bool = False, check: bool = True
+    ) -> str:
+        """Run a git command in the repository directory."""
+        return self._run_command(["git", *args], capture_output=capture_output, check=check)
+
+    def _run_command(
+        self, args: list[str], capture_output: bool = False, check: bool = True
+    ) -> str:
+        """Run a command with proper error handling."""
+        try:
+            result = subprocess.run(
+                args,
+                cwd=self.repo_path,
+                capture_output=capture_output,
+                text=True,
+                check=check,
+            )
+            return result.stdout if capture_output else ""
+        except subprocess.CalledProcessError as e:
+            if capture_output:
+                print(f"Command failed: {' '.join(args)}")
+                print(f"Error output: {e.stderr}")
+            raise

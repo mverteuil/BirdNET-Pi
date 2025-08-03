@@ -35,6 +35,7 @@ dependencies = [
     "pydub>=0.25.1",
     "httpx>=0.28.1",
     "psutil>=7.0.0",
+    "tqdm>=4.67.1",
 ]
 
 [project.optional-dependencies]
@@ -118,6 +119,8 @@ generate-dummy-data = "birdnetpi.wrappers.generate_dummy_data:main"
 audio-analysis-daemon = "birdnetpi.wrappers.audio_analysis_daemon:main"
 audio-capture-daemon = "birdnetpi.wrappers.audio_capture_daemon:main"
 audio-websocket-daemon = "birdnetpi.wrappers.audio_websocket_daemon:main"
+release-manager = "birdnetpi.wrappers.release_wrapper:main"
+asset-installer = "birdnetpi.wrappers.asset_installer_wrapper:main"
 
 [dependency-groups]
 dev = [

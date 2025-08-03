@@ -1,8 +1,16 @@
 import os
 import re
+import shutil
 import subprocess
+import tempfile
+from pathlib import Path
+from typing import Any
+
+import httpx
+from tqdm import tqdm
 
 from birdnetpi.models.config import GitUpdateConfig
+from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
 class UpdateManager:
@@ -127,6 +135,146 @@ class UpdateManager:
         except Exception as e:
             print(f"An unexpected error occurred during update: {e}")
             raise
+
+    def download_release_assets(
+        self,
+        version: str = "latest",
+        include_models: bool = True,
+        include_ioc_db: bool = True,
+        github_repo: str = "mverteuil/BirdNET-Pi",
+    ) -> dict[str, Any]:
+        """Download models and IOC database from orphaned commit release.
+
+        This method downloads assets from GitHub releases that use the orphaned
+        commit strategy for distributing large files.
+
+        Args:
+            version: Release version (e.g., "v2.0.0" or "latest")
+            include_models: Whether to download BirdNET models
+            include_ioc_db: Whether to download IOC database
+            github_repo: GitHub repository in format "owner/repo"
+
+        Returns:
+            Dictionary with download results and metadata
+        """
+        file_resolver = FilePathResolver()
+        results = {"version": version, "downloaded_assets": [], "errors": []}
+
+        try:
+            # Determine the commit SHA for the version
+            if version == "latest":
+                # Get the latest release tag
+                api_url = f"https://api.github.com/repos/{github_repo}/releases/latest"
+                with httpx.Client() as client:
+                    response = client.get(api_url)
+                    response.raise_for_status()
+                    latest_release = response.json()
+                    version = latest_release["tag_name"]
+                    results["version"] = version
+
+            # The asset branch follows the pattern "assets-{version}"
+            asset_branch = f"assets-{version}"
+            archive_url = f"https://github.com/{github_repo}/archive/{asset_branch}.tar.gz"
+
+            print(f"Downloading assets for version {version} from {archive_url}")
+
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = Path(temp_dir)
+                archive_path = temp_path / "assets.tar.gz"
+
+                # Download the asset archive with progress bar (extended timeout for large files)
+                with httpx.Client(follow_redirects=True, timeout=600.0) as client:
+                    with client.stream("GET", archive_url) as response:
+                        response.raise_for_status()
+
+                        # Get the total file size if available
+                        total_size = int(response.headers.get("content-length", 0))
+
+                        with open(archive_path, "wb") as f:
+                            with tqdm(
+                                total=total_size,
+                                unit="B",
+                                unit_scale=True,
+                                unit_divisor=1024,
+                                desc="Downloading assets",
+                            ) as progress:
+                                for chunk in response.iter_bytes(chunk_size=8192):
+                                    f.write(chunk)
+                                    progress.update(len(chunk))
+
+                # Extract the archive
+                extract_path = temp_path / "extracted"
+                shutil.unpack_archive(archive_path, extract_path)
+
+                # Find the extracted directory (it will be named like "BirdNET-Pi-assets-v2.0.0")
+                extracted_dirs = list(extract_path.iterdir())
+                if not extracted_dirs:
+                    raise RuntimeError("No extracted directory found")
+
+                asset_source_dir = extracted_dirs[0]
+
+                # Download models if requested
+                if include_models:
+                    models_source = asset_source_dir / "data" / "models"
+                    if models_source.exists():
+                        models_target = Path(file_resolver.get_models_dir())
+                        models_target.mkdir(parents=True, exist_ok=True)
+
+                        # Copy all model files
+                        for model_file in models_source.glob("*.tflite"):
+                            target_file = models_target / model_file.name
+                            shutil.copy2(model_file, target_file)
+                            results["downloaded_assets"].append(f"Model: {model_file.name}")
+
+                        print(f"Downloaded models to {models_target}")
+                    else:
+                        results["errors"].append("Models directory not found in release")
+
+                # Download IOC database if requested
+                if include_ioc_db:
+                    ioc_source = asset_source_dir / "data" / "ioc_reference.db"
+                    if ioc_source.exists():
+                        ioc_target = Path(file_resolver.get_ioc_database_path())
+                        ioc_target.parent.mkdir(parents=True, exist_ok=True)
+
+                        shutil.copy2(ioc_source, ioc_target)
+                        results["downloaded_assets"].append("IOC reference database")
+
+                        print(f"Downloaded IOC database to {ioc_target}")
+                    else:
+                        results["errors"].append("IOC database not found in release")
+
+            print(f"Asset download completed for version {version}")
+            return results
+
+        except Exception as e:
+            error_msg = f"Failed to download assets: {e}"
+            results["errors"].append(error_msg)
+            print(error_msg)
+            raise
+
+    def list_available_versions(self, github_repo: str = "mverteuil/BirdNET-Pi") -> list[str]:
+        """List available asset release versions.
+
+        Args:
+            github_repo: GitHub repository in format "owner/repo"
+
+        Returns:
+            List of available version tags
+        """
+        try:
+            api_url = f"https://api.github.com/repos/{github_repo}/releases"
+            with httpx.Client() as client:
+                response = client.get(api_url)
+                response.raise_for_status()
+                releases = response.json()
+
+                versions = [release["tag_name"] for release in releases]
+                return versions
+
+        except Exception as e:
+            print(f"Failed to list versions: {e}")
+            return []
 
     from birdnetpi.models.config import CaddyConfig
 

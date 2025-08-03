@@ -73,6 +73,16 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Copy the configuration template for BirdNET-Pi
 COPY --chown=birdnetpi:birdnetpi config_templates/birdnetpi.yaml /app/config/birdnetpi.yaml
 
+# Set release version for asset downloads (this can be overridden via build arg)
+ARG BIRDNET_ASSETS_VERSION=v2.0.0
+ENV BIRDNET_ASSETS_VERSION=${BIRDNET_ASSETS_VERSION}
+
+# Download release assets with Docker cache based on version
+# This layer will be cached as long as the version doesn't change
+RUN --mount=type=cache,target=/tmp/asset-cache,id=birdnet-assets-${BIRDNET_ASSETS_VERSION} \
+    echo "Installing BirdNET assets version: ${BIRDNET_ASSETS_VERSION}" && \
+    asset-installer install "${BIRDNET_ASSETS_VERSION}" --include-models --include-ioc-db
+
 # Add the BirdNET-Pi virtual environment to the PATH
 ENV PATH="/app/.venv/bin:${PATH}"
 
