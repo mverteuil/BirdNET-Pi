@@ -15,7 +15,7 @@ from birdnetpi.services.webhook_service import WebhookConfig, WebhookService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/iot", tags=["IoT Integration"])
+router = APIRouter()
 
 
 # Dependency functions

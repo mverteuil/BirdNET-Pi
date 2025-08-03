@@ -1,19 +1,16 @@
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import ClassVar
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqladmin import Admin, ModelView
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.managers.plotting_manager import PlottingManager
-from birdnetpi.models.database_models import AudioFile, Detection
 from birdnetpi.services.audio_fifo_reader_service import AudioFifoReaderService
 from birdnetpi.services.audio_websocket_service import AudioWebSocketService
 from birdnetpi.services.database_service import DatabaseService
@@ -31,6 +28,7 @@ from birdnetpi.utils.structlog_configurator import configure_structlog
 
 from .routers import (
     admin_router,
+    api_router,
     audio_router,
     detections_router,
     field_mode_router,
@@ -38,6 +36,7 @@ from .routers import (
     overview_router,
     reporting_router,
     spectrogram_router,
+    sqladmin_router,
     websocket_router,
 )
 
@@ -142,29 +141,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.notification_service.register_listeners()
 
     # Initialize SQLAdmin
-    admin = Admin(app, app.state.db_service.engine)
-    app.mount("/admin", admin.app, name="sqladmin")
-
-    class DetectionAdmin(ModelView, model=Detection):
-        column_list: ClassVar[list] = [
-            Detection.id,
-            Detection.species,
-            Detection.confidence,
-            Detection.timestamp,
-        ]
-        # Add other configurations as needed
-
-    class AudioFileAdmin(ModelView, model=AudioFile):
-        column_list: ClassVar[list] = [
-            AudioFile.id,
-            AudioFile.file_path,
-            AudioFile.duration,
-            AudioFile.recording_start_time,
-        ]
-        # Add other configurations as needed
-
-    admin.add_view(DetectionAdmin)
-    admin.add_view(AudioFileAdmin)
+    sqladmin = sqladmin_router.setup_sqladmin(app)
+    app.mount("/sqladmin", sqladmin.app, name="sqladmin")
 
     # Start the FIFO reader service
     await app.state.audio_fifo_reader_service.start()
@@ -188,15 +166,29 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(lifespan=lifespan)
-app.include_router(admin_router.router)  # Include admin functionality (settings, logs, testing)
-app.include_router(audio_router.router)
-app.include_router(reporting_router.router)
-app.include_router(spectrogram_router.router)
-app.include_router(field_mode_router.router)
-app.include_router(iot_router.router)  # Include IoT integration router
-app.include_router(overview_router.router)
-app.include_router(detections_router.router, prefix="/api/detections")
-app.include_router(websocket_router.router, prefix="/ws")
+
+# Register routers with centralized prefix configuration for easy route discovery
+# Admin and management routes (no prefix - admin routes start with /admin in router)
+app.include_router(admin_router.router, tags=["Admin"])
+app.include_router(overview_router.router, tags=["Overview"])
+
+# Media and content routes (no prefix - routes defined without prefixes in routers)
+app.include_router(audio_router.router, tags=["Audio"])
+app.include_router(spectrogram_router.router, tags=["Spectrogram"])
+app.include_router(reporting_router.router, tags=["Reports"])
+
+# Feature-specific routes (no prefix - routes defined without prefixes in routers)
+app.include_router(field_mode_router.router, tags=["Field Mode"])
+
+# Centralized API routes
+app.include_router(api_router.router, prefix="/api", tags=["API"])
+
+# Legacy API routes (to be migrated to api_router eventually)
+app.include_router(detections_router.router, prefix="/api/detections", tags=["Detections API"])
+app.include_router(iot_router.router, prefix="/api/iot", tags=["IoT API"])
+
+# Real-time communication
+app.include_router(websocket_router.router, prefix="/ws", tags=["WebSocket"])
 
 
 @app.get("/", response_class=HTMLResponse)
