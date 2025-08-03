@@ -17,9 +17,6 @@ audio_device_index: -1  # -1 for system default
 sample_rate: 48000
 audio_channels: 1
 
-# Data Storage Paths - now handled by FilePathResolver with environment variables
-# Use BIRDNETPI_DATA to configure the base data directory
-
 # Logging Configuration - Structlog with environment awareness
 logging:
   level: INFO
@@ -74,7 +71,6 @@ enable_gps_check: false
 
 # Analysis Configuration
 privacy_threshold: 10.0
-
 
 # MQTT Integration Settings
 enable_mqtt: false

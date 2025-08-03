@@ -5,6 +5,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
+ENV MPLCONFIGDIR=/var/lib/birdnetpi/config
+ENV BIRDNETPI_APP=/opt/birdnetpi
+ENV BIRDNETPI_DATA=/var/lib/birdnetpi
+ENV BIRDNETPI_CONFIG=/var/lib/birdnetpi/config/birdnetpi.yaml
 
 # Set shell for pipefail
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -49,14 +53,14 @@ COPY config_templates/supervisord.conf /etc/supervisor/supervisord.conf
 # Create birdnetpi user and set up necessary directories
 RUN useradd -m -s /bin/bash birdnetpi && \
     usermod -aG audio,video,dialout birdnetpi && \
-    mkdir -p /var/log /app/tmp /var/log/supervisor /var/log/birdnet && \
+    mkdir -p /var/log/birdnetpi /var/run/supervisor /opt/birdnetpi /var/lib/birdnetpi/config /var/lib/birdnetpi/models /var/lib/birdnetpi/recordings /var/lib/birdnetpi/database && \
     chmod 777 /var/log && \
-    chown birdnetpi:birdnetpi /app/tmp /var/log/supervisor /var/log/birdnet && \
-    mkdir -p /var/run/supervisor &&     chown birdnetpi:birdnetpi /var/run/supervisor &&     chmod 777 /var/run/supervisor &&     mkdir -p /app &&     chown birdnetpi:birdnetpi /app
+    chown -R birdnetpi:birdnetpi /var/log/birdnetpi /var/run/supervisor /opt/birdnetpi /var/lib/birdnetpi && \
+    chmod 777 /var/run/supervisor
 
 # Switch to birdnetpi user for all application-related operations
 USER birdnetpi
-WORKDIR /app
+WORKDIR /opt/birdnetpi
 
 # Install the project's dependencies using the lockfile and settings
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -66,12 +70,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Then, add the rest of the project source code and install it
 # Installing separately from its dependencies allows optimal layer caching
-COPY --chown=birdnetpi:birdnetpi . /app
+COPY --chown=birdnetpi:birdnetpi . /opt/birdnetpi
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev
 
 # Copy the configuration template for BirdNET-Pi
-COPY --chown=birdnetpi:birdnetpi config_templates/birdnetpi.yaml /app/config/birdnetpi.yaml
+COPY --chown=birdnetpi:birdnetpi config_templates/birdnetpi.yaml /var/lib/birdnetpi/config/birdnetpi.yaml
 
 # Set release version for asset downloads (this can be overridden via build arg)
 ARG BIRDNET_ASSETS_VERSION=v2.1.0
@@ -81,10 +85,10 @@ ENV BIRDNET_ASSETS_VERSION=${BIRDNET_ASSETS_VERSION}
 # This layer will be cached as long as the version doesn't change
 RUN --mount=type=cache,target=/tmp/asset-cache,id=birdnet-assets-${BIRDNET_ASSETS_VERSION} \
     echo "Installing BirdNET assets version: ${BIRDNET_ASSETS_VERSION}" && \
-    asset-installer install "${BIRDNET_ASSETS_VERSION}" --include-models --include-ioc-db
+    uv run asset-installer install "${BIRDNET_ASSETS_VERSION}" --include-models --include-ioc-db
 
 # Add the BirdNET-Pi virtual environment to the PATH
-ENV PATH="/app/.venv/bin:${PATH}"
+ENV PATH="/opt/birdnetpi/.venv/bin:${PATH}"
 
 # Expose the port for Caddy (8000)
 EXPOSE 8000

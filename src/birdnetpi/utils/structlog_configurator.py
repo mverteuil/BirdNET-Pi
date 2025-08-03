@@ -129,7 +129,6 @@ def _configure_processors(
         structlog.contextvars.merge_contextvars,
         _add_static_context(extra_fields),
         structlog.processors.add_log_level,
-        structlog.processors.add_logger_name,
         structlog.processors.TimeStamper(fmt="ISO"),
     ]
 
