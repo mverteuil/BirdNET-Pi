@@ -201,9 +201,9 @@ def create_display_options_from_config(config) -> SpeciesDisplayOptions:  # noqa
     Returns:
         SpeciesDisplayOptions configured based on user preferences and language settings
     """
-    # Get display and language preferences from config (to be added in next step)
-    species_display_mode = getattr(config, "species_display_mode", "full")
-    language_code = getattr(config, "language_code", "en")  # Default to English
+    # Get display and language preferences from config
+    species_display_mode = config.species_display_mode
+    language_code = config.language_code
 
     if species_display_mode == "common_name":
         return SpeciesDisplayOptions(

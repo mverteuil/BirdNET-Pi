@@ -89,36 +89,34 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Initialize GPS service for field mode
     app.state.gps_service = GPSService(
-        enable_gps=getattr(app.state.config, "enable_gps", False),
-        update_interval=getattr(app.state.config, "gps_update_interval", 5.0),
+        enable_gps=app.state.config.enable_gps,
+        update_interval=app.state.config.gps_update_interval,
     )
 
     # Initialize hardware monitoring service
     app.state.hardware_monitor = HardwareMonitorService(
-        check_interval=getattr(app.state.config, "hardware_check_interval", 10.0),
-        audio_device_check=getattr(app.state.config, "enable_audio_device_check", True),
-        system_resource_check=getattr(app.state.config, "enable_system_resource_check", True),
-        gps_check=getattr(app.state.config, "enable_gps_check", False),
+        check_interval=app.state.config.hardware_check_interval,
+        audio_device_check=app.state.config.enable_audio_device_check,
+        system_resource_check=app.state.config.enable_system_resource_check,
+        gps_check=app.state.config.enable_gps_check,
     )
 
     # Initialize MQTT service for IoT integration
     app.state.mqtt_service = MQTTService(
-        broker_host=getattr(app.state.config, "mqtt_broker_host", "localhost"),
-        broker_port=getattr(app.state.config, "mqtt_broker_port", 1883),
-        username=getattr(app.state.config, "mqtt_username", "") or None,
-        password=getattr(app.state.config, "mqtt_password", "") or None,
-        topic_prefix=getattr(app.state.config, "mqtt_topic_prefix", "birdnet"),
-        client_id=getattr(app.state.config, "mqtt_client_id", "birdnet-pi"),
-        enable_mqtt=getattr(app.state.config, "enable_mqtt", False),
+        broker_host=app.state.config.mqtt_broker_host,
+        broker_port=app.state.config.mqtt_broker_port,
+        username=app.state.config.mqtt_username or None,
+        password=app.state.config.mqtt_password or None,
+        topic_prefix=app.state.config.mqtt_topic_prefix,
+        client_id=app.state.config.mqtt_client_id,
+        enable_mqtt=app.state.config.enable_mqtt,
     )
 
     # Initialize webhook service for HTTP integrations
-    app.state.webhook_service = WebhookService(
-        enable_webhooks=getattr(app.state.config, "enable_webhooks", False)
-    )
+    app.state.webhook_service = WebhookService(enable_webhooks=app.state.config.enable_webhooks)
 
     # Configure webhooks from config
-    webhook_urls = getattr(app.state.config, "webhook_urls", [])
+    webhook_urls = app.state.config.webhook_urls
     if webhook_urls:
         # Handle both list and string formats for backward compatibility
         if isinstance(webhook_urls, str):
