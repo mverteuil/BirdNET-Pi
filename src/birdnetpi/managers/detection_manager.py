@@ -1,4 +1,3 @@
-import csv
 import datetime
 from datetime import date
 
@@ -70,80 +69,6 @@ class DetectionManager:
                 print(f"Error retrieving detections: {e}")
                 raise
 
-    def import_detections_from_csv(self, csv_file_path: str) -> None:
-        """Import detection records from a CSV file into the database."""
-        with self.db_service.get_db() as db:
-            try:
-                with open(csv_file_path) as f:
-                    reader = csv.reader(f, delimiter=";")
-                    next(reader)  # Skip header row
-                    for row in reader:
-                        if not row:  # Skip empty rows
-                            continue
-                        try:
-                            # Date;Time;Sci_Name;Com_Name;Confidence;Lat;Lon;
-                            # Cutoff;Week;Sens;Overlap
-                            (
-                                date_str,
-                                time_str,
-                                sci_name,
-                                com_name,
-                                confidence_str,
-                                lat_str,
-                                lon_str,
-                                cutoff_str,
-                                week_str,
-                                sens_str,
-                                overlap_str,
-                            ) = row
-
-                            # Combine date and time strings and parse
-                            timestamp_str = f"{date_str} {time_str}"
-                            timestamp = datetime.datetime.strptime(
-                                timestamp_str, "%Y-%m-%d %H:%M:%S"
-                            )
-
-                            # Create a dummy AudioFile record for the detection
-                            # Since CSV doesn't contain full audio file info, we use placeholders
-                            audio_file = AudioFile(
-                                file_path=f"csv_import_{timestamp.strftime('%Y%m%d%H%M%S')}.wav",
-                                duration=0.0,  # Placeholder
-                                size_bytes=0,  # Placeholder
-                                recording_start_time=timestamp,
-                            )
-                            db.add(audio_file)
-                            db.flush()  # Flush to get audio_file.id
-
-                            detection = Detection(
-                                species=f"{com_name} ({sci_name})",  # Combine species name
-                                confidence=float(confidence_str),
-                                timestamp=timestamp,
-                                audio_file_id=audio_file.id,
-                                latitude=float(lat_str),
-                                longitude=float(lon_str),
-                                cutoff=float(cutoff_str),
-                                week=int(week_str),
-                                sensitivity=float(sens_str),
-                                overlap=float(overlap_str),
-                            )
-                            db.add(detection)
-                        except IndexError as ie:
-                            print(f"Skipping row: incorrect column count ({row}) - {ie}")
-                            continue  # Skip to the next row if IndexError occurs
-                        except ValueError as ve:
-                            print(f"Skipping row due to data conversion error: {row} - {ve}")
-                db.commit()
-                print(f"Successfully imported detections from {csv_file_path}")
-            except SQLAlchemyError as e:
-                db.rollback()
-                print(f"Error importing detections from CSV: {e}")
-                raise
-            except FileNotFoundError:
-                print(f"CSV file not found at {csv_file_path}")
-                raise  # Re-raise the FileNotFoundError
-            finally:
-                db.close()
-
     def get_audio_file_by_path(self, file_path: str) -> AudioFile | None:
         """Retrieve an AudioFile record by its file path."""
         with self.db_service.get_db() as db:
@@ -171,7 +96,7 @@ class DetectionManager:
         """Retrieve all detection records for a given species from the database."""
         with self.db_service.get_db() as db:
             try:
-                return db.query(Detection).filter_by(species=species_name).all()
+                return db.query(Detection).filter_by(scientific_name=species_name).all()
             except SQLAlchemyError as e:
                 db.rollback()
                 print(f"Error retrieving detections by species: {e}")

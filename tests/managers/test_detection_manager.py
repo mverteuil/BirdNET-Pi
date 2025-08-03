@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from birdnetpi.managers.detection_manager import DetectionManager
-from birdnetpi.models.database_models import AudioFile, Detection
+from birdnetpi.models.database_models import Detection
 from birdnetpi.models.detection_event import DetectionEvent
 from birdnetpi.services.database_service import DatabaseService
 
@@ -16,19 +16,6 @@ def detection_manager():
     mock_db_service = MagicMock(spec=DatabaseService)
     manager = DetectionManager(db_service=mock_db_service)
     return manager
-
-
-@pytest.fixture
-def mock_csv_file(tmp_path):
-    """Provide a mock CSV file for testing database import."""
-    csv_content = (
-        "Date;Time;Sci_Name;Com_Name;Confidence;Lat;Lon;Cutoff;Week;Sens;Overlap\n"
-        "2023-01-01;10:00:00;SciName1;ComName1;0.9;1.0;2.0;0.5;1;1.0;0.0\n"
-        "2023-01-02;11:00:00;SciName2;ComName2;0.8;3.0;4.0;0.6;2;1.1;0.1\n"
-    )
-    csv_path = tmp_path / "test_detections.csv"
-    csv_path.write_text(csv_content)
-    return str(csv_path)
 
 
 def test_create_detection_success(detection_manager):
@@ -108,125 +95,6 @@ def test_get_all_detections_failure(detection_manager):
     mock_db_session.rollback.assert_called_once()
 
 
-def test_import_detections_from_csv_success(detection_manager, mock_csv_file):
-    """Should import detection records from a CSV file successfully."""
-    mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
-
-    detection_manager.import_detections_from_csv(mock_csv_file)
-
-    # Assertions for the first detection
-    # Check the AudioFile object added
-    audio_file_call_1 = mock_db_session.add.call_args_list[0]
-    audio_file_obj_1 = audio_file_call_1.args[0]
-    assert isinstance(audio_file_obj_1, AudioFile)
-    assert audio_file_obj_1.file_path == "csv_import_20230101100000.wav"
-    assert audio_file_obj_1.duration == 0.0
-    assert audio_file_obj_1.size_bytes == 0
-    assert audio_file_obj_1.recording_start_time == datetime(2023, 1, 1, 10, 0, 0)
-
-    # Check the Detection object added
-    detection_call_1 = mock_db_session.add.call_args_list[1]
-    detection_obj_1 = detection_call_1.args[0]
-    assert isinstance(detection_obj_1, Detection)
-    assert detection_obj_1.species == "ComName1 (SciName1)"
-    assert detection_obj_1.confidence == 0.9
-    assert detection_obj_1.timestamp == datetime(2023, 1, 1, 10, 0, 0)
-    assert detection_obj_1.latitude == 1.0
-    assert detection_obj_1.longitude == 2.0
-    assert detection_obj_1.cutoff == 0.5
-    assert detection_obj_1.week == 1
-    assert detection_obj_1.sensitivity == 1.0
-    assert detection_obj_1.overlap == 0.0
-    assert detection_obj_1.audio_file_id == audio_file_obj_1.id  # Should be linked
-
-    # Assertions for the second detection
-    audio_file_call_2 = mock_db_session.add.call_args_list[2]
-    audio_file_obj_2 = audio_file_call_2.args[0]
-    assert isinstance(audio_file_obj_2, AudioFile)
-    assert audio_file_obj_2.file_path == "csv_import_20230102110000.wav"
-    assert audio_file_obj_2.duration == 0.0
-    assert audio_file_obj_2.size_bytes == 0
-    assert audio_file_obj_2.recording_start_time == datetime(2023, 1, 2, 11, 0, 0)
-
-    detection_call_2 = mock_db_session.add.call_args_list[3]
-    detection_obj_2 = detection_call_2.args[0]
-    assert isinstance(detection_obj_2, Detection)
-    assert detection_obj_2.species == "ComName2 (SciName2)"
-    assert detection_obj_2.confidence == 0.8
-    assert detection_obj_2.timestamp == datetime(2023, 1, 2, 11, 0, 0)
-    assert detection_obj_2.latitude == 3.0
-    assert detection_obj_2.longitude == 4.0
-    assert detection_obj_2.cutoff == 0.6
-    assert detection_obj_2.week == 2
-    assert detection_obj_2.sensitivity == 1.1
-    assert detection_obj_2.overlap == 0.1
-    assert detection_obj_2.audio_file_id == audio_file_obj_2.id  # Should be linked
-
-    mock_db_session.flush.assert_called()  # Called twice, once for each AudioFile
-    mock_db_session.commit.assert_called_once()
-    assert mock_db_session.add.call_count == 4  # Two AudioFile, two Detection
-
-
-def test_import_detections_from_csv_file_not_found(detection_manager):
-    """Should handle FileNotFoundError when CSV file is not found."""
-    detection_manager.db_service.get_db.return_value.__enter__.side_effect = FileNotFoundError(
-        "File not found"
-    )
-
-    with pytest.raises(FileNotFoundError):
-        detection_manager.import_detections_from_csv("/nonexistent/path/to/file.csv")
-
-
-def test_import_detections_from_csv_value_error(detection_manager, tmp_path):
-    """Should handle ValueError during data conversion in CSV import."""
-    csv_content = (
-        "Date;Time;Sci_Name;Com_Name;Confidence;Lat;Lon;Cutoff;Week;Sens;Overlap\n"
-        "2023-01-01;10:00:00;SciName1;ComName1;not_a_float;1.0;2.0;0.5;1;1.0;0.0\n"
-    )
-    csv_path = tmp_path / "invalid.csv"
-    csv_path.write_text(csv_content)
-
-    mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
-
-    detection_manager.import_detections_from_csv(str(csv_path))
-
-    mock_db_session.add.assert_called_once()
-    assert isinstance(mock_db_session.add.call_args[0][0], AudioFile)
-    mock_db_session.commit.assert_called_once()
-
-
-def test_import_detections_from_csv_unpacking_value_error(detection_manager, tmp_path):
-    """Should handle ValueError due to unpacking error in CSV import."""
-    csv_content = (
-        "Date;Time;Sci_Name;Com_Name;Confidence;Lat;Lon;Cutoff;Week;Sens;Overlap\n"
-        "2023-01-01;10:00:00;SciName1;ComName1;0.9\n"
-    )  # Missing columns
-    csv_path = tmp_path / "missing_cols.csv"
-    csv_path.write_text(csv_content)
-
-    mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
-
-    detection_manager.import_detections_from_csv(str(csv_path))
-
-    mock_db_session.add.assert_not_called()
-    mock_db_session.commit.assert_called_once()
-
-
-def test_import_detections_from_csv_sqlalchemy_error(detection_manager, mock_csv_file):
-    """Should handle SQLAlchemyError during CSV import and rollback."""
-    mock_db_session = MagicMock()
-    detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
-    mock_db_session.commit.side_effect = SQLAlchemyError("DB Error")
-
-    with pytest.raises(SQLAlchemyError):
-        detection_manager.import_detections_from_csv(mock_csv_file)
-
-    mock_db_session.rollback.assert_called_once()
-
-
 def test_get_detection_success(detection_manager):
     """Should retrieve a detection record successfully."""
     mock_db_session = MagicMock()
@@ -293,7 +161,9 @@ def test_get_detections_by_species_success(detection_manager):
 
     detection_manager.db_service.get_db.assert_called_once_with()
     mock_db_session.query.assert_called_once_with(Detection)
-    mock_db_session.query.return_value.filter_by.assert_called_once_with(species="Test Species")
+    mock_db_session.query.return_value.filter_by.assert_called_once_with(
+        scientific_name="Test Species"
+    )
     mock_db_session.query.return_value.filter_by.return_value.all.assert_called_once()
     assert result == mock_detections
 
@@ -347,8 +217,8 @@ def test_get_top_species_with_prior_counts_success(detection_manager):
     mock_db_session = MagicMock()
     detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     (mock_db_session.query().outerjoin().order_by().limit().all.return_value) = [
-        MagicMock(species="species1", current_count=10, prior_count=5),
-        MagicMock(species="species2", current_count=8, prior_count=2),
+        MagicMock(scientific_name="species1", current_count=10, prior_count=5),
+        MagicMock(scientific_name="species2", current_count=8, prior_count=2),
     ]
 
     result = detection_manager.get_top_species_with_prior_counts(
@@ -387,8 +257,8 @@ def test_get_new_species_data_success(detection_manager):
     detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     (mock_db_session.query().filter().distinct().subquery().return_value) = MagicMock()
     (mock_db_session.query().filter().group_by().order_by().all.return_value) = [
-        MagicMock(species="species1", count=10),
-        MagicMock(species="species2", count=8),
+        MagicMock(scientific_name="species1", count=10),
+        MagicMock(scientific_name="species2", count=8),
     ]
 
     result = detection_manager.get_new_species_data(datetime(2023, 1, 1), datetime(2023, 1, 31))
