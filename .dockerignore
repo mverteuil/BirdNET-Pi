@@ -2,3 +2,4 @@
 src/birdnet_pi.egg-info/
 **/__pycache__/
 .coverage*
+data/
