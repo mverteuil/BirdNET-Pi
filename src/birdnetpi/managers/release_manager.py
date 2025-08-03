@@ -266,7 +266,7 @@ class ReleaseManager:
             ),
             ReleaseAsset(
                 source_path=database_path,
-                target_name="data/ioc_reference.db",
+                target_name="data/database/ioc_reference.db",
                 description="IOC World Bird Names reference database",
             ),
         ]
