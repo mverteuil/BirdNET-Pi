@@ -32,7 +32,7 @@ async def create_detection(
 ) -> dict:
     """Receive a new detection event and dispatch it."""
     logger.info(
-        f"Received detection: {detection_event.species} "
+        f"Received detection: {detection_event.species_tensor or 'Unknown'} "
         f"with confidence {detection_event.confidence}"
     )
 

@@ -34,7 +34,9 @@ class TestDetectionsRouter:
         self.mock_detection_manager.create_detection.return_value = mock_detection
 
         detection_data = {
-            "species": "Test Bird",
+            "species_tensor": "Testus species_Test Bird",
+            "scientific_name": "Testus species",
+            "common_name_tensor": "Test Bird",
             "confidence": 0.95,
             "timestamp": datetime.now().isoformat(),
             "audio_file_path": "test.wav",
