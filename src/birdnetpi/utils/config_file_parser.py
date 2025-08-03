@@ -53,7 +53,7 @@ class ConfigFileParser:
             longitude=float(config_data.get("longitude", 0.0)),
             model=config_data.get("model", "BirdNET_GLOBAL_6K_V2.4_Model_FP16.tflite"),
             metadata_model=config_data.get(
-                "metadata_model", "BirdNET_GLOBAL_6K_V2.4_MData_Model_V2_FP16.tflite"
+                "metadata_model", "BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16"
             ),
             species_confidence_threshold=float(
                 config_data.get("species_confidence_threshold", config_data.get("sf_thresh", 0.03))

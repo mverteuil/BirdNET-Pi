@@ -41,6 +41,9 @@ class FilePathResolver:
 
     def get_model_path(self, model_filename: str) -> str:
         """Get the full path to a specific model file."""
+        # Add .tflite extension if not present
+        if not model_filename.endswith(".tflite"):
+            model_filename = f"{model_filename}.tflite"
         return str(self.data_dir / "models" / model_filename)
 
     def get_recordings_dir(self) -> str:

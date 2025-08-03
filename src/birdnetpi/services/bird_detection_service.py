@@ -67,8 +67,14 @@ class BirdDetectionService:
             self.mdata_input_index = input_details[1]["index"]
         self.output_layer_index = output_details[0]["index"]
 
-        # Legacy labels.txt is no longer used - species names now come from IOC database
-        self.classes = []
+        # Get number of output classes from model
+        output_shape = output_details[0]["shape"]
+        num_classes = output_shape[-1]  # Last dimension is number of classes
+        log.info(f"BirdDetectionService: Model has {num_classes} output classes")
+
+        # TODO: Load actual species labels from IOC database or model metadata
+        # For now, create placeholder labels to enable testing
+        self.classes = [f"Species_{i:04d}" for i in range(num_classes)]
 
         log.info("BirdDetectionService: LOADING DONE!")
 
@@ -186,7 +192,8 @@ class BirdDetectionService:
                         + "\n"
                     )
 
-        return p_sorted[:human_cutoff]
+        # Convert numpy float32 to Python float for consistent type handling
+        return [(species, float(confidence)) for species, confidence in p_sorted[:human_cutoff]]
 
     def get_analysis_results(
         self,

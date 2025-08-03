@@ -50,9 +50,7 @@ class BirdNETConfig:
     latitude: float = 0.0
     longitude: float = 0.0
     model: str = "BirdNET_GLOBAL_6K_V2.4_Model_FP16"
-    metadata_model: str = (
-        "BirdNET_GLOBAL_6K_V2.4_MData_Model_V2_FP16.tflite"  # Metadata model filename
-    )
+    metadata_model: str = "BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16"  # Metadata model filename
     species_confidence_threshold: float = 0.03  # Minimum confidence threshold for species detection
     confidence: float = 0.7  # Default from birdnet.conf.template
     sensitivity: float = 1.25  # Default from birdnet.conf.template
