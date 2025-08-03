@@ -1,3 +1,4 @@
+import datetime
 import os
 from pathlib import Path
 
@@ -45,6 +46,33 @@ class FilePathResolver:
     def get_recordings_dir(self) -> str:
         """Get the directory for audio recordings."""
         return str(self.data_dir / "recordings")
+
+    def get_detection_audio_path(self, species: str, timestamp: datetime.datetime | float) -> str:
+        """Get the relative path for saving detection audio files.
+
+        Args:
+            species: The detected bird species name
+            timestamp: Timestamp of the detection
+
+        Returns:
+            Relative path for the detection audio file
+        """
+        import datetime
+
+        # Convert timestamp to datetime if it's not already
+        if isinstance(timestamp, datetime.datetime):
+            dt = timestamp
+        else:
+            dt = datetime.datetime.fromtimestamp(timestamp)
+
+        # Create a safe filename from species name
+        safe_species = species.replace(" ", "_").replace("/", "_").replace("'", "")
+
+        # Generate filename with timestamp: species_YYYYMMDD_HHMMSS.wav
+        filename = f"{safe_species}_{dt.strftime('%Y%m%d_%H%M%S')}.wav"
+
+        # Return relative path within recordings directory
+        return f"detections/{dt.strftime('%Y/%m/%d')}/{filename}"
 
     def get_database_dir(self) -> str:
         """Get the directory for database files."""

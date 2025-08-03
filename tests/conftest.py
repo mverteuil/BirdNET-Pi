@@ -20,8 +20,22 @@ def file_path_resolver(tmp_path: Path) -> FilePathResolver:
     repo_root = tmp_path / "BirdNET-Pi"
     repo_root.mkdir()
 
-    # Create a real FilePathResolver to get actual static and template paths
-    real_resolver = FilePathResolver()
+    # Set BIRDNETPI_APP for real resolver to find templates and static files in the project
+    import os
+
+    original_app_env = os.environ.get("BIRDNETPI_APP")
+    project_root = Path(__file__).parent.parent
+    os.environ["BIRDNETPI_APP"] = str(project_root)
+
+    try:
+        # Create a real FilePathResolver to get actual static and template paths
+        real_resolver = FilePathResolver()
+    finally:
+        # Restore original environment
+        if original_app_env is not None:
+            os.environ["BIRDNETPI_APP"] = original_app_env
+        else:
+            os.environ.pop("BIRDNETPI_APP", None)
 
     # Create a MagicMock for FilePathResolver
     mock_resolver = MagicMock(spec=FilePathResolver)
@@ -29,18 +43,30 @@ def file_path_resolver(tmp_path: Path) -> FilePathResolver:
     # Set base_dir to the temporary repo root
     mock_resolver.base_dir = str(repo_root)
 
-    # Mock methods that should return paths within the temporary directory
-    mock_resolver.get_birds_db_path.return_value = str(repo_root / "scripts" / "birds.db")
-    mock_resolver.get_birdnetpi_config_path.return_value = str(
-        repo_root / "config" / "birdnetpi.yaml"
-    )
-    mock_resolver.get_extracted_birdsounds_path.return_value = str(
-        repo_root / "BirdSongs" / "Extracted" / "By_Date"
-    )
+    # Use the real config template
+    mock_resolver.get_config_template_path.side_effect = real_resolver.get_config_template_path
 
-    # Use the real methods for static and templates directories
+    # Use real config template for tests
+    mock_resolver.get_birdnetpi_config_path.side_effect = real_resolver.get_config_template_path
+    mock_resolver.get_database_dir.return_value = str(repo_root / "database")
+
+    # Use the real methods for directories that need actual data
     mock_resolver.get_static_dir.side_effect = real_resolver.get_static_dir
     mock_resolver.get_templates_dir.side_effect = real_resolver.get_templates_dir
+    mock_resolver.get_models_dir.side_effect = real_resolver.get_models_dir
+    mock_resolver.get_model_path.side_effect = real_resolver.get_model_path
+    mock_resolver.get_detection_audio_path.side_effect = real_resolver.get_detection_audio_path
+
+    # Special case: IOC database needs real path, but regular database uses temp
+    def get_database_path_mock():
+        # Check if this is for IOC database by looking at the real path
+        real_path = real_resolver.get_database_path()
+        if "ioc" in real_path.lower() or "birdnetpi.db" in real_path:
+            return real_path  # Use real IOC database
+        else:
+            return str(repo_root / "database" / "birdnetpi.db")  # Use temp for tests
+
+    mock_resolver.get_database_path.side_effect = get_database_path_mock
 
     # Ensure the resolve method works with the mocked base_dir
     mock_resolver.resolve.side_effect = lambda *paths: str(
