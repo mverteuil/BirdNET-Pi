@@ -20,16 +20,15 @@ audio_channels: 1
 # Data Storage Paths - now handled by FilePathResolver with environment variables
 # Use BIRDNETPI_DATA to configure the base data directory
 
-# Logging Configuration
+# Logging Configuration - Structlog with environment awareness
 logging:
-  syslog_enabled: false
-  syslog_host: localhost
-  syslog_port: 514
-  file_logging_enabled: false
-  log_file_path: ~/BirdNET-Pi/birdnetpi.log
-  max_log_file_size_mb: 10
-  log_file_backup_count: 5
-  log_level: INFO
+  level: INFO
+  json_logs: null  # null = auto-detect, true = force JSON, false = force human-readable
+  include_caller: false  # Include file:line info for debugging
+  extra_fields:
+    service: birdnet-pi
+    # version and deployment are auto-detected from git/environment
+    # site_name and location are automatically added from config
 
 # External Service Integration
 birdweather_id: ""

@@ -189,16 +189,12 @@ class ConfigFileParser:
             if config.db_path:
                 config_data["data"]["db_path"] = config.db_path
 
-        # Add logging section
+        # Add logging section - use modern structlog format
         config_data["logging"] = {
-            "syslog_enabled": config.logging.syslog_enabled,
-            "syslog_host": config.logging.syslog_host,
-            "syslog_port": config.logging.syslog_port,
-            "file_logging_enabled": config.logging.file_logging_enabled,
-            "log_file_path": config.logging.log_file_path,
-            "max_log_file_size_mb": config.logging.max_log_file_size_mb,
-            "log_file_backup_count": config.logging.log_file_backup_count,
-            "log_level": config.logging.log_level,
+            "level": config.logging.level,
+            "json_logs": config.logging.json_logs,
+            "include_caller": config.logging.include_caller,
+            "extra_fields": config.logging.extra_fields,
         }
 
         with open(self.config_path, "w") as f:
@@ -218,15 +214,27 @@ class ConfigFileParser:
 
     def _parse_logging_config(self, logging_section: dict) -> LoggingConfig:
         """Parse logging configuration section."""
+        # Parse new structlog fields
+        level = logging_section.get("level", logging_section.get("log_level", "INFO"))
+        json_logs = logging_section.get("json_logs")
+        include_caller = bool(logging_section.get("include_caller", False))
+        extra_fields = logging_section.get("extra_fields", {"service": "birdnet-pi"})
+
         return LoggingConfig(
+            # New structlog fields
+            level=level,
+            json_logs=json_logs,
+            include_caller=include_caller,
+            extra_fields=extra_fields,
+            # Legacy fields for backward compatibility
             syslog_enabled=bool(logging_section.get("syslog_enabled", False)),
             syslog_host=logging_section.get("syslog_host", "localhost"),
             syslog_port=int(logging_section.get("syslog_port", 514)),
             file_logging_enabled=bool(logging_section.get("file_logging_enabled", False)),
-            log_file_path=logging_section.get("log_file_path", "~/BirdNET-Pi/birdnetpi.log"),
+            log_file_path=logging_section.get("log_file_path", ""),
             max_log_file_size_mb=int(logging_section.get("max_log_file_size_mb", 10)),
             log_file_backup_count=int(logging_section.get("log_file_backup_count", 5)),
-            log_level=logging_section.get("log_level", "INFO"),
+            log_level=logging_section.get("log_level", level),  # For backward compatibility
         )
 
     def _ensure_config_exists(self) -> None:

@@ -27,7 +27,7 @@ from birdnetpi.services.system_control_service import SystemControlService
 from birdnetpi.services.webhook_service import WebhookService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
-from birdnetpi.utils.logging_configurator import configure_logging
+from birdnetpi.utils.structlog_configurator import configure_structlog
 
 from .routers import (
     admin_router,
@@ -60,8 +60,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Initialize Jinja2Templates and store it in app.state
     app.state.templates = Jinja2Templates(directory=app.state.file_resolver.get_templates_dir())
 
-    # Configure logging based on loaded config
-    configure_logging(app.state.config)  # Added logging configuration
+    # Configure structured logging based on loaded config
+    configure_structlog(app.state.config)
 
     # Initialize core services and managers
     app.state.db_service = DatabaseService(app.state.file_resolver.get_database_path())
