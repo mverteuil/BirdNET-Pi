@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Context manager for application startup and shutdown events."""
     # Load configuration
     app.state.file_resolver = FilePathResolver()
-    config_parser = ConfigFileParser(app.state.file_resolver.get_birdnetpi_config_path())
+    config_parser = ConfigFileParser()  # Uses env vars and FilePathResolver internally
     app.state.config = config_parser.load_config()
     app.mount(
         "/static",
@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     configure_logging(app.state.config)  # Added logging configuration
 
     # Initialize core services and managers
-    app.state.db_service = DatabaseService(app.state.config.data.db_path)
+    app.state.db_service = DatabaseService(app.state.file_resolver.get_database_path())
     app.state.file_manager = FileManager(app.state.file_resolver.base_dir)
     app.state.detections = DetectionManager(app.state.db_service)
     app.state.location_service = LocationService(
@@ -118,9 +118,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     )
 
     # Configure webhooks from config
-    webhook_urls = getattr(app.state.config, "webhook_urls", "")
+    webhook_urls = getattr(app.state.config, "webhook_urls", [])
     if webhook_urls:
-        webhook_url_list = [url.strip() for url in webhook_urls.split(",") if url.strip()]
+        # Handle both list and string formats for backward compatibility
+        if isinstance(webhook_urls, str):
+            webhook_url_list = [url.strip() for url in webhook_urls.split(",") if url.strip()]
+        else:
+            webhook_url_list = [url.strip() for url in webhook_urls if url.strip()]
         app.state.webhook_service.configure_webhooks_from_urls(webhook_url_list)
 
     # Initialize and start the FIFO reader service for WebSocket streaming

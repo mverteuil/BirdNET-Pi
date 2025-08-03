@@ -45,13 +45,17 @@ class BirdDetectionService:
     def _load_global_model(self) -> None:
         self.model_name = self.config.model
         self.privacy_threshold = self.config.privacy_threshold
-        self.sf_threshold = self.config.sf_threshold
+        self.sf_threshold = self.config.species_confidence_threshold
         self._load_model()
 
     def _load_model(self) -> None:
         log.info("BirdDetectionService: LOADING TF LITE MODEL...")
 
-        modelpath = os.path.join(self.user_dir, "BirdNET-Pi/model", self.model_name + ".tflite")
+        # Use FilePathResolver to get model path (filename-only approach)
+        from birdnetpi.utils.file_path_resolver import FilePathResolver
+
+        file_resolver = FilePathResolver()
+        modelpath = file_resolver.get_model_path(self.model_name)
         self.interpreter = tflite.Interpreter(model_path=modelpath, num_threads=2)
         self.interpreter.allocate_tensors()
 
@@ -64,7 +68,9 @@ class BirdDetectionService:
         self.output_layer_index = output_details[0]["index"]
 
         self.classes = []
-        labelspath = os.path.join(self.user_dir, "BirdNET-Pi/model/labels.txt")
+        # Use FilePathResolver for labels path
+        file_resolver = FilePathResolver()
+        labelspath = file_resolver.get_model_path("labels.txt")
         with open(labelspath) as lfile:
             for line in lfile.readlines():
                 self.classes.append(line.replace("\n", ""))
@@ -77,9 +83,11 @@ class BirdDetectionService:
         else:
             data_model = "BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16.tflite"
 
-        self.m_interpreter = tflite.Interpreter(
-            model_path=os.path.join(self.user_dir, "BirdNET-Pi/model", data_model)
-        )
+        # Use FilePathResolver for data model path
+        from birdnetpi.utils.file_path_resolver import FilePathResolver
+
+        file_resolver = FilePathResolver()
+        self.m_interpreter = tflite.Interpreter(model_path=file_resolver.get_model_path(data_model))
         self.m_interpreter.allocate_tensors()
 
         input_details = self.m_interpreter.get_input_details()

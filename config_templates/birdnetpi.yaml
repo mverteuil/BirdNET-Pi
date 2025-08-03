@@ -5,8 +5,8 @@
 site_name: BirdNET-Pi
 latitude: 0.0
 longitude: 0.0
-model: BirdNET_GLOBAL_6K_V2.4_Model_FP16
-sf_thresh: 0.03
+model: BirdNET_GLOBAL_6K_V2.4_Model_FP16.tflite
+species_confidence_threshold: 0.03  # Minimum confidence threshold for species detection
 confidence: 0.7
 sensitivity: 1.25
 week: 0
@@ -77,7 +77,6 @@ enable_system_resource_check: true
 enable_gps_check: false
 
 # Analysis Configuration
-sf_threshold: 0.03
 privacy_threshold: 10.0
 data_model_version: 2
 
@@ -92,5 +91,5 @@ mqtt_client_id: birdnet-pi
 
 # Webhook Integration Settings
 enable_webhooks: false
-webhook_urls: ""
+webhook_urls: []  # List of webhook URLs, e.g., ["http://example.com/webhook", "http://another.com/hook"]
 webhook_events: detection,health,gps,system

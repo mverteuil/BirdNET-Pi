@@ -42,7 +42,7 @@ class BirdNETConfig:
     latitude: float = 0.0
     longitude: float = 0.0
     model: str = "BirdNET_GLOBAL_6K_V2.4_Model_FP16"
-    sf_thresh: float = 0.03  # Default species threshold
+    species_confidence_threshold: float = 0.03  # Minimum confidence threshold for species detection
     confidence: float = 0.7  # Default from birdnet.conf.template
     sensitivity: float = 1.25  # Default from birdnet.conf.template
     week: int = 0  # Default from birdnet.conf.template
@@ -99,7 +99,7 @@ class BirdNETConfig:
     enable_gps_check: bool = False  # Enable GPS device monitoring
 
     # Analysis model configuration
-    sf_threshold: float = 0.03  # Species filter threshold
+    # Removed duplicate - use species_confidence_threshold instead
     privacy_threshold: float = 10.0  # Privacy threshold percentage for human detection cutoff
     data_model_version: int = 2  # Data model version (1 or 2)
 
@@ -114,7 +114,7 @@ class BirdNETConfig:
 
     # Webhook Integration settings
     enable_webhooks: bool = False  # Enable webhook notifications
-    webhook_urls: str = ""  # Comma-separated list of webhook URLs
+    webhook_urls: list[str] = field(default_factory=list)  # List of webhook URLs
     webhook_events: str = "detection,health,gps,system"  # Events to send via webhooks
 
 

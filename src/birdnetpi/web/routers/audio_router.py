@@ -2,21 +2,19 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from birdnetpi.managers.data_manager import DataManager
+from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.services.audio_device_service import AudioDeviceService
+from birdnetpi.utils.file_path_resolver import FilePathResolver
 from birdnetpi.web.forms import AudioDeviceSelectionForm
 
 router = APIRouter()
 
 
-# Dependency to get DataManager instance
-def get_data_manager(request: Request) -> DataManager:
-    """Return a DataManager instance with injected dependencies."""
-    config = request.app.state.config
-    file_manager = request.app.state.file_manager
-    db_service = request.app.state.db_service
-    service_manager = request.app.state.service_manager
-    return DataManager(config, file_manager, db_service, service_manager)
+# Dependency to get FileManager instance
+def get_file_manager(request: Request) -> FileManager:
+    """Return a FileManager instance with injected dependencies."""
+    file_resolver: FilePathResolver = request.app.state.file_resolver
+    return FileManager(file_resolver.get_recordings_dir())
 
 
 # Dependency to get AudioDeviceService instance
@@ -27,10 +25,12 @@ def get_audio_device_service(request: Request) -> AudioDeviceService:
 
 @router.get("/recordings")
 async def get_recordings(
-    data_manager: DataManager = Depends(get_data_manager),  # noqa: B008
+    file_manager: FileManager = Depends(get_file_manager),  # noqa: B008
 ) -> dict:
     """Retrieve a list of all recorded audio files."""
-    recordings = data_manager.get_recordings()
+    file_resolver = FilePathResolver()
+    recordings_dir = file_resolver.get_recordings_dir()
+    recordings = file_manager.list_directory_contents(recordings_dir)
     return {"recordings": recordings}
 
 
