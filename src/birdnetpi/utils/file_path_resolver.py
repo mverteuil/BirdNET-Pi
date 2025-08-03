@@ -112,18 +112,3 @@ class FilePathResolver:
     def get_fifo_base_path(self) -> str:
         """Get the base path for FIFO files (temporary)."""
         return self.get_temp_dir()
-
-    # Legacy methods - deprecated but kept for compatibility
-    def resolve(self, *path_parts: str) -> str:
-        """Legacy method: resolve path relative to app directory."""
-        return str(self.app_dir.joinpath(*path_parts))
-
-    def get_birds_db_path(self) -> str:
-        """Legacy method - birds.db is not used in modern implementation."""
-        # Return empty path since this is legacy functionality
-        return ""
-
-    def get_extracted_birdsounds_path(self) -> str:
-        """Legacy method - extracted paths not used in modern implementation."""
-        # Return empty path since this is legacy functionality
-        return ""

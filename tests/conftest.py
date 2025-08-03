@@ -68,11 +68,6 @@ def file_path_resolver(tmp_path: Path) -> FilePathResolver:
 
     mock_resolver.get_database_path.side_effect = get_database_path_mock
 
-    # Ensure the resolve method works with the mocked base_dir
-    mock_resolver.resolve.side_effect = lambda *paths: str(
-        Path(mock_resolver.base_dir).joinpath(*paths)
-    )
-
     return mock_resolver
 
 
