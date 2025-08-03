@@ -63,3 +63,12 @@ data/
 # IOC World Bird Names data files (generated/downloaded, not committed)
 ioc_names_v*.xml
 ioc_multilingual_v*.xlsx
+
+# Large binary files (should be distributed via asset releases)
+*.tflite
+*.whl
+*.db
+*.h5
+*.pkl
+*.pb
+*.onnx
