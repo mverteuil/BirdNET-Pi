@@ -56,62 +56,95 @@ class ReleaseManager:
             Dictionary with release information including commit SHA
         """
         print(f"Creating asset release for version {config.version}")
+        self._validate_assets_exist(config.assets)
 
-        # Verify all assets exist
+        original_branch = self._get_current_branch()
+        commit_sha = None
+
+        try:
+            commit_sha = self._create_orphaned_commit(config)
+        finally:
+            self._cleanup_and_return_to_branch(original_branch)
+
+        return self._build_release_info(config, commit_sha)
+
+    def _validate_assets_exist(self, assets: list[ReleaseAsset]) -> None:
+        """Validate that all assets exist before creating release."""
         missing_assets = []
-        for asset in config.assets:
+        for asset in assets:
             if not Path(asset.source_path).exists():
                 missing_assets.append(asset.source_path)
 
         if missing_assets:
             raise FileNotFoundError(f"Missing assets: {missing_assets}")
 
-        # Create orphaned commit
-        original_branch = self._get_current_branch()
-        commit_sha = None
+    def _create_orphaned_commit(self, config: ReleaseConfig) -> str:
+        """Create the orphaned commit with assets."""
+        # Create orphaned branch
+        print(f"Creating orphaned branch: {config.asset_branch_name}")
+        self._run_git_command(["checkout", "--orphan", config.asset_branch_name])
 
-        try:
-            # Create orphaned branch
-            print(f"Creating orphaned branch: {config.asset_branch_name}")
-            self._run_git_command(["checkout", "--orphan", config.asset_branch_name])
+        # Clean the orphaned branch
+        self._run_git_command(["rm", "-rf", "."], check=False)
+        self._run_git_command(["clean", "-fxd"], check=False)
 
-            # Remove all files from the new orphaned branch
-            self._run_git_command(["rm", "-rf", "."], check=False)
+        # Set up the orphaned branch
+        self._create_asset_gitignore()
+        self._copy_assets_to_branch(config.assets)
+        self._create_asset_readme(config)
 
-            # Copy assets to root of orphaned branch
-            print("Copying assets...")
-            for asset in config.assets:
-                source = Path(asset.source_path)
-                target = self.repo_path / asset.target_name
+        # Commit the assets
+        self._commit_assets(config)
 
-                if source.is_file():
-                    shutil.copy2(source, target)
-                    print(f"  Copied {source} -> {asset.target_name}")
-                elif source.is_dir():
-                    shutil.copytree(source, target, dirs_exist_ok=True)
-                    print(f"  Copied directory {source} -> {asset.target_name}")
+        # Get commit SHA and push
+        commit_sha = self._run_git_command(["rev-parse", "HEAD"], capture_output=True).strip()
+        print(f"Created orphaned commit: {commit_sha}")
 
-            # Create README for the assets
-            self._create_asset_readme(config)
+        print(f"Pushing branch: {config.asset_branch_name}")
+        self._run_git_command(["push", "origin", config.asset_branch_name, "--force"])
 
-            # Add and commit assets
-            self._run_git_command(["add", "."])
-            self._run_git_command(["commit", "-m", config.commit_message])
+        return commit_sha
 
-            # Get commit SHA
-            commit_sha = self._run_git_command(["rev-parse", "HEAD"], capture_output=True).strip()
-            print(f"Created orphaned commit: {commit_sha}")
+    def _copy_assets_to_branch(self, assets: list[ReleaseAsset]) -> None:
+        """Copy assets to the orphaned branch."""
+        print("Copying assets...")
+        for asset in assets:
+            source = Path(asset.source_path)
+            target = self.repo_path / asset.target_name
 
-            # Push the orphaned branch
-            print(f"Pushing branch: {config.asset_branch_name}")
-            self._run_git_command(["push", "origin", config.asset_branch_name, "--force"])
+            if source.is_file():
+                shutil.copy2(source, target)
+                print(f"  Copied {source} -> {asset.target_name}")
+            elif source.is_dir():
+                shutil.copytree(source, target, dirs_exist_ok=True)
+                print(f"  Copied directory {source} -> {asset.target_name}")
 
-        finally:
-            # Return to original branch
-            if original_branch:
-                print(f"Returning to original branch: {original_branch}")
+    def _commit_assets(self, config: ReleaseConfig) -> None:
+        """Add and commit only the assets to the orphaned branch."""
+        for asset in config.assets:
+            self._run_git_command(["add", asset.target_name])
+        self._run_git_command(["add", "README.md"])
+        self._run_git_command(["add", ".gitignore"])
+        self._run_git_command(["commit", "-m", config.commit_message])
+
+    def _cleanup_and_return_to_branch(self, original_branch: str) -> None:
+        """Return to original branch with proper cleanup."""
+        if original_branch:
+            print(f"Returning to original branch: {original_branch}")
+            try:
                 self._run_git_command(["checkout", original_branch])
+            except subprocess.CalledProcessError:
+                print("Checkout failed, cleaning up uncommitted changes...")
+                try:
+                    self._run_git_command(["reset", "--hard"], check=False)
+                    self._run_git_command(["clean", "-fxd"], check=False)
+                    self._run_git_command(["checkout", original_branch])
+                except subprocess.CalledProcessError as e:
+                    print(f"Warning: Could not return to original branch {original_branch}: {e}")
+                    print("You may need to manually checkout the correct branch")
 
+    def _build_release_info(self, config: ReleaseConfig, commit_sha: str) -> dict[str, Any]:
+        """Build the release information dictionary."""
         return {
             "version": config.version,
             "asset_branch": config.asset_branch_name,
@@ -173,15 +206,62 @@ class ReleaseManager:
         return [
             ReleaseAsset(
                 source_path=self.file_resolver.get_models_dir(),
-                target_name="models",
+                target_name="data/models",
                 description="BirdNET TensorFlow Lite models for bird identification",
             ),
             ReleaseAsset(
-                source_path=self.file_resolver.get_ioc_database_path(),
-                target_name="ioc_reference.db",
+                source_path=self.file_resolver.get_database_path(),
+                target_name="data/ioc_reference.db",
                 description="IOC World Bird Names reference database",
             ),
         ]
+
+    def _create_asset_gitignore(self) -> None:
+        """Create a minimal .gitignore file for the asset branch.
+
+        This .gitignore excludes common system files but specifically
+        allows the data/ directory to be committed to the orphaned branch.
+        """
+        gitignore_content = """# System files
+.DS_Store
+Thumbs.db
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+.venv
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Git
+.git/
+
+# NOTE: data/ directory is NOT excluded - it contains the assets for this release
+"""
+        gitignore_path = self.repo_path / ".gitignore"
+        gitignore_path.write_text(gitignore_content)
 
     def _get_current_branch(self) -> str:
         """Get the current git branch name."""
