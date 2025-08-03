@@ -15,6 +15,7 @@ import logging.handlers
 import os
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -43,7 +44,10 @@ def is_systemd_available() -> bool:
 
 
 def get_git_version() -> str:
-    """Get the current git branch and commit hash for version logging."""
+    """Get the current git branch and commit hash for version logging.
+
+    Returns version in format: branch@SHA[:8]
+    """
     try:
         # Get current branch
         branch_result = subprocess.run(
@@ -54,9 +58,9 @@ def get_git_version() -> str:
         )
         branch = branch_result.stdout.strip() if branch_result.returncode == 0 else "unknown"
 
-        # Get current commit hash (short)
+        # Get current commit hash (8 chars as requested)
         commit_result = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
+            ["git", "rev-parse", "--short=8", "HEAD"],
             capture_output=True,
             text=True,
             timeout=5,
@@ -68,12 +72,28 @@ def get_git_version() -> str:
         return "unknown"
 
 
-def add_git_version(
-    logger: structlog.BoundLogger, method_name: str, event_dict: dict[str, Any]
-) -> dict[str, Any]:
-    """Add git version information to log entries."""
-    event_dict["version"] = get_git_version()
-    return event_dict
+def get_deployment_environment() -> str:
+    """Get deployment environment with 'unknown' fallback."""
+    if is_docker_environment():
+        return "docker"
+    elif is_systemd_available():
+        return "sbc"
+    elif os.environ.get("BIRDNETPI_ENV") == "development":
+        return "development"
+    else:
+        return "unknown"
+
+
+def _add_static_context(extra_fields: dict[str, str]) -> Callable:
+    """Processor to add static context fields to all log entries."""
+
+    def processor(
+        logger: structlog.BoundLogger, method_name: str, event_dict: dict[str, Any]
+    ) -> dict[str, Any]:
+        event_dict.update(extra_fields)
+        return event_dict
+
+    return processor
 
 
 def _get_environment_config() -> tuple[bool, bool, bool]:
@@ -84,24 +104,55 @@ def _get_environment_config() -> tuple[bool, bool, bool]:
     return is_docker, has_systemd, is_development
 
 
-def _configure_processors(is_docker: bool, has_systemd: bool, is_development: bool) -> list:
+def _configure_processors(
+    config: BirdNETConfig, is_docker: bool, has_systemd: bool, is_development: bool
+) -> list:
     """Configure structlog processors based on environment."""
+    # Build dynamic extra fields
+    extra_fields = {
+        "service": "birdnet-pi",
+        "version": get_git_version(),
+        "deployment": get_deployment_environment(),
+        **config.logging.extra_fields,  # Allow config to override/add fields
+    }
+
+    # Add site_name if available
+    if hasattr(config, "site_name") and config.site_name:
+        extra_fields["site_name"] = config.site_name
+
+    # Add location if available (for field deployments)
+    if hasattr(config, "latitude") and hasattr(config, "longitude"):
+        if config.latitude != 0.0 or config.longitude != 0.0:
+            extra_fields["location"] = f"{config.latitude},{config.longitude}"
+
     processors = [
         structlog.contextvars.merge_contextvars,
-        add_git_version,
+        _add_static_context(extra_fields),
         structlog.processors.add_log_level,
         structlog.processors.add_logger_name,
         structlog.processors.TimeStamper(fmt="ISO"),
     ]
 
-    if is_docker or (has_systemd and not is_development):
-        processors.append(structlog.processors.JSONRenderer())
-    else:
+    # Add caller info if requested
+    if config.logging.include_caller:
+        processors.append(structlog.processors.CallsiteParameterAdder())
+
+    # Determine JSON vs human-readable output
+    use_json = config.logging.json_logs
+    if use_json is None:
+        # Auto-detect: JSON for Docker/SBC, human-readable for development
+        use_json = is_docker or (has_systemd and not is_development)
+
+    # Override with environment variable for development
+    if is_development:
         dev_json_logs = os.environ.get("BIRDNETPI_JSON_LOGS", "false").lower() == "true"
         if dev_json_logs:
-            processors.append(structlog.processors.JSONRenderer())
-        else:
-            processors.append(structlog.dev.ConsoleRenderer(colors=True))
+            use_json = True
+
+    if use_json:
+        processors.append(structlog.processors.JSONRenderer())
+    else:
+        processors.append(structlog.dev.ConsoleRenderer(colors=True))
 
     return processors
 
@@ -210,13 +261,13 @@ def configure_structlog(config: BirdNETConfig) -> None:
     is_docker, has_systemd, is_development = _get_environment_config()
 
     # Configure processors
-    processors = _configure_processors(is_docker, has_systemd, is_development)
+    processors = _configure_processors(config, is_docker, has_systemd, is_development)
 
     # Configure structlog
     structlog.configure(
         processors=processors,
         wrapper_class=structlog.make_filtering_bound_logger(
-            getattr(logging, config.logging.log_level.upper(), logging.INFO)
+            getattr(logging, config.logging.level.upper(), logging.INFO)
         ),
         logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
@@ -230,11 +281,12 @@ def configure_structlog(config: BirdNETConfig) -> None:
     logger.info(
         "Structured logging configured",
         git_version=get_git_version(),
-        log_level=config.logging.log_level,
-        environment="docker" if is_docker else ("sbc" if has_systemd else "development"),
+        log_level=config.logging.level,
+        environment=get_deployment_environment(),
         file_logging=is_development and config.logging.file_logging_enabled,
         journald=has_systemd and not is_development,
         syslog=config.logging.syslog_enabled,
+        json_output=config.logging.json_logs,
     )
 
 

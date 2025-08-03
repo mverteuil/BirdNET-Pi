@@ -17,8 +17,14 @@ class DataConfig:
 
 @dataclass
 class LoggingConfig:
-    """Configuration for logging settings."""
+    """Structlog-based logging configuration."""
 
+    level: str = "INFO"
+    json_logs: bool | None = None  # None = auto-detect based on environment
+    include_caller: bool = False  # Include file:line info (useful for debugging)
+    extra_fields: dict[str, str] = field(default_factory=lambda: {"service": "birdnet-pi"})
+
+    # Legacy fields for backward compatibility
     syslog_enabled: bool = False
     syslog_host: str = "localhost"
     syslog_port: int = 514
@@ -26,7 +32,13 @@ class LoggingConfig:
     log_file_path: str = ""  # Will be resolved by FilePathResolver if not specified
     max_log_file_size_mb: int = 10  # 10 MB
     log_file_backup_count: int = 5
-    log_level: str = "INFO"
+    log_level: str = "INFO"  # Deprecated: use 'level' instead
+
+    def __post_init__(self) -> None:
+        """Handle backward compatibility for log_level."""
+        # Use log_level if level is still default and log_level was changed
+        if self.level == "INFO" and self.log_level != "INFO":
+            self.level = self.log_level
 
 
 @dataclass
