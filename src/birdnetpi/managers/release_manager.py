@@ -80,30 +80,55 @@ class ReleaseManager:
 
     def _create_orphaned_commit(self, config: ReleaseConfig) -> str:
         """Create the orphaned commit with assets."""
-        # Create orphaned branch
-        print(f"Creating orphaned branch: {config.asset_branch_name}")
-        self._run_git_command(["checkout", "--orphan", config.asset_branch_name])
+        import tempfile
 
-        # Clean the orphaned branch
-        self._run_git_command(["rm", "-rf", "."], check=False)
-        self._run_git_command(["clean", "-fxd"], check=False)
+        # Create a temporary directory to preserve assets
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
 
-        # Set up the orphaned branch
-        self._create_asset_gitignore()
-        self._copy_assets_to_branch(config.assets)
-        self._create_asset_readme(config)
+            # Copy assets to temp directory before cleaning
+            print("Preserving assets in temporary location...")
+            preserved_assets = []
+            for asset in config.assets:
+                source = Path(asset.source_path)
+                if source.exists():
+                    temp_target = temp_path / asset.target_name
+                    temp_target.parent.mkdir(parents=True, exist_ok=True)
 
-        # Commit the assets
-        self._commit_assets(config)
+                    if source.is_file():
+                        shutil.copy2(source, temp_target)
+                    elif source.is_dir():
+                        shutil.copytree(source, temp_target, dirs_exist_ok=True)
 
-        # Get commit SHA and push
-        commit_sha = self._run_git_command(["rev-parse", "HEAD"], capture_output=True).strip()
-        print(f"Created orphaned commit: {commit_sha}")
+                    preserved_assets.append(
+                        ReleaseAsset(str(temp_target), asset.target_name, asset.description)
+                    )
+                    print(f"  Preserved {asset.target_name}")
 
-        print(f"Pushing branch: {config.asset_branch_name}")
-        self._run_git_command(["push", "origin", config.asset_branch_name, "--force"])
+            # Create orphaned branch
+            print(f"Creating orphaned branch: {config.asset_branch_name}")
+            self._run_git_command(["checkout", "--orphan", config.asset_branch_name])
 
-        return commit_sha
+            # Clean the orphaned branch
+            self._run_git_command(["rm", "-rf", "."], check=False)
+            self._run_git_command(["clean", "-fxd"], check=False)
+
+            # Set up the orphaned branch
+            self._create_asset_gitignore()
+            self._copy_assets_to_branch(preserved_assets)
+            self._create_asset_readme(config)
+
+            # Commit the assets
+            self._commit_assets(config)
+
+            # Get commit SHA and push
+            commit_sha = self._run_git_command(["rev-parse", "HEAD"], capture_output=True).strip()
+            print(f"Created orphaned commit: {commit_sha}")
+
+            print(f"Pushing branch: {config.asset_branch_name}")
+            self._run_git_command(["push", "origin", config.asset_branch_name, "--force"])
+
+            return commit_sha
 
     def _copy_assets_to_branch(self, assets: list[ReleaseAsset]) -> None:
         """Copy assets to the orphaned branch."""
