@@ -85,6 +85,10 @@ class FilePathResolver:
         """Get the path to the main SQLite database."""
         return str(self.data_dir / "database" / "birdnetpi.db")
 
+    def get_ioc_database_path(self) -> str:
+        """Get the path to the IOC reference database."""
+        return str(self.data_dir / "database" / "ioc_reference.db")
+
     def get_log_dir(self) -> str:
         """Get the directory for log files (default fallback)."""
         return "/var/log/birdnetpi"

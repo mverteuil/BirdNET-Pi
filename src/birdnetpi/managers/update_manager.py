@@ -148,40 +148,58 @@ class UpdateManager:
             latest_release = response.json()
             return latest_release["tag_name"]
 
-    def _validate_release_and_branch(self, version: str, github_repo: str) -> str:
-        """Validate release exists and get asset branch name."""
-        # Check if release exists
-        release_api_url = f"https://api.github.com/repos/{github_repo}/releases/tags/{version}"
+    def _resolve_latest_asset_version(self, github_repo: str) -> str:
+        """Resolve 'latest' to the most recent asset release version."""
+        try:
+            api_url = f"https://api.github.com/repos/{github_repo}/releases"
+            with httpx.Client() as client:
+                response = client.get(api_url)
+                response.raise_for_status()
+                releases = response.json()
+
+                # Find the latest release that starts with "assets-"
+                asset_releases = [
+                    release["tag_name"]
+                    for release in releases
+                    if release["tag_name"].startswith("assets-")
+                ]
+
+                if not asset_releases:
+                    raise RuntimeError("No asset releases found")
+
+                # Return the first (most recent) asset release, removing the "assets-" prefix
+                latest_asset_tag = asset_releases[0]
+                return latest_asset_tag.replace("assets-", "")
+
+        except Exception as e:
+            print(f"Failed to resolve latest asset version: {e}")
+            raise
+
+    def _validate_asset_release(self, version: str, github_repo: str) -> str:
+        """Validate asset release exists and return asset tag name."""
+        # Construct asset release tag (assets-v1.0.0 format)
+        if version.startswith("v"):
+            asset_tag = f"assets-{version}"
+        else:
+            asset_tag = f"assets-v{version}"
+
+        # Check if asset release exists
+        release_api_url = f"https://api.github.com/repos/{github_repo}/releases/tags/{asset_tag}"
         with httpx.Client() as client:
             response = client.get(release_api_url)
             if response.status_code == 404:
-                raise RuntimeError(f"Release {version} not found in repository {github_repo}")
-            response.raise_for_status()
-            release_data = response.json()
-
-        # Check for direct release assets (future enhancement)
-        if release_data.get("assets"):
-            print(f"Found {len(release_data['assets'])} release assets for {version}")
-            # TODO: Implement direct release asset download
-
-        # Validate asset branch exists
-        asset_branch = f"assets-{version}"
-        branch_api_url = f"https://api.github.com/repos/{github_repo}/branches/{asset_branch}"
-        with httpx.Client() as client:
-            response = client.get(branch_api_url)
-            if response.status_code == 404:
-                available = ", ".join(self.list_available_versions(github_repo))
+                available = ", ".join(self.list_available_asset_versions(github_repo))
                 raise RuntimeError(
-                    f"Asset branch '{asset_branch}' not found. Available releases: {available}"
+                    f"Asset release '{asset_tag}' not found. Available asset releases: {available}"
                 )
             response.raise_for_status()
 
-        return asset_branch
+        return asset_tag
 
-    def _download_and_extract_assets(self, asset_branch: str, github_repo: str) -> Path:
-        """Download and extract asset archive, return extracted directory."""
-        archive_url = f"https://github.com/{github_repo}/archive/{asset_branch}.tar.gz"
-        print(f"Downloading assets from orphaned commit branch {asset_branch}")
+    def _download_and_extract_assets(self, asset_tag: str, github_repo: str) -> Path:
+        """Download and extract asset archive from release tag, return extracted directory."""
+        archive_url = f"https://github.com/{github_repo}/archive/{asset_tag}.tar.gz"
+        print(f"Downloading assets from release tag {asset_tag}")
 
         temp_dir = Path(tempfile.mkdtemp())
         archive_path = temp_dir / "assets.tar.gz"
@@ -222,13 +240,13 @@ class UpdateManager:
         include_ioc_db: bool = True,
         github_repo: str = "mverteuil/BirdNET-Pi",
     ) -> dict[str, Any]:
-        """Download models and IOC database from orphaned commit release.
+        """Download models and IOC database from orphaned commit asset release.
 
-        This method downloads assets from GitHub releases that use the orphaned
-        commit strategy for distributing large files.
+        This method downloads assets from GitHub releases that use orphaned
+        commits tagged as asset releases (e.g., assets-v1.0.0).
 
         Args:
-            version: Release version (e.g., "v2.0.0" or "latest")
+            version: Asset release version (e.g., "v1.0.0" or "latest")
             include_models: Whether to download BirdNET models
             include_ioc_db: Whether to download IOC database
             github_repo: GitHub repository in format "owner/repo"
@@ -237,12 +255,15 @@ class UpdateManager:
             Dictionary with download results and metadata
         """
         file_resolver = FilePathResolver()
-        version = self._resolve_version(version, github_repo)
+        # For asset releases, we need to resolve to the latest asset version, not code version
+        if version == "latest":
+            version = self._resolve_latest_asset_version(github_repo)
+
         results = {"version": version, "downloaded_assets": [], "errors": []}
 
         try:
-            asset_branch = self._validate_release_and_branch(version, github_repo)
-            asset_source_dir = self._download_and_extract_assets(asset_branch, github_repo)
+            asset_tag = self._validate_asset_release(version, github_repo)
+            asset_source_dir = self._download_and_extract_assets(asset_tag, github_repo)
 
             # Download models if requested
             if include_models:
@@ -263,9 +284,9 @@ class UpdateManager:
 
             # Download IOC database if requested
             if include_ioc_db:
-                ioc_source = asset_source_dir / "data" / "ioc_reference.db"
+                ioc_source = asset_source_dir / "data" / "database" / "ioc_reference.db"
                 if ioc_source.exists():
-                    ioc_target = Path(file_resolver.get_database_path())
+                    ioc_target = Path(file_resolver.get_ioc_database_path())
                     ioc_target.parent.mkdir(parents=True, exist_ok=True)
 
                     shutil.copy2(ioc_source, ioc_target)
@@ -285,7 +306,7 @@ class UpdateManager:
             raise
 
     def list_available_versions(self, github_repo: str = "mverteuil/BirdNET-Pi") -> list[str]:
-        """List available asset release versions.
+        """List available code release versions.
 
         Args:
             github_repo: GitHub repository in format "owner/repo"
@@ -300,11 +321,44 @@ class UpdateManager:
                 response.raise_for_status()
                 releases = response.json()
 
-                versions = [release["tag_name"] for release in releases]
+                # Filter out asset releases, only return code releases
+                versions = [
+                    release["tag_name"]
+                    for release in releases
+                    if not release["tag_name"].startswith("assets-")
+                ]
                 return versions
 
         except Exception as e:
             print(f"Failed to list versions: {e}")
+            return []
+
+    def list_available_asset_versions(self, github_repo: str = "mverteuil/BirdNET-Pi") -> list[str]:
+        """List available asset release versions.
+
+        Args:
+            github_repo: GitHub repository in format "owner/repo"
+
+        Returns:
+            List of available asset version tags (with assets- prefix removed)
+        """
+        try:
+            api_url = f"https://api.github.com/repos/{github_repo}/releases"
+            with httpx.Client() as client:
+                response = client.get(api_url)
+                response.raise_for_status()
+                releases = response.json()
+
+                # Filter for asset releases and remove the "assets-" prefix
+                asset_versions = [
+                    release["tag_name"].replace("assets-", "")
+                    for release in releases
+                    if release["tag_name"].startswith("assets-")
+                ]
+                return asset_versions
+
+        except Exception as e:
+            print(f"Failed to list asset versions: {e}")
             return []
 
     from birdnetpi.models.config import CaddyConfig
