@@ -212,8 +212,22 @@ async def test_detection(
     overlap: float = 0.0,
 ) -> dict[str, str]:
     """Publishes a test detection event for demonstration purposes."""
+    # Convert species to required format
+    # (assuming format: "Common Name" -> "Genus species_Common Name")
+    if "_" in species:
+        # Already in tensor format
+        species_tensor = species
+        scientific_name, common_name_tensor = species.split("_", 1)
+    else:
+        # Convert single name to tensor format (use generic genus for test)
+        species_tensor = f"Testus species_{species}"
+        scientific_name = "Testus species"
+        common_name_tensor = species
+
     detection_event_data = DetectionEvent(
-        species=species,
+        species_tensor=species_tensor,
+        scientific_name=scientific_name,
+        common_name_tensor=common_name_tensor,
         confidence=confidence,
         timestamp=datetime.datetime.fromisoformat(timestamp)
         if timestamp

@@ -27,10 +27,10 @@ def app_with_admin_router(tmp_path):
     app.state.detections = DetectionManager(DatabaseService(str(db_path)))
     app.state.templates = Jinja2Templates(directory="src/birdnetpi/web/templates")
 
-    # Create a simple test config with the temp db path
-    from birdnetpi.models.config import BirdNETConfig, DataConfig
+    # Create a simple test config
+    from birdnetpi.models.config import BirdNETConfig
 
-    test_config = BirdNETConfig(site_name="Test BirdNET-Pi", data=DataConfig(db_path=str(db_path)))
+    test_config = BirdNETConfig(site_name="Test BirdNET-Pi")
     app.state.config = test_config
 
     # Create file manager with a mock resolver
@@ -43,6 +43,7 @@ def app_with_admin_router(tmp_path):
     mock_resolver.get_birdnetpi_config_path.return_value = str(config_file)
 
     app.state.file_manager.file_path_resolver = mock_resolver
+    app.state.file_resolver = mock_resolver
 
     app.include_router(router)
     return app

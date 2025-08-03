@@ -34,7 +34,9 @@ def mock_csv_file(tmp_path):
 def test_create_detection_success(detection_manager):
     """Should create a detection record and associated audio file successfully"""
     detection_event = DetectionEvent(
-        species="Test Species",
+        species_tensor="Turdus migratorius_Test Species",
+        scientific_name="Turdus migratorius",
+        common_name_tensor="Test Species",
         confidence=0.9,
         timestamp=datetime(2023, 1, 1, 12, 0, 0),
         audio_file_path="/path/to/audio.wav",
@@ -59,7 +61,9 @@ def test_create_detection_success(detection_manager):
 def test_create_detection_failure(detection_manager):
     """Should handle create detection failure"""
     detection_event = DetectionEvent(
-        species="Test Species",
+        species_tensor="Turdus migratorius_Test Species",
+        scientific_name="Turdus migratorius",
+        common_name_tensor="Test Species",
         confidence=0.9,
         timestamp=datetime(2023, 1, 1, 12, 0, 0),
         audio_file_path="/path/to/audio.wav",

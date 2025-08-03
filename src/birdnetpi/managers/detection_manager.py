@@ -33,7 +33,10 @@ class DetectionManager:
 
                 # Create Detection record
                 detection = Detection(
-                    species=detection_event.species,
+                    species_tensor=detection_event.species_tensor,
+                    scientific_name=detection_event.scientific_name,
+                    common_name_tensor=detection_event.common_name_tensor,
+                    common_name_ioc=detection_event.common_name_ioc,
                     confidence=detection_event.confidence,
                     timestamp=detection_event.timestamp,
                     audio_file_id=audio_file.id,
@@ -184,7 +187,7 @@ class DetectionManager:
                     .count()
                 )
                 unique_species_count = (
-                    db.query(Detection.species)
+                    db.query(Detection.scientific_name)
                     .filter(Detection.timestamp.between(start_date, end_date))
                     .distinct()
                     .count()
@@ -210,21 +213,21 @@ class DetectionManager:
             try:
                 current_week_subquery = (
                     db.query(
-                        Detection.species,
-                        func.count(Detection.species).label("current_count"),
+                        Detection.scientific_name,
+                        func.count(Detection.scientific_name).label("current_count"),
                     )
                     .filter(Detection.timestamp.between(start_date, end_date))
-                    .group_by(Detection.species)
+                    .group_by(Detection.scientific_name)
                     .subquery()
                 )
 
                 prior_week_subquery = (
                     db.query(
-                        Detection.species,
-                        func.count(Detection.species).label("prior_count"),
+                        Detection.scientific_name,
+                        func.count(Detection.scientific_name).label("prior_count"),
                     )
                     .filter(Detection.timestamp.between(prior_start_date, prior_end_date))
-                    .group_by(Detection.species)
+                    .group_by(Detection.scientific_name)
                     .subquery()
                 )
 
@@ -245,7 +248,7 @@ class DetectionManager:
 
                 return [
                     {
-                        "species": row.species,
+                        "species": row.scientific_name,
                         "current_count": row.current_count,
                         "prior_count": row.prior_count,
                     }
@@ -262,7 +265,7 @@ class DetectionManager:
             try:
                 # Subquery to find all species detected before the start_date
                 prior_species_subquery = (
-                    db.query(Detection.species)
+                    db.query(Detection.scientific_name)
                     .filter(Detection.timestamp < start_date)
                     .distinct()
                     .subquery()
@@ -270,17 +273,23 @@ class DetectionManager:
 
                 # Query for new species in current range, excluding prior_species_subquery
                 new_species_results = (
-                    db.query(Detection.species, func.count(Detection.species).label("count"))
+                    db.query(
+                        Detection.scientific_name,
+                        func.count(Detection.scientific_name).label("count"),
+                    )
                     .filter(
                         Detection.timestamp.between(start_date, end_date),
-                        ~Detection.species.in_(prior_species_subquery),
+                        ~Detection.scientific_name.in_(prior_species_subquery),
                     )
-                    .group_by(Detection.species)
-                    .order_by(func.count(Detection.species).desc())
+                    .group_by(Detection.scientific_name)
+                    .order_by(func.count(Detection.scientific_name).desc())
                     .all()
                 )
 
-                return [{"species": row.species, "count": row.count} for row in new_species_results]
+                return [
+                    {"species": row.scientific_name, "count": row.count}
+                    for row in new_species_results
+                ]
             except SQLAlchemyError as e:
                 db.rollback()
                 print(f"Error getting new species data: {e}")
@@ -297,8 +306,8 @@ class DetectionManager:
                     {
                         "Date": d.timestamp.strftime("%Y-%m-%d"),
                         "Time": d.timestamp.strftime("%H:%M:%S"),
-                        "Sci_Name": (d.species.split(" (")[1][:-1] if " (" in d.species else ""),
-                        "Com_Name": (d.species.split(" (")[0] if " (" in d.species else d.species),
+                        "Sci_Name": d.scientific_name or "",
+                        "Com_Name": d.common_name_ioc or d.common_name_tensor or "",
                         "Confidence": d.confidence,
                         "Lat": d.latitude,
                         "Lon": d.longitude,
@@ -323,7 +332,7 @@ class DetectionManager:
                     Detection.id,
                     func.row_number()
                     .over(
-                        partition_by=Detection.species,
+                        partition_by=Detection.scientific_name,
                         order_by=Detection.confidence.desc(),
                     )
                     .label("rn"),
@@ -347,8 +356,8 @@ class DetectionManager:
                     {
                         "Date": d.timestamp.strftime("%Y-%m-%d"),
                         "Time": d.timestamp.strftime("%H:%M:%S"),
-                        "Sci_Name": (d.species.split(" (")[1][:-1] if " (" in d.species else ""),
-                        "Com_Name": (d.species.split(" (")[0] if " (" in d.species else d.species),
+                        "Sci_Name": d.scientific_name or "",
+                        "Com_Name": d.common_name_ioc or d.common_name_tensor or "",
                         "Confidence": d.confidence,
                         "Lat": d.latitude,
                         "Lon": d.longitude,
