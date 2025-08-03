@@ -27,7 +27,7 @@ def app_with_iot_services():
 
     app.state.webhook_service = WebhookService(enable_webhooks=True)
 
-    app.include_router(router)
+    app.include_router(router, prefix="/api/iot")
     return app
 
 
