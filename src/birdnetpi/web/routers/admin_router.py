@@ -26,9 +26,7 @@ async def read_admin() -> dict[str, str]:
 @router.get("/settings", response_class=HTMLResponse)
 async def get_settings(request: Request) -> Response:
     """Render the settings page with the current configuration."""
-    config_parser = ConfigFileParser(
-        request.app.state.file_manager.file_path_resolver.get_birdnetpi_config_path()
-    )
+    config_parser = ConfigFileParser(request.app.state.file_resolver.get_birdnetpi_config_path())
     app_config: BirdNETConfig = config_parser.load_config()
     return request.app.state.templates.TemplateResponse(
         "settings.html", {"request": request, "config": app_config}
@@ -102,9 +100,7 @@ async def post_settings(
     webhook_events: str = Form("detection,health,gps,system"),
 ) -> RedirectResponse:
     """Process the submitted settings form and save the updated configuration."""
-    config_parser = ConfigFileParser(
-        request.app.state.file_manager.file_path_resolver.get_birdnetpi_config_path()
-    )
+    config_parser = ConfigFileParser(request.app.state.file_resolver.get_birdnetpi_config_path())
     # Parse webhook URLs from comma-separated string to list
     webhook_urls_list = (
         [url.strip() for url in webhook_urls.split(",") if url.strip()] if webhook_urls else []
@@ -243,9 +239,7 @@ async def test_detection(
 @router.get("/advanced-settings", response_class=HTMLResponse)
 async def get_advanced_settings(request: Request) -> Response:
     """Render the advanced YAML configuration editor."""
-    config_parser = ConfigFileParser(
-        request.app.state.file_manager.file_path_resolver.get_birdnetpi_config_path()
-    )
+    config_parser = ConfigFileParser(request.app.state.file_resolver.get_birdnetpi_config_path())
     # Load raw YAML content for editor
     with open(config_parser.config_path) as f:
         config_yaml = f.read()

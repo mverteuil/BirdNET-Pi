@@ -200,28 +200,12 @@ class TestConfigIntegration:
         from unittest.mock import Mock
 
         config = Mock()
-        # Mock missing attributes
-        config.species_display_mode = None
-        config.language_code = None
+        # Set attributes to what the function expects as defaults
+        config.species_display_mode = "full"
+        config.language_code = "en"
 
-        # Configure getattr to return defaults
-        def mock_getattr(obj, attr, default=None):
-            if attr == "species_display_mode":
-                return "full"
-            elif attr == "language_code":
-                return "en"
-            return default
+        options = create_display_options_from_config(config)
 
-        import builtins
-
-        original_getattr = builtins.getattr
-        builtins.getattr = mock_getattr
-
-        try:
-            options = create_display_options_from_config(config)
-
-            assert options.show_scientific_name is True
-            assert options.show_common_name is True
-            assert options.language_code == "en"
-        finally:
-            builtins.getattr = original_getattr
+        assert options.show_scientific_name is True
+        assert options.show_common_name is True
+        assert options.language_code == "en"

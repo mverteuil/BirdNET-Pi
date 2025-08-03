@@ -13,7 +13,8 @@ class DetectionAdmin(ModelView, model=Detection):
 
     column_list: ClassVar[list] = [
         Detection.id,
-        Detection.species,
+        Detection.scientific_name,
+        Detection.common_name_ioc,
         Detection.confidence,
         Detection.timestamp,
     ]

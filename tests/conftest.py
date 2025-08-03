@@ -18,7 +18,10 @@ def file_path_resolver(tmp_path: Path) -> FilePathResolver:
     """
     # Create a temporary directory for the repo root
     repo_root = tmp_path / "BirdNET-Pi"
-    repo_root.mkdir()
+    repo_root.mkdir(mode=0o755, exist_ok=True)
+
+    # Create necessary subdirectories
+    (repo_root / "database").mkdir(mode=0o755, exist_ok=True)
 
     # Set BIRDNETPI_APP for real resolver to find templates and static files in the project
     import os
@@ -67,6 +70,11 @@ def file_path_resolver(tmp_path: Path) -> FilePathResolver:
             return str(repo_root / "database" / "birdnetpi.db")  # Use temp for tests
 
     mock_resolver.get_database_path.side_effect = get_database_path_mock
+
+    # Mock FIFO paths
+    fifo_dir = repo_root / "fifo"
+    fifo_dir.mkdir(mode=0o755, exist_ok=True)
+    mock_resolver.get_fifo_base_path.return_value = str(fifo_dir)
 
     return mock_resolver
 

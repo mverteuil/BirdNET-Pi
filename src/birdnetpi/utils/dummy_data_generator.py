@@ -9,17 +9,18 @@ def generate_dummy_detections(
     detection_manager: DetectionManager, num_detections: int = 100
 ) -> None:
     """Generate and add dummy detection data to the database."""
+    # Updated to use tensor format: "Scientific_name_Common Name"
     species_list = [
-        "American Robin (Turdus migratorius)",
-        "Northern Cardinal (Cardinalis cardinalis)",
-        "Blue Jay (Cyanocitta cristata)",
-        "House Sparrow (Passer domesticus)",
-        "European Starling (Sturnus vulgaris)",
-        "Common Grackle (Quiscalus quiscula)",
-        "Mourning Dove (Zenaida macroura)",
-        "Downy Woodpecker (Dryobates pubescens)",
-        "Song Sparrow (Melospiza melodia)",
-        "Red-winged Blackbird (Agelaius phoeniceus)",
+        "Turdus migratorius_American Robin",
+        "Cardinalis cardinalis_Northern Cardinal",
+        "Cyanocitta cristata_Blue Jay",
+        "Passer domesticus_House Sparrow",
+        "Sturnus vulgaris_European Starling",
+        "Quiscalus quiscula_Common Grackle",
+        "Zenaida macroura_Mourning Dove",
+        "Dryobates pubescens_Downy Woodpecker",
+        "Melospiza melodia_Song Sparrow",
+        "Agelaius phoeniceus_Red-winged Blackbird",
     ]
 
     for _ in range(num_detections):
@@ -29,8 +30,16 @@ def generate_dummy_detections(
             minutes=random.randint(0, 59),
             seconds=random.randint(0, 59),
         )
+
+        # Parse species components
+        species_tensor = random.choice(species_list)
+        scientific_name, common_name_tensor = species_tensor.split("_", 1)
+
         detection_data = {
-            "species": random.choice(species_list),
+            "species_tensor": species_tensor,
+            "scientific_name": scientific_name,
+            "common_name_tensor": common_name_tensor,
+            "common_name_ioc": common_name_tensor,  # Using tensor name as placeholder for IOC
             "confidence": round(random.uniform(0.5, 0.99), 2),
             "timestamp": timestamp,
             "audio_file_path": f"/app/audio/{timestamp.strftime('%Y%m%d_%H%M%S')}.wav",
