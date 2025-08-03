@@ -45,7 +45,39 @@ def install_assets(args: argparse.Namespace) -> None:
             print(f"\nInstallation data written to: {args.output_json}")
 
     except Exception as e:
-        print(f"Error installing assets: {e}")
+        error_msg = str(e)
+        print(f"Error installing assets: {error_msg}")
+
+        # Show helpful local development message for permission errors
+        if "Permission denied" in error_msg and "/var/lib/birdnetpi" in error_msg:
+            print()
+            print("┌" + "─" * 78 + "┐")
+            print("│" + " " * 78 + "│")
+            print("│  🛠️  LOCAL DEVELOPMENT SETUP REQUIRED" + " " * 39 + "│")
+            print("│" + " " * 78 + "│")
+            print(
+                "│  For local development, you need to set the BIRDNETPI_DATA environment"
+                + " " * 5
+                + "│"
+            )
+            print(
+                "│  variable to a writable directory (e.g., ./data in your project root)."
+                + " " * 4
+                + "│"
+            )
+            print("│" + " " * 78 + "│")
+            print("│  Run the asset installer with:" + " " * 44 + "│")
+            print("│    export BIRDNETPI_DATA=./data" + " " * 43 + "│")
+            print("│    uv run asset-installer install v2.1.0 --include-models --include-ioc-db│")
+            print("│" + " " * 78 + "│")
+            print(
+                "│  Or set it permanently in your shell profile (e.g., ~/.bashrc):" + " " * 12 + "│"
+            )
+            print("│    echo 'export BIRDNETPI_DATA=./data' >> ~/.bashrc" + " " * 24 + "│")
+            print("│" + " " * 78 + "│")
+            print("└" + "─" * 78 + "┘")
+            print()
+
         sys.exit(1)
 
 
@@ -115,7 +147,7 @@ def check_local_assets(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    """Main entry point for asset installer CLI."""
+    """Run the asset installer CLI."""
     parser = argparse.ArgumentParser(
         description="BirdNET-Pi Asset Installer",
         formatter_class=argparse.RawDescriptionHelpFormatter,
