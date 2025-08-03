@@ -79,7 +79,7 @@ class ReleaseManager:
             raise FileNotFoundError(f"Missing assets: {missing_assets}")
 
     def _create_orphaned_commit(self, config: ReleaseConfig) -> str:
-        """Create the orphaned commit with assets."""
+        """Create the orphaned commit with assets and tag it."""
         import tempfile
 
         # Create a temporary directory to preserve assets
@@ -105,9 +105,10 @@ class ReleaseManager:
                     )
                     print(f"  Preserved {asset.target_name}")
 
-            # Create orphaned branch
-            print(f"Creating orphaned branch: {config.asset_branch_name}")
-            self._run_git_command(["checkout", "--orphan", config.asset_branch_name])
+            # Create temporary orphaned branch
+            temp_branch = f"temp-{config.asset_branch_name}"
+            print(f"Creating temporary orphaned branch: {temp_branch}")
+            self._run_git_command(["checkout", "--orphan", temp_branch])
 
             # Clean the orphaned branch
             self._run_git_command(["rm", "-rf", "."], check=False)
@@ -121,12 +122,18 @@ class ReleaseManager:
             # Commit the assets
             self._commit_assets(config)
 
-            # Get commit SHA and push
+            # Get commit SHA
             commit_sha = self._run_git_command(["rev-parse", "HEAD"], capture_output=True).strip()
             print(f"Created orphaned commit: {commit_sha}")
 
-            print(f"Pushing branch: {config.asset_branch_name}")
-            self._run_git_command(["push", "origin", config.asset_branch_name, "--force"])
+            # Tag the orphaned commit
+            tag_name = config.asset_branch_name  # This will be assets-v1.0.0
+            print(f"Tagging orphaned commit as: {tag_name}")
+            self._run_git_command(["tag", "-a", tag_name, "-m", f"Asset release {config.version}"])
+
+            # Push the tag (not the branch)
+            print(f"Pushing tag: {tag_name}")
+            self._run_git_command(["push", "origin", tag_name])
 
             return commit_sha
 
@@ -162,6 +169,19 @@ class ReleaseManager:
             print(f"Returning to original branch: {original_branch}")
             try:
                 self._run_git_command(["checkout", original_branch])
+
+                # Delete the temporary orphaned branch
+                temp_branches = [
+                    branch.strip().replace("* ", "").replace("  ", "")
+                    for branch in self._run_git_command(["branch"], capture_output=True).split("\n")
+                    if branch.strip().startswith("temp-assets-")
+                ]
+
+                for temp_branch in temp_branches:
+                    if temp_branch:
+                        print(f"Deleting temporary branch: {temp_branch}")
+                        self._run_git_command(["branch", "-D", temp_branch], check=False)
+
             except subprocess.CalledProcessError:
                 print("Checkout failed, cleaning up uncommitted changes...")
                 try:
@@ -176,7 +196,7 @@ class ReleaseManager:
         """Build the release information dictionary."""
         return {
             "version": config.version,
-            "asset_branch": config.asset_branch_name,
+            "asset_tag": config.asset_branch_name,  # Now refers to tag, not branch
             "commit_sha": commit_sha,
             "assets": [
                 {
@@ -339,16 +359,16 @@ These assets are automatically downloaded during BirdNET-Pi installation.
 For manual installation:
 
 1. Clone the main BirdNET-Pi repository
-2. Download assets from this branch or the GitHub release
+2. Download assets from this tagged release
 3. Place assets in the appropriate directories as specified in the documentation
 
 ## Technical Details
 
-This branch uses the orphaned commit strategy to distribute large binary files
+This release uses the orphaned commit strategy to distribute large binary files
 without bloating the main repository history. Credit to Ben Webber for this approach.
 
 - **Release Version**: {config.version}
-- **Asset Branch**: {config.asset_branch_name}
+- **Asset Tag**: {config.asset_branch_name}
 - **Created**: Automated release system
 """
 
@@ -370,15 +390,15 @@ This release includes the following binary assets distributed via orphaned commi
         notes += f"""
 ### Asset Download
 
-Binary assets are available from the orphaned commit
+Binary assets are available from the orphaned commit tagged as `{config.asset_branch_name}`
 [{asset_commit_sha[:8]}](../../commit/{asset_commit_sha})
 and can be downloaded automatically during installation.
 
 ### Technical Details
 
-- **Asset Branch**: `{config.asset_branch_name}`
+- **Asset Tag**: `{config.asset_branch_name}`
 - **Asset Commit**: `{asset_commit_sha}`
-- **Distribution Strategy**: Orphaned commits (credit: Ben Webber)
+- **Distribution Strategy**: Orphaned commits with tags (credit: Ben Webber)
 
 For installation instructions, see the main repository README.
 """
