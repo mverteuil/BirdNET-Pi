@@ -197,7 +197,7 @@ class MQTTService:
             # Prepare detection payload
             payload = {
                 "timestamp": detection.timestamp.isoformat(),
-                "species": detection.species,
+                "species": detection.get_display_name(),
                 "confidence": detection.confidence,
                 "location": {
                     "latitude": detection.latitude,
@@ -224,7 +224,9 @@ class MQTTService:
 
             if result.rc == mqtt.MQTT_ERR_SUCCESS:
                 logger.debug(
-                    "Published detection: %s (%.2f)", detection.species, detection.confidence
+                    "Published detection: %s (%.2f)",
+                    detection.get_display_name(),
+                    detection.confidence,
                 )
                 return True
             else:

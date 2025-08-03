@@ -213,7 +213,9 @@ class TestWebhookService:
     async def test_send_detection_webhook_disabled(self, webhook_service):
         """Test sending detection webhook when service is disabled."""
         detection = Detection(
-            species="Test Bird",
+            species_tensor="Testus species_Test Bird",
+            scientific_name="Testus species",
+            common_name_tensor="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
             latitude=40.7128,
@@ -238,7 +240,9 @@ class TestWebhookService:
         service.add_webhook(config)
 
         detection = Detection(
-            species="Test Bird",
+            species_tensor="Testus species_Test Bird",
+            scientific_name="Testus species",
+            common_name_tensor="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
             latitude=40.7128,
@@ -346,7 +350,9 @@ class TestWebhookService:
         service.add_webhook(config3)
 
         detection = Detection(
-            species="Test Bird",
+            species_tensor="Testus species_Test Bird",
+            scientific_name="Testus species",
+            common_name_tensor="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
             cutoff=0.03,

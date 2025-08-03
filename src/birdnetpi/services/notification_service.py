@@ -32,16 +32,20 @@ class NotificationService:
 
     def _handle_detection_event(self, sender: object, detection: Detection) -> None:
         """Handle a new detection event by sending notifications."""
-        logger.info(f"NotificationService received detection: {detection.species}")
+        logger.info(f"NotificationService received detection: {detection.get_display_name()}")
 
         # Send WebSocket notifications (existing functionality)
         for _ws in self.active_websockets:
             # In a real async app, you'd await ws.send_json or similar
-            logger.info(f"Simulating sending detection to websocket: {detection.species}")
+            logger.info(
+                f"Simulating sending detection to websocket: {detection.get_display_name()}"
+            )
 
         # Send Apprise notifications (existing functionality)
         if self.config.apprise_notify_each_detection:
-            logger.info(f"Simulating sending Apprise notification for: {detection.species}")
+            logger.info(
+                f"Simulating sending Apprise notification for: {detection.get_display_name()}"
+            )
 
         # Send IoT notifications asynchronously (only if there's a running event loop)
         try:
@@ -61,15 +65,17 @@ class NotificationService:
             # Send MQTT notification
             if self.mqtt_service:
                 await self.mqtt_service.publish_detection(detection)
-                logger.debug(f"MQTT detection published: {detection.species}")
+                logger.debug(f"MQTT detection published: {detection.get_display_name()}")
 
             # Send webhook notification
             if self.webhook_service:
                 await self.webhook_service.send_detection_webhook(detection)
-                logger.debug(f"Webhook detection sent: {detection.species}")
+                logger.debug(f"Webhook detection sent: {detection.get_display_name()}")
 
         except Exception as e:
-            logger.error(f"Error sending IoT notifications for detection {detection.species}: {e}")
+            logger.error(
+                f"Error sending IoT notifications for detection {detection.get_display_name()}: {e}"
+            )
 
     async def send_system_health_notification(self, health_data: dict) -> None:
         """Send system health notifications to IoT services."""

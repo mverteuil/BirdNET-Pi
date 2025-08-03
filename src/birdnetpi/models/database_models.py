@@ -64,6 +64,10 @@ class Detection(Base):
     sensitivity = Column(Float, nullable=True)
     overlap = Column(Float, nullable=True)
 
+    def get_display_name(self) -> str:
+        """Get the best available species display name."""
+        return self.common_name_ioc or self.common_name_tensor or self.scientific_name
+
 
 class AudioFile(Base):
     """Represents an audio file record in the database."""

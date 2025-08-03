@@ -169,7 +169,7 @@ class WebhookService:
             "detection": {
                 "id": detection.id,
                 "timestamp": detection.timestamp.isoformat(),
-                "species": detection.species,
+                "species": detection.get_display_name(),
                 "confidence": detection.confidence,
                 "location": {
                     "latitude": detection.latitude,

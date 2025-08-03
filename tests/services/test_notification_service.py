@@ -33,20 +33,43 @@ def notification_service(mock_active_websockets, mock_config):
 def test_handle_detection_event_basic(notification_service, caplog):
     """Should log a basic notification message for detection event."""
     with caplog.at_level(logging.INFO):
-        detection = Detection(species="Common Blackbird", confidence=0.95)
+        detection = Detection(
+            species_tensor="Turdus merula_Common Blackbird",
+            scientific_name="Turdus merula",
+            common_name_tensor="Common Blackbird",
+            confidence=0.95,
+        )
         notification_service.active_websockets.add(Mock())  # Add a mock websocket
         notification_service._handle_detection_event(None, detection)
-        assert f"NotificationService received detection: {detection.species}" in caplog.text
-        assert f"Simulating sending detection to websocket: {detection.species}" in caplog.text
+        assert (
+            f"NotificationService received detection: {detection.get_display_name()}" in caplog.text
+        )
+        assert (
+            f"Simulating sending detection to websocket: {detection.get_display_name()}"
+            in caplog.text
+        )
 
 
 def test_handle_detection_event_with_apprise_enabled(mock_config, notification_service, caplog):
     """Should log an Apprise notification message when enabled for detection event."""
     mock_config.apprise_notify_each_detection = True  # Correctly set the nested attribute
     with caplog.at_level(logging.INFO):
-        detection = Detection(species="European Robin", confidence=0.88)
+        detection = Detection(
+            species_tensor="Erithacus rubecula_European Robin",
+            scientific_name="Erithacus rubecula",
+            common_name_tensor="European Robin",
+            confidence=0.88,
+        )
         notification_service.active_websockets.add(Mock())  # Add a mock websocket
         notification_service._handle_detection_event(None, detection)
-        assert f"NotificationService received detection: {detection.species}" in caplog.text
-        assert f"Simulating sending detection to websocket: {detection.species}" in caplog.text
-        assert f"Simulating sending Apprise notification for: {detection.species}" in caplog.text
+        assert (
+            f"NotificationService received detection: {detection.get_display_name()}" in caplog.text
+        )
+        assert (
+            f"Simulating sending detection to websocket: {detection.get_display_name()}"
+            in caplog.text
+        )
+        assert (
+            f"Simulating sending Apprise notification for: {detection.get_display_name()}"
+            in caplog.text
+        )

@@ -165,7 +165,9 @@ class TestMQTTService:
     async def test_publish_detection_disabled(self, mqtt_service):
         """Test publishing detection when MQTT is disabled."""
         detection = Detection(
-            species="Test Bird",
+            species_tensor="Testus species_Test Bird",
+            scientific_name="Testus species",
+            common_name_tensor="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
             latitude=40.7128,
@@ -192,7 +194,9 @@ class TestMQTTService:
         service.client.publish.return_value = mock_result
 
         detection = Detection(
-            species="Test Bird",
+            species_tensor="Testus species_Test Bird",
+            scientific_name="Testus species",
+            common_name_tensor="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
             latitude=40.7128,
@@ -403,7 +407,9 @@ class TestMQTTService:
         service.client.publish.return_value = mock_result
 
         detection = Detection(
-            species="Test Bird",
+            species_tensor="Testus species_Test Bird",
+            scientific_name="Testus species",
+            common_name_tensor="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
             cutoff=0.03,
@@ -426,7 +432,9 @@ class TestMQTTService:
         service.client.publish.side_effect = Exception("Connection lost")
 
         detection = Detection(
-            species="Test Bird",
+            species_tensor="Testus species_Test Bird",
+            scientific_name="Testus species",
+            common_name_tensor="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
             cutoff=0.03,
