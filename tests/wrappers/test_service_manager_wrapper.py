@@ -20,7 +20,7 @@ class FakeConfig:
     def __init__(self, db_path, recordings_dir):
         self.data = FakeDataConfig(db_path, recordings_dir)
         self.model = "mock_model"
-        self.sf_thresh = 0.1
+        self.species_confidence_threshold = 0.1
         self.confidence = 0.7
         self.sensitivity = 1.0
         self.latitude = 0.0

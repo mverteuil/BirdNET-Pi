@@ -29,7 +29,7 @@ def mock_app_state_managers(file_path_resolver):
     mock_config.site_name = "Test Site"
     mock_config.latitude = 0.0
     mock_config.longitude = 0.0
-    mock_config.sf_threshold = 0.0
+    mock_config.species_confidence_thresholdold = 0.0
     mock_config.privacy_threshold = 0.0
     mock_config.min_confidence = 0.0
     mock_config.min_detections = 0

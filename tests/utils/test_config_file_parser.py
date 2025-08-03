@@ -12,7 +12,7 @@ def config_file(tmp_path):
         "latitude": 12.34,
         "longitude": 56.78,
         "model": "Test_Model",
-        "sf_thresh": 0.05,
+        "species_confidence_threshold": 0.05,
         "confidence": 0.75,
         "sensitivity": 1.5,
         "week": 1,

@@ -16,7 +16,7 @@ def mock_config():
     mock = Mock(spec=BirdNETConfig)
     mock.model = "BirdNET_GLOBAL_6K_V2.4_Model_FP16"
     mock.privacy_threshold = 0.5
-    mock.sf_threshold = 0.1
+    mock.species_confidence_thresholdold = 0.1
     mock.data_model_version = 2
     return mock
 

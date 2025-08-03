@@ -42,7 +42,7 @@ def mock_config():
     mock.latitude = 0.0
     mock.longitude = 0.0
     mock.model = "test_model"
-    mock.sf_thresh = 0.0
+    mock.species_confidence_threshold = 0.0
     mock.birdweather_id = "test_id"
     mock.apprise_input = "test_input"
     mock.apprise_notification_title = "test_title"
