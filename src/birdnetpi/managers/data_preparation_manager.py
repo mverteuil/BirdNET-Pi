@@ -1,4 +1,5 @@
 import datetime
+from typing import cast
 
 import pandas as pd
 
@@ -39,23 +40,25 @@ class DataPreparationManager:
 
     def get_hourly_crosstab(self, df: pd.DataFrame) -> pd.DataFrame:
         """Generate a crosstabulation of common names by hour."""
-        return pd.crosstab(df["com_name"], df.index.hour, dropna=True, margins=True)
+        datetime_index = cast(pd.DatetimeIndex, df.index)
+        return pd.crosstab(df["com_name"], datetime_index.hour.values, dropna=True, margins=True)
 
     def get_daily_crosstab(self, df: pd.DataFrame) -> pd.DataFrame:
         """Generate a crosstabulation of common names by date."""
-        return pd.crosstab(df["com_name"], df.index.date, dropna=True, margins=True)
+        datetime_index = cast(pd.DatetimeIndex, df.index)
+        return pd.crosstab(df["com_name"], datetime_index.date.values, dropna=True, margins=True)
 
     def time_resample(self, df: pd.DataFrame, resample_time: str) -> pd.DataFrame:
         """Resample the DataFrame based on the given time interval."""
         if resample_time == "Raw":
             df_resample = df[["com_name"]]
         else:
-            df_resample = (
+            series_result = (
                 df.resample(resample_time.lower())["com_name"]
                 .aggregate("unique")
                 .explode()
-                .to_frame()
             )
+            df_resample = series_result.to_frame()
         return df_resample
 
     def prepare_multi_day_plot_data(
@@ -66,7 +69,8 @@ class DataPreparationManager:
         hourly = self.get_hourly_crosstab(df5)
         top_n_species = self.get_species_counts(df5)[: config.top_n]
 
-        df_counts = int(hourly[hourly.index == config.species]["All"].iloc[0])
+        counts_series = hourly[hourly.index == config.species]["All"]
+        df_counts = int(counts_series.iloc[0]) if len(counts_series) > 0 else 0
         return df5, hourly, top_n_species, df_counts
 
     def prepare_daily_plot_data(
@@ -74,12 +78,13 @@ class DataPreparationManager:
     ) -> tuple[pd.DataFrame, list[str], list[float], list[str]]:
         """Prepare data for the daily detections plot."""
         df4 = df["com_name"][df["com_name"] == config.species].resample("15min").count()
-        df4.index = [df4.index.date, df4.index.time]
+        datetime_index = cast(pd.DatetimeIndex, df4.index)
+        df4.index = [datetime_index.date, datetime_index.time]
         day_hour_freq = df4.unstack().fillna(0)
 
         saved_time_labels = [self.hms_to_str(h) for h in day_hour_freq.columns.tolist()]
         fig_dec_y = [self.hms_to_dec(h) for h in day_hour_freq.columns.tolist()]
-        fig_x = [d.strftime("%d-%m-%Y") for d in day_hour_freq.index.tolist()]
+        fig_x = [d.strftime("%d-%m-%Y") if hasattr(d, 'strftime') else str(d) for d in day_hour_freq.index.tolist()]
 
         return day_hour_freq, saved_time_labels, fig_dec_y, fig_x
 

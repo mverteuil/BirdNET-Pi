@@ -262,8 +262,16 @@ class TestMQTTEndpoints:
         assert data["broker_host"] == "localhost"
         assert data["broker_port"] == 1883
 
-    # Note: MQTT status exception handling is tested indirectly through other error scenarios
-    # TestClient limitations prevent direct testing of exception handling from mocked dependencies
+    def test_mqtt_status_exception_handling(self, mocked_client):
+        """Should handle MQTT status exceptions (covers lines 143-145)."""
+        app = mocked_client.app
+        app.state.mqtt_service.get_connection_status.side_effect = Exception("Status error")
+        
+        response = mocked_client.get("/api/iot/mqtt/status")
+        
+        assert response.status_code == 500
+        data = response.json()
+        assert "Failed to retrieve MQTT status" in data["detail"]
 
     def test_mqtt_test_connection_success(self, mocked_client):
         """Should test MQTT connection successfully."""
@@ -333,8 +341,16 @@ class TestWebhookEndpoints:
         assert "webhooks" in data
         assert "statistics" in data
 
-    # Note: Webhook status exception handling is tested indirectly through other error scenarios
-    # TestClient limitations prevent direct testing of exception handling from mocked dependencies
+    def test_webhook_status_exception_handling(self, mocked_client):
+        """Should handle webhook status exceptions (covers lines 204-206)."""
+        app = mocked_client.app
+        app.state.webhook_service.get_webhook_status.side_effect = Exception("Status error")
+        
+        response = mocked_client.get("/api/iot/webhooks/status")
+        
+        assert response.status_code == 500
+        data = response.json()
+        assert "Failed to retrieve webhook status" in data["detail"]
 
     def test_add_webhook_success(self, mocked_client):
         """Should add webhook successfully."""
@@ -547,6 +563,22 @@ class TestOverallStatusEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data["results"]["webhooks"] is False
+
+    def test_publish_test_events_webhook_health_test(self, mocked_client):
+        """Should test webhook health events publishing (covers lines 353-359)."""
+        app = mocked_client.app
+        # Ensure webhooks are enabled and service has webhooks
+        app.state.webhook_service.enable_webhooks = True
+        app.state.webhook_service.webhooks = [{"url": "https://example.com/webhook"}]
+        
+        response = mocked_client.post("/api/iot/publish/test")
+        
+        assert response.status_code == 200
+        data = response.json()
+        # Verify that webhook testing was executed
+        app.state.webhook_service.send_health_webhook.assert_called_once()
+        # Verify the webhook result was set to True
+        assert data["results"]["webhooks"] is True
 
     def test_publish_test_events_exception_handling(self, mocked_client):
         """Should handle test event publishing exceptions."""

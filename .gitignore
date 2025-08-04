@@ -53,8 +53,8 @@ HUMAN.txt
 include_species_list.txt
 build/
 /config/
-.coverage*
-coverage.xml
+*.coverage*
+*coverage.xml
 .git_commit_message.txt
 
 # Data directory (models, databases, generated files - distributed via releases, not committed)

@@ -42,10 +42,10 @@ class TestAudioCaptureDaemon:
 
     def test_main_successful_run(self, mocker, mock_dependencies, caplog):
         """Should create FIFOs, open them, start service, and clean up on shutdown."""
-        mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.makedirs")
-        mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.mkfifo")
-        mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.open", side_effect=[123, 456])
-        mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.close")  # Mock os.close here
+        mock_makedirs = mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.makedirs")
+        mock_mkfifo = mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.mkfifo")
+        mock_open = mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.open", side_effect=[123, 456])
+        mock_close = mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.close")  # Mock os.close here
         mocker.patch(
             "birdnetpi.wrappers.audio_capture_daemon.os.path.exists",
             side_effect=[False, False, True, True],
@@ -69,11 +69,11 @@ class TestAudioCaptureDaemon:
         daemon.main()
 
         # Assertions
-        daemon.os.makedirs.assert_called_once_with("/tmp/fifo", exist_ok=True)
-        daemon.os.mkfifo.assert_any_call("/tmp/fifo/birdnet_audio_analysis.fifo")
-        daemon.os.mkfifo.assert_any_call("/tmp/fifo/birdnet_audio_livestream.fifo")
-        daemon.os.open.assert_any_call("/tmp/fifo/birdnet_audio_analysis.fifo", os.O_WRONLY)
-        daemon.os.open.assert_any_call("/tmp/fifo/birdnet_audio_livestream.fifo", os.O_WRONLY)
+        mock_makedirs.assert_called_once_with("/tmp/fifo", exist_ok=True)
+        mock_mkfifo.assert_any_call("/tmp/fifo/birdnet_audio_analysis.fifo")
+        mock_mkfifo.assert_any_call("/tmp/fifo/birdnet_audio_livestream.fifo")
+        mock_open.assert_any_call("/tmp/fifo/birdnet_audio_analysis.fifo", os.O_WRONLY)
+        mock_open.assert_any_call("/tmp/fifo/birdnet_audio_livestream.fifo", os.O_WRONLY)
         mock_dependencies["AudioCaptureService"].assert_called_once_with(
             {"some_config": "value"}, 123, 456
         )

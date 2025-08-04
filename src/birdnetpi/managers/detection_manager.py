@@ -102,7 +102,7 @@ class DetectionManager:
                 print(f"Error retrieving detections by species: {e}")
                 raise
 
-    def get_detection_counts_by_date_range(self, start_date: datetime, end_date: datetime) -> dict:
+    def get_detection_counts_by_date_range(self, start_date: datetime.datetime, end_date: datetime.datetime) -> dict:
         """Get total detection count and unique species count within a date range."""
         with self.db_service.get_db() as db:
             try:
@@ -128,10 +128,10 @@ class DetectionManager:
 
     def get_top_species_with_prior_counts(
         self,
-        start_date: datetime,
-        end_date: datetime,
-        prior_start_date: datetime,
-        prior_end_date: datetime,
+        start_date: datetime.datetime,
+        end_date: datetime.datetime,
+        prior_start_date: datetime.datetime,
+        prior_end_date: datetime.datetime,
     ) -> list[dict]:
         """Fetch top 10 species for current and prior weeks."""
         with self.db_service.get_db() as db:
@@ -184,7 +184,7 @@ class DetectionManager:
                 print(f"Error getting top species with prior counts: {e}")
                 raise
 
-    def get_new_species_data(self, start_date: datetime, end_date: datetime) -> list[dict]:
+    def get_new_species_data(self, start_date: datetime.datetime, end_date: datetime.datetime) -> list[dict]:
         """Fetch new species not present in prior data."""
         with self.db_service.get_db() as db:
             try:
@@ -298,7 +298,7 @@ class DetectionManager:
                 print(f"Error getting best detections: {e}")
                 raise
 
-    def get_detection(self, detection_id: int) -> Detection:
+    def get_detection(self, detection_id: int) -> Detection | None:
         """Retrieve a single detection record from the database."""
         with self.db_service.get_db() as db:
             try:
@@ -364,8 +364,8 @@ class DetectionManager:
             try:
                 detection = db.query(Detection).filter(Detection.id == detection_id).first()
                 if detection:
-                    detection.latitude = latitude
-                    detection.longitude = longitude
+                    detection.latitude = latitude  # type: ignore[misc]
+                    detection.longitude = longitude  # type: ignore[misc]
                     db.commit()
                     return True
                 return False

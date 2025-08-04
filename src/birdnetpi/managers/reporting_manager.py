@@ -85,10 +85,12 @@ class ReportingManager:
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Get total detection counts and unique species counts for the current and prior weeks."""
         current_week_stats = self.detection_manager.get_detection_counts_by_date_range(
-            start_date, end_date
+            datetime.datetime.combine(start_date, datetime.time.min),
+            datetime.datetime.combine(end_date, datetime.time.max)
         )
         prior_week_stats = self.detection_manager.get_detection_counts_by_date_range(
-            prior_start_date, prior_end_date
+            datetime.datetime.combine(prior_start_date, datetime.time.min),
+            datetime.datetime.combine(prior_end_date, datetime.time.max)
         )
         return current_week_stats, prior_week_stats
 
@@ -101,7 +103,10 @@ class ReportingManager:
     ) -> list[dict[str, Any]]:
         """Fetch the top 10 species for the current week and their counts from the prior week."""
         top_10_species_rows = self.detection_manager.get_top_species_with_prior_counts(
-            start_date, end_date, prior_start_date, prior_end_date
+            datetime.datetime.combine(start_date, datetime.time.min),
+            datetime.datetime.combine(end_date, datetime.time.max),
+            datetime.datetime.combine(prior_start_date, datetime.time.min),
+            datetime.datetime.combine(prior_end_date, datetime.time.max)
         )
 
         top_10_species = []
@@ -126,7 +131,10 @@ class ReportingManager:
         self, start_date: datetime.date, end_date: datetime.date
     ) -> list[dict[str, Any]]:
         """Fetch new species detected in the current week that were not present in prior data."""
-        new_species_rows = self.detection_manager.get_new_species_data(start_date, end_date)
+        new_species_rows = self.detection_manager.get_new_species_data(
+            datetime.datetime.combine(start_date, datetime.time.min),
+            datetime.datetime.combine(end_date, datetime.time.max)
+        )
         new_species = (
             [{"com_name": row["species"], "count": row["count"]} for row in new_species_rows]
             if new_species_rows
@@ -221,10 +229,13 @@ class ReportingManager:
     def date_filter(self, df: pd.DataFrame, start_date: str, end_date: str) -> pd.DataFrame:
         """Filter a DataFrame by date range."""
         filt = (df.index >= pd.Timestamp(start_date)) & (
-            df.index <= pd.Timestamp(end_date + datetime.timedelta(days=1))
+            df.index <= pd.Timestamp(end_date) + datetime.timedelta(days=1)
         )
-        df = df[filt]
-        return df
+        filtered_df = df[filt]
+        # Ensure we return a DataFrame, not a Series
+        if isinstance(filtered_df, pd.Series):
+            return filtered_df.to_frame()
+        return filtered_df
 
     def get_daily_detection_data_for_plotting(
         self, df: pd.DataFrame, resample_sel: str, species: str
