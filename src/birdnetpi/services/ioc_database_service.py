@@ -225,7 +225,10 @@ class IOCDatabaseService:
                 .filter_by(scientific_name=scientific_name, language_code=language_code)
                 .first()
             )
-            return translation.common_name if translation else None
+            if translation is not None:
+                common_name = getattr(translation, 'common_name', None)
+                return str(common_name) if common_name else None
+            return None
         finally:
             session.close()
 
@@ -290,7 +293,7 @@ class IOCDatabaseService:
         session = self.session_local()
         try:
             metadata_list = session.query(IOCMetadata).all()
-            return {item.key: item.value for item in metadata_list}
+            return {str(item.key): str(item.value) for item in metadata_list}
         finally:
             session.close()
 

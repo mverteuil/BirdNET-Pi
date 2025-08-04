@@ -7,9 +7,9 @@ import os
 import numpy as np
 
 try:
-    import tflite_runtime.interpreter as tflite
+    import tflite_runtime.interpreter as tflite  # type: ignore[import-untyped]
 except ImportError:
-    import tensorflow.lite as tflite
+    import tensorflow.lite as tflite  # type: ignore[import-untyped,attr-defined]
 
 from birdnetpi.models.config import BirdNETConfig
 
@@ -22,8 +22,8 @@ class BirdDetectionService:
     def __init__(self, config: BirdNETConfig) -> None:
         self.config = config
         self.user_dir = os.path.expanduser("~")
-        self.interpreter: tflite.Interpreter | None = None
-        self.m_interpreter = None
+        self.interpreter: tflite.Interpreter | None = None  # type: ignore[name-defined]
+        self.m_interpreter: tflite.Interpreter | None = None  # type: ignore[name-defined]
         self.predicted_species_list = []  # This list is populated by the meta-model
         self.current_week = None
         self.model_name = None
@@ -55,11 +55,11 @@ class BirdDetectionService:
         from birdnetpi.utils.file_path_resolver import FilePathResolver
 
         file_resolver = FilePathResolver()
-        modelpath = file_resolver.get_model_path(self.model_name)
+        modelpath = file_resolver.get_model_path(self.model_name or "")  # Handle None case
         if modelpath is None:
             raise ValueError(f"Model path not found for model: {self.model_name}")
-        self.interpreter = tflite.Interpreter(model_path=modelpath, num_threads=2)
-        self.interpreter.allocate_tensors()
+        self.interpreter = tflite.Interpreter(model_path=modelpath, num_threads=2)  # type: ignore[attr-defined]
+        self.interpreter.allocate_tensors()  # type: ignore[union-attr]
 
         if self.interpreter is None:
             raise RuntimeError("Interpreter not initialized")
@@ -88,11 +88,16 @@ class BirdDetectionService:
         from birdnetpi.utils.file_path_resolver import FilePathResolver
 
         file_resolver = FilePathResolver()
-        self.m_interpreter = tflite.Interpreter(
-            model_path=file_resolver.get_model_path(self.config.metadata_model)
-        )
-        self.m_interpreter.allocate_tensors()
+        model_path = file_resolver.get_model_path(self.config.metadata_model)
+        if model_path is None:
+            raise ValueError(f"Model path not found for metadata model: {self.config.metadata_model}")
+            
+        self.m_interpreter = tflite.Interpreter(model_path=model_path)  # type: ignore[attr-defined]
+        self.m_interpreter.allocate_tensors()  # type: ignore[union-attr]
 
+        if self.m_interpreter is None:
+            raise RuntimeError("Meta interpreter not initialized")
+            
         input_details = self.m_interpreter.get_input_details()
         output_details = self.m_interpreter.get_output_details()
 
@@ -104,6 +109,9 @@ class BirdDetectionService:
     def _predict_filter_raw(self, lat: float, lon: float, week: int) -> np.ndarray:
         if self.m_interpreter is None:
             self._load_meta_model()
+            
+        if self.m_interpreter is None:
+            raise RuntimeError("Meta interpreter not initialized after load")
 
         sample = np.expand_dims(np.array([lat, lon, week], dtype="float32"), 0)
 

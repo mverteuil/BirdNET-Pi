@@ -134,10 +134,10 @@ class IOCReferenceService:
                             )
                             english_name = self._get_element_text(species_elem, "english_name", "")
                             breeding_regions = self._get_element_text(
-                                species_elem, "breeding_regions", None
+                                species_elem, "breeding_regions", ""
                             )
                             breeding_subregions = self._get_element_text(
-                                species_elem, "breeding_subregions", None
+                                species_elem, "breeding_subregions", ""
                             )
 
                             if genus_name and species_epithet and english_name:
@@ -193,40 +193,44 @@ class IOCReferenceService:
             ws = wb.active
 
             # Get headers (first row)
-            headers = [cell.value for cell in ws[1]]
+            if ws is None:
+                raise ValueError("Worksheet is None - cannot process XLSX file")
+            
+            headers = [str(cell.value) if cell.value is not None else "" for cell in ws[1]]
 
             # Map language columns (skip seq, Order, Family, IOC_15.1, English)
             lang_columns = {}
             for i, header in enumerate(headers):
                 if header and header not in ["seq", "Order", "Family", "IOC_15.1", "English"]:
                     # Map language names to codes
-                    lang_code = self._map_language_to_code(header)
+                    lang_code = self._map_language_to_code(str(header))
                     if lang_code:
                         lang_columns[lang_code] = i
 
             # Process data rows
             translation_count = 0
-            for row in range(2, ws.max_row + 1):  # Skip header row
-                values = [cell.value for cell in ws[row]]
+            if ws.max_row:
+                for row in range(2, ws.max_row + 1):  # Skip header row
+                    values = [cell.value for cell in ws[row]]
 
-                # IOC_15.1 column contains the scientific name
-                ioc_col_idx = headers.index("IOC_15.1") if "IOC_15.1" in headers else None
-                if ioc_col_idx is None or not values[ioc_col_idx]:
-                    continue
+                    # IOC_15.1 column contains the scientific name
+                    ioc_col_idx = headers.index("IOC_15.1") if "IOC_15.1" in headers else None
+                    if ioc_col_idx is None or not values[ioc_col_idx]:
+                        continue
 
-                scientific_name = values[ioc_col_idx].strip()
+                    scientific_name = str(values[ioc_col_idx]).strip()
 
-                # Initialize translations dict for this species
-                if scientific_name not in self._translations:
-                    self._translations[scientific_name] = {}
+                    # Initialize translations dict for this species
+                    if scientific_name not in self._translations:
+                        self._translations[scientific_name] = {}
 
-                # Extract translations for each language
-                for lang_code, col_idx in lang_columns.items():
-                    if col_idx < len(values) and values[col_idx]:
-                        translated_name = str(values[col_idx]).strip()
-                        if translated_name:
-                            self._translations[scientific_name][lang_code] = translated_name
-                            translation_count += 1
+                    # Extract translations for each language
+                    for lang_code, col_idx in lang_columns.items():
+                        if col_idx < len(values) and values[col_idx]:
+                            translated_name = str(values[col_idx]).strip()
+                            if translated_name:
+                                self._translations[scientific_name][lang_code] = translated_name
+                                translation_count += 1
 
             print(f"Loaded {translation_count} translations for {len(self._translations)} species")
 
