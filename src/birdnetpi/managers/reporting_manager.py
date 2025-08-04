@@ -227,9 +227,23 @@ class ReportingManager:
         # TODO: Implement get_detections_by_date_range method in DetectionManager
         # For now, use get_all_detections and filter manually
         all_detections = self.detection_manager.get_all_detections()
-        return [
+        todays_detections = [
             d for d in all_detections 
             if isinstance(d.timestamp, datetime.datetime) and start_datetime <= d.timestamp <= end_datetime
+        ]
+        
+        # Convert Detection objects to dictionaries matching the template expectations
+        return [
+            {
+                "Date": d.timestamp.strftime("%Y-%m-%d") if d.timestamp else "",
+                "Time": d.timestamp.strftime("%H:%M:%S") if d.timestamp else "",
+                "Sci_Name": d.scientific_name or "",
+                "Com_Name": d.common_name_ioc or d.common_name_tensor or "",
+                "Confidence": d.confidence or 0,
+                "Lat": d.latitude or "",
+                "Lon": d.longitude or "",
+            }
+            for d in todays_detections
         ]
 
     def date_filter(self, df: pd.DataFrame, start_date: str, end_date: str) -> pd.DataFrame:

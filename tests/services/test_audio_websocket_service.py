@@ -52,7 +52,7 @@ class TestAudioWebSocketService:
         """Should return early if no websockets are connected."""
         audio_websocket_service.connected_websockets.clear()
         with patch(
-            "src.birdnetpi.services.audio_websocket_service.AudioSegment"
+            "birdnetpi.services.audio_websocket_service.AudioSegment"
         ) as mock_audio_segment:
             await audio_websocket_service.stream_audio_chunk(b"test_audio")
             mock_audio_segment.assert_not_called()
@@ -64,12 +64,17 @@ class TestAudioWebSocketService:
         audio_websocket_service.connected_websockets.add(mock_websocket)
 
         mock_audio_segment_instance = MagicMock()
-        mock_export = MagicMock()
-        mock_export.read.return_value = b"encoded_audio"
-        mock_audio_segment_instance.export.return_value = mock_export
+        
+        # Mock the export method to write to the BytesIO buffer
+        def mock_export(buffer, format=None):
+            # Write the encoded audio to the buffer
+            buffer.write(b"encoded_audio")
+            return buffer
+        
+        mock_audio_segment_instance.export.side_effect = mock_export
 
         with patch(
-            "src.birdnetpi.services.audio_websocket_service.AudioSegment.__new__",
+            "birdnetpi.services.audio_websocket_service.AudioSegment.__new__",
             return_value=mock_audio_segment_instance,
         ) as mock_audio_segment_new:
             # Use a numpy array to create valid int16 audio bytes
@@ -85,7 +90,11 @@ class TestAudioWebSocketService:
                 frame_rate=audio_websocket_service.samplerate,
                 channels=audio_websocket_service.channels,
             )
-            mock_audio_segment_instance.export.assert_called_once_with(format="mp3")
+            # Verify export was called with a BytesIO object and format="mp3"
+            mock_audio_segment_instance.export.assert_called_once()
+            call_args = mock_audio_segment_instance.export.call_args
+            assert hasattr(call_args[0][0], 'write')  # First arg should be BytesIO-like
+            assert call_args[1] == {'format': 'mp3'}
             mock_websocket.send_bytes.assert_called_once_with(b"encoded_audio")
 
     @pytest.mark.asyncio
@@ -98,12 +107,17 @@ class TestAudioWebSocketService:
         audio_websocket_service.connected_websockets.add(mock_websocket)
 
         mock_audio_segment_instance = MagicMock()
-        mock_export = MagicMock()
-        mock_export.read.return_value = b"encoded_audio"
-        mock_audio_segment_instance.export.return_value = mock_export
+        
+        # Mock the export method to write to the BytesIO buffer
+        def mock_export(buffer, format=None):
+            # Write the encoded audio to the buffer
+            buffer.write(b"encoded_audio")
+            return buffer
+        
+        mock_audio_segment_instance.export.side_effect = mock_export
 
         with patch(
-            "src.birdnetpi.services.audio_websocket_service.AudioSegment.__new__",
+            "birdnetpi.services.audio_websocket_service.AudioSegment.__new__",
             return_value=mock_audio_segment_instance,
         ):
             # Use a numpy array to create valid int16 audio bytes
@@ -125,7 +139,7 @@ class TestAudioWebSocketService:
         mock_audio_segment_instance.export.side_effect = Exception("Encoding error")
 
         with patch(
-            "src.birdnetpi.services.audio_websocket_service.AudioSegment.__new__",
+            "birdnetpi.services.audio_websocket_service.AudioSegment.__new__",
             return_value=mock_audio_segment_instance,
         ):
             # Explicitly set log level for this test

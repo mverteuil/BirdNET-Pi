@@ -9,9 +9,9 @@ from birdnetpi.services.birdweather_service import BirdWeatherService
 @pytest.fixture
 def birdweather_service():
     """Return a BirdWeatherService instance."""
-    service = BirdWeatherService()
-    service.config = MagicMock()
-    service.config.birdweather_id = "mock_api_key"
+    mock_config = MagicMock()
+    mock_config.birdweather_id = "mock_api_key"
+    service = BirdWeatherService(config=mock_config)
     return service
 
 
@@ -37,6 +37,8 @@ def test_send_detection_to_birdweather_failure(birdweather_service):
     """Should handle failure when sending detection data to BirdWeather API."""
     detection_data = {"species": "Test Bird", "confidence": 0.9}
     with patch("requests.post") as mock_post:
+        # Create a real RequestException to test the exception handling
+        import requests.exceptions
         mock_post.side_effect = requests.exceptions.RequestException("Test Error")
 
         birdweather_service.send_detection_to_birdweather(detection_data)
@@ -73,6 +75,8 @@ def test_get_birdweather_data_failure(birdweather_service):
     """Should handle failure when retrieving BirdWeather data."""
     location_data = {"lat": 12.34, "lon": 56.78}
     with patch("requests.get") as mock_get:
+        # Create a real RequestException to test the exception handling
+        import requests.exceptions
         mock_get.side_effect = requests.exceptions.RequestException("Test Error")
 
         result = birdweather_service.get_birdweather_data(location_data)

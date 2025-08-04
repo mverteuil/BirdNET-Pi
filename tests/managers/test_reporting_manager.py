@@ -153,22 +153,23 @@ def test_get_weekly_report_data(reporting_manager, detection_manager):
         # Extract the actual calls made to get_detection_counts_by_date_range
         calls = detection_manager.get_detection_counts_by_date_range.call_args_list
 
-        # Assert the first call
-        assert calls[0].args[0] == datetime.date(2025, 6, 30)
-        assert calls[0].args[1] == datetime.date(2025, 7, 6)
+        # Assert the first call (expects datetime objects, not date objects)
+        assert calls[0].args[0] == datetime.datetime(2025, 6, 30, 0, 0, 0)
+        assert calls[0].args[1] == datetime.datetime(2025, 7, 6, 23, 59, 59, 999999)
 
         # Assert the second call
-        assert calls[1].args[0] == datetime.date(2025, 6, 23)
-        assert calls[1].args[1] == datetime.date(2025, 6, 29)
+        assert calls[1].args[0] == datetime.datetime(2025, 6, 23, 0, 0, 0)
+        assert calls[1].args[1] == datetime.datetime(2025, 6, 29, 23, 59, 59, 999999)
 
         detection_manager.get_top_species_with_prior_counts.assert_called_once_with(
-            datetime.date(2025, 6, 30),
-            datetime.date(2025, 7, 6),
-            datetime.date(2025, 6, 23),
-            datetime.date(2025, 6, 29),
+            datetime.datetime(2025, 6, 30, 0, 0, 0),
+            datetime.datetime(2025, 7, 6, 23, 59, 59, 999999),
+            datetime.datetime(2025, 6, 23, 0, 0, 0),
+            datetime.datetime(2025, 6, 29, 23, 59, 59, 999999),
         )
         detection_manager.get_new_species_data.assert_called_once_with(
-            datetime.date(2025, 6, 30), datetime.date(2025, 7, 6)
+            datetime.datetime(2025, 6, 30, 0, 0, 0),
+            datetime.datetime(2025, 7, 6, 23, 59, 59, 999999)
         )
 
 
@@ -284,39 +285,77 @@ def test_get_todays_detections(reporting_manager, detection_manager):
     ) as mock_date:
         mock_date.today.return_value = today
         
-        expected_start = datetime.datetime(2025, 7, 15, 0, 0, 0)
-        expected_end = datetime.datetime(2025, 7, 15, 23, 59, 59, 999999)  # time.max includes microseconds
-        
-        detection_manager.get_detections_by_date_range.return_value = [
-            {"com_name": "American Robin", "Date": "2025-07-15", "Time": "10:00:00"},
-            {"com_name": "Northern Cardinal", "Date": "2025-07-15", "Time": "14:30:00"},
+        # Create mock Detection objects
+        from birdnetpi.models.database_models import Detection
+        mock_detections = [
+            Detection(
+                id=1,
+                species_tensor="Turdus migratorius_American Robin",
+                scientific_name="Turdus migratorius",
+                common_name_tensor="American Robin",
+                common_name_ioc="American Robin",
+                timestamp=datetime.datetime(2025, 7, 15, 10, 0, 0),
+                confidence=0.9,
+                audio_file_id=101,
+            ),
+            Detection(
+                id=2,
+                species_tensor="Cardinalis cardinalis_Northern Cardinal",
+                scientific_name="Cardinalis cardinalis",
+                common_name_tensor="Northern Cardinal",
+                common_name_ioc="Northern Cardinal",
+                timestamp=datetime.datetime(2025, 7, 15, 14, 30, 0),
+                confidence=0.95,
+                audio_file_id=102,
+            ),
+            # Add a detection from a different day that should be filtered out
+            Detection(
+                id=3,
+                species_tensor="Cyanocitta cristata_Blue Jay",
+                scientific_name="Cyanocitta cristata",
+                common_name_tensor="Blue Jay",
+                common_name_ioc="Blue Jay",
+                timestamp=datetime.datetime(2025, 7, 14, 12, 0, 0),  # Different day
+                confidence=0.85,
+                audio_file_id=103,
+            ),
         ]
+        
+        detection_manager.get_all_detections.return_value = mock_detections
         
         # Call the method
         todays_detections = reporting_manager.get_todays_detections()
         
-        # Verify the results
+        # Verify the results - only 2 detections from today
         assert len(todays_detections) == 2
-        assert todays_detections[0]["com_name"] == "American Robin"
+        assert todays_detections[0]["Com_Name"] == "American Robin"
+        assert todays_detections[1]["Com_Name"] == "Northern Cardinal"
+        assert todays_detections[0]["Date"] == "2025-07-15"
+        assert todays_detections[0]["Time"] == "10:00:00"
+        assert todays_detections[0]["Confidence"] == 0.9
         
-        # Verify the detection manager was called with correct date range
-        detection_manager.get_detections_by_date_range.assert_called_once_with(
-            expected_start, expected_end
-        )
+        # Verify the detection manager was called
+        detection_manager.get_all_detections.assert_called_once()
 
 
 def test_date_filter(reporting_manager):
-    """Should filter DataFrame by date range (covers lines 223-227)."""
+    """Should filter DataFrame by date range."""
     # Create test DataFrame with datetime index
     dates = pd.date_range(start='2025-07-10', end='2025-07-20', freq='D')
     df = pd.DataFrame({
         'value': range(len(dates))
     }, index=dates)
     
-    # The implementation has a bug in line 224 where it tries to add timedelta to a string
-    # This will raise a TypeError, which we'll catch to cover the lines
-    with pytest.raises(TypeError) as exc_info:
-        reporting_manager.date_filter(df, '2025-07-12', '2025-07-15')
+    # Filter from 2025-07-12 to 2025-07-15
+    filtered_df = reporting_manager.date_filter(df, '2025-07-12', '2025-07-15')
     
-    # Verify the error is what we expect (string + timedelta)
-    assert "unsupported operand type(s)" in str(exc_info.value) or "can only concatenate str" in str(exc_info.value)
+    # Verify the filtered DataFrame contains the expected dates
+    # The implementation adds 1 day to end_date, so it will include 2025-07-16
+    expected_dates = pd.date_range(start='2025-07-12', end='2025-07-16', freq='D')
+    assert len(filtered_df) == len(expected_dates)
+    assert all(date in filtered_df.index for date in expected_dates)
+    
+    # Test edge case with single row result (should return DataFrame not Series)
+    filtered_single = reporting_manager.date_filter(df, '2025-07-15', '2025-07-15')
+    assert isinstance(filtered_single, pd.DataFrame)
+    assert len(filtered_single) == 2  # 07-15 and 07-16 due to +1 day

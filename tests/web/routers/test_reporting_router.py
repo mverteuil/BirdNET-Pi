@@ -138,18 +138,25 @@ def test_get_best_recordings(mock_app_state_managers):
 
 def test_get_todays_detections(mock_app_state_managers):
     """Should retrieve today's detections successfully."""
-    # Configure the mock_db_manager to return test data
-    app.state.detections.get_detections_by_date_range.return_value = [
-        {
-            "Date": "2025-07-26",
-            "Time": "12:00:00",
-            "Sci_Name": "Zenaida macroura",
-            "Com_Name": "Mourning Dove",
-            "Confidence": 0.85,
-            "Lat": 38.8951,
-            "Lon": -77.0364,
-        }
+    # Configure the mock detection manager to return test data
+    from birdnetpi.models.database_models import Detection
+    import datetime
+    
+    mock_detections = [
+        Detection(
+            id=1,
+            species_tensor="Zenaida macroura_Mourning Dove",
+            scientific_name="Zenaida macroura",
+            common_name_tensor="Mourning Dove",
+            common_name_ioc="Mourning Dove",
+            timestamp=datetime.datetime.now(),
+            confidence=0.85,
+            audio_file_id=101,
+        )
     ]
+    
+    # Mock get_all_detections since that's what the ReportingManager uses
+    app.state.detections.get_all_detections.return_value = mock_detections
 
     response = client.get("/reports/todays_detections")
 
@@ -158,5 +165,5 @@ def test_get_todays_detections(mock_app_state_managers):
     assert "Today's Detections" in response.text
     assert "Mourning Dove" in response.text
 
-    # Assert that get_detections_by_date_range was called
-    app.state.detections.get_detections_by_date_range.assert_called_once()
+    # Assert that get_all_detections was called
+    app.state.detections.get_all_detections.assert_called_once()
