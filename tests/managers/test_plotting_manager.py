@@ -1,6 +1,8 @@
 import datetime
+import io
 from unittest.mock import Mock
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
@@ -202,3 +204,96 @@ def test_generate_daily_detections_plot_should_return_figure(
         df, resample_sel, start_date, species, num_days_to_display, selected_pal
     )
     assert isinstance(fig, go.Figure)
+
+
+def test_create_empty_plot(plotting_manager):
+    """Should create an empty plot with a message (covers lines 28-43)."""
+    message = "No data available"
+    
+    fig = plotting_manager._create_empty_plot(message)
+    
+    assert isinstance(fig, go.Figure)
+    # Check the annotation was added
+    assert len(fig.layout.annotations) == 1
+    assert fig.layout.annotations[0].text == message
+    assert fig.layout.annotations[0].x == 0.5
+    assert fig.layout.annotations[0].y == 0.5
+    # Check layout was updated
+    assert fig.layout.xaxis.showgrid is False
+    assert fig.layout.yaxis.showgrid is False
+    assert fig.layout.plot_bgcolor == "white"
+
+
+def test_generate_spectrogram(plotting_manager, mocker):
+    """Should generate a spectrogram and return it as BytesIO (covers lines 47-63)."""
+    # Mock librosa functions
+    mock_load = mocker.patch('birdnetpi.managers.plotting_manager.librosa.load')
+    mock_stft = mocker.patch('birdnetpi.managers.plotting_manager.librosa.stft')
+    mock_amplitude_to_db = mocker.patch('birdnetpi.managers.plotting_manager.librosa.amplitude_to_db')
+    mock_specshow = mocker.patch('birdnetpi.managers.plotting_manager.librosa.display.specshow')
+    mock_plt = mocker.patch('birdnetpi.managers.plotting_manager.plt')
+    
+    # Setup mock returns
+    mock_load.return_value = (np.array([0.1, 0.2, 0.3]), 22050)  # (audio, sample_rate)
+    mock_stft.return_value = np.array([[0.1, 0.2], [0.3, 0.4]])
+    mock_amplitude_to_db.return_value = np.array([[0.5, 0.6], [0.7, 0.8]])
+    
+    # Mock the figure and axes
+    mock_fig = Mock()
+    mock_ax = Mock()
+    mock_plt.subplots.return_value = (mock_fig, mock_ax)
+    
+    # Call the method
+    audio_path = "/path/to/audio.wav"
+    result = plotting_manager.generate_spectrogram(audio_path)
+    
+    # Verify the function calls
+    mock_load.assert_called_once_with(audio_path)
+    mock_stft.assert_called_once()
+    mock_amplitude_to_db.assert_called_once()
+    mock_specshow.assert_called_once()
+    mock_ax.set.assert_called_once_with(title="Spectrogram")
+    mock_fig.tight_layout.assert_called_once()
+    mock_plt.savefig.assert_called_once()
+    mock_plt.close.assert_called_once_with(mock_fig)
+    
+    # Verify result is a BytesIO
+    assert isinstance(result, io.BytesIO)
+
+
+def test_generate_multi_day_plot_with_empty_dataframe(plotting_manager, mocker):
+    """Should return empty plot when dataframe is empty (covers line 181)."""
+    # Create empty DataFrame
+    empty_df = pd.DataFrame()
+    
+    # Mock the _create_empty_plot method to verify it's called
+    mock_create_empty = mocker.patch.object(plotting_manager, '_create_empty_plot')
+    mock_create_empty.return_value = go.Figure()
+    
+    # Call the method with empty DataFrame
+    result = plotting_manager.generate_multi_day_species_and_hourly_plot(
+        empty_df, "H", "2023-01-01", "2023-01-02", 3, "Common Blackbird"
+    )
+    
+    # Verify _create_empty_plot was called with correct message
+    mock_create_empty.assert_called_once_with("No data available for multi-day plot")
+    assert isinstance(result, go.Figure)
+
+
+def test_generate_daily_detections_plot_with_empty_dataframe(plotting_manager, mocker):
+    """Should return empty plot when dataframe is empty (covers line 264)."""
+    # Create empty DataFrame
+    empty_df = pd.DataFrame()
+    
+    # Mock the _create_empty_plot method to verify it's called
+    mock_create_empty = mocker.patch.object(plotting_manager, '_create_empty_plot')
+    mock_create_empty.return_value = go.Figure()
+    
+    # Call the method with empty DataFrame
+    result = plotting_manager.generate_daily_detections_plot(
+        empty_df, "15min", "2023-01-01", "Common Blackbird", 7, "Viridis"
+    )
+    
+    # Verify _create_empty_plot was called with correct message
+    mock_create_empty.assert_called_once_with("No data available for daily plot")
+    assert isinstance(result, go.Figure)
