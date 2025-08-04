@@ -181,7 +181,7 @@ async def get_log_content() -> PlainTextResponse:
     try:
         log_service = LogService()
         logs = log_service.get_logs()
-        return logs
+        return PlainTextResponse(logs)
     except Exception as e:
         logger.error("Error retrieving logs: %s", e)
         return PlainTextResponse(f"Error retrieving logs: {e!s}", status_code=500)

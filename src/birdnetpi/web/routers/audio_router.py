@@ -55,7 +55,7 @@ async def select_audio_device(
 async def handle_select_audio_device(
     request: Request,
     audio_device_service: AudioDeviceService = Depends(get_audio_device_service),  # noqa: B008
-) -> HTMLResponse:
+) -> HTMLResponse | RedirectResponse:
     """Handle the submission of the audio device selection form."""
     templates: Jinja2Templates = request.app.state.templates
     devices = audio_device_service.discover_input_devices()
