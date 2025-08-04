@@ -108,6 +108,24 @@ class TestAudioFilter:
         assert "TestFilter" in str_repr
         assert "enabled" in str_repr
 
+    def test_abstract_filter_process_method(self):
+        """Test that abstract AudioFilter process method is callable."""
+        from birdnetpi.utils.filters import AudioFilter
+        
+        # Create a minimal concrete implementation that implements process
+        class MinimalFilter(AudioFilter):
+            def process(self, audio_data):
+                # Call the abstract parent method to cover the 'pass' line
+                super().process(audio_data)
+                return audio_data
+        
+        filter_instance = MinimalFilter("TestFilter")
+        test_data = np.array([1000, 2000, 3000], dtype=np.int16)
+        
+        # The concrete process method should call the abstract parent
+        result = filter_instance.process(test_data)
+        np.testing.assert_array_equal(result, test_data)
+
 
 class TestHighPassFilter:
     """Test the HighPassFilter implementation."""
@@ -245,6 +263,24 @@ class TestLowPassFilter:
         assert params["cutoff_frequency"] == 2500.0
         assert params["order"] == 8
         assert params["type"] == "LowPassFilter"
+
+    def test_lowpass_filter_cutoff_too_high_warning(self, caplog):
+        """Test warning when cutoff frequency is too high."""
+        filter_instance = LowPassFilter(cutoff_frequency=30000.0)  # Higher than Nyquist for 48kHz
+
+        with caplog.at_level(logging.WARNING):
+            filter_instance.configure(48000, 1)
+
+        assert "cutoff" in caplog.text.lower()
+        assert "nyquist" in caplog.text.lower()
+
+    def test_lowpass_filter_not_configured_error(self):
+        """Test error when processing without configuration."""
+        filter_instance = LowPassFilter(cutoff_frequency=2000.0)
+        test_data = np.array([1000, 2000, 3000], dtype=np.int16)
+
+        with pytest.raises(RuntimeError, match="not configured"):
+            filter_instance.process(test_data)
 
 
 class TestFilterChain:
