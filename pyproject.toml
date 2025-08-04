@@ -113,6 +113,20 @@ audio-websocket-daemon = "birdnetpi.wrappers.audio_websocket_daemon:main"
 release-manager = "birdnetpi.wrappers.release_wrapper:main"
 asset-installer = "birdnetpi.wrappers.asset_installer_wrapper:main"
 
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "standard"
+reportMissingTypeStubs = "none"
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownVariableType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownParameterType = "none"
+reportUnnecessaryIsInstance = "none"
+useLibraryCodeForTypes = true
+include = ["src", "tests"]
+exclude = ["**/build", "**/__pycache__"]
+
 [dependency-groups]
 dev = [
     "ast-grep-cli>=0.39.2",
@@ -123,5 +137,6 @@ dev = [
     "pytest-asyncio>=0.23.8",
     "pytest-cov>=6.2.1",
     "pytest-mock==3.7.0",
+    "pyright>=1.1.390",
     "ruff>=0.12.5",
 ]

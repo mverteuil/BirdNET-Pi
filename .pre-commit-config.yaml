@@ -17,6 +17,12 @@ repos:
         exclude: ^build/
       - id: ruff-format
         exclude: ^build/
+-   repo: https://github.com/microsoft/pyright
+    rev: v1.1.390
+    hooks:
+    -   id: pyright
+        exclude: ^build/
+        additional_dependencies: [pyright@1.1.390]
 -   repo: https://github.com/pre-commit/mirrors-prettier
     rev: v3.0.3
     hooks:
