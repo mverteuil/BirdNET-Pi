@@ -67,7 +67,7 @@ def sample_dataframe():
 def test_add_polar_trace_to_figure_should_return_figure(plotting_manager):
     """Should return a plotly figure after adding a polar trace."""
     fig = go.Figure()
-    hourly_df = pd.DataFrame({"All": [1, 2, 3]}, index=[0, 1, 2])
+    hourly_df = pd.DataFrame(data={"All": [1, 2, 3]}, index=[0, 1, 2])
     species = "Common Blackbird"
     result_fig = plotting_manager._add_polar_trace_to_figure(fig, hourly_df, species)
     assert isinstance(result_fig, go.Figure)
@@ -83,7 +83,7 @@ def test_create_multi_day_plot_figure_should_return_figure(
     end_date = "23-01-07"
     resample_sel = "D"
     top_n_species = pd.Series([5, 3], index=["SpeciesA", "SpeciesB"])
-    hourly = pd.DataFrame({"All": [1, 2, 3]}, index=[0, 1, 2])
+    hourly = pd.DataFrame(data={"All": [1, 2, 3]}, index=[0, 1, 2])
     species = "SpeciesA"
     df5 = pd.DataFrame(
         {
@@ -128,7 +128,7 @@ def test_generate_multi_day_species_and_hourly_plot_should_return_figure(
     # Mock the internal data preparation method that PlottingManager calls
     mock_data_preparation_manager.prepare_multi_day_plot_data.return_value = (
         pd.DataFrame(),
-        pd.DataFrame({"col1": [1, 2]}, index=["SpeciesA", "Common Blackbird"]),
+        pd.DataFrame(data={"col1": [1, 2]}, index=["SpeciesA", "Common Blackbird"]),
         pd.Series(),
         0,
     )
@@ -145,7 +145,7 @@ def test_generate_multi_day_species_and_hourly_plot_should_return_figure(
 def test_create_daily_detections_heatmap_should_return_figure(plotting_manager):
     """Should return a plotly heatmap figure for daily detections."""
     fig_x = ["2023-01-01"]
-    day_hour_freq = pd.DataFrame({"08:00": [1]}, index=["2023-01-01"])
+    day_hour_freq = pd.DataFrame(data={"08:00": [1]}, index=["2023-01-01"])
     fig_z = [[1]]
     selected_pal = "Viridis"
     sunrise_list = [0.0]
@@ -168,7 +168,7 @@ def test_update_daily_plot_layout_should_update_figure_layout(plotting_manager):
     """Should update the layout of the daily detections plot."""
     fig = go.Figure()
     saved_time_labels = ["08:00", "09:00"]
-    day_hour_freq = pd.DataFrame({"08:00": [1], "09:00": [2]}, index=["2023-01-01"])
+    day_hour_freq = pd.DataFrame(data={"08:00": [1], "09:00": [2]}, index=["2023-01-01"])
 
     result_fig = plotting_manager._update_daily_plot_layout(fig, saved_time_labels, day_hour_freq)
     assert isinstance(result_fig, go.Figure)

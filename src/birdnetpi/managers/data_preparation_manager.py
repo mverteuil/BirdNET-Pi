@@ -41,12 +41,12 @@ class DataPreparationManager:
     def get_hourly_crosstab(self, df: pd.DataFrame) -> pd.DataFrame:
         """Generate a crosstabulation of common names by hour."""
         datetime_index = cast(pd.DatetimeIndex, df.index)
-        return pd.crosstab(df["com_name"], datetime_index.hour.values, dropna=True, margins=True)
+        return pd.crosstab(df["com_name"], datetime_index.hour.values, dropna=True, margins=True)  # type: ignore[attr-defined]
 
     def get_daily_crosstab(self, df: pd.DataFrame) -> pd.DataFrame:
         """Generate a crosstabulation of common names by date."""
         datetime_index = cast(pd.DatetimeIndex, df.index)
-        return pd.crosstab(df["com_name"], datetime_index.date.values, dropna=True, margins=True)
+        return pd.crosstab(df["com_name"], datetime_index.date.values, dropna=True, margins=True)  # type: ignore[attr-defined]
 
     def time_resample(self, df: pd.DataFrame, resample_time: str) -> pd.DataFrame:
         """Resample the DataFrame based on the given time interval."""
@@ -71,7 +71,7 @@ class DataPreparationManager:
 
         counts_series = hourly[hourly.index == config.species]["All"]
         df_counts = int(counts_series.iloc[0]) if len(counts_series) > 0 else 0
-        return df5, hourly, top_n_species, df_counts
+        return df5, hourly, cast(pd.Series, top_n_species), df_counts
 
     def prepare_daily_plot_data(
         self, df: pd.DataFrame, config: DailyPlotConfig
@@ -79,14 +79,15 @@ class DataPreparationManager:
         """Prepare data for the daily detections plot."""
         df4 = df["com_name"][df["com_name"] == config.species].resample("15min").count()
         datetime_index = cast(pd.DatetimeIndex, df4.index)
-        df4.index = [datetime_index.date, datetime_index.time]
+        df4.index = [datetime_index.date, datetime_index.time]  # type: ignore[attr-defined]
         day_hour_freq = df4.unstack().fillna(0)
 
         saved_time_labels = [self.hms_to_str(h) for h in day_hour_freq.columns.tolist()]
         fig_dec_y = [self.hms_to_dec(h) for h in day_hour_freq.columns.tolist()]
         fig_x = [d.strftime("%d-%m-%Y") if hasattr(d, 'strftime') else str(d) for d in day_hour_freq.index.tolist()]
 
-        return day_hour_freq, saved_time_labels, fig_dec_y, fig_x
+        # Ensure we return consistent types
+        return cast(pd.DataFrame, day_hour_freq), saved_time_labels, fig_dec_y, [str(x) for x in fig_x]
 
     def prepare_sunrise_sunset_data_for_plot(
         self, num_days_to_display: int

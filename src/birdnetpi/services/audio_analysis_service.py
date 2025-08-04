@@ -97,7 +97,7 @@ class AudioAnalysisService:
         try:
             audio_file_instance = self.file_manager.save_detection_audio(
                 relative_audio_file_path,
-                np.frombuffer(
+                np.frombuffer(  # type: ignore[arg-type]
                     raw_audio_bytes, dtype=np.int16
                 ),  # Ensure raw_audio_bytes is int16 numpy array
                 self.config.sample_rate,  # Get from config

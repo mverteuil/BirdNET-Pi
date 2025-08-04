@@ -17,9 +17,9 @@ class AudioDeviceService:
         input_devices: list[AudioDevice] = []
 
         for _, device in enumerate(devices):
-            if device["max_input_channels"] > 0:
+            if device["max_input_channels"] > 0:  # type: ignore[misc]
                 input_devices.append(
-                    AudioDevice(
+                    AudioDevice(  # type: ignore[misc]
                         name=device["name"],
                         index=device["index"],
                         host_api_index=device["hostapi"],
