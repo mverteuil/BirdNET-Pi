@@ -193,7 +193,6 @@ class DetectionManager:
                     db.query(Detection.scientific_name)
                     .filter(Detection.timestamp < start_date)
                     .distinct()
-                    .subquery()
                 )
 
                 # Query for new species in current range, excluding prior_species_subquery

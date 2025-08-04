@@ -132,7 +132,7 @@ class PlottingManager:
                 f"Total Detect:{df_counts:,}",
             ),
         )
-        fig.layout.annotations[1].update(x=0.7, y=0.25, font_size=15)
+        fig.layout.annotations[1].update(x=0.7, y=0.25, font_size=15)  # type: ignore[index]
 
         fig.add_trace(
             go.Bar(
@@ -273,7 +273,7 @@ class PlottingManager:
 
         sunrise_week_list, sunrise_list, sunrise_text_list, daysback_range = (
             self.data_preparation_manager.prepare_sunrise_sunset_data_for_plot(
-                num_days_to_display, fig_x
+                num_days_to_display
             )
         )
 

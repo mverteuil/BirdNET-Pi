@@ -59,7 +59,7 @@ class DataPreparationManager:
                 .explode()
             )
             df_resample = series_result.to_frame()
-        return df_resample
+        return cast(pd.DataFrame, df_resample)
 
     def prepare_multi_day_plot_data(
         self, df: pd.DataFrame, config: MultiDayPlotConfig
@@ -70,24 +70,32 @@ class DataPreparationManager:
         top_n_species = self.get_species_counts(df5)[: config.top_n]
 
         counts_series = hourly[hourly.index == config.species]["All"]
-        df_counts = int(counts_series.iloc[0]) if len(counts_series) > 0 else 0
+        counts_series_cast = cast(pd.Series, counts_series)
+        df_counts = int(counts_series_cast.iloc[0]) if len(counts_series_cast) > 0 else 0
         return df5, hourly, cast(pd.Series, top_n_species), df_counts
 
     def prepare_daily_plot_data(
         self, df: pd.DataFrame, config: DailyPlotConfig
     ) -> tuple[pd.DataFrame, list[str], list[float], list[str]]:
         """Prepare data for the daily detections plot."""
-        df4 = df["com_name"][df["com_name"] == config.species].resample("15min").count()
+        # Filter the DataFrame first, then get the series and resample
+        filtered_df = df[df["com_name"] == config.species]
+        df4 = cast(pd.Series, filtered_df["com_name"].resample("15min").count())
         datetime_index = cast(pd.DatetimeIndex, df4.index)
         df4.index = [datetime_index.date, datetime_index.time]  # type: ignore[attr-defined]
         day_hour_freq = df4.unstack().fillna(0)
 
         saved_time_labels = [self.hms_to_str(h) for h in day_hour_freq.columns.tolist()]
         fig_dec_y = [self.hms_to_dec(h) for h in day_hour_freq.columns.tolist()]
-        fig_x = [d.strftime("%d-%m-%Y") if hasattr(d, 'strftime') else str(d) for d in day_hour_freq.index.tolist()]
+        fig_x = []
+        for d in day_hour_freq.index.tolist():
+            if hasattr(d, 'strftime'):
+                fig_x.append(d.strftime("%d-%m-%Y"))  # type: ignore[attr-defined]
+            else:
+                fig_x.append(str(d))
 
         # Ensure we return consistent types
-        return cast(pd.DataFrame, day_hour_freq), saved_time_labels, fig_dec_y, [str(x) for x in fig_x]
+        return cast(pd.DataFrame, day_hour_freq), saved_time_labels, fig_dec_y, fig_x
 
     def prepare_sunrise_sunset_data_for_plot(
         self, num_days_to_display: int

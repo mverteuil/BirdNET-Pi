@@ -57,6 +57,7 @@ class ReportingManager:
         else:
             # Create empty DataFrame with expected columns when no data
             df = pd.DataFrame(
+                data=None,
                 columns=[
                     "Com_Name",
                     "DateTime",
