@@ -123,6 +123,8 @@ class MQTTService:
                 )
 
                 # Connect asynchronously
+                if self.client is None:
+                    raise Exception("MQTT client is None")
                 result = self.client.connect(self.broker_host, self.broker_port, 60)
                 if result == mqtt.MQTT_ERR_SUCCESS:
                     # Start the network loop in a separate thread
@@ -215,6 +217,9 @@ class MQTTService:
             }
 
             # Publish to detections topic
+            if self.client is None:
+                logger.error("MQTT client is None, cannot publish")
+                return False
             result = self.client.publish(
                 self.topics["detections"],
                 json.dumps(payload),
@@ -261,6 +266,9 @@ class MQTTService:
                 "accuracy": accuracy,
             }
 
+            if self.client is None:
+                logger.error("MQTT client is None, cannot publish GPS")
+                return False
             result = self.client.publish(
                 self.topics["gps"],
                 json.dumps(payload),
@@ -292,6 +300,9 @@ class MQTTService:
                 **health_data,
             }
 
+            if self.client is None:
+                logger.error("MQTT client is None, cannot publish health")
+                return False
             result = self.client.publish(
                 self.topics["health"],
                 json.dumps(payload),
@@ -323,6 +334,9 @@ class MQTTService:
                 **stats,
             }
 
+            if self.client is None:
+                logger.error("MQTT client is None, cannot publish system stats")
+                return False
             result = self.client.publish(
                 self.topics["system"],
                 json.dumps(payload),
@@ -397,6 +411,9 @@ class MQTTService:
                 },
             }
 
+            if self.client is None:
+                logger.error("MQTT client is None, cannot publish config")
+                return False
             result = self.client.publish(
                 self.topics["config"],
                 json.dumps(payload),

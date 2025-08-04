@@ -38,7 +38,8 @@ class LogService:
             )
 
             # Allow journalctl_process to receive a SIGPIPE if sed_process exits.
-            journalctl_process.stdout.close()
+            if journalctl_process.stdout:
+                journalctl_process.stdout.close()
 
             output = sed_process.communicate()[0]
             return output.decode("utf-8")
