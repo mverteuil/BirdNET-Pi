@@ -27,4 +27,4 @@ volumes:
 
 networks:
   birdnetpi-network:
-    external: true
+    driver: bridge

@@ -126,7 +126,8 @@ class TestGPSService:
         service = enabled_gps_service
 
         # Create test locations with different timestamps
-        base_time = datetime.now(UTC)
+        # Use a fixed base time to avoid timing issues
+        base_time = datetime(2025, 1, 1, 12, 0, 0, tzinfo=UTC)
         locations = [
             GPSCoordinates(40.0, -74.0, 10.0, 5.0, base_time, 8),
             GPSCoordinates(40.1, -74.1, 11.0, 4.0, base_time.replace(second=30), 7),
