@@ -99,6 +99,36 @@ class TestEmbeddedSystemdStrategy:
         status = strategy.get_service_status("test_service")
         assert status == "error"
 
+    @patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, ["systemctl"]))
+    @patch("builtins.print")
+    def test_should_handle_systemctl_command_error(self, mock_print, mock_run):
+        """Should handle CalledProcessError from systemctl command (covers lines 51-52)."""
+        strategy = EmbeddedSystemdStrategy()
+        strategy.start_service("test_service")
+        mock_print.assert_called_once()
+        assert "Error starting service test_service" in mock_print.call_args[0][0]
+
+    @patch("subprocess.run", side_effect=FileNotFoundError)
+    @patch("builtins.print")
+    def test_should_handle_systemctl_not_found_in_command(self, mock_print, mock_run):
+        """Should handle FileNotFoundError from systemctl command (covers lines 53-54)."""
+        strategy = EmbeddedSystemdStrategy()
+        strategy.start_service("test_service")
+        mock_print.assert_called_once()
+        assert "systemctl command not found" in mock_print.call_args[0][0]
+
+    @patch(
+        "subprocess.run",
+        return_value=subprocess.CompletedProcess(
+            args="cmd", returncode=5, stdout="failed\n", stderr=""
+        ),
+    )
+    def test_should_get_service_status_unknown(self, mock_run):
+        """Should return 'unknown' for unknown service status (covers line 90)."""
+        strategy = EmbeddedSystemdStrategy()
+        status = strategy.get_service_status("test_service")
+        assert status == "unknown"
+
 
 class TestDockerSupervisordStrategy:
     """Tests for the DockerSupervisordStrategy implementation."""
@@ -175,6 +205,36 @@ class TestDockerSupervisordStrategy:
         strategy = DockerSupervisordStrategy()
         status = strategy.get_service_status("test_service")
         assert status == "error"
+
+    @patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, ["supervisorctl"]))
+    @patch("builtins.print")
+    def test_should_handle_supervisorctl_command_error(self, mock_print, mock_run):
+        """Should handle CalledProcessError from supervisorctl command (covers lines 104-105)."""
+        strategy = DockerSupervisordStrategy()
+        strategy.start_service("test_service")
+        mock_print.assert_called_once()
+        assert "Error starting service test_service via supervisorctl" in mock_print.call_args[0][0]
+
+    @patch("subprocess.run", side_effect=FileNotFoundError)
+    @patch("builtins.print")
+    def test_should_handle_supervisorctl_not_found_in_command(self, mock_print, mock_run):
+        """Should handle FileNotFoundError from supervisorctl command (covers lines 106-109)."""
+        strategy = DockerSupervisordStrategy()
+        strategy.start_service("test_service")
+        mock_print.assert_called_once()
+        assert "supervisorctl command not found" in mock_print.call_args[0][0]
+
+    @patch(
+        "subprocess.run",
+        return_value=subprocess.CompletedProcess(
+            args="cmd", returncode=1, stdout="unknown status\n", stderr=""
+        ),
+    )
+    def test_should_get_service_status_unknown(self, mock_run):
+        """Should return 'unknown' for unknown service status (covers line 156)."""
+        strategy = DockerSupervisordStrategy()
+        status = strategy.get_service_status("test_service")
+        assert status == "unknown"
 
 
 class TestServiceStrategySelector:
