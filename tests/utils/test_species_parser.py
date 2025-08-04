@@ -209,3 +209,90 @@ class TestConfigIntegration:
         assert options.show_scientific_name is True
         assert options.show_common_name is True
         assert options.language_code == "en"
+
+
+class TestSpeciesParserWithIOC:
+    """Test SpeciesParser functionality with IOC service."""
+
+    def test_species_parser_initialization_with_ioc_service(self):
+        """Test SpeciesParser initialization with IOC service."""
+        from birdnetpi.utils.species_parser import IOCReferenceService
+        
+        ioc_service = IOCReferenceService()
+        parser = SpeciesParser(ioc_service)
+        
+        assert parser.ioc_reference is ioc_service
+
+    def test_format_species_display_fallback_to_common_name(self):
+        """Test format_species_for_display fallback when both display options are disabled."""
+        components = SpeciesComponents(
+            scientific_name="Turdus migratorius",
+            common_name_tensor="American Robin",
+            common_name_ioc="American Robin",
+            full_species="American Robin (Turdus migratorius)",
+        )
+
+        # Both show_scientific_name and show_common_name are False
+        display_options = SpeciesDisplayOptions(show_scientific_name=False, show_common_name=False)
+
+        result = SpeciesParser.format_species_for_display(components, display_options)
+
+        # Should fallback to common_name_ioc (line 117)
+        assert result == "American Robin"
+
+    def test_format_species_display_non_english_language_fallback(self):
+        """Test format_species_for_display with non-English language code fallback."""
+        components = SpeciesComponents(
+            scientific_name="Turdus migratorius",
+            common_name_tensor="American Robin",
+            common_name_ioc="American Robin",
+            full_species="American Robin (Turdus migratorius)",
+        )
+
+        # Non-English language with fallback enabled
+        display_options = SpeciesDisplayOptions(
+            show_scientific_name=True, 
+            show_common_name=True,
+            language_code="es",  # Spanish
+            fallback_to_tensor=True
+        )
+
+        result = SpeciesParser.format_species_for_display(components, display_options)
+
+        # Should use IOC English as fallback (line 125)
+        assert result == "American Robin (Turdus migratorius)"
+
+
+class TestMockIOCReferenceService:
+    """Test MockIOCReferenceService functionality to cover missing lines."""
+
+    def test_mock_ioc_service_initialization(self):
+        """Test MockIOCReferenceService initialization."""
+        from birdnetpi.utils.species_parser import IOCReferenceService
+        
+        service = IOCReferenceService()
+        
+        # Test that initialization sets up empty data structures (lines 241-243)
+        assert service._ioc_reference == {}
+        assert service._ioc_translations == {}
+        assert service._ioc_version == "unknown"
+
+    def test_mock_ioc_service_get_ioc_common_name(self):
+        """Test MockIOCReferenceService get_ioc_common_name method."""
+        from birdnetpi.utils.species_parser import IOCReferenceService
+        
+        service = IOCReferenceService()
+        
+        # Test that method returns None (line 255)
+        result = service.get_ioc_common_name("Turdus migratorius")
+        assert result is None
+
+    def test_mock_ioc_service_get_translated_common_name(self):
+        """Test MockIOCReferenceService get_translated_common_name method."""
+        from birdnetpi.utils.species_parser import IOCReferenceService
+        
+        service = IOCReferenceService()
+        
+        # Test that method returns None (line 268)
+        result = service.get_translated_common_name("Turdus migratorius", "es")
+        assert result is None

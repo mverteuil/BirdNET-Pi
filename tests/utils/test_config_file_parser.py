@@ -434,3 +434,30 @@ class TestConfigFileEnsureExists:
             "sensitivity": 1.25
         }
         assert content == expected_minimal
+
+
+class TestLoggingConfigPostInit:
+    """Test LoggingConfig __post_init__ method for backward compatibility."""
+
+    def test_logging_config_post_init_uses_log_level_when_level_is_default(self):
+        """Test that log_level overrides level when level is default and log_level is different."""
+        config = LoggingConfig(log_level="DEBUG")  # level stays at default "INFO"
+        
+        # The __post_init__ should have set level to log_level value
+        assert config.level == "DEBUG"
+        assert config.log_level == "DEBUG"
+
+    def test_logging_config_post_init_keeps_level_when_explicitly_set(self):
+        """Test that level is preserved when explicitly set, even if log_level is different."""
+        config = LoggingConfig(level="WARNING", log_level="DEBUG")
+        
+        # level should remain as explicitly set, not overridden by log_level
+        assert config.level == "WARNING"
+        assert config.log_level == "DEBUG"
+
+    def test_logging_config_post_init_no_change_when_both_default(self):
+        """Test that nothing changes when both level and log_level are at defaults."""
+        config = LoggingConfig()  # Both level and log_level default to "INFO"
+        
+        assert config.level == "INFO"
+        assert config.log_level == "INFO"
