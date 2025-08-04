@@ -51,7 +51,7 @@ async def select_audio_device(
     )
 
 
-@router.post("/audio/select_device", response_class=HTMLResponse)
+@router.post("/audio/select_device", response_model=None)
 async def handle_select_audio_device(
     request: Request,
     audio_device_service: AudioDeviceService = Depends(get_audio_device_service),  # noqa: B008

@@ -46,7 +46,7 @@ class DataPreparationManager:
     def get_daily_crosstab(self, df: pd.DataFrame) -> pd.DataFrame:
         """Generate a crosstabulation of common names by date."""
         datetime_index = cast(pd.DatetimeIndex, df.index)
-        return pd.crosstab(df["com_name"], datetime_index.date.values, dropna=True, margins=True)  # type: ignore[attr-defined]
+        return pd.crosstab(df["com_name"], datetime_index.date, dropna=True, margins=True)  # type: ignore[attr-defined]
 
     def time_resample(self, df: pd.DataFrame, resample_time: str) -> pd.DataFrame:
         """Resample the DataFrame based on the given time interval."""
