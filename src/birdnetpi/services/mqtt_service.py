@@ -205,7 +205,7 @@ class MQTTService:
                     "latitude": detection.latitude,
                     "longitude": detection.longitude,
                 }
-                if detection.latitude and detection.longitude
+                if detection.latitude is not None and detection.longitude is not None
                 else None,
                 "analysis": {
                     "cutoff": detection.cutoff,

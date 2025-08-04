@@ -219,7 +219,7 @@ def _add_journald_handler(
 ) -> None:
     """Add journald handler for SBC deployments."""
     try:
-        from systemd import journal
+        from systemd import journal  # type: ignore[import-untyped]
 
         journal_handler = journal.JournalHandler()
         journal_handler.setLevel(log_level)

@@ -324,7 +324,7 @@ class HighPassFilter(AudioFilter):
         filtered_float = signal.sosfilt(self._sos, audio_float, axis=0)
 
         # Convert back to int16, with clipping to prevent overflow
-        filtered_int16 = np.clip(filtered_float * 32768.0, -32768, 32767).astype(np.int16)
+        filtered_int16 = np.clip(filtered_float * 32768.0, -32768, 32767).astype(np.int16)  # type: ignore[operator]
 
         return filtered_int16
 
@@ -413,7 +413,7 @@ class LowPassFilter(AudioFilter):
         filtered_float = signal.sosfilt(self._sos, audio_float, axis=0)
 
         # Convert back to int16, with clipping to prevent overflow
-        filtered_int16 = np.clip(filtered_float * 32768.0, -32768, 32767).astype(np.int16)
+        filtered_int16 = np.clip(filtered_float * 32768.0, -32768, 32767).astype(np.int16)  # type: ignore[operator]
 
         return filtered_int16
 
