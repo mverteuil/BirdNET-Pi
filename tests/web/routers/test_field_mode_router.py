@@ -397,17 +397,21 @@ class TestFieldModeTemplate:
 
     def test_get_field_mode_template_response(self, client):
         """Should attempt to render field mode template."""
-        # The actual template rendering requires complex setup, but we can
-        # test that the endpoint exists and attempts to render a template.
-        # This covers line 36 in the source code.
-        try:
-            response = client.get("/field")
-            # If templates are set up correctly, it should return 200
-            # If not, it should fail in a way that shows the template code was executed
-            assert response.status_code in [200, 500]  # Either success or template error
-        except Exception as e:
-            # Template rendering error covers the line we need
-            assert "template" in str(e).lower() or "TemplateResponse" in str(e)
+        # Mock the template response to avoid file system dependencies
+        from fastapi.responses import HTMLResponse
+        
+        # Create a mock HTMLResponse
+        mock_response = HTMLResponse(content="<html><body>Field Mode</body></html>")
+        client.app.state.templates.TemplateResponse.return_value = mock_response
+        
+        response = client.get("/field")
+        
+        # Verify template was called and response received
+        client.app.state.templates.TemplateResponse.assert_called_once()
+        call_args = client.app.state.templates.TemplateResponse.call_args
+        assert call_args[0][0] == "field_mode.html"
+        assert "request" in call_args[0][1]
+        assert response.status_code == 200
 
 
 class TestLocationHistoryEndpoint:
