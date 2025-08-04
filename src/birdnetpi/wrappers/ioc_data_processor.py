@@ -150,7 +150,7 @@ def show_ioc_info(json_file: Path) -> None:
         sys.exit(1)
 
 
-def test_lookup(json_file: Path, scientific_name: str, language_code: str = "en") -> None:
+def lookup_species(json_file: Path, scientific_name: str, language_code: str = "en") -> None:
     """Test species lookup functionality.
 
     Args:
@@ -277,7 +277,7 @@ Examples:
     elif args.command == "info":
         show_ioc_info(args.json_file)
     elif args.command == "lookup":
-        test_lookup(args.json_file, args.species, args.language)
+        lookup_species(args.json_file, args.species, args.language)
 
 
 if __name__ == "__main__":

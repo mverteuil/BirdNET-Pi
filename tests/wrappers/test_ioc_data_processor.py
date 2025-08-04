@@ -11,7 +11,7 @@ from birdnetpi.wrappers.ioc_data_processor import (
     main,
     process_ioc_files,
     show_ioc_info,
-    test_lookup,
+    lookup_species,
 )
 
 
@@ -245,8 +245,8 @@ class TestShowIOCInfo:
         mock_exit.assert_called_once_with(1)
 
 
-class TestTestLookup:
-    """Test test_lookup function."""
+class TestLookupSpecies:
+    """Test lookup_species function."""
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
     @patch("birdnetpi.wrappers.ioc_data_processor.sys.exit")
@@ -254,7 +254,7 @@ class TestTestLookup:
         """Should exit when JSON file is missing."""
         json_file = tmp_path / "missing.json"
         
-        test_lookup(json_file, "Turdus migratorius", "en")
+        lookup_species(json_file, "Turdus migratorius", "en")
         
         mock_exit.assert_called_once_with(1)
 
@@ -280,7 +280,7 @@ class TestTestLookup:
         mock_ioc_reference_service.get_species_info.return_value = mock_species
         mock_ioc_reference_service.get_translated_common_name.return_value = "Petirrojo Americano"
         
-        test_lookup(json_file, "Turdus migratorius", "es")
+        lookup_species(json_file, "Turdus migratorius", "es")
         
         # Verify service calls
         mock_ioc_reference_service.get_species_info.assert_called_once_with("Turdus migratorius")
@@ -311,7 +311,7 @@ class TestTestLookup:
             "Turdus philomelos": None
         }
         
-        test_lookup(json_file, "Nonexistent species", "en")
+        lookup_species(json_file, "Nonexistent species", "en")
         
         # Check output
         captured = capsys.readouterr()
@@ -334,7 +334,7 @@ class TestTestLookup:
         mock_species.english_name = "American Robin"
         mock_ioc_reference_service.get_species_info.return_value = mock_species
         
-        test_lookup(json_file, "Turdus migratorius", "en")
+        lookup_species(json_file, "Turdus migratorius", "en")
         
         # Should not call translation method for English
         mock_ioc_reference_service.get_translated_common_name.assert_not_called()
@@ -352,7 +352,7 @@ class TestTestLookup:
         mock_service.load_from_json.side_effect = Exception("Load error")
         mock_service_class.return_value = mock_service
         
-        test_lookup(json_file, "Turdus migratorius", "en")
+        lookup_species(json_file, "Turdus migratorius", "en")
         
         mock_exit.assert_called_once_with(1)
 
@@ -395,7 +395,7 @@ class TestMain:
         args = mock_info.call_args[0]
         assert str(args[0]) == "test.json"
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.test_lookup")
+    @patch("birdnetpi.wrappers.ioc_data_processor.lookup_species")
     def test_main_lookup_command(self, mock_lookup):
         """Should parse lookup command correctly."""
         test_args = [
@@ -437,7 +437,7 @@ class TestMain:
         for args in test_cases:
             with patch("birdnetpi.wrappers.ioc_data_processor.process_ioc_files"), \
                  patch("birdnetpi.wrappers.ioc_data_processor.show_ioc_info"), \
-                 patch("birdnetpi.wrappers.ioc_data_processor.test_lookup"):
+                 patch("birdnetpi.wrappers.ioc_data_processor.lookup_species"):
                 
                 with patch.object(sys, "argv", ["ioc-processor"] + args):
                     try:
