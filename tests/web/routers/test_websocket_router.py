@@ -34,7 +34,7 @@ class TestWebSocketRouter:
         # Check that the router has the expected routes
         from birdnetpi.web.routers.websocket_router import router
 
-        routes = [route.path for route in router.routes]
+        routes = [getattr(route, 'path', '') for route in router.routes]  # type: ignore[attr-defined]
         assert "" in routes  # Base WebSocket endpoint
         assert "/audio" in routes  # Audio WebSocket endpoint
         assert "/spectrogram" in routes  # Spectrogram WebSocket endpoint
@@ -94,7 +94,7 @@ class TestWebSocketRouter:
         # Get all route paths
         route_paths = []
         for route in router.routes:
-            route_paths.append(route.path)
+            route_paths.append(getattr(route, 'path', ''))  # type: ignore[attr-defined]
         
         # Should have three WebSocket routes
         assert len(route_paths) == 3
@@ -130,7 +130,7 @@ class TestWebSocketRouter:
         # Create mapping of paths to endpoints
         route_mapping = {}
         for route in router.routes:
-            route_mapping[route.path] = route.endpoint
+            route_mapping[getattr(route, 'path', '')] = getattr(route, 'endpoint', None)  # type: ignore[attr-defined]
         
         # Check that paths map to correct endpoints
         assert route_mapping[""] == websocket_endpoint

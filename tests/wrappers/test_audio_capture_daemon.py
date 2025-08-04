@@ -115,7 +115,7 @@ class TestAudioCaptureDaemon:
 
         daemon.main()
 
-        daemon.os.mkfifo.assert_not_called()
+        daemon.os.mkfifo.assert_not_called()  # type: ignore[attr-defined]
         assert "Created FIFO" not in caplog.text
 
     def test_main_config_file_not_found(self, mocker, mock_dependencies, caplog):

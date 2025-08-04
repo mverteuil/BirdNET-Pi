@@ -67,7 +67,7 @@ def sample_dataframe():
 def test_add_polar_trace_to_figure_should_return_figure(plotting_manager):
     """Should return a plotly figure after adding a polar trace."""
     fig = go.Figure()
-    hourly_df = pd.DataFrame(data={"All": [1, 2, 3]}, index=[0, 1, 2])
+    hourly_df = pd.DataFrame({"All": [1, 2, 3]}, index=pd.Index([0, 1, 2]))
     species = "Common Blackbird"
     result_fig = plotting_manager._add_polar_trace_to_figure(fig, hourly_df, species)
     assert isinstance(result_fig, go.Figure)
@@ -83,7 +83,7 @@ def test_create_multi_day_plot_figure_should_return_figure(
     end_date = "23-01-07"
     resample_sel = "D"
     top_n_species = pd.Series([5, 3], index=["SpeciesA", "SpeciesB"])
-    hourly = pd.DataFrame(data={"All": [1, 2, 3]}, index=[0, 1, 2])
+    hourly = pd.DataFrame({"All": [1, 2, 3]}, index=pd.Index([0, 1, 2]))
     species = "SpeciesA"
     df5 = pd.DataFrame(
         {
@@ -214,14 +214,14 @@ def test_create_empty_plot(plotting_manager):
     
     assert isinstance(fig, go.Figure)
     # Check the annotation was added
-    assert len(fig.layout.annotations) == 1
-    assert fig.layout.annotations[0].text == message
-    assert fig.layout.annotations[0].x == 0.5
-    assert fig.layout.annotations[0].y == 0.5
+    assert len(fig.layout.annotations) == 1  # type: ignore[attr-defined]
+    assert fig.layout.annotations[0].text == message  # type: ignore[attr-defined]
+    assert fig.layout.annotations[0].x == 0.5  # type: ignore[attr-defined]
+    assert fig.layout.annotations[0].y == 0.5  # type: ignore[attr-defined]
     # Check layout was updated
-    assert fig.layout.xaxis.showgrid is False
-    assert fig.layout.yaxis.showgrid is False
-    assert fig.layout.plot_bgcolor == "white"
+    assert fig.layout.xaxis.showgrid is False  # type: ignore[attr-defined]
+    assert fig.layout.yaxis.showgrid is False  # type: ignore[attr-defined]
+    assert fig.layout.plot_bgcolor == "white"  # type: ignore[attr-defined]
 
 
 def test_generate_spectrogram(plotting_manager, mocker):

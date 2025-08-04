@@ -18,7 +18,7 @@ class TestServiceManagementStrategy:
     def test_should_raise_type_error_on_instantiation(self):
         """Should raise TypeError if ServiceManagementStrategy is instantiated directly."""
         with pytest.raises(TypeError):
-            ServiceManagementStrategy()
+            ServiceManagementStrategy()  # type: ignore[abstract]
 
 
 class TestEmbeddedSystemdStrategy:

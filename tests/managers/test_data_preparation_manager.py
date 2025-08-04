@@ -136,11 +136,10 @@ class TestDataPreparationManager:
         # Also, the index might not be exactly the same due to resampling creating
         # new timestamps. So, we'll compare the 'com_name' column after sorting
         # and resetting index.
-        pd.testing.assert_series_equal(
-            resampled_df["com_name"].dropna().reset_index(drop=True).sort_values(),
-            expected_df["com_name"].reset_index(drop=True).sort_values(),
-            check_names=False,
-        )
+        # Compare sorted values since the order might be different after resampling
+        actual_sorted = sorted(resampled_df["com_name"].dropna())
+        expected_sorted = sorted(expected_df["com_name"])
+        assert actual_sorted == expected_sorted
 
     def test_prepare_multi_day_plot_data(self, data_preparation_manager, sample_dataframe):
         """Test preparation of multi-day plot data."""
