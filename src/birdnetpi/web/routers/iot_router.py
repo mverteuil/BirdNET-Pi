@@ -121,7 +121,7 @@ class WebhookTestResponse(BaseModel):
     success: bool
     url: str
     timestamp: str
-    error: str = None
+    error: str | None = None
 
 
 class IoTStatusResponse(BaseModel):
@@ -138,8 +138,8 @@ async def get_mqtt_status(
 ) -> MQTTStatusResponse:
     """Get MQTT connection status and configuration."""
     try:
-        status = mqtt_service.get_connection_status()
-        return MQTTStatusResponse(**status)
+        connection_status = mqtt_service.get_connection_status()
+        return MQTTStatusResponse(**connection_status)
     except Exception as e:
         logger.error("Error getting MQTT status: %s", e)
         raise HTTPException(
@@ -199,8 +199,8 @@ async def get_webhook_status(
 ) -> WebhookStatusResponse:
     """Get webhook service status and configuration."""
     try:
-        status = webhook_service.get_webhook_status()
-        return WebhookStatusResponse(**status)
+        webhook_status = webhook_service.get_webhook_status()
+        return WebhookStatusResponse(**webhook_status)
     except Exception as e:
         logger.error("Error getting webhook status: %s", e)
         raise HTTPException(

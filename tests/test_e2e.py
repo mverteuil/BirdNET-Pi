@@ -1,11 +1,12 @@
 import subprocess
+from typing import Any, Generator
 
 import httpx
 import pytest
 
 
 @pytest.fixture(scope="module")
-def docker_compose_up_down() -> None:
+def docker_compose_up_down() -> Generator[None, None, None]:
     """Bring up and tear down Docker Compose services for e2e tests."""
     # Bring up Docker Compose
     # Bring up Docker Compose and wait for services to be healthy
@@ -18,7 +19,7 @@ def docker_compose_up_down() -> None:
 
 
 @pytest.mark.expensive
-def test_root_endpoint_e2e(docker_compose_up_down) -> None:
+def test_root_endpoint_e2e(docker_compose_up_down: Any) -> None:
     """Test the root endpoint of the BirdNET-Pi application."""
     response = httpx.get("http://localhost:8000")
     assert response.status_code == 200
@@ -26,7 +27,7 @@ def test_root_endpoint_e2e(docker_compose_up_down) -> None:
 
 
 @pytest.mark.expensive
-def test_sqladmin_detection_list_e2e(docker_compose_up_down) -> None:
+def test_sqladmin_detection_list_e2e(docker_compose_up_down: Any) -> None:
     """Test the SQLAdmin Detection list endpoint."""
     # Generate dummy data first to ensure the database has detection records
     subprocess.run(

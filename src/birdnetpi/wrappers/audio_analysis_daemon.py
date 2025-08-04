@@ -22,7 +22,7 @@ _fifo_analysis_path = None
 _fifo_analysis_fd = None
 
 
-def _signal_handler(signum: int, frame: FrameType) -> None:
+def _signal_handler(signum: int, frame: FrameType | None) -> None:
     global _shutdown_flag
     logger.info("Signal %s received, initiating graceful shutdown...", signum)
     _shutdown_flag = True

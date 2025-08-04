@@ -22,7 +22,7 @@ _fifo_livestream_fd = None
 _audio_websocket_service = None
 
 
-def _signal_handler(signum: int, frame: FrameType) -> None:
+def _signal_handler(signum: int, frame: FrameType | None) -> None:
     global _shutdown_flag
     logger.info("Signal %s received, initiating graceful shutdown...", signum)
     _shutdown_flag = True

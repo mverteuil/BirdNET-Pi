@@ -163,7 +163,7 @@ async def get_mqtt_status(
     """Get MQTT service status."""
     return {
         "enabled": mqtt_service.enable_mqtt,
-        "connected": mqtt_service.is_connected() if mqtt_service.enable_mqtt else False,
+        "connected": mqtt_service.is_connected if mqtt_service.enable_mqtt else False,
         "broker_host": mqtt_service.broker_host if mqtt_service.enable_mqtt else None,
         "broker_port": mqtt_service.broker_port if mqtt_service.enable_mqtt else None,
     }
@@ -176,7 +176,7 @@ async def get_webhook_status(
     """Get webhook service status."""
     return {
         "enabled": webhook_service.enable_webhooks,
-        "configured_urls": len(webhook_service.webhook_urls) if webhook_service.enable_webhooks else 0,
+        "configured_urls": len(webhook_service.webhooks) if webhook_service.enable_webhooks else 0,
     }
 
 
@@ -189,11 +189,11 @@ async def test_iot_services(
     results = {"mqtt": False, "webhooks": False}
 
     if mqtt_service.enable_mqtt:
-        results["mqtt"] = mqtt_service.is_connected()
+        results["mqtt"] = mqtt_service.is_connected
 
     if webhook_service.enable_webhooks:
         # Test webhook connectivity (simplified)
-        results["webhooks"] = len(webhook_service.webhook_urls) > 0
+        results["webhooks"] = len(webhook_service.webhooks) > 0
 
     return {"test_results": results}
 

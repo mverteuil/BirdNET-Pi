@@ -79,9 +79,9 @@ async def get_charts(
 
     # Default values for plot generation
     start_date = (
-        pd.to_datetime(df.index.min()).date() if not df.empty else pd.Timestamp.now().date()
+        pd.to_datetime(str(df.index.min())).date() if not df.empty else pd.Timestamp.now().date()
     )
-    end_date = pd.to_datetime(df.index.max()).date() if not df.empty else pd.Timestamp.now().date()
+    end_date = pd.to_datetime(str(df.index.max())).date() if not df.empty else pd.Timestamp.now().date()
     top_n = 10
 
     species = "All"
@@ -90,7 +90,7 @@ async def get_charts(
 
     # Generate multi-day plot
     multi_day_fig = plotting_manager.generate_multi_day_species_and_hourly_plot(
-        df, "Hourly", start_date, end_date, top_n, species
+        df, "Hourly", str(start_date), str(end_date), top_n, species
     )
     multi_day_plot_json = pio.to_json(multi_day_fig)
 
@@ -102,8 +102,8 @@ async def get_charts(
     daily_fig = plotting_manager.generate_daily_detections_plot(
         df,
         "15 minutes",
-        start_date,
-        most_common_species,
+        str(start_date),
+        str(most_common_species),
         num_days_to_display,
         selected_pal,
     )
