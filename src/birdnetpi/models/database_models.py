@@ -66,7 +66,7 @@ class Detection(Base):
 
     def get_display_name(self) -> str:
         """Get the best available species display name."""
-        return self.common_name_ioc or self.common_name_tensor or self.scientific_name
+        return str(self.common_name_ioc or self.common_name_tensor or self.scientific_name)
 
 
 class AudioFile(Base):

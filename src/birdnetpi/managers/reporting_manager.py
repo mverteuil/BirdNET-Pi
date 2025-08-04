@@ -225,7 +225,10 @@ class ReportingManager:
         today = datetime.date.today()
         start_datetime = datetime.datetime.combine(today, datetime.time.min)
         end_datetime = datetime.datetime.combine(today, datetime.time.max)
-        return self.detection_manager.get_detections_by_date_range(start_datetime, end_datetime)
+        # TODO: Implement get_detections_by_date_range method in DetectionManager
+        # For now, use get_all_detections and filter manually
+        all_detections = self.detection_manager.get_all_detections()
+        return [d for d in all_detections if start_datetime <= d.timestamp <= end_datetime]
 
     def date_filter(self, df: pd.DataFrame, start_date: str, end_date: str) -> pd.DataFrame:
         """Filter a DataFrame by date range."""

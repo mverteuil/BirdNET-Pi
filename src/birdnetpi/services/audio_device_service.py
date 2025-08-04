@@ -17,19 +17,19 @@ class AudioDeviceService:
         input_devices: list[AudioDevice] = []
 
         for _, device in enumerate(devices):
-            if device["max_input_channels"] > 0:  # type: ignore[misc]
+            if device["max_input_channels"] > 0:  # type: ignore[index,misc]
                 input_devices.append(
                     AudioDevice(  # type: ignore[misc]
-                        name=device["name"],
-                        index=device["index"],
-                        host_api_index=device["hostapi"],
-                        max_input_channels=device["max_input_channels"],
-                        max_output_channels=device["max_output_channels"],
-                        default_low_input_latency=device["default_low_input_latency"],
-                        default_low_output_latency=device["default_low_output_latency"],
-                        default_high_input_latency=device["default_high_input_latency"],
-                        default_high_output_latency=device["default_high_output_latency"],
-                        default_samplerate=device["default_samplerate"],
+                        name=device["name"],  # type: ignore[index]
+                        index=device["index"],  # type: ignore[index]
+                        host_api_index=device["hostapi"],  # type: ignore[index]
+                        max_input_channels=device["max_input_channels"],  # type: ignore[index]
+                        max_output_channels=device["max_output_channels"],  # type: ignore[index]
+                        default_low_input_latency=device["default_low_input_latency"],  # type: ignore[index]
+                        default_low_output_latency=device["default_low_output_latency"],  # type: ignore[index]
+                        default_high_input_latency=device["default_high_input_latency"],  # type: ignore[index]
+                        default_high_output_latency=device["default_high_output_latency"],  # type: ignore[index]
+                        default_samplerate=device["default_samplerate"],  # type: ignore[index]
                     )
                 )
         logger.info(f"Found {len(input_devices)} input device(s).")
