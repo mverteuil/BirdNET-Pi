@@ -22,7 +22,7 @@ class BirdDetectionService:
     def __init__(self, config: BirdNETConfig) -> None:
         self.config = config
         self.user_dir = os.path.expanduser("~")
-        self.interpreter = None
+        self.interpreter: tflite.Interpreter | None = None
         self.m_interpreter = None
         self.predicted_species_list = []  # This list is populated by the meta-model
         self.current_week = None
@@ -56,9 +56,14 @@ class BirdDetectionService:
 
         file_resolver = FilePathResolver()
         modelpath = file_resolver.get_model_path(self.model_name)
+        if modelpath is None:
+            raise ValueError(f"Model path not found for model: {self.model_name}")
         self.interpreter = tflite.Interpreter(model_path=modelpath, num_threads=2)
         self.interpreter.allocate_tensors()
 
+        if self.interpreter is None:
+            raise RuntimeError("Interpreter not initialized")
+        
         input_details = self.interpreter.get_input_details()
         output_details = self.interpreter.get_output_details()
 
@@ -114,7 +119,8 @@ class BirdDetectionService:
                 self.current_week = week
                 self.predicted_species_list = []  # Clear previous list
                 l_filter = self._predict_filter_raw(lat, lon, week)
-                l_filter = np.where(l_filter >= float(self.sf_threshold), l_filter, 0)
+                threshold = self.sf_threshold if self.sf_threshold is not None else 0.03
+                l_filter = np.where(l_filter >= float(threshold), l_filter, 0)
 
                 # Zip with labels and filter for non-zero scores
                 filtered_species = [
@@ -159,6 +165,9 @@ class BirdDetectionService:
         sig = np.expand_dims(audio_chunk, 0)
 
         # Make a prediction
+        if self.interpreter is None:
+            raise RuntimeError("Interpreter not initialized")
+            
         self.interpreter.set_tensor(self.input_layer_index, np.array(sig, dtype="float32"))
         if self.model_name == "BirdNET_6K_GLOBAL_MODEL":
             self.interpreter.set_tensor(
@@ -176,7 +185,8 @@ class BirdDetectionService:
         # Sort by score
         p_sorted = sorted(p_labels.items(), key=operator.itemgetter(1), reverse=True)
 
-        human_cutoff = max(10, int(len(p_sorted) * self.privacy_threshold / 100.0))
+        privacy_threshold = self.privacy_threshold if self.privacy_threshold is not None else 10.0
+        human_cutoff = max(10, int(len(p_sorted) * privacy_threshold / 100.0))
 
         log.debug("BirdDetectionService: DATABASE SIZE: %d", len(p_sorted))
         log.debug("BirdDetectionService: HUMAN-CUTOFF AT: %d", human_cutoff)
@@ -206,9 +216,10 @@ class BirdDetectionService:
         """Perform analysis on an audio chunk and return filtered (species, confidence) pairs."""
         raw_predictions = self.get_raw_prediction(audio_chunk, lat, lon, week, sensitivity)
 
+        sf_threshold = self.sf_threshold if self.sf_threshold is not None else 0.03
         filtered_results = []
         for species, confidence in raw_predictions:
-            if confidence >= self.sf_threshold:
+            if confidence >= sf_threshold:
                 filtered_results.append((species, confidence))
 
         return filtered_results

@@ -1,8 +1,11 @@
+from birdnetpi.models.config import BirdNETConfig
+
+
 class BirdWeatherService:
     """Manages interactions with the BirdWeather API."""
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, config: BirdNETConfig) -> None:
+        self.config = config
 
     def send_detection_to_birdweather(self, detection_data: dict) -> None:
         """Send detection data to the BirdWeather API."""

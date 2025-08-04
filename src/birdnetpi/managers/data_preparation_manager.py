@@ -79,8 +79,10 @@ class DataPreparationManager:
     ) -> tuple[pd.DataFrame, list[str], list[float], list[str]]:
         """Prepare data for the daily detections plot."""
         # Filter the DataFrame first, then get the series and resample
-        filtered_df = df[df["com_name"] == config.species]
-        df4 = cast(pd.Series, filtered_df["com_name"].resample("15min").count())
+        # Ensure we're working with proper pandas objects by accessing the series directly
+        species_mask = df["com_name"] == config.species
+        species_series = df.loc[species_mask, "com_name"]
+        df4 = cast(pd.Series, species_series.resample("15min").count())
         datetime_index = cast(pd.DatetimeIndex, df4.index)
         df4.index = [datetime_index.date, datetime_index.time]  # type: ignore[attr-defined]
         day_hour_freq = df4.unstack().fillna(0)

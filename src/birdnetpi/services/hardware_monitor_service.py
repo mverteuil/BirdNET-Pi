@@ -8,7 +8,7 @@ import asyncio
 import logging
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, NamedTuple
+from typing import Any, Callable, NamedTuple
 
 import psutil
 
@@ -59,7 +59,7 @@ class HardwareMonitorService:
 
         self.is_running = False
         self.component_status: dict[str, ComponentStatus] = {}
-        self.alert_callbacks: list[callable] = []
+        self.alert_callbacks: list[Callable] = []
         self._monitor_task: asyncio.Task[None] | None = None
 
         # Thresholds for alerts
@@ -98,7 +98,7 @@ class HardwareMonitorService:
             except asyncio.CancelledError:
                 pass
 
-    def add_alert_callback(self, callback: callable) -> None:
+    def add_alert_callback(self, callback: Callable) -> None:
         """Add callback function for hardware alerts.
 
         Args:
@@ -108,7 +108,7 @@ class HardwareMonitorService:
         if callback not in self.alert_callbacks:
             self.alert_callbacks.append(callback)
 
-    def remove_alert_callback(self, callback: callable) -> None:
+    def remove_alert_callback(self, callback: Callable) -> None:
         """Remove alert callback function."""
         if callback in self.alert_callbacks:
             self.alert_callbacks.remove(callback)
@@ -246,7 +246,7 @@ class HardwareMonitorService:
 
             # Temperature (if available)
             try:
-                temps = psutil.sensors_temperatures()
+                temps = psutil.sensors_temperatures()  # type: ignore[attr-defined]
                 if temps:
                     # Get CPU temperature (usually 'cpu_thermal' on Raspberry Pi)
                     cpu_temp = None
@@ -355,13 +355,12 @@ class HardwareMonitorService:
                 # Call alert callbacks
                 for callback in self.alert_callbacks:
                     try:
-                        await asyncio.create_task(
-                            callback(component_name, new_status)
-                            if asyncio.iscoroutinefunction(callback)
-                            else asyncio.get_event_loop().run_in_executor(
+                        if asyncio.iscoroutinefunction(callback):
+                            await callback(component_name, new_status)
+                        else:
+                            await asyncio.get_event_loop().run_in_executor(
                                 None, callback, component_name, new_status
                             )
-                        )
                     except Exception as e:
                         logger.error("Error in hardware alert callback: %s", e)
 

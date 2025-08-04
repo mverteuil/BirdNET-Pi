@@ -81,7 +81,7 @@ class IOCDatabaseService:
                 species_count += 1
 
             # Bulk insert species
-            session.bulk_insert_mappings(IOCSpecies, species_data)
+            session.bulk_insert_mappings(IOCSpecies, species_data)  # type: ignore[arg-type]
             session.commit()
             print(f"Inserted {species_count} species total")
 
@@ -103,7 +103,7 @@ class IOCDatabaseService:
                     language_counts[language_code] = language_counts.get(language_code, 0) + 1
 
             # Bulk insert translations
-            session.bulk_insert_mappings(IOCTranslation, translation_data)
+            session.bulk_insert_mappings(IOCTranslation, translation_data)  # type: ignore[arg-type]
             session.commit()
             print(f"Inserted {translation_count} translations total")
 

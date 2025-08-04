@@ -56,23 +56,22 @@ class ReportingManager:
             df = df.set_index("DateTime")
         else:
             # Create empty DataFrame with expected columns when no data
-            df = pd.DataFrame(
-                data=None,
-                columns=[
-                    "Com_Name",
-                    "DateTime",
-                    "Date",
-                    "Time",
-                    "Sci_Name",
-                    "Confidence",
-                    "Lat",
-                    "Lon",
-                    "Cutoff",
-                    "Week",
-                    "Sens",
-                    "Overlap",
-                ]
-            )
+            # Create empty DataFrame with expected columns when no data
+            column_names = [
+                "Com_Name",
+                "DateTime", 
+                "Date",
+                "Time",
+                "Sci_Name",
+                "Confidence",
+                "Lat",
+                "Lon", 
+                "Cutoff",
+                "Week",
+                "Sens",
+                "Overlap",
+            ]
+            df = pd.DataFrame({col: [] for col in column_names})
             df["DateTime"] = pd.to_datetime(df["DateTime"])
             df = df.set_index("DateTime")
         return df
@@ -228,7 +227,10 @@ class ReportingManager:
         # TODO: Implement get_detections_by_date_range method in DetectionManager
         # For now, use get_all_detections and filter manually
         all_detections = self.detection_manager.get_all_detections()
-        return [d for d in all_detections if start_datetime <= d.timestamp <= end_datetime]
+        return [
+            d for d in all_detections 
+            if isinstance(d.timestamp, datetime.datetime) and start_datetime <= d.timestamp <= end_datetime
+        ]
 
     def date_filter(self, df: pd.DataFrame, start_date: str, end_date: str) -> pd.DataFrame:
         """Filter a DataFrame by date range."""

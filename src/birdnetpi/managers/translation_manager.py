@@ -3,7 +3,7 @@
 Uses Python's gettext with Babel for extraction/compilation.
 """
 
-from gettext import GNUTranslations, ngettext, translation
+from gettext import GNUTranslations, NullTranslations, ngettext, translation
 from gettext import gettext as _
 from typing import TYPE_CHECKING
 
@@ -20,11 +20,13 @@ class TranslationManager:
 
     def __init__(self, file_resolver: FilePathResolver):
         self.file_resolver = file_resolver
-        self.locales_dir = self.file_resolver.resolve_data_file("locales")
-        self.translations: dict[str, GNUTranslations] = {}
+        # TODO: Implement resolve_data_file method in FilePathResolver
+        # For now, hardcode a reasonable default path
+        self.locales_dir = "locales"  # self.file_resolver.resolve_data_file("locales")
+        self.translations: dict[str, GNUTranslations | NullTranslations] = {}
         self.default_language = "en"
 
-    def get_translation(self, language: str) -> GNUTranslations:
+    def get_translation(self, language: str) -> GNUTranslations | NullTranslations:
         """Get translation object for a specific language."""
         if language not in self.translations:
             try:
@@ -41,7 +43,7 @@ class TranslationManager:
                 )
         return self.translations[language]
 
-    def install_for_request(self, request: Request) -> GNUTranslations:
+    def install_for_request(self, request: Request) -> GNUTranslations | NullTranslations:
         """Install translation for current request based on Accept-Language header."""
         # Parse Accept-Language header
         accept_language = request.headers.get("Accept-Language", self.default_language)
