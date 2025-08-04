@@ -602,3 +602,103 @@ class TestWebhookService:
             assert "https://webhook2.com/api" in called_urls
             assert "https://webhook3.com/api" in called_urls
             assert "https://webhook1.com/api" not in called_urls
+
+    async def test_send_health_webhook_when_cannot_send(self, enabled_webhook_service):
+        """Test send_health_webhook returns early when service cannot send."""
+        service = enabled_webhook_service
+        
+        # Disable the service to make _can_send() return False
+        service.enabled = False
+        
+        with patch.object(service, "_send_webhook_request") as mock_send:
+            await service.send_health_webhook({"status": "healthy"})
+            # Should not call _send_webhook_request (covers line 198)
+            mock_send.assert_not_called()
+
+    async def test_send_gps_webhook_when_cannot_send(self, enabled_webhook_service):
+        """Test send_gps_webhook returns early when service cannot send."""
+        service = enabled_webhook_service
+        
+        # Disable the service to make _can_send() return False
+        service.enabled = False
+        
+        with patch.object(service, "_send_webhook_request") as mock_send:
+            await service.send_gps_webhook(40.7128, -74.0060, 10.0)
+            # Should not call _send_webhook_request (covers line 219)
+            mock_send.assert_not_called()
+
+    async def test_send_system_webhook_when_cannot_send(self, enabled_webhook_service):
+        """Test send_system_webhook returns early when service cannot send."""
+        service = enabled_webhook_service
+        
+        # Disable the service to make _can_send() return False
+        service.enabled = False
+        
+        with patch.object(service, "_send_webhook_request") as mock_send:
+            await service.send_system_webhook({"cpu": 50.0})
+            # Should not call _send_webhook_request (covers line 240)
+            mock_send.assert_not_called()
+
+    async def test_send_to_webhooks_no_client(self, enabled_webhook_service):
+        """Test _send_to_webhooks returns early when no client."""
+        service = enabled_webhook_service
+        service.client = None  # Set client to None
+        
+        with patch("birdnetpi.services.webhook_service.logger") as mock_logger:
+            await service._send_to_webhooks("test", {"data": "test"})
+            # Should return early without logging (covers line 258)
+            mock_logger.debug.assert_not_called()
+
+    async def test_send_to_webhooks_no_relevant_webhooks(self, enabled_webhook_service, caplog):
+        """Test _send_to_webhooks logs and returns when no relevant webhooks."""
+        import logging
+        service = enabled_webhook_service
+        service.client = AsyncMock()
+        service.webhooks = []  # No webhooks configured
+        
+        # Set debug level to capture the log
+        caplog.set_level(logging.DEBUG, logger="birdnetpi.services.webhook_service")
+        
+        await service._send_to_webhooks("detection", {"data": "test"})
+        # Should log debug message and return (covers lines 266-267)
+        assert "No webhooks configured for event type: detection" in caplog.text
+
+    async def test_send_webhook_request_no_client(self, enabled_webhook_service):
+        """Test _send_webhook_request returns False when no client."""
+        service = enabled_webhook_service
+        service.client = None
+        webhook = WebhookConfig(url="https://example.com")
+        
+        result = await service._send_webhook_request(webhook, {"data": "test"})
+        # Should return False early (covers line 300)
+        assert result is False
+
+    async def test_send_webhook_request_timeout_exception(self, enabled_webhook_service, caplog):
+        """Test _send_webhook_request handles timeout exception."""
+        import httpx
+        service = enabled_webhook_service
+        webhook = WebhookConfig(url="https://example.com", retry_count=0)
+        
+        # Mock client to raise TimeoutException
+        service.client = AsyncMock()
+        service.client.post.side_effect = httpx.TimeoutException("Timeout")
+        
+        result = await service._send_webhook_request(webhook, {"data": "test"})
+        # Should log timeout warning and return False (covers line 336)
+        assert "Webhook timeout" in caplog.text
+        assert result is False
+
+    async def test_send_webhook_request_request_error_exception(self, enabled_webhook_service, caplog):
+        """Test _send_webhook_request handles request error exception.""" 
+        import httpx
+        service = enabled_webhook_service
+        webhook = WebhookConfig(url="https://example.com", retry_count=0)
+        
+        # Mock client to raise RequestError
+        service.client = AsyncMock()
+        service.client.post.side_effect = httpx.RequestError("Connection failed")
+        
+        result = await service._send_webhook_request(webhook, {"data": "test"})
+        # Should log request error warning and return False (covers line 343)
+        assert "Webhook request error" in caplog.text
+        assert result is False
