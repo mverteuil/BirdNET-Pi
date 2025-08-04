@@ -249,3 +249,22 @@ class TestAudioAnalysisService:
             "An unexpected error occurred while sending detection event: Unexpected error"
             in caplog.text
         )
+
+    @pytest.mark.asyncio
+    async def test_analyze_audio_chunk_handles_analysis_client_exception(
+        self, audio_analysis_service, caplog
+    ):
+        """Should handle and log exceptions from the analysis client."""
+        # Mock the analysis client to raise an exception
+        audio_analysis_service.analysis_client.get_analysis_results.side_effect = Exception(
+            "Analysis failed"
+        )
+
+        # Create a mock audio chunk
+        audio_chunk = np.zeros(48000 * 3, dtype=np.float32)  # 3 seconds of silence
+
+        # This should not raise an exception, but should log an error
+        await audio_analysis_service._analyze_audio_chunk(audio_chunk)
+
+        # Should have logged the error (lines 83-84)
+        assert "Error during BirdNET analysis: Analysis failed" in caplog.text
