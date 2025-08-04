@@ -1,7 +1,5 @@
 """SQLAdmin configuration and setup for database administration interface."""
 
-from typing import Any, ClassVar
-
 from fastapi import FastAPI
 from sqladmin import Admin, ModelView
 

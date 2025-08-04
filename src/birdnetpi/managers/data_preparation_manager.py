@@ -54,9 +54,7 @@ class DataPreparationManager:
             df_resample = df[["com_name"]]
         else:
             series_result = (
-                df.resample(resample_time.lower())["com_name"]
-                .aggregate("unique")
-                .explode()
+                df.resample(resample_time.lower())["com_name"].aggregate("unique").explode()
             )
             df_resample = series_result.to_frame()
         return cast(pd.DataFrame, df_resample)
@@ -91,7 +89,7 @@ class DataPreparationManager:
         fig_dec_y = [self.hms_to_dec(h) for h in day_hour_freq.columns.tolist()]
         fig_x = []
         for d in day_hour_freq.index.tolist():
-            if hasattr(d, 'strftime'):
+            if hasattr(d, "strftime"):
                 fig_x.append(d.strftime("%d-%m-%Y"))  # type: ignore[attr-defined]
             else:
                 fig_x.append(str(d))

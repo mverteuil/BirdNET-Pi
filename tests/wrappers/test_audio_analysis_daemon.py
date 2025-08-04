@@ -164,9 +164,7 @@ class TestAudioAnalysisDaemon:
     def test_cleanup_fifo(self, mocker, caplog):
         """Should close the FIFO file descriptor."""
         mock_os = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.os")
-        mocker.patch(
-            "birdnetpi.wrappers.audio_analysis_daemon._fifo_analysis_fd", 456
-        )
+        mocker.patch("birdnetpi.wrappers.audio_analysis_daemon._fifo_analysis_fd", 456)
         mocker.patch(
             "birdnetpi.wrappers.audio_analysis_daemon._fifo_analysis_path", "/tmp/test_fifo.fifo"
         )
@@ -228,12 +226,12 @@ class TestAudioAnalysisDaemon:
         """Should execute main entry point code when module name is __main__ (line 91)."""
         # Mock the main function to verify it gets called
         mock_main = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.main")
-        
+
         # Simulate the condition on line 91 by directly evaluating it with __main__
         # This covers the condition: if __name__ == "__main__":
         module_name = "__main__"
         if module_name == "__main__":
             daemon.main()
-        
+
         # Verify main() was called, covering line 91
         mock_main.assert_called_once()

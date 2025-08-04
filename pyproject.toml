@@ -1,107 +1,62 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+  "ast-grep-cli>=0.39.2",
+  "httpx>=0.28.1",
+  "openpyxl>=3.1.5",
+  "pyleak>=0.1.14",
+  "pytest>=7.1.2",
+  "pytest-asyncio>=0.23.8",
+  "pytest-cov>=6.2.1",
+  "pytest-mock==3.7.0",
+  "pyright>=1.1.390",
+  "ruff>=0.12.5"
+]
+
 [project]
 name = "birdnet-pi"
 version = "0.1.0"
 description = "A Python-based BirdNET-Pi application"
 authors = [
-    { name = "Your Name", email = "your.email@example.com" }
+  {name = "Your Name", email = "your.email@example.com"}
 ]
 requires-python = "==3.11.*"
 dependencies = [
-    "pip",
-    "wheel",
-    "setuptools",
-    "colorama==0.4.4",
-    "librosa",
-    "pytz",
-    "tzlocal",
-    "pandas",
-    "seaborn",
-    "streamlit==1.19.0",
-    "plotly",
-    "apprise==1.2.1",
-    "paho-mqtt",
-    "suntime",
-    "altair<5",
-    "astral",
-    "sqlalchemy",
-    "uvicorn",
-    "fastapi",
-    "python-multipart",
-    "sqladmin>=0.21.0",
-    "tensorflow>=2.19.0 ; platform_machine != 'aarch64' or sys_platform == 'darwin'",
-    "tflite-runtime>=2.14.0 ; platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "sounddevice>=0.5.2",
-    "wtforms>=3.1.2",
-    "pydub>=0.25.1",
-    "httpx>=0.28.1",
-    "psutil>=7.0.0",
-    "tqdm>=4.67.1",
-    "structlog>=25.4.0",
-    "numpy<2",
+  "pip",
+  "wheel",
+  "setuptools",
+  "colorama==0.4.4",
+  "librosa",
+  "pytz",
+  "tzlocal",
+  "pandas",
+  "seaborn",
+  "streamlit==1.19.0",
+  "plotly",
+  "apprise==1.2.1",
+  "paho-mqtt",
+  "suntime",
+  "altair<5",
+  "astral",
+  "sqlalchemy",
+  "uvicorn",
+  "fastapi",
+  "python-multipart",
+  "sqladmin>=0.21.0",
+  "tensorflow>=2.19.0 ; platform_machine != 'aarch64' or sys_platform == 'darwin'",
+  "tflite-runtime>=2.14.0 ; platform_machine == 'aarch64' and sys_platform == 'linux'",
+  "sounddevice>=0.5.2",
+  "wtforms>=3.1.2",
+  "pydub>=0.25.1",
+  "httpx>=0.28.1",
+  "psutil>=7.0.0",
+  "tqdm>=4.67.1",
+  "structlog>=25.4.0",
+  "numpy<2"
 ]
-
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-
-
-[tool.coverage.run]
-omit = ["tests/*"]
-
-[tool.pytest.ini_options]
-markers = [
-    "expensive",
-    "no_leaks: detect asyncio task leaks, thread leaks, and event loop blocking"
-]
-testpaths = ["tests"]
-addopts = "--cov=src"
-asyncio_mode = "auto"
-
-[tool.ruff]
-line-length = 100
-target-version = "py311"
-
-[tool.ruff.lint]
-select = [
-    "E",  # Error
-    "W",  # Warning
-    "F",  # Pyflakes
-    "C",  # Complexity
-    "I",  # Isort
-    "N",  # Naming
-    "D",  # Docstrings (optional, but good for clarity)
-    "ANN", # Annoyance (missing type annotations)
-    "B",  # Bugbear
-    "A",  # Builtin shadowing
-    "TID", # flake8-tidy-imports
-    "UP", # pyupgrade
-    "RUF", # Ruff-specific rules
-]
-ignore = [
-    "D100", # Missing docstring in public module
-    "D104", # Missing docstring in public package
-    "D105", # Missing docstring in public method
-    "D107", # Missing docstring in __init__
-    "D203", # 1 blank line required before class docstring
-    "D213", # Multi-line docstring summary should start on the second line
-    "D406", # Section name should end with a colon
-    "D407", # Missing dashed underline after section header
-    "D413", # Missing blank line after last section
-    "D400", # First line should end with a period
-    "D415", # First line should end with a period, question mark, or exclamation point
-    "ANN204", # Missing return type annotation for special method `__init__`
-]
-unfixable = ["TID252"] # Disallow `from ... import *`
-
-[tool.ruff.lint.per-file-ignores]
-"tests/*" = ["ANN"]
-
-[tool.setuptools]
-package-dir = { "" = "src" }
-
-[tool.setuptools.packages.find]
-where = ["src"]
 
 [project.scripts]
 data-manager = "birdnetpi.wrappers.data_manager_wrapper:main"
@@ -112,6 +67,9 @@ audio-capture-daemon = "birdnetpi.wrappers.audio_capture_daemon:main"
 audio-websocket-daemon = "birdnetpi.wrappers.audio_websocket_daemon:main"
 release-manager = "birdnetpi.wrappers.release_wrapper:main"
 asset-installer = "birdnetpi.wrappers.asset_installer_wrapper:main"
+
+[tool.coverage.run]
+omit = ["tests/*"]
 
 [tool.pyright]
 pythonVersion = "3.11"
@@ -127,16 +85,56 @@ useLibraryCodeForTypes = true
 include = ["src", "tests"]
 exclude = ["**/build", "**/__pycache__"]
 
-[dependency-groups]
-dev = [
-    "ast-grep-cli>=0.39.2",
-    "httpx>=0.28.1",
-    "openpyxl>=3.1.5",
-    "pyleak>=0.1.14",
-    "pytest>=7.1.2",
-    "pytest-asyncio>=0.23.8",
-    "pytest-cov>=6.2.1",
-    "pytest-mock==3.7.0",
-    "pyright>=1.1.390",
-    "ruff>=0.12.5",
+[tool.pytest.ini_options]
+markers = [
+  "expensive",
+  "no_leaks: detect asyncio task leaks, thread leaks, and event loop blocking"
 ]
+testpaths = ["tests"]
+addopts = "--cov=src"
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+  "E", # Error
+  "W", # Warning
+  "F", # Pyflakes
+  "C", # Complexity
+  "I", # Isort
+  "N", # Naming
+  "D", # Docstrings (optional, but good for clarity)
+  "ANN", # Annoyance (missing type annotations)
+  "B", # Bugbear
+  "A", # Builtin shadowing
+  "TID", # flake8-tidy-imports
+  "UP", # pyupgrade
+  "RUF" # Ruff-specific rules
+]
+ignore = [
+  "D100", # Missing docstring in public module
+  "D104", # Missing docstring in public package
+  "D105", # Missing docstring in public method
+  "D107", # Missing docstring in __init__
+  "D203", # 1 blank line required before class docstring
+  "D213", # Multi-line docstring summary should start on the second line
+  "D406", # Section name should end with a colon
+  "D407", # Missing dashed underline after section header
+  "D413", # Missing blank line after last section
+  "D400", # First line should end with a period
+  "D415", # First line should end with a period, question mark, or exclamation point
+  "ANN204" # Missing return type annotation for special method `__init__`
+]
+unfixable = ["TID252"] # Disallow `from ... import *`
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

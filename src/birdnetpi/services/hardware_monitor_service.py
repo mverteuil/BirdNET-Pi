@@ -6,9 +6,10 @@ and system resources to provide real-time status and alert on failures.
 
 import asyncio
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable, NamedTuple
+from typing import Any, NamedTuple
 
 import psutil
 

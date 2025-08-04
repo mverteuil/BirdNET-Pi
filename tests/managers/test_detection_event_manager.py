@@ -71,16 +71,16 @@ class TestDetectionEventManager:
 
         # Assertions - check that create_detection was called (but not with the original dict)
         mock_detection_manager.create_detection.assert_called_once()
-        
+
         # Verify the DetectionEvent object passed to create_detection
         call_args = mock_detection_manager.create_detection.call_args[0][0]
         assert call_args.species_tensor == "Common Blackbird"
         assert call_args.confidence == 0.95
         assert call_args.audio_file_path == "/path/to/audio.wav"
-        
+
         # Since the notification methods are commented out, we should not expect them to be called
         mock_notification_service.send_websocket_notification.assert_not_called()
         mock_notification_service.send_apprise_notification.assert_not_called()
-        
+
         assert "Processing detection event for Common Blackbird" in caplog.text
         assert "Saving detection to DB: Common Blackbird" in caplog.text

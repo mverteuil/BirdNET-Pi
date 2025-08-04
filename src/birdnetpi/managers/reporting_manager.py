@@ -59,13 +59,13 @@ class ReportingManager:
             # Create empty DataFrame with expected columns when no data
             column_names = [
                 "Com_Name",
-                "DateTime", 
+                "DateTime",
                 "Date",
                 "Time",
                 "Sci_Name",
                 "Confidence",
                 "Lat",
-                "Lon", 
+                "Lon",
                 "Cutoff",
                 "Week",
                 "Sens",
@@ -86,11 +86,11 @@ class ReportingManager:
         """Get total detection counts and unique species counts for the current and prior weeks."""
         current_week_stats = self.detection_manager.get_detection_counts_by_date_range(
             datetime.datetime.combine(start_date, datetime.time.min),
-            datetime.datetime.combine(end_date, datetime.time.max)
+            datetime.datetime.combine(end_date, datetime.time.max),
         )
         prior_week_stats = self.detection_manager.get_detection_counts_by_date_range(
             datetime.datetime.combine(prior_start_date, datetime.time.min),
-            datetime.datetime.combine(prior_end_date, datetime.time.max)
+            datetime.datetime.combine(prior_end_date, datetime.time.max),
         )
         return current_week_stats, prior_week_stats
 
@@ -106,7 +106,7 @@ class ReportingManager:
             datetime.datetime.combine(start_date, datetime.time.min),
             datetime.datetime.combine(end_date, datetime.time.max),
             datetime.datetime.combine(prior_start_date, datetime.time.min),
-            datetime.datetime.combine(prior_end_date, datetime.time.max)
+            datetime.datetime.combine(prior_end_date, datetime.time.max),
         )
 
         top_10_species = []
@@ -133,7 +133,7 @@ class ReportingManager:
         """Fetch new species detected in the current week that were not present in prior data."""
         new_species_rows = self.detection_manager.get_new_species_data(
             datetime.datetime.combine(start_date, datetime.time.min),
-            datetime.datetime.combine(end_date, datetime.time.max)
+            datetime.datetime.combine(end_date, datetime.time.max),
         )
         new_species = (
             [{"com_name": row["species"], "count": row["count"]} for row in new_species_rows]
@@ -228,10 +228,12 @@ class ReportingManager:
         # For now, use get_all_detections and filter manually
         all_detections = self.detection_manager.get_all_detections()
         todays_detections = [
-            d for d in all_detections 
-            if isinstance(d.timestamp, datetime.datetime) and start_datetime <= d.timestamp <= end_datetime
+            d
+            for d in all_detections
+            if isinstance(d.timestamp, datetime.datetime)
+            and start_datetime <= d.timestamp <= end_datetime
         ]
-        
+
         # Convert Detection objects to dictionaries matching the template expectations
         return [
             {

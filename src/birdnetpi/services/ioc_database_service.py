@@ -226,7 +226,7 @@ class IOCDatabaseService:
                 .first()
             )
             if translation is not None:
-                common_name = getattr(translation, 'common_name', None)
+                common_name = getattr(translation, "common_name", None)
                 return str(common_name) if common_name else None
             return None
         finally:

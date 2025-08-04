@@ -195,7 +195,7 @@ class IOCReferenceService:
             # Get headers (first row)
             if ws is None:
                 raise ValueError("Worksheet is None - cannot process XLSX file")
-            
+
             headers = [str(cell.value) if cell.value is not None else "" for cell in ws[1]]
 
             # Map language columns (skip seq, Order, Family, IOC_15.1, English)

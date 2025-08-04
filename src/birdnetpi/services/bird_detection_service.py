@@ -63,7 +63,7 @@ class BirdDetectionService:
 
         if self.interpreter is None:
             raise RuntimeError("Interpreter not initialized")
-        
+
         input_details = self.interpreter.get_input_details()
         output_details = self.interpreter.get_output_details()
 
@@ -90,14 +90,16 @@ class BirdDetectionService:
         file_resolver = FilePathResolver()
         model_path = file_resolver.get_model_path(self.config.metadata_model)
         if model_path is None:
-            raise ValueError(f"Model path not found for metadata model: {self.config.metadata_model}")
-            
+            raise ValueError(
+                f"Model path not found for metadata model: {self.config.metadata_model}"
+            )
+
         self.m_interpreter = tflite.Interpreter(model_path=model_path)  # type: ignore[attr-defined]
         self.m_interpreter.allocate_tensors()  # type: ignore[union-attr]
 
         if self.m_interpreter is None:
             raise RuntimeError("Meta interpreter not initialized")
-            
+
         input_details = self.m_interpreter.get_input_details()
         output_details = self.m_interpreter.get_output_details()
 
@@ -109,7 +111,7 @@ class BirdDetectionService:
     def _predict_filter_raw(self, lat: float, lon: float, week: int) -> np.ndarray:
         if self.m_interpreter is None:
             self._load_meta_model()
-            
+
         if self.m_interpreter is None:
             raise RuntimeError("Meta interpreter not initialized after load")
 
@@ -175,7 +177,7 @@ class BirdDetectionService:
         # Make a prediction
         if self.interpreter is None:
             raise RuntimeError("Interpreter not initialized")
-            
+
         self.interpreter.set_tensor(self.input_layer_index, np.array(sig, dtype="float32"))
         if self.model_name == "BirdNET_6K_GLOBAL_MODEL":
             self.interpreter.set_tensor(

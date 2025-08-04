@@ -51,9 +51,7 @@ class TestAudioWebSocketService:
     async def test_stream_audio_chunk_no_connected_websockets(self, audio_websocket_service):
         """Should return early if no websockets are connected."""
         audio_websocket_service.connected_websockets.clear()
-        with patch(
-            "birdnetpi.services.audio_websocket_service.AudioSegment"
-        ) as mock_audio_segment:
+        with patch("birdnetpi.services.audio_websocket_service.AudioSegment") as mock_audio_segment:
             await audio_websocket_service.stream_audio_chunk(b"test_audio")
             mock_audio_segment.assert_not_called()
 
@@ -64,13 +62,13 @@ class TestAudioWebSocketService:
         audio_websocket_service.connected_websockets.add(mock_websocket)
 
         mock_audio_segment_instance = MagicMock()
-        
+
         # Mock the export method to write to the BytesIO buffer
         def mock_export(buffer, format=None):
             # Write the encoded audio to the buffer
             buffer.write(b"encoded_audio")
             return buffer
-        
+
         mock_audio_segment_instance.export.side_effect = mock_export
 
         with patch(
@@ -93,8 +91,8 @@ class TestAudioWebSocketService:
             # Verify export was called with a BytesIO object and format="mp3"
             mock_audio_segment_instance.export.assert_called_once()
             call_args = mock_audio_segment_instance.export.call_args
-            assert hasattr(call_args[0][0], 'write')  # First arg should be BytesIO-like
-            assert call_args[1] == {'format': 'mp3'}
+            assert hasattr(call_args[0][0], "write")  # First arg should be BytesIO-like
+            assert call_args[1] == {"format": "mp3"}
             mock_websocket.send_bytes.assert_called_once_with(b"encoded_audio")
 
     @pytest.mark.asyncio
@@ -107,13 +105,13 @@ class TestAudioWebSocketService:
         audio_websocket_service.connected_websockets.add(mock_websocket)
 
         mock_audio_segment_instance = MagicMock()
-        
+
         # Mock the export method to write to the BytesIO buffer
         def mock_export(buffer, format=None):
             # Write the encoded audio to the buffer
             buffer.write(b"encoded_audio")
             return buffer
-        
+
         mock_audio_segment_instance.export.side_effect = mock_export
 
         with patch(

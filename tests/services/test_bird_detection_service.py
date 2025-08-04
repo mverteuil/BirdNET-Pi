@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 def bird_detection_service(test_config):
     """Provide a BirdDetectionService instance for testing using real models."""
     from birdnetpi.services.bird_detection_service import BirdDetectionService
-    
+
     service = BirdDetectionService(test_config)
     return service
 

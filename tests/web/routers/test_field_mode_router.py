@@ -1,5 +1,4 @@
-import json
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,13 +17,13 @@ from birdnetpi.web.routers.field_mode_router import (
 def mock_app():
     """Create a FastAPI app with mocked app state."""
     app = FastAPI()
-    
+
     # Set up app state with mocks
     app.state.detections = MagicMock()
     app.state.gps_service = MagicMock()
     app.state.hardware_monitor = MagicMock()
     app.state.templates = MagicMock()
-    
+
     app.include_router(router)
     return app
 
@@ -58,7 +57,7 @@ class TestDependencyInjection:
         # Mock app.state without gps_service attribute
         request.app.state = MagicMock()
         del request.app.state.gps_service  # Remove the attribute
-        with patch('builtins.hasattr', return_value=False):
+        with patch("builtins.hasattr", return_value=False):
             result = get_gps_service(request)
             assert result is None
 
@@ -75,7 +74,7 @@ class TestDependencyInjection:
         # Mock app.state without hardware_monitor attribute
         request.app.state = MagicMock()
         del request.app.state.hardware_monitor
-        with patch('builtins.hasattr', return_value=False):
+        with patch("builtins.hasattr", return_value=False):
             result = get_hardware_monitor(request)
             assert result is None
 
@@ -98,12 +97,7 @@ class TestGPSEndpoints:
 
     def test_get_gps_status_success(self, client):
         """Should return GPS status when service available."""
-        mock_status = {
-            "enabled": True,
-            "available": True,
-            "satellites": 8,
-            "accuracy": 3.2
-        }
+        mock_status = {"enabled": True, "available": True, "satellites": 8, "accuracy": 3.2}
         client.app.state.gps_service.get_gps_status.return_value = mock_status
 
         response = client.get("/api/gps/status")
@@ -196,8 +190,8 @@ class TestHardwareEndpoints:
             "overall_status": "healthy",
             "components": {
                 "cpu": {"status": "normal", "temperature": 45.2},
-                "memory": {"status": "normal", "usage": 65.5}
-            }
+                "memory": {"status": "normal", "usage": 65.5},
+            },
         }
         client.app.state.hardware_monitor.get_health_summary.return_value = mock_status
 
@@ -208,7 +202,9 @@ class TestHardwareEndpoints:
 
     def test_get_hardware_status_exception(self, client):
         """Should handle hardware status exceptions."""
-        client.app.state.hardware_monitor.get_health_summary.side_effect = Exception("Hardware error")
+        client.app.state.hardware_monitor.get_health_summary.side_effect = Exception(
+            "Hardware error"
+        )
 
         response = client.get("/api/hardware/status")
 
@@ -256,7 +252,9 @@ class TestHardwareEndpoints:
 
     def test_get_component_status_exception(self, client):
         """Should handle component status exceptions."""
-        client.app.state.hardware_monitor.get_component_status.side_effect = Exception("Component error")
+        client.app.state.hardware_monitor.get_component_status.side_effect = Exception(
+            "Component error"
+        )
 
         response = client.get("/api/hardware/component/cpu")
 
@@ -267,7 +265,7 @@ class TestHardwareEndpoints:
 class TestFieldSummaryEndpoint:
     """Test field summary endpoint."""
 
-    @patch('birdnetpi.web.routers.field_mode_router.datetime')
+    @patch("birdnetpi.web.routers.field_mode_router.datetime")
     def test_get_field_summary_success(self, mock_datetime, client):
         """Should return comprehensive field summary."""
         # Mock datetime
@@ -277,18 +275,21 @@ class TestFieldSummaryEndpoint:
 
         # Setup detection manager
         client.app.state.detections.get_detections_count_by_date.return_value = 15
-        
+
         mock_detection1 = MagicMock()
         mock_detection1.species = "Robin"
         mock_detection1.confidence = 0.85
         mock_detection1.timestamp = mock_now
-        
+
         mock_detection2 = MagicMock()
         mock_detection2.species = "Sparrow"
         mock_detection2.confidence = 0.92
         mock_detection2.timestamp = mock_now
-        
-        client.app.state.detections.get_recent_detections.return_value = [mock_detection1, mock_detection2]
+
+        client.app.state.detections.get_recent_detections.return_value = [
+            mock_detection1,
+            mock_detection2,
+        ]
 
         # Setup GPS service
         mock_gps_status = {"enabled": True, "available": True, "satellites": 8}
@@ -310,7 +311,7 @@ class TestFieldSummaryEndpoint:
         assert data["gps"] == mock_gps_status
         assert data["hardware"] == mock_hw_status
 
-    @patch('birdnetpi.web.routers.field_mode_router.datetime')
+    @patch("birdnetpi.web.routers.field_mode_router.datetime")
     def test_get_field_summary_no_gps_service(self, mock_datetime, client):
         """Should handle missing GPS service gracefully."""
         mock_now = datetime(2023, 1, 1, 12, 0, 0, tzinfo=UTC)
@@ -320,7 +321,9 @@ class TestFieldSummaryEndpoint:
         client.app.state.detections.get_detections_count_by_date.return_value = 10
         client.app.state.detections.get_recent_detections.return_value = []
         client.app.state.gps_service = None
-        client.app.state.hardware_monitor.get_health_summary.return_value = {"overall_status": "healthy"}
+        client.app.state.hardware_monitor.get_health_summary.return_value = {
+            "overall_status": "healthy"
+        }
 
         response = client.get("/api/field/summary")
 
@@ -328,7 +331,7 @@ class TestFieldSummaryEndpoint:
         data = response.json()
         assert data["gps"]["enabled"] is False
 
-    @patch('birdnetpi.web.routers.field_mode_router.datetime')
+    @patch("birdnetpi.web.routers.field_mode_router.datetime")
     def test_get_field_summary_no_hardware_monitor(self, mock_datetime, client):
         """Should handle missing hardware monitor gracefully."""
         mock_now = datetime(2023, 1, 1, 12, 0, 0, tzinfo=UTC)
@@ -348,7 +351,9 @@ class TestFieldSummaryEndpoint:
 
     def test_get_field_summary_exception(self, client):
         """Should handle field summary exceptions."""
-        client.app.state.detections.get_detections_count_by_date.side_effect = Exception("Summary error")
+        client.app.state.detections.get_detections_count_by_date.side_effect = Exception(
+            "Summary error"
+        )
 
         response = client.get("/api/field/summary")
 
@@ -361,10 +366,7 @@ class TestFieldAlertEndpoint:
 
     def test_trigger_field_alert_success(self, client):
         """Should trigger field alert successfully."""
-        alert_data = {
-            "message": "Battery low warning",
-            "level": "warning"
-        }
+        alert_data = {"message": "Battery low warning", "level": "warning"}
 
         response = client.post("/api/field/alert", json=alert_data)
 
@@ -399,13 +401,13 @@ class TestFieldModeTemplate:
         """Should attempt to render field mode template."""
         # Mock the template response to avoid file system dependencies
         from fastapi.responses import HTMLResponse
-        
+
         # Create a mock HTMLResponse
         mock_response = HTMLResponse(content="<html><body>Field Mode</body></html>")
         client.app.state.templates.TemplateResponse.return_value = mock_response
-        
+
         response = client.get("/field")
-        
+
         # Verify template was called and response received
         client.app.state.templates.TemplateResponse.assert_called_once()
         call_args = client.app.state.templates.TemplateResponse.call_args
@@ -425,7 +427,7 @@ class TestLocationHistoryEndpoint:
         mock_location1.longitude = -74.0060
         mock_location1.altitude = 10.0
         mock_location1.accuracy = 5.0
-        mock_location1.timestamp = datetime(2025, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        mock_location1.timestamp = datetime(2025, 1, 15, 12, 0, 0, tzinfo=UTC)
         mock_location1.satellite_count = 8
 
         mock_location2 = MagicMock()
@@ -433,10 +435,13 @@ class TestLocationHistoryEndpoint:
         mock_location2.longitude = -74.0062
         mock_location2.altitude = 12.0
         mock_location2.accuracy = 3.0
-        mock_location2.timestamp = datetime(2025, 1, 15, 12, 30, 0, tzinfo=timezone.utc)
+        mock_location2.timestamp = datetime(2025, 1, 15, 12, 30, 0, tzinfo=UTC)
         mock_location2.satellite_count = 10
 
-        client.app.state.gps_service.get_location_history.return_value = [mock_location1, mock_location2]
+        client.app.state.gps_service.get_location_history.return_value = [
+            mock_location1,
+            mock_location2,
+        ]
 
         response = client.get("/api/gps/history?hours=24")
 
@@ -444,7 +449,7 @@ class TestLocationHistoryEndpoint:
         data = response.json()
         assert data["count"] == 2
         assert len(data["locations"]) == 2
-        
+
         # Check first location
         loc1 = data["locations"][0]
         assert loc1["latitude"] == 40.7128
@@ -465,7 +470,9 @@ class TestLocationHistoryEndpoint:
 
     def test_get_location_history_service_exception(self, client):
         """Should handle GPS service exceptions."""
-        client.app.state.gps_service.get_location_history.side_effect = Exception("GPS history error")
+        client.app.state.gps_service.get_location_history.side_effect = Exception(
+            "GPS history error"
+        )
 
         response = client.get("/api/gps/history")
 

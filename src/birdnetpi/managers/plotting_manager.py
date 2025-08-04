@@ -272,9 +272,7 @@ class PlottingManager:
         fig_z = day_hour_freq.values.transpose()
 
         sunrise_week_list, sunrise_list, sunrise_text_list, daysback_range = (
-            self.data_preparation_manager.prepare_sunrise_sunset_data_for_plot(
-                num_days_to_display
-            )
+            self.data_preparation_manager.prepare_sunrise_sunset_data_for_plot(num_days_to_display)
         )
 
         fig = self._create_daily_detections_heatmap(

@@ -44,8 +44,12 @@ class TestAudioCaptureDaemon:
         """Should create FIFOs, open them, start service, and clean up on shutdown."""
         mock_makedirs = mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.makedirs")
         mock_mkfifo = mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.mkfifo")
-        mock_open = mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.open", side_effect=[123, 456])
-        mock_close = mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.close")  # Mock os.close here
+        mock_open = mocker.patch(
+            "birdnetpi.wrappers.audio_capture_daemon.os.open", side_effect=[123, 456]
+        )
+        mock_close = mocker.patch(
+            "birdnetpi.wrappers.audio_capture_daemon.os.close"
+        )  # Mock os.close here
         mocker.patch(
             "birdnetpi.wrappers.audio_capture_daemon.os.path.exists",
             side_effect=[False, False, True, True],
@@ -244,19 +248,25 @@ class TestAudioCaptureDaemon:
         import subprocess
         import sys
         from pathlib import Path
-        
+
         # Get the path to the module
-        module_path = Path(__file__).parent.parent.parent / "src" / "birdnetpi" / "wrappers" / "audio_capture_daemon.py"
-        
+        module_path = (
+            Path(__file__).parent.parent.parent
+            / "src"
+            / "birdnetpi"
+            / "wrappers"
+            / "audio_capture_daemon.py"
+        )
+
         # Mock environment to avoid real execution - use a small timeout
         # Try to run the module as script, but expect it to fail quickly due to missing dependencies
         # We just want to trigger the __main__ block for coverage
         try:
             result = subprocess.run(
-                [sys.executable, str(module_path)], 
-                capture_output=True, 
-                text=True, 
-                timeout=5  # Slightly longer timeout
+                [sys.executable, str(module_path)],
+                capture_output=True,
+                text=True,
+                timeout=5,  # Slightly longer timeout
             )
             # We expect this to fail due to missing config or other issues, that's fine
             # The important thing is that the __main__ block was executed

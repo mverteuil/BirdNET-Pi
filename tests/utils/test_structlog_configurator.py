@@ -1,13 +1,8 @@
-import logging
 import os
 import subprocess
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
-import structlog
-
-from birdnetpi.models.config import BirdNETConfig, LoggingConfig
+from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.utils.structlog_configurator import (
     _add_static_context,
     _configure_handlers,
@@ -150,10 +145,10 @@ class TestStaticContextProcessor:
         """Should add extra fields to event dict."""
         extra_fields = {"service": "test", "version": "1.0"}
         processor = _add_static_context(extra_fields)
-        
+
         event_dict = {"message": "test message"}
         result = processor(MagicMock(), "info", event_dict)
-        
+
         assert result["service"] == "test"
         assert result["version"] == "1.0"
         assert result["message"] == "test message"
@@ -171,7 +166,7 @@ class TestEnvironmentConfig:
             "birdnetpi.utils.structlog_configurator.is_systemd_available", return_value=False
         )
         mocker.patch.dict(os.environ, {"BIRDNETPI_ENV": "development"})
-        
+
         is_docker, has_systemd, is_development = _get_environment_config()
         assert is_docker is True
         assert has_systemd is False
@@ -186,7 +181,7 @@ class TestEnvironmentConfig:
             "birdnetpi.utils.structlog_configurator.is_systemd_available", return_value=True
         )
         mocker.patch.dict(os.environ, {}, clear=True)
-        
+
         is_docker, has_systemd, is_development = _get_environment_config()
         assert is_docker is False
         assert has_systemd is True
@@ -205,9 +200,9 @@ class TestProcessorConfiguration:
         mocker.patch(
             "birdnetpi.utils.structlog_configurator.get_deployment_environment", return_value="test"
         )
-        
+
         processors = _configure_processors(config, False, False, True)
-        
+
         assert len(processors) >= 4  # Basic processors
         # Should end with ConsoleRenderer for development
         assert any("ConsoleRenderer" in str(type(p)) for p in processors)
@@ -221,9 +216,9 @@ class TestProcessorConfiguration:
         mocker.patch(
             "birdnetpi.utils.structlog_configurator.get_deployment_environment", return_value="test"
         )
-        
+
         processors = _configure_processors(config, False, False, True)
-        
+
         # Verify static context processor was added with location
         assert len(processors) >= 4
 
@@ -234,11 +229,12 @@ class TestProcessorConfiguration:
             "birdnetpi.utils.structlog_configurator.get_git_version", return_value="main@abc123"
         )
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.get_deployment_environment", return_value="docker"
+            "birdnetpi.utils.structlog_configurator.get_deployment_environment",
+            return_value="docker",
         )
-        
+
         processors = _configure_processors(config, True, False, False)
-        
+
         # Should end with JSONRenderer for Docker
         assert any("JSONRenderer" in str(type(p)) for p in processors)
 
@@ -249,16 +245,14 @@ class TestHandlerConfiguration:
     def test_configure_handlers_console(self, mocker):
         """Should configure console handler for Docker/dev environments."""
         config = BirdNETConfig()
-        mock_file_resolver = mocker.patch(
-            "birdnetpi.utils.structlog_configurator.FilePathResolver"
-        )
+        mock_file_resolver = mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
         mock_logger = mocker.patch("logging.getLogger")
         mock_root = MagicMock()
         mock_logger.return_value = mock_root
         mock_root.handlers = []
-        
+
         _configure_handlers(config, True, False, False)
-        
+
         mock_root.addHandler.assert_called()
         mock_root.setLevel.assert_called()
 
@@ -267,39 +261,35 @@ class TestHandlerConfiguration:
         config = BirdNETConfig()
         config.logging.file_logging_enabled = True
         config.logging.log_file_path = "/tmp/test.log"
-        
-        mock_file_resolver = mocker.patch(
-            "birdnetpi.utils.structlog_configurator.FilePathResolver"
-        )
+
+        mock_file_resolver = mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
         mock_logger = mocker.patch("logging.getLogger")
         mock_root = MagicMock()
         mock_logger.return_value = mock_root
         mock_root.handlers = []
         mocker.patch("os.makedirs")
         mocker.patch("logging.handlers.RotatingFileHandler")
-        
+
         _configure_handlers(config, False, False, True)
-        
+
         mock_root.addHandler.assert_called()
 
     def test_configure_handlers_journald(self, mocker):
         """Should configure journald handler for SBC environments."""
         config = BirdNETConfig()
-        mock_file_resolver = mocker.patch(
-            "birdnetpi.utils.structlog_configurator.FilePathResolver"
-        )
+        mock_file_resolver = mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
         mock_logger = mocker.patch("logging.getLogger")
         mock_root = MagicMock()
         mock_logger.return_value = mock_root
         mock_root.handlers = []
-        
+
         # Mock the _add_journald_handler function directly
         mock_add_journald = mocker.patch(
             "birdnetpi.utils.structlog_configurator._add_journald_handler"
         )
-        
+
         _configure_handlers(config, False, True, False)
-        
+
         mock_add_journald.assert_called_once()
         mock_root.setLevel.assert_called()
 
@@ -307,26 +297,22 @@ class TestHandlerConfiguration:
         """Should fallback to syslog when journald unavailable."""
         config = BirdNETConfig()
         config.logging.syslog_enabled = True
-        
-        mock_file_resolver = mocker.patch(
-            "birdnetpi.utils.structlog_configurator.FilePathResolver"
-        )
+
+        mock_file_resolver = mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
         mock_logger = mocker.patch("logging.getLogger")
         mock_root = MagicMock()
         mock_logger.return_value = mock_root
         mock_root.handlers = []
-        
+
         # Mock the journald handler to raise ImportError, triggering fallback
         mock_add_journald = mocker.patch(
             "birdnetpi.utils.structlog_configurator._add_journald_handler",
-            side_effect=lambda *args: None  # Do nothing, simulating fallback
+            side_effect=lambda *args: None,  # Do nothing, simulating fallback
         )
-        mock_add_syslog = mocker.patch(
-            "birdnetpi.utils.structlog_configurator._add_syslog_handler"
-        )
-        
+        mock_add_syslog = mocker.patch("birdnetpi.utils.structlog_configurator._add_syslog_handler")
+
         _configure_handlers(config, False, True, False)
-        
+
         mock_add_journald.assert_called_once()
         mock_root.setLevel.assert_called()
 
@@ -337,24 +323,23 @@ class TestMainConfiguration:
     def test_configure_structlog_success(self, mocker):
         """Should configure structlog successfully."""
         config = BirdNETConfig()
-        
+
         # Mock all dependencies
         mocker.patch(
             "birdnetpi.utils.structlog_configurator._get_environment_config",
-            return_value=(False, False, True)
+            return_value=(False, False, True),
         )
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator._configure_processors",
-            return_value=[]
+            "birdnetpi.utils.structlog_configurator._configure_processors", return_value=[]
         )
         mock_configure = mocker.patch("structlog.configure")
         mocker.patch("birdnetpi.utils.structlog_configurator._configure_handlers")
         mock_get_logger = mocker.patch("structlog.get_logger")
         mock_logger = MagicMock()
         mock_get_logger.return_value = mock_logger
-        
+
         configure_structlog(config)
-        
+
         mock_configure.assert_called_once()
         mock_logger.info.assert_called_once()
 
@@ -363,8 +348,8 @@ class TestMainConfiguration:
         mock_structlog = mocker.patch("structlog.get_logger")
         mock_logger = MagicMock()
         mock_structlog.return_value = mock_logger
-        
+
         result = get_logger("test")
-        
+
         mock_structlog.assert_called_once_with("test")
         assert result == mock_logger

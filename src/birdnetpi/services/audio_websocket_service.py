@@ -48,6 +48,7 @@ class AudioWebSocketService:
             # For simplicity, let's use MP3 for now. Opus is better for real-time.
             # Export to bytes buffer
             from io import BytesIO
+
             buffer = BytesIO()
             audio_segment.export(buffer, format="mp3")
             encoded_audio_bytes = buffer.getvalue()

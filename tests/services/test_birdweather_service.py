@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-import requests
 
 from birdnetpi.services.birdweather_service import BirdWeatherService
 
@@ -39,6 +38,7 @@ def test_send_detection_to_birdweather_failure(birdweather_service):
     with patch("requests.post") as mock_post:
         # Create a real RequestException to test the exception handling
         import requests.exceptions
+
         mock_post.side_effect = requests.exceptions.RequestException("Test Error")
 
         birdweather_service.send_detection_to_birdweather(detection_data)
@@ -77,6 +77,7 @@ def test_get_birdweather_data_failure(birdweather_service):
     with patch("requests.get") as mock_get:
         # Create a real RequestException to test the exception handling
         import requests.exceptions
+
         mock_get.side_effect = requests.exceptions.RequestException("Test Error")
 
         result = birdweather_service.get_birdweather_data(location_data)

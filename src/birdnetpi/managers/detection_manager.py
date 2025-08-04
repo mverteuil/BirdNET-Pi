@@ -102,7 +102,9 @@ class DetectionManager:
                 print(f"Error retrieving detections by species: {e}")
                 raise
 
-    def get_detection_counts_by_date_range(self, start_date: datetime.datetime, end_date: datetime.datetime) -> dict:
+    def get_detection_counts_by_date_range(
+        self, start_date: datetime.datetime, end_date: datetime.datetime
+    ) -> dict:
         """Get total detection count and unique species count within a date range."""
         with self.db_service.get_db() as db:
             try:
@@ -184,7 +186,9 @@ class DetectionManager:
                 print(f"Error getting top species with prior counts: {e}")
                 raise
 
-    def get_new_species_data(self, start_date: datetime.datetime, end_date: datetime.datetime) -> list[dict]:
+    def get_new_species_data(
+        self, start_date: datetime.datetime, end_date: datetime.datetime
+    ) -> list[dict]:
         """Fetch new species not present in prior data."""
         with self.db_service.get_db() as db:
             try:

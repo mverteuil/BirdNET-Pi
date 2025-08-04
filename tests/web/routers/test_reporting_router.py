@@ -139,9 +139,10 @@ def test_get_best_recordings(mock_app_state_managers):
 def test_get_todays_detections(mock_app_state_managers):
     """Should retrieve today's detections successfully."""
     # Configure the mock detection manager to return test data
-    from birdnetpi.models.database_models import Detection
     import datetime
-    
+
+    from birdnetpi.models.database_models import Detection
+
     mock_detections = [
         Detection(
             id=1,
@@ -154,7 +155,7 @@ def test_get_todays_detections(mock_app_state_managers):
             audio_file_id=101,
         )
     ]
-    
+
     # Mock get_all_detections since that's what the ReportingManager uses
     app.state.detections.get_all_detections.return_value = mock_detections
 

@@ -255,7 +255,9 @@ class TestSpectrogramService:
         assert service.freq_bins[-1] < nyquist  # Should be less than Nyquist
 
     @pytest.mark.asyncio
-    async def test_spectrogram_generation_error_handling(self, spectrogram_service, mock_websocket, caplog):
+    async def test_spectrogram_generation_error_handling(
+        self, spectrogram_service, mock_websocket, caplog
+    ):
         """Test error handling during spectrogram generation."""
         service = spectrogram_service
         await service.connect_websocket(mock_websocket)
@@ -266,20 +268,25 @@ class TestSpectrogramService:
         sine_wave = np.sin(2 * np.pi * 1000 * t)
         audio_samples = (sine_wave * 16384).astype(np.int16)
         audio_bytes = audio_samples.tobytes()
-        
+
         # Process the audio to fill the buffer
         await service.process_audio_chunk(audio_bytes)
-        
+
         # Now mock scipy.signal.spectrogram to raise an exception
         from unittest.mock import patch
-        
-        with patch('scipy.signal.spectrogram', side_effect=Exception("Spectrogram processing error")):
+
+        with patch(
+            "scipy.signal.spectrogram", side_effect=Exception("Spectrogram processing error")
+        ):
             # Create more audio data to trigger another spectrogram generation
             await service.process_audio_chunk(audio_bytes)
 
             # Should have logged the error from the outer exception handler
-            assert any("Error generating spectrogram" in record.message 
-                     for record in caplog.records if record.levelname == "ERROR")
+            assert any(
+                "Error generating spectrogram" in record.message
+                for record in caplog.records
+                if record.levelname == "ERROR"
+            )
 
 
 @pytest.fixture(autouse=True)

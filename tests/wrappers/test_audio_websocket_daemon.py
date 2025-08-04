@@ -183,12 +183,12 @@ class TestAudioWebsocketDaemon:
         """Should execute main entry point code when module name is __main__ (line 103)."""
         # Mock the main function to verify it gets called
         mock_main = mocker.patch("birdnetpi.wrappers.audio_websocket_daemon.main")
-        
+
         # Simulate the condition on line 103 by directly evaluating it with __main__
         # This covers the condition: if __name__ == "__main__":
         module_name = "__main__"
         if module_name == "__main__":
             daemon.main()
-        
+
         # Verify main() was called, covering line 103
         mock_main.assert_called_once()

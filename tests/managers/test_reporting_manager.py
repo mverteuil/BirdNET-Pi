@@ -169,7 +169,7 @@ def test_get_weekly_report_data(reporting_manager, detection_manager):
         )
         detection_manager.get_new_species_data.assert_called_once_with(
             datetime.datetime(2025, 6, 30, 0, 0, 0),
-            datetime.datetime(2025, 7, 6, 23, 59, 59, 999999)
+            datetime.datetime(2025, 7, 6, 23, 59, 59, 999999),
         )
 
 
@@ -253,10 +253,10 @@ def test_get_data_empty_detections(reporting_manager, detection_manager):
     """Should handle empty detections and return empty DataFrame with correct columns."""
     # Mock empty detections
     detection_manager.get_all_detections.return_value = []
-    
+
     # Call get_data
     df = reporting_manager.get_data()
-    
+
     # Verify DataFrame is empty but has correct structure
     assert df.empty
     assert list(df.columns) == [
@@ -279,14 +279,15 @@ def test_get_data_empty_detections(reporting_manager, detection_manager):
 def test_get_todays_detections(reporting_manager, detection_manager):
     """Should retrieve detections for the current day."""
     today = datetime.date(2025, 7, 15)
-    
+
     with patch(
         "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
     ) as mock_date:
         mock_date.today.return_value = today
-        
+
         # Create mock Detection objects
         from birdnetpi.models.database_models import Detection
+
         mock_detections = [
             Detection(
                 id=1,
@@ -320,12 +321,12 @@ def test_get_todays_detections(reporting_manager, detection_manager):
                 audio_file_id=103,
             ),
         ]
-        
+
         detection_manager.get_all_detections.return_value = mock_detections
-        
+
         # Call the method
         todays_detections = reporting_manager.get_todays_detections()
-        
+
         # Verify the results - only 2 detections from today
         assert len(todays_detections) == 2
         assert todays_detections[0]["Com_Name"] == "American Robin"
@@ -333,7 +334,7 @@ def test_get_todays_detections(reporting_manager, detection_manager):
         assert todays_detections[0]["Date"] == "2025-07-15"
         assert todays_detections[0]["Time"] == "10:00:00"
         assert todays_detections[0]["Confidence"] == 0.9
-        
+
         # Verify the detection manager was called
         detection_manager.get_all_detections.assert_called_once()
 
@@ -341,21 +342,19 @@ def test_get_todays_detections(reporting_manager, detection_manager):
 def test_date_filter(reporting_manager):
     """Should filter DataFrame by date range."""
     # Create test DataFrame with datetime index
-    dates = pd.date_range(start='2025-07-10', end='2025-07-20', freq='D')
-    df = pd.DataFrame({
-        'value': range(len(dates))
-    }, index=dates)
-    
+    dates = pd.date_range(start="2025-07-10", end="2025-07-20", freq="D")
+    df = pd.DataFrame({"value": range(len(dates))}, index=dates)
+
     # Filter from 2025-07-12 to 2025-07-15
-    filtered_df = reporting_manager.date_filter(df, '2025-07-12', '2025-07-15')
-    
+    filtered_df = reporting_manager.date_filter(df, "2025-07-12", "2025-07-15")
+
     # Verify the filtered DataFrame contains the expected dates
     # The implementation adds 1 day to end_date, so it will include 2025-07-16
-    expected_dates = pd.date_range(start='2025-07-12', end='2025-07-16', freq='D')
+    expected_dates = pd.date_range(start="2025-07-12", end="2025-07-16", freq="D")
     assert len(filtered_df) == len(expected_dates)
     assert all(date in filtered_df.index for date in expected_dates)
-    
+
     # Test edge case with single row result (should return DataFrame not Series)
-    filtered_single = reporting_manager.date_filter(df, '2025-07-15', '2025-07-15')
+    filtered_single = reporting_manager.date_filter(df, "2025-07-15", "2025-07-15")
     assert isinstance(filtered_single, pd.DataFrame)
     assert len(filtered_single) == 2  # 07-15 and 07-16 due to +1 day

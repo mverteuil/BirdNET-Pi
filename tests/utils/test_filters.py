@@ -111,17 +111,17 @@ class TestAudioFilter:
     def test_abstract_filter_process_method(self):
         """Test that abstract AudioFilter process method is callable."""
         from birdnetpi.utils.filters import AudioFilter
-        
+
         # Create a minimal concrete implementation that implements process
         class MinimalFilter(AudioFilter):
             def process(self, audio_data):
                 # Call the abstract parent method to cover the 'pass' line
                 super().process(audio_data)
                 return audio_data
-        
+
         filter_instance = MinimalFilter("TestFilter")
         test_data = np.array([1000, 2000, 3000], dtype=np.int16)
-        
+
         # The concrete process method should call the abstract parent
         result = filter_instance.process(test_data)
         np.testing.assert_array_equal(result, test_data)

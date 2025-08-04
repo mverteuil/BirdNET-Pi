@@ -2,7 +2,6 @@ from pathlib import Path
 
 import matplotlib
 import pytest
-from pyleak import no_task_leaks, no_thread_leaks, no_event_loop_blocking
 
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 

@@ -81,7 +81,9 @@ async def get_charts(
     start_date = (
         pd.to_datetime(str(df.index.min())).date() if not df.empty else pd.Timestamp.now().date()
     )
-    end_date = pd.to_datetime(str(df.index.max())).date() if not df.empty else pd.Timestamp.now().date()
+    end_date = (
+        pd.to_datetime(str(df.index.max())).date() if not df.empty else pd.Timestamp.now().date()
+    )
     top_n = 10
 
     species = "All"

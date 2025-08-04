@@ -1,7 +1,8 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, MagicMock
 
 from birdnetpi.web.routers.api_router import (
     get_detection_manager,
@@ -17,7 +18,7 @@ from birdnetpi.web.routers.api_router import (
 def mock_app():
     """Create a FastAPI app with mocked app state."""
     app = FastAPI()
-    
+
     # Set up app state with mocks
     app.state.detections = MagicMock()
     app.state.gps_service = MagicMock()
@@ -25,8 +26,10 @@ def mock_app():
     app.state.mqtt_service = MagicMock()
     app.state.webhook_service = MagicMock()
     app.state.file_manager = MagicMock()
-    app.state.file_manager.file_path_resolver.get_birdnetpi_config_path.return_value = "/test/config.yaml"
-    
+    app.state.file_manager.file_path_resolver.get_birdnetpi_config_path.return_value = (
+        "/test/config.yaml"
+    )
+
     app.include_router(router, prefix="/api")
     return app
 
@@ -221,7 +224,7 @@ class TestFieldModeEndpoints:
         client.app.state.mqtt_service.enable_mqtt = True
         client.app.state.mqtt_service.publish_message = AsyncMock()
 
-        # Setup webhook service  
+        # Setup webhook service
         client.app.state.webhook_service.enable_webhooks = True
         client.app.state.webhook_service.send_webhook = AsyncMock()
 
@@ -270,7 +273,10 @@ class TestIoTEndpoints:
     def test_get_webhook_status_enabled(self, client):
         """Should return webhook status when enabled."""
         client.app.state.webhook_service.enable_webhooks = True
-        client.app.state.webhook_service.webhooks = ["http://example.com/webhook1", "http://example.com/webhook2"]
+        client.app.state.webhook_service.webhooks = [
+            "http://example.com/webhook1",
+            "http://example.com/webhook2",
+        ]
 
         response = client.get("/api/iot/webhooks/status")
 
@@ -318,10 +324,7 @@ site_name: "Test Site
 latitude: [invalid
 """
 
-        response = client.post(
-            "/api/config/validate",
-            json={"yaml_content": invalid_yaml}
-        )
+        response = client.post("/api/config/validate", json={"yaml_content": invalid_yaml})
 
         assert response.status_code == 200
         data = response.json()
