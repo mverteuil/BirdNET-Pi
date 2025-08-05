@@ -46,7 +46,7 @@ def get_file_manager(request: Request) -> FileManager:
     return FileManager(file_resolver.get_recordings_dir())
 
 
-@router.get("/reports/best_recordings", response_class=HTMLResponse)
+@router.get("/best_recordings", response_class=HTMLResponse)
 async def get_best_recordings(
     request: Request,
     reporting_manager: ReportingManager = Depends(get_reporting_manager),  # noqa: B008
@@ -59,7 +59,7 @@ async def get_best_recordings(
     )
 
 
-@router.get("/reports/detections")
+@router.get("/detections")
 async def get_detections(
     file_manager: FileManager = Depends(get_file_manager),  # noqa: B008
 ) -> dict:
@@ -70,7 +70,7 @@ async def get_detections(
     return {"recordings": recordings}
 
 
-@router.get("/reports/todays_detections", response_class=HTMLResponse)
+@router.get("/todays_detections", response_class=HTMLResponse)
 async def get_todays_detections(
     request: Request,
     reporting_manager: ReportingManager = Depends(get_reporting_manager),  # noqa: B008
@@ -85,7 +85,7 @@ async def get_todays_detections(
     )
 
 
-@router.get("/reports/charts", response_class=HTMLResponse)
+@router.get("/charts", response_class=HTMLResponse)
 async def get_charts(
     request: Request,
     reporting_manager: ReportingManager = Depends(get_reporting_manager),  # noqa: B008

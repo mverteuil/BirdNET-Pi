@@ -112,7 +112,7 @@ async def get_gps_history(
 
 
 # System monitoring API endpoints (hardware, overview, etc.)
-@router.get("/system/hardware/status")
+@router.get("/hardware/status")
 async def get_hardware_status(
     hardware_monitor: HardwareMonitorService = Depends(get_hardware_monitor),  # noqa: B008
 ) -> dict:
@@ -120,7 +120,7 @@ async def get_hardware_status(
     return hardware_monitor.get_all_status()
 
 
-@router.get("/system/hardware/component/{component_name}")
+@router.get("/hardware/component/{component_name}")
 async def get_hardware_component(
     component_name: str,
     hardware_monitor: HardwareMonitorService = Depends(get_hardware_monitor),  # noqa: B008
@@ -132,7 +132,7 @@ async def get_hardware_component(
     return {"component": component_name, "status": status}
 
 
-@router.get("/system/overview")
+@router.get("/overview")
 async def get_system_overview(
     system_monitor: SystemMonitorService = Depends(get_system_monitor),  # noqa: B008
     reporting_manager: ReportingManager = Depends(get_reporting_manager),  # noqa: B008

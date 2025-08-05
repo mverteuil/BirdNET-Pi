@@ -170,16 +170,18 @@ app = FastAPI(lifespan=lifespan)
 # Admin and management routes (no prefix - admin routes start with /admin in router)
 app.include_router(admin_router.router, tags=["Admin"])
 
-# Media and content routes (no prefix - routes defined without prefixes in routers)
+# Media and content routes
 app.include_router(audio_router.router, tags=["Audio"])
 app.include_router(spectrogram_router.router, tags=["Spectrogram"])
-app.include_router(reporting_router.router, tags=["Reports"])
 
-# Feature-specific routes (no prefix - routes defined without prefixes in routers)
+# Reports routes (consolidated under /reports prefix)
+app.include_router(reporting_router.router, prefix="/reports", tags=["Reports"])
+
+# Field mode routes
 app.include_router(field_mode_router.router, tags=["Field Mode"])
 
-# Centralized API routes
-app.include_router(api_router.router, prefix="/api", tags=["API"])
+# System API routes (consolidated under /api/system prefix)
+app.include_router(api_router.router, prefix="/api/system", tags=["System API"])
 
 # Legacy API routes (to be migrated to api_router eventually)
 app.include_router(detections_router.router, prefix="/api/detections", tags=["Detections API"])
