@@ -49,7 +49,7 @@ BirdDB.txt
 exclude_species_list.txt
 firstrun.ini
 HUMAN.txt
-
+node_modules
 include_species_list.txt
 build/
 /config/

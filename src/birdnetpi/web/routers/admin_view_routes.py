@@ -1,28 +1,29 @@
+"""Admin view routes for administrative UI pages."""
+
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.audio_device_service import AudioDeviceService
+from birdnetpi.web.core.container import Container
 from birdnetpi.web.forms import AudioDeviceSelectionForm
 
 router = APIRouter()
 
 
-# Dependency to get AudioDeviceService instance
-def get_audio_device_service(request: Request) -> AudioDeviceService:
-    """Return an AudioDeviceService instance."""
-    return AudioDeviceService()
-
-
 @router.get("/audio/select_device", response_class=HTMLResponse)
+@inject
 async def select_audio_device(
     request: Request,
-    audio_device_service: AudioDeviceService = Depends(get_audio_device_service),  # noqa: B008
+    config: BirdNETConfig = Depends(Provide[Container.config]),
 ) -> HTMLResponse:
     """Render the audio device selection page."""
-    templates: Jinja2Templates = request.app.state.templates
+    templates: Jinja2Templates = request.app.extra["templates"]
+    audio_device_service = AudioDeviceService()
     devices = audio_device_service.discover_input_devices()
-    form = AudioDeviceSelectionForm(formdata=None, obj=request.app.state.config)
+    form = AudioDeviceSelectionForm(formdata=None, obj=config)
     form.device.choices = [(str(d.index), d.name) for d in devices]
     return templates.TemplateResponse(
         request,
@@ -32,12 +33,14 @@ async def select_audio_device(
 
 
 @router.post("/audio/select_device", response_model=None)
+@inject
 async def handle_select_audio_device(
     request: Request,
-    audio_device_service: AudioDeviceService = Depends(get_audio_device_service),  # noqa: B008
+    config: BirdNETConfig = Depends(Provide[Container.config]),
 ) -> HTMLResponse | RedirectResponse:
     """Handle the submission of the audio device selection form."""
-    templates: Jinja2Templates = request.app.state.templates
+    templates: Jinja2Templates = request.app.extra["templates"]
+    audio_device_service = AudioDeviceService()
     devices = audio_device_service.discover_input_devices()
 
     # Initialize form and populate choices before processing form data
@@ -55,7 +58,7 @@ async def handle_select_audio_device(
         # For now, we'll just print it and redirect
         print(f"Selected audio device index: {selected_device_index}")
         # Redirect to a success page or back to the same page with a success message
-        return RedirectResponse(url="/audio/select_device", status_code=303)
+        return RedirectResponse(url="/admin/audio/select_device", status_code=303)
 
     return templates.TemplateResponse(
         request,

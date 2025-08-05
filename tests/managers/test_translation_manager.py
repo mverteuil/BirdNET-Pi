@@ -50,7 +50,7 @@ class TestTranslationManager:
     def test_init(self, mock_file_resolver):
         """Should initialize with file resolver and default settings."""
         manager = TranslationManager(mock_file_resolver)
-        
+
         assert manager.file_resolver == mock_file_resolver
         assert manager.locales_dir == "locales"
         assert manager.translations == {}
@@ -61,16 +61,13 @@ class TestTranslationManager:
         """Should get translation for specified language."""
         mock_trans = MagicMock(spec=gettext.GNUTranslations)
         mock_translation_func.return_value = mock_trans
-        
+
         result = translation_manager.get_translation("es")
-        
+
         assert result == mock_trans
         assert translation_manager.translations["es"] == mock_trans
         mock_translation_func.assert_called_once_with(
-            "messages", 
-            localedir="locales", 
-            languages=["es"], 
-            fallback=True
+            "messages", localedir="locales", languages=["es"], fallback=True
         )
 
     @patch("birdnetpi.managers.translation_manager.translation")
@@ -78,32 +75,34 @@ class TestTranslationManager:
         """Should return cached translation on subsequent calls."""
         mock_trans = MagicMock(spec=gettext.GNUTranslations)
         translation_manager.translations["es"] = mock_trans
-        
+
         result = translation_manager.get_translation("es")
-        
+
         assert result == mock_trans
         mock_translation_func.assert_not_called()
 
     @patch("birdnetpi.managers.translation_manager.translation")
-    def test_get_translation_file_not_found_fallback(self, mock_translation_func, translation_manager):
+    def test_get_translation_file_not_found_fallback(
+        self, mock_translation_func, translation_manager
+    ):
         """Should fallback to default language when translation file not found."""
         mock_default_trans = MagicMock(spec=gettext.GNUTranslations)
-        
+
         # First call raises FileNotFoundError, second call returns default translation
         mock_translation_func.side_effect = [
             FileNotFoundError("Translation file not found"),
-            mock_default_trans
+            mock_default_trans,
         ]
-        
+
         result = translation_manager.get_translation("fr")
-        
+
         assert result == mock_default_trans
         assert translation_manager.translations["fr"] == mock_default_trans
-        
+
         # Should have been called twice - first with 'fr', then with 'en'
         assert mock_translation_func.call_count == 2
         first_call, second_call = mock_translation_func.call_args_list
-        
+
         assert first_call[1]["languages"] == ["fr"]
         assert second_call[1]["languages"] == ["en"]
 
@@ -111,10 +110,12 @@ class TestTranslationManager:
         """Should install translation for request with default language parsing."""
         mock_request.headers = {"Accept-Language": "en-US,en;q=0.9"}
         mock_trans = MagicMock(spec=gettext.GNUTranslations)
-        
-        with patch.object(translation_manager, "get_translation", return_value=mock_trans) as mock_get:
+
+        with patch.object(
+            translation_manager, "get_translation", return_value=mock_trans
+        ) as mock_get:
             result = translation_manager.install_for_request(mock_request)
-            
+
             assert result == mock_trans
             mock_get.assert_called_once_with("en")
             mock_trans.install.assert_called_once()
@@ -123,10 +124,12 @@ class TestTranslationManager:
         """Should install translation for Spanish language."""
         mock_request.headers = {"Accept-Language": "es-ES,es;q=0.9,en;q=0.8"}
         mock_trans = MagicMock(spec=gettext.GNUTranslations)
-        
-        with patch.object(translation_manager, "get_translation", return_value=mock_trans) as mock_get:
+
+        with patch.object(
+            translation_manager, "get_translation", return_value=mock_trans
+        ) as mock_get:
             result = translation_manager.install_for_request(mock_request)
-            
+
             assert result == mock_trans
             mock_get.assert_called_once_with("es")
             mock_trans.install.assert_called_once()
@@ -135,10 +138,12 @@ class TestTranslationManager:
         """Should use default language when no Accept-Language header."""
         mock_request.headers = {}
         mock_trans = MagicMock(spec=gettext.GNUTranslations)
-        
-        with patch.object(translation_manager, "get_translation", return_value=mock_trans) as mock_get:
+
+        with patch.object(
+            translation_manager, "get_translation", return_value=mock_trans
+        ) as mock_get:
             result = translation_manager.install_for_request(mock_request)
-            
+
             assert result == mock_trans
             mock_get.assert_called_once_with("en")  # default language
             mock_trans.install.assert_called_once()
@@ -147,10 +152,12 @@ class TestTranslationManager:
         """Should parse complex Accept-Language header correctly."""
         mock_request.headers = {"Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7"}
         mock_trans = MagicMock(spec=gettext.GNUTranslations)
-        
-        with patch.object(translation_manager, "get_translation", return_value=mock_trans) as mock_get:
+
+        with patch.object(
+            translation_manager, "get_translation", return_value=mock_trans
+        ) as mock_get:
             result = translation_manager.install_for_request(mock_request)
-            
+
             assert result == mock_trans
             mock_get.assert_called_once_with("fr")  # Should extract 'fr' from 'fr-FR'
             mock_trans.install.assert_called_once()
@@ -159,15 +166,19 @@ class TestTranslationManager:
 class TestGetTranslationDependency:
     """Test get_translation FastAPI dependency function."""
 
-    def test_get_translation_dependency(self, translation_manager, mock_app_with_translation_manager):
+    def test_get_translation_dependency(
+        self, translation_manager, mock_app_with_translation_manager
+    ):
         """Should get translation from request app state."""
         mock_request = MagicMock(spec=Request)
         mock_request.app = mock_app_with_translation_manager
         mock_trans = MagicMock(spec=gettext.GNUTranslations)
-        
-        with patch.object(translation_manager, "install_for_request", return_value=mock_trans) as mock_install:
+
+        with patch.object(
+            translation_manager, "install_for_request", return_value=mock_trans
+        ) as mock_install:
             result = get_translation(mock_request)
-            
+
             assert result == mock_trans
             mock_install.assert_called_once_with(mock_request)
 
@@ -181,10 +192,10 @@ class TestJinja2Integration:
         mock_env = MagicMock()
         mock_templates.env = mock_env
         mock_env.globals = {}
-        
+
         with patch("birdnetpi.managers.translation_manager.ngettext") as mock_ngettext:
             setup_jinja2_i18n(mock_templates)
-            
+
             # Check that template globals were set
             assert "_" in mock_env.globals
             assert "gettext" in mock_env.globals
@@ -197,15 +208,15 @@ class TestJinja2Integration:
         mock_env = MagicMock()
         mock_templates.env = mock_env
         mock_env.globals = {}
-        
+
         with patch("birdnetpi.managers.translation_manager._") as mock_gettext:
             mock_gettext.return_value = "translated message"
-            
+
             setup_jinja2_i18n(mock_templates)
-            
+
             # Get the get_text function that was assigned to templates
             get_text_func = mock_env.globals["_"]
-            
+
             # Test that it calls the global _ function
             result = get_text_func("Hello")
             assert result == "translated message"
@@ -217,9 +228,9 @@ class TestJinja2Integration:
         mock_env = MagicMock()
         mock_templates.env = mock_env
         mock_env.globals = {}
-        
+
         setup_jinja2_i18n(mock_templates)
-        
+
         # Both _ and gettext should be the same function
         assert mock_env.globals["_"] == mock_env.globals["gettext"]
 
@@ -234,24 +245,21 @@ class TestTranslationIntegration:
         manager = TranslationManager(mock_file_resolver)
         mock_trans = MagicMock(spec=gettext.GNUTranslations)
         mock_translation_func.return_value = mock_trans
-        
+
         # Create request with Spanish preference
         mock_request = MagicMock(spec=Request)
         mock_request.headers = {"Accept-Language": "es-MX,es;q=0.9,en;q=0.8"}
-        
+
         # Execute translation installation
         result = manager.install_for_request(mock_request)
-        
+
         # Verify
         assert result == mock_trans
         mock_translation_func.assert_called_once_with(
-            "messages",
-            localedir="locales",
-            languages=["es"],
-            fallback=True
+            "messages", localedir="locales", languages=["es"], fallback=True
         )
         mock_trans.install.assert_called_once()
-        
+
         # Translation should be cached
         assert manager.translations["es"] == mock_trans
 
@@ -265,13 +273,15 @@ class TestTranslationIntegration:
             ("zh-CN,zh;q=0.9,en;q=0.8", "zh"),
             ("", "en"),  # Default fallback
         ]
-        
+
         for accept_language, expected_lang in test_cases:
             mock_request = MagicMock(spec=Request)
             mock_request.headers = {"Accept-Language": accept_language} if accept_language else {}
             mock_trans = MagicMock(spec=gettext.GNUTranslations)
-            
-            with patch.object(translation_manager, "get_translation", return_value=mock_trans) as mock_get:
+
+            with patch.object(
+                translation_manager, "get_translation", return_value=mock_trans
+            ) as mock_get:
                 translation_manager.install_for_request(mock_request)
                 mock_get.assert_called_with(expected_lang)
 
@@ -282,14 +292,14 @@ class TestTranslationIntegration:
         mock_default_trans = MagicMock(spec=gettext.GNUTranslations)
         mock_translation_func.side_effect = [
             FileNotFoundError("No German translation"),
-            mock_default_trans
+            mock_default_trans,
         ]
-        
+
         result = translation_manager.get_translation("de")
-        
+
         assert result == mock_default_trans
         assert mock_translation_func.call_count == 2
-        
+
         # Verify fallback was attempted
         calls = mock_translation_func.call_args_list
         assert calls[0][1]["languages"] == ["de"]

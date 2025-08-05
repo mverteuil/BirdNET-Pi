@@ -1,9 +1,8 @@
 """Tests for ReleaseManager."""
 
 import subprocess
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -33,20 +32,18 @@ def sample_assets(tmp_path):
     models_dir.mkdir()
     (models_dir / "model1.tflite").write_text("model1 content")
     (models_dir / "model2.tflite").write_text("model2 content")
-    
+
     db_file = tmp_path / "ioc_reference.db"
     db_file.write_text("database content")
-    
+
     return [
         ReleaseAsset(
-            source_path=str(models_dir),
-            target_name="data/models",
-            description="BirdNET models"
+            source_path=str(models_dir), target_name="data/models", description="BirdNET models"
         ),
         ReleaseAsset(
             source_path=str(db_file),
             target_name="data/database/ioc_reference.db",
-            description="IOC database"
+            description="IOC database",
         ),
     ]
 
@@ -59,7 +56,7 @@ def sample_config(sample_assets):
         asset_branch_name="assets-v1.0.0",
         commit_message="Release assets v1.0.0",
         assets=sample_assets,
-        tag_name="v1.0.0"
+        tag_name="v1.0.0",
     )
 
 
@@ -71,7 +68,7 @@ class TestReleaseAsset:
         asset = ReleaseAsset(
             source_path="/path/to/source",
             target_name="target_name",
-            description="Asset description"
+            description="Asset description",
         )
         assert asset.source_path == "/path/to/source"
         assert asset.target_name == "target_name"
@@ -89,7 +86,7 @@ class TestReleaseConfig:
             asset_branch_name="assets-v1.0.0",
             commit_message="Release message",
             assets=assets,
-            tag_name="v1.0.0"
+            tag_name="v1.0.0",
         )
         assert config.version == "1.0.0"
         assert config.asset_branch_name == "assets-v1.0.0"
@@ -104,7 +101,7 @@ class TestReleaseConfig:
             version="1.0.0",
             asset_branch_name="assets-v1.0.0",
             commit_message="Release message",
-            assets=assets
+            assets=assets,
         )
         assert config.tag_name is None
 
@@ -132,9 +129,7 @@ class TestReleaseManager:
 
     def test_validate_assets_exist_missing_asset(self, release_manager):
         """Should raise FileNotFoundError for missing assets."""
-        missing_assets = [
-            ReleaseAsset("/nonexistent/path", "target", "description")
-        ]
+        missing_assets = [ReleaseAsset("/nonexistent/path", "target", "description")]
         with pytest.raises(FileNotFoundError, match="Missing assets"):
             release_manager._validate_assets_exist(missing_assets)
 
@@ -194,11 +189,11 @@ class TestReleaseManager:
         """Should return default assets with proper paths."""
         assets = release_manager.get_default_assets()
         assert len(assets) == 2
-        
+
         models_asset = assets[0]
         assert models_asset.target_name == "data/models"
         assert "BirdNET TensorFlow Lite models" in models_asset.description
-        
+
         db_asset = assets[1]
         assert db_asset.target_name == "data/database/ioc_reference.db"
         assert "IOC World Bird Names" in db_asset.description
@@ -208,7 +203,7 @@ class TestReleaseManager:
         dev_path = "data/models"
         dev_full_path = tmp_path / dev_path
         dev_full_path.mkdir(parents=True)
-        
+
         result = release_manager._get_asset_path(dev_path, "/prod/path")
         assert result == str(dev_full_path)
 
@@ -222,7 +217,7 @@ class TestReleaseManager:
         """Should run command successfully."""
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = "output"
-        
+
         result = release_manager._run_command(["echo", "test"], capture_output=True)
         assert result == "output"
         mock_run.assert_called_once()
@@ -233,7 +228,7 @@ class TestReleaseManager:
         mock_run.return_value.returncode = 1
         mock_run.return_value.stdout = "output"
         mock_run.return_value.stderr = "error"
-        
+
         with pytest.raises(subprocess.CalledProcessError):
             release_manager._run_command(["false"], check=True)
 
@@ -242,10 +237,10 @@ class TestReleaseManager:
         """Should run git command with proper arguments."""
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = "git output"
-        
+
         result = release_manager._run_git_command(["status"], capture_output=True)
         assert result == "git output"
-        
+
         # Check that git was called with the right arguments
         call_args = mock_run.call_args[0][0]
         assert call_args[0] == "git"
@@ -257,23 +252,25 @@ class TestReleaseManager:
         """Should copy file assets correctly."""
         source_file = tmp_path / "source.txt"
         source_file.write_text("content")
-        
+
         assets = [ReleaseAsset(str(source_file), "target.txt", "description")]
         release_manager._copy_assets_to_branch(assets)
-        
+
         mock_copy2.assert_called_once()
         mock_copytree.assert_not_called()
 
     @patch("shutil.copy2")
     @patch("shutil.copytree")
-    def test_copy_assets_to_branch_directory(self, mock_copytree, mock_copy2, release_manager, tmp_path):
+    def test_copy_assets_to_branch_directory(
+        self, mock_copytree, mock_copy2, release_manager, tmp_path
+    ):
         """Should copy directory assets correctly."""
         source_dir = tmp_path / "source_dir"
         source_dir.mkdir()
-        
+
         assets = [ReleaseAsset(str(source_dir), "target_dir", "description")]
         release_manager._copy_assets_to_branch(assets)
-        
+
         mock_copytree.assert_called_once()
         mock_copy2.assert_not_called()
 
@@ -281,7 +278,7 @@ class TestReleaseManager:
     def test_commit_assets(self, mock_git, release_manager, sample_config):
         """Should commit assets with proper git commands."""
         release_manager._commit_assets(sample_config)
-        
+
         # Check that git add was called for each asset
         git_calls = mock_git.call_args_list
         add_calls = [call for call in git_calls if call[0][0][0] == "add"]
@@ -291,13 +288,13 @@ class TestReleaseManager:
     def test_create_github_release(self, mock_run, release_manager, sample_config):
         """Should create GitHub release with proper command."""
         mock_run.return_value = "https://github.com/user/repo/releases/tag/v1.0.0"
-        
+
         result = release_manager.create_github_release(sample_config, "abc123")
-        
+
         assert result["tag_name"] == "v1.0.0"
         assert result["asset_commit_sha"] == "abc123"
         assert "github.com" in result["release_url"]
-        
+
         # Check that gh command was called
         mock_run.assert_called_once()
         call_args = mock_run.call_args[0][0]
@@ -309,19 +306,25 @@ class TestReleaseManager:
     @patch.object(ReleaseManager, "_create_orphaned_commit")
     @patch.object(ReleaseManager, "_get_current_branch")
     @patch.object(ReleaseManager, "_validate_assets_exist")
-    def test_create_asset_release_success(self, mock_validate, mock_get_branch, 
-                                         mock_create_commit, mock_cleanup, 
-                                         release_manager, sample_config):
+    def test_create_asset_release_success(
+        self,
+        mock_validate,
+        mock_get_branch,
+        mock_create_commit,
+        mock_cleanup,
+        release_manager,
+        sample_config,
+    ):
         """Should create asset release successfully."""
         mock_get_branch.return_value = "main"
         mock_create_commit.return_value = "abc123"
-        
+
         result = release_manager.create_asset_release(sample_config)
-        
+
         assert result["version"] == "1.0.0"
         assert result["commit_sha"] == "abc123"
         assert result["asset_tag"] == "assets-v1.0.0"
-        
+
         mock_validate.assert_called_once()
         mock_get_branch.assert_called_once()
         mock_create_commit.assert_called_once()
@@ -331,44 +334,58 @@ class TestReleaseManager:
     @patch.object(ReleaseManager, "_create_orphaned_commit")
     @patch.object(ReleaseManager, "_get_current_branch")
     @patch.object(ReleaseManager, "_validate_assets_exist")
-    def test_create_asset_release_with_cleanup_on_error(self, mock_validate, mock_get_branch,
-                                                       mock_create_commit, mock_cleanup,
-                                                       release_manager, sample_config):
+    def test_create_asset_release_with_cleanup_on_error(
+        self,
+        mock_validate,
+        mock_get_branch,
+        mock_create_commit,
+        mock_cleanup,
+        release_manager,
+        sample_config,
+    ):
         """Should cleanup even when commit creation fails."""
         mock_get_branch.return_value = "main"
         mock_create_commit.side_effect = Exception("Commit failed")
-        
+
         with pytest.raises(Exception, match="Commit failed"):
             release_manager.create_asset_release(sample_config)
-        
+
         mock_cleanup.assert_called_once_with("main")
 
     @patch("tempfile.TemporaryDirectory")
     @patch("shutil.copy2")
     @patch("shutil.copytree")
     @patch.object(ReleaseManager, "_run_git_command")
-    def test_create_orphaned_commit_integration(self, mock_git, mock_copytree, mock_copy2, 
-                                              mock_tempdir, release_manager, sample_config, tmp_path):
+    def test_create_orphaned_commit_integration(
+        self,
+        mock_git,
+        mock_copytree,
+        mock_copy2,
+        mock_tempdir,
+        release_manager,
+        sample_config,
+        tmp_path,
+    ):
         """Should create orphaned commit with all steps."""
         # Mock temporary directory
         temp_dir = tmp_path / "temp"
         temp_dir.mkdir()
         mock_tempdir.return_value.__enter__.return_value = str(temp_dir)
-        
+
         # Mock git commands
         mock_git.return_value = "abc123"
-        
+
         # Create the assets that will be referenced
         for asset in sample_config.assets:
             source_path = Path(asset.source_path)
             if not source_path.exists():
-                if asset.target_name.endswith('.db'):
+                if asset.target_name.endswith(".db"):
                     source_path.write_text("db content")
                 else:
                     source_path.mkdir(parents=True, exist_ok=True)
-        
+
         result = release_manager._create_orphaned_commit(sample_config)
-        
+
         assert result == "abc123"
         # Verify git commands were called in sequence
         git_calls = mock_git.call_args_list
@@ -384,9 +401,9 @@ class TestReleaseManager:
             "  temp-assets-v1.0.0\n* main\n",  # branch list
             None,  # delete temp branch
         ]
-        
+
         release_manager._cleanup_and_return_to_branch("main")
-        
+
         # Should attempt checkout, list branches, and delete temp branch
         assert mock_git.call_count >= 2
 
@@ -399,9 +416,9 @@ class TestReleaseManager:
             None,  # clean -fxd
             None,  # retry checkout
         ]
-        
+
         release_manager._cleanup_and_return_to_branch("main")
-        
+
         # Should attempt reset and clean after checkout failure
         git_calls = mock_git.call_args_list
         assert any("reset" in str(call) and "--hard" in str(call) for call in git_calls)

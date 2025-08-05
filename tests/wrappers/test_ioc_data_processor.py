@@ -1,17 +1,15 @@
 """Tests for IOC data processor wrapper."""
 
-import argparse
 import sys
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from birdnetpi.wrappers.ioc_data_processor import (
+    lookup_species,
     main,
     process_ioc_files,
     show_ioc_info,
-    lookup_species,
 )
 
 
@@ -28,14 +26,11 @@ def mock_ioc_reference_service():
             english_name="American Robin",
             order="Passeriformes",
             family="Turdidae",
-            authority="Linnaeus, 1766"
+            authority="Linnaeus, 1766",
         )
     }
     mock_service._translations = {
-        "Turdus migratorius": {
-            "es": "Petirrojo Americano",
-            "fr": "Merle d'Amérique"
-        }
+        "Turdus migratorius": {"es": "Petirrojo Americano", "fr": "Merle d'Amérique"}
     }
     return mock_service
 
@@ -54,35 +49,40 @@ class TestProcessIOCFiles:
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCDatabaseService")
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
     @patch("birdnetpi.wrappers.ioc_data_processor.sys.exit")
-    def test_process_ioc_files_missing_xml(self, mock_exit, mock_service_class, mock_db_class, tmp_path):
+    def test_process_ioc_files_missing_xml(
+        self, mock_exit, mock_service_class, mock_db_class, tmp_path
+    ):
         """Should exit when XML file is missing."""
         xml_file = tmp_path / "missing.xml"
         xlsx_file = tmp_path / "test.xlsx"
         xlsx_file.touch()
         output_file = tmp_path / "output.json"
-        
+
         process_ioc_files(xml_file, xlsx_file, output_file)
-        
+
         mock_exit.assert_called_once_with(1)
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCDatabaseService")
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
     @patch("birdnetpi.wrappers.ioc_data_processor.sys.exit")
-    def test_process_ioc_files_missing_xlsx(self, mock_exit, mock_service_class, mock_db_class, tmp_path):
+    def test_process_ioc_files_missing_xlsx(
+        self, mock_exit, mock_service_class, mock_db_class, tmp_path
+    ):
         """Should exit when XLSX file is missing."""
         xml_file = tmp_path / "test.xml"
         xml_file.touch()
         xlsx_file = tmp_path / "missing.xlsx"
         output_file = tmp_path / "output.json"
-        
+
         process_ioc_files(xml_file, xlsx_file, output_file)
-        
+
         mock_exit.assert_called_once_with(1)
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCDatabaseService")
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    def test_process_ioc_files_success(self, mock_service_class, mock_db_class, 
-                                     mock_ioc_reference_service, tmp_path, capsys):
+    def test_process_ioc_files_success(
+        self, mock_service_class, mock_db_class, mock_ioc_reference_service, tmp_path, capsys
+    ):
         """Should process IOC files successfully."""
         # Setup files
         xml_file = tmp_path / "test.xml"
@@ -90,15 +90,15 @@ class TestProcessIOCFiles:
         xlsx_file = tmp_path / "test.xlsx"
         xlsx_file.touch()
         output_file = tmp_path / "output.json"
-        
+
         # Setup mock service
         mock_service_class.return_value = mock_ioc_reference_service
-        
+
         # Create a fake JSON file for size calculation
         output_file.write_text('{"test": "data"}')
-        
+
         process_ioc_files(xml_file, xlsx_file, output_file)
-        
+
         # Verify service was called correctly
         mock_ioc_reference_service.load_ioc_data.assert_called_once_with(
             xml_file=xml_file, xlsx_file=xlsx_file
@@ -106,7 +106,7 @@ class TestProcessIOCFiles:
         mock_ioc_reference_service.export_json.assert_called_once_with(
             output_file, include_translations=True, compress=False
         )
-        
+
         # Check output
         captured = capsys.readouterr()
         assert "Processing complete!" in captured.out
@@ -115,9 +115,15 @@ class TestProcessIOCFiles:
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCDatabaseService")
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    def test_process_ioc_files_with_database(self, mock_service_class, mock_db_class,
-                                           mock_ioc_reference_service, mock_ioc_database_service,
-                                           tmp_path, capsys):
+    def test_process_ioc_files_with_database(
+        self,
+        mock_service_class,
+        mock_db_class,
+        mock_ioc_reference_service,
+        mock_ioc_database_service,
+        tmp_path,
+        capsys,
+    ):
         """Should process IOC files and create database."""
         # Setup files
         xml_file = tmp_path / "test.xml"
@@ -126,22 +132,22 @@ class TestProcessIOCFiles:
         xlsx_file.touch()
         output_file = tmp_path / "output.json"
         db_file = tmp_path / "test.db"
-        
+
         # Setup mocks
         mock_service_class.return_value = mock_ioc_reference_service
         mock_db_class.return_value = mock_ioc_database_service
-        
+
         # Create fake files for size calculation
         output_file.write_text('{"test": "data"}')  # 15 bytes
-        
+
         process_ioc_files(xml_file, xlsx_file, output_file, compress=False, db_file=db_file)
-        
+
         # Verify database service was called
         mock_db_class.assert_called_once_with(str(db_file))
         mock_ioc_database_service.populate_from_ioc_service.assert_called_once_with(
             mock_ioc_reference_service
         )
-        
+
         # Check output includes database info
         captured = capsys.readouterr()
         assert "Creating SQLite database..." in captured.out
@@ -157,19 +163,20 @@ class TestProcessIOCFiles:
         xlsx_file = tmp_path / "test.xlsx"
         xlsx_file.touch()
         output_file = tmp_path / "output.json"
-        
+
         # Setup mock to raise exception
         mock_service = MagicMock()
         mock_service.load_ioc_data.side_effect = Exception("Processing error")
         mock_service_class.return_value = mock_service
-        
+
         process_ioc_files(xml_file, xlsx_file, output_file)
-        
+
         mock_exit.assert_called_once_with(1)
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    def test_process_ioc_files_with_compression(self, mock_service_class, 
-                                              mock_ioc_reference_service, tmp_path):
+    def test_process_ioc_files_with_compression(
+        self, mock_service_class, mock_ioc_reference_service, tmp_path
+    ):
         """Should process files with compression enabled."""
         # Setup files
         xml_file = tmp_path / "test.xml"
@@ -177,12 +184,12 @@ class TestProcessIOCFiles:
         xlsx_file = tmp_path / "test.xlsx"
         xlsx_file.touch()
         output_file = tmp_path / "output.json.gz"
-        
+
         mock_service_class.return_value = mock_ioc_reference_service
-        output_file.write_bytes(b'compressed data')
-        
+        output_file.write_bytes(b"compressed data")
+
         process_ioc_files(xml_file, xlsx_file, output_file, compress=True)
-        
+
         # Verify compression was enabled
         mock_ioc_reference_service.export_json.assert_called_once_with(
             output_file, include_translations=True, compress=True
@@ -197,27 +204,28 @@ class TestShowIOCInfo:
     def test_show_ioc_info_missing_file(self, mock_exit, mock_service_class, tmp_path):
         """Should exit when JSON file is missing."""
         json_file = tmp_path / "missing.json"
-        
+
         show_ioc_info(json_file)
-        
+
         mock_exit.assert_called_once_with(1)
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    def test_show_ioc_info_success(self, mock_service_class, mock_ioc_reference_service, 
-                                 tmp_path, capsys):
+    def test_show_ioc_info_success(
+        self, mock_service_class, mock_ioc_reference_service, tmp_path, capsys
+    ):
         """Should show IOC info successfully."""
         # Setup file
         json_file = tmp_path / "test.json"
         json_file.write_text('{"test": "data"}')  # 15 bytes
-        
+
         # Setup mock
         mock_service_class.return_value = mock_ioc_reference_service
-        
+
         show_ioc_info(json_file)
-        
+
         # Verify service was called correctly
         mock_ioc_reference_service.load_from_json.assert_called_once_with(json_file)
-        
+
         # Check output
         captured = capsys.readouterr()
         assert "IOC Data Information:" in captured.out
@@ -234,14 +242,14 @@ class TestShowIOCInfo:
         # Setup file
         json_file = tmp_path / "test.json"
         json_file.write_text('{"test": "data"}')
-        
+
         # Setup mock to raise exception
         mock_service = MagicMock()
         mock_service.load_from_json.side_effect = Exception("Load error")
         mock_service_class.return_value = mock_service
-        
+
         show_ioc_info(json_file)
-        
+
         mock_exit.assert_called_once_with(1)
 
 
@@ -253,22 +261,23 @@ class TestLookupSpecies:
     def test_lookup_missing_file(self, mock_exit, mock_service_class, tmp_path):
         """Should exit when JSON file is missing."""
         json_file = tmp_path / "missing.json"
-        
+
         lookup_species(json_file, "Turdus migratorius", "en")
-        
+
         mock_exit.assert_called_once_with(1)
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    def test_lookup_species_found(self, mock_service_class, mock_ioc_reference_service,
-                                tmp_path, capsys):
+    def test_lookup_species_found(
+        self, mock_service_class, mock_ioc_reference_service, tmp_path, capsys
+    ):
         """Should lookup species successfully."""
         # Setup file
         json_file = tmp_path / "test.json"
         json_file.write_text('{"test": "data"}')
-        
+
         # Setup mock
         mock_service_class.return_value = mock_ioc_reference_service
-        
+
         # Mock species info
         mock_species = MagicMock()
         mock_species.scientific_name = "Turdus migratorius"
@@ -276,18 +285,18 @@ class TestLookupSpecies:
         mock_species.order = "Passeriformes"
         mock_species.family = "Turdidae"
         mock_species.authority = "Linnaeus, 1766"
-        
+
         mock_ioc_reference_service.get_species_info.return_value = mock_species
         mock_ioc_reference_service.get_translated_common_name.return_value = "Petirrojo Americano"
-        
+
         lookup_species(json_file, "Turdus migratorius", "es")
-        
+
         # Verify service calls
         mock_ioc_reference_service.get_species_info.assert_called_once_with("Turdus migratorius")
         mock_ioc_reference_service.get_translated_common_name.assert_called_once_with(
             "Turdus migratorius", "es"
         )
-        
+
         # Check output
         captured = capsys.readouterr()
         assert "Species found:" in captured.out
@@ -296,46 +305,48 @@ class TestLookupSpecies:
         assert "ES name: Petirrojo Americano" in captured.out
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    def test_lookup_species_not_found(self, mock_service_class, mock_ioc_reference_service,
-                                    tmp_path, capsys):
+    def test_lookup_species_not_found(
+        self, mock_service_class, mock_ioc_reference_service, tmp_path, capsys
+    ):
         """Should handle species not found."""
         # Setup file
         json_file = tmp_path / "test.json"
         json_file.write_text('{"test": "data"}')
-        
+
         # Setup mock
         mock_service_class.return_value = mock_ioc_reference_service
         mock_ioc_reference_service.get_species_info.return_value = None
         mock_ioc_reference_service._species_data = {
             "Turdus migratorius": None,
-            "Turdus philomelos": None
+            "Turdus philomelos": None,
         }
-        
+
         lookup_species(json_file, "Nonexistent species", "en")
-        
+
         # Check output
         captured = capsys.readouterr()
         assert "Species not found: Nonexistent species" in captured.out
         assert "Searching for similar names..." in captured.out
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    def test_lookup_english_language(self, mock_service_class, mock_ioc_reference_service,
-                                   tmp_path):
+    def test_lookup_english_language(
+        self, mock_service_class, mock_ioc_reference_service, tmp_path
+    ):
         """Should handle English language lookup without translation."""
         # Setup file
         json_file = tmp_path / "test.json"
         json_file.write_text('{"test": "data"}')
-        
+
         # Setup mock
         mock_service_class.return_value = mock_ioc_reference_service
-        
+
         mock_species = MagicMock()
         mock_species.scientific_name = "Turdus migratorius"
         mock_species.english_name = "American Robin"
         mock_ioc_reference_service.get_species_info.return_value = mock_species
-        
+
         lookup_species(json_file, "Turdus migratorius", "en")
-        
+
         # Should not call translation method for English
         mock_ioc_reference_service.get_translated_common_name.assert_not_called()
 
@@ -346,14 +357,14 @@ class TestLookupSpecies:
         # Setup file
         json_file = tmp_path / "test.json"
         json_file.write_text('{"test": "data"}')
-        
+
         # Setup mock to raise exception
         mock_service = MagicMock()
         mock_service.load_from_json.side_effect = Exception("Load error")
         mock_service_class.return_value = mock_service
-        
+
         lookup_species(json_file, "Turdus migratorius", "en")
-        
+
         mock_exit.assert_called_once_with(1)
 
 
@@ -364,21 +375,26 @@ class TestMain:
     def test_main_process_command(self, mock_process):
         """Should parse process command correctly."""
         test_args = [
-            "ioc-processor", "process",
-            "--xml-file", "test.xml",
-            "--xlsx-file", "test.xlsx", 
-            "--output", "output.json",
+            "ioc-processor",
+            "process",
+            "--xml-file",
+            "test.xml",
+            "--xlsx-file",
+            "test.xlsx",
+            "--output",
+            "output.json",
             "--compress",
-            "--db-file", "test.db"
+            "--db-file",
+            "test.db",
         ]
-        
+
         with patch.object(sys, "argv", test_args):
             main()
-        
+
         mock_process.assert_called_once()
         args = mock_process.call_args[0]
         assert str(args[0]) == "test.xml"  # xml_file
-        assert str(args[1]) == "test.xlsx"  # xlsx_file  
+        assert str(args[1]) == "test.xlsx"  # xlsx_file
         assert str(args[2]) == "output.json"  # output_file
         assert args[3] is True  # compress
         assert str(args[4]) == "test.db"  # db_file
@@ -387,10 +403,10 @@ class TestMain:
     def test_main_info_command(self, mock_info):
         """Should parse info command correctly."""
         test_args = ["ioc-processor", "info", "--json-file", "test.json"]
-        
+
         with patch.object(sys, "argv", test_args):
             main()
-        
+
         mock_info.assert_called_once()
         args = mock_info.call_args[0]
         assert str(args[0]) == "test.json"
@@ -399,15 +415,19 @@ class TestMain:
     def test_main_lookup_command(self, mock_lookup):
         """Should parse lookup command correctly."""
         test_args = [
-            "ioc-processor", "lookup",
-            "--json-file", "test.json",
-            "--species", "Turdus migratorius",
-            "--language", "es"
+            "ioc-processor",
+            "lookup",
+            "--json-file",
+            "test.json",
+            "--species",
+            "Turdus migratorius",
+            "--language",
+            "es",
         ]
-        
+
         with patch.object(sys, "argv", test_args):
             main()
-        
+
         mock_lookup.assert_called_once()
         args = mock_lookup.call_args[0]
         assert str(args[0]) == "test.json"
@@ -418,27 +438,53 @@ class TestMain:
     def test_main_no_command(self, mock_exit, capsys):
         """Should exit when no command provided."""
         test_args = ["ioc-processor"]
-        
+
         with patch.object(sys, "argv", test_args):
             main()
-        
+
         mock_exit.assert_called_once_with(1)
 
     def test_main_argument_parsing_structure(self):
         """Should have proper argument structure."""
         test_cases = [
-            ["process", "--xml-file", "test.xml", "--xlsx-file", "test.xlsx", "--output", "out.json"],
-            ["process", "--xml-file", "test.xml", "--xlsx-file", "test.xlsx", "--output", "out.json", "--compress"],
+            [
+                "process",
+                "--xml-file",
+                "test.xml",
+                "--xlsx-file",
+                "test.xlsx",
+                "--output",
+                "out.json",
+            ],
+            [
+                "process",
+                "--xml-file",
+                "test.xml",
+                "--xlsx-file",
+                "test.xlsx",
+                "--output",
+                "out.json",
+                "--compress",
+            ],
             ["info", "--json-file", "test.json"],
             ["lookup", "--json-file", "test.json", "--species", "Turdus migratorius"],
-            ["lookup", "--json-file", "test.json", "--species", "Turdus migratorius", "--language", "fr"]
+            [
+                "lookup",
+                "--json-file",
+                "test.json",
+                "--species",
+                "Turdus migratorius",
+                "--language",
+                "fr",
+            ],
         ]
-        
+
         for args in test_cases:
-            with patch("birdnetpi.wrappers.ioc_data_processor.process_ioc_files"), \
-                 patch("birdnetpi.wrappers.ioc_data_processor.show_ioc_info"), \
-                 patch("birdnetpi.wrappers.ioc_data_processor.lookup_species"):
-                
+            with (
+                patch("birdnetpi.wrappers.ioc_data_processor.process_ioc_files"),
+                patch("birdnetpi.wrappers.ioc_data_processor.show_ioc_info"),
+                patch("birdnetpi.wrappers.ioc_data_processor.lookup_species"),
+            ):
                 with patch.object(sys, "argv", ["ioc-processor"] + args):
                     try:
                         main()
@@ -450,7 +496,9 @@ class TestIntegration:
     """Integration tests for IOC data processor."""
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    def test_complete_processing_workflow(self, mock_service_class, mock_ioc_reference_service, tmp_path):
+    def test_complete_processing_workflow(
+        self, mock_service_class, mock_ioc_reference_service, tmp_path
+    ):
         """Should complete full processing workflow."""
         # Setup files
         xml_file = tmp_path / "ioc.xml"
@@ -458,13 +506,13 @@ class TestIntegration:
         xlsx_file = tmp_path / "ioc.xlsx"
         xlsx_file.touch()
         output_file = tmp_path / "output.json"
-        
+
         # Setup mock
         mock_service_class.return_value = mock_ioc_reference_service
         output_file.write_text('{"version": "15.1"}')
-        
+
         process_ioc_files(xml_file, xlsx_file, output_file)
-        
+
         # Verify complete workflow
         mock_service_class.assert_called_once_with(data_dir=xml_file.parent)
         mock_ioc_reference_service.load_ioc_data.assert_called_once_with(
@@ -480,7 +528,7 @@ class TestIntegration:
         with patch.object(sys, "argv", ["ioc-processor", "process"]):
             with pytest.raises(SystemExit):
                 main()
-        
+
         # Test invalid command
         with patch.object(sys, "argv", ["ioc-processor", "invalid-command"]):
             with patch("birdnetpi.wrappers.ioc_data_processor.sys.exit") as mock_exit:
