@@ -29,19 +29,19 @@ class TestWebSocketRouter:
 
         self.client = TestClient(app)
 
-    def test_websocket_router_endpoints_exist(self):
+    def test_websocket_routes_endpoints_exist(self):
         """Test that WebSocket router endpoints are registered."""
         # Check that the router has the expected routes
-        from birdnetpi.web.routers.websocket_router import router
+        from birdnetpi.web.routers.websocket_routes import router
 
         routes = [getattr(route, "path", "") for route in router.routes]  # type: ignore[attr-defined]
         assert "" in routes  # Base WebSocket endpoint
         assert "/audio" in routes  # Audio WebSocket endpoint
         assert "/spectrogram" in routes  # Spectrogram WebSocket endpoint
 
-    def test_websocket_router_basic_structure(self):
+    def test_websocket_routes_basic_structure(self):
         """Test basic router structure without connections."""
-        from birdnetpi.web.routers.websocket_router import router
+        from birdnetpi.web.routers.websocket_routes import router
 
         # Router should have WebSocket routes
         assert len(router.routes) == 3
@@ -64,7 +64,7 @@ class TestWebSocketRouter:
 
     def test_websocket_endpoint_functions_exist(self):
         """Test that WebSocket endpoint functions are properly defined."""
-        from birdnetpi.web.routers.websocket_router import (
+        from birdnetpi.web.routers.websocket_routes import (
             audio_websocket_endpoint,
             spectrogram_websocket_endpoint,
             websocket_endpoint,
@@ -75,21 +75,21 @@ class TestWebSocketRouter:
         assert callable(audio_websocket_endpoint)
         assert callable(spectrogram_websocket_endpoint)
 
-    def test_websocket_router_imports(self):
+    def test_websocket_routes_imports(self):
         """Test that router imports work correctly."""
-        from birdnetpi.web.routers import websocket_router
+        from birdnetpi.web.routers import websocket_routes
 
         # Should have router
-        assert hasattr(websocket_router, "router")
+        assert hasattr(websocket_routes, "router")
 
         # Should have WebSocket endpoints
-        assert hasattr(websocket_router, "websocket_endpoint")
-        assert hasattr(websocket_router, "audio_websocket_endpoint")
-        assert hasattr(websocket_router, "spectrogram_websocket_endpoint")
+        assert hasattr(websocket_routes, "websocket_endpoint")
+        assert hasattr(websocket_routes, "audio_websocket_endpoint")
+        assert hasattr(websocket_routes, "spectrogram_websocket_endpoint")
 
     def test_websocket_route_configuration(self):
         """Test that WebSocket routes are properly configured."""
-        from birdnetpi.web.routers.websocket_router import router
+        from birdnetpi.web.routers.websocket_routes import router
 
         # Get all route paths
         route_paths = []
@@ -106,7 +106,7 @@ class TestWebSocketRouter:
         """Test that all routes are WebSocket routes."""
         from starlette.routing import WebSocketRoute
 
-        from birdnetpi.web.routers.websocket_router import router
+        from birdnetpi.web.routers.websocket_routes import router
 
         # All routes should be WebSocket routes
         for route in router.routes:
@@ -114,14 +114,14 @@ class TestWebSocketRouter:
 
     def test_websocket_logger_configured(self):
         """Test that WebSocket router has logger configured."""
-        from birdnetpi.web.routers import websocket_router
+        from birdnetpi.web.routers import websocket_routes
 
-        assert hasattr(websocket_router, "logger")
-        assert websocket_router.logger.name == "birdnetpi.web.routers.websocket_router"
+        assert hasattr(websocket_routes, "logger")
+        assert websocket_routes.logger.name == "birdnetpi.web.routers.websocket_routes"
 
     def test_websocket_route_endpoint_mapping(self):
         """Test that routes map to correct endpoint functions."""
-        from birdnetpi.web.routers.websocket_router import (
+        from birdnetpi.web.routers.websocket_routes import (
             audio_websocket_endpoint,
             router,
             spectrogram_websocket_endpoint,
@@ -142,7 +142,7 @@ class TestWebSocketRouter:
         """Test that WebSocket endpoints have correct parameters."""
         import inspect
 
-        from birdnetpi.web.routers.websocket_router import (
+        from birdnetpi.web.routers.websocket_routes import (
             audio_websocket_endpoint,
             spectrogram_websocket_endpoint,
             websocket_endpoint,
@@ -159,11 +159,11 @@ class TestWebSocketRouter:
             assert "websocket" in params
             assert "request" in params
 
-    def test_websocket_router_fastapi_compatibility(self):
+    def test_websocket_routes_fastapi_compatibility(self):
         """Test that WebSocket router is compatible with FastAPI."""
         from fastapi import APIRouter
 
-        from birdnetpi.web.routers.websocket_router import router
+        from birdnetpi.web.routers.websocket_routes import router
 
         # Router should be a FastAPI APIRouter
         assert isinstance(router, APIRouter)

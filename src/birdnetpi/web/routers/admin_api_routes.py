@@ -2,7 +2,7 @@
 
 import yaml
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from birdnetpi.models.config import BirdNETConfig
@@ -31,9 +31,7 @@ async def validate_yaml_config(
         config_data = yaml.safe_load(config_request.yaml_content)
 
         # Create a temporary ConfigFileParser to validate
-        config_parser = ConfigFileParser(
-            file_resolver.get_birdnetpi_config_path()
-        )
+        config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())
 
         # Try to parse into BirdNETConfig model
         # This will validate all fields and types

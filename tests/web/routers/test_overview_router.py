@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.web.routers.overview_router import router
+from birdnetpi.web.routers.overview_api_routes import router
 
 
 @pytest.fixture

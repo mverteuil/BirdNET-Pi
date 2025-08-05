@@ -13,7 +13,7 @@ from birdnetpi.web.routers.system_api_routes import router
 
 class TestContainer(containers.DeclarativeContainer):
     """Test container for dependency injection."""
-    
+
     hardware_monitor_service = providers.Singleton(MagicMock, spec=HardwareMonitorService)
 
 
@@ -21,17 +21,17 @@ class TestContainer(containers.DeclarativeContainer):
 def app_with_system_router():
     """Create FastAPI app with system router and DI container."""
     app = FastAPI()
-    
+
     # Setup test container
     container = TestContainer()
     app.container = container
-    
+
     # Wire the router module
     container.wire(modules=["birdnetpi.web.routers.system_api_routes"])
-    
+
     # Include the router
     app.include_router(router, prefix="/api/system")
-    
+
     return app
 
 
@@ -57,7 +57,9 @@ class TestHardwareEndpoints:
     def test_get_hardware_component_success(self, client):
         """Should return specific component status."""
         mock_status = {"status": "healthy", "value": 45.2}
-        client.app.container.hardware_monitor_service().get_component_status.return_value = mock_status
+        client.app.container.hardware_monitor_service().get_component_status.return_value = (
+            mock_status
+        )
 
         response = client.get("/api/system/hardware/component/cpu")
 
@@ -80,15 +82,17 @@ class TestHardwareEndpoints:
         mock_overview = {
             "system": {"uptime": "2 days", "load": 0.5},
             "hardware": {"cpu": "healthy", "memory": "normal"},
-            "services": {"active": 5, "failed": 0}
+            "services": {"active": 5, "failed": 0},
         }
         # Mock the overview endpoint if it exists in system_api_routes
         # This is a placeholder - adjust based on actual implementation
-        
+
         # For now, just test that the hardware status endpoint works
-        client.app.container.hardware_monitor_service().get_all_status.return_value = mock_overview["hardware"]
-        
+        client.app.container.hardware_monitor_service().get_all_status.return_value = mock_overview[
+            "hardware"
+        ]
+
         response = client.get("/api/system/hardware/status")
-        
+
         assert response.status_code == 200
         assert response.json() == mock_overview["hardware"]

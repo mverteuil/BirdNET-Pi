@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.services.gps_service import GPSService
 from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
-from birdnetpi.web.routers.field_mode_router import router
+from birdnetpi.web.routers.field_api_routes import router
 
 
 class TestContainer(containers.DeclarativeContainer):
@@ -37,10 +37,10 @@ def app_with_container(test_container):
     app = FastAPI()
     app.container = test_container
     app.include_router(router)
-    
+
     # Wire the router
     test_container.wire(modules=["birdnetpi.web.routers.field_mode_router"])
-    
+
     return app
 
 
@@ -58,9 +58,9 @@ class TestFieldModeTemplate:
         # Mock the templates
         mock_templates = test_container.templates()
         mock_templates.TemplateResponse.return_value = "mock_template_response"
-        
+
         response = client.get("/field")
-        
+
         assert response.status_code == 200
         mock_templates.TemplateResponse.assert_called_once()
 
@@ -78,9 +78,9 @@ class TestGPSEndpoints:
             "latitude": 40.7128,
             "longitude": -74.0060,
         }
-        
+
         response = client.get("/api/gps/status")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["enabled"] is True
@@ -91,9 +91,9 @@ class TestGPSEndpoints:
         # Mock GPS service to raise exception
         mock_gps_service = test_container.gps_service()
         mock_gps_service.get_gps_status.side_effect = Exception("GPS error")
-        
+
         response = client.get("/api/gps/status")
-        
+
         assert response.status_code == 500
         data = response.json()
         assert "GPS error" in data["error"]
@@ -110,9 +110,9 @@ class TestGPSEndpoints:
         mock_location.timestamp = datetime.now(UTC)
         mock_location.satellite_count = 8
         mock_gps_service.get_current_location.return_value = mock_location
-        
+
         response = client.get("/api/gps/location")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["latitude"] == 40.7128
@@ -124,9 +124,9 @@ class TestGPSEndpoints:
         # Mock GPS service with no location
         mock_gps_service = test_container.gps_service()
         mock_gps_service.get_current_location.return_value = None
-        
+
         response = client.get("/api/gps/location")
-        
+
         assert response.status_code == 404
         data = response.json()
         assert "No GPS fix available" in data["error"]
@@ -136,9 +136,9 @@ class TestGPSEndpoints:
         # Mock GPS service to raise exception
         mock_gps_service = test_container.gps_service()
         mock_gps_service.get_current_location.side_effect = Exception("Location error")
-        
+
         response = client.get("/api/gps/location")
-        
+
         assert response.status_code == 500
         data = response.json()
         assert "Location error" in data["error"]
@@ -160,9 +160,9 @@ class TestLocationHistoryEndpoint:
             loc.timestamp = datetime.now(UTC)
             loc.satellite_count = 8
         mock_gps_service.get_location_history.return_value = mock_locations
-        
+
         response = client.get("/api/gps/history")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["count"] == 3
@@ -173,9 +173,9 @@ class TestLocationHistoryEndpoint:
         # Mock GPS service
         mock_gps_service = test_container.gps_service()
         mock_gps_service.get_location_history.return_value = []
-        
+
         response = client.get("/api/gps/history?hours=48")
-        
+
         assert response.status_code == 200
         # Verify the hours parameter was passed
         mock_gps_service.get_location_history.assert_called_once_with(48)
@@ -185,9 +185,9 @@ class TestLocationHistoryEndpoint:
         # Mock GPS service to raise exception
         mock_gps_service = test_container.gps_service()
         mock_gps_service.get_location_history.side_effect = Exception("History error")
-        
+
         response = client.get("/api/gps/history")
-        
+
         assert response.status_code == 500
         data = response.json()
         assert "History error" in data["error"]
@@ -204,9 +204,9 @@ class TestHardwareEndpoints:
             "overall_status": "healthy",
             "components": {"cpu": "ok", "memory": "ok"},
         }
-        
+
         response = client.get("/api/hardware/status")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["overall_status"] == "healthy"
@@ -217,9 +217,9 @@ class TestHardwareEndpoints:
         # Mock hardware monitor to raise exception
         mock_hardware_monitor = test_container.hardware_monitor_service()
         mock_hardware_monitor.get_health_summary.side_effect = Exception("Hardware error")
-        
+
         response = client.get("/api/hardware/status")
-        
+
         assert response.status_code == 500
         data = response.json()
         assert "Hardware error" in data["error"]
@@ -235,9 +235,9 @@ class TestHardwareEndpoints:
         mock_component.last_check = datetime.now(UTC)
         mock_component.details = {"temperature": "45C"}
         mock_hardware_monitor.get_component_status.return_value = mock_component
-        
+
         response = client.get("/api/hardware/component/cpu")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "cpu"
@@ -249,9 +249,9 @@ class TestHardwareEndpoints:
         # Mock hardware monitor to return None
         mock_hardware_monitor = test_container.hardware_monitor_service()
         mock_hardware_monitor.get_component_status.return_value = None
-        
+
         response = client.get("/api/hardware/component/unknown")
-        
+
         assert response.status_code == 404
         data = response.json()
         assert "Component 'unknown' not found" in data["error"]
@@ -261,9 +261,9 @@ class TestHardwareEndpoints:
         # Mock hardware monitor to raise exception
         mock_hardware_monitor = test_container.hardware_monitor_service()
         mock_hardware_monitor.get_component_status.side_effect = Exception("Component error")
-        
+
         response = client.get("/api/hardware/component/cpu")
-        
+
         assert response.status_code == 500
         data = response.json()
         assert "Component error" in data["error"]
@@ -283,22 +283,22 @@ class TestFieldSummaryEndpoint:
             detection.confidence = 0.8 + i * 0.05
             detection.timestamp = datetime.now(UTC)
         mock_detection_manager.get_recent_detections.return_value = mock_detections
-        
+
         # Mock GPS service
         mock_gps_service = test_container.gps_service()
         mock_gps_service.get_gps_status.return_value = {
             "enabled": True,
             "available": True,
         }
-        
+
         # Mock hardware monitor
         mock_hardware_monitor = test_container.hardware_monitor_service()
         mock_hardware_monitor.get_health_summary.return_value = {
             "overall_status": "healthy",
         }
-        
+
         response = client.get("/api/field/summary")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["detections"]["today_count"] == 15
@@ -311,9 +311,9 @@ class TestFieldSummaryEndpoint:
         # Mock detection manager to raise exception
         mock_detection_manager = test_container.detection_manager()
         mock_detection_manager.get_detections_count_by_date.side_effect = Exception("Summary error")
-        
+
         response = client.get("/api/field/summary")
-        
+
         assert response.status_code == 500
         data = response.json()
         assert "Summary error" in data["error"]
@@ -325,9 +325,9 @@ class TestFieldAlertEndpoint:
     def test_trigger_field_alert_success(self, client):
         """Should trigger field alert successfully."""
         alert_data = {"message": "Test alert", "level": "warning"}
-        
+
         response = client.post("/api/field/alert", json=alert_data)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["message"] == "Alert triggered"
@@ -337,7 +337,7 @@ class TestFieldAlertEndpoint:
     def test_trigger_field_alert_default_values(self, client):
         """Should use default values for alert."""
         response = client.post("/api/field/alert", json={})
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["message"] == "Alert triggered"
@@ -347,5 +347,5 @@ class TestFieldAlertEndpoint:
     def test_trigger_field_alert_invalid_json(self, client):
         """Should handle invalid JSON."""
         response = client.post("/api/field/alert", data="invalid json")
-        
+
         assert response.status_code == 422  # FastAPI validation error

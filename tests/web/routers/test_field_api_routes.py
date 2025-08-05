@@ -17,7 +17,7 @@ from birdnetpi.web.routers.field_api_routes import router
 
 class TestContainer(containers.DeclarativeContainer):
     """Test container for dependency injection."""
-    
+
     detection_manager = providers.Singleton(MagicMock, spec=DetectionManager)
     gps_service = providers.Singleton(MagicMock, spec=GPSService)
     hardware_monitor_service = providers.Singleton(MagicMock, spec=HardwareMonitorService)
@@ -29,17 +29,17 @@ class TestContainer(containers.DeclarativeContainer):
 def app_with_field_router():
     """Create FastAPI app with field router and DI container."""
     app = FastAPI()
-    
+
     # Setup test container
     container = TestContainer()
     app.container = container
-    
+
     # Wire the router module
     container.wire(modules=["birdnetpi.web.routers.field_api_routes"])
-    
+
     # Include the router
     app.include_router(router, prefix="/api/field")
-    
+
     return app
 
 

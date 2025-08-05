@@ -1,12 +1,14 @@
 import logging
 from datetime import date, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from dependency_injector.wiring import Provide, inject
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.models.detection_event import DetectionEvent
+from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)
 
@@ -20,15 +22,11 @@ class LocationUpdate(BaseModel):
     longitude: float
 
 
-def get_detection_manager(request: Request) -> DetectionManager:
-    """Return the DetectionManager instance from the app state."""
-    return request.app.state.detections
-
-
 @router.post("/", status_code=status.HTTP_201_CREATED)
+@inject
 async def create_detection(
     detection_event: DetectionEvent,
-    request: Request,
+    detection_manager: DetectionManager = Depends(Provide[Container.detection_manager]),
 ) -> dict:
     """Receive a new detection event and dispatch it."""
     logger.info(
@@ -37,15 +35,16 @@ async def create_detection(
     )
 
     # Delegate to DetectionManager to create detection and audio file records
-    saved_detection = request.app.state.detections.create_detection(detection_event)
+    saved_detection = detection_manager.create_detection(detection_event)
 
     return {"message": "Detection received and dispatched", "detection_id": saved_detection.id}
 
 
 @router.get("/recent")
+@inject
 async def get_recent_detections(
     limit: int = 10,
-    detection_manager: DetectionManager = Depends(get_detection_manager),  # noqa: B008
+    detection_manager: DetectionManager = Depends(Provide[Container.detection_manager]),
 ) -> JSONResponse:
     """Get recent bird detections."""
     try:
@@ -68,9 +67,10 @@ async def get_recent_detections(
 
 
 @router.get("/count")
+@inject
 async def get_detection_count(
     target_date: date | None = None,
-    detection_manager: DetectionManager = Depends(get_detection_manager),  # noqa: B008
+    detection_manager: DetectionManager = Depends(Provide[Container.detection_manager]),
 ) -> JSONResponse:
     """Get detection count for a specific date (defaults to today)."""
     try:
@@ -85,10 +85,11 @@ async def get_detection_count(
 
 
 @router.post("/{detection_id}/location")
+@inject
 async def update_detection_location(
     detection_id: int,
     location: LocationUpdate,
-    detection_manager: DetectionManager = Depends(get_detection_manager),  # noqa: B008
+    detection_manager: DetectionManager = Depends(Provide[Container.detection_manager]),
 ) -> JSONResponse:
     """Update detection location with GPS coordinates."""
     try:
@@ -121,9 +122,10 @@ async def update_detection_location(
 
 
 @router.get("/{detection_id}")
+@inject
 async def get_detection(
     detection_id: int,
-    detection_manager: DetectionManager = Depends(get_detection_manager),  # noqa: B008
+    detection_manager: DetectionManager = Depends(Provide[Container.detection_manager]),
 ) -> JSONResponse:
     """Get a specific detection by ID."""
     try:

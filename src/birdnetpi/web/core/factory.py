@@ -10,17 +10,16 @@ from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.lifespan import lifespan
 from birdnetpi.web.routers import (
     admin_api_routes,
-    admin_router,
     admin_view_routes,
     detection_api_routes,
-    detections_router,
+    detections_api_routes,
     field_api_routes,
-    field_mode_router,
+    field_view_routes,
     iot_api_routes,
-    overview_router,
-    reporting_router,
+    overview_api_routes,
+    reporting_view_routes,
     system_api_routes,
-    websocket_router,
+    websocket_routes,
 )
 
 
@@ -49,47 +48,47 @@ def create_app() -> FastAPI:
     container.wire(
         modules=[
             "birdnetpi.web.core.factory",  # Wire factory for root route
-            "birdnetpi.web.routers.admin_router",
             "birdnetpi.web.routers.admin_api_routes",
             "birdnetpi.web.routers.admin_view_routes",
             "birdnetpi.web.routers.detection_api_routes",
-            "birdnetpi.web.routers.detections_router",
+            "birdnetpi.web.routers.detections_api_routes",
             "birdnetpi.web.routers.field_api_routes",
-            "birdnetpi.web.routers.field_mode_router",
+            "birdnetpi.web.routers.field_view_routes",
             "birdnetpi.web.routers.iot_api_routes",
-            "birdnetpi.web.routers.overview_router",
-            "birdnetpi.web.routers.reporting_router",
+            "birdnetpi.web.routers.overview_api_routes",
+            "birdnetpi.web.routers.reporting_view_routes",
             "birdnetpi.web.routers.system_api_routes",
-            "birdnetpi.web.routers.websocket_router",
+            "birdnetpi.web.routers.websocket_routes",
         ]
     )
 
     # Include routers with proper prefixes and consistent tagging
     # Admin routes (consolidated under /admin prefix)
-    app.include_router(admin_router.router, prefix="/admin", tags=["Admin"])
     app.include_router(admin_view_routes.router, prefix="/admin", tags=["Admin Views"])
     app.include_router(admin_api_routes.router, prefix="/admin", tags=["Admin API"])
 
     # System API routes (consolidated under /api/system prefix)
     app.include_router(system_api_routes.router, prefix="/api/system", tags=["System API"])
-    app.include_router(overview_router.router, prefix="/api", tags=["Overview API"])
+    app.include_router(overview_api_routes.router, prefix="/api", tags=["Overview API"])
 
     # Reports routes (consolidated under /reports prefix)
-    app.include_router(reporting_router.router, prefix="/reports", tags=["Reports"])
+    app.include_router(reporting_view_routes.router, prefix="/reports", tags=["Reports"])
 
     # Field mode routes
-    app.include_router(field_mode_router.router, tags=["Field Mode"])
+    app.include_router(field_view_routes.router, tags=["Field Views"])
     app.include_router(field_api_routes.router, prefix="/api/field", tags=["Field API"])
 
     # Core API routes (detections and IoT endpoints)
-    app.include_router(detections_router.router, prefix="/api/detections", tags=["Detections API"])
+    app.include_router(
+        detections_api_routes.router, prefix="/api/detections", tags=["Detections API"]
+    )
     app.include_router(
         detection_api_routes.router, prefix="/api/detections", tags=["Detection API"]
     )
     app.include_router(iot_api_routes.router, prefix="/api/iot", tags=["IoT API"])
 
     # Real-time communication
-    app.include_router(websocket_router.router, prefix="/ws", tags=["WebSocket"])
+    app.include_router(websocket_routes.router, prefix="/ws", tags=["WebSocket"])
 
     # Root route
     @app.get("/", response_class=HTMLResponse)

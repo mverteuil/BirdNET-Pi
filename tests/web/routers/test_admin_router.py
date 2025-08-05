@@ -11,11 +11,11 @@ from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.utils.file_path_resolver import FilePathResolver
-from birdnetpi.web.routers.admin_router import router
+from birdnetpi.web.routers.admin_view_routes import router
 
 
 @pytest.fixture
-def app_with_admin_router(tmp_path):
+def app_with_admin_view_routes(tmp_path):
     """Create FastAPI app with admin router and dependencies."""
     app = FastAPI()
 
@@ -50,9 +50,9 @@ def app_with_admin_router(tmp_path):
 
 
 @pytest.fixture
-def client(app_with_admin_router):
+def client(app_with_admin_view_routes):
     """Create test client with real app."""
-    return TestClient(app_with_admin_router)
+    return TestClient(app_with_admin_view_routes)
 
 
 class TestAdminRouterIntegration:
@@ -199,7 +199,7 @@ class TestAdminRouterIntegration:
         # Check that some expected content is in the response
         assert "Test BirdNET-Pi" in response.text
 
-    @patch("birdnetpi.web.routers.admin_router.LogService")
+    @patch("birdnetpi.web.routers.admin_view_routes.LogService")
     def test_log_endpoint_returns_logs(self, mock_log_service, client):
         """Should return system logs as plain text."""
         # Mock log service

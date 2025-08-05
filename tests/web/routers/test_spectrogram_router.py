@@ -11,13 +11,14 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from birdnetpi.managers.plotting_manager import PlottingManager
+
 # Import from new router structure - spectrogram functionality moved to detection_api_routes
 from birdnetpi.web.routers.detection_api_routes import router
 
 
 class TestContainer(containers.DeclarativeContainer):
     """Test container for dependency injection."""
-    
+
     plotting_manager = providers.Singleton(MagicMock, spec=PlottingManager)
 
 
@@ -25,17 +26,17 @@ class TestContainer(containers.DeclarativeContainer):
 def app_with_spectrogram_router():
     """Create FastAPI app with detection router that includes spectrogram functionality."""
     app = FastAPI()
-    
+
     # Setup test container
     container = TestContainer()
     app.container = container
-    
+
     # Wire the router module
     container.wire(modules=["birdnetpi.web.routers.detection_api_routes"])
-    
+
     # Include the router with detection prefix (spectrogram is at /api/detections/{id}/spectrogram)
     app.include_router(router, prefix="/api")
-    
+
     return app
 
 

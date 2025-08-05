@@ -55,17 +55,23 @@ def test_read_main(file_path_resolver, tmp_path) -> None:
     mock_config_instance.logging.include_caller = True
     mock_config_instance.logging.extra_fields = {}
 
-    with patch("birdnetpi.utils.config_file_parser.ConfigFileParser") as mock_config_file_parser_class:
+    with patch(
+        "birdnetpi.utils.config_file_parser.ConfigFileParser"
+    ) as mock_config_file_parser_class:
         mock_config_file_parser_class.return_value.load_config.return_value = mock_config_instance
 
         # Mock FilePathResolver to use our fixture
-        with patch("birdnetpi.utils.file_path_resolver.FilePathResolver") as mock_file_resolver_class:
+        with patch(
+            "birdnetpi.utils.file_path_resolver.FilePathResolver"
+        ) as mock_file_resolver_class:
             mock_file_resolver_class.return_value = file_path_resolver
 
             # Mock structlog configurator to avoid git commands in tests
             with patch("birdnetpi.utils.structlog_configurator.configure_structlog"):
                 # Mock FileManager to avoid directory permission issues
-                with patch("birdnetpi.managers.file_manager.FileManager") as mock_file_manager_class:
+                with patch(
+                    "birdnetpi.managers.file_manager.FileManager"
+                ) as mock_file_manager_class:
                     mock_file_manager_instance = MagicMock(spec=FileManager)
                     mock_file_manager_class.return_value = mock_file_manager_instance
 

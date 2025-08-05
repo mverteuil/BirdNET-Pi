@@ -6,9 +6,9 @@ from fastapi.testclient import TestClient
 
 # Import from new router structure after refactor
 from birdnetpi.web.routers.detection_api_routes import router as detection_router
-from birdnetpi.web.routers.system_api_routes import router as system_router  
 from birdnetpi.web.routers.field_api_routes import router as field_router
 from birdnetpi.web.routers.iot_api_routes import router as iot_router
+from birdnetpi.web.routers.system_api_routes import router as system_router
 
 
 @pytest.fixture

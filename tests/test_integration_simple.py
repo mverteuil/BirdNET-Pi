@@ -22,15 +22,15 @@ def test_simple_startup():
         assert response.json() == {"message": "Hello World"}
 
 
-def test_admin_router_endpoints():
+def test_admin_view_routes_endpoints():
     """Test that admin router endpoints are accessible."""
     # Create a minimal app with just the admin router
     from fastapi import FastAPI
 
-    from birdnetpi.web.routers import admin_router
+    from birdnetpi.web.routers import admin_view_routes
 
     app = FastAPI()
-    app.include_router(admin_router.router)
+    app.include_router(admin_view_routes.router)
 
     # Mock dependencies
     app.state.templates = MagicMock()
@@ -40,11 +40,11 @@ def test_admin_router_endpoints():
     mock_config = MagicMock()
     mock_config.site_name = "Test Site"
 
-    with patch("birdnetpi.web.routers.admin_router.ConfigFileParser") as mock_parser:
+    with patch("birdnetpi.web.routers.admin_view_routes.ConfigFileParser") as mock_parser:
         mock_parser.return_value.load_config.return_value = mock_config
 
         with TestClient(app) as client:
             # Test that the admin endpoint exists
-            response = client.get("/admin")
+            response = client.get("/")
             assert response.status_code == 200
             assert response.json() == {"message": "Admin router is working!"}

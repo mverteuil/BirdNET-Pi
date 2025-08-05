@@ -14,7 +14,7 @@ from birdnetpi.web.routers.iot_api_routes import router
 
 class TestContainer(containers.DeclarativeContainer):
     """Test container for dependency injection."""
-    
+
     mqtt_service = providers.Singleton(MagicMock, spec=MQTTService)
     webhook_service = providers.Singleton(MagicMock, spec=WebhookService)
 
@@ -23,17 +23,17 @@ class TestContainer(containers.DeclarativeContainer):
 def app_with_iot_router():
     """Create FastAPI app with IoT router and DI container."""
     app = FastAPI()
-    
+
     # Setup test container
     container = TestContainer()
     app.container = container
-    
+
     # Wire the router module
     container.wire(modules=["birdnetpi.web.routers.iot_api_routes"])
-    
+
     # Include the router
     app.include_router(router, prefix="/api/iot")
-    
+
     return app
 
 
@@ -129,11 +129,11 @@ class TestIoTEndpoints:
         mqtt_service = client.app.container.mqtt_service()
         mqtt_service.enable_mqtt = True
         mqtt_service.is_connected = True
-        
+
         message_data = {"topic": "test/topic", "message": "test message"}
-        
+
         response = client.post("/api/iot/mqtt/publish", json=message_data)
-        
+
         # This assumes the endpoint exists - adjust based on actual implementation
         if response.status_code == 404:
             # Skip if endpoint doesn't exist yet
@@ -146,11 +146,11 @@ class TestIoTEndpoints:
         webhook_service = client.app.container.webhook_service()
         webhook_service.enable_webhooks = True
         webhook_service.webhooks = ["http://example.com/webhook"]
-        
+
         test_data = {"url": "http://example.com/webhook", "payload": {"test": "data"}}
-        
+
         response = client.post("/api/iot/webhooks/test", json=test_data)
-        
+
         # This assumes the endpoint exists - adjust based on actual implementation
         if response.status_code == 404:
             # Skip if endpoint doesn't exist yet

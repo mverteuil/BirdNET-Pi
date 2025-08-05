@@ -56,7 +56,7 @@ dependencies = [
   "tqdm>=4.67.1",
   "structlog>=25.4.0",
   "numpy<2",
-  "dependency-injector>=4.41.0",
+  "dependency-injector>=4.41.0"
 ]
 
 [project.scripts]
