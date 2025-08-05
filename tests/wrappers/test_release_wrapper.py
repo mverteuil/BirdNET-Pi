@@ -98,22 +98,27 @@ class TestBuildAssetList:
         assert assets[0].target_name == "custom/path"
         assert assets[0].description == "Custom asset description"
 
-    def test_build_asset_list_missing_models_warning(self, mock_release_manager, capsys):
+    @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
+    def test_build_asset_list_missing_models_warning(self, mock_exit, mock_release_manager, capsys):
         """Should warn when models are requested but missing."""
+        mock_exit.side_effect = SystemExit(1)
         args = argparse.Namespace(include_models=True, include_ioc_db=False, custom_assets=None)
 
-        assets = _build_asset_list(args, mock_release_manager)
+        with pytest.raises(SystemExit):
+            _build_asset_list(args, mock_release_manager)
 
-        assert len(assets) == 0
         captured = capsys.readouterr()
         assert "Warning: Models not found at expected locations" in captured.out
+        mock_exit.assert_called_with(1)
 
     @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
     def test_build_asset_list_no_assets(self, mock_exit, mock_release_manager):
         """Should exit when no assets are specified."""
+        mock_exit.side_effect = SystemExit(1)
         args = argparse.Namespace(include_models=False, include_ioc_db=False, custom_assets=None)
 
-        _build_asset_list(args, mock_release_manager)
+        with pytest.raises(SystemExit):
+            _build_asset_list(args, mock_release_manager)
 
         mock_exit.assert_called_once_with(1)
 
@@ -145,20 +150,24 @@ class TestAddCustomAssets:
     @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
     def test_add_custom_assets_invalid_format(self, mock_exit):
         """Should exit when custom asset format is invalid."""
+        mock_exit.side_effect = SystemExit(1)
         custom_assets = ["invalid:format"]  # Missing description
         assets = []
 
-        _add_custom_assets(custom_assets, assets)
+        with pytest.raises(SystemExit):
+            _add_custom_assets(custom_assets, assets)
 
         mock_exit.assert_called_once_with(1)
 
     @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
     def test_add_custom_assets_missing_file(self, mock_exit):
         """Should exit when custom asset file doesn't exist."""
+        mock_exit.side_effect = SystemExit(1)
         custom_assets = ["/nonexistent/file:target:Description"]
         assets = []
 
-        _add_custom_assets(custom_assets, assets)
+        with pytest.raises(SystemExit):
+            _add_custom_assets(custom_assets, assets)
 
         mock_exit.assert_called_once_with(1)
 

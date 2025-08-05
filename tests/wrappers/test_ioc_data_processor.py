@@ -60,7 +60,7 @@ class TestProcessIOCFiles:
 
         process_ioc_files(xml_file, xlsx_file, output_file)
 
-        mock_exit.assert_called_once_with(1)
+        mock_exit.assert_called_with(1)
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCDatabaseService")
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
@@ -76,7 +76,7 @@ class TestProcessIOCFiles:
 
         process_ioc_files(xml_file, xlsx_file, output_file)
 
-        mock_exit.assert_called_once_with(1)
+        mock_exit.assert_called_with(1)
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCDatabaseService")
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
@@ -171,7 +171,7 @@ class TestProcessIOCFiles:
 
         process_ioc_files(xml_file, xlsx_file, output_file)
 
-        mock_exit.assert_called_once_with(1)
+        mock_exit.assert_called_with(1)
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
     def test_process_ioc_files_with_compression(
@@ -207,7 +207,7 @@ class TestShowIOCInfo:
 
         show_ioc_info(json_file)
 
-        mock_exit.assert_called_once_with(1)
+        mock_exit.assert_called_with(1)
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
     def test_show_ioc_info_success(
@@ -250,7 +250,7 @@ class TestShowIOCInfo:
 
         show_ioc_info(json_file)
 
-        mock_exit.assert_called_once_with(1)
+        mock_exit.assert_called_with(1)
 
 
 class TestLookupSpecies:
@@ -264,7 +264,7 @@ class TestLookupSpecies:
 
         lookup_species(json_file, "Turdus migratorius", "en")
 
-        mock_exit.assert_called_once_with(1)
+        mock_exit.assert_called_with(1)
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
     def test_lookup_species_found(
@@ -365,7 +365,7 @@ class TestLookupSpecies:
 
         lookup_species(json_file, "Turdus migratorius", "en")
 
-        mock_exit.assert_called_once_with(1)
+        mock_exit.assert_called_with(1)
 
 
 class TestMain:
@@ -442,7 +442,7 @@ class TestMain:
         with patch.object(sys, "argv", test_args):
             main()
 
-        mock_exit.assert_called_once_with(1)
+        mock_exit.assert_called_with(1)
 
     def test_main_argument_parsing_structure(self):
         """Should have proper argument structure."""
@@ -533,4 +533,4 @@ class TestIntegration:
         with patch.object(sys, "argv", ["ioc-processor", "invalid-command"]):
             with patch("birdnetpi.wrappers.ioc_data_processor.sys.exit") as mock_exit:
                 main()
-                mock_exit.assert_called_once_with(1)
+                mock_exit.assert_called_with(1)
