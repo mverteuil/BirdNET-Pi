@@ -4,14 +4,11 @@ import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
-from birdnetpi.web.routers.api_router import (
-    get_detection_manager,
-    get_gps_service,
-    get_hardware_monitor,
-    get_mqtt_service,
-    get_webhook_service,
-    router,
-)
+# Import from new router structure after refactor
+from birdnetpi.web.routers.detection_api_routes import router as detection_router
+from birdnetpi.web.routers.system_api_routes import router as system_router  
+from birdnetpi.web.routers.field_api_routes import router as field_router
+from birdnetpi.web.routers.iot_api_routes import router as iot_router
 
 
 @pytest.fixture
@@ -30,7 +27,11 @@ def mock_app():
         "/test/config.yaml"
     )
 
-    app.include_router(router, prefix="/api")
+    # Include all the routers that were split from the original api_router
+    app.include_router(detection_router, prefix="/api/detections")
+    app.include_router(system_router, prefix="/api/system")
+    app.include_router(field_router, prefix="/api/field")
+    app.include_router(iot_router, prefix="/api/iot")
     return app
 
 

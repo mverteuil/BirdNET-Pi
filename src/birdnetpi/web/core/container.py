@@ -1,6 +1,9 @@
 """Dependency injection container for the BirdNET-Pi application."""
 
+from pathlib import Path
+
 from dependency_injector import containers, providers
+from fastapi.templating import Jinja2Templates
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.detection_manager import DetectionManager
@@ -35,6 +38,12 @@ class Container(containers.DeclarativeContainer):
 
     # Core infrastructure services - singletons
     file_resolver = providers.Singleton(FilePathResolver)
+
+    # Templates configuration - singleton
+    templates = providers.Singleton(
+        Jinja2Templates,
+        directory=str(Path(__file__).parent.parent / "templates"),
+    )
 
     database_service = providers.Singleton(
         DatabaseService,

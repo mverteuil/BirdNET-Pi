@@ -3,14 +3,19 @@
 import datetime
 import logging
 
-from fastapi import APIRouter, Form, Request, Response
+from dependency_injector.wiring import Provide, inject
+from fastapi import APIRouter, Depends, Form, Request, Response
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
 from starlette.status import HTTP_303_SEE_OTHER
 
+from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.models.detection_event import DetectionEvent
 from birdnetpi.services.log_service import LogService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
+from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -24,11 +29,16 @@ async def read_admin() -> dict[str, str]:
 
 # Settings Management
 @router.get("/settings", response_class=HTMLResponse)
-async def get_settings(request: Request) -> Response:
+@inject
+async def get_settings(
+    request: Request,
+    file_resolver: FilePathResolver = Depends(Provide[Container.file_resolver]),
+    templates: Jinja2Templates = Depends(Provide[Container.templates]),
+) -> Response:
     """Render the settings page with the current configuration."""
-    config_parser = ConfigFileParser(request.app.state.file_resolver.get_birdnetpi_config_path())
+    config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())
     app_config: BirdNETConfig = config_parser.load_config()
-    return request.app.state.templates.TemplateResponse(
+    return templates.TemplateResponse(
         "settings.html", {"request": request, "config": app_config}
     )
 

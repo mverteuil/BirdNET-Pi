@@ -1,8 +1,11 @@
 """Application factory for creating FastAPI application with dependency injection."""
 
-from fastapi import FastAPI, Request
+from dependency_injector.wiring import Provide, inject
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 
+from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.lifespan import lifespan
 from birdnetpi.web.routers import (
@@ -42,9 +45,10 @@ def create_app() -> FastAPI:
     # Attach container to app (ignore type error - runtime dynamic attribute)
     app.container = container  # type: ignore[attr-defined]
 
-    # Wire dependencies for all router modules
+    # Wire dependencies for all router modules and factory
     container.wire(
         modules=[
+            "birdnetpi.web.core.factory",  # Wire factory for root route
             "birdnetpi.web.routers.admin_router",
             "birdnetpi.web.routers.admin_api_routes",
             "birdnetpi.web.routers.admin_view_routes",
@@ -89,11 +93,13 @@ def create_app() -> FastAPI:
 
     # Root route
     @app.get("/", response_class=HTMLResponse)
-    async def read_root(request: Request) -> HTMLResponse:
+    @inject
+    async def read_root(
+        request: Request,
+        templates: Jinja2Templates = Depends(Provide[Container.templates]),
+        config: BirdNETConfig = Depends(Provide[Container.config]),
+    ) -> HTMLResponse:
         """Render the main index page."""
-        templates = request.app.extra["templates"]
-        config = request.app.container.config()  # type: ignore[attr-defined]
-
         return templates.TemplateResponse(
             request,
             "index.html",

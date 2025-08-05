@@ -9,7 +9,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from birdnetpi.web.routers.spectrogram_router import router
+# Import from new router structure - spectrogram functionality moved to detection_api_routes
+from birdnetpi.web.routers.detection_api_routes import router
 
 
 @pytest.fixture

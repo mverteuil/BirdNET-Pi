@@ -45,7 +45,7 @@ def app_with_admin_router(tmp_path):
     app.state.file_manager.file_path_resolver = mock_resolver
     app.state.file_resolver = mock_resolver
 
-    app.include_router(router)
+    app.include_router(router, prefix="/admin")
     return app
 
 
@@ -60,7 +60,7 @@ class TestAdminRouterIntegration:
 
     def test_admin_endpoint_returns_json(self, client):
         """Should return JSON response with admin message."""
-        response = client.get("/admin")
+        response = client.get("/admin/")
 
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/json"
