@@ -17,7 +17,7 @@ def get_plotting_manager(request: Request) -> PlottingManager:
     return PlottingManager(mock_data_preparation_manager)
 
 
-@router.get("/spectrogram")
+@router.get("/livestream")
 async def get_spectrogram(
     audio_path: str = Query(..., min_length=1, description="Path to the audio file"),
     plotting_manager: PlottingManager = Depends(get_plotting_manager),  # noqa: B008

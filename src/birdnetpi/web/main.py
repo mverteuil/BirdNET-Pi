@@ -183,7 +183,7 @@ app.include_router(field_mode_router.router, tags=["Field Mode"])
 # System API routes (consolidated under /api/system prefix)
 app.include_router(api_router.router, prefix="/api/system", tags=["System API"])
 
-# Legacy API routes (to be migrated to api_router eventually)
+# Core API routes (detections and IoT endpoints)
 app.include_router(detections_router.router, prefix="/api/detections", tags=["Detections API"])
 app.include_router(iot_router.router, prefix="/api/iot", tags=["IoT API"])
 
