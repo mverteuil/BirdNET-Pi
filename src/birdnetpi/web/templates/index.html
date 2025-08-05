@@ -176,11 +176,11 @@
 
       <!-- Navigation Section -->
       <section class="nav-grid">
-        <a href="/reports/todays_detections" class="nav-button">
+        <a href="/reports/today" class="nav-button">
           <div class="nav-icon">📊</div>
           <span>View Detections</span>
         </a>
-        <a href="/reports/best_recordings" class="nav-button">
+        <a href="/reports/best" class="nav-button">
           <div class="nav-icon">🎧</div>
           <span>Best Recordings</span>
         </a>
@@ -315,14 +315,14 @@
           }
 
           // Load today's detections
-          const detectionsResponse = await fetch("/reports/todays_detections");
+          const detectionsResponse = await fetch("/reports/today");
           if (detectionsResponse.ok) {
             const detectionsData = await detectionsResponse.json();
             updateTodaysDetections(detectionsData);
           }
 
           // Load best recordings
-          const recordingsResponse = await fetch("/reports/best_recordings");
+          const recordingsResponse = await fetch("/reports/best");
           if (recordingsResponse.ok) {
             const recordingsData = await recordingsResponse.json();
             updateBestRecordings(recordingsData);
