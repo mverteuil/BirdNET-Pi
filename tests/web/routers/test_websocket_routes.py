@@ -98,7 +98,7 @@ class TestWebSocketRouter:
 
         # Should have three WebSocket routes
         assert len(route_paths) == 3
-        assert "" in route_paths
+        assert "/notifications" in route_paths
         assert "/audio" in route_paths
         assert "/spectrogram" in route_paths
 
@@ -134,7 +134,7 @@ class TestWebSocketRouter:
             route_mapping[getattr(route, "path", "")] = getattr(route, "endpoint", None)  # type: ignore[attr-defined]
 
         # Check that paths map to correct endpoints
-        assert route_mapping[""] == websocket_endpoint
+        assert route_mapping["/notifications"] == websocket_endpoint
         assert route_mapping["/audio"] == audio_websocket_endpoint
         assert route_mapping["/spectrogram"] == spectrogram_websocket_endpoint
 

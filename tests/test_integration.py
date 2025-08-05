@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.services.audio_fifo_reader_service import AudioFifoReaderService
-from birdnetpi.web.main import app
+from birdnetpi.web.core.factory import create_app
 
 
 def test_read_main(file_path_resolver, tmp_path) -> None:
@@ -76,12 +76,13 @@ def test_read_main(file_path_resolver, tmp_path) -> None:
                     mock_file_manager_class.return_value = mock_file_manager_instance
 
                     # Mock AudioFifoReaderService to avoid FIFO creation issues
-                    with patch("birdnetpi.web.main.AudioFifoReaderService") as mock_fifo_class:
+                    with patch("birdnetpi.services.audio_fifo_reader_service.AudioFifoReaderService") as mock_fifo_class:
                         mock_fifo_instance = MagicMock(spec=AudioFifoReaderService)
                         mock_fifo_instance.start = AsyncMock()
                         mock_fifo_instance.stop = AsyncMock()
                         mock_fifo_class.return_value = mock_fifo_instance
 
+                        app = create_app()
                         with TestClient(app) as client:
                             response = client.get("/")
                             assert response.status_code == 200

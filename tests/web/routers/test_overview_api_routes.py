@@ -5,12 +5,13 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.web.routers.overview_api_routes import router
+from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
+from birdnetpi.web.core.factory import create_app
 
 
 @pytest.fixture
@@ -30,19 +31,29 @@ def temp_db():
 @pytest.fixture
 def app_with_overview_services(file_path_resolver, temp_db):
     """Create FastAPI app with overview router dependencies."""
-    app = FastAPI()
-
-    # Set up app state with minimal real components and necessary mocks
-    mock_config = MagicMock()
-    mock_config.data.db_path = temp_db
-    app.state.config = mock_config
-    # Use real detection manager with the temp database
-    app.state.detections = DetectionManager(DatabaseService(temp_db))
-    app.state.plotting_manager = MagicMock()  # Mock plotting manager
-    app.state.file_path_resolver = file_path_resolver
-    app.state.data_preparation_manager = MagicMock()  # Mock data preparation manager
-    app.state.location_service = MagicMock()  # Mock location service
-    app.include_router(router)
+    # Create app using factory
+    app = create_app()
+    
+    # Override services with mocks or test instances
+    if hasattr(app, 'container'):
+        # Use real detection manager with temp database
+        detection_manager = DetectionManager(DatabaseService(temp_db))
+        app.container.detection_manager.override(detection_manager)
+        
+        # Mock hardware monitor service
+        mock_hardware_monitor = MagicMock(spec=HardwareMonitorService)
+        mock_hardware_monitor.get_all_status.return_value = {
+            "disk_usage": {"usage": 50.0, "used_gb": 50.0, "total_gb": 100.0, "free_gb": 50.0},
+            "cpu_temperature": "45.2°C",
+            "memory_usage": {"percent": 40.0}
+        }
+        app.container.hardware_monitor_service.override(mock_hardware_monitor)
+        
+        # Mock reporting manager that uses the detection manager
+        mock_reporting_manager = MagicMock(spec=ReportingManager)
+        mock_reporting_manager.detection_manager = detection_manager
+        app.container.reporting_manager.override(mock_reporting_manager)
+    
     return app
 
 
@@ -65,7 +76,7 @@ class TestOverviewRouterIntegration:
         data = response.json()
 
         # Check that required fields are present
-        required_fields = ["disk_usage", "extra_info", "total_detections"]
+        required_fields = ["system_status", "total_detections"]
         for field in required_fields:
             assert field in data, f"Missing required field: {field}"
 
@@ -76,21 +87,22 @@ class TestOverviewRouterIntegration:
         assert response.status_code == 200
         data = response.json()
 
-        # Verify disk usage has expected structure
-        disk_usage = data["disk_usage"]
-        assert isinstance(disk_usage, dict)
-        # SystemMonitorService should return disk usage information
+        # Verify system status has expected structure
+        system_status = data["system_status"]
+        assert isinstance(system_status, dict)
+        # HardwareMonitorService should return system status information
+        assert "disk_usage" in system_status
 
-    def test_overview_endpoint_extra_info_structure(self, client):
-        """Should return system extra info."""
+    def test_overview_endpoint_system_status_structure(self, client):
+        """Should return system status information."""
         response = client.get("/api/overview")
 
         assert response.status_code == 200
         data = response.json()
 
-        # Verify extra info exists (content depends on system)
-        extra_info = data["extra_info"]
-        assert isinstance(extra_info, dict)
+        # Verify system status exists (content depends on system)
+        system_status = data["system_status"]
+        assert isinstance(system_status, dict)
 
     def test_overview_endpoint_total_detections(self, client, temp_db):
         """Should return total detections from real detection manager."""
@@ -103,17 +115,17 @@ class TestOverviewRouterIntegration:
         assert data["total_detections"] == 0
         assert isinstance(data["total_detections"], int)
 
-    def test_overview_uses_real_system_monitor(self, client):
-        """Should use real SystemMonitorService for system information."""
+    def test_overview_uses_real_hardware_monitor(self, client):
+        """Should use real HardwareMonitorService for system information."""
         response = client.get("/api/overview")
 
         assert response.status_code == 200
         data = response.json()
 
-        # Real SystemMonitorService should provide actual system data
+        # Real HardwareMonitorService should provide actual system data
         # The exact content varies by system, but should be present
-        assert "disk_usage" in data
-        assert "extra_info" in data
+        assert "system_status" in data
+        assert "total_detections" in data
 
     def test_overview_uses_real_detection_manager(self, client, temp_db):
         """Should use real DetectionManager with actual database."""
@@ -134,9 +146,9 @@ class TestOverviewRouterIntegration:
         data = response.json()
 
         # Integration test: all components should work together
-        # - SystemMonitorService provides system info
+        # - HardwareMonitorService provides system status
         # - ReportingManager with DetectionManager provides detection count
         # - All data combined into single response
 
-        assert len(data) == 3  # Should have exactly 3 top-level fields
-        assert all(field in data for field in ["disk_usage", "extra_info", "total_detections"])
+        assert len(data) == 2  # Should have exactly 2 top-level fields
+        assert all(field in data for field in ["system_status", "total_detections"])

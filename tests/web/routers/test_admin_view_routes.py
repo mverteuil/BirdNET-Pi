@@ -1,10 +1,11 @@
 """Integration tests for admin router that exercise expanded functionality."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
+from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.web.core.factory import create_app
 
 
@@ -18,12 +19,18 @@ def app_with_admin_view_routes(tmp_path):
     # Create the app using the factory
     app = create_app()
 
-    # Override file resolver to use test config
+    # Override dependencies to use mocks
     if hasattr(app, "container"):
+        # Mock file resolver to use test config
         mock_resolver = Mock()
         mock_resolver.get_birdnetpi_config_path.return_value = str(config_file)
         mock_resolver.base_dir = str(tmp_path)
         app.container.file_resolver.override(mock_resolver)
+        
+        # Mock detection manager for test_detection endpoint
+        mock_detection_manager = MagicMock(spec=DetectionManager)
+        mock_detection_manager.create_detection.return_value = None
+        app.container.detection_manager.override(mock_detection_manager)
 
     return app
 

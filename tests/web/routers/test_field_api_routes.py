@@ -112,13 +112,13 @@ class TestGPSEndpoints:
 
     def test_get_gps_location_disabled(self, client):
         """Should return 404 when GPS service is not available."""
-        # Mock gps_service as None (service not available)
-        client.mock_gps_service = None
+        # Mock get_current_location to return None (GPS disabled)
+        client.mock_gps_service.get_current_location.return_value = None
 
         response = client.get("/api/field/gps/location")
 
         assert response.status_code == 404
-        assert "GPS service not available" in response.json()["error"]
+        assert "No GPS fix available" in response.json()["error"]
 
 
 class TestFieldModeEndpoints:
@@ -128,29 +128,37 @@ class TestFieldModeEndpoints:
         """Should return comprehensive field summary."""
         # Setup GPS service
         gps_service = client.mock_gps_service
-        gps_service.enable_gps = True
-        mock_location = {"latitude": 40.7128, "longitude": -74.0060}
-        gps_service.get_current_location.return_value = mock_location
+        gps_service.get_gps_status.return_value = {"enabled": True}
 
         # Setup hardware monitor
         hardware_monitor = client.mock_hardware_monitor_service
-        mock_hw_status = {"cpu": "healthy"}
-        hardware_monitor.get_all_status.return_value = mock_hw_status
+        hardware_monitor.get_health_summary.return_value = {"overall_status": "healthy"}
 
         # Setup detection manager
         detection_manager = client.mock_detection_manager
-        mock_recent_detections = [{"id": 1}]
-        detection_manager.get_recent_detections.return_value = mock_recent_detections
+        detection_manager.get_detections_count_by_date.return_value = 5
+        
+        # Create mock detection objects with required attributes
+        from unittest.mock import Mock
+        from datetime import datetime, UTC
+        
+        mock_detection = Mock()
+        mock_detection.species = "Test Bird"
+        mock_detection.confidence = 0.95
+        mock_detection.timestamp = datetime.now(UTC)
+        
+        detection_manager.get_recent_detections.return_value = [mock_detection]
 
         response = client.get("/api/field/summary")
 
         assert response.status_code == 200
         data = response.json()
         assert data["gps"]["enabled"] is True
-        assert data["gps"]["location"] == mock_location
-        assert data["hardware"] == mock_hw_status
-        assert data["detections"]["today_count"] == 0  # TODO is hardcoded to 0 in implementation
-        assert data["detections"]["recent"] == mock_recent_detections
+        assert data["hardware"]["overall_status"] == "healthy"
+        assert data["detections"]["today_count"] == 5
+        assert len(data["detections"]["recent"]) == 1
+        assert data["detections"]["recent"][0]["species"] == "Test Bird"
+        assert data["detections"]["recent"][0]["confidence"] == 0.95
 
     def test_create_field_alert(self, client):
         """Should create and send field alert."""
@@ -164,11 +172,12 @@ class TestFieldModeEndpoints:
         webhook_service.enable_webhooks = True
         webhook_service.send_webhook = AsyncMock()
 
-        alert_data = {"alert_type": "battery_low", "severity": "warning"}
+        alert_data = {"message": "Battery low", "level": "warning"}
 
         response = client.post("/api/field/alert", json=alert_data)
 
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "alert_sent"
-        assert data["data"] == alert_data
+        assert data["message"] == "Alert triggered"
+        assert data["level"] == "warning"
+        assert data["text"] == "Battery low"

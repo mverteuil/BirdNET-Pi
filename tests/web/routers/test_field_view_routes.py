@@ -3,33 +3,26 @@
 from unittest.mock import MagicMock
 
 import pytest
-from dependency_injector import containers, providers
-from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.testclient import TestClient
 
-from birdnetpi.web.routers.field_view_routes import router
-
-
-class TestContainer(containers.DeclarativeContainer):
-    """Test container for dependency injection."""
-
-    templates = providers.Singleton(MagicMock, spec=Jinja2Templates)
+from birdnetpi.web.core.factory import create_app
 
 
 @pytest.fixture
-def app_with_field_view_routes():
+def app_with_field_view_routes(file_path_resolver):
     """Create FastAPI app with field view router and dependencies."""
-    app = FastAPI()
-
-    # Create test container
-    container = TestContainer()
-
-    # Wire the container
-    container.wire(modules=["birdnetpi.web.routers.field_view_routes"])
-    app.container = container
-
-    app.include_router(router)
+    app = create_app()
+    
+    if hasattr(app, 'container'):
+        # Mock templates
+        mock_templates = MagicMock(spec=Jinja2Templates)
+        app.container.templates.override(mock_templates)
+        
+        # Override file resolver
+        app.container.file_resolver.override(file_path_resolver)
+    
     return app
 
 
@@ -44,16 +37,20 @@ class TestFieldViewRoutes:
 
     def test_get_field_mode(self, client):
         """Test field mode page rendering."""
-        # Mock the template response
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        client.app.container.templates().TemplateResponse.return_value = mock_response
+        # Mock the template response with a proper HTMLResponse
+        mock_templates = client.app.container.templates()
+        mock_html_response = HTMLResponse("<html><body>Field Mode</body></html>")
+        mock_templates.TemplateResponse.return_value = mock_html_response
 
         response = client.get("/field")
 
+        # Should return successful response
+        assert response.status_code == 200
+        assert "Field Mode" in response.text
+        
         # Verify template was called with correct parameters
-        client.app.container.templates().TemplateResponse.assert_called_once()
-        call_args = client.app.container.templates().TemplateResponse.call_args
+        mock_templates.TemplateResponse.assert_called_once()
+        call_args = mock_templates.TemplateResponse.call_args
 
         # Check template name
         assert call_args[0][0] == "field_mode.html"
