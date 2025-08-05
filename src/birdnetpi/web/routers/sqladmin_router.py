@@ -1,5 +1,7 @@
 """SQLAdmin configuration and setup for database administration interface."""
 
+from typing import ClassVar
+
 from fastapi import FastAPI
 from sqladmin import Admin, ModelView
 
@@ -9,7 +11,7 @@ from birdnetpi.models.database_models import AudioFile, Detection
 class DetectionAdmin(ModelView, model=Detection):
     """Admin interface for Detection model."""
 
-    column_list = [  # type: ignore[assignment]
+    column_list: ClassVar = [
         Detection.id,
         Detection.scientific_name,
         Detection.common_name_ioc,
@@ -21,7 +23,7 @@ class DetectionAdmin(ModelView, model=Detection):
 class AudioFileAdmin(ModelView, model=AudioFile):
     """Admin interface for AudioFile model."""
 
-    column_list = [  # type: ignore[assignment]
+    column_list: ClassVar = [
         AudioFile.id,
         AudioFile.file_path,
         AudioFile.duration,

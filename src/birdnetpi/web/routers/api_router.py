@@ -6,10 +6,12 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.gps_service import GPSService
 from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
 from birdnetpi.services.mqtt_service import MQTTService
+from birdnetpi.services.system_monitor_service import SystemMonitorService
 from birdnetpi.services.webhook_service import WebhookService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 
@@ -40,6 +42,23 @@ def get_mqtt_service(request: Request) -> MQTTService:
 def get_webhook_service(request: Request) -> WebhookService:
     """Get the webhook service from app state."""
     return request.app.state.webhook_service
+
+
+def get_system_monitor() -> SystemMonitorService:
+    """Get the system monitor service."""
+    return SystemMonitorService()
+
+
+def get_reporting_manager(request: Request) -> ReportingManager:
+    """Get the reporting manager from app state."""
+    return ReportingManager(
+        request.app.state.detections,
+        request.app.state.file_resolver,
+        request.app.state.config,
+        request.app.state.plotting_manager,
+        request.app.state.data_preparation_manager,
+        request.app.state.location_service,
+    )
 
 
 # Detection API endpoints
@@ -92,8 +111,8 @@ async def get_gps_history(
     return {"history": history, "hours": hours}
 
 
-# Hardware monitoring API endpoints
-@router.get("/hardware/status")
+# System monitoring API endpoints (hardware, overview, etc.)
+@router.get("/system/hardware/status")
 async def get_hardware_status(
     hardware_monitor: HardwareMonitorService = Depends(get_hardware_monitor),  # noqa: B008
 ) -> dict:
@@ -101,7 +120,7 @@ async def get_hardware_status(
     return hardware_monitor.get_all_status()
 
 
-@router.get("/hardware/component/{component_name}")
+@router.get("/system/hardware/component/{component_name}")
 async def get_hardware_component(
     component_name: str,
     hardware_monitor: HardwareMonitorService = Depends(get_hardware_monitor),  # noqa: B008
@@ -111,6 +130,23 @@ async def get_hardware_component(
     if not status:
         raise HTTPException(status_code=404, detail=f"Component '{component_name}' not found")
     return {"component": component_name, "status": status}
+
+
+@router.get("/system/overview")
+async def get_system_overview(
+    system_monitor: SystemMonitorService = Depends(get_system_monitor),  # noqa: B008
+    reporting_manager: ReportingManager = Depends(get_reporting_manager),  # noqa: B008
+) -> dict:
+    """Get system overview data including disk usage, system info, and total detections."""
+    disk_usage = system_monitor.get_disk_usage()
+    extra_info = system_monitor.get_extra_info()
+    total_detections = reporting_manager.detection_manager.get_total_detections()
+
+    return {
+        "disk_usage": disk_usage,
+        "extra_info": extra_info,
+        "total_detections": total_detections,
+    }
 
 
 # Field mode API endpoints

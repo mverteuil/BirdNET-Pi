@@ -33,7 +33,6 @@ from .routers import (
     detections_router,
     field_mode_router,
     iot_router,
-    overview_router,
     reporting_router,
     spectrogram_router,
     sqladmin_router,
@@ -142,7 +141,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Initialize SQLAdmin
     sqladmin = sqladmin_router.setup_sqladmin(app)
-    app.mount("/sqladmin", sqladmin.app, name="sqladmin")
+    app.mount("/admin/database", sqladmin.app, name="sqladmin")
 
     # Start the FIFO reader service
     await app.state.audio_fifo_reader_service.start()
@@ -170,7 +169,6 @@ app = FastAPI(lifespan=lifespan)
 # Register routers with centralized prefix configuration for easy route discovery
 # Admin and management routes (no prefix - admin routes start with /admin in router)
 app.include_router(admin_router.router, tags=["Admin"])
-app.include_router(overview_router.router, tags=["Overview"])
 
 # Media and content routes (no prefix - routes defined without prefixes in routers)
 app.include_router(audio_router.router, tags=["Audio"])
@@ -199,6 +197,6 @@ async def read_root(request: Request) -> HTMLResponse:
         "index.html",
         {
             "site_name": request.app.state.config.site_name,
-            "websocket_url": f"ws://{request.url.hostname}:8000/ws",
+            "websocket_url": f"ws://{request.url.hostname}:8000/ws/notifications",
         },
     )

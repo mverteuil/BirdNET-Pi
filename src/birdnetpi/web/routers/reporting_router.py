@@ -4,9 +4,11 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.models.config import BirdNETConfig
+from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 router = APIRouter()
 
@@ -38,7 +40,13 @@ def get_plotting_manager(request: Request) -> PlottingManager:
     return request.app.state.plotting_manager
 
 
-@router.get("/best_recordings", response_class=HTMLResponse)
+def get_file_manager(request: Request) -> FileManager:
+    """Return a FileManager instance with injected dependencies."""
+    file_resolver: FilePathResolver = request.app.state.file_resolver
+    return FileManager(file_resolver.get_recordings_dir())
+
+
+@router.get("/reports/best_recordings", response_class=HTMLResponse)
 async def get_best_recordings(
     request: Request,
     reporting_manager: ReportingManager = Depends(get_reporting_manager),  # noqa: B008
@@ -49,6 +57,17 @@ async def get_best_recordings(
     return templates.TemplateResponse(
         request, "reports/best_recordings.html", {"best_recordings": best_recordings}
     )
+
+
+@router.get("/reports/detections")
+async def get_detections(
+    file_manager: FileManager = Depends(get_file_manager),  # noqa: B008
+) -> dict:
+    """Retrieve a list of all recorded audio files (detections)."""
+    file_resolver = FilePathResolver()
+    recordings_dir = file_resolver.get_recordings_dir()
+    recordings = file_manager.list_directory_contents(recordings_dir)
+    return {"recordings": recordings}
 
 
 @router.get("/reports/todays_detections", response_class=HTMLResponse)

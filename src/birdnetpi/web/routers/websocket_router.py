@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.websocket("")
+@router.websocket("/notifications")
 async def websocket_endpoint(websocket: WebSocket, request: Request) -> None:
-    """Handle WebSocket connections for real-time updates."""
+    """Handle WebSocket connections for real-time notifications and updates."""
     await websocket.accept()
     request.app.state.active_websockets.add(websocket)  # Add new connection
     try:
