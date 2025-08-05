@@ -3,41 +3,36 @@
 import logging
 from datetime import UTC, datetime
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.templating import Jinja2Templates
 
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.services.gps_service import GPSService
 from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
+from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-def get_detection_manager(request: Request) -> DetectionManager:
-    """Get DetectionManager from app state."""
-    return request.app.state.detections
-
-
-def get_gps_service(request: Request) -> GPSService | None:
-    """Get GPSService from app state."""
-    return getattr(request.app.state, "gps_service", None)
-
-
-def get_hardware_monitor(request: Request) -> HardwareMonitorService | None:
-    """Get HardwareMonitorService from app state."""
-    return getattr(request.app.state, "hardware_monitor", None)
-
-
 @router.get("/field", response_class=HTMLResponse)
-async def get_field_mode(request: Request) -> HTMLResponse:
+@inject
+async def get_field_mode(
+    request: Request,
+    templates: Jinja2Templates = Depends(Provide[Container.templates]),
+) -> HTMLResponse:
     """Render the field mode interface."""
-    return request.app.state.templates.TemplateResponse("field_mode.html", {"request": request})
+    return templates.TemplateResponse("field_mode.html", {"request": request})
 
 
 @router.get("/api/gps/status")
-async def get_gps_status(gps_service: GPSService | None = Depends(get_gps_service)) -> JSONResponse:  # noqa: B008
+@inject
+async def get_gps_status(
+    gps_service: GPSService = Depends(Provide[Container.gps_service]),
+) -> JSONResponse:
     """Get current GPS status and location information."""
     if not gps_service:
         return JSONResponse(
@@ -64,8 +59,9 @@ async def get_gps_status(gps_service: GPSService | None = Depends(get_gps_servic
 
 
 @router.get("/api/gps/location")
+@inject
 async def get_current_location(
-    gps_service: GPSService | None = Depends(get_gps_service),  # noqa: B008  # noqa: B008
+    gps_service: GPSService = Depends(Provide[Container.gps_service]),
 ) -> JSONResponse:
     """Get current GPS coordinates."""
     if not gps_service:
@@ -92,9 +88,10 @@ async def get_current_location(
 
 
 @router.get("/api/gps/history")
+@inject
 async def get_location_history(
     hours: int = Query(default=24, ge=1, le=168),  # 1 hour to 1 week
-    gps_service: GPSService | None = Depends(get_gps_service),  # noqa: B008
+    gps_service: GPSService = Depends(Provide[Container.gps_service]),
 ) -> JSONResponse:
     """Get GPS location history."""
     if not gps_service:
@@ -120,8 +117,9 @@ async def get_location_history(
 
 
 @router.get("/api/hardware/status")
+@inject
 async def get_hardware_status(
-    hardware_monitor: HardwareMonitorService | None = Depends(get_hardware_monitor),  # noqa: B008
+    hardware_monitor: HardwareMonitorService = Depends(Provide[Container.hardware_monitor_service]),
 ) -> JSONResponse:
     """Get comprehensive hardware status."""
     if not hardware_monitor:
@@ -142,9 +140,10 @@ async def get_hardware_status(
 
 
 @router.get("/api/hardware/component/{component_name}")
+@inject
 async def get_component_status(
     component_name: str,
-    hardware_monitor: HardwareMonitorService | None = Depends(get_hardware_monitor),  # noqa: B008
+    hardware_monitor: HardwareMonitorService = Depends(Provide[Container.hardware_monitor_service]),
 ) -> JSONResponse:
     """Get status for a specific hardware component."""
     if not hardware_monitor:
@@ -172,10 +171,11 @@ async def get_component_status(
 
 
 @router.get("/api/field/summary")
+@inject
 async def get_field_summary(
-    detection_manager: DetectionManager = Depends(get_detection_manager),  # noqa: B008
-    gps_service: GPSService | None = Depends(get_gps_service),  # noqa: B008
-    hardware_monitor: HardwareMonitorService | None = Depends(get_hardware_monitor),  # noqa: B008
+    detection_manager: DetectionManager = Depends(Provide[Container.detection_manager]),
+    gps_service: GPSService = Depends(Provide[Container.gps_service]),
+    hardware_monitor: HardwareMonitorService = Depends(Provide[Container.hardware_monitor_service]),
 ) -> JSONResponse:
     """Get comprehensive field mode summary."""
     try:

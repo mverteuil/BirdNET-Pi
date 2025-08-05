@@ -1,4 +1,4 @@
-"""Integration tests for spectrogram router that exercise real image generation."""
+"""Integration tests for spectrogram functionality that moved to detection API routes."""
 
 import io
 import tempfile
@@ -6,18 +6,36 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from dependency_injector import containers, providers
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from birdnetpi.managers.plotting_manager import PlottingManager
 # Import from new router structure - spectrogram functionality moved to detection_api_routes
 from birdnetpi.web.routers.detection_api_routes import router
 
 
+class TestContainer(containers.DeclarativeContainer):
+    """Test container for dependency injection."""
+    
+    plotting_manager = providers.Singleton(MagicMock, spec=PlottingManager)
+
+
 @pytest.fixture
 def app_with_spectrogram_router():
-    """Create FastAPI app with spectrogram router."""
+    """Create FastAPI app with detection router that includes spectrogram functionality."""
     app = FastAPI()
-    app.include_router(router)
+    
+    # Setup test container
+    container = TestContainer()
+    app.container = container
+    
+    # Wire the router module
+    container.wire(modules=["birdnetpi.web.routers.detection_api_routes"])
+    
+    # Include the router with detection prefix (spectrogram is at /api/detections/{id}/spectrogram)
+    app.include_router(router, prefix="/api")
+    
     return app
 
 

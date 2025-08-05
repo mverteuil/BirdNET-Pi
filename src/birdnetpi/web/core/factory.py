@@ -17,7 +17,7 @@ from birdnetpi.web.routers import (
     field_api_routes,
     field_mode_router,
     iot_api_routes,
-    iot_router,
+    overview_router,
     reporting_router,
     system_api_routes,
     websocket_router,
@@ -57,7 +57,7 @@ def create_app() -> FastAPI:
             "birdnetpi.web.routers.field_api_routes",
             "birdnetpi.web.routers.field_mode_router",
             "birdnetpi.web.routers.iot_api_routes",
-            "birdnetpi.web.routers.iot_router",
+            "birdnetpi.web.routers.overview_router",
             "birdnetpi.web.routers.reporting_router",
             "birdnetpi.web.routers.system_api_routes",
             "birdnetpi.web.routers.websocket_router",
@@ -72,6 +72,7 @@ def create_app() -> FastAPI:
 
     # System API routes (consolidated under /api/system prefix)
     app.include_router(system_api_routes.router, prefix="/api/system", tags=["System API"])
+    app.include_router(overview_router.router, prefix="/api", tags=["Overview API"])
 
     # Reports routes (consolidated under /reports prefix)
     app.include_router(reporting_router.router, prefix="/reports", tags=["Reports"])
@@ -85,7 +86,6 @@ def create_app() -> FastAPI:
     app.include_router(
         detection_api_routes.router, prefix="/api/detections", tags=["Detection API"]
     )
-    app.include_router(iot_router.router, prefix="/api/iot", tags=["IoT API"])
     app.include_router(iot_api_routes.router, prefix="/api/iot", tags=["IoT API"])
 
     # Real-time communication

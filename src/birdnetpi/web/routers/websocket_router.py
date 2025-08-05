@@ -2,7 +2,12 @@
 
 import logging
 
-from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
+from dependency_injector.wiring import Provide, inject
+from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
+
+from birdnetpi.services.audio_websocket_service import AudioWebSocketService
+from birdnetpi.services.spectrogram_service import SpectrogramService
+from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)
 
@@ -13,12 +18,12 @@ router = APIRouter()
 async def websocket_endpoint(websocket: WebSocket, request: Request) -> None:
     """Handle WebSocket connections for real-time notifications and updates."""
     await websocket.accept()
-    request.app.state.active_websockets.add(websocket)  # Add new connection
+    request.app.extra["active_websockets"].add(websocket)  # Add new connection
     try:
         while True:
             await websocket.receive_text()  # Keep connection alive
     except WebSocketDisconnect:
-        request.app.state.active_websockets.remove(websocket)  # Remove disconnected client
+        request.app.extra["active_websockets"].remove(websocket)  # Remove disconnected client
         logger.info("Client disconnected")
 
 
@@ -26,13 +31,15 @@ async def websocket_endpoint(websocket: WebSocket, request: Request) -> None:
 async def audio_websocket_endpoint(websocket: WebSocket, request: Request) -> None:
     """Handle WebSocket connections for real-time audio streaming."""
     await websocket.accept()
-    await request.app.state.audio_websocket_service.connect_websocket(websocket)
+    # Get the audio websocket service from the container
+    audio_service = request.app.container.audio_websocket_service()
+    await audio_service.connect_websocket(websocket)
     try:
         while True:
             # Keep the connection alive by receiving ping messages
             await websocket.receive_text()
     except WebSocketDisconnect:
-        await request.app.state.audio_websocket_service.disconnect_websocket(websocket)
+        await audio_service.disconnect_websocket(websocket)
         logger.info("Audio WebSocket client disconnected")
 
 
@@ -40,11 +47,13 @@ async def audio_websocket_endpoint(websocket: WebSocket, request: Request) -> No
 async def spectrogram_websocket_endpoint(websocket: WebSocket, request: Request) -> None:
     """Handle WebSocket connections for real-time spectrogram streaming."""
     await websocket.accept()
-    await request.app.state.spectrogram_service.connect_websocket(websocket)
+    # Get the spectrogram service from the container
+    spectrogram_service = request.app.container.spectrogram_service()
+    await spectrogram_service.connect_websocket(websocket)
     try:
         while True:
             # Keep the connection alive by receiving ping messages
             await websocket.receive_text()
     except WebSocketDisconnect:
-        await request.app.state.spectrogram_service.disconnect_websocket(websocket)
+        await spectrogram_service.disconnect_websocket(websocket)
         logger.info("Spectrogram WebSocket client disconnected")

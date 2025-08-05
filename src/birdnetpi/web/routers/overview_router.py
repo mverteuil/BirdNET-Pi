@@ -1,41 +1,25 @@
-from fastapi import APIRouter, Depends, Request
+from dependency_injector.wiring import Provide, inject
+from fastapi import APIRouter, Depends
 
 from birdnetpi.managers.reporting_manager import ReportingManager
-from birdnetpi.services.system_monitor_service import SystemMonitorService
+from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
+from birdnetpi.web.core.container import Container
 
 router = APIRouter()
 
 
-def get_system_monitor() -> SystemMonitorService:
-    """Return a SystemMonitorService instance."""
-    return SystemMonitorService()
-
-
-def get_reporting_manager(request: Request) -> ReportingManager:
-    """Return a ReportingManager instance with injected dependencies."""
-    return ReportingManager(
-        request.app.state.detections,
-        request.app.state.file_path_resolver,
-        request.app.state.config,
-        request.app.state.plotting_manager,
-        request.app.state.data_preparation_manager,
-        request.app.state.location_service,
-    )
-
-
 @router.get("/overview")
+@inject
 async def get_overview_data(
-    system_monitor: SystemMonitorService = Depends(get_system_monitor),  # noqa: B008
-    reporting_manager: ReportingManager = Depends(get_reporting_manager),  # noqa: B008
+    reporting_manager: ReportingManager = Depends(Provide[Container.reporting_manager]),
+    hardware_monitor: HardwareMonitorService = Depends(Provide[Container.hardware_monitor_service]),
 ) -> dict:
     """Retrieve various system and application overview data."""
-    disk_usage = system_monitor.get_disk_usage()
-    extra_info = system_monitor.get_extra_info()
-    # You might want to add more data from reporting_manager here, e.g., total detections
+    # Get system monitoring data from hardware monitor service
+    system_status = hardware_monitor.get_all_status()
     total_detections = reporting_manager.detection_manager.get_total_detections()
 
     return {
-        "disk_usage": disk_usage,
-        "extra_info": extra_info,
+        "system_status": system_status,
         "total_detections": total_detections,
     }

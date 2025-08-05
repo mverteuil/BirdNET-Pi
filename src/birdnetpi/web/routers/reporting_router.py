@@ -1,5 +1,6 @@
 import pandas as pd
 import plotly.io as pio
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -8,49 +9,17 @@ from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.models.config import BirdNETConfig
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.web.core.container import Container
 
 router = APIRouter()
 
 
-def get_reporting_manager(request: Request) -> ReportingManager:
-    """Return a ReportingManager instance with injected dependencies."""
-    return ReportingManager(
-        request.app.state.detections,
-        request.app.state.file_resolver,
-        request.app.state.config,
-        request.app.state.plotting_manager,
-        request.app.state.data_preparation_manager,
-        request.app.state.location_service,
-    )
-
-
-def get_templates(request: Request) -> Jinja2Templates:
-    """Return the templates instance."""
-    return request.app.state.templates
-
-
-def get_config(request: Request) -> BirdNETConfig:
-    """Return the application config."""
-    return request.app.state.config
-
-
-def get_plotting_manager(request: Request) -> PlottingManager:
-    """Return the plotting manager instance."""
-    return request.app.state.plotting_manager
-
-
-def get_file_manager(request: Request) -> FileManager:
-    """Return a FileManager instance with injected dependencies."""
-    file_resolver: FilePathResolver = request.app.state.file_resolver
-    return FileManager(file_resolver.get_recordings_dir())
-
-
 @router.get("/best", response_class=HTMLResponse)
+@inject
 async def get_best_recordings(
     request: Request,
-    reporting_manager: ReportingManager = Depends(get_reporting_manager),  # noqa: B008
-    templates: Jinja2Templates = Depends(get_templates),  # noqa: B008
+    reporting_manager: ReportingManager = Depends(Provide[Container.reporting_manager]),
+    templates: Jinja2Templates = Depends(Provide[Container.templates]),
 ) -> HTMLResponse:
     """Retrieve a list of the best recorded audio files based on confidence."""
     best_recordings = reporting_manager.get_best_detections(limit=20)
@@ -60,21 +29,21 @@ async def get_best_recordings(
 
 
 @router.get("/detections")
+@inject
 async def get_detections(
-    file_manager: FileManager = Depends(get_file_manager),  # noqa: B008
+    file_manager: FileManager = Depends(Provide[Container.file_manager]),
 ) -> dict:
     """Retrieve a list of all recorded audio files (detections)."""
-    file_resolver = FilePathResolver()
-    recordings_dir = file_resolver.get_recordings_dir()
-    recordings = file_manager.list_directory_contents(recordings_dir)
+    recordings = file_manager.list_directory_contents()
     return {"recordings": recordings}
 
 
 @router.get("/today", response_class=HTMLResponse)
+@inject
 async def get_todays_detections(
     request: Request,
-    reporting_manager: ReportingManager = Depends(get_reporting_manager),  # noqa: B008
-    templates: Jinja2Templates = Depends(get_templates),  # noqa: B008
+    reporting_manager: ReportingManager = Depends(Provide[Container.reporting_manager]),
+    templates: Jinja2Templates = Depends(Provide[Container.templates]),
 ) -> HTMLResponse:
     """Retrieve a list of today's detections."""
     todays_detections = reporting_manager.get_todays_detections()
@@ -86,12 +55,13 @@ async def get_todays_detections(
 
 
 @router.get("/charts", response_class=HTMLResponse)
+@inject
 async def get_charts(
     request: Request,
-    reporting_manager: ReportingManager = Depends(get_reporting_manager),  # noqa: B008
-    plotting_manager: PlottingManager = Depends(get_plotting_manager),  # noqa: B008
-    templates: Jinja2Templates = Depends(get_templates),  # noqa: B008
-    config: BirdNETConfig = Depends(get_config),  # noqa: B008
+    reporting_manager: ReportingManager = Depends(Provide[Container.reporting_manager]),
+    plotting_manager: PlottingManager = Depends(Provide[Container.plotting_manager]),
+    templates: Jinja2Templates = Depends(Provide[Container.templates]),
+    config: BirdNETConfig = Depends(Provide[Container.config]),
 ) -> HTMLResponse:
     """Generate and display various charts related to bird detections."""
     df = reporting_manager.get_data()
