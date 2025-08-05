@@ -2,11 +2,12 @@ import logging
 from datetime import date, datetime
 
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.models.detection_event import DetectionEvent
 from birdnetpi.web.core.container import Container
 
@@ -44,6 +45,7 @@ async def create_detection(
 @inject
 async def get_recent_detections(
     limit: int = 10,
+    offset: int = 0,  # Added for compatibility with old endpoint
     detection_manager: DetectionManager = Depends(Provide[Container.detection_manager]),
 ) -> JSONResponse:
     """Get recent bird detections."""
@@ -151,3 +153,30 @@ async def get_detection(
     except Exception as e:
         logger.error("Error getting detection: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving detection") from e
+
+
+@router.get("/{detection_id}/spectrogram")
+@inject
+async def get_detection_spectrogram(
+    detection_id: int,
+    detection_manager: DetectionManager = Depends(Provide[Container.detection_manager]),
+    plotting_manager: PlottingManager = Depends(Provide[Container.plotting_manager]),
+) -> StreamingResponse:
+    """Generate and return a spectrogram for a specific detection's audio file."""
+    try:
+        # Get the detection to find the associated audio file path
+        detection = detection_manager.get_detection_by_id(detection_id)
+        if not detection:
+            raise HTTPException(status_code=404, detail="Detection not found")
+        
+        # Get the audio file path from the detection
+        if not detection.audio_file_path:
+            raise HTTPException(status_code=404, detail="No audio file associated with this detection")
+        
+        spectrogram_buffer = plotting_manager.generate_spectrogram(detection.audio_file_path)
+        return StreamingResponse(content=iter([spectrogram_buffer.read()]), media_type="image/png")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error generating spectrogram for detection %s: %s", detection_id, e)
+        raise HTTPException(status_code=500, detail=f"Error generating spectrogram: {e}") from e

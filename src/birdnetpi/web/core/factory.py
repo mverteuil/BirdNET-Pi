@@ -11,7 +11,6 @@ from birdnetpi.web.core.lifespan import lifespan
 from birdnetpi.web.routers import (
     admin_api_routes,
     admin_view_routes,
-    detection_api_routes,
     detections_api_routes,
     field_api_routes,
     field_view_routes,
@@ -50,7 +49,6 @@ def create_app() -> FastAPI:
             "birdnetpi.web.core.factory",  # Wire factory for root route
             "birdnetpi.web.routers.admin_api_routes",
             "birdnetpi.web.routers.admin_view_routes",
-            "birdnetpi.web.routers.detection_api_routes",
             "birdnetpi.web.routers.detections_api_routes",
             "birdnetpi.web.routers.field_api_routes",
             "birdnetpi.web.routers.field_view_routes",
@@ -81,9 +79,6 @@ def create_app() -> FastAPI:
     # Core API routes (detections and IoT endpoints)
     app.include_router(
         detections_api_routes.router, prefix="/api/detections", tags=["Detections API"]
-    )
-    app.include_router(
-        detection_api_routes.router, prefix="/api/detections", tags=["Detection API"]
     )
     app.include_router(iot_api_routes.router, prefix="/api/iot", tags=["IoT API"])
 

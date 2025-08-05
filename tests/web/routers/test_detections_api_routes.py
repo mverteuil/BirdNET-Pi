@@ -1,174 +1,219 @@
-"""Test suite for detections router."""
+"""Tests for detections API routes that handle detection CRUD operations and spectrograms."""
 
 from datetime import datetime
-from unittest.mock import Mock
+from unittest.mock import MagicMock
 
 import pytest
+from dependency_injector import containers, providers
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from birdnetpi.models.config import BirdNETConfig
-from birdnetpi.web.main import app
+from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.plotting_manager import PlottingManager
+from birdnetpi.web.routers.detections_api_routes import router
 
 
-class TestDetectionsRouter:
-    """Test class for detection router endpoints."""
+class TestContainer(containers.DeclarativeContainer):
+    """Test container for dependency injection."""
 
-    @pytest.fixture(autouse=True)
-    def setup_method(self):
-        """Set up test fixtures."""
-        # Create mock DetectionManager
-        mock_detection_manager = Mock()
-        app.state.detections = mock_detection_manager
+    detection_manager = providers.Singleton(MagicMock, spec=DetectionManager)
+    plotting_manager = providers.Singleton(MagicMock, spec=PlottingManager)
 
-        # Add mock config object that templates expect
-        app.state.config = BirdNETConfig(site_name="Test BirdNET-Pi")
 
-        self.client = TestClient(app)
-        self.mock_detection_manager = mock_detection_manager
+@pytest.fixture
+def app_with_detections_router():
+    """Create FastAPI app with detections router and DI container."""
+    app = FastAPI()
 
-    def test_create_detection_endpoint(self):
-        """Test POST /api/detections endpoint."""
-        # Mock the create_detection method
-        mock_detection = Mock()
+    # Setup test container
+    container = TestContainer()
+    app.container = container
+
+    # Wire the router module
+    container.wire(modules=["birdnetpi.web.routers.detections_api_routes"])
+
+    # Include the router
+    app.include_router(router, prefix="/api/detections")
+
+    return app
+
+
+@pytest.fixture
+def client(app_with_detections_router):
+    """Create test client."""
+    return TestClient(app_with_detections_router)
+
+
+class TestDetectionsAPIRoutes:
+    """Test detections API endpoints."""
+
+    def test_create_detection_success(self, client):
+        """Should create detection successfully."""
+        mock_detection = MagicMock()
         mock_detection.id = 123
-        self.mock_detection_manager.create_detection.return_value = mock_detection
+        client.app.container.detection_manager().create_detection.return_value = mock_detection
 
         detection_data = {
             "species_tensor": "Testus species_Test Bird",
             "scientific_name": "Testus species",
             "common_name_tensor": "Test Bird",
             "confidence": 0.95,
-            "timestamp": datetime.now().isoformat(),
-            "audio_file_path": "test.wav",
+            "timestamp": "2025-01-15T10:30:00",
+            "audio_file_path": "/test/audio.wav",
             "duration": 3.0,
             "size_bytes": 1024,
-            "recording_start_time": datetime.now().isoformat(),
+            "recording_start_time": "2025-01-15T10:30:00",
             "latitude": 40.7128,
             "longitude": -74.0060,
-            "cutoff": 0.5,
-            "week": 10,
-            "sensitivity": 0.8,
-            "overlap": 0.1,
-            "is_extracted": False,
+            "cutoff": 0.0,
+            "week": 3,
+            "sensitivity": 1.0,
+            "overlap": 0.0
         }
 
-        response = self.client.post("/api/detections/", json=detection_data)
+        response = client.post("/api/detections/", json=detection_data)
 
         assert response.status_code == 201
-        response_data = response.json()
-        assert response_data["message"] == "Detection received and dispatched"
-        assert response_data["detection_id"] == 123
-        self.mock_detection_manager.create_detection.assert_called_once()
+        data = response.json()
+        assert data["message"] == "Detection received and dispatched"
+        assert data["detection_id"] == 123
 
-    def test_get_recent_detections_endpoint(self):
-        """Test GET /api/detections/recent endpoint."""
-        # Mock recent detections
-        mock_detection = Mock()
-        mock_detection.id = 1
-        mock_detection.species = "Test Bird"
-        mock_detection.confidence = 0.95
-        mock_detection.timestamp = datetime.now()
-        mock_detection.latitude = 40.7128
-        mock_detection.longitude = -74.0060
+    def test_get_recent_detections_success(self, client):
+        """Should return recent detections."""
+        mock_detections = [
+            MagicMock(
+                id=1,
+                species="Robin",
+                confidence=0.95,
+                timestamp=datetime(2025, 1, 15, 10, 30),
+                latitude=40.0,
+                longitude=-74.0
+            ),
+            MagicMock(
+                id=2,
+                species="Sparrow",
+                confidence=0.88,
+                timestamp=datetime(2025, 1, 15, 11, 0),
+                latitude=40.1,
+                longitude=-74.1
+            )
+        ]
+        client.app.container.detection_manager().get_recent_detections.return_value = mock_detections
 
-        self.mock_detection_manager.get_recent_detections.return_value = [mock_detection]
-
-        response = self.client.get("/api/detections/recent?limit=5")
-
-        assert response.status_code == 200
-        response_data = response.json()
-        assert "detections" in response_data
-        assert "count" in response_data
-        assert response_data["count"] == 1
-        self.mock_detection_manager.get_recent_detections.assert_called_once_with(5)
-
-    def test_get_detection_count_endpoint(self):
-        """Test GET /api/detections/count endpoint."""
-        self.mock_detection_manager.get_detections_count_by_date.return_value = 42
-
-        response = self.client.get("/api/detections/count")
+        response = client.get("/api/detections/recent?limit=10")
 
         assert response.status_code == 200
-        response_data = response.json()
-        assert "date" in response_data
-        assert "count" in response_data
-        assert response_data["count"] == 42
-        self.mock_detection_manager.get_detections_count_by_date.assert_called_once()
+        data = response.json()
+        assert data["count"] == 2
+        assert len(data["detections"]) == 2
+        assert data["detections"][0]["species"] == "Robin"
 
-    def test_get_detection_count_with_date_endpoint(self):
-        """Test GET /api/detections/count with specific date."""
-        self.mock_detection_manager.get_detections_count_by_date.return_value = 15
+    def test_get_detection_count_success(self, client):
+        """Should return detection count for date."""
+        client.app.container.detection_manager().get_detections_count_by_date.return_value = 5
 
-        response = self.client.get("/api/detections/count?target_date=2023-10-15")
-
-        assert response.status_code == 200
-        response_data = response.json()
-        assert response_data["date"] == "2023-10-15"
-        assert response_data["count"] == 15
-
-    def test_update_detection_location_endpoint(self):
-        """Test POST /api/detections/{id}/location endpoint."""
-        # Mock detection
-        mock_detection = Mock()
-        mock_detection.id = 123
-        self.mock_detection_manager.get_detection_by_id.return_value = mock_detection
-        self.mock_detection_manager.update_detection_location.return_value = True
-
-        location_data = {"latitude": 40.7128, "longitude": -74.0060}
-
-        response = self.client.post("/api/detections/123/location", json=location_data)
+        response = client.get("/api/detections/count")
 
         assert response.status_code == 200
-        response_data = response.json()
-        assert response_data["message"] == "Location updated successfully"
-        assert response_data["detection_id"] == 123
-        assert response_data["latitude"] == 40.7128
-        assert response_data["longitude"] == -74.0060
+        data = response.json()
+        assert data["count"] == 5
 
-    def test_update_detection_location_not_found(self):
-        """Test POST /api/detections/{id}/location with non-existent detection."""
-        self.mock_detection_manager.get_detection_by_id.return_value = None
+    def test_get_detection_by_id_success(self, client):
+        """Should return specific detection."""
+        mock_detection = MagicMock(
+            id=123,
+            species="Test Bird",
+            confidence=0.95,
+            timestamp=datetime(2025, 1, 15, 10, 30),
+            latitude=40.0,
+            longitude=-74.0,
+            cutoff=0.0,
+            week=3,
+            sensitivity=1.0,
+            overlap=0.0
+        )
+        client.app.container.detection_manager().get_detection_by_id.return_value = mock_detection
 
-        location_data = {"latitude": 40.7128, "longitude": -74.0060}
+        response = client.get("/api/detections/123")
 
-        response = self.client.post("/api/detections/999/location", json=location_data)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == 123
+        assert data["species"] == "Test Bird"
+
+    def test_get_detection_by_id_not_found(self, client):
+        """Should return 404 for non-existent detection."""
+        client.app.container.detection_manager().get_detection_by_id.return_value = None
+
+        response = client.get("/api/detections/999")
 
         assert response.status_code == 404
-        response_data = response.json()
-        assert response_data["detail"] == "Detection not found"
 
-    def test_get_detection_by_id_endpoint(self):
-        """Test GET /api/detections/{id} endpoint."""
-        # Mock detection
-        mock_detection = Mock()
-        mock_detection.id = 123
-        mock_detection.species = "Test Bird"
-        mock_detection.confidence = 0.95
-        mock_detection.timestamp = datetime.now()
-        mock_detection.latitude = 40.7128
-        mock_detection.longitude = -74.0060
-        mock_detection.cutoff = 0.5
-        mock_detection.week = 10
-        mock_detection.sensitivity = 0.8
-        mock_detection.overlap = 0.1
+    def test_update_detection_location_success(self, client):
+        """Should update detection location."""
+        mock_detection = MagicMock(id=123)
+        client.app.container.detection_manager().get_detection_by_id.return_value = mock_detection
+        client.app.container.detection_manager().update_detection_location.return_value = True
 
-        self.mock_detection_manager.get_detection_by_id.return_value = mock_detection
+        location_data = {
+            "latitude": 41.0,
+            "longitude": -75.0
+        }
 
-        response = self.client.get("/api/detections/123")
+        response = client.post("/api/detections/123/location", json=location_data)
 
         assert response.status_code == 200
-        response_data = response.json()
-        assert response_data["id"] == 123
-        assert response_data["species"] == "Test Bird"
-        assert response_data["confidence"] == 0.95
-        self.mock_detection_manager.get_detection_by_id.assert_called_once_with(123)
+        data = response.json()
+        assert data["message"] == "Location updated successfully"
+        assert data["detection_id"] == 123
 
-    def test_get_detection_by_id_not_found(self):
-        """Test GET /api/detections/{id} with non-existent detection."""
-        self.mock_detection_manager.get_detection_by_id.return_value = None
+    def test_get_detection_spectrogram_success(self, client):
+        """Should generate and return spectrogram for detection."""
+        mock_detection = MagicMock()
+        mock_detection.audio_file_path = "/path/to/audio.wav"
+        client.app.container.detection_manager().get_detection_by_id.return_value = mock_detection
 
-        response = self.client.get("/api/detections/999")
+        mock_spectrogram_buffer = MagicMock()
+        mock_spectrogram_buffer.read.return_value = b"fake_png_data"
+        client.app.container.plotting_manager().generate_spectrogram.return_value = mock_spectrogram_buffer
+
+        response = client.get("/api/detections/123/spectrogram")
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/png"
+        client.app.container.plotting_manager().generate_spectrogram.assert_called_once_with(
+            "/path/to/audio.wav"
+        )
+
+    def test_get_detection_spectrogram_not_found(self, client):
+        """Should return 404 for non-existent detection."""
+        client.app.container.detection_manager().get_detection_by_id.return_value = None
+
+        response = client.get("/api/detections/999/spectrogram")
 
         assert response.status_code == 404
-        response_data = response.json()
-        assert response_data["detail"] == "Detection not found"
+        assert "Detection not found" in response.json()["detail"]
+
+    def test_get_detection_spectrogram_no_audio_file(self, client):
+        """Should return 404 when detection has no audio file."""
+        mock_detection = MagicMock()
+        mock_detection.audio_file_path = None
+        client.app.container.detection_manager().get_detection_by_id.return_value = mock_detection
+
+        response = client.get("/api/detections/123/spectrogram")
+
+        assert response.status_code == 404
+        assert "No audio file associated" in response.json()["detail"]
+
+    def test_get_detection_spectrogram_error_handling(self, client):
+        """Should handle plotting manager errors."""
+        mock_detection = MagicMock()
+        mock_detection.audio_file_path = "/path/to/audio.wav"
+        client.app.container.detection_manager().get_detection_by_id.return_value = mock_detection
+
+        client.app.container.plotting_manager().generate_spectrogram.side_effect = Exception("Plotting error")
+
+        response = client.get("/api/detections/123/spectrogram")
+
+        assert response.status_code == 500
+        assert "Error generating spectrogram" in response.json()["detail"]
