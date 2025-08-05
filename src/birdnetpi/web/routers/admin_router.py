@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/admin")
+@router.get("/")
 async def read_admin() -> dict[str, str]:
     """Return a simple message indicating the admin router is working."""
     return {"message": "Admin router is working!"}

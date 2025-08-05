@@ -167,8 +167,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(lifespan=lifespan)
 
 # Register routers with centralized prefix configuration for easy route discovery
-# Admin and management routes (no prefix - admin routes start with /admin in router)
-app.include_router(admin_router.router, tags=["Admin"])
+# Admin and management routes (consolidated under /admin prefix)
+app.include_router(admin_router.router, prefix="/admin", tags=["Admin"])
 
 # Media and content routes
 app.include_router(audio_router.router, tags=["Audio"])
