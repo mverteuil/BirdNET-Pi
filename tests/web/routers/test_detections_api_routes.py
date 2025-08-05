@@ -4,44 +4,45 @@ from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
-from dependency_injector import containers, providers
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.plotting_manager import PlottingManager
+from birdnetpi.web.core.container import Container
 from birdnetpi.web.routers.detections_api_routes import router
 
 
-class TestContainer(containers.DeclarativeContainer):
-    """Test container for dependency injection."""
-
-    detection_manager = providers.Singleton(MagicMock, spec=DetectionManager)
-    plotting_manager = providers.Singleton(MagicMock, spec=PlottingManager)
-
-
 @pytest.fixture
-def app_with_detections_router():
-    """Create FastAPI app with detections router and DI container."""
+def client():
+    """Create test client with detections API routes and mocked dependencies."""
+    # Create the app
     app = FastAPI()
 
-    # Setup test container
-    container = TestContainer()
-    app.container = container
+    # Create the real container
+    container = Container()
 
-    # Wire the router module
+    # Override services with mocks
+    mock_detection_manager = MagicMock(spec=DetectionManager)
+    mock_plotting_manager = MagicMock(spec=PlottingManager)
+    container.detection_manager.override(mock_detection_manager)
+    container.plotting_manager.override(mock_plotting_manager)
+
+    # Wire the container
     container.wire(modules=["birdnetpi.web.routers.detections_api_routes"])
+    app.container = container
 
     # Include the router
     app.include_router(router, prefix="/api/detections")
 
-    return app
+    # Create and return test client
+    client = TestClient(app)
 
+    # Store the mocks for access in tests
+    client.mock_detection_manager = mock_detection_manager
+    client.mock_plotting_manager = mock_plotting_manager
 
-@pytest.fixture
-def client(app_with_detections_router):
-    """Create test client."""
-    return TestClient(app_with_detections_router)
+    return client
 
 
 class TestDetectionsAPIRoutes:
@@ -51,7 +52,7 @@ class TestDetectionsAPIRoutes:
         """Should create detection successfully."""
         mock_detection = MagicMock()
         mock_detection.id = 123
-        client.app.container.detection_manager().create_detection.return_value = mock_detection
+        client.mock_detection_manager.create_detection.return_value = mock_detection
 
         detection_data = {
             "species_tensor": "Testus species_Test Bird",
@@ -68,7 +69,7 @@ class TestDetectionsAPIRoutes:
             "cutoff": 0.0,
             "week": 3,
             "sensitivity": 1.0,
-            "overlap": 0.0
+            "overlap": 0.0,
         }
 
         response = client.post("/api/detections/", json=detection_data)
@@ -87,7 +88,7 @@ class TestDetectionsAPIRoutes:
                 confidence=0.95,
                 timestamp=datetime(2025, 1, 15, 10, 30),
                 latitude=40.0,
-                longitude=-74.0
+                longitude=-74.0,
             ),
             MagicMock(
                 id=2,
@@ -95,10 +96,10 @@ class TestDetectionsAPIRoutes:
                 confidence=0.88,
                 timestamp=datetime(2025, 1, 15, 11, 0),
                 latitude=40.1,
-                longitude=-74.1
-            )
+                longitude=-74.1,
+            ),
         ]
-        client.app.container.detection_manager().get_recent_detections.return_value = mock_detections
+        client.mock_detection_manager.get_recent_detections.return_value = mock_detections
 
         response = client.get("/api/detections/recent?limit=10")
 
@@ -110,7 +111,7 @@ class TestDetectionsAPIRoutes:
 
     def test_get_detection_count_success(self, client):
         """Should return detection count for date."""
-        client.app.container.detection_manager().get_detections_count_by_date.return_value = 5
+        client.mock_detection_manager.get_detections_count_by_date.return_value = 5
 
         response = client.get("/api/detections/count")
 
@@ -130,9 +131,9 @@ class TestDetectionsAPIRoutes:
             cutoff=0.0,
             week=3,
             sensitivity=1.0,
-            overlap=0.0
+            overlap=0.0,
         )
-        client.app.container.detection_manager().get_detection_by_id.return_value = mock_detection
+        client.mock_detection_manager.get_detection_by_id.return_value = mock_detection
 
         response = client.get("/api/detections/123")
 
@@ -143,7 +144,7 @@ class TestDetectionsAPIRoutes:
 
     def test_get_detection_by_id_not_found(self, client):
         """Should return 404 for non-existent detection."""
-        client.app.container.detection_manager().get_detection_by_id.return_value = None
+        client.mock_detection_manager.get_detection_by_id.return_value = None
 
         response = client.get("/api/detections/999")
 
@@ -152,13 +153,10 @@ class TestDetectionsAPIRoutes:
     def test_update_detection_location_success(self, client):
         """Should update detection location."""
         mock_detection = MagicMock(id=123)
-        client.app.container.detection_manager().get_detection_by_id.return_value = mock_detection
-        client.app.container.detection_manager().update_detection_location.return_value = True
+        client.mock_detection_manager.get_detection_by_id.return_value = mock_detection
+        client.mock_detection_manager.update_detection_location.return_value = True
 
-        location_data = {
-            "latitude": 41.0,
-            "longitude": -75.0
-        }
+        location_data = {"latitude": 41.0, "longitude": -75.0}
 
         response = client.post("/api/detections/123/location", json=location_data)
 
@@ -171,23 +169,23 @@ class TestDetectionsAPIRoutes:
         """Should generate and return spectrogram for detection."""
         mock_detection = MagicMock()
         mock_detection.audio_file_path = "/path/to/audio.wav"
-        client.app.container.detection_manager().get_detection_by_id.return_value = mock_detection
+        client.mock_detection_manager.get_detection_by_id.return_value = mock_detection
 
         mock_spectrogram_buffer = MagicMock()
         mock_spectrogram_buffer.read.return_value = b"fake_png_data"
-        client.app.container.plotting_manager().generate_spectrogram.return_value = mock_spectrogram_buffer
+        client.mock_plotting_manager.generate_spectrogram.return_value = mock_spectrogram_buffer
 
         response = client.get("/api/detections/123/spectrogram")
 
         assert response.status_code == 200
         assert response.headers["content-type"] == "image/png"
-        client.app.container.plotting_manager().generate_spectrogram.assert_called_once_with(
+        client.mock_plotting_manager.generate_spectrogram.assert_called_once_with(
             "/path/to/audio.wav"
         )
 
     def test_get_detection_spectrogram_not_found(self, client):
         """Should return 404 for non-existent detection."""
-        client.app.container.detection_manager().get_detection_by_id.return_value = None
+        client.mock_detection_manager.get_detection_by_id.return_value = None
 
         response = client.get("/api/detections/999/spectrogram")
 
@@ -198,7 +196,7 @@ class TestDetectionsAPIRoutes:
         """Should return 404 when detection has no audio file."""
         mock_detection = MagicMock()
         mock_detection.audio_file_path = None
-        client.app.container.detection_manager().get_detection_by_id.return_value = mock_detection
+        client.mock_detection_manager.get_detection_by_id.return_value = mock_detection
 
         response = client.get("/api/detections/123/spectrogram")
 
@@ -209,9 +207,9 @@ class TestDetectionsAPIRoutes:
         """Should handle plotting manager errors."""
         mock_detection = MagicMock()
         mock_detection.audio_file_path = "/path/to/audio.wav"
-        client.app.container.detection_manager().get_detection_by_id.return_value = mock_detection
+        client.mock_detection_manager.get_detection_by_id.return_value = mock_detection
 
-        client.app.container.plotting_manager().generate_spectrogram.side_effect = Exception("Plotting error")
+        client.mock_plotting_manager.generate_spectrogram.side_effect = Exception("Plotting error")
 
         response = client.get("/api/detections/123/spectrogram")
 

@@ -2,12 +2,7 @@
 
 import logging
 
-from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
-
-from birdnetpi.services.audio_websocket_service import AudioWebSocketService
-from birdnetpi.services.spectrogram_service import SpectrogramService
-from birdnetpi.web.core.container import Container
+from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 
 logger = logging.getLogger(__name__)
 

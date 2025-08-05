@@ -3,49 +3,28 @@
 from unittest.mock import Mock, patch
 
 import pytest
-from fastapi import FastAPI
-from fastapi.templating import Jinja2Templates
 from fastapi.testclient import TestClient
 
-from birdnetpi.managers.detection_manager import DetectionManager
-from birdnetpi.managers.file_manager import FileManager
-from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.utils.file_path_resolver import FilePathResolver
-from birdnetpi.web.routers.admin_view_routes import router
+from birdnetpi.web.core.factory import create_app
 
 
 @pytest.fixture
 def app_with_admin_view_routes(tmp_path):
-    """Create FastAPI app with admin router and dependencies."""
-    app = FastAPI()
-
-    # Create a test database in temp directory
-    db_path = tmp_path / "test.db"
-    db_path.parent.mkdir(exist_ok=True)
-
-    # Set up app state with required dependencies
-    app.state.detections = DetectionManager(DatabaseService(str(db_path)))
-    app.state.templates = Jinja2Templates(directory="src/birdnetpi/web/templates")
-
-    # Create a simple test config
-    from birdnetpi.models.config import BirdNETConfig
-
-    test_config = BirdNETConfig(site_name="Test BirdNET-Pi")
-    app.state.config = test_config
-
-    # Create file manager with a mock resolver
-    app.state.file_manager = FileManager(str(tmp_path))
-    mock_resolver = Mock(spec=FilePathResolver)
-
+    """Create FastAPI app with admin router and dependencies using the factory."""
     # Create test config file for settings endpoint
     config_file = tmp_path / "config.yaml"
     config_file.write_text("site_name: Test BirdNET-Pi\nlatitude: 40.7128\nlongitude: -74.0060")
-    mock_resolver.get_birdnetpi_config_path.return_value = str(config_file)
 
-    app.state.file_manager.file_path_resolver = mock_resolver
-    app.state.file_resolver = mock_resolver
+    # Create the app using the factory
+    app = create_app()
 
-    app.include_router(router, prefix="/admin")
+    # Override file resolver to use test config
+    if hasattr(app, "container"):
+        mock_resolver = Mock()
+        mock_resolver.get_birdnetpi_config_path.return_value = str(config_file)
+        mock_resolver.base_dir = str(tmp_path)
+        app.container.file_resolver.override(mock_resolver)
+
     return app
 
 
@@ -192,7 +171,7 @@ class TestAdminRouterIntegration:
 
     def test_settings_page_renders(self, client):
         """Should render settings page with configuration."""
-        response = client.get("/settings")
+        response = client.get("/admin/settings")
 
         assert response.status_code == 200
         assert response.headers["content-type"].startswith("text/html")
@@ -207,7 +186,7 @@ class TestAdminRouterIntegration:
         mock_service_instance.get_logs.return_value = "Test log content\nLine 2\n"
         mock_log_service.return_value = mock_service_instance
 
-        response = client.get("/log")
+        response = client.get("/admin/log")
 
         assert response.status_code == 200
         assert response.headers["content-type"] == "text/plain; charset=utf-8"
@@ -215,14 +194,14 @@ class TestAdminRouterIntegration:
 
     def test_test_detection_form_renders(self, client):
         """Should render test detection form template."""
-        response = client.get("/test_detection_form")
+        response = client.get("/admin/test_detection_form")
 
         assert response.status_code == 200
         assert response.headers["content-type"].startswith("text/html")
 
     def test_test_detection_endpoint_creates_detection(self, client):
         """Should create a test detection event."""
-        response = client.get("/test_detection?species=Test Bird&confidence=0.95")
+        response = client.get("/admin/test_detection?species=Test Bird&confidence=0.95")
 
         assert response.status_code == 200
         data = response.json()
@@ -232,7 +211,7 @@ class TestAdminRouterIntegration:
 
     def test_test_detection_endpoint_with_defaults(self, client):
         """Should use default values when parameters are not provided."""
-        response = client.get("/test_detection")
+        response = client.get("/admin/test_detection")
 
         assert response.status_code == 200
         data = response.json()

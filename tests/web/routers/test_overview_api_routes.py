@@ -57,7 +57,7 @@ class TestOverviewRouterIntegration:
 
     def test_overview_endpoint_returns_json(self, client):
         """Should return JSON response with system overview data."""
-        response = client.get("/overview")
+        response = client.get("/api/overview")
 
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/json"
@@ -71,7 +71,7 @@ class TestOverviewRouterIntegration:
 
     def test_overview_endpoint_disk_usage_structure(self, client):
         """Should return properly structured disk usage information."""
-        response = client.get("/overview")
+        response = client.get("/api/overview")
 
         assert response.status_code == 200
         data = response.json()
@@ -83,7 +83,7 @@ class TestOverviewRouterIntegration:
 
     def test_overview_endpoint_extra_info_structure(self, client):
         """Should return system extra info."""
-        response = client.get("/overview")
+        response = client.get("/api/overview")
 
         assert response.status_code == 200
         data = response.json()
@@ -94,7 +94,7 @@ class TestOverviewRouterIntegration:
 
     def test_overview_endpoint_total_detections(self, client, temp_db):
         """Should return total detections from real detection manager."""
-        response = client.get("/overview")
+        response = client.get("/api/overview")
 
         assert response.status_code == 200
         data = response.json()
@@ -105,7 +105,7 @@ class TestOverviewRouterIntegration:
 
     def test_overview_uses_real_system_monitor(self, client):
         """Should use real SystemMonitorService for system information."""
-        response = client.get("/overview")
+        response = client.get("/api/overview")
 
         assert response.status_code == 200
         data = response.json()
@@ -117,7 +117,7 @@ class TestOverviewRouterIntegration:
 
     def test_overview_uses_real_detection_manager(self, client, temp_db):
         """Should use real DetectionManager with actual database."""
-        response = client.get("/overview")
+        response = client.get("/api/overview")
 
         assert response.status_code == 200
         data = response.json()
@@ -128,7 +128,7 @@ class TestOverviewRouterIntegration:
 
     def test_overview_endpoint_integration_flow(self, client):
         """Should integrate all dependencies correctly."""
-        response = client.get("/overview")
+        response = client.get("/api/overview")
 
         assert response.status_code == 200
         data = response.json()

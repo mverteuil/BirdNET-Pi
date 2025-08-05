@@ -35,7 +35,7 @@ class TestWebSocketRouter:
         from birdnetpi.web.routers.websocket_routes import router
 
         routes = [getattr(route, "path", "") for route in router.routes]  # type: ignore[attr-defined]
-        assert "" in routes  # Base WebSocket endpoint
+        assert "/notifications" in routes  # Notifications WebSocket endpoint
         assert "/audio" in routes  # Audio WebSocket endpoint
         assert "/spectrogram" in routes  # Spectrogram WebSocket endpoint
 

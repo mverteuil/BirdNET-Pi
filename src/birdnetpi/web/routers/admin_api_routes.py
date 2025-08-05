@@ -121,7 +121,7 @@ async def save_yaml_config(
     """Save YAML configuration content."""
     try:
         # First validate the YAML
-        validation_result = await validate_yaml_config(config_request, file_resolver)
+        validation_result = await validate_yaml_config(config_request)
         if not validation_result["valid"]:
             return {"success": False, "error": validation_result["error"]}
 

@@ -2,7 +2,7 @@ import logging
 from datetime import date, datetime
 
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
@@ -168,11 +168,13 @@ async def get_detection_spectrogram(
         detection = detection_manager.get_detection_by_id(detection_id)
         if not detection:
             raise HTTPException(status_code=404, detail="Detection not found")
-        
+
         # Get the audio file path from the detection
         if not detection.audio_file_path:
-            raise HTTPException(status_code=404, detail="No audio file associated with this detection")
-        
+            raise HTTPException(
+                status_code=404, detail="No audio file associated with this detection"
+            )
+
         spectrogram_buffer = plotting_manager.generate_spectrogram(detection.audio_file_path)
         return StreamingResponse(content=iter([spectrogram_buffer.read()]), media_type="image/png")
     except HTTPException:

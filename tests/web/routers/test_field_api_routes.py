@@ -3,7 +3,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from dependency_injector import containers, providers
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -12,41 +11,50 @@ from birdnetpi.services.gps_service import GPSService
 from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
 from birdnetpi.services.mqtt_service import MQTTService
 from birdnetpi.services.webhook_service import WebhookService
+from birdnetpi.web.core.container import Container
 from birdnetpi.web.routers.field_api_routes import router
 
 
-class TestContainer(containers.DeclarativeContainer):
-    """Test container for dependency injection."""
-
-    detection_manager = providers.Singleton(MagicMock, spec=DetectionManager)
-    gps_service = providers.Singleton(MagicMock, spec=GPSService)
-    hardware_monitor_service = providers.Singleton(MagicMock, spec=HardwareMonitorService)
-    mqtt_service = providers.Singleton(MagicMock, spec=MQTTService)
-    webhook_service = providers.Singleton(MagicMock, spec=WebhookService)
-
-
 @pytest.fixture
-def app_with_field_router():
-    """Create FastAPI app with field router and DI container."""
+def client():
+    """Create test client with field API routes and mocked dependencies."""
+    # Create the app
     app = FastAPI()
 
-    # Setup test container
-    container = TestContainer()
-    app.container = container
+    # Create the real container
+    container = Container()
 
-    # Wire the router module
+    # Override services with mocks
+    mock_detection_manager = MagicMock(spec=DetectionManager)
+    mock_gps_service = MagicMock(spec=GPSService)
+    mock_hardware_monitor_service = MagicMock(spec=HardwareMonitorService)
+    mock_mqtt_service = MagicMock(spec=MQTTService)
+    mock_webhook_service = MagicMock(spec=WebhookService)
+
+    container.detection_manager.override(mock_detection_manager)
+    container.gps_service.override(mock_gps_service)
+    container.hardware_monitor_service.override(mock_hardware_monitor_service)
+    container.mqtt_service.override(mock_mqtt_service)
+    container.webhook_service.override(mock_webhook_service)
+
+    # Wire the container
     container.wire(modules=["birdnetpi.web.routers.field_api_routes"])
+    app.container = container
 
     # Include the router
     app.include_router(router, prefix="/api/field")
 
-    return app
+    # Create and return test client
+    client = TestClient(app)
 
+    # Store the mocks for access in tests
+    client.mock_detection_manager = mock_detection_manager
+    client.mock_gps_service = mock_gps_service
+    client.mock_hardware_monitor_service = mock_hardware_monitor_service
+    client.mock_mqtt_service = mock_mqtt_service
+    client.mock_webhook_service = mock_webhook_service
 
-@pytest.fixture
-def client(app_with_field_router):
-    """Create test client."""
-    return TestClient(app_with_field_router)
+    return client
 
 
 class TestGPSEndpoints:
@@ -54,10 +62,9 @@ class TestGPSEndpoints:
 
     def test_get_gps_status_enabled(self, client):
         """Should return GPS status when enabled."""
-        gps_service = client.app.container.gps_service()
-        gps_service.enable_gps = True
-        gps_service.update_interval = 5.0
-        gps_service._gps_task = MagicMock()
+        gps_service = client.mock_gps_service
+        mock_status = {"enabled": True, "available": True, "active": True, "update_interval": 5.0}
+        gps_service.get_gps_status.return_value = mock_status
 
         response = client.get("/api/field/gps/status")
 
@@ -69,9 +76,9 @@ class TestGPSEndpoints:
 
     def test_get_gps_status_disabled(self, client):
         """Should return GPS status when disabled."""
-        gps_service = client.app.container.gps_service()
-        gps_service.enable_gps = False
-        gps_service.update_interval = 5.0
+        gps_service = client.mock_gps_service
+        mock_status = {"enabled": False, "available": False, "active": False}
+        gps_service.get_gps_status.return_value = mock_status
 
         response = client.get("/api/field/gps/status")
 
@@ -82,26 +89,36 @@ class TestGPSEndpoints:
 
     def test_get_gps_location_success(self, client):
         """Should return current GPS location when enabled."""
-        gps_service = client.app.container.gps_service()
-        gps_service.enable_gps = True
-        mock_location = {"latitude": 40.7128, "longitude": -74.0060}
+        gps_service = client.mock_gps_service
+        mock_location = MagicMock()
+        mock_location.latitude = 40.7128
+        mock_location.longitude = -74.0060
+        mock_location.altitude = 100.0
+        mock_location.accuracy = 5.0
+        mock_location.timestamp.isoformat.return_value = "2025-01-15T10:30:00"
+        mock_location.satellite_count = 8
         gps_service.get_current_location.return_value = mock_location
 
         response = client.get("/api/field/gps/location")
 
         assert response.status_code == 200
         data = response.json()
-        assert data["location"] == mock_location
+        assert data["latitude"] == 40.7128
+        assert data["longitude"] == -74.0060
+        assert data["altitude"] == 100.0
+        assert data["accuracy"] == 5.0
+        assert data["timestamp"] == "2025-01-15T10:30:00"
+        assert data["satellite_count"] == 8
 
     def test_get_gps_location_disabled(self, client):
-        """Should return 404 when GPS is disabled."""
-        gps_service = client.app.container.gps_service()
-        gps_service.enable_gps = False
+        """Should return 404 when GPS service is not available."""
+        # Mock gps_service as None (service not available)
+        client.mock_gps_service = None
 
         response = client.get("/api/field/gps/location")
 
         assert response.status_code == 404
-        assert "GPS service is not enabled" in response.json()["detail"]
+        assert "GPS service not available" in response.json()["error"]
 
 
 class TestFieldModeEndpoints:
@@ -110,18 +127,18 @@ class TestFieldModeEndpoints:
     def test_get_field_summary(self, client):
         """Should return comprehensive field summary."""
         # Setup GPS service
-        gps_service = client.app.container.gps_service()
+        gps_service = client.mock_gps_service
         gps_service.enable_gps = True
         mock_location = {"latitude": 40.7128, "longitude": -74.0060}
         gps_service.get_current_location.return_value = mock_location
 
         # Setup hardware monitor
-        hardware_monitor = client.app.container.hardware_monitor_service()
+        hardware_monitor = client.mock_hardware_monitor_service
         mock_hw_status = {"cpu": "healthy"}
         hardware_monitor.get_all_status.return_value = mock_hw_status
 
         # Setup detection manager
-        detection_manager = client.app.container.detection_manager()
+        detection_manager = client.mock_detection_manager
         mock_recent_detections = [{"id": 1}]
         detection_manager.get_recent_detections.return_value = mock_recent_detections
 
@@ -138,12 +155,12 @@ class TestFieldModeEndpoints:
     def test_create_field_alert(self, client):
         """Should create and send field alert."""
         # Setup MQTT service
-        mqtt_service = client.app.container.mqtt_service()
+        mqtt_service = client.mock_mqtt_service
         mqtt_service.enable_mqtt = True
         mqtt_service.publish_message = AsyncMock()
 
         # Setup webhook service
-        webhook_service = client.app.container.webhook_service()
+        webhook_service = client.mock_webhook_service
         webhook_service.enable_webhooks = True
         webhook_service.send_webhook = AsyncMock()
 

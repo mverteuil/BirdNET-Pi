@@ -125,7 +125,7 @@ def test_get_best_recordings(mock_app_state_managers):
         }
     ]
 
-    response = client.get("/best_recordings")
+    response = client.get("/reports/best_recordings")
 
     # Assert the response
     assert response.status_code == 200
