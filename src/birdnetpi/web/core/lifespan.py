@@ -78,7 +78,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Start all services in proper order
     try:
-        # Start audio services
+        # Start audio services with non-blocking MP3 encoding
         await container.audio_fifo_reader_service().start()
 
         # Start field mode services
