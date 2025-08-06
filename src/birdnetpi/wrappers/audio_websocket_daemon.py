@@ -10,8 +10,6 @@ from types import FrameType
 import websockets
 from websockets.asyncio.server import serve
 
-from birdnetpi.services.audio_websocket_service import AudioWebSocketService
-from birdnetpi.services.spectrogram_service import SpectrogramService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
@@ -24,11 +22,9 @@ logger = logging.getLogger(__name__)
 _shutdown_flag = False
 _fifo_livestream_path = None
 _fifo_livestream_fd = None
-_audio_websocket_service = None
-_spectrogram_service = None
 _websocket_server = None
 _audio_clients = set()
-_spectrogram_clients = set()
+_processing_active = False  # Track if we're currently processing to avoid buildup
 
 
 def _signal_handler(signum: int, frame: FrameType | None) -> None:
@@ -38,7 +34,7 @@ def _signal_handler(signum: int, frame: FrameType | None) -> None:
 
 
 def _cleanup_fifo_and_service() -> None:
-    global _fifo_livestream_fd, _fifo_livestream_path, _audio_websocket_service, _spectrogram_service, _websocket_server
+    global _fifo_livestream_fd, _fifo_livestream_path, _websocket_server
     if _fifo_livestream_fd:
         os.close(_fifo_livestream_fd)
         logger.info("Closed FIFO: %s", _fifo_livestream_path)
@@ -105,36 +101,9 @@ async def _websocket_handler(websocket):
             logger.info("Audio WebSocket client disconnected. Remaining: %d", len(_audio_clients))
     
     elif path == "/ws/spectrogram":
-        _spectrogram_clients.add(websocket)
-        logger.info("Spectrogram WebSocket client connected. Total: %d", len(_spectrogram_clients))
-        
-        # Create a mock WebSocket object that matches FastAPI WebSocket interface
-        class MockWebSocket:
-            def __init__(self, websocket):
-                self.websocket = websocket
-            
-            async def send_json(self, data):
-                json_str = json.dumps(data)
-                await self.websocket.send(json_str)
-        
-        mock_ws = MockWebSocket(websocket)
-        
-        # Register client with the SpectrogramService
-        if _spectrogram_service:
-            await _spectrogram_service.connect_websocket(mock_ws)
-        
-        try:
-            async for message in websocket:
-                # Keep connection alive
-                pass
-        except websockets.exceptions.ConnectionClosed:
-            pass
-        finally:
-            _spectrogram_clients.discard(websocket)
-            # Unregister from SpectrogramService
-            if _spectrogram_service:
-                await _spectrogram_service.disconnect_websocket(mock_ws)
-            logger.info("Spectrogram WebSocket client disconnected. Remaining: %d", len(_spectrogram_clients))
+        # Spectrogram now handled by separate service on port 9002
+        logger.info("Spectrogram request redirected - should be handled by separate service on port 9002")
+        await websocket.close(code=4003, reason="Spectrogram moved to dedicated service")
     
     else:
         logger.warning("Unknown WebSocket endpoint: %s", path)
@@ -183,31 +152,12 @@ async def _broadcast_audio_data(audio_data_bytes: bytes):
             logger.error("Error broadcasting audio data: %s", e, exc_info=True)
 
 
-async def _broadcast_spectrogram_data(spectrogram_data: dict):
-    """Broadcast spectrogram data to all connected spectrogram clients."""
-    global _spectrogram_clients
-    if _spectrogram_clients:
-        try:
-            json_data = json.dumps(spectrogram_data)
-            
-            # Broadcast to all connected clients
-            disconnected = set()
-            for client in _spectrogram_clients:
-                try:
-                    await client.send(json_data)
-                except websockets.exceptions.ConnectionClosed:
-                    disconnected.add(client)
-            
-            # Remove disconnected clients
-            _spectrogram_clients -= disconnected
-            
-        except Exception as e:
-            logger.error("Error broadcasting spectrogram data: %s", e, exc_info=True)
+# Spectrogram broadcasting now handled by separate dedicated service
 
 
 async def _fifo_reading_loop():
-    """Read from FIFO and process audio data."""
-    global _fifo_livestream_fd, _spectrogram_service
+    """Read from FIFO and process audio data only. Spectrogram handled by separate service."""
+    global _fifo_livestream_fd, _processing_active
     
     while not _shutdown_flag:
         try:
@@ -215,13 +165,17 @@ async def _fifo_reading_loop():
             audio_data_bytes = os.read(_fifo_livestream_fd, buffer_size)
 
             if audio_data_bytes:
-                # Broadcast raw audio data to audio clients
-                await _broadcast_audio_data(audio_data_bytes)
-                
-                # Process spectrogram data
-                spectrogram_data = await _spectrogram_service.process_audio_chunk(audio_data_bytes)
-                if spectrogram_data:
-                    await _broadcast_spectrogram_data(spectrogram_data)
+                # Only process audio if we have audio clients (spectrogram handled separately)
+                if _audio_clients:
+                    # Skip processing if we're already busy to prevent latency buildup
+                    if not _processing_active:
+                        _processing_active = True
+                        try:
+                            # Only handle audio broadcasting - much faster than before
+                            await _broadcast_audio_data(audio_data_bytes)
+                        finally:
+                            _processing_active = False
+                # If no clients, just drain the FIFO to prevent buildup
             else:
                 await asyncio.sleep(0.01)
 
@@ -236,7 +190,7 @@ async def _fifo_reading_loop():
 
 async def _main_async() -> None:
     """Async main function to handle FIFO reading and WebSocket server."""
-    global _fifo_livestream_path, _fifo_livestream_fd, _audio_websocket_service, _spectrogram_service, _websocket_server
+    global _fifo_livestream_path, _fifo_livestream_fd, _websocket_server
     logger.info("Starting audio websocket wrapper.")
 
     # Register signal handlers and atexit for cleanup
@@ -259,21 +213,7 @@ async def _main_async() -> None:
         _fifo_livestream_fd = os.open(_fifo_livestream_path, os.O_RDONLY | os.O_NONBLOCK)
         logger.info("Opened FIFO for reading: %s", _fifo_livestream_path)
 
-        # Get configuration
-        samplerate = config.sample_rate
-        channels = config.audio_channels
-
-        # Create spectrogram service for processing
-        _spectrogram_service = SpectrogramService(
-            sample_rate=samplerate,
-            channels=channels,
-            window_size=1024,
-            overlap=0.75,
-            update_rate=15.0,
-        )
-        logger.info("SpectrogramService instantiated and ready for connections.")
-
-        # Start WebSocket server on port 9001 (bind to all interfaces for Docker/Caddy)
+        # Start WebSocket server on port 9001 for audio only (bind to all interfaces for Docker/Caddy)
         _websocket_server = await serve(
             _websocket_handler,
             "0.0.0.0",

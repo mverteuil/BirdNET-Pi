@@ -145,28 +145,37 @@ class SpectrogramService:
             # Use the most recent samples for spectrogram generation
             audio_segment = self.audio_buffer[-self.samples_per_update :]
 
-            # Convert int16 to float for processing
-            audio_float = audio_segment.astype(np.float32) / 32768.0
+            def compute_spectrogram(audio_data):
+                """Compute spectrogram in thread pool to avoid blocking async loop."""
+                # Convert int16 to float for processing
+                audio_float = audio_data.astype(np.float32) / 32768.0
 
-            # Generate spectrogram using Short-Time Fourier Transform
-            _, _, spectrogram = signal.spectrogram(
-                audio_float,
-                fs=self.sample_rate,
-                window="hann",
-                nperseg=self.window_size,
-                noverlap=int(self.window_size * self.overlap),
-                mode="magnitude",
-            )
+                # Generate spectrogram using Short-Time Fourier Transform
+                _, _, spectrogram = signal.spectrogram(
+                    audio_float,
+                    fs=self.sample_rate,
+                    window="hann",
+                    nperseg=self.window_size,
+                    noverlap=int(self.window_size * self.overlap),
+                    mode="magnitude",
+                )
 
-            # Convert to dB scale for better visualization
-            spectrogram_db = 20 * np.log10(np.maximum(spectrogram, 1e-10))
+                # Convert to dB scale for better visualization
+                spectrogram_db = 20 * np.log10(np.maximum(spectrogram, 1e-10))
+                
+                # Convert numpy array to list for JSON (this is also expensive)
+                return spectrogram_db.tolist(), spectrogram_db.shape
+
+            # Run the CPU-intensive computation in a thread pool
+            loop = asyncio.get_event_loop()
+            spectrogram_list, shape = await loop.run_in_executor(None, compute_spectrogram, audio_segment)
 
             # Prepare data for transmission
             spectrogram_data = {
                 "type": "spectrogram",
                 "timestamp": time.time(),  # Unix timestamp in seconds
-                "data": spectrogram_db.tolist(),  # Convert numpy array to list for JSON
-                "shape": spectrogram_db.shape,
+                "data": spectrogram_list,
+                "shape": shape,
             }
             
             return spectrogram_data
