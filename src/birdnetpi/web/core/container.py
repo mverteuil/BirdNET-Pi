@@ -45,9 +45,15 @@ class Container(containers.DeclarativeContainer):
         directory=str(Path(__file__).parent.parent / "templates"),
     )
 
+    # Database path provider
+    database_path = providers.Factory(
+        lambda resolver: resolver.get_database_path(),
+        resolver=file_resolver,
+    )
+
     database_service = providers.Singleton(
         DatabaseService,
-        database_path=file_resolver.provided.get_database_path(),
+        db_path=database_path,
     )
 
     # Core business services - singletons

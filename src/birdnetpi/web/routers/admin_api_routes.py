@@ -19,7 +19,7 @@ class YAMLConfigRequest(BaseModel):
     yaml_content: str
 
 
-@router.post("/config/validate")
+@router.post("/validate")
 @inject
 async def validate_yaml_config(
     config_request: YAMLConfigRequest,
@@ -112,7 +112,7 @@ async def validate_yaml_config(
         return {"valid": False, "error": f"Validation error: {e!s}"}
 
 
-@router.post("/config/save")
+@router.post("/save")
 @inject
 async def save_yaml_config(
     config_request: YAMLConfigRequest,

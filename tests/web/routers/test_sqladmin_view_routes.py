@@ -44,12 +44,14 @@ class TestSQLAdminViewRoutes:
     @patch('birdnetpi.web.routers.sqladmin_view_routes.Admin')
     def test_setup_sqladmin_creates_admin_instance(self, mock_admin_class):
         """Test that setup_sqladmin creates and configures Admin instance."""
-        # Create mock FastAPI app with required state
+        # Create mock FastAPI app with DI container
         app = FastAPI()
+        mock_container = MagicMock()
         mock_db_service = MagicMock()
         mock_engine = MagicMock()
         mock_db_service.engine = mock_engine
-        app.state.db_service = mock_db_service
+        mock_container.database_service.return_value = mock_db_service
+        app.container = mock_container
         
         # Create mock Admin instance
         mock_admin_instance = MagicMock()
@@ -59,7 +61,7 @@ class TestSQLAdminViewRoutes:
         result = setup_sqladmin(app)
         
         # Verify Admin was instantiated with correct parameters
-        mock_admin_class.assert_called_once_with(app, mock_engine)
+        mock_admin_class.assert_called_once_with(app, mock_engine, base_url="/admin-db")
         
         # Verify model views were added
         assert mock_admin_instance.add_view.call_count == 2
@@ -76,10 +78,12 @@ class TestSQLAdminViewRoutes:
     def test_setup_sqladmin_returns_admin_instance(self, mock_admin_class):
         """Test that setup_sqladmin returns the Admin instance."""
         app = FastAPI()
+        mock_container = MagicMock()
         mock_db_service = MagicMock()
         mock_engine = MagicMock()
         mock_db_service.engine = mock_engine
-        app.state.db_service = mock_db_service
+        mock_container.database_service.return_value = mock_db_service
+        app.container = mock_container
         
         mock_admin_instance = MagicMock()
         mock_admin_class.return_value = mock_admin_instance

@@ -18,6 +18,7 @@ from birdnetpi.web.routers import (
     system_api_routes,
     websocket_routes,
 )
+from birdnetpi.web.routers.sqladmin_view_routes import setup_sqladmin
 
 
 def create_app() -> FastAPI:
@@ -61,7 +62,7 @@ def create_app() -> FastAPI:
     # Include routers with proper prefixes and consistent tagging
     # Admin routes (consolidated under /admin prefix)
     app.include_router(admin_view_routes.router, prefix="/admin", tags=["Admin Views"])
-    app.include_router(admin_api_routes.router, prefix="/admin", tags=["Admin API"])
+    app.include_router(admin_api_routes.router, prefix="/admin/config", tags=["Admin API"])
 
     # System API routes (consolidated under /api/system prefix)
     app.include_router(system_api_routes.router, prefix="/api/system", tags=["System API"])
@@ -82,6 +83,9 @@ def create_app() -> FastAPI:
 
     # Real-time communication
     app.include_router(websocket_routes.router, prefix="/ws", tags=["WebSocket"])
+
+    # Set up SQLAdmin interface for database administration
+    setup_sqladmin(app)
 
     # Root route
     @app.get("/", response_class=HTMLResponse)
