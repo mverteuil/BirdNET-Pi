@@ -108,6 +108,17 @@
         gap: 1rem;
         align-items: center;
         margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+      }
+
+      .audio-controls-inline {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background-color: rgba(0, 0, 0, 0.02);
       }
 
       .btn-disconnect {
@@ -176,6 +187,57 @@
       .message:last-child {
         margin-bottom: 0;
       }
+
+      .detections-container {
+        max-height: 300px;
+        overflow-y: auto;
+        background-color: rgba(0, 0, 0, 0.02);
+        border-radius: 8px;
+        padding: 1rem;
+      }
+
+      .detection-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        border-radius: 6px;
+        background-color: var(--background);
+        border: 1px solid var(--border-color);
+      }
+
+      .detection-item:last-child {
+        margin-bottom: 0;
+      }
+
+      .detection-info {
+        flex: 1;
+      }
+
+      .detection-species {
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      .detection-confidence {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+      }
+
+      .detection-time {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        margin-left: 1rem;
+      }
+
+      .no-detections {
+        color: var(--text-secondary);
+        text-align: center;
+        font-style: italic;
+        margin: 0;
+      }
     </style>
   </head>
   <body>
@@ -218,18 +280,24 @@
           </div>
 
           <div class="connection-controls">
-            <button id="connectAudioBtn" class="btn btn-primary" onclick="connectAudio()">
-              <span>🎵</span> Connect Audio
+            <button id="audioToggleBtn" class="btn btn-primary" onclick="toggleAudioConnection()">
+              <span id="audioToggleIcon">🎵</span> <span id="audioToggleText">Connect Audio</span>
             </button>
-            <button id="disconnectAudioBtn" class="btn btn-disconnect" onclick="disconnectAudio()" disabled>
-              <span>🔇</span> Disconnect Audio
+            <button id="spectrogramToggleBtn" class="btn btn-primary" onclick="toggleSpectrogramConnection()">
+              <span id="spectrogramToggleIcon">📊</span> <span id="spectrogramToggleText">Connect Spectrogram</span>
             </button>
-            <button id="connectSpectrogramBtn" class="btn btn-primary" onclick="connectSpectrogram()">
-              <span>📊</span> Connect Spectrogram
-            </button>
-            <button id="disconnectSpectrogramBtn" class="btn btn-disconnect" onclick="disconnectSpectrogram()" disabled>
-              <span>🚫</span> Disconnect Spectrogram
-            </button>
+            
+            <!-- Audio Controls -->
+            <div class="audio-controls-inline" id="audioControlsInline" style="display: none;">
+              <button id="audioPlayBtn" class="btn btn-success" onclick="toggleAudioPlayback()" disabled>
+                <span id="audioPlayIcon">🔊</span> <span id="audioPlayText">Audio On</span>
+              </button>
+              <div class="audio-volume-control">
+                <label for="audioVolume">Volume:</label>
+                <input type="range" id="audioVolume" min="0" max="100" value="60" onchange="updateAudioVolume(this.value)">
+                <span id="volumeDisplay">60%</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -290,29 +358,27 @@
           </div>
         </div>
 
-        <!-- Audio Card -->
-        <div class="dashboard-card audio-card">
+        <!-- Live Detections Card -->
+        <div class="dashboard-card detections-card">
           <div class="card-header">
-            <h3 class="card-title">Live Audio</h3>
-            <span class="card-badge badge-success">Streaming</span>
+            <h3 class="card-title">Live Detections</h3>
+            <span class="card-badge badge-info" id="detectionCount">0 detected</span>
           </div>
           <div class="card-content">
-            <div class="livestream-audio-controls">
-              <button id="audioPlayBtn" class="btn btn-success" onclick="toggleAudioPlayback()" disabled>
-                <span id="audioPlayIcon">🔊</span> <span id="audioPlayText">Audio On</span>
-              </button>
-              <div class="audio-volume-control">
-                <label for="audioVolume">Volume:</label>
-                <input type="range" id="audioVolume" min="0" max="100" value="60" onchange="updateAudioVolume(this.value)">
-                <span id="volumeDisplay">60%</span>
-              </div>
-            </div>
-
-            <div style="margin-top: 1.5rem">
-              <h4 style="margin-bottom: 1rem">Connection Log</h4>
-              <div id="messages" class="messages-container"></div>
+            <div id="liveDetections" class="detections-container">
+              <p class="no-detections">No detections yet. Start streaming to see bird detections in real-time.</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Connection Log Card -->
+      <div class="dashboard-card" style="margin-bottom: 2rem;">
+        <div class="card-header">
+          <h3 class="card-title">Connection Log</h3>
+        </div>
+        <div class="card-content">
+          <div id="messages" class="messages-container"></div>
         </div>
       </div>
     </div>
@@ -359,19 +425,28 @@
         spectrogramStatus: document.getElementById("spectrogramStatus"),
         updateRate: document.getElementById("updateRate"),
         latency: document.getElementById("latency"),
-        connectAudioBtn: document.getElementById("connectAudioBtn"),
-        disconnectAudioBtn: document.getElementById("disconnectAudioBtn"),
-        connectSpectrogramBtn: document.getElementById("connectSpectrogramBtn"),
-        disconnectSpectrogramBtn: document.getElementById("disconnectSpectrogramBtn"),
+        audioToggleBtn: document.getElementById("audioToggleBtn"),
+        audioToggleIcon: document.getElementById("audioToggleIcon"),
+        audioToggleText: document.getElementById("audioToggleText"),
+        spectrogramToggleBtn: document.getElementById("spectrogramToggleBtn"),
+        spectrogramToggleIcon: document.getElementById("spectrogramToggleIcon"),
+        spectrogramToggleText: document.getElementById("spectrogramToggleText"),
+        audioControlsInline: document.getElementById("audioControlsInline"),
         messages: document.getElementById("messages"),
         audioPlayBtn: document.getElementById("audioPlayBtn"),
         audioPlayIcon: document.getElementById("audioPlayIcon"),
         audioPlayText: document.getElementById("audioPlayText"),
         audioVolume: document.getElementById("audioVolume"),
         volumeDisplay: document.getElementById("volumeDisplay"),
+        liveDetections: document.getElementById("liveDetections"),
+        detectionCount: document.getElementById("detectionCount"),
         maxFreqLabel: document.getElementById("maxFreqLabel"),
         midFreqLabel: document.getElementById("midFreqLabel"),
       };
+
+      // Detection tracking
+      let detectionsList = [];
+      let notificationsWs = null;
 
       function addMessage(message) {
         const messageDiv = document.createElement("div");
@@ -395,13 +470,32 @@
         connectSpectrogram();
       }
 
+      function toggleAudioConnection() {
+        const isConnected = audioWs && audioWs.readyState === WebSocket.OPEN;
+        if (isConnected) {
+          disconnectAudio();
+        } else {
+          connectAudio();
+        }
+      }
+
+      function toggleSpectrogramConnection() {
+        const isConnected = spectrogramWs && spectrogramWs.readyState === WebSocket.OPEN;
+        if (isConnected) {
+          disconnectSpectrogram();
+        } else {
+          connectSpectrogram();
+        }
+      }
+
       function connectAudio() {
         if (audioWs && audioWs.readyState === WebSocket.OPEN) {
           addMessage("Audio already connected");
           return;
         }
 
-        elements.connectAudioBtn.disabled = true;
+        elements.audioToggleBtn.disabled = true;
+        elements.audioToggleText.textContent = "Connecting...";
         addMessage("Connecting to audio stream...");
 
         const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -412,8 +506,11 @@
         audioWs.onopen = function (event) {
           updateStatus(elements.audioStatus, true, "Audio: Connected");
           addMessage("Audio WebSocket connected");
-          elements.connectAudioBtn.disabled = true;
-          elements.disconnectAudioBtn.disabled = false;
+          elements.audioToggleBtn.disabled = false;
+          elements.audioToggleBtn.className = "btn btn-disconnect";
+          elements.audioToggleIcon.textContent = "🔇";
+          elements.audioToggleText.textContent = "Disconnect Audio";
+          elements.audioControlsInline.style.display = "flex";
           elements.audioPlayBtn.disabled = false;
         };
 
@@ -432,16 +529,22 @@
         audioWs.onclose = function (event) {
           updateStatus(elements.audioStatus, false, "Audio: Disconnected");
           addMessage(`Audio WebSocket disconnected: ${event.code}`);
-          elements.connectAudioBtn.disabled = false;
-          elements.disconnectAudioBtn.disabled = true;
+          elements.audioToggleBtn.disabled = false;
+          elements.audioToggleBtn.className = "btn btn-primary";
+          elements.audioToggleIcon.textContent = "🎵";
+          elements.audioToggleText.textContent = "Connect Audio";
+          elements.audioControlsInline.style.display = "none";
           elements.audioPlayBtn.disabled = true;
         };
 
         audioWs.onerror = function (error) {
           updateStatus(elements.audioStatus, false, "Audio: Error");
           addMessage("Audio WebSocket error");
-          elements.connectAudioBtn.disabled = false;
-          elements.disconnectAudioBtn.disabled = true;
+          elements.audioToggleBtn.disabled = false;
+          elements.audioToggleBtn.className = "btn btn-primary";
+          elements.audioToggleIcon.textContent = "🎵";
+          elements.audioToggleText.textContent = "Connect Audio";
+          elements.audioControlsInline.style.display = "none";
           elements.audioPlayBtn.disabled = true;
         };
       }
@@ -458,8 +561,11 @@
           currentAudio.currentTime = 0;
         }
         
-        elements.connectAudioBtn.disabled = false;
-        elements.disconnectAudioBtn.disabled = true;
+        elements.audioToggleBtn.disabled = false;
+        elements.audioToggleBtn.className = "btn btn-primary";
+        elements.audioToggleIcon.textContent = "🎵";
+        elements.audioToggleText.textContent = "Connect Audio";
+        elements.audioControlsInline.style.display = "none";
         elements.audioPlayBtn.disabled = true;
         addMessage("Disconnected from audio stream");
       }
@@ -470,7 +576,8 @@
           return;
         }
 
-        elements.connectSpectrogramBtn.disabled = true;
+        elements.spectrogramToggleBtn.disabled = true;
+        elements.spectrogramToggleText.textContent = "Connecting...";
         addMessage("Connecting to spectrogram stream...");
 
         // Reset counters when connecting spectrogram
@@ -486,8 +593,10 @@
         spectrogramWs.onopen = function (event) {
           updateStatus(elements.spectrogramStatus, true, "Spectrogram: Connected");
           addMessage("Spectrogram WebSocket connected");
-          elements.connectSpectrogramBtn.disabled = true;
-          elements.disconnectSpectrogramBtn.disabled = false;
+          elements.spectrogramToggleBtn.disabled = false;
+          elements.spectrogramToggleBtn.className = "btn btn-disconnect";
+          elements.spectrogramToggleIcon.textContent = "🚫";
+          elements.spectrogramToggleText.textContent = "Disconnect Spectrogram";
         };
 
         spectrogramWs.onmessage = function (event) {
@@ -506,15 +615,19 @@
         spectrogramWs.onclose = function (event) {
           updateStatus(elements.spectrogramStatus, false, "Spectrogram: Disconnected");
           addMessage(`Spectrogram WebSocket disconnected: ${event.code}`);
-          elements.connectSpectrogramBtn.disabled = false;
-          elements.disconnectSpectrogramBtn.disabled = true;
+          elements.spectrogramToggleBtn.disabled = false;
+          elements.spectrogramToggleBtn.className = "btn btn-primary";
+          elements.spectrogramToggleIcon.textContent = "📊";
+          elements.spectrogramToggleText.textContent = "Connect Spectrogram";
         };
 
         spectrogramWs.onerror = function (error) {
           updateStatus(elements.spectrogramStatus, false, "Spectrogram: Error");
           addMessage("Spectrogram WebSocket error");
-          elements.connectSpectrogramBtn.disabled = false;
-          elements.disconnectSpectrogramBtn.disabled = true;
+          elements.spectrogramToggleBtn.disabled = false;
+          elements.spectrogramToggleBtn.className = "btn btn-primary";
+          elements.spectrogramToggleIcon.textContent = "📊";
+          elements.spectrogramToggleText.textContent = "Connect Spectrogram";
         };
       }
 
@@ -528,8 +641,10 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         spectrogramHistory = [];
 
-        elements.connectSpectrogramBtn.disabled = false;
-        elements.disconnectSpectrogramBtn.disabled = true;
+        elements.spectrogramToggleBtn.disabled = false;
+        elements.spectrogramToggleBtn.className = "btn btn-primary";
+        elements.spectrogramToggleIcon.textContent = "📊";
+        elements.spectrogramToggleText.textContent = "Connect Spectrogram";
         addMessage("Disconnected from spectrogram stream");
       }
 
@@ -607,6 +722,90 @@
       function setupAudioPlayerControls() {
         // Enable audio play button when audio is connected
         // (this will be called from connectAudio function)
+      }
+
+      // Detection management
+      function addDetection(detection) {
+        const timestamp = new Date().toLocaleTimeString();
+        
+        const detectionItem = {
+          species: detection.species || detection.common_name || 'Unknown Species',
+          confidence: detection.confidence || 0,
+          timestamp: timestamp,
+          id: Date.now() + Math.random()
+        };
+        
+        detectionsList.unshift(detectionItem); // Add to beginning
+        
+        // Limit to 50 detections
+        if (detectionsList.length > 50) {
+          detectionsList = detectionsList.slice(0, 50);
+        }
+        
+        updateDetectionDisplay();
+        updateDetectionCount();
+      }
+
+      function updateDetectionDisplay() {
+        const container = elements.liveDetections;
+        
+        if (detectionsList.length === 0) {
+          container.innerHTML = '<p class="no-detections">No detections yet. Start streaming to see bird detections in real-time.</p>';
+          return;
+        }
+        
+        const html = detectionsList.map(detection => `
+          <div class="detection-item">
+            <div class="detection-info">
+              <div class="detection-species">${detection.species}</div>
+              <div class="detection-confidence">${(detection.confidence * 100).toFixed(1)}% confidence</div>
+            </div>
+            <div class="detection-time">${detection.timestamp}</div>
+          </div>
+        `).join('');
+        
+        container.innerHTML = html;
+      }
+
+      function updateDetectionCount() {
+        const count = detectionsList.length;
+        elements.detectionCount.textContent = `${count} detected`;
+      }
+
+      // Connect to notifications WebSocket for detections
+      function connectNotifications() {
+        const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
+        const wsUrl = `${wsProtocol}//${location.host}/ws/notifications`;
+        
+        notificationsWs = new WebSocket(wsUrl);
+        
+        notificationsWs.onopen = function(event) {
+          addMessage("Notifications WebSocket connected");
+        };
+        
+        notificationsWs.onmessage = function(event) {
+          try {
+            const data = JSON.parse(event.data);
+            
+            // Handle detection notifications
+            if (data.type === 'detection' && data.detection) {
+              addDetection(data.detection);
+              addMessage(`Detected: ${data.detection.species || data.detection.common_name}`);
+            }
+          } catch (e) {
+            console.log("Notifications message:", event.data);
+          }
+        };
+        
+        notificationsWs.onclose = function(event) {
+          addMessage("Notifications WebSocket disconnected");
+          // Auto-reconnect after a delay
+          setTimeout(connectNotifications, 5000);
+        };
+        
+        notificationsWs.onerror = function(error) {
+          addMessage("Notifications WebSocket error");
+        };
       }
 
       function handleSpectrogramConfig(configData) {
@@ -748,6 +947,7 @@
         resizeCanvas();
         updateFrequencyLabels();
         setupAudioPlayerControls();
+        connectNotifications();
         addMessage("Page loaded. Use individual Connect buttons to start audio and/or spectrogram streaming.");
       });
 
