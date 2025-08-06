@@ -14,6 +14,7 @@ from birdnetpi.web.routers import (
     iot_api_routes,
     overview_api_routes,
     reporting_view_routes,
+    sqladmin_view_routes,
     system_api_routes,
     websocket_routes,
 )
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
             "birdnetpi.web.routers.iot_api_routes",
             "birdnetpi.web.routers.overview_api_routes",
             "birdnetpi.web.routers.reporting_view_routes",
+            "birdnetpi.web.routers.sqladmin_view_routes",
             "birdnetpi.web.routers.system_api_routes",
             "birdnetpi.web.routers.websocket_routes",
         ]
@@ -81,6 +83,9 @@ def create_app() -> FastAPI:
 
     # Real-time communication
     app.include_router(websocket_routes.router, prefix="/ws", tags=["WebSocket"])
+
+    # Database administration interface
+    sqladmin_view_routes.setup_sqladmin(app)
 
     # Root route
     @app.get("/", response_class=HTMLResponse)
