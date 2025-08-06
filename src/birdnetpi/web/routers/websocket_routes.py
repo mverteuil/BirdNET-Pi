@@ -2,12 +2,7 @@
 
 import logging
 
-from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
-
-from birdnetpi.services.audio_websocket_service import AudioWebSocketService
-from birdnetpi.services.spectrogram_service import SpectrogramService
-from birdnetpi.web.core.container import Container
+from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 
 logger = logging.getLogger(__name__)
 
@@ -27,37 +22,7 @@ async def websocket_endpoint(websocket: WebSocket, request: Request) -> None:
         logger.info("Client disconnected")
 
 
-@router.websocket("/audio")
-@inject
-async def audio_websocket_endpoint(
-    websocket: WebSocket,
-    audio_service: AudioWebSocketService = Depends(Provide[Container.audio_websocket_service])
-) -> None:
-    """Handle WebSocket connections for real-time audio streaming."""
-    await websocket.accept()
-    await audio_service.connect_websocket(websocket)
-    try:
-        while True:
-            # Keep the connection alive by receiving ping messages
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        await audio_service.disconnect_websocket(websocket)
-        logger.info("Audio WebSocket client disconnected")
-
-
-@router.websocket("/spectrogram")
-@inject
-async def spectrogram_websocket_endpoint(
-    websocket: WebSocket,
-    spectrogram_service: SpectrogramService = Depends(Provide[Container.spectrogram_service])
-) -> None:
-    """Handle WebSocket connections for real-time spectrogram streaming."""
-    await websocket.accept()
-    await spectrogram_service.connect_websocket(websocket)
-    try:
-        while True:
-            # Keep the connection alive by receiving ping messages
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        await spectrogram_service.disconnect_websocket(websocket)
-        logger.info("Spectrogram WebSocket client disconnected")
+# Audio and spectrogram WebSocket endpoints are now handled by the standalone
+# audio_websocket_daemon for better service independence and performance.
+# These routes have been moved to the daemon running on port 9001 and are
+# proxied by Caddy at /ws/audio and /ws/spectrogram.

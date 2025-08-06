@@ -1,10 +1,10 @@
 :8000 {
-	# WebSocket routes - proxy to standalone daemon
-	handle_path /ws/audio {
+	# WebSocket routes - proxy to standalone daemon (preserve path)
+	handle /ws/audio {
 		reverse_proxy localhost:9001
 	}
 	
-	handle_path /ws/spectrogram {
+	handle /ws/spectrogram {
 		reverse_proxy localhost:9001
 	}
 	
