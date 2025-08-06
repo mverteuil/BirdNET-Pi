@@ -2,7 +2,12 @@
 
 import logging
 
-from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
+from dependency_injector.wiring import Provide, inject
+from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
+
+from birdnetpi.services.audio_websocket_service import AudioWebSocketService
+from birdnetpi.services.spectrogram_service import SpectrogramService
+from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +28,13 @@ async def websocket_endpoint(websocket: WebSocket, request: Request) -> None:
 
 
 @router.websocket("/audio")
-async def audio_websocket_endpoint(websocket: WebSocket, request: Request) -> None:
+@inject
+async def audio_websocket_endpoint(
+    websocket: WebSocket,
+    audio_service: AudioWebSocketService = Depends(Provide[Container.audio_websocket_service])
+) -> None:
     """Handle WebSocket connections for real-time audio streaming."""
     await websocket.accept()
-    # Get the audio websocket service from the container
-    audio_service = request.app.container.audio_websocket_service()
     await audio_service.connect_websocket(websocket)
     try:
         while True:
@@ -39,11 +46,13 @@ async def audio_websocket_endpoint(websocket: WebSocket, request: Request) -> No
 
 
 @router.websocket("/spectrogram")
-async def spectrogram_websocket_endpoint(websocket: WebSocket, request: Request) -> None:
+@inject
+async def spectrogram_websocket_endpoint(
+    websocket: WebSocket,
+    spectrogram_service: SpectrogramService = Depends(Provide[Container.spectrogram_service])
+) -> None:
     """Handle WebSocket connections for real-time spectrogram streaming."""
     await websocket.accept()
-    # Get the spectrogram service from the container
-    spectrogram_service = request.app.container.spectrogram_service()
     await spectrogram_service.connect_websocket(websocket)
     try:
         while True:
