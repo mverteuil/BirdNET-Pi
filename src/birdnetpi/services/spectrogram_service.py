@@ -99,8 +99,11 @@ class SpectrogramService:
         Args:
             audio_data_bytes: Raw audio data as bytes (int16 format)
         """
-        if not self.connected_websockets:
-            return  # No clients to serve
+        logger.info(
+            "Processing audio chunk: %d bytes for %d client(s)",
+            len(audio_data_bytes),
+            len(self.connected_websockets)
+        )
 
         # Convert bytes to numpy array
         audio_samples = np.frombuffer(audio_data_bytes, dtype=np.int16)
@@ -114,6 +117,7 @@ class SpectrogramService:
 
         # Check if we have enough samples for an update
         if len(self.audio_buffer) >= self.samples_per_update:
+            logger.info("Generating spectrogram with %d samples", len(self.audio_buffer))
             await self._generate_and_send_spectrogram()
 
             # Keep some overlap for continuity
