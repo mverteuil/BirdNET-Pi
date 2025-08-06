@@ -93,11 +93,14 @@ class SpectrogramService:
             len(self.connected_websockets),
         )
 
-    async def process_audio_chunk(self, audio_data_bytes: bytes) -> None:
+    async def process_audio_chunk(self, audio_data_bytes: bytes) -> dict | None:
         """Process an audio chunk and generate spectrogram data if needed.
 
         Args:
             audio_data_bytes: Raw audio data as bytes (int16 format)
+            
+        Returns:
+            dict | None: Spectrogram data dict if generated, None if not ready
         """
         logger.info(
             "Processing audio chunk: %d bytes for %d client(s)",
@@ -118,14 +121,26 @@ class SpectrogramService:
         # Check if we have enough samples for an update
         if len(self.audio_buffer) >= self.samples_per_update:
             logger.info("Generating spectrogram with %d samples", len(self.audio_buffer))
-            await self._generate_and_send_spectrogram()
+            spectrogram_data = await self._generate_spectrogram()
+            
+            # Send to FastAPI WebSocket clients if any are connected
+            if self.connected_websockets:
+                await self._send_to_websocket_clients(spectrogram_data)
 
             # Keep some overlap for continuity
             overlap_samples = int(self.samples_per_update * 0.25)
             self.audio_buffer = self.audio_buffer[-overlap_samples:]
+            
+            return spectrogram_data
+        
+        return None
 
-    async def _generate_and_send_spectrogram(self) -> None:
-        """Generate spectrogram from current buffer and send to clients."""
+    async def _generate_spectrogram(self) -> dict:
+        """Generate spectrogram data from current buffer.
+        
+        Returns:
+            dict: Spectrogram data ready for transmission
+        """
         try:
             # Use the most recent samples for spectrogram generation
             audio_segment = self.audio_buffer[-self.samples_per_update :]
@@ -153,22 +168,35 @@ class SpectrogramService:
                 "data": spectrogram_db.tolist(),  # Convert numpy array to list for JSON
                 "shape": spectrogram_db.shape,
             }
-
-            # Send to all connected clients
-            disconnected_clients = []
-            for websocket in self.connected_websockets:
-                try:
-                    await websocket.send_json(spectrogram_data)
-                except Exception as e:
-                    logger.error("Error sending spectrogram data to client: %s", e)
-                    disconnected_clients.append(websocket)
-
-            # Remove disconnected clients
-            for websocket in disconnected_clients:
-                await self.disconnect_websocket(websocket)
+            
+            return spectrogram_data
 
         except Exception as e:
             logger.error("Error generating spectrogram: %s", e, exc_info=True)
+            raise
+
+    async def _send_to_websocket_clients(self, spectrogram_data: dict) -> None:
+        """Send spectrogram data to all connected FastAPI WebSocket clients."""
+        # Send to all connected clients
+        disconnected_clients = []
+        for websocket in self.connected_websockets:
+            try:
+                await websocket.send_json(spectrogram_data)
+            except Exception as e:
+                logger.error("Error sending spectrogram data to client: %s", e)
+                disconnected_clients.append(websocket)
+
+        # Remove disconnected clients
+        for websocket in disconnected_clients:
+            await self.disconnect_websocket(websocket)
+
+    async def _generate_and_send_spectrogram(self) -> None:
+        """Generate spectrogram from current buffer and send to clients (legacy method)."""
+        try:
+            spectrogram_data = await self._generate_spectrogram()
+            await self._send_to_websocket_clients(spectrogram_data)
+        except Exception as e:
+            logger.error("Error in _generate_and_send_spectrogram: %s", e, exc_info=True)
 
     def get_parameters(self) -> dict[str, Any]:
         """Get current spectrogram parameters.
