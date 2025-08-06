@@ -2,7 +2,11 @@
 
 import logging
 
-from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
+from dependency_injector.wiring import Provide, inject
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+
+from birdnetpi.services.notification_service import NotificationService
+from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)
 
@@ -10,20 +14,19 @@ router = APIRouter()
 
 
 @router.websocket("/notifications")
-async def websocket_endpoint(websocket: WebSocket) -> None:
+@inject
+async def websocket_endpoint(
+    websocket: WebSocket,
+    notification_service: NotificationService = Depends(Provide[Container.notification_service])
+) -> None:
     """Handle WebSocket connections for real-time notifications and updates."""
     try:
         await websocket.accept()
         logger.info("WebSocket client connected")
         
-        # Try to get active websockets from app extra (if available)
-        try:
-            app = websocket.app
-            if hasattr(app, 'extra') and app.extra and 'active_websockets' in app.extra:
-                app.extra["active_websockets"].add(websocket)
-                logger.info("WebSocket added to active connections")
-        except Exception as e:
-            logger.warning(f"Could not add to active websockets: {e}")
+        # Add to active websockets through the notification service
+        notification_service.add_websocket(websocket)
+        logger.info("WebSocket added to notification service")
         
         # Keep connection alive
         while True:
@@ -32,22 +35,10 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             
     except WebSocketDisconnect:
         logger.info("WebSocket client disconnected")
-        # Try to remove from active websockets on disconnect
-        try:
-            app = websocket.app
-            if hasattr(app, 'extra') and app.extra and 'active_websockets' in app.extra:
-                app.extra["active_websockets"].discard(websocket)
-        except Exception as e:
-            logger.warning(f"Could not remove from active websockets: {e}")
+        notification_service.remove_websocket(websocket)
     except Exception as e:
         logger.error(f"WebSocket error: {e}", exc_info=True)
-        # Try to remove from active websockets on any error
-        try:
-            app = websocket.app
-            if hasattr(app, 'extra') and app.extra and 'active_websockets' in app.extra:
-                app.extra["active_websockets"].discard(websocket)
-        except Exception:
-            pass
+        notification_service.remove_websocket(websocket)
 
 
 # Audio and spectrogram WebSocket endpoints are now handled by the standalone

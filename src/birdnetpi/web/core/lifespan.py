@@ -53,12 +53,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # But we keep templates accessible as it's needed for rendering
     app.extra = {"templates": templates}
 
-    # Initialize active websockets set and update notification service
-    active_websockets = set()
+    # Get notification service and its websockets set
     notification_service = container.notification_service()
-    # Update the notification service's websockets set (private attribute access)
-    notification_service._active_websockets = active_websockets  # type: ignore[attr-defined]
-    app.extra["active_websockets"] = active_websockets
+    # The websockets set is already initialized in the container
+    # No need to create a new one or reassign private attributes
+    app.extra["active_websockets"] = notification_service.active_websockets
 
     # Configure webhook service from config
     webhook_service = container.webhook_service()

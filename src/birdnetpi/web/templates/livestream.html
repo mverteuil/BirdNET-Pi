@@ -831,11 +831,25 @@
         }
         lastUpdateTime = now;
 
-        // Store spectrogram data
-        spectrogramHistory.push({
-          data: data.data,
-          timestamp: now,
-        });
+        // Handle 2D spectrogram data: data.data is [freq_bins][time_slices]
+        // Convert to format expected by drawing code: array of time slices
+        if (data.data && data.shape && data.shape.length === 2) {
+          const [freqBins, timeSlices] = data.shape;
+          const spectrogramMatrix = data.data;
+          
+          // Convert from [freqBins][timeSlices] to array of timeSlice arrays
+          for (let timeIndex = 0; timeIndex < timeSlices; timeIndex++) {
+            const timeSliceData = [];
+            for (let freqIndex = 0; freqIndex < freqBins; freqIndex++) {
+              timeSliceData.push(spectrogramMatrix[freqIndex][timeIndex]);
+            }
+            
+            spectrogramHistory.push({
+              data: timeSliceData,
+              timestamp: now + (timeIndex * 1000 / 15), // Spread time slices
+            });
+          }
+        }
 
         // Limit history based on time window
         const cutoffTime = now - timeWindow * 1000;

@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 
 from birdnetpi.models.config import BirdNETConfig
@@ -29,17 +30,32 @@ class NotificationService:
         """Register Blinker signal listeners."""
         detection_signal.connect(self._handle_detection_event)
         logger.info("NotificationService listeners registered.")
+    
+    def add_websocket(self, websocket) -> None:
+        """Add a WebSocket to the active connections set."""
+        self.active_websockets.add(websocket)
+        logger.info(f"WebSocket added to active connections. Total: {len(self.active_websockets)}")
+    
+    def remove_websocket(self, websocket) -> None:
+        """Remove a WebSocket from the active connections set."""
+        self.active_websockets.discard(websocket)
+        logger.info(f"WebSocket removed from active connections. Total: {len(self.active_websockets)}")
 
     def _handle_detection_event(self, sender: object, detection: Detection) -> None:
         """Handle a new detection event by sending notifications."""
         logger.info(f"NotificationService received detection: {detection.get_display_name()}")
 
-        # Send WebSocket notifications (existing functionality)
-        for _ws in self.active_websockets:
-            # In a real async app, you'd await ws.send_json or similar
-            logger.info(
-                f"Simulating sending detection to websocket: {detection.get_display_name()}"
-            )
+        # Send WebSocket notifications to connected clients
+        if self.active_websockets:
+            try:
+                loop = asyncio.get_running_loop()
+                task = loop.create_task(self._send_websocket_notifications(detection))
+                # Store task reference to avoid potential garbage collection issues
+                self._websocket_tasks = getattr(self, "_websocket_tasks", set())
+                self._websocket_tasks.add(task)
+                task.add_done_callback(self._websocket_tasks.discard)
+            except RuntimeError:
+                logger.debug("No event loop running, skipping WebSocket notifications")
 
         # Send Apprise notifications (existing functionality)
         if self.config.apprise_notify_each_detection:
@@ -58,6 +74,40 @@ class NotificationService:
         except RuntimeError:
             # No event loop running, skip IoT notifications
             logger.debug("No event loop running, skipping IoT notifications")
+
+    async def _send_websocket_notifications(self, detection: Detection) -> None:
+        """Send detection notifications to all connected WebSocket clients."""
+        if not self.active_websockets:
+            return
+        
+        # Create notification payload
+        notification_data = {
+            "type": "detection",
+            "detection": {
+                "species": detection.common_name,
+                "common_name": detection.common_name,
+                "scientific_name": detection.scientific_name,
+                "confidence": detection.confidence,
+                "datetime": detection.datetime.isoformat() if detection.datetime else None,
+            }
+        }
+        
+        notification_json = json.dumps(notification_data)
+        
+        # Send to all connected WebSocket clients
+        disconnected_websockets = set()
+        for ws in self.active_websockets.copy():  # Copy to avoid modification during iteration
+            try:
+                await ws.send_text(notification_json)
+                logger.debug(f"Sent detection notification to WebSocket: {detection.get_display_name()}")
+            except Exception as e:
+                logger.warning(f"Failed to send WebSocket notification: {e}")
+                disconnected_websockets.add(ws)
+        
+        # Remove disconnected WebSocket clients
+        for ws in disconnected_websockets:
+            self.active_websockets.discard(ws)
+            logger.info(f"Removed disconnected WebSocket from active connections")
 
     async def _send_iot_notifications(self, detection: Detection) -> None:
         """Send MQTT and webhook notifications for a detection event."""

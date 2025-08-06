@@ -10,9 +10,9 @@
 	
 	# Notifications WebSocket - proxy to FastAPI
 	handle /ws/notifications {
-		reverse_proxy localhost:8888
+		reverse_proxy 127.0.0.1:8888
 	}
 	
 	# All other routes - proxy to FastAPI
-	reverse_proxy localhost:8888
+	reverse_proxy 127.0.0.1:8888
 }

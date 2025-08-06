@@ -8,7 +8,7 @@ import time
 from types import FrameType
 
 import websockets
-from websockets.server import serve
+from websockets.asyncio.server import serve
 
 from birdnetpi.services.audio_websocket_service import AudioWebSocketService
 from birdnetpi.services.spectrogram_service import SpectrogramService
@@ -48,9 +48,48 @@ def _cleanup_fifo_and_service() -> None:
         logger.info("WebSocket server closed")
 
 
-async def _websocket_handler(websocket, path):
+async def _websocket_handler(websocket):
     """Route WebSocket connections based on path."""
     global _audio_clients, _spectrogram_clients
+    
+    # Debug: Log what attributes are available
+    logger.debug("WebSocket attributes: %s", [attr for attr in dir(websocket) if not attr.startswith('_')][:10])
+    
+    # The new websockets library passes the path differently
+    # We need to check multiple possible locations
+    path = None
+    
+    try:
+        # Method 1: Direct path attribute (some versions)
+        if hasattr(websocket, 'path'):
+            path = websocket.path
+            logger.info("Got path from websocket.path: %s", path)
+        # Method 2: From request object
+        elif hasattr(websocket, 'request'):
+            if hasattr(websocket.request, 'path'):
+                path = websocket.request.path
+                logger.info("Got path from websocket.request.path: %s", path)
+        # Method 3: From request_headers (HTTP/2 style)
+        elif hasattr(websocket, 'request_headers'):
+            for name, value in websocket.request_headers.raw_items():
+                logger.debug("Header: %s = %s", name, value)
+                if name.lower() == b':path':
+                    path = value.decode('utf-8')
+                    logger.info("Got path from request_headers: %s", path)
+                    break
+        
+        # If we still don't have a path, log all attributes for debugging
+        if path is None:
+            logger.warning("Could not find path in websocket object. Available attributes: %s", 
+                         [attr for attr in dir(websocket) if not attr.startswith('_')])
+            # Default to root which will trigger the unknown endpoint handler
+            path = "/"
+            
+        logger.info("WebSocket connection attempt with final path: '%s'", path)
+        
+    except Exception as e:
+        logger.error("Error extracting path from websocket: %s", e, exc_info=True)
+        path = "/"
     
     if path == "/ws/audio":
         _audio_clients.add(websocket)
@@ -68,6 +107,22 @@ async def _websocket_handler(websocket, path):
     elif path == "/ws/spectrogram":
         _spectrogram_clients.add(websocket)
         logger.info("Spectrogram WebSocket client connected. Total: %d", len(_spectrogram_clients))
+        
+        # Create a mock WebSocket object that matches FastAPI WebSocket interface
+        class MockWebSocket:
+            def __init__(self, websocket):
+                self.websocket = websocket
+            
+            async def send_json(self, data):
+                json_str = json.dumps(data)
+                await self.websocket.send(json_str)
+        
+        mock_ws = MockWebSocket(websocket)
+        
+        # Register client with the SpectrogramService
+        if _spectrogram_service:
+            await _spectrogram_service.connect_websocket(mock_ws)
+        
         try:
             async for message in websocket:
                 # Keep connection alive
@@ -76,6 +131,9 @@ async def _websocket_handler(websocket, path):
             pass
         finally:
             _spectrogram_clients.discard(websocket)
+            # Unregister from SpectrogramService
+            if _spectrogram_service:
+                await _spectrogram_service.disconnect_websocket(mock_ws)
             logger.info("Spectrogram WebSocket client disconnected. Remaining: %d", len(_spectrogram_clients))
     
     else:
@@ -87,23 +145,28 @@ async def _broadcast_audio_data(audio_data_bytes: bytes):
     """Broadcast MP3 audio data to all connected audio clients."""
     global _audio_clients
     if _audio_clients:
-        # Encode to MP3 for broadcasting
+        # Encode to MP3 for broadcasting - use thread pool to avoid blocking
         try:
-            from pydub import AudioSegment
-            from io import BytesIO
+            def encode_mp3(audio_bytes):
+                from pydub import AudioSegment
+                from io import BytesIO
+                
+                # Create AudioSegment from raw bytes
+                audio_segment = AudioSegment(
+                    audio_bytes,
+                    sample_width=2,  # 2 bytes for int16
+                    frame_rate=48000,  # Using config sample rate
+                    channels=1,
+                )
+                
+                # Export to MP3
+                buffer = BytesIO()
+                audio_segment.export(buffer, format="mp3")
+                return buffer.getvalue()
             
-            # Create AudioSegment from raw bytes
-            audio_segment = AudioSegment(
-                audio_data_bytes,
-                sample_width=2,  # 2 bytes for int16
-                frame_rate=48000,  # Using config sample rate
-                channels=1,
-            )
-            
-            # Export to MP3
-            buffer = BytesIO()
-            audio_segment.export(buffer, format="mp3")
-            mp3_data = buffer.getvalue()
+            # Run MP3 encoding in thread pool to avoid blocking the async loop
+            loop = asyncio.get_event_loop()
+            mp3_data = await loop.run_in_executor(None, encode_mp3, audio_data_bytes)
             
             # Broadcast to all connected clients
             disconnected = set()
