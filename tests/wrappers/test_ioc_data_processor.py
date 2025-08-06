@@ -216,7 +216,7 @@ class TestShowIOCInfo:
         """Should show IOC info successfully."""
         # Setup file
         json_file = tmp_path / "test.json"
-        json_file.write_text('{"test": "data"}')  # 15 bytes
+        json_file.write_text('{"test": "data"}')  # 16 bytes
 
         # Setup mock
         mock_service_class.return_value = mock_ioc_reference_service
@@ -229,7 +229,7 @@ class TestShowIOCInfo:
         # Check output
         captured = capsys.readouterr()
         assert "IOC Data Information:" in captured.out
-        assert "Size: 15 bytes" in captured.out
+        assert "Size: 16 bytes" in captured.out
         assert "IOC Version: 15.1" in captured.out
         assert "Species count: 10832" in captured.out
         assert "Available language codes:" in captured.out
