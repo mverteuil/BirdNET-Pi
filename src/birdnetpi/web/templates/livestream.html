@@ -193,16 +193,17 @@
           </div>
 
           <div class="connection-controls">
-            <button id="connectBtn" class="btn btn-primary" onclick="connect()">
-              <span>🔗</span> Connect
+            <button id="connectAudioBtn" class="btn btn-primary" onclick="connectAudio()">
+              <span>🎵</span> Connect Audio
             </button>
-            <button
-              id="disconnectBtn"
-              class="btn btn-disconnect"
-              onclick="disconnect()"
-              disabled
-            >
-              <span>🔌</span> Disconnect
+            <button id="disconnectAudioBtn" class="btn btn-disconnect" onclick="disconnectAudio()" disabled>
+              <span>🔇</span> Disconnect Audio
+            </button>
+            <button id="connectSpectrogramBtn" class="btn btn-primary" onclick="connectSpectrogram()">
+              <span>📊</span> Connect Spectrogram
+            </button>
+            <button id="disconnectSpectrogramBtn" class="btn btn-disconnect" onclick="disconnectSpectrogram()" disabled>
+              <span>🚫</span> Disconnect Spectrogram
             </button>
           </div>
         </div>
@@ -331,8 +332,10 @@
         spectrogramStatus: document.getElementById("spectrogramStatus"),
         updateRate: document.getElementById("updateRate"),
         latency: document.getElementById("latency"),
-        connectBtn: document.getElementById("connectBtn"),
-        disconnectBtn: document.getElementById("disconnectBtn"),
+        connectAudioBtn: document.getElementById("connectAudioBtn"),
+        disconnectAudioBtn: document.getElementById("disconnectAudioBtn"),
+        connectSpectrogramBtn: document.getElementById("connectSpectrogramBtn"),
+        disconnectSpectrogramBtn: document.getElementById("disconnectSpectrogramBtn"),
         messages: document.getElementById("messages"),
         audioPlayer: document.getElementById("audioPlayer"),
         maxFreqLabel: document.getElementById("maxFreqLabel"),
@@ -356,30 +359,20 @@
       }
 
       function connect() {
-        if (
-          (audioWs && audioWs.readyState === WebSocket.OPEN) &&
-          (spectrogramWs && spectrogramWs.readyState === WebSocket.OPEN)
-        ) {
-          addMessage("Already connected to both streams");
-          return;
-        }
-
-        elements.connectBtn.disabled = true;
-        addMessage("Connecting to audio and spectrogram streams...");
-
-        // Reset counters
-        updateCount = 0;
-        startTime = Date.now();
-        lastUpdateTime = 0;
-
-        // Connect to audio stream
+        // Legacy function - now connects both streams independently
         connectAudio();
-
-        // Connect to spectrogram stream
         connectSpectrogram();
       }
 
       function connectAudio() {
+        if (audioWs && audioWs.readyState === WebSocket.OPEN) {
+          addMessage("Audio already connected");
+          return;
+        }
+
+        elements.connectAudioBtn.disabled = true;
+        addMessage("Connecting to audio stream...");
+
         const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
         const wsUrl = `${wsProtocol}//${location.host}/ws/audio`;
         
@@ -388,7 +381,8 @@
         audioWs.onopen = function (event) {
           updateStatus(elements.audioStatus, true, "Audio: Connected");
           addMessage("Audio WebSocket connected");
-          checkFullConnection();
+          elements.connectAudioBtn.disabled = true;
+          elements.disconnectAudioBtn.disabled = false;
         };
 
         audioWs.onmessage = function (event) {
@@ -406,16 +400,42 @@
         audioWs.onclose = function (event) {
           updateStatus(elements.audioStatus, false, "Audio: Disconnected");
           addMessage(`Audio WebSocket disconnected: ${event.code}`);
-          checkFullDisconnection();
+          elements.connectAudioBtn.disabled = false;
+          elements.disconnectAudioBtn.disabled = true;
         };
 
         audioWs.onerror = function (error) {
           updateStatus(elements.audioStatus, false, "Audio: Error");
           addMessage("Audio WebSocket error");
+          elements.connectAudioBtn.disabled = false;
+          elements.disconnectAudioBtn.disabled = true;
         };
       }
 
+      function disconnectAudio() {
+        if (audioWs) {
+          audioWs.close();
+          audioWs = null;
+        }
+        elements.connectAudioBtn.disabled = false;
+        elements.disconnectAudioBtn.disabled = true;
+        addMessage("Disconnected from audio stream");
+      }
+
       function connectSpectrogram() {
+        if (spectrogramWs && spectrogramWs.readyState === WebSocket.OPEN) {
+          addMessage("Spectrogram already connected");
+          return;
+        }
+
+        elements.connectSpectrogramBtn.disabled = true;
+        addMessage("Connecting to spectrogram stream...");
+
+        // Reset counters when connecting spectrogram
+        updateCount = 0;
+        startTime = Date.now();
+        lastUpdateTime = 0;
+
         const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
         const wsUrl = `${wsProtocol}//${location.host}/ws/spectrogram`;
         
@@ -424,7 +444,8 @@
         spectrogramWs.onopen = function (event) {
           updateStatus(elements.spectrogramStatus, true, "Spectrogram: Connected");
           addMessage("Spectrogram WebSocket connected");
-          checkFullConnection();
+          elements.connectSpectrogramBtn.disabled = true;
+          elements.disconnectSpectrogramBtn.disabled = false;
         };
 
         spectrogramWs.onmessage = function (event) {
@@ -443,67 +464,92 @@
         spectrogramWs.onclose = function (event) {
           updateStatus(elements.spectrogramStatus, false, "Spectrogram: Disconnected");
           addMessage(`Spectrogram WebSocket disconnected: ${event.code}`);
-          checkFullDisconnection();
+          elements.connectSpectrogramBtn.disabled = false;
+          elements.disconnectSpectrogramBtn.disabled = true;
         };
 
         spectrogramWs.onerror = function (error) {
           updateStatus(elements.spectrogramStatus, false, "Spectrogram: Error");
           addMessage("Spectrogram WebSocket error");
+          elements.connectSpectrogramBtn.disabled = false;
+          elements.disconnectSpectrogramBtn.disabled = true;
         };
       }
 
-      function disconnect() {
-        if (audioWs) {
-          audioWs.close();
-          audioWs = null;
-        }
+      function disconnectSpectrogram() {
         if (spectrogramWs) {
           spectrogramWs.close();
           spectrogramWs = null;
         }
 
-        // Clear the canvas
+        // Clear the canvas and data
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         spectrogramHistory = [];
 
-        elements.connectBtn.disabled = false;
-        elements.disconnectBtn.disabled = true;
-        
+        elements.connectSpectrogramBtn.disabled = false;
+        elements.disconnectSpectrogramBtn.disabled = true;
+        addMessage("Disconnected from spectrogram stream");
+      }
+
+      function disconnect() {
+        // Legacy function - now disconnects both streams
+        disconnectAudio();
+        disconnectSpectrogram();
         addMessage("Disconnected from all streams");
       }
 
-      function checkFullConnection() {
-        const audioConnected = audioWs && audioWs.readyState === WebSocket.OPEN;
-        const spectrogramConnected = spectrogramWs && spectrogramWs.readyState === WebSocket.OPEN;
-
-        if (audioConnected && spectrogramConnected) {
-          elements.disconnectBtn.disabled = false;
-          addMessage("All streams connected successfully");
-        }
-      }
-
-      function checkFullDisconnection() {
-        const audioDisconnected = !audioWs || audioWs.readyState === WebSocket.CLOSED;
-        const spectrogramDisconnected = !spectrogramWs || spectrogramWs.readyState === WebSocket.CLOSED;
-
-        if (audioDisconnected && spectrogramDisconnected) {
-          elements.connectBtn.disabled = false;
-          elements.disconnectBtn.disabled = true;
-        }
-      }
+      // Audio player management
+      let audioQueue = [];
+      let isAudioPlaying = false;
+      let audioMuted = false;
 
       function handleAudioData(audioBlob) {
+        // Add to queue for managed playback
+        audioQueue.push(audioBlob);
+        
+        // Process queue if not already playing
+        if (!isAudioPlaying) {
+          processAudioQueue();
+        }
+      }
+
+      function processAudioQueue() {
+        if (audioQueue.length === 0 || audioMuted) {
+          isAudioPlaying = false;
+          return;
+        }
+
+        isAudioPlaying = true;
+        const audioBlob = audioQueue.shift();
+        
         // Create a blob URL and play the audio chunk
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
-        audio.volume = 0.6;
+        audio.volume = elements.audioPlayer.muted ? 0 : 0.6;
+        
         audio.play().catch((e) => {
           console.log("Audio play error:", e);
+          isAudioPlaying = false;
+          processAudioQueue(); // Try next in queue
         });
 
-        // Clean up the blob URL after playback
+        // Clean up and continue queue
         audio.addEventListener("ended", () => {
           URL.revokeObjectURL(audioUrl);
+          isAudioPlaying = false;
+          processAudioQueue();
+        });
+      }
+
+      // Connect audio player controls to stream
+      function setupAudioPlayerControls() {
+        elements.audioPlayer.addEventListener("volumechange", function() {
+          audioMuted = this.muted;
+          if (audioMuted) {
+            // Clear audio queue when muted
+            audioQueue = [];
+            isAudioPlaying = false;
+          }
         });
       }
 
@@ -645,7 +691,8 @@
       window.addEventListener("load", function () {
         resizeCanvas();
         updateFrequencyLabels();
-        addMessage("Page loaded. Click Connect to start streaming.");
+        setupAudioPlayerControls();
+        addMessage("Page loaded. Use individual Connect buttons to start audio and/or spectrogram streaming.");
       });
 
       // Handle window resize
