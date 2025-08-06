@@ -3,7 +3,6 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
-from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.lifespan import lifespan
 from birdnetpi.web.routers import (
@@ -18,7 +17,6 @@ from birdnetpi.web.routers import (
     system_api_routes,
     websocket_routes,
 )
-from birdnetpi.web.routers.sqladmin_view_routes import setup_sqladmin
 
 
 def create_app() -> FastAPI:
@@ -83,9 +81,6 @@ def create_app() -> FastAPI:
 
     # Real-time communication
     app.include_router(websocket_routes.router, prefix="/ws", tags=["WebSocket"])
-
-    # Set up SQLAdmin interface for database administration
-    setup_sqladmin(app)
 
     # Root route
     @app.get("/", response_class=HTMLResponse)
