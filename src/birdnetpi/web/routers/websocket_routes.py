@@ -10,16 +10,44 @@ router = APIRouter()
 
 
 @router.websocket("/notifications")
-async def websocket_endpoint(websocket: WebSocket, request: Request) -> None:
+async def websocket_endpoint(websocket: WebSocket) -> None:
     """Handle WebSocket connections for real-time notifications and updates."""
-    await websocket.accept()
-    request.app.extra["active_websockets"].add(websocket)  # Add new connection
     try:
+        await websocket.accept()
+        logger.info("WebSocket client connected")
+        
+        # Try to get active websockets from app extra (if available)
+        try:
+            app = websocket.app
+            if hasattr(app, 'extra') and app.extra and 'active_websockets' in app.extra:
+                app.extra["active_websockets"].add(websocket)
+                logger.info("WebSocket added to active connections")
+        except Exception as e:
+            logger.warning(f"Could not add to active websockets: {e}")
+        
+        # Keep connection alive
         while True:
-            await websocket.receive_text()  # Keep connection alive
+            message = await websocket.receive_text()
+            logger.debug(f"Received WebSocket message: {message}")
+            
     except WebSocketDisconnect:
-        request.app.extra["active_websockets"].remove(websocket)  # Remove disconnected client
-        logger.info("Client disconnected")
+        logger.info("WebSocket client disconnected")
+        # Try to remove from active websockets on disconnect
+        try:
+            app = websocket.app
+            if hasattr(app, 'extra') and app.extra and 'active_websockets' in app.extra:
+                app.extra["active_websockets"].discard(websocket)
+        except Exception as e:
+            logger.warning(f"Could not remove from active websockets: {e}")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}", exc_info=True)
+        # Try to remove from active websockets on any error
+        try:
+            app = websocket.app
+            if hasattr(app, 'extra') and app.extra and 'active_websockets' in app.extra:
+                app.extra["active_websockets"].discard(websocket)
+        except Exception:
+            pass
 
 
 # Audio and spectrogram WebSocket endpoints are now handled by the standalone
