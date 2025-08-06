@@ -1,9 +1,7 @@
 """Application factory for creating FastAPI application with dependency injection."""
 
-from dependency_injector.wiring import Provide, inject
-from fastapi import Depends, FastAPI, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.web.core.container import Container
@@ -87,13 +85,12 @@ def create_app() -> FastAPI:
 
     # Root route
     @app.get("/", response_class=HTMLResponse)
-    @inject
-    async def read_root(
-        request: Request,
-        templates: Jinja2Templates = Depends(Provide[Container.templates]),
-        config: BirdNETConfig = Depends(Provide[Container.config]),
-    ) -> HTMLResponse:
+    async def read_root(request: Request) -> HTMLResponse:
         """Render the main index page."""
+        # Get instances directly from the container to avoid DI issues
+        config = container.config()
+        templates = container.templates()
+        
         return templates.TemplateResponse(
             request,
             "index.html",
