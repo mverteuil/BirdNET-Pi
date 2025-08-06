@@ -111,37 +111,24 @@ async def _websocket_handler(websocket):
 
 
 async def _broadcast_audio_data(audio_data_bytes: bytes):
-    """Broadcast MP3 audio data to all connected audio clients."""
+    """Broadcast raw PCM audio data to all connected audio clients - no encoding needed!"""
     global _audio_clients
     if _audio_clients:
-        # Encode to MP3 for broadcasting - use thread pool to avoid blocking
         try:
-            def encode_mp3(audio_bytes):
-                from pydub import AudioSegment
-                from io import BytesIO
-                
-                # Create AudioSegment from raw bytes
-                audio_segment = AudioSegment(
-                    audio_bytes,
-                    sample_width=2,  # 2 bytes for int16
-                    frame_rate=48000,  # Using config sample rate
-                    channels=1,
-                )
-                
-                # Export to MP3
-                buffer = BytesIO()
-                audio_segment.export(buffer, format="mp3")
-                return buffer.getvalue()
+            # Send raw PCM data directly - no CPU-intensive encoding!
+            # The browser can decode PCM directly using Web Audio API
             
-            # Run MP3 encoding in thread pool to avoid blocking the async loop
-            loop = asyncio.get_event_loop()
-            mp3_data = await loop.run_in_executor(None, encode_mp3, audio_data_bytes)
+            # Create a simple header for the client to understand the format
+            # Format: 4 bytes length + PCM data
+            data_length = len(audio_data_bytes)
+            header = data_length.to_bytes(4, byteorder='little')
+            pcm_packet = header + audio_data_bytes
             
-            # Broadcast to all connected clients
+            # Broadcast to all connected clients (much faster than MP3 encoding)
             disconnected = set()
             for client in _audio_clients:
                 try:
-                    await client.send(mp3_data)
+                    await client.send(pcm_packet)
                 except websockets.exceptions.ConnectionClosed:
                     disconnected.add(client)
             

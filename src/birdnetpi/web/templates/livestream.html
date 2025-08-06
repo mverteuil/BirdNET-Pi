@@ -516,11 +516,11 @@
 
         audioWs.onmessage = function (event) {
           if (event.data instanceof ArrayBuffer) {
-            // Convert ArrayBuffer to Blob for MP3 audio data
-            const audioBlob = new Blob([event.data], { type: 'audio/mpeg' });
-            handleAudioData(audioBlob);
+            // Handle raw PCM data directly - much faster than MP3!
+            handlePCMData(event.data);
           } else if (event.data instanceof Blob) {
-            handleAudioData(event.data);
+            // Convert Blob to ArrayBuffer for PCM processing
+            event.data.arrayBuffer().then(handlePCMData);
           } else {
             addMessage("Audio: " + event.data);
           }
@@ -555,10 +555,9 @@
           audioWs = null;
         }
         
-        // Stop current audio playback
-        if (currentAudio && !currentAudio.ended) {
-          currentAudio.pause();
-          currentAudio.currentTime = 0;
+        // Stop current audio context if active
+        if (audioContext && audioContext.state !== 'closed') {
+          // Audio context will stop automatically when connection closes
         }
         
         elements.audioToggleBtn.disabled = false;
@@ -660,30 +659,69 @@
       let audioVolume = 0.6;
       let currentAudio = null;
 
-      function handleAudioData(audioBlob) {
+      // Web Audio API context for PCM playback
+      let audioContext = null;
+      let gainNode = null;
+      
+      async function initAudioContext() {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          gainNode = audioContext.createGain();
+          gainNode.connect(audioContext.destination);
+          gainNode.gain.value = audioVolume;
+        }
+        
+        // Resume context if it was suspended (browser autoplay policy)
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
+      }
+
+      async function handlePCMData(arrayBuffer) {
         if (!audioEnabled) {
           return;
         }
         
-        // Stop previous audio if still playing to prevent overlap
-        if (currentAudio && !currentAudio.ended) {
-          currentAudio.pause();
-          currentAudio.currentTime = 0;
+        try {
+          await initAudioContext();
+          
+          // Parse the packet: 4 bytes length header + PCM data
+          const dataView = new DataView(arrayBuffer);
+          const dataLength = dataView.getUint32(0, true); // little endian
+          
+          if (arrayBuffer.byteLength < 4 + dataLength) {
+            console.warn("Invalid PCM packet size");
+            return;
+          }
+          
+          // Extract PCM data (skip 4-byte header)
+          const pcmData = new Int16Array(arrayBuffer, 4, dataLength / 2);
+          
+          // Convert int16 PCM to float32 for Web Audio API
+          const sampleRate = 48000; // Match server sample rate
+          const channels = 1;
+          const audioBuffer = audioContext.createBuffer(channels, pcmData.length, sampleRate);
+          const channelData = audioBuffer.getChannelData(0);
+          
+          // Convert int16 to float32 (-1.0 to 1.0)
+          for (let i = 0; i < pcmData.length; i++) {
+            channelData[i] = pcmData[i] / 32768.0;
+          }
+          
+          // Play the audio buffer immediately
+          const source = audioContext.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(gainNode);
+          source.start(0);
+          
+        } catch (error) {
+          console.error("PCM audio playback error:", error);
         }
-        
-        // Create and play new audio chunk immediately for real-time streaming
-        const audioUrl = URL.createObjectURL(audioBlob);
-        currentAudio = new Audio(audioUrl);
-        currentAudio.volume = audioVolume;
-        
-        currentAudio.play().catch((e) => {
-          console.log("Audio play error:", e);
-        });
+      }
 
-        // Clean up the blob URL after playback
-        currentAudio.addEventListener("ended", () => {
-          URL.revokeObjectURL(audioUrl);
-        });
+      function handleAudioData(audioBlob) {
+        // Legacy function - kept for compatibility but no longer used
+        console.warn("handleAudioData called - should use handlePCMData for better performance");
       }
 
       function toggleAudioPlayback() {
@@ -698,24 +736,18 @@
           elements.audioPlayIcon.textContent = "🔇";
           elements.audioPlayText.textContent = "Audio Off";  
           elements.audioPlayBtn.className = "btn btn-secondary";
-          
-          // Stop current audio
-          if (currentAudio && !currentAudio.ended) {
-            currentAudio.pause();
-            currentAudio.currentTime = 0;
-          }
           addMessage("Audio playback disabled");
         }
       }
 
       function updateAudioVolume(value) {
         audioVolume = value / 100;
-        elements.volumeDisplay.textContent = value + "%";
         
-        // Update current audio if playing
-        if (currentAudio) {
-          currentAudio.volume = audioVolume;
+        // Update Web Audio API gain node if available
+        if (gainNode) {
+          gainNode.gain.value = audioVolume;
         }
+        elements.volumeDisplay.textContent = value + "%";
       }
 
       // Setup audio controls
