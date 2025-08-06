@@ -56,7 +56,8 @@ dependencies = [
   "tqdm>=4.67.1",
   "structlog>=25.4.0",
   "numpy<2",
-  "dependency-injector==4.48.1"
+  "dependency-injector==4.48.1",
+  "websockets>=15.0.1",
 ]
 
 [project.scripts]
