@@ -392,7 +392,11 @@
         };
 
         audioWs.onmessage = function (event) {
-          if (event.data instanceof Blob) {
+          if (event.data instanceof ArrayBuffer) {
+            // Convert ArrayBuffer to Blob for MP3 audio data
+            const audioBlob = new Blob([event.data], { type: 'audio/mpeg' });
+            handleAudioData(audioBlob);
+          } else if (event.data instanceof Blob) {
             handleAudioData(event.data);
           } else {
             addMessage("Audio: " + event.data);
