@@ -26,7 +26,7 @@ def app_with_admin_view_routes(tmp_path):
         mock_resolver.get_birdnetpi_config_path.return_value = str(config_file)
         mock_resolver.base_dir = str(tmp_path)
         app.container.file_resolver.override(mock_resolver)
-        
+
         # Mock detection manager for test_detection endpoint
         mock_detection_manager = MagicMock(spec=DetectionManager)
         mock_detection_manager.create_detection.return_value = None

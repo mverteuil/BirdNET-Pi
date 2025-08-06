@@ -94,7 +94,7 @@ def create_app() -> FastAPI:
         # Get instances directly from the container to avoid DI issues
         config = container.config()
         templates = container.templates()
-        
+
         return templates.TemplateResponse(
             request,
             "index.html",

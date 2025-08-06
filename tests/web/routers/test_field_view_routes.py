@@ -14,15 +14,15 @@ from birdnetpi.web.core.factory import create_app
 def app_with_field_view_routes(file_path_resolver):
     """Create FastAPI app with field view router and dependencies."""
     app = create_app()
-    
-    if hasattr(app, 'container'):
+
+    if hasattr(app, "container"):
         # Mock templates
         mock_templates = MagicMock(spec=Jinja2Templates)
         app.container.templates.override(mock_templates)
-        
+
         # Override file resolver
         app.container.file_resolver.override(file_path_resolver)
-    
+
     return app
 
 
@@ -47,17 +47,21 @@ class TestFieldViewRoutes:
         # Should return successful response
         assert response.status_code == 200
         assert "Field Mode" in response.text
-        
+
         # Verify template was called with correct parameters
         mock_templates.TemplateResponse.assert_called_once()
         call_args = mock_templates.TemplateResponse.call_args
 
-        # Check template name
-        assert call_args[0][0] == "field_mode.html"
+        # With new parameter order: TemplateResponse(request, template_name, context)
+        # Check that first parameter is request object
+        assert hasattr(call_args[0][0], "method")  # Request object has method attribute
 
-        # Check context contains request
-        context = call_args[0][1]
-        assert "request" in context
+        # Check template name is second parameter
+        assert call_args[0][1] == "field_mode.html"
+
+        # Check context is third parameter (should be empty dict)
+        context = call_args[0][2]
+        assert isinstance(context, dict)
 
     def test_field_mode_endpoint_exists(self, client):
         """Test that the field mode endpoint is properly registered."""

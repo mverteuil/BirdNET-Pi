@@ -17,7 +17,7 @@ class TestWebSocketRouter:
         """Set up test fixtures with proper path mocking."""
         # Get the real app directory for static assets
         real_app_dir = Path(__file__).parent.parent.parent.parent / "src" / "birdnetpi"
-        
+
         # Create temp directories for dynamic data
         temp_data_dir = tmp_path / "data"
         temp_data_dir.mkdir()
@@ -25,25 +25,34 @@ class TestWebSocketRouter:
         (temp_data_dir / "recordings").mkdir()
         (temp_data_dir / "models").mkdir()
         (temp_data_dir / "config").mkdir()
-        
+
         # Mock FilePathResolver to use temp dirs for dynamic data but real dirs for static assets
-        with patch('birdnetpi.utils.file_path_resolver.FilePathResolver') as mock_resolver_class:
+        with patch("birdnetpi.utils.file_path_resolver.FilePathResolver") as mock_resolver_class:
             mock_resolver = Mock()
             # Static assets from real directories
             mock_resolver.app_dir = real_app_dir
             mock_resolver.base_dir = str(real_app_dir)
-            mock_resolver.get_config_template_path.return_value = str(real_app_dir / "config_templates" / "birdnetpi.yaml")
-            mock_resolver.get_ioc_database_path.return_value = str(real_app_dir / "data" / "database" / "ioc_reference.db")
+            mock_resolver.get_config_template_path.return_value = str(
+                real_app_dir / "config_templates" / "birdnetpi.yaml"
+            )
+            mock_resolver.get_ioc_database_path.return_value = str(
+                real_app_dir / "data" / "database" / "ioc_reference.db"
+            )
             # Dynamic data to temp directories
             mock_resolver.data_dir = temp_data_dir
-            mock_resolver.get_database_path.return_value = str(temp_data_dir / "database" / "birdnetpi.db")
+            mock_resolver.get_database_path.return_value = str(
+                temp_data_dir / "database" / "birdnetpi.db"
+            )
             mock_resolver.get_recordings_dir.return_value = str(temp_data_dir / "recordings")
             mock_resolver.get_models_dir.return_value = str(temp_data_dir / "models")
-            mock_resolver.get_birdnetpi_config_path.return_value = str(real_app_dir / "config_templates" / "birdnetpi.yaml")
+            mock_resolver.get_birdnetpi_config_path.return_value = str(
+                real_app_dir / "config_templates" / "birdnetpi.yaml"
+            )
             mock_resolver_class.return_value = mock_resolver
-            
+
             # Now import the app with mocked paths
             from birdnetpi.web.main import app
+
             self.app = app
 
         # Add mock config object

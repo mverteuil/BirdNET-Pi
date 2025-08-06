@@ -137,16 +137,16 @@ class TestFieldModeEndpoints:
         # Setup detection manager
         detection_manager = client.mock_detection_manager
         detection_manager.get_detections_count_by_date.return_value = 5
-        
+
         # Create mock detection objects with required attributes
+        from datetime import UTC, datetime
         from unittest.mock import Mock
-        from datetime import datetime, UTC
-        
+
         mock_detection = Mock()
         mock_detection.species = "Test Bird"
         mock_detection.confidence = 0.95
         mock_detection.timestamp = datetime.now(UTC)
-        
+
         detection_manager.get_recent_detections.return_value = [mock_detection]
 
         response = client.get("/api/field/summary")

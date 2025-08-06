@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock
 
 import pytest
-from fastapi.templating import Jinja2Templates
 from fastapi.testclient import TestClient
 
 from birdnetpi.managers.detection_manager import DetectionManager
@@ -13,22 +12,22 @@ from birdnetpi.web.core.factory import create_app
 def app_with_mocks(file_path_resolver):
     """Create FastAPI app with mocked services."""
     app = create_app()
-    
-    if hasattr(app, 'container'):
+
+    if hasattr(app, "container"):
         # Mock detection manager
         mock_detection_manager = MagicMock(spec=DetectionManager)
         mock_detection_manager.get_best_detections.return_value = []
         mock_detection_manager.get_all_detections.return_value = []
         app.container.detection_manager.override(mock_detection_manager)
-        
+
         # Mock reporting manager
         mock_reporting_manager = MagicMock(spec=ReportingManager)
         mock_reporting_manager.detection_manager = mock_detection_manager
         app.container.reporting_manager.override(mock_reporting_manager)
-        
+
         # Override file resolver
         app.container.file_resolver.override(file_path_resolver)
-    
+
     return app
 
 

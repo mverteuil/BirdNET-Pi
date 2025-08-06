@@ -33,27 +33,27 @@ def app_with_overview_services(file_path_resolver, temp_db):
     """Create FastAPI app with overview router dependencies."""
     # Create app using factory
     app = create_app()
-    
+
     # Override services with mocks or test instances
-    if hasattr(app, 'container'):
+    if hasattr(app, "container"):
         # Use real detection manager with temp database
         detection_manager = DetectionManager(DatabaseService(temp_db))
         app.container.detection_manager.override(detection_manager)
-        
+
         # Mock hardware monitor service
         mock_hardware_monitor = MagicMock(spec=HardwareMonitorService)
         mock_hardware_monitor.get_all_status.return_value = {
             "disk_usage": {"usage": 50.0, "used_gb": 50.0, "total_gb": 100.0, "free_gb": 50.0},
             "cpu_temperature": "45.2°C",
-            "memory_usage": {"percent": 40.0}
+            "memory_usage": {"percent": 40.0},
         }
         app.container.hardware_monitor_service.override(mock_hardware_monitor)
-        
+
         # Mock reporting manager that uses the detection manager
         mock_reporting_manager = MagicMock(spec=ReportingManager)
         mock_reporting_manager.detection_manager = detection_manager
         app.container.reporting_manager.override(mock_reporting_manager)
-    
+
     return app
 
 

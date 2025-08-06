@@ -17,4 +17,4 @@ async def get_field_mode(
     templates: Jinja2Templates = Depends(Provide[Container.templates]),
 ) -> HTMLResponse:
     """Render the field mode interface."""
-    return templates.TemplateResponse("field_mode.html", {"request": request})
+    return templates.TemplateResponse(request, "field_mode.html", {})

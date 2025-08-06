@@ -13,12 +13,12 @@ from birdnetpi.web.core.factory import create_app
 def app_with_system_router():
     """Create FastAPI app with system router and DI container."""
     app = create_app()
-    
-    if hasattr(app, 'container'):
+
+    if hasattr(app, "container"):
         # Mock hardware monitor service
         mock_hardware_monitor = MagicMock(spec=HardwareMonitorService)
         app.container.hardware_monitor_service.override(mock_hardware_monitor)
-    
+
     return app
 
 

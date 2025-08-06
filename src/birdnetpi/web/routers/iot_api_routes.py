@@ -9,7 +9,7 @@ from typing import Any
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from birdnetpi.services.mqtt_service import MQTTService
 from birdnetpi.services.webhook_service import WebhookConfig, WebhookService
@@ -47,15 +47,17 @@ class WebhookConfigRequest(BaseModel):
         description="Event types to send",
     )
 
-    @validator("url")
-    def validate_url(cls, v: str) -> str:  # noqa: N805
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: str) -> str:
         """Validate webhook URL format."""
         if not v.startswith(("http://", "https://")):
             raise ValueError("URL must start with http:// or https://")
         return v
 
-    @validator("events")
-    def validate_events(cls, v: list[str]) -> list[str]:  # noqa: N805
+    @field_validator("events")
+    @classmethod
+    def validate_events(cls, v: list[str]) -> list[str]:
         """Validate event types."""
         valid_events = {"detection", "health", "gps", "system", "test"}
         invalid_events = set(v) - valid_events
@@ -87,8 +89,9 @@ class WebhookTestRequest(BaseModel):
 
     url: str = Field(..., description="Webhook URL to test")
 
-    @validator("url")
-    def validate_url(cls, v: str) -> str:  # noqa: N805
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: str) -> str:
         """Validate webhook URL format."""
         if not v.startswith(("http://", "https://")):
             raise ValueError("URL must start with http:// or https://")

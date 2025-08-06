@@ -14,16 +14,16 @@ from birdnetpi.web.core.factory import create_app
 def app_with_iot_router():
     """Create FastAPI app with IoT router and DI container."""
     app = create_app()
-    
-    if hasattr(app, 'container'):
+
+    if hasattr(app, "container"):
         # Mock MQTT service
         mock_mqtt_service = MagicMock(spec=MQTTService)
         app.container.mqtt_service.override(mock_mqtt_service)
-        
+
         # Mock webhook service
         mock_webhook_service = MagicMock(spec=WebhookService)
         app.container.webhook_service.override(mock_webhook_service)
-    
+
     return app
 
 
@@ -52,7 +52,7 @@ class TestIoTEndpoints:
             "client_id": "birdnet-pi",
             "topic_prefix": "birdnet",
             "retry_count": 0,
-            "topics": {}
+            "topics": {},
         }
 
         response = client.get("/api/iot/mqtt/status")
@@ -76,7 +76,7 @@ class TestIoTEndpoints:
             "client_id": "",
             "topic_prefix": "",
             "retry_count": 0,
-            "topics": {}
+            "topics": {},
         }
 
         response = client.get("/api/iot/mqtt/status")
@@ -104,16 +104,16 @@ class TestIoTEndpoints:
                     "name": "webhook1",
                     "url": "http://example.com/webhook1",
                     "enabled": True,
-                    "events": ["detection", "health"]
+                    "events": ["detection", "health"],
                 },
                 {
-                    "name": "webhook2", 
+                    "name": "webhook2",
                     "url": "http://example.com/webhook2",
                     "enabled": True,
-                    "events": ["detection", "health"]
-                }
+                    "events": ["detection", "health"],
+                },
             ],
-            "statistics": {"sent": 10, "failed": 0}
+            "statistics": {"sent": 10, "failed": 0},
         }
 
         response = client.get("/api/iot/webhooks/status")
@@ -131,7 +131,7 @@ class TestIoTEndpoints:
             "enabled": False,
             "webhook_count": 0,
             "webhooks": [],
-            "statistics": {"sent": 0, "failed": 0}
+            "statistics": {"sent": 0, "failed": 0},
         }
 
         response = client.get("/api/iot/webhooks/status")
@@ -148,14 +148,14 @@ class TestIoTEndpoints:
         mqtt_service.enable_mqtt = True
         mqtt_service.is_connected = True
         mqtt_service.get_connection_status.return_value = {
-            "enabled": True, 
+            "enabled": True,
             "connected": True,
             "broker_host": "localhost",
             "broker_port": 1883,
             "client_id": "birdnet-pi",
             "topic_prefix": "birdnet",
             "retry_count": 0,
-            "topics": {}
+            "topics": {},
         }
         mqtt_service.publish_system_stats.return_value = True
 
@@ -164,17 +164,17 @@ class TestIoTEndpoints:
         webhook_service.enable_webhooks = True
         webhook_service.webhooks = ["http://example.com/webhook"]
         webhook_service.get_webhook_status.return_value = {
-            "enabled": True, 
+            "enabled": True,
             "webhook_count": 1,
             "webhooks": [
                 {
                     "name": "test_webhook",
                     "url": "http://example.com/webhook",
                     "enabled": True,
-                    "events": ["detection", "health"]
+                    "events": ["detection", "health"],
                 }
             ],
-            "statistics": {"sent": 5, "failed": 0}
+            "statistics": {"sent": 5, "failed": 0},
         }
         webhook_service.send_health_webhook.return_value = None
 
