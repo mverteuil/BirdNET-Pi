@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>BirdNET-Pi Reports</title>
+    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg"/>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <div class="dashboard" style="padding-top: 2rem;">
+      <div class="section-header">
+        <h1 class="section-title">Reports</h1>
+        <p class="section-subtitle">Analyze your bird detection data and patterns</p>
+        <div style="margin-top: 1rem;">
+          <a href="/" class="btn btn-secondary" style="margin-right: 1rem;">
+            <span>🏠</span> Back to Dashboard
+          </a>
+        </div>
+      </div>
+
+      <!-- Report Cards -->
+      <div class="actions-grid">
+        <a href="/reports/weekly" class="action-card">
+          <div class="action-icon">📈</div>
+          <div class="action-title">Weekly Report</div>
+          <div class="action-description">Summary and trends for the past week</div>
+        </a>
+        <a href="/reports/best" class="action-card">
+          <div class="action-icon">⭐</div>
+          <div class="action-title">Best Recordings</div>
+          <div class="action-description">Listen to high-confidence detections</div>
+        </a>
+        <a href="/reports/today" class="action-card">
+          <div class="action-icon">📅</div>
+          <div class="action-title">Today's Detections</div>
+          <div class="action-description">View all detections from today</div>
+        </a>
+        <a href="/reports/charts" class="action-card">
+          <div class="action-icon">📊</div>
+          <div class="action-title">Charts & Analytics</div>
+          <div class="action-description">Visual analysis of detection patterns</div>
+        </a>
+        <a href="/reports/detections" class="action-card">
+          <div class="action-icon">🔍</div>
+          <div class="action-title">All Detections</div>
+          <div class="action-description">Browse complete detection history</div>
+        </a>
+      </div>
+    </div>
+  </body>
+</html>

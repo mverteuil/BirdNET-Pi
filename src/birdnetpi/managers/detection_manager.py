@@ -140,7 +140,8 @@ class DetectionManager:
             try:
                 current_week_subquery = (
                     db.query(
-                        Detection.scientific_name,
+                        Detection.scientific_name.label("scientific_name"),
+                        func.coalesce(Detection.common_name_ioc, Detection.common_name_tensor, Detection.scientific_name).label("common_name"),
                         func.count(Detection.scientific_name).label("current_count"),
                     )
                     .filter(Detection.timestamp.between(start_date, end_date))
@@ -150,7 +151,7 @@ class DetectionManager:
 
                 prior_week_subquery = (
                     db.query(
-                        Detection.scientific_name,
+                        Detection.scientific_name.label("scientific_name"),
                         func.count(Detection.scientific_name).label("prior_count"),
                     )
                     .filter(Detection.timestamp.between(prior_start_date, prior_end_date))
@@ -160,13 +161,14 @@ class DetectionManager:
 
                 results = (
                     db.query(
-                        current_week_subquery.c.species,
+                        current_week_subquery.c.scientific_name,
+                        current_week_subquery.c.common_name,
                         current_week_subquery.c.current_count,
                         func.coalesce(prior_week_subquery.c.prior_count, 0).label("prior_count"),
                     )
                     .outerjoin(
                         prior_week_subquery,
-                        current_week_subquery.c.species == prior_week_subquery.c.species,
+                        current_week_subquery.c.scientific_name == prior_week_subquery.c.scientific_name,
                     )
                     .order_by(current_week_subquery.c.current_count.desc())
                     .limit(10)
@@ -175,7 +177,8 @@ class DetectionManager:
 
                 return [
                     {
-                        "species": row.scientific_name,
+                        "scientific_name": row.scientific_name,
+                        "common_name": row.common_name,
                         "current_count": row.current_count,
                         "prior_count": row.prior_count,
                     }
@@ -203,6 +206,7 @@ class DetectionManager:
                 new_species_results = (
                     db.query(
                         Detection.scientific_name,
+                        func.coalesce(Detection.common_name_ioc, Detection.common_name_tensor, Detection.scientific_name).label("common_name"),
                         func.count(Detection.scientific_name).label("count"),
                     )
                     .filter(
@@ -215,7 +219,7 @@ class DetectionManager:
                 )
 
                 return [
-                    {"species": row.scientific_name, "count": row.count}
+                    {"species": row.common_name, "count": row.count}
                     for row in new_species_results
                 ]
             except SQLAlchemyError as e:
@@ -235,7 +239,7 @@ class DetectionManager:
                         "Date": d.timestamp.strftime("%Y-%m-%d"),
                         "Time": d.timestamp.strftime("%H:%M:%S"),
                         "Sci_Name": d.scientific_name or "",
-                        "Com_Name": d.common_name_ioc or d.common_name_tensor or "",
+                        "common_name_ioc": d.common_name_ioc or d.common_name_tensor or "",
                         "Confidence": d.confidence,
                         "Lat": d.latitude,
                         "Lon": d.longitude,
@@ -285,7 +289,7 @@ class DetectionManager:
                         "Date": d.timestamp.strftime("%Y-%m-%d"),
                         "Time": d.timestamp.strftime("%H:%M:%S"),
                         "Sci_Name": d.scientific_name or "",
-                        "Com_Name": d.common_name_ioc or d.common_name_tensor or "",
+                        "common_name_ioc": d.common_name_ioc or d.common_name_tensor or "",
                         "Confidence": d.confidence,
                         "Lat": d.latitude,
                         "Lon": d.longitude,

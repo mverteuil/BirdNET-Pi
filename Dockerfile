@@ -84,9 +84,32 @@ ENV BIRDNET_ASSETS_VERSION=${BIRDNET_ASSETS_VERSION}
 
 # Download release assets with Docker cache based on version
 # This layer will be cached as long as the version doesn't change
-RUN --mount=type=cache,target=/tmp/asset-cache,id=birdnet-assets-${BIRDNET_ASSETS_VERSION} \
+# Download and install assets using cache
+USER root
+RUN --mount=type=cache,target=/tmp/asset-cache,id=birdnet-assets \
     echo "Installing BirdNET assets version: ${BIRDNET_ASSETS_VERSION}" && \
-    uv run asset-installer install "${BIRDNET_ASSETS_VERSION}" --include-models --include-ioc-db
+    mkdir -p /tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/models && \
+    mkdir -p /tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/database && \
+    chown -R birdnetpi:birdnetpi /tmp/asset-cache && \
+    if [ -d "/tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/models" ] && [ -n "$(ls -A /tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/models 2>/dev/null)" ] && \
+       [ -d "/tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/database" ] && [ -f "/tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/database/ioc_reference.db" ]; then \
+        echo "Using cached assets for version ${BIRDNET_ASSETS_VERSION}" && \
+        mkdir -p /var/lib/birdnetpi/models && \
+        mkdir -p /var/lib/birdnetpi/database && \
+        cp -r /tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/models/* /var/lib/birdnetpi/models/ && \
+        cp -r /tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/database/* /var/lib/birdnetpi/database/ && \
+        chown -R birdnetpi:birdnetpi /var/lib/birdnetpi && \
+        echo "Assets restored from cache successfully"; \
+    else \
+        echo "No cache found for version ${BIRDNET_ASSETS_VERSION}, downloading fresh assets" && \
+        su birdnetpi -c "cd /opt/birdnetpi && uv run asset-installer install \"${BIRDNET_ASSETS_VERSION}\" --include-models --include-ioc-db" && \
+        cp -r /var/lib/birdnetpi/models/* /tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/models/ && \
+        cp -r /var/lib/birdnetpi/database/* /tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/database/ && \
+        echo "Assets cached for future builds"; \
+    fi
+
+# Switch back to birdnetpi user
+USER birdnetpi
 
 # Add the BirdNET-Pi virtual environment to the PATH
 ENV PATH="/opt/birdnetpi/.venv/bin:${PATH}"

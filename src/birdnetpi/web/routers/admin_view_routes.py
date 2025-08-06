@@ -38,7 +38,7 @@ async def get_settings(
     """Render the settings page with the current configuration."""
     config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())
     app_config: BirdNETConfig = config_parser.load_config()
-    return templates.TemplateResponse(request, "settings.html", {"config": app_config})
+    return templates.TemplateResponse(request, "admin/settings.html", {"config": app_config})
 
 
 @router.post("/settings", response_class=HTMLResponse)
@@ -205,7 +205,7 @@ async def test_detection_form(
     templates: Jinja2Templates = Depends(Provide[Container.templates]),
 ) -> HTMLResponse:
     """Render the form for testing detections."""
-    return templates.TemplateResponse(request, "test_detection_modal.html", {})
+    return templates.TemplateResponse(request, "admin/test_detection_modal.html", {})
 
 
 @router.get("/test_detection")
@@ -278,4 +278,4 @@ async def get_advanced_settings(
     with open(config_parser.config_path) as f:
         config_yaml = f.read()
 
-    return templates.TemplateResponse(request, "yaml_editor.html", {"config_yaml": config_yaml})
+    return templates.TemplateResponse(request, "admin/yaml_editor.html", {"config_yaml": config_yaml})

@@ -35,7 +35,7 @@ class ReportingManager:
         detections = self.detection_manager.get_all_detections()
         data = [
             {
-                "Com_Name": d.common_name_ioc or d.common_name_tensor or "",
+                "common_name_ioc": d.common_name_ioc or d.common_name_tensor or "",
                 "DateTime": d.timestamp,
                 "Date": d.timestamp.strftime("%Y-%m-%d"),
                 "Time": d.timestamp.strftime("%H:%M:%S"),
@@ -58,7 +58,7 @@ class ReportingManager:
             # Create empty DataFrame with expected columns when no data
             # Create empty DataFrame with expected columns when no data
             column_names = [
-                "Com_Name",
+                "common_name_ioc",
                 "DateTime",
                 "Date",
                 "Time",
@@ -120,7 +120,7 @@ class ReportingManager:
 
                 top_10_species.append(
                     {
-                        "com_name": row["species"],
+                        "com_name": row["common_name"],
                         "count": current_count,
                         "percentage_diff": percentage_diff,
                     }
@@ -166,10 +166,32 @@ class ReportingManager:
     def get_weekly_report_data(self) -> dict[str, Any]:
         """Retrieve and process data for the weekly report."""
         today = datetime.date.today()
-        # Sunday of the week that just finished
-        last_sunday = today - datetime.timedelta(days=today.weekday() + 1)
-        start_date = last_sunday - datetime.timedelta(days=6)
-        end_date = last_sunday
+        
+        # Check if we have data for the current period
+        all_detections = self.detection_manager.get_all_detections()
+        
+        if all_detections:
+            # Get the date range of available data
+            detection_dates = [d.timestamp.date() for d in all_detections if isinstance(d.timestamp, datetime.datetime)]
+            if detection_dates:
+                # Use the most recent week with data
+                latest_date = max(detection_dates)
+                # Find the Sunday at or before the latest date
+                last_sunday = latest_date - datetime.timedelta(days=latest_date.weekday())
+                if latest_date.weekday() == 6:  # If latest_date is Sunday
+                    last_sunday = latest_date
+                start_date = last_sunday - datetime.timedelta(days=6)
+                end_date = last_sunday
+            else:
+                # Fallback to original logic if no valid dates
+                last_sunday = today - datetime.timedelta(days=today.weekday() + 1)
+                start_date = last_sunday - datetime.timedelta(days=6)
+                end_date = last_sunday
+        else:
+            # Original logic when no data
+            last_sunday = today - datetime.timedelta(days=today.weekday() + 1)
+            start_date = last_sunday - datetime.timedelta(days=6)
+            end_date = last_sunday
 
         # Calculate dates for the prior week
         prior_start_date = start_date - datetime.timedelta(days=7)
@@ -233,6 +255,19 @@ class ReportingManager:
             if isinstance(d.timestamp, datetime.datetime)
             and start_datetime <= d.timestamp <= end_datetime
         ]
+        
+        # If no detections for today, get the most recent day's detections for demo purposes
+        if not todays_detections and all_detections:
+            # Find the most recent date with detections
+            latest_date = max(d.timestamp.date() for d in all_detections if isinstance(d.timestamp, datetime.datetime))
+            start_datetime = datetime.datetime.combine(latest_date, datetime.time.min)
+            end_datetime = datetime.datetime.combine(latest_date, datetime.time.max)
+            todays_detections = [
+                d
+                for d in all_detections
+                if isinstance(d.timestamp, datetime.datetime)
+                and start_datetime <= d.timestamp <= end_datetime
+            ]
 
         # Convert Detection objects to dictionaries matching the template expectations
         return [
@@ -240,7 +275,7 @@ class ReportingManager:
                 "Date": d.timestamp.strftime("%Y-%m-%d") if d.timestamp else "",
                 "Time": d.timestamp.strftime("%H:%M:%S") if d.timestamp else "",
                 "Sci_Name": d.scientific_name or "",
-                "Com_Name": d.common_name_ioc or d.common_name_tensor or "",
+                "common_name_ioc": d.common_name_ioc or d.common_name_tensor or "",
                 "Confidence": d.confidence or 0,
                 "Lat": d.latitude or "",
                 "Lon": d.longitude or "",

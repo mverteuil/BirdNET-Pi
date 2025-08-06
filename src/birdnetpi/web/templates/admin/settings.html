@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>BirdNET-Pi Settings</title>
+    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg"/>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <div class="dashboard" style="padding-top: 2rem;">
+      <div class="section-header">
+        <h1 class="section-title">Settings</h1>
+        <p class="section-subtitle">Configure your BirdNET-Pi system</p>
+        <div style="margin-top: 1rem;">
+          <a href="/" class="btn btn-secondary" style="margin-right: 1rem;">
+            <span>🏠</span> Back to Dashboard
+          </a>
+          <a href="/admin/advanced-settings" class="btn btn-primary">
+            <span>⚙️</span> Advanced Settings
+          </a>
+        </div>
+      </div>
+
+      <form action="/admin/settings" method="post" class="settings-form">
+        <div class="dashboard-grid">
+          <!-- Basic Settings Card -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3 class="card-title">Basic Settings</h3>
+            </div>
+            <div class="form-group">
+              <label for="site_name">Site Name</label>
+              <input
+                type="text"
+                id="site_name"
+                name="site_name"
+                value="{{ config.site_name }}"
+                class="form-control"
+              />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="latitude">Latitude</label>
+                <input
+                  type="number"
+                  id="latitude"
+                  name="latitude"
+                  step="0.0001"
+                  value="{{ config.latitude }}"
+                  required
+                  class="form-control"
+                />
+              </div>
+              <div class="form-group">
+                <label for="longitude">Longitude</label>
+                <input
+                  type="number"
+                  id="longitude"
+                  name="longitude"
+                  step="0.0001"
+                  value="{{ config.longitude }}"
+                  required
+                  class="form-control"
+                />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="model">AI Model</label>
+              <input
+                type="text"
+                id="model"
+                name="model"
+                value="{{ config.model }}"
+                class="form-control"
+              />
+            </div>
+            <div class="form-group">
+              <label for="species_confidence_threshold">Species Confidence Threshold</label>
+              <input
+                type="number"
+                id="species_confidence_threshold"
+                name="species_confidence_threshold"
+                step="0.0001"
+                value="{{ config.species_confidence_threshold }}"
+                class="form-control"
+              />
+            </div>
+          </div>
+
+          <!-- BirdWeather Card -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3 class="card-title">BirdWeather Integration</h3>
+            </div>
+            <div class="form-group">
+              <label for="birdweather_id">BirdWeather ID</label>
+              <input
+                type="text"
+                id="birdweather_id"
+                name="birdweather_id"
+                value="{{ config.birdweather_id }}"
+                class="form-control"
+                placeholder="Your BirdWeather Station ID"
+              />
+            </div>
+          </div>
+
+          <!-- Notifications Card -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3 class="card-title">Notifications</h3>
+            </div>
+            <div class="form-group">
+              <label for="apprise_input">Apprise Configuration</label>
+              <textarea id="apprise_input" name="apprise_input" class="form-control" placeholder="Enter your Apprise notification URLs here">{{ config.apprise_input }}</textarea>
+            </div>
+            <div class="form-group">
+              <label for="apprise_notification_title">Notification Title</label>
+              <input
+                type="text"
+                id="apprise_notification_title"
+                name="apprise_notification_title"
+                value="{{ config.apprise_notification_title }}"
+                class="form-control"
+                placeholder="BirdNET-Pi Detection"
+              />
+            </div>
+            <div class="form-group">
+              <label for="apprise_notification_body">Notification Body</label>
+              <input
+                type="text"
+                id="apprise_notification_body"
+                name="apprise_notification_body"
+                value="{{ config.apprise_notification_body }}"
+                class="form-control"
+                placeholder="New species detected: {species}"
+              />
+            </div>
+
+            <!-- Notification Options -->
+            <div class="checkbox-group">
+              <input
+                type="checkbox"
+                id="apprise_notify_each_detection"
+                name="apprise_notify_each_detection"
+                class="form-control"
+                {% if config.apprise_notify_each_detection %}checked{% endif %}
+              />
+              <label for="apprise_notify_each_detection">Notify Each Detection</label>
+            </div>
+            <div class="checkbox-group">
+              <input
+                type="checkbox"
+                id="apprise_notify_new_species"
+                name="apprise_notify_new_species"
+                class="form-control"
+                {% if config.apprise_notify_new_species %}checked{% endif %}
+              />
+              <label for="apprise_notify_new_species">Notify New Species</label>
+            </div>
+            <div class="checkbox-group">
+              <input
+                type="checkbox"
+                id="apprise_notify_new_species_each_day"
+                name="apprise_notify_new_species_each_day"
+                class="form-control"
+                {% if config.apprise_notify_new_species_each_day %}checked{% endif %}
+              />
+              <label for="apprise_notify_new_species_each_day">Notify New Species Each Day</label>
+            </div>
+            <div class="checkbox-group">
+              <input
+                type="checkbox"
+                id="apprise_weekly_report"
+                name="apprise_weekly_report"
+                class="form-control"
+                {% if config.apprise_weekly_report %}checked{% endif %}
+              />
+              <label for="apprise_weekly_report">Weekly Report</label>
+            </div>
+
+            <div class="form-group">
+              <label for="minimum_time_limit">Minimum Time Limit (seconds)</label>
+              <input
+                type="number"
+                id="minimum_time_limit"
+                name="minimum_time_limit"
+                value="{{ config.minimum_time_limit }}"
+                class="form-control"
+                min="0"
+              />
+            </div>
+            <div class="form-group">
+              <label for="apprise_only_notify_species_names">Exclude Species (comma separated)</label>
+              <input
+                type="text"
+                id="apprise_only_notify_species_names"
+                name="apprise_only_notify_species_names"
+                value="{{ config.apprise_only_notify_species_names }}"
+                class="form-control"
+                placeholder="House Sparrow, European Starling"
+              />
+            </div>
+            <div class="form-group">
+              <label for="apprise_only_notify_species_names_2">ONLY Notify for Species (comma separated)</label>
+              <input
+                type="text"
+                id="apprise_only_notify_species_names_2"
+                name="apprise_only_notify_species_names_2"
+                value="{{ config.apprise_only_notify_species_names_2 }}"
+                class="form-control"
+                placeholder="Northern Cardinal, Blue Jay"
+              />
+            </div>
+          </div>
+
+          <!-- Flickr Card -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3 class="card-title">Flickr Integration</h3>
+            </div>
+            <div class="form-group">
+              <label for="flickr_api_key">Flickr API Key</label>
+              <input
+                type="text"
+                id="flickr_api_key"
+                name="flickr_api_key"
+                value="{{ config.flickr_api_key }}"
+                class="form-control"
+                placeholder="Your Flickr API key"
+              />
+            </div>
+            <div class="form-group">
+              <label for="flickr_filter_email">Flickr Filter Email</label>
+              <input
+                type="email"
+                id="flickr_filter_email"
+                name="flickr_filter_email"
+                value="{{ config.flickr_filter_email }}"
+                class="form-control"
+                placeholder="filter@example.com"
+              />
+            </div>
+          </div>
+
+          <!-- Localization Card -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3 class="card-title">Localization</h3>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="database_lang">Database Language</label>
+                <input
+                  type="text"
+                  id="database_lang"
+                  name="database_lang"
+                  value="{{ config.database_lang }}"
+                  class="form-control"
+                  placeholder="en"
+                />
+              </div>
+              <div class="form-group">
+                <label for="timezone">Timezone</label>
+                <input
+                  type="text"
+                  id="timezone"
+                  name="timezone"
+                  value="{{ config.timezone }}"
+                  class="form-control"
+                  placeholder="America/New_York"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Security & System Card -->
+          <div class="dashboard-card">
+            <div class="card-header">
+              <h3 class="card-title">Security & System</h3>
+            </div>
+            <div class="form-group">
+              <label for="caddy_pwd">Caddy Password</label>
+              <input
+                type="password"
+                id="caddy_pwd"
+                name="caddy_pwd"
+                value="{{ config.caddy_pwd }}"
+                class="form-control"
+                placeholder="Enter secure password"
+              />
+            </div>
+            <div class="form-group">
+              <label for="birdnetpi_url">BirdNET-Pi URL</label>
+              <input
+                type="url"
+                id="birdnetpi_url"
+                name="birdnetpi_url"
+                value="{{ config.birdnetpi_url }}"
+                class="form-control"
+                placeholder="http://192.168.1.100:8000"
+              />
+            </div>
+            <div class="checkbox-group">
+              <input
+                type="checkbox"
+                id="silence_update_indicator"
+                name="silence_update_indicator"
+                class="form-control"
+                {% if config.silence_update_indicator %}checked{% endif %}
+              />
+              <label for="silence_update_indicator">Silence Update Indicator</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="form-submit">
+          <button type="submit" class="btn btn-primary">
+            <span>💾</span> Save Settings
+          </button>
+        </div>
+      </form>
+    </div>
+  </body>
+</html>

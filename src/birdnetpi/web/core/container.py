@@ -64,7 +64,7 @@ class Container(containers.DeclarativeContainer):
 
     detection_manager = providers.Singleton(
         DetectionManager,
-        database_service=database_service,
+        db_service=database_service,
     )
 
     location_service = providers.Singleton(
@@ -161,7 +161,7 @@ class Container(containers.DeclarativeContainer):
     reporting_manager = providers.Factory(
         ReportingManager,
         detection_manager=detection_manager,
-        file_resolver=file_resolver,
+        file_path_resolver=file_resolver,
         config=config,
         plotting_manager=plotting_manager,
         data_preparation_manager=data_preparation_manager,
