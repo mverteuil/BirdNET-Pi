@@ -121,17 +121,24 @@ class SpectrogramService:
         # Check if we have enough samples for an update
         if len(self.audio_buffer) >= self.samples_per_update:
             logger.debug("Generating spectrogram with %d samples", len(self.audio_buffer))
-            spectrogram_data = await self._generate_spectrogram()
-            
-            # Send to FastAPI WebSocket clients if any are connected
-            if self.connected_websockets:
-                await self._send_to_websocket_clients(spectrogram_data)
+            try:
+                spectrogram_data = await self._generate_spectrogram()
+                
+                # Send to FastAPI WebSocket clients if any are connected
+                if self.connected_websockets:
+                    await self._send_to_websocket_clients(spectrogram_data)
 
-            # Keep some overlap for continuity
-            overlap_samples = int(self.samples_per_update * 0.25)
-            self.audio_buffer = self.audio_buffer[-overlap_samples:]
-            
-            return spectrogram_data
+                # Keep some overlap for continuity
+                overlap_samples = int(self.samples_per_update * 0.25)
+                self.audio_buffer = self.audio_buffer[-overlap_samples:]
+                
+                return spectrogram_data
+            except Exception as e:
+                logger.error("Error processing spectrogram: %s", e, exc_info=True)
+                # Still manage buffer to prevent memory issues
+                overlap_samples = int(self.samples_per_update * 0.25)
+                self.audio_buffer = self.audio_buffer[-overlap_samples:]
+                return None
         
         return None
 

@@ -75,18 +75,20 @@ class TestSpectrogramService:
 
     @pytest.mark.asyncio
     async def test_process_audio_chunk_no_clients(self, spectrogram_service):
-        """Test that processing returns early when no clients are connected."""
+        """Test that processing accumulates data but doesn't generate spectrograms when no clients are connected."""
         service = spectrogram_service
 
         # Create test audio data
         audio_samples = np.zeros(1000, dtype=np.int16)
         audio_bytes = audio_samples.tobytes()
 
-        # Process should return immediately with no clients
-        await service.process_audio_chunk(audio_bytes)
+        # Process should accumulate data even with no clients
+        result = await service.process_audio_chunk(audio_bytes)
 
-        # Buffer should still be empty since no processing occurred
-        assert len(service.audio_buffer) == 0
+        # Buffer should contain the audio data
+        assert len(service.audio_buffer) == 1000
+        # But no spectrogram should be generated (returns None)
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_process_audio_chunk_with_client(self, spectrogram_service, mock_websocket):
