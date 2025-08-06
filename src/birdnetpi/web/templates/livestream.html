@@ -120,9 +120,34 @@
         opacity: 0.9;
       }
 
-      .audio-player {
-        width: 100%;
+      .livestream-audio-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
         margin-top: 1rem;
+      }
+
+      .audio-volume-control {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .audio-volume-control label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+      }
+
+      .audio-volume-control input[type="range"] {
+        flex: 1;
+        max-width: 150px;
+      }
+
+      .audio-volume-control span {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        min-width: 40px;
       }
 
       .frequency-labels {
@@ -272,14 +297,16 @@
             <span class="card-badge badge-success">Streaming</span>
           </div>
           <div class="card-content">
-            <audio
-              id="audioPlayer"
-              controls
-              autoplay
-              class="audio-player"
-            >
-              Your browser does not support the audio element.
-            </audio>
+            <div class="livestream-audio-controls">
+              <button id="audioPlayBtn" class="btn btn-success" onclick="toggleAudioPlayback()" disabled>
+                <span id="audioPlayIcon">🔊</span> <span id="audioPlayText">Audio On</span>
+              </button>
+              <div class="audio-volume-control">
+                <label for="audioVolume">Volume:</label>
+                <input type="range" id="audioVolume" min="0" max="100" value="60" onchange="updateAudioVolume(this.value)">
+                <span id="volumeDisplay">60%</span>
+              </div>
+            </div>
 
             <div style="margin-top: 1.5rem">
               <h4 style="margin-bottom: 1rem">Connection Log</h4>
@@ -337,7 +364,11 @@
         connectSpectrogramBtn: document.getElementById("connectSpectrogramBtn"),
         disconnectSpectrogramBtn: document.getElementById("disconnectSpectrogramBtn"),
         messages: document.getElementById("messages"),
-        audioPlayer: document.getElementById("audioPlayer"),
+        audioPlayBtn: document.getElementById("audioPlayBtn"),
+        audioPlayIcon: document.getElementById("audioPlayIcon"),
+        audioPlayText: document.getElementById("audioPlayText"),
+        audioVolume: document.getElementById("audioVolume"),
+        volumeDisplay: document.getElementById("volumeDisplay"),
         maxFreqLabel: document.getElementById("maxFreqLabel"),
         midFreqLabel: document.getElementById("midFreqLabel"),
       };
@@ -383,6 +414,7 @@
           addMessage("Audio WebSocket connected");
           elements.connectAudioBtn.disabled = true;
           elements.disconnectAudioBtn.disabled = false;
+          elements.audioPlayBtn.disabled = false;
         };
 
         audioWs.onmessage = function (event) {
@@ -402,6 +434,7 @@
           addMessage(`Audio WebSocket disconnected: ${event.code}`);
           elements.connectAudioBtn.disabled = false;
           elements.disconnectAudioBtn.disabled = true;
+          elements.audioPlayBtn.disabled = true;
         };
 
         audioWs.onerror = function (error) {
@@ -409,6 +442,7 @@
           addMessage("Audio WebSocket error");
           elements.connectAudioBtn.disabled = false;
           elements.disconnectAudioBtn.disabled = true;
+          elements.audioPlayBtn.disabled = true;
         };
       }
 
@@ -417,8 +451,16 @@
           audioWs.close();
           audioWs = null;
         }
+        
+        // Stop current audio playback
+        if (currentAudio && !currentAudio.ended) {
+          currentAudio.pause();
+          currentAudio.currentTime = 0;
+        }
+        
         elements.connectAudioBtn.disabled = false;
         elements.disconnectAudioBtn.disabled = true;
+        elements.audioPlayBtn.disabled = true;
         addMessage("Disconnected from audio stream");
       }
 
@@ -499,58 +541,72 @@
       }
 
       // Audio player management
-      let audioQueue = [];
-      let isAudioPlaying = false;
-      let audioMuted = false;
+      let audioEnabled = true;
+      let audioVolume = 0.6;
+      let currentAudio = null;
 
       function handleAudioData(audioBlob) {
-        // Add to queue for managed playback
-        audioQueue.push(audioBlob);
-        
-        // Process queue if not already playing
-        if (!isAudioPlaying) {
-          processAudioQueue();
-        }
-      }
-
-      function processAudioQueue() {
-        if (audioQueue.length === 0 || audioMuted) {
-          isAudioPlaying = false;
+        if (!audioEnabled) {
           return;
         }
-
-        isAudioPlaying = true;
-        const audioBlob = audioQueue.shift();
         
-        // Create a blob URL and play the audio chunk
+        // Stop previous audio if still playing to prevent overlap
+        if (currentAudio && !currentAudio.ended) {
+          currentAudio.pause();
+          currentAudio.currentTime = 0;
+        }
+        
+        // Create and play new audio chunk immediately for real-time streaming
         const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        audio.volume = elements.audioPlayer.muted ? 0 : 0.6;
+        currentAudio = new Audio(audioUrl);
+        currentAudio.volume = audioVolume;
         
-        audio.play().catch((e) => {
+        currentAudio.play().catch((e) => {
           console.log("Audio play error:", e);
-          isAudioPlaying = false;
-          processAudioQueue(); // Try next in queue
         });
 
-        // Clean up and continue queue
-        audio.addEventListener("ended", () => {
+        // Clean up the blob URL after playback
+        currentAudio.addEventListener("ended", () => {
           URL.revokeObjectURL(audioUrl);
-          isAudioPlaying = false;
-          processAudioQueue();
         });
       }
 
-      // Connect audio player controls to stream
-      function setupAudioPlayerControls() {
-        elements.audioPlayer.addEventListener("volumechange", function() {
-          audioMuted = this.muted;
-          if (audioMuted) {
-            // Clear audio queue when muted
-            audioQueue = [];
-            isAudioPlaying = false;
+      function toggleAudioPlayback() {
+        audioEnabled = !audioEnabled;
+        
+        if (audioEnabled) {
+          elements.audioPlayIcon.textContent = "🔊";
+          elements.audioPlayText.textContent = "Audio On";
+          elements.audioPlayBtn.className = "btn btn-success";
+          addMessage("Audio playback enabled");
+        } else {
+          elements.audioPlayIcon.textContent = "🔇";
+          elements.audioPlayText.textContent = "Audio Off";  
+          elements.audioPlayBtn.className = "btn btn-secondary";
+          
+          // Stop current audio
+          if (currentAudio && !currentAudio.ended) {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
           }
-        });
+          addMessage("Audio playback disabled");
+        }
+      }
+
+      function updateAudioVolume(value) {
+        audioVolume = value / 100;
+        elements.volumeDisplay.textContent = value + "%";
+        
+        // Update current audio if playing
+        if (currentAudio) {
+          currentAudio.volume = audioVolume;
+        }
+      }
+
+      // Setup audio controls
+      function setupAudioPlayerControls() {
+        // Enable audio play button when audio is connected
+        // (this will be called from connectAudio function)
       }
 
       function handleSpectrogramConfig(configData) {
