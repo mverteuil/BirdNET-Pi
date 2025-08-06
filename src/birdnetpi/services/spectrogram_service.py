@@ -102,7 +102,7 @@ class SpectrogramService:
         Returns:
             dict | None: Spectrogram data dict if generated, None if not ready
         """
-        logger.info(
+        logger.debug(
             "Processing audio chunk: %d bytes for %d client(s)",
             len(audio_data_bytes),
             len(self.connected_websockets)
@@ -120,7 +120,7 @@ class SpectrogramService:
 
         # Check if we have enough samples for an update
         if len(self.audio_buffer) >= self.samples_per_update:
-            logger.info("Generating spectrogram with %d samples", len(self.audio_buffer))
+            logger.debug("Generating spectrogram with %d samples", len(self.audio_buffer))
             spectrogram_data = await self._generate_spectrogram()
             
             # Send to FastAPI WebSocket clients if any are connected
@@ -163,8 +163,11 @@ class SpectrogramService:
                 # Convert to dB scale for better visualization
                 spectrogram_db = 20 * np.log10(np.maximum(spectrogram, 1e-10))
                 
+                # Transpose so data is [time][frequency] for JavaScript indexing
+                spectrogram_transposed = spectrogram_db.T  # Now shape is (time, frequency)
+                
                 # Convert numpy array to list for JSON (this is also expensive)
-                return spectrogram_db.tolist(), spectrogram_db.shape
+                return spectrogram_transposed.tolist(), spectrogram_transposed.shape
 
             # Run the CPU-intensive computation in a thread pool
             loop = asyncio.get_event_loop()

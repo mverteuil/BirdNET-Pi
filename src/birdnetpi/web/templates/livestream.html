@@ -14,10 +14,12 @@
         margin-bottom: 2rem;
       }
 
-      @media (min-width: 1024px) {
-        .stream-container {
-          grid-template-columns: 1fr 1fr;
-        }
+      .spectrogram-card {
+        order: 1; /* Show spectrogram first */
+      }
+
+      .detections-card {
+        order: 2; /* Show detections below spectrogram */
       }
 
       .spectrogram-card {
@@ -31,7 +33,7 @@
       #spectrogramCanvas {
         width: 100%;
         height: 400px;
-        background-color: #000;
+        background-color: #fff;
         border-radius: 8px;
         border: 1px solid var(--border-color);
       }
@@ -162,11 +164,44 @@
       }
 
       .frequency-labels {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 0.5rem;
+        position: absolute;
+        height: 400px; /* Match canvas height */
+        width: 60px;
+        left: 0px; /* Align with canvas left edge */
+        top: 0;
         font-size: 0.75rem;
         color: var(--text-secondary);
+        pointer-events: none; /* Allow clicks through to canvas */
+      }
+
+      .freq-label-top {
+        position: absolute;
+        top: 0;
+        left: 5px;
+        transform: translateY(-50%);
+        background: rgba(255,255,255,0.8);
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+
+      .freq-label-mid {
+        position: absolute;
+        top: 50%;
+        left: 5px;
+        transform: translateY(-50%);
+        background: rgba(255,255,255,0.8);
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+
+      .freq-label-bottom {
+        position: absolute;
+        bottom: 0;
+        left: 5px;
+        transform: translateY(50%);
+        background: rgba(255,255,255,0.8);
+        padding: 2px 4px;
+        border-radius: 3px;
       }
 
       .messages-container {
@@ -349,11 +384,13 @@
               </div>
             </div>
 
-            <canvas id="spectrogramCanvas"></canvas>
-            <div class="frequency-labels">
-              <span>0 Hz</span>
-              <span id="midFreqLabel">6 kHz</span>
-              <span id="maxFreqLabel">12 kHz</span>
+            <div class="spectrogram-container" style="position: relative;">
+              <canvas id="spectrogramCanvas"></canvas>
+              <div class="frequency-labels">
+                <div class="freq-label-top" id="maxFreqLabel">12 kHz</div>
+                <div class="freq-label-mid" id="midFreqLabel">6 kHz</div>
+                <div class="freq-label-bottom">0 Hz</div>
+              </div>
             </div>
           </div>
         </div>
@@ -388,15 +425,143 @@
       let audioWs = null;
       let spectrogramWs = null;
 
-      // Canvas and drawing context
+      // Canvas and WebGL context for high-performance rendering
       const canvas = document.getElementById("spectrogramCanvas");
-      const ctx = canvas.getContext("2d");
+      let gl = null;
+      let webglProgram = null;
+      let webglTexture = null;
+      let webglBuffer = null;
+      let webglPositionAttribute = null;
+      let webglTexCoordAttribute = null;
+      let webglTextureUniform = null;
+      
+      // Initialize WebGL context and shaders
+      function initWebGL() {
+        gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        
+        if (!gl) {
+          console.error('WebGL not supported, falling back to Canvas 2D');
+          // Fallback to 2D context
+          const ctx = canvas.getContext("2d");
+          return false;
+        }
+        
+        // Vertex shader for full-screen quad
+        const vertexShaderSource = `
+          attribute vec2 position;
+          attribute vec2 texCoord;
+          varying vec2 vTexCoord;
+          void main() {
+            gl_Position = vec4(position, 0.0, 1.0);
+            vTexCoord = texCoord;
+          }
+        `;
+        
+        // Fragment shader with black on white (Merlin/Macaulay Library style)
+        const fragmentShaderSource = `
+          precision mediump float;
+          uniform sampler2D uTexture;
+          varying vec2 vTexCoord;
+          void main() {
+            float intensity = texture2D(uTexture, vTexCoord).r;
+            
+            // Black on white: high intensity = black, low intensity = white
+            float grayValue = 1.0 - intensity; // High intensity = dark (lower grayValue towards black)
+            vec3 color = vec3(grayValue, grayValue, grayValue);
+            
+            gl_FragColor = vec4(color, 1.0);
+          }
+        `;
+        
+        // Create and compile shaders
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+        
+        if (!vertexShader || !fragmentShader) {
+          return false;
+        }
+        
+        // Create program
+        webglProgram = createProgram(gl, vertexShader, fragmentShader);
+        if (!webglProgram) {
+          return false;
+        }
+        
+        // Get attribute and uniform locations
+        webglPositionAttribute = gl.getAttribLocation(webglProgram, 'position');
+        webglTexCoordAttribute = gl.getAttribLocation(webglProgram, 'texCoord');
+        webglTextureUniform = gl.getUniformLocation(webglProgram, 'uTexture');
+        
+        // Create buffer for full-screen quad
+        webglBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, webglBuffer);
+        
+        // Full-screen quad vertices with texture coordinates
+        const vertices = new Float32Array([
+          -1.0, -1.0, 0.0, 0.0,  // Bottom-left
+           1.0, -1.0, 1.0, 0.0,  // Bottom-right
+          -1.0,  1.0, 0.0, 1.0,  // Top-left
+           1.0,  1.0, 1.0, 1.0,  // Top-right
+        ]);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+        
+        // Create texture for spectrogram data
+        webglTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, webglTexture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        
+        console.log('WebGL initialized successfully');
+        return true;
+      }
+      
+      function createShader(gl, type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.error('Shader compilation error:', gl.getShaderInfoLog(shader));
+          gl.deleteShader(shader);
+          return null;
+        }
+        
+        return shader;
+      }
+      
+      function createProgram(gl, vertexShader, fragmentShader) {
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          console.error('Program linking error:', gl.getProgramInfoLog(program));
+          gl.deleteProgram(program);
+          return null;
+        }
+        
+        return program;
+      }
 
-      // Set canvas size
+      // Set canvas size and initialize WebGL
       function resizeCanvas() {
         const container = canvas.parentElement;
         canvas.width = container.clientWidth - 32; // Account for padding
         canvas.height = 400;
+        
+        // Initialize WebGL if not already done
+        if (!gl) {
+          initWebGL();
+        }
+        
+        // Set WebGL viewport
+        if (gl) {
+          gl.viewport(0, 0, canvas.width, canvas.height);
+        }
+        
         drawSpectrogram(); // Redraw when resized
       }
 
@@ -522,7 +687,7 @@
             // Convert Blob to ArrayBuffer for PCM processing
             event.data.arrayBuffer().then(handlePCMData);
           } else {
-            addMessage("Audio: " + event.data);
+            console.log("Audio non-PCM data:", event.data);
           }
         };
 
@@ -607,7 +772,7 @@
               handleSpectrogramData(data);
             }
           } catch (e) {
-            addMessage("Spectrogram: " + event.data);
+            console.log("Spectrogram parse error:", e);
           }
         };
 
@@ -637,7 +802,18 @@
         }
 
         // Clear the canvas and data
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const canvas = document.getElementById('spectrogramCanvas');
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+          }
+        }
+        // Also clear WebGL if using WebGL
+        if (webglRenderer && webglRenderer.gl) {
+          const gl = webglRenderer.gl;
+          gl.clear(gl.COLOR_BUFFER_BIT);
+        }
         spectrogramHistory = [];
 
         elements.spectrogramToggleBtn.disabled = false;
@@ -812,7 +988,7 @@
         notificationsWs = new WebSocket(wsUrl);
         
         notificationsWs.onopen = function(event) {
-          addMessage("Notifications WebSocket connected");
+          // addMessage("Notifications WebSocket connected");
         };
         
         notificationsWs.onmessage = function(event) {
@@ -830,7 +1006,7 @@
         };
         
         notificationsWs.onclose = function(event) {
-          addMessage("Notifications WebSocket disconnected");
+          // addMessage("Notifications WebSocket disconnected");
           // Auto-reconnect after a delay
           setTimeout(connectNotifications, 5000);
         };
@@ -842,7 +1018,7 @@
 
       function handleSpectrogramConfig(configData) {
         config = configData;
-        addMessage(`Spectrogram config: ${config.sample_rate}Hz, window=${config.window_size}`);
+        // addMessage(`Spectrogram config: ${config.sample_rate}Hz, window=${config.window_size}`);
         updateFrequencyLabels();
       }
 
@@ -863,31 +1039,75 @@
         }
         lastUpdateTime = now;
 
+        // IMPORTANT: Limit history size BEFORE adding new data to prevent accumulation
+        const targetSlices = Math.ceil(timeWindow * config.update_rate); // Target ~150 slices for 10s at 15Hz
+        
+        // Aggressively prune old data first
+        if (spectrogramHistory.length > targetSlices * 0.7) {
+          spectrogramHistory = spectrogramHistory.slice(-Math.floor(targetSlices * 0.7));
+        }
+
         // Handle 2D spectrogram data: data.data is [freq_bins][time_slices]
         // Convert to format expected by drawing code: array of time slices
         if (data.data && data.shape && data.shape.length === 2) {
-          const [freqBins, timeSlices] = data.shape;
+          const [timeSlices, freqBins] = data.shape;  // After Python .T transpose: (time, frequency)
           const spectrogramMatrix = data.data;
           
-          // Convert from [freqBins][timeSlices] to array of timeSlice arrays
-          for (let timeIndex = 0; timeIndex < timeSlices; timeIndex++) {
-            const timeSliceData = [];
-            for (let freqIndex = 0; freqIndex < freqBins; freqIndex++) {
-              timeSliceData.push(spectrogramMatrix[freqIndex][timeIndex]);
+          // Debug data format (limit to once per 100 messages to avoid spam)
+          if (Math.random() < 0.01) {
+            console.log('Spectrogram data format:', {
+              shape: data.shape,
+              dataType: Array.isArray(spectrogramMatrix) ? 'array' : typeof spectrogramMatrix,
+              dataLength: spectrogramMatrix?.length,
+              firstElementType: Array.isArray(spectrogramMatrix?.[0]) ? 'array' : typeof spectrogramMatrix?.[0],
+              firstElementLength: spectrogramMatrix?.[0]?.length,
+              timeSlices: timeSlices,
+              freqBins: freqBins
+            });
+          }
+          
+          // Safety check: ensure spectrogramMatrix is an array
+          if (!Array.isArray(spectrogramMatrix) || spectrogramMatrix.length === 0) {
+            console.log("Invalid spectrogram matrix format");
+            return;
+          }
+          
+          // Limit the number of new slices we add per message to prevent flooding
+          const maxNewSlices = Math.min(timeSlices, spectrogramMatrix.length, 10);
+          
+          // Convert from [timeSlices][freqBins] to array of timeSlice arrays  
+          for (let timeIndex = 0; timeIndex < maxNewSlices; timeIndex++) {
+            const timeSlice = spectrogramMatrix[timeIndex];
+            if (!Array.isArray(timeSlice)) {
+              // This might happen if the data structure is different than expected
+              if (Math.random() < 0.1) {  // Log occasionally
+                console.log(`Time slice ${timeIndex} is not an array:`, typeof timeSlice);
+              }
+              continue;
             }
+            
+            if (timeSlice.length !== freqBins) {
+              // This might happen if frequency bins don't match expected count
+              if (Math.random() < 0.1) {  // Log occasionally
+                console.log(`Time slice ${timeIndex} length mismatch:`, timeSlice.length, 'vs expected', freqBins);
+              }
+              continue;
+            }
+            
+            // Copy the frequency data for this time slice
+            const timeSliceData = [...timeSlice];  // Shallow copy is sufficient for numbers
             
             spectrogramHistory.push({
               data: timeSliceData,
-              timestamp: now + (timeIndex * 1000 / 15), // Spread time slices
+              timestamp: now - (maxNewSlices - timeIndex - 1) * (1000 / config.update_rate),
             });
           }
         }
 
-        // Limit history based on time window
-        const cutoffTime = now - timeWindow * 1000;
-        spectrogramHistory = spectrogramHistory.filter(
-          (item) => item.timestamp > cutoffTime
-        );
+        // Final safety check - hard limit to prevent any accumulation
+        if (spectrogramHistory.length > targetSlices) {
+          spectrogramHistory = spectrogramHistory.slice(-targetSlices);
+        }
 
         // Draw the spectrogram
         drawSpectrogram();
@@ -896,11 +1116,95 @@
       function drawSpectrogram() {
         if (spectrogramHistory.length === 0) return;
 
+        // Try WebGL first, fallback to Canvas if WebGL unavailable
+        if (gl && webglProgram) {
+          drawSpectrogramWebGL();
+        } else {
+          drawSpectrogramCanvas();
+        }
+      }
+
+      function drawSpectrogramWebGL() {
+        const timeSlices = spectrogramHistory.length;
+        if (timeSlices === 0) return;
+
+        // Get the frequency range to display
+        const maxFreqIndex = config.freq_bins.length > 0 ? 
+          Math.floor((maxFrequency / (config.sample_rate / 2)) * config.freq_bins.length) : 
+          spectrogramHistory[0].data.length;
+
+        const freqBins = Math.min(spectrogramHistory[0].data.length, maxFreqIndex);
+
+        // Create texture data (RGBA format)
+        const textureWidth = timeSlices;
+        const textureHeight = freqBins;
+        const textureData = new Uint8Array(textureWidth * textureHeight * 4);
+
+        // Fill texture data from spectrogram history
+        spectrogramHistory.forEach((item, timeIndex) => {
+          const spectrogramData = item.data;
+          if (!spectrogramData || !Array.isArray(spectrogramData)) return;
+
+          for (let freqIndex = 0; freqIndex < freqBins; freqIndex++) {
+            const magnitude = spectrogramData[freqIndex];
+
+            // Convert magnitude to normalized intensity (0-1)
+            const normalizedMagnitude = Math.max(0, Math.min(1, 
+              ((magnitude + 60) / 60) * (colorScale / 50) // Assuming -60dB to 0dB range
+            ));
+
+            // Calculate texture index (freqIndex 0 = low freq should be at bottom of texture)
+            const texelIndex = (freqIndex * textureWidth + timeIndex) * 4;
+
+            // Store normalized intensity in red channel (fragment shader will colorize)
+            textureData[texelIndex] = Math.floor(normalizedMagnitude * 255);     // R
+            textureData[texelIndex + 1] = 0;                                     // G (unused)
+            textureData[texelIndex + 2] = 0;                                     // B (unused) 
+            textureData[texelIndex + 3] = 255;                                   // A (opaque)
+          }
+        });
+
+        // Upload texture data to GPU
+        gl.bindTexture(gl.TEXTURE_2D, webglTexture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, textureWidth, textureHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, textureData);
+
+        // Clear and render with white background
+        gl.clearColor(1.0, 1.0, 1.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.useProgram(webglProgram);
+
+        // Bind vertex buffer and set attributes
+        gl.bindBuffer(gl.ARRAY_BUFFER, webglBuffer);
+        
+        gl.enableVertexAttribArray(webglPositionAttribute);
+        gl.vertexAttribPointer(webglPositionAttribute, 2, gl.FLOAT, false, 16, 0);
+        
+        gl.enableVertexAttribArray(webglTexCoordAttribute);
+        gl.vertexAttribPointer(webglTexCoordAttribute, 2, gl.FLOAT, false, 16, 8);
+
+        // Bind texture and set uniform
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, webglTexture);
+        gl.uniform1i(webglTextureUniform, 0);
+
+        // Render full-screen quad
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      }
+
+      function drawSpectrogramCanvas() {
+        // Fallback Canvas 2D implementation
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        
+        // Disable image smoothing for pixel-perfect rendering
+        ctx.imageSmoothingEnabled = false;
+
         const width = canvas.width;
         const height = canvas.height;
 
-        // Clear canvas with dark background
-        ctx.fillStyle = "#000000";
+        // Clear canvas with white background (Merlin/Macaulay Library style)
+        ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, width, height);
 
         // Calculate dimensions
@@ -928,31 +1232,15 @@
               ((magnitude + 60) / 60) * (colorScale / 50) // Assuming -60dB to 0dB range
             ));
 
-            // Create color gradient (blue -> green -> yellow -> red)
-            let r, g, b;
-            if (normalizedMagnitude < 0.25) {
-              r = 0;
-              g = 0;
-              b = Math.floor(255 * (normalizedMagnitude * 4));
-            } else if (normalizedMagnitude < 0.5) {
-              r = 0;
-              g = Math.floor(255 * ((normalizedMagnitude - 0.25) * 4));
-              b = 255;
-            } else if (normalizedMagnitude < 0.75) {
-              r = Math.floor(255 * ((normalizedMagnitude - 0.5) * 4));
-              g = 255;
-              b = Math.floor(255 * (1 - (normalizedMagnitude - 0.5) * 4));
-            } else {
-              r = 255;
-              g = Math.floor(255 * (1 - (normalizedMagnitude - 0.75) * 4));
-              b = 0;
-            }
+            // Black on white grayscale (Merlin/Macaulay Library style)
+            // High magnitude = dark/black, low magnitude = light/white
+            const grayValue = Math.floor(255 * (1 - normalizedMagnitude));
+            
+            ctx.fillStyle = `rgb(${grayValue},${grayValue},${grayValue})`;
 
-            ctx.fillStyle = `rgb(${r},${g},${b})`;
-
-            // Draw rectangle (frequency is inverted - high frequencies at top)
+            // Draw rectangle (low frequencies at bottom, high frequencies at top)
             const x = timeIndex * sliceWidth;
-            const y = height - ((freqIndex + 1) / freqBins) * height;
+            const y = (freqIndex / freqBins) * height;  // freqIndex 0 (low freq) at y=0 (bottom)
             const rectHeight = Math.max(1, height / freqBins);
 
             ctx.fillRect(x, y, Math.ceil(sliceWidth), Math.ceil(rectHeight));
@@ -994,7 +1282,7 @@
         updateFrequencyLabels();
         setupAudioPlayerControls();
         connectNotifications();
-        addMessage("Page loaded. Use individual Connect buttons to start audio and/or spectrogram streaming.");
+        // addMessage("Page loaded. Use individual Connect buttons to start audio and/or spectrogram streaming.");
       });
 
       // Handle window resize
@@ -1003,9 +1291,9 @@
       // Handle page visibility changes
       document.addEventListener("visibilitychange", function () {
         if (document.hidden) {
-          addMessage("Page hidden - maintaining connections");
+          // addMessage("Page hidden - maintaining connections");
         } else if (!document.hidden) {
-          addMessage("Page visible - connections active");
+          // addMessage("Page visible - connections active");
           // Redraw in case canvas was cleared
           if (spectrogramHistory.length > 0) {
             drawSpectrogram();
