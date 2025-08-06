@@ -61,7 +61,8 @@ class TestSQLAdminViewRoutes:
         result = setup_sqladmin(app)
         
         # Verify Admin was instantiated with correct parameters
-        mock_admin_class.assert_called_once_with(app, mock_engine, base_url="/admin-db")
+        mock_admin_class.assert_called_once_with(app, mock_engine,
+                                                 base_url="/admin/database")
         
         # Verify model views were added
         assert mock_admin_instance.add_view.call_count == 2

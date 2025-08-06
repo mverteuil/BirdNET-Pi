@@ -34,7 +34,7 @@ def test_sqladmin_detection_list_e2e(docker_compose_up_down: Any) -> None:
         ["docker", "exec", "birdnet-pi", "/opt/birdnetpi/.venv/bin/generate-dummy-data"], check=True
     )
 
-    response = httpx.get("http://localhost:8000/admin-db/detection/list")
+    response = httpx.get("http://localhost:8000/admin/database/detection/list")
     assert response.status_code == 200
     assert "Detections" in response.text
 
