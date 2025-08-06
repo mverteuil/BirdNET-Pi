@@ -1,58 +1,78 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>All Detections - BirdNET-Pi Reports</title>
-    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg"/>
+    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg" />
     <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
     <!-- Navigation -->
-    <div class="dashboard" style="padding-top: 2rem;">
+    <div class="dashboard" style="padding-top: 2rem">
       <div class="section-header">
         <h1 class="section-title">All Detections</h1>
         <p class="section-subtitle">Complete history of bird detections</p>
-        <div style="margin-top: 1rem;">
-          <a href="/reports" class="btn btn-secondary" style="margin-right: 1rem;">
+        <div style="margin-top: 1rem">
+          <a
+            href="/reports"
+            class="btn btn-secondary"
+            style="margin-right: 1rem"
+          >
             <span>📊</span> Back to Reports
           </a>
-          <a href="/" class="btn btn-secondary">
-            <span>🏠</span> Dashboard
-          </a>
+          <a href="/" class="btn btn-secondary"> <span>🏠</span> Dashboard </a>
         </div>
       </div>
 
       {% if all_detections %}
       <!-- Statistics Summary -->
-      <div class="hero-stats" style="margin-bottom: 3rem;">
+      <div class="hero-stats" style="margin-bottom: 3rem">
         <div class="stat-item">
           <span class="stat-value">{{ all_detections|length }}</span>
           <span class="stat-label">Total Detections</span>
         </div>
         <div class="stat-item">
-          <span class="stat-value">{{ all_detections|map(attribute='common_name_ioc')|unique|list|length }}</span>
+          <span class="stat-value"
+            >{{
+            all_detections|map(attribute='common_name_ioc')|unique|list|length
+            }}</span
+          >
           <span class="stat-label">Unique Species</span>
         </div>
         <div class="stat-item">
-          <span class="stat-value">{{ "%.1f"|format((all_detections|map(attribute='Confidence')|sum / all_detections|length * 100)) }}%</span>
+          <span class="stat-value"
+            >{{ "%.1f"|format((all_detections|map(attribute='Confidence')|sum /
+            all_detections|length * 100)) }}%</span
+          >
           <span class="stat-label">Avg Confidence</span>
         </div>
       </div>
 
       <!-- Search and Filter Controls -->
-      <div class="dashboard-card" style="margin-bottom: 2rem;">
+      <div class="dashboard-card" style="margin-bottom: 2rem">
         <div class="card-header">
           <h3 class="card-title">Filter & Search</h3>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label for="species-filter">Species Filter</label>
-            <input type="text" id="species-filter" class="form-control" placeholder="Type to filter species..." onkeyup="filterDetections()">
+            <input
+              type="text"
+              id="species-filter"
+              class="form-control"
+              placeholder="Type to filter species..."
+              onkeyup="filterDetections()"
+            />
           </div>
           <div class="form-group">
             <label for="date-filter">Date Filter</label>
-            <input type="date" id="date-filter" class="form-control" onchange="filterDetections()">
+            <input
+              type="date"
+              id="date-filter"
+              class="form-control"
+              onchange="filterDetections()"
+            />
           </div>
         </div>
       </div>
@@ -61,38 +81,56 @@
       <div class="dashboard-card">
         <div class="card-header">
           <h3 class="card-title">Detection History</h3>
-          <span class="card-badge badge-success" id="visible-count">{{ all_detections|length }} detections</span>
+          <span class="card-badge badge-success" id="visible-count"
+            >{{ all_detections|length }} detections</span
+          >
         </div>
-        <div class="detection-feed" id="detection-list" style="max-height: 70vh; overflow-y: auto;">
+        <div
+          class="detection-feed"
+          id="detection-list"
+          style="max-height: 70vh; overflow-y: auto"
+        >
           {% for detection in all_detections %}
-          <div class="detection-item" data-species="{{ detection.common_name_ioc|lower }}" data-date="{{ detection.Date }}">
+          <div
+            class="detection-item"
+            data-species="{{ detection.common_name_ioc|lower }}"
+            data-date="{{ detection.Date }}"
+          >
             <div class="detection-info">
-              <div class="detection-species">{{ detection.common_name_ioc or detection.Sci_Name }}</div>
+              <div class="detection-species">
+                {{ detection.common_name_ioc or detection.Sci_Name }}
+              </div>
               <div class="detection-time">
-                {{ detection.Date }} {{ detection.Time }}
-                {% if detection.Sci_Name and detection.common_name_ioc %}
-                - <em>{{ detection.Sci_Name }}</em>
-                {% endif %}
-                {% if detection.Lat and detection.Lon %}
-                - 📍 {{ "%.4f"|format(detection.Lat) }}, {{ "%.4f"|format(detection.Lon) }}
-                {% endif %}
+                {{ detection.Date }} {{ detection.Time }} {% if
+                detection.Sci_Name and detection.common_name_ioc %} -
+                <em>{{ detection.Sci_Name }}</em>
+                {% endif %} {% if detection.Lat and detection.Lon %} - 📍 {{
+                "%.4f"|format(detection.Lat) }}, {{ "%.4f"|format(detection.Lon)
+                }} {% endif %}
               </div>
             </div>
-            <div class="detection-confidence">{{ "%.1f"|format(detection.Confidence * 100) }}%</div>
+            <div class="detection-confidence">
+              {{ "%.1f"|format(detection.Confidence * 100) }}%
+            </div>
           </div>
           {% endfor %}
         </div>
       </div>
       {% else %}
       <!-- No detections message -->
-      <div class="dashboard-card" style="text-align: center; padding: 3rem;">
+      <div class="dashboard-card" style="text-align: center; padding: 3rem">
         <div class="card-content">
-          <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;">🔍</div>
-          <h3 style="color: var(--text-secondary); margin-bottom: 1rem;">No Detections Found</h3>
-          <p style="color: var(--text-secondary);">
-            No bird detections have been recorded yet. Check back after the system has been running for some time.
+          <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3">
+            🔍
+          </div>
+          <h3 style="color: var(--text-secondary); margin-bottom: 1rem">
+            No Detections Found
+          </h3>
+          <p style="color: var(--text-secondary)">
+            No bird detections have been recorded yet. Check back after the
+            system has been running for some time.
           </p>
-          <div style="margin-top: 2rem;">
+          <div style="margin-top: 2rem">
             <a href="/field" class="btn btn-primary">
               <span>🎤</span> Try Field Mode
             </a>
@@ -104,27 +142,31 @@
 
     <script>
       function filterDetections() {
-        const speciesFilter = document.getElementById('species-filter').value.toLowerCase();
-        const dateFilter = document.getElementById('date-filter').value;
-        const detectionItems = document.querySelectorAll('.detection-item');
+        const speciesFilter = document
+          .getElementById("species-filter")
+          .value.toLowerCase();
+        const dateFilter = document.getElementById("date-filter").value;
+        const detectionItems = document.querySelectorAll(".detection-item");
         let visibleCount = 0;
 
-        detectionItems.forEach(item => {
-          const species = item.getAttribute('data-species');
-          const date = item.getAttribute('data-date');
-          
-          const speciesMatch = !speciesFilter || species.includes(speciesFilter);
+        detectionItems.forEach((item) => {
+          const species = item.getAttribute("data-species");
+          const date = item.getAttribute("data-date");
+
+          const speciesMatch =
+            !speciesFilter || species.includes(speciesFilter);
           const dateMatch = !dateFilter || date === dateFilter;
-          
+
           if (speciesMatch && dateMatch) {
-            item.style.display = 'flex';
+            item.style.display = "flex";
             visibleCount++;
           } else {
-            item.style.display = 'none';
+            item.style.display = "none";
           }
         });
 
-        document.getElementById('visible-count').textContent = `${visibleCount} detections`;
+        document.getElementById("visible-count").textContent =
+          `${visibleCount} detections`;
       }
     </script>
   </body>

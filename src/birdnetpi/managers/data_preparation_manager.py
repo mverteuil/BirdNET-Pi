@@ -41,7 +41,9 @@ class DataPreparationManager:
     def get_hourly_crosstab(self, df: pd.DataFrame) -> pd.DataFrame:
         """Generate a crosstabulation of common names by hour."""
         datetime_index = cast(pd.DatetimeIndex, df.index)
-        return pd.crosstab(df["common_name_ioc"], datetime_index.hour.values, dropna=True, margins=True)  # type: ignore[attr-defined]
+        return pd.crosstab(
+            df["common_name_ioc"], datetime_index.hour.values, dropna=True, margins=True
+        )  # type: ignore[attr-defined]
 
     def get_daily_crosstab(self, df: pd.DataFrame) -> pd.DataFrame:
         """Generate a crosstabulation of common names by date."""

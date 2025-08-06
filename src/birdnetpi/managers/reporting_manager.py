@@ -166,13 +166,17 @@ class ReportingManager:
     def get_weekly_report_data(self) -> dict[str, Any]:
         """Retrieve and process data for the weekly report."""
         today = datetime.date.today()
-        
+
         # Check if we have data for the current period
         all_detections = self.detection_manager.get_all_detections()
-        
+
         if all_detections:
             # Get the date range of available data
-            detection_dates = [d.timestamp.date() for d in all_detections if isinstance(d.timestamp, datetime.datetime)]
+            detection_dates = [
+                d.timestamp.date()
+                for d in all_detections
+                if isinstance(d.timestamp, datetime.datetime)
+            ]
             if detection_dates:
                 # Use the most recent week with data
                 latest_date = max(detection_dates)
@@ -255,11 +259,15 @@ class ReportingManager:
             if isinstance(d.timestamp, datetime.datetime)
             and start_datetime <= d.timestamp <= end_datetime
         ]
-        
+
         # If no detections for today, get the most recent day's detections for demo purposes
         if not todays_detections and all_detections:
             # Find the most recent date with detections
-            latest_date = max(d.timestamp.date() for d in all_detections if isinstance(d.timestamp, datetime.datetime))
+            latest_date = max(
+                d.timestamp.date()
+                for d in all_detections
+                if isinstance(d.timestamp, datetime.datetime)
+            )
             start_datetime = datetime.datetime.combine(latest_date, datetime.time.min)
             end_datetime = datetime.datetime.combine(latest_date, datetime.time.max)
             todays_detections = [

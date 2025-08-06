@@ -1,25 +1,29 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Best Recordings - BirdNET-Pi Reports</title>
-    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg"/>
+    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg" />
     <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
     <!-- Navigation -->
-    <div class="dashboard" style="padding-top: 2rem;">
+    <div class="dashboard" style="padding-top: 2rem">
       <div class="section-header">
         <h1 class="section-title">Best Recordings</h1>
-        <p class="section-subtitle">Highest confidence detections for each species</p>
-        <div style="margin-top: 1rem;">
-          <a href="/reports" class="btn btn-secondary" style="margin-right: 1rem;">
+        <p class="section-subtitle">
+          Highest confidence detections for each species
+        </p>
+        <div style="margin-top: 1rem">
+          <a
+            href="/reports"
+            class="btn btn-secondary"
+            style="margin-right: 1rem"
+          >
             <span>📊</span> Back to Reports
           </a>
-          <a href="/" class="btn btn-secondary">
-            <span>🏠</span> Dashboard
-          </a>
+          <a href="/" class="btn btn-secondary"> <span>🏠</span> Dashboard </a>
         </div>
       </div>
 
@@ -29,38 +33,48 @@
         {% for recording in best_recordings %}
         <div class="dashboard-card">
           <div class="card-header">
-            <h3 class="card-title">{{ recording.common_name_ioc or recording.Sci_Name }}</h3>
-            <span class="card-badge badge-success">{{ "%.1f"|format(recording.Confidence * 100) }}%</span>
+            <h3 class="card-title">
+              {{ recording.common_name_ioc or recording.Sci_Name }}
+            </h3>
+            <span class="card-badge badge-success"
+              >{{ "%.1f"|format(recording.Confidence * 100) }}%</span
+            >
           </div>
           <div class="card-content">
-            <div style="margin-bottom: 1rem;">
+            <div style="margin-bottom: 1rem">
               <strong>Scientific Name:</strong> {{ recording.Sci_Name }}
             </div>
-            <div style="margin-bottom: 1rem;">
-              <strong>Detected:</strong> {{ recording.Date }} at {{ recording.Time }}
+            <div style="margin-bottom: 1rem">
+              <strong>Detected:</strong> {{ recording.Date }} at {{
+              recording.Time }}
             </div>
             {% if recording.Lat and recording.Lon %}
-            <div style="margin-bottom: 1rem;">
-              <strong>Location:</strong> {{ "%.6f"|format(recording.Lat) }}, {{ "%.6f"|format(recording.Lon) }}
+            <div style="margin-bottom: 1rem">
+              <strong>Location:</strong> {{ "%.6f"|format(recording.Lat) }}, {{
+              "%.6f"|format(recording.Lon) }}
             </div>
             {% endif %}
-            <div class="system-grid" style="margin-top: 1.5rem;">
+            <div class="system-grid" style="margin-top: 1.5rem">
               {% if recording.Week %}
               <div class="system-metric">
                 <div class="metric-label">Week</div>
-                <div class="metric-value" style="font-size: 1rem;">{{ recording.Week }}</div>
+                <div class="metric-value" style="font-size: 1rem">
+                  {{ recording.Week }}
+                </div>
               </div>
-              {% endif %}
-              {% if recording.Sens %}
+              {% endif %} {% if recording.Sens %}
               <div class="system-metric">
                 <div class="metric-label">Sensitivity</div>
-                <div class="metric-value" style="font-size: 1rem;">{{ "%.2f"|format(recording.Sens) }}</div>
+                <div class="metric-value" style="font-size: 1rem">
+                  {{ "%.2f"|format(recording.Sens) }}
+                </div>
               </div>
-              {% endif %}
-              {% if recording.Overlap %}
+              {% endif %} {% if recording.Overlap %}
               <div class="system-metric">
                 <div class="metric-label">Overlap</div>
-                <div class="metric-value" style="font-size: 1rem;">{{ "%.2f"|format(recording.Overlap) }}</div>
+                <div class="metric-value" style="font-size: 1rem">
+                  {{ "%.2f"|format(recording.Overlap) }}
+                </div>
               </div>
               {% endif %}
             </div>
@@ -70,12 +84,17 @@
       </div>
       {% else %}
       <!-- No recordings message -->
-      <div class="dashboard-card" style="text-align: center; padding: 3rem;">
+      <div class="dashboard-card" style="text-align: center; padding: 3rem">
         <div class="card-content">
-          <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;">🔍</div>
-          <h3 style="color: var(--text-secondary); margin-bottom: 1rem;">No Recordings Found</h3>
-          <p style="color: var(--text-secondary);">
-            No bird detections have been recorded yet. Check back after the system has been running for some time.
+          <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3">
+            🔍
+          </div>
+          <h3 style="color: var(--text-secondary); margin-bottom: 1rem">
+            No Recordings Found
+          </h3>
+          <p style="color: var(--text-secondary)">
+            No bird detections have been recorded yet. Check back after the
+            system has been running for some time.
           </p>
         </div>
       </div>

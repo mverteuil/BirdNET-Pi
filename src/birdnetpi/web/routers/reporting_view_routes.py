@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.models.config import BirdNETConfig
@@ -34,7 +33,7 @@ async def get_best_recordings(
     """Retrieve a list of the best recorded audio files based on confidence."""
     try:
         best_recordings = reporting_manager.get_best_detections(limit=20)
-    except Exception as e:
+    except Exception:
         # If database is not accessible, show empty state
         best_recordings = []
     return templates.TemplateResponse(
@@ -66,7 +65,7 @@ async def get_detections(
             }
             for d in all_detections
         ]
-    except Exception as e:
+    except Exception:
         # If database is not accessible, show empty state
         detections_data = []
     return templates.TemplateResponse(
@@ -84,7 +83,7 @@ async def get_todays_detections(
     """Retrieve a list of today's detections."""
     try:
         todays_detections = reporting_manager.get_todays_detections()
-    except Exception as e:
+    except Exception:
         # If database is not accessible, show empty state
         todays_detections = []
     return templates.TemplateResponse(
@@ -104,7 +103,7 @@ async def get_weekly_report(
     """Retrieve and display weekly report data."""
     try:
         weekly_data = reporting_manager.get_weekly_report_data()
-    except Exception as e:
+    except Exception:
         # If database is not accessible, show empty state
         weekly_data = {
             "start_date": "",
@@ -136,13 +135,17 @@ async def get_charts(
     """Generate and display various charts related to bird detections."""
     try:
         df = reporting_manager.get_data()
-        
+
         # Default values for plot generation
         start_date = (
-            pd.to_datetime(str(df.index.min())).date() if not df.empty else pd.Timestamp.now().date()
+            pd.to_datetime(str(df.index.min())).date()
+            if not df.empty
+            else pd.Timestamp.now().date()
         )
         end_date = (
-            pd.to_datetime(str(df.index.max())).date() if not df.empty else pd.Timestamp.now().date()
+            pd.to_datetime(str(df.index.max())).date()
+            if not df.empty
+            else pd.Timestamp.now().date()
         )
         top_n = 10
 
@@ -159,7 +162,9 @@ async def get_charts(
         # Generate daily plot
         # Handle empty DataFrame case for species selection
         most_common_species = (
-            df["common_name_ioc"].mode()[0] if not df.empty and len(df["common_name_ioc"].mode()) > 0 else "All"
+            df["common_name_ioc"].mode()[0]
+            if not df.empty and len(df["common_name_ioc"].mode()) > 0
+            else "All"
         )
         daily_fig = plotting_manager.generate_daily_detections_plot(
             df,
@@ -174,7 +179,9 @@ async def get_charts(
         plot_data = {"multi_day_plot": multi_day_plot_json, "daily_plot": daily_plot_json}
 
         return templates.TemplateResponse(request, "reports/charts.html", {"plot_data": plot_data})
-    except Exception as e:
+    except Exception:
         # If database is not accessible, show empty charts
         empty_plot_data = {"multi_day_plot": "{}", "daily_plot": "{}"}
-        return templates.TemplateResponse(request, "reports/charts.html", {"plot_data": empty_plot_data})
+        return templates.TemplateResponse(
+            request, "reports/charts.html", {"plot_data": empty_plot_data}
+        )

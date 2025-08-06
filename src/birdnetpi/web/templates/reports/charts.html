@@ -1,37 +1,41 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Charts - BirdNET-Pi Reports</title>
-    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg"/>
+    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg" />
     <link rel="stylesheet" href="/static/style.css" />
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   </head>
   <body>
     <!-- Navigation -->
-    <div class="dashboard" style="padding-top: 2rem;">
+    <div class="dashboard" style="padding-top: 2rem">
       <div class="section-header">
         <h1 class="section-title">Detection Charts</h1>
-        <p class="section-subtitle">Visual analysis of bird detection patterns</p>
-        <div style="margin-top: 1rem;">
-          <a href="/reports" class="btn btn-secondary" style="margin-right: 1rem;">
+        <p class="section-subtitle">
+          Visual analysis of bird detection patterns
+        </p>
+        <div style="margin-top: 1rem">
+          <a
+            href="/reports"
+            class="btn btn-secondary"
+            style="margin-right: 1rem"
+          >
             <span>📊</span> Back to Reports
           </a>
-          <a href="/" class="btn btn-secondary">
-            <span>🏠</span> Dashboard
-          </a>
+          <a href="/" class="btn btn-secondary"> <span>🏠</span> Dashboard </a>
         </div>
       </div>
 
       <!-- Charts Container -->
-      <div class="dashboard-card" style="margin-bottom: 2rem;">
+      <div class="dashboard-card" style="margin-bottom: 2rem">
         <div class="card-header">
           <h3 class="card-title">Multi-Day Species Analysis</h3>
           <span class="card-badge badge-info">Hourly View</span>
         </div>
         <div class="card-content">
-          <div id="multi-day-plot" style="height: 500px;"></div>
+          <div id="multi-day-plot" style="height: 500px"></div>
         </div>
       </div>
 
@@ -41,7 +45,7 @@
           <span class="card-badge badge-info">15-Minute Intervals</span>
         </div>
         <div class="card-content">
-          <div id="daily-plot" style="height: 400px;"></div>
+          <div id="daily-plot" style="height: 400px"></div>
         </div>
       </div>
     </div>

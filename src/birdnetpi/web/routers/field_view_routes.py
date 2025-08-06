@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.web.core.container import Container
 
 router = APIRouter()
@@ -15,6 +16,7 @@ router = APIRouter()
 async def get_field_mode(
     request: Request,
     templates: Jinja2Templates = Depends(Provide[Container.templates]),
+    config: BirdNETConfig = Depends(Provide[Container.config]),
 ) -> HTMLResponse:
     """Render the field mode interface."""
-    return templates.TemplateResponse(request, "field_mode.html", {})
+    return templates.TemplateResponse(request, "field_mode.html", {"site_name": config.site_name})

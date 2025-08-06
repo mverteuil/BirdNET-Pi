@@ -1,41 +1,50 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Today's Detections - BirdNET-Pi Reports</title>
-    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg"/>
+    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg" />
     <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
     <!-- Navigation -->
-    <div class="dashboard" style="padding-top: 2rem;">
+    <div class="dashboard" style="padding-top: 2rem">
       <div class="section-header">
         <h1 class="section-title">Today's Detections</h1>
         <p class="section-subtitle">All bird detections from today</p>
-        <div style="margin-top: 1rem;">
-          <a href="/reports" class="btn btn-secondary" style="margin-right: 1rem;">
+        <div style="margin-top: 1rem">
+          <a
+            href="/reports"
+            class="btn btn-secondary"
+            style="margin-right: 1rem"
+          >
             <span>📊</span> Back to Reports
           </a>
-          <a href="/" class="btn btn-secondary">
-            <span>🏠</span> Dashboard
-          </a>
+          <a href="/" class="btn btn-secondary"> <span>🏠</span> Dashboard </a>
         </div>
       </div>
 
       {% if todays_detections %}
       <!-- Statistics Summary -->
-      <div class="hero-stats" style="margin-bottom: 3rem;">
+      <div class="hero-stats" style="margin-bottom: 3rem">
         <div class="stat-item">
           <span class="stat-value">{{ todays_detections|length }}</span>
           <span class="stat-label">Total Detections</span>
         </div>
         <div class="stat-item">
-          <span class="stat-value">{{ todays_detections|map(attribute='common_name_ioc')|unique|list|length }}</span>
+          <span class="stat-value"
+            >{{
+            todays_detections|map(attribute='common_name_ioc')|unique|list|length
+            }}</span
+          >
           <span class="stat-label">Unique Species</span>
         </div>
         <div class="stat-item">
-          <span class="stat-value">{{ "%.1f"|format((todays_detections|map(attribute='Confidence')|sum / todays_detections|length * 100)) }}%</span>
+          <span class="stat-value"
+            >{{ "%.1f"|format((todays_detections|map(attribute='Confidence')|sum
+            / todays_detections|length * 100)) }}%</span
+          >
           <span class="stat-label">Avg Confidence</span>
         </div>
       </div>
@@ -44,38 +53,47 @@
       <div class="dashboard-card">
         <div class="card-header">
           <h3 class="card-title">Detection Timeline</h3>
-          <span class="card-badge badge-success">{{ todays_detections|length }} detections</span>
+          <span class="card-badge badge-success"
+            >{{ todays_detections|length }} detections</span
+          >
         </div>
-        <div class="detection-feed" style="max-height: none;">
+        <div class="detection-feed" style="max-height: none">
           {% for detection in todays_detections %}
           <div class="detection-item">
             <div class="detection-info">
-              <div class="detection-species">{{ detection.common_name_ioc or detection.Sci_Name }}</div>
+              <div class="detection-species">
+                {{ detection.common_name_ioc or detection.Sci_Name }}
+              </div>
               <div class="detection-time">
-                {{ detection.Time }}
-                {% if detection.Sci_Name and detection.common_name_ioc %}
-                - <em>{{ detection.Sci_Name }}</em>
-                {% endif %}
-                {% if detection.Lat and detection.Lon %}
-                - 📍 {{ "%.4f"|format(detection.Lat) }}, {{ "%.4f"|format(detection.Lon) }}
-                {% endif %}
+                {{ detection.Time }} {% if detection.Sci_Name and
+                detection.common_name_ioc %} - <em>{{ detection.Sci_Name }}</em>
+                {% endif %} {% if detection.Lat and detection.Lon %} - 📍 {{
+                "%.4f"|format(detection.Lat) }}, {{ "%.4f"|format(detection.Lon)
+                }} {% endif %}
               </div>
             </div>
-            <div class="detection-confidence">{{ "%.1f"|format(detection.Confidence * 100) }}%</div>
+            <div class="detection-confidence">
+              {{ "%.1f"|format(detection.Confidence * 100) }}%
+            </div>
           </div>
           {% endfor %}
         </div>
       </div>
       {% else %}
       <!-- No detections message -->
-      <div class="dashboard-card" style="text-align: center; padding: 3rem;">
+      <div class="dashboard-card" style="text-align: center; padding: 3rem">
         <div class="card-content">
-          <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;">🦅</div>
-          <h3 style="color: var(--text-secondary); margin-bottom: 1rem;">No Detections Today</h3>
-          <p style="color: var(--text-secondary);">
-            No bird detections have been recorded today. Birds may be more active during dawn and dusk hours.
+          <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3">
+            🦅
+          </div>
+          <h3 style="color: var(--text-secondary); margin-bottom: 1rem">
+            No Detections Today
+          </h3>
+          <p style="color: var(--text-secondary)">
+            No bird detections have been recorded today. Birds may be more
+            active during dawn and dusk hours.
           </p>
-          <div style="margin-top: 2rem;">
+          <div style="margin-top: 2rem">
             <a href="/field" class="btn btn-primary">
               <span>🎤</span> Try Field Mode
             </a>

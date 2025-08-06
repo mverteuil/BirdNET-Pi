@@ -278,4 +278,6 @@ async def get_advanced_settings(
     with open(config_parser.config_path) as f:
         config_yaml = f.read()
 
-    return templates.TemplateResponse(request, "admin/yaml_editor.html", {"config_yaml": config_yaml})
+    return templates.TemplateResponse(
+        request, "admin/yaml_editor.html", {"config_yaml": config_yaml}
+    )

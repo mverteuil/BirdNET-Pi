@@ -141,7 +141,11 @@ class DetectionManager:
                 current_week_subquery = (
                     db.query(
                         Detection.scientific_name.label("scientific_name"),
-                        func.coalesce(Detection.common_name_ioc, Detection.common_name_tensor, Detection.scientific_name).label("common_name"),
+                        func.coalesce(
+                            Detection.common_name_ioc,
+                            Detection.common_name_tensor,
+                            Detection.scientific_name,
+                        ).label("common_name"),
                         func.count(Detection.scientific_name).label("current_count"),
                     )
                     .filter(Detection.timestamp.between(start_date, end_date))
@@ -168,7 +172,8 @@ class DetectionManager:
                     )
                     .outerjoin(
                         prior_week_subquery,
-                        current_week_subquery.c.scientific_name == prior_week_subquery.c.scientific_name,
+                        current_week_subquery.c.scientific_name
+                        == prior_week_subquery.c.scientific_name,
                     )
                     .order_by(current_week_subquery.c.current_count.desc())
                     .limit(10)
@@ -206,7 +211,11 @@ class DetectionManager:
                 new_species_results = (
                     db.query(
                         Detection.scientific_name,
-                        func.coalesce(Detection.common_name_ioc, Detection.common_name_tensor, Detection.scientific_name).label("common_name"),
+                        func.coalesce(
+                            Detection.common_name_ioc,
+                            Detection.common_name_tensor,
+                            Detection.scientific_name,
+                        ).label("common_name"),
                         func.count(Detection.scientific_name).label("count"),
                     )
                     .filter(
@@ -219,8 +228,7 @@ class DetectionManager:
                 )
 
                 return [
-                    {"species": row.common_name, "count": row.count}
-                    for row in new_species_results
+                    {"species": row.common_name, "count": row.count} for row in new_species_results
                 ]
             except SQLAlchemyError as e:
                 db.rollback()
