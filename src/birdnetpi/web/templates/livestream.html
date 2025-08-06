@@ -1,141 +1,498 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <title>{{ request.app.state.config.site_name }} - Audio Livestream</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ site_name }} - Live Stream</title>
+    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg" />
     <link rel="stylesheet" href="/static/style.css" />
+    <style>
+      .stream-container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+      }
+
+      @media (min-width: 1024px) {
+        .stream-container {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      .spectrogram-card {
+        min-height: 500px;
+      }
+
+      .audio-card {
+        min-height: 300px;
+      }
+
+      #spectrogramCanvas {
+        width: 100%;
+        height: 400px;
+        background-color: #000;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+      }
+
+      .controls-row {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+
+      .control-group label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+      }
+
+      .control-group input[type="range"] {
+        width: 100px;
+      }
+
+      .control-group input[type="number"] {
+        width: 80px;
+        padding: 0.25rem 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background-color: var(--background);
+        color: var(--text);
+      }
+
+      .status-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .status-indicator {
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        text-align: center;
+        font-weight: 500;
+        font-size: 0.875rem;
+        border: 1px solid var(--border-color);
+      }
+
+      .status-connected {
+        background-color: rgba(34, 197, 94, 0.1);
+        border-color: #22c55e;
+        color: #15803d;
+      }
+
+      .status-disconnected {
+        background-color: rgba(239, 68, 68, 0.1);
+        border-color: #ef4444;
+        color: #dc2626;
+      }
+
+      .status-info {
+        background-color: rgba(59, 130, 246, 0.1);
+        border-color: #3b82f6;
+        color: #2563eb;
+      }
+
+      .connection-controls {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        margin-bottom: 1.5rem;
+      }
+
+      .btn-disconnect {
+        background-color: var(--error-color);
+        border-color: var(--error-color);
+      }
+
+      .btn-disconnect:hover:not(:disabled) {
+        background-color: var(--error-color);
+        opacity: 0.9;
+      }
+
+      .audio-player {
+        width: 100%;
+        margin-top: 1rem;
+      }
+
+      .frequency-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+      }
+
+      .messages-container {
+        max-height: 200px;
+        overflow-y: auto;
+        background-color: rgba(0, 0, 0, 0.05);
+        border-radius: 8px;
+        padding: 1rem;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 0.875rem;
+      }
+
+      .message {
+        margin-bottom: 0.25rem;
+        color: var(--text-secondary);
+      }
+
+      .message:last-child {
+        margin-bottom: 0;
+      }
+    </style>
   </head>
   <body>
-    <div class="banner">
-      <div class="logo">
-        <a href="https://github.com/mcguirepr89/BirdNET-Pi.git" target="_blank"
-          ><img src="/static/images/bird.png"
-        /></a>
+    <!-- Navigation -->
+    <div class="dashboard" style="padding-top: 2rem">
+      <div class="section-header">
+        <h1 class="section-title">Live Stream</h1>
+        <p class="section-subtitle">
+          Real-time audio stream and visual spectrogram analysis
+        </p>
+        <div style="margin-top: 1rem">
+          <a href="/" class="btn btn-secondary" style="margin-right: 1rem">
+            <span>🏠</span> Back to Dashboard
+          </a>
+          <a href="/field" class="btn btn-secondary">
+            <span>📱</span> Field Mode
+          </a>
+        </div>
       </div>
-      <h1>
-        <a href="/"><img class="topimage" src="/static/images/bnp.png" /></a>
-      </h1>
-    </div>
-    <div class="centered">
-      <h3>{{ request.app.state.config.site_name }} - Audio Livestream</h3>
-    </div>
 
-    <div class="centered">
-      <h2>Live Audio Stream</h2>
-      <div id="status">Disconnected</div>
-      <br />
-      <button id="connectBtn" onclick="connect()">Connect</button>
-      <button id="disconnectBtn" onclick="disconnect()" disabled>
-        Disconnect
-      </button>
-      <br /><br />
-      <audio
-        id="audioPlayer"
-        controls
-        autoplay
-        style="width: 100%; max-width: 600px"
-      >
-        Your browser does not support the audio element.
-      </audio>
-    </div>
+      <!-- Connection Status -->
+      <div class="dashboard-card" style="margin-bottom: 2rem">
+        <div class="card-header">
+          <h3 class="card-title">Connection Status</h3>
+        </div>
+        <div class="card-content">
+          <div class="status-grid">
+            <div id="audioStatus" class="status-indicator status-disconnected">
+              Audio: Disconnected
+            </div>
+            <div id="spectrogramStatus" class="status-indicator status-disconnected">
+              Spectrogram: Disconnected
+            </div>
+            <div id="updateRate" class="status-indicator status-info">
+              Updates: 0 Hz
+            </div>
+            <div id="latency" class="status-indicator status-info">
+              Latency: -- ms
+            </div>
+          </div>
 
-    <div class="centered">
-      <h3>Connection Info</h3>
-      <div id="messages"></div>
+          <div class="connection-controls">
+            <button id="connectBtn" class="btn btn-primary" onclick="connect()">
+              <span>🔗</span> Connect
+            </button>
+            <button
+              id="disconnectBtn"
+              class="btn btn-disconnect"
+              onclick="disconnect()"
+              disabled
+            >
+              <span>🔌</span> Disconnect
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Streams -->
+      <div class="stream-container">
+        <!-- Spectrogram Card -->
+        <div class="dashboard-card spectrogram-card">
+          <div class="card-header">
+            <h3 class="card-title">Live Spectrogram</h3>
+            <span class="card-badge badge-info">Real-time</span>
+          </div>
+          <div class="card-content">
+            <div class="controls-row">
+              <div class="control-group">
+                <label for="colorScale">Color Scale</label>
+                <input
+                  type="range"
+                  id="colorScale"
+                  min="1"
+                  max="100"
+                  value="50"
+                  onchange="updateColorScale(this.value)"
+                />
+              </div>
+              <div class="control-group">
+                <label for="maxFreq">Max Freq (Hz)</label>
+                <input
+                  type="number"
+                  id="maxFreq"
+                  value="12000"
+                  min="1000"
+                  max="24000"
+                  step="500"
+                  onchange="updateFrequencyRange()"
+                />
+              </div>
+              <div class="control-group">
+                <label for="timeWindow">Time Window (s)</label>
+                <input
+                  type="number"
+                  id="timeWindow"
+                  value="10"
+                  min="5"
+                  max="60"
+                  step="5"
+                  onchange="updateTimeWindow(this.value)"
+                />
+              </div>
+            </div>
+
+            <canvas id="spectrogramCanvas"></canvas>
+            <div class="frequency-labels">
+              <span>0 Hz</span>
+              <span id="midFreqLabel">6 kHz</span>
+              <span id="maxFreqLabel">12 kHz</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audio Card -->
+        <div class="dashboard-card audio-card">
+          <div class="card-header">
+            <h3 class="card-title">Live Audio</h3>
+            <span class="card-badge badge-success">Streaming</span>
+          </div>
+          <div class="card-content">
+            <audio
+              id="audioPlayer"
+              controls
+              autoplay
+              class="audio-player"
+            >
+              Your browser does not support the audio element.
+            </audio>
+
+            <div style="margin-top: 1.5rem">
+              <h4 style="margin-bottom: 1rem">Connection Log</h4>
+              <div id="messages" class="messages-container"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script>
-      let ws = null;
-      let mediaSource = null;
-      let sourceBuffer = null;
-      let audioQueue = [];
-      let isInitialized = false;
+      // WebSocket connections
+      let audioWs = null;
+      let spectrogramWs = null;
 
-      const status = document.getElementById("status");
-      const messages = document.getElementById("messages");
-      const audioPlayer = document.getElementById("audioPlayer");
-      const connectBtn = document.getElementById("connectBtn");
-      const disconnectBtn = document.getElementById("disconnectBtn");
+      // Canvas and drawing context
+      const canvas = document.getElementById("spectrogramCanvas");
+      const ctx = canvas.getContext("2d");
+
+      // Set canvas size
+      function resizeCanvas() {
+        const container = canvas.parentElement;
+        canvas.width = container.clientWidth - 32; // Account for padding
+        canvas.height = 400;
+        drawSpectrogram(); // Redraw when resized
+      }
+
+      // Spectrogram configuration
+      let config = {
+        sample_rate: 48000,
+        window_size: 1024,
+        freq_bins: [],
+        update_rate: 15.0,
+      };
+
+      // Display parameters
+      let maxFrequency = 12000;
+      let timeWindow = 10; // seconds
+      let colorScale = 50;
+
+      // Data storage
+      let spectrogramHistory = [];
+      let lastUpdateTime = 0;
+      let updateCount = 0;
+      let startTime = Date.now();
+
+      // UI elements
+      const elements = {
+        audioStatus: document.getElementById("audioStatus"),
+        spectrogramStatus: document.getElementById("spectrogramStatus"),
+        updateRate: document.getElementById("updateRate"),
+        latency: document.getElementById("latency"),
+        connectBtn: document.getElementById("connectBtn"),
+        disconnectBtn: document.getElementById("disconnectBtn"),
+        messages: document.getElementById("messages"),
+        audioPlayer: document.getElementById("audioPlayer"),
+        maxFreqLabel: document.getElementById("maxFreqLabel"),
+        midFreqLabel: document.getElementById("midFreqLabel"),
+      };
 
       function addMessage(message) {
         const messageDiv = document.createElement("div");
+        messageDiv.className = "message";
         messageDiv.textContent =
           new Date().toLocaleTimeString() + ": " + message;
-        messages.appendChild(messageDiv);
-        messages.scrollTop = messages.scrollHeight;
+        elements.messages.appendChild(messageDiv);
+        elements.messages.scrollTop = elements.messages.scrollHeight;
+      }
+
+      function updateStatus(element, connected, text) {
+        element.textContent = text;
+        element.className = `status-indicator ${
+          connected ? "status-connected" : "status-disconnected"
+        }`;
       }
 
       function connect() {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          addMessage("Already connected");
+        if (
+          (audioWs && audioWs.readyState === WebSocket.OPEN) &&
+          (spectrogramWs && spectrogramWs.readyState === WebSocket.OPEN)
+        ) {
+          addMessage("Already connected to both streams");
           return;
         }
 
-        status.textContent = "Connecting...";
-        addMessage("Connecting to WebSocket...");
+        elements.connectBtn.disabled = true;
+        addMessage("Connecting to audio and spectrogram streams...");
 
-        ws = new WebSocket("{{ websocket_url }}");
+        // Reset counters
+        updateCount = 0;
+        startTime = Date.now();
+        lastUpdateTime = 0;
 
-        ws.onopen = function (event) {
-          status.textContent = "Connected";
-          connectBtn.disabled = true;
-          disconnectBtn.disabled = false;
-          addMessage("WebSocket connected");
+        // Connect to audio stream
+        connectAudio();
 
-          // Send periodic ping to keep connection alive
-          setInterval(() => {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-              ws.send("ping");
-            }
-          }, 30000);
+        // Connect to spectrogram stream
+        connectSpectrogram();
+      }
+
+      function connectAudio() {
+        const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
+        const wsUrl = `${wsProtocol}//${location.host}/ws/audio`;
+        
+        audioWs = new WebSocket(wsUrl);
+
+        audioWs.onopen = function (event) {
+          updateStatus(elements.audioStatus, true, "Audio: Connected");
+          addMessage("Audio WebSocket connected");
+          checkFullConnection();
         };
 
-        ws.onmessage = function (event) {
+        audioWs.onmessage = function (event) {
           if (event.data instanceof Blob) {
-            // Handle binary audio data
             handleAudioData(event.data);
           } else {
-            // Handle text messages
-            addMessage("Received: " + event.data);
+            addMessage("Audio: " + event.data);
           }
         };
 
-        ws.onclose = function (event) {
-          status.textContent = "Disconnected";
-          connectBtn.disabled = false;
-          disconnectBtn.disabled = true;
-          addMessage(
-            "WebSocket disconnected: " + event.code + " " + event.reason,
-          );
-
-          // Clean up audio resources
-          if (mediaSource && mediaSource.readyState === "open") {
-            mediaSource.endOfStream();
-          }
-          isInitialized = false;
+        audioWs.onclose = function (event) {
+          updateStatus(elements.audioStatus, false, "Audio: Disconnected");
+          addMessage(`Audio WebSocket disconnected: ${event.code}`);
+          checkFullDisconnection();
         };
 
-        ws.onerror = function (error) {
-          status.textContent = "Error";
-          addMessage("WebSocket error: " + error);
+        audioWs.onerror = function (error) {
+          updateStatus(elements.audioStatus, false, "Audio: Error");
+          addMessage("Audio WebSocket error");
+        };
+      }
+
+      function connectSpectrogram() {
+        const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
+        const wsUrl = `${wsProtocol}//${location.host}/ws/spectrogram`;
+        
+        spectrogramWs = new WebSocket(wsUrl);
+
+        spectrogramWs.onopen = function (event) {
+          updateStatus(elements.spectrogramStatus, true, "Spectrogram: Connected");
+          addMessage("Spectrogram WebSocket connected");
+          checkFullConnection();
+        };
+
+        spectrogramWs.onmessage = function (event) {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === "config") {
+              handleSpectrogramConfig(data);
+            } else if (data.type === "spectrogram") {
+              handleSpectrogramData(data);
+            }
+          } catch (e) {
+            addMessage("Spectrogram: " + event.data);
+          }
+        };
+
+        spectrogramWs.onclose = function (event) {
+          updateStatus(elements.spectrogramStatus, false, "Spectrogram: Disconnected");
+          addMessage(`Spectrogram WebSocket disconnected: ${event.code}`);
+          checkFullDisconnection();
+        };
+
+        spectrogramWs.onerror = function (error) {
+          updateStatus(elements.spectrogramStatus, false, "Spectrogram: Error");
+          addMessage("Spectrogram WebSocket error");
         };
       }
 
       function disconnect() {
-        if (ws) {
-          ws.close();
-          ws = null;
+        if (audioWs) {
+          audioWs.close();
+          audioWs = null;
+        }
+        if (spectrogramWs) {
+          spectrogramWs.close();
+          spectrogramWs = null;
+        }
+
+        // Clear the canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        spectrogramHistory = [];
+
+        elements.connectBtn.disabled = false;
+        elements.disconnectBtn.disabled = true;
+        
+        addMessage("Disconnected from all streams");
+      }
+
+      function checkFullConnection() {
+        const audioConnected = audioWs && audioWs.readyState === WebSocket.OPEN;
+        const spectrogramConnected = spectrogramWs && spectrogramWs.readyState === WebSocket.OPEN;
+
+        if (audioConnected && spectrogramConnected) {
+          elements.disconnectBtn.disabled = false;
+          addMessage("All streams connected successfully");
+        }
+      }
+
+      function checkFullDisconnection() {
+        const audioDisconnected = !audioWs || audioWs.readyState === WebSocket.CLOSED;
+        const spectrogramDisconnected = !spectrogramWs || spectrogramWs.readyState === WebSocket.CLOSED;
+
+        if (audioDisconnected && spectrogramDisconnected) {
+          elements.connectBtn.disabled = false;
+          elements.disconnectBtn.disabled = true;
         }
       }
 
       function handleAudioData(audioBlob) {
-        // Create a blob URL and set it as the audio source
-        // This is a simple approach - for continuous streaming,
-        // MediaSource API would be more appropriate but requires more setup
+        // Create a blob URL and play the audio chunk
         const audioUrl = URL.createObjectURL(audioBlob);
-
-        // Create a new audio element for each chunk to enable continuous playback
         const audio = new Audio(audioUrl);
-        audio.volume = 0.8;
+        audio.volume = 0.6;
         audio.play().catch((e) => {
           console.log("Audio play error:", e);
         });
@@ -144,23 +501,174 @@
         audio.addEventListener("ended", () => {
           URL.revokeObjectURL(audioUrl);
         });
-
-        addMessage("Received audio chunk (" + audioBlob.size + " bytes)");
       }
 
-      // Auto-connect on page load
+      function handleSpectrogramConfig(configData) {
+        config = configData;
+        addMessage(`Spectrogram config: ${config.sample_rate}Hz, window=${config.window_size}`);
+        updateFrequencyLabels();
+      }
+
+      function handleSpectrogramData(data) {
+        const now = Date.now();
+
+        // Calculate update rate and latency
+        updateCount++;
+        const elapsedTime = (now - startTime) / 1000;
+        if (elapsedTime > 0) {
+          const currentUpdateRate = updateCount / elapsedTime;
+          elements.updateRate.textContent = `Updates: ${currentUpdateRate.toFixed(1)} Hz`;
+        }
+
+        if (lastUpdateTime > 0 && data.timestamp) {
+          const latency = now - data.timestamp * 1000;
+          elements.latency.textContent = `Latency: ${Math.round(Math.abs(latency))} ms`;
+        }
+        lastUpdateTime = now;
+
+        // Store spectrogram data
+        spectrogramHistory.push({
+          data: data.data,
+          timestamp: now,
+        });
+
+        // Limit history based on time window
+        const cutoffTime = now - timeWindow * 1000;
+        spectrogramHistory = spectrogramHistory.filter(
+          (item) => item.timestamp > cutoffTime
+        );
+
+        // Draw the spectrogram
+        drawSpectrogram();
+      }
+
+      function drawSpectrogram() {
+        if (spectrogramHistory.length === 0) return;
+
+        const width = canvas.width;
+        const height = canvas.height;
+
+        // Clear canvas with dark background
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, width, height);
+
+        // Calculate dimensions
+        const timeSlices = spectrogramHistory.length;
+        if (timeSlices === 0) return;
+        
+        const sliceWidth = width / timeSlices;
+
+        // Get the frequency range to display
+        const maxFreqIndex = config.freq_bins.length > 0 ? 
+          Math.floor((maxFrequency / (config.sample_rate / 2)) * config.freq_bins.length) : 
+          spectrogramHistory[0].data.length;
+
+        spectrogramHistory.forEach((item, timeIndex) => {
+          const spectrogramData = item.data;
+          if (!spectrogramData || !Array.isArray(spectrogramData)) return;
+          
+          const freqBins = Math.min(spectrogramData.length, maxFreqIndex);
+
+          for (let freqIndex = 0; freqIndex < freqBins; freqIndex++) {
+            const magnitude = spectrogramData[freqIndex];
+
+            // Convert magnitude to color intensity
+            const normalizedMagnitude = Math.max(0, Math.min(1, 
+              ((magnitude + 60) / 60) * (colorScale / 50) // Assuming -60dB to 0dB range
+            ));
+
+            // Create color gradient (blue -> green -> yellow -> red)
+            let r, g, b;
+            if (normalizedMagnitude < 0.25) {
+              r = 0;
+              g = 0;
+              b = Math.floor(255 * (normalizedMagnitude * 4));
+            } else if (normalizedMagnitude < 0.5) {
+              r = 0;
+              g = Math.floor(255 * ((normalizedMagnitude - 0.25) * 4));
+              b = 255;
+            } else if (normalizedMagnitude < 0.75) {
+              r = Math.floor(255 * ((normalizedMagnitude - 0.5) * 4));
+              g = 255;
+              b = Math.floor(255 * (1 - (normalizedMagnitude - 0.5) * 4));
+            } else {
+              r = 255;
+              g = Math.floor(255 * (1 - (normalizedMagnitude - 0.75) * 4));
+              b = 0;
+            }
+
+            ctx.fillStyle = `rgb(${r},${g},${b})`;
+
+            // Draw rectangle (frequency is inverted - high frequencies at top)
+            const x = timeIndex * sliceWidth;
+            const y = height - ((freqIndex + 1) / freqBins) * height;
+            const rectHeight = Math.max(1, height / freqBins);
+
+            ctx.fillRect(x, y, Math.ceil(sliceWidth), Math.ceil(rectHeight));
+          }
+        });
+      }
+
+      function updateColorScale(value) {
+        colorScale = parseInt(value);
+        drawSpectrogram();
+      }
+
+      function updateFrequencyRange() {
+        const newMaxFreq = parseInt(document.getElementById("maxFreq").value);
+        maxFrequency = Math.min(newMaxFreq, config.sample_rate / 2);
+        updateFrequencyLabels();
+        drawSpectrogram();
+      }
+
+      function updateTimeWindow(value) {
+        timeWindow = parseInt(value);
+        // Clear old data that's outside the new window
+        const now = Date.now();
+        const cutoffTime = now - timeWindow * 1000;
+        spectrogramHistory = spectrogramHistory.filter(
+          (item) => item.timestamp > cutoffTime
+        );
+        drawSpectrogram();
+      }
+
+      function updateFrequencyLabels() {
+        elements.maxFreqLabel.textContent = `${(maxFrequency / 1000).toFixed(1)} kHz`;
+        elements.midFreqLabel.textContent = `${(maxFrequency / 2000).toFixed(1)} kHz`;
+      }
+
+      // Initialize
       window.addEventListener("load", function () {
-        addMessage("Page loaded. Click Connect to start audio stream.");
+        resizeCanvas();
+        updateFrequencyLabels();
+        addMessage("Page loaded. Click Connect to start streaming.");
       });
 
-      // Handle page visibility changes to manage connection
+      // Handle window resize
+      window.addEventListener("resize", resizeCanvas);
+
+      // Handle page visibility changes
       document.addEventListener("visibilitychange", function () {
-        if (document.hidden && ws && ws.readyState === WebSocket.OPEN) {
-          addMessage("Page hidden - maintaining connection");
-        } else if (!document.hidden && ws && ws.readyState === WebSocket.OPEN) {
-          addMessage("Page visible - connection active");
+        if (document.hidden) {
+          addMessage("Page hidden - maintaining connections");
+        } else if (!document.hidden) {
+          addMessage("Page visible - connections active");
+          // Redraw in case canvas was cleared
+          if (spectrogramHistory.length > 0) {
+            drawSpectrogram();
+          }
         }
       });
+
+      // Keep connections alive
+      setInterval(() => {
+        if (audioWs && audioWs.readyState === WebSocket.OPEN) {
+          audioWs.send("ping");
+        }
+        if (spectrogramWs && spectrogramWs.readyState === WebSocket.OPEN) {
+          spectrogramWs.send("ping");
+        }
+      }, 30000);
     </script>
   </body>
 </html>
