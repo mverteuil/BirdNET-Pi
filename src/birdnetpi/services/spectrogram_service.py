@@ -7,6 +7,7 @@ alongside the audio streaming pipeline with minimal performance impact.
 
 import asyncio
 import logging
+import time
 from typing import Any
 
 import numpy as np
@@ -144,7 +145,7 @@ class SpectrogramService:
             # Prepare data for transmission
             spectrogram_data = {
                 "type": "spectrogram",
-                "timestamp": asyncio.get_event_loop().time(),
+                "timestamp": time.time(),  # Unix timestamp in seconds
                 "data": spectrogram_db.tolist(),  # Convert numpy array to list for JSON
                 "shape": spectrogram_db.shape,
             }
