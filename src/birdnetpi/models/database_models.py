@@ -59,9 +59,9 @@ class Detection(Base):
     # Location and analysis parameters
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
-    cutoff = Column(Float, nullable=True)
+    species_confidence_threshold = Column(Float, nullable=True)  # Previously cutoff
     week = Column(Integer, nullable=True)
-    sensitivity = Column(Float, nullable=True)
+    sensitivity_setting = Column(Float, nullable=True)  # Previously sensitivity
     overlap = Column(Float, nullable=True)
 
     def get_display_name(self) -> str:

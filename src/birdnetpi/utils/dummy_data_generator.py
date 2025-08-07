@@ -45,9 +45,9 @@ def generate_dummy_detections(
             "audio_file_path": f"/app/audio/{timestamp.strftime('%Y%m%d_%H%M%S')}.wav",
             "latitude": round(random.uniform(30.0, 40.0), 4),
             "longitude": round(random.uniform(-80.0, -70.0), 4),
-            "cutoff": random.uniform(0.1, 0.5),
+            "species_confidence_threshold": random.uniform(0.1, 0.5),
             "week": timestamp.isocalendar()[1],
-            "sensitivity": random.uniform(0.5, 0.9),
+            "sensitivity_setting": random.uniform(0.5, 0.9),
             "overlap": random.uniform(0.0, 0.5),
             "is_extracted": False,
             "duration": 5.0,  # Added for DetectionEvent

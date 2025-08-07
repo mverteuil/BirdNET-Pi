@@ -3,16 +3,16 @@
 	handle /ws/audio {
 		reverse_proxy localhost:9001
 	}
-	
+
 	handle /ws/spectrogram {
 		reverse_proxy localhost:9002
 	}
-	
+
 	# Notifications WebSocket - proxy to FastAPI
 	handle /ws/notifications {
 		reverse_proxy 127.0.0.1:8888
 	}
-	
+
 	# All other routes - proxy to FastAPI
 	reverse_proxy 127.0.0.1:8888
 }

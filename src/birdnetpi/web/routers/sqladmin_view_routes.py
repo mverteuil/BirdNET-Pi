@@ -42,9 +42,9 @@ def setup_sqladmin(app: FastAPI) -> Admin:
     """
     # Get database engine from the DI container
     container = app.container  # type: ignore[attr-defined]
-    database_service = container.database_service()
+    bnp_database_service = container.bnp_database_service()
 
-    admin = Admin(app, database_service.engine, base_url="/admin/database")
+    admin = Admin(app, bnp_database_service.engine, base_url="/admin/database")
 
     # Register model views
     admin.add_view(DetectionAdmin)

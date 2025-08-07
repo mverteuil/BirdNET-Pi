@@ -39,7 +39,7 @@ def data_preparation_manager(mock_config, mock_location_service):
 def sample_dataframe():
     """Return a sample pandas DataFrame for testing."""
     data = {
-        "com_name": [
+        "common_name": [
             "American Robin",
             "Northern Cardinal",
             "American Robin",
@@ -107,13 +107,13 @@ class TestDataPreparationManager:
     def test_time_resample_raw(self, data_preparation_manager, sample_dataframe):
         """Test raw time resampling."""
         resampled_df = data_preparation_manager.time_resample(sample_dataframe, "Raw")
-        pd.testing.assert_frame_equal(resampled_df, sample_dataframe[["com_name"]])
+        pd.testing.assert_frame_equal(resampled_df, sample_dataframe[["common_name"]])
 
     def test_time_resample_hourly(self, data_preparation_manager, sample_dataframe):
         """Test hourly time resampling."""
         resampled_df = data_preparation_manager.time_resample(sample_dataframe, "H")
         expected_data = {
-            "com_name": [
+            "common_name": [
                 "American Robin",
                 "Northern Cardinal",
                 "American Robin",
@@ -134,11 +134,11 @@ class TestDataPreparationManager:
         # The resample operation with aggregate('unique').explode() can introduce NaNs
         # for hours with no data. We need to filter these out for comparison.
         # Also, the index might not be exactly the same due to resampling creating
-        # new timestamps. So, we'll compare the 'com_name' column after sorting
+        # new timestamps. So, we'll compare the 'common_name' column after sorting
         # and resetting index.
         # Compare sorted values since the order might be different after resampling
-        actual_sorted = sorted(resampled_df["com_name"].dropna())
-        expected_sorted = sorted(expected_df["com_name"])
+        actual_sorted = sorted(resampled_df["common_name"].dropna())
+        expected_sorted = sorted(expected_df["common_name"])
         assert actual_sorted == expected_sorted
 
     def test_prepare_multi_day_plot_data(self, data_preparation_manager, sample_dataframe):

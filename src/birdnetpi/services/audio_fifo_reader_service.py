@@ -57,12 +57,17 @@ class AudioFifoReaderService:
             # Open FIFO in non-blocking mode
             fifo_fd = os.open(self.fifo_path, os.O_RDONLY | os.O_NONBLOCK)
             logger.info("Opened FIFO for reading: %s", self.fifo_path)
-            
+
             # Test FIFO access
             try:
                 import stat
+
                 fifo_stat = os.stat(self.fifo_path)
-                logger.info("FIFO stats: mode=%s, size=%d", oct(stat.S_IMODE(fifo_stat.st_mode)), fifo_stat.st_size)
+                logger.info(
+                    "FIFO stats: mode=%s, size=%d",
+                    oct(stat.S_IMODE(fifo_stat.st_mode)),
+                    fifo_stat.st_size,
+                )
             except Exception as e:
                 logger.error("Error checking FIFO stats: %s", e)
 
@@ -72,7 +77,9 @@ class AudioFifoReaderService:
                     audio_data_bytes = os.read(fifo_fd, buffer_size)
 
                     if audio_data_bytes:
-                        logger.info("Read %d bytes from FIFO, streaming to services", len(audio_data_bytes))
+                        logger.info(
+                            "Read %d bytes from FIFO, streaming to services", len(audio_data_bytes)
+                        )
                         # Stream to WebSocket clients
                         await self.audio_websocket_service.stream_audio_chunk(audio_data_bytes)
                         # Also send to spectrogram service if available

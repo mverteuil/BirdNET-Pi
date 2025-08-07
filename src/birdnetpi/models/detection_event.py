@@ -28,8 +28,8 @@ class DetectionEvent(BaseModel):
     spectrogram_path: str | None = None
     latitude: float | None = None
     longitude: float | None = None
-    cutoff: float | None = None
+    species_confidence_threshold: float | None = None
     week: int | None = None
-    sensitivity: float | None = None
+    sensitivity_setting: float | None = None
     overlap: float | None = None
     is_extracted: bool = False

@@ -35,17 +35,17 @@ class ReportingManager:
         detections = self.detection_manager.get_all_detections()
         data = [
             {
-                "common_name_ioc": d.common_name_ioc or d.common_name_tensor or "",
+                "common_name": d.common_name_ioc or d.common_name_tensor or "",
                 "DateTime": d.timestamp,
                 "Date": d.timestamp.strftime("%Y-%m-%d"),
                 "Time": d.timestamp.strftime("%H:%M:%S"),
-                "Sci_Name": d.scientific_name or "",
-                "Confidence": d.confidence,
-                "Lat": d.latitude,
-                "Lon": d.longitude,
-                "Cutoff": d.cutoff,
+                "scientific_name": d.scientific_name or "",
+                "confidence": d.confidence,
+                "latitude": d.latitude,
+                "longitude": d.longitude,
+                "species_confidence_threshold": d.species_confidence_threshold,
                 "Week": d.week,
-                "Sens": d.sensitivity,
+                "sensitivity_setting": d.sensitivity_setting,
                 "Overlap": d.overlap,
             }
             for d in detections
@@ -56,19 +56,18 @@ class ReportingManager:
             df = df.set_index("DateTime")
         else:
             # Create empty DataFrame with expected columns when no data
-            # Create empty DataFrame with expected columns when no data
             column_names = [
-                "common_name_ioc",
+                "common_name",
                 "DateTime",
                 "Date",
                 "Time",
-                "Sci_Name",
-                "Confidence",
-                "Lat",
-                "Lon",
-                "Cutoff",
+                "scientific_name",
+                "confidence",
+                "latitude",
+                "longitude",
+                "species_confidence_threshold",
                 "Week",
-                "Sens",
+                "sensitivity_setting",
                 "Overlap",
             ]
             df = pd.DataFrame({col: [] for col in column_names})
@@ -120,7 +119,7 @@ class ReportingManager:
 
                 top_10_species.append(
                     {
-                        "com_name": row["common_name"],
+                        "common_name": row["common_name"],
                         "count": current_count,
                         "percentage_diff": percentage_diff,
                     }
@@ -136,7 +135,7 @@ class ReportingManager:
             datetime.datetime.combine(end_date, datetime.time.max),
         )
         new_species = (
-            [{"com_name": row["species"], "count": row["count"]} for row in new_species_rows]
+            [{"common_name": row["species"], "count": row["count"]} for row in new_species_rows]
             if new_species_rows
             else []
         )
@@ -280,13 +279,13 @@ class ReportingManager:
         # Convert Detection objects to dictionaries matching the template expectations
         return [
             {
-                "Date": d.timestamp.strftime("%Y-%m-%d") if d.timestamp else "",
-                "Time": d.timestamp.strftime("%H:%M:%S") if d.timestamp else "",
-                "Sci_Name": d.scientific_name or "",
-                "common_name_ioc": d.common_name_ioc or d.common_name_tensor or "",
-                "Confidence": d.confidence or 0,
-                "Lat": d.latitude or "",
-                "Lon": d.longitude or "",
+                "date": d.timestamp.strftime("%Y-%m-%d") if d.timestamp else "",
+                "time": d.timestamp.strftime("%H:%M:%S") if d.timestamp else "",
+                "scientific_name": d.scientific_name or "",
+                "common_name": d.common_name_ioc or d.common_name_tensor or "",
+                "confidence": d.confidence or 0,
+                "latitude": d.latitude or "",
+                "longitude": d.longitude or "",
             }
             for d in todays_detections
         ]

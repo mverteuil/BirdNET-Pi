@@ -34,46 +34,54 @@
         <div class="dashboard-card">
           <div class="card-header">
             <h3 class="card-title">
-              {{ recording.common_name_ioc or recording.Sci_Name }}
+              {{ recording['common_name'] or recording['scientific_name'] }}
             </h3>
             <span class="card-badge badge-success"
-              >{{ "%.1f"|format(recording.Confidence * 100) }}%</span
+              >{{ "%.1f"|format(recording['confidence'] * 100) }}%</span
             >
           </div>
           <div class="card-content">
             <div style="margin-bottom: 1rem">
-              <strong>Scientific Name:</strong> {{ recording.Sci_Name }}
+              <strong>Scientific Name:</strong> {{ recording['scientific_name']
+              }}
             </div>
             <div style="margin-bottom: 1rem">
-              <strong>Detected:</strong> {{ recording.Date }} at {{
-              recording.Time }}
+              <strong>Detected:</strong> {{ recording['date'] }} at {{
+              recording['time'] }}
             </div>
-            {% if recording.Lat and recording.Lon %}
+            {% if recording['latitude'] and recording['longitude'] %}
             <div style="margin-bottom: 1rem">
-              <strong>Location:</strong> {{ "%.6f"|format(recording.Lat) }}, {{
-              "%.6f"|format(recording.Lon) }}
+              <strong>Location:</strong> {{ "%.6f"|format(recording['latitude'])
+              }}, {{ "%.6f"|format(recording['longitude']) }}
             </div>
             {% endif %}
             <div class="system-grid" style="margin-top: 1.5rem">
-              {% if recording.Week %}
+              {% if recording['week'] %}
               <div class="system-metric">
                 <div class="metric-label">Week</div>
                 <div class="metric-value" style="font-size: 1rem">
-                  {{ recording.Week }}
+                  {{ recording['week'] }}
                 </div>
               </div>
-              {% endif %} {% if recording.Sens %}
+              {% endif %} {% if recording['sensitivity_setting'] %}
               <div class="system-metric">
                 <div class="metric-label">Sensitivity</div>
                 <div class="metric-value" style="font-size: 1rem">
-                  {{ "%.2f"|format(recording.Sens) }}
+                  {{ "%.2f"|format(recording['sensitivity_setting']) }}
                 </div>
               </div>
-              {% endif %} {% if recording.Overlap %}
+              {% endif %} {% if recording['species_confidence_threshold'] %}
+              <div class="system-metric">
+                <div class="metric-label">Cutoff</div>
+                <div class="metric-value" style="font-size: 1rem">
+                  {{ "%.2f"|format(recording['species_confidence_threshold']) }}
+                </div>
+              </div>
+              {% endif %} {% if recording['overlap'] %}
               <div class="system-metric">
                 <div class="metric-label">Overlap</div>
                 <div class="metric-value" style="font-size: 1rem">
-                  {{ "%.2f"|format(recording.Overlap) }}
+                  {{ "%.2f"|format(recording['overlap']) }}
                 </div>
               </div>
               {% endif %}

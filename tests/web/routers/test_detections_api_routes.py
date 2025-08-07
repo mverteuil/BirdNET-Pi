@@ -66,9 +66,9 @@ class TestDetectionsAPIRoutes:
             "recording_start_time": "2025-01-15T10:30:00",
             "latitude": 40.7128,
             "longitude": -74.0060,
-            "cutoff": 0.0,
+            "species_confidence_threshold": 0.0,
             "week": 3,
-            "sensitivity": 1.0,
+            "sensitivity_setting": 1.0,
             "overlap": 0.0,
         }
 
@@ -128,9 +128,9 @@ class TestDetectionsAPIRoutes:
             timestamp=datetime(2025, 1, 15, 10, 30),
             latitude=40.0,
             longitude=-74.0,
-            cutoff=0.0,
+            species_confidence_threshold=0.0,
             week=3,
-            sensitivity=1.0,
+            sensitivity_setting=1.0,
             overlap=0.0,
         )
         client.mock_detection_manager.get_detection_by_id.return_value = mock_detection

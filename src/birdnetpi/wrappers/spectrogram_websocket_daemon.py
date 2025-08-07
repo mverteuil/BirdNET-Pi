@@ -12,7 +12,6 @@ import json
 import logging
 import os
 import signal
-import time
 from types import FrameType
 
 import websockets
@@ -56,25 +55,25 @@ def _cleanup_fifo_and_service() -> None:
 async def _websocket_handler(websocket):
     """Handle WebSocket connections for spectrogram data."""
     global _spectrogram_clients, _spectrogram_service
-    
+
     logger.info("Spectrogram WebSocket client connected from %s", websocket.remote_address)
     _spectrogram_clients.add(websocket)
-    
+
     # Create a mock WebSocket object that matches FastAPI WebSocket interface
     class MockWebSocket:
         def __init__(self, websocket):
             self.websocket = websocket
-        
+
         async def send_json(self, data):
             json_str = json.dumps(data)
             await self.websocket.send(json_str)
-    
+
     mock_ws = MockWebSocket(websocket)
-    
+
     # Register client with the SpectrogramService
     if _spectrogram_service:
         await _spectrogram_service.connect_websocket(mock_ws)
-    
+
     try:
         async for message in websocket:
             # Keep connection alive
@@ -86,15 +85,17 @@ async def _websocket_handler(websocket):
         # Unregister from SpectrogramService
         if _spectrogram_service:
             await _spectrogram_service.disconnect_websocket(mock_ws)
-        logger.info("Spectrogram WebSocket client disconnected. Remaining: %d", len(_spectrogram_clients))
+        logger.info(
+            "Spectrogram WebSocket client disconnected. Remaining: %d", len(_spectrogram_clients)
+        )
 
 
 async def _fifo_reading_loop():
     """Read from FIFO and process spectrogram data only."""
     global _fifo_livestream_fd, _spectrogram_service
-    
+
     logger.info("Starting FIFO reading loop for spectrogram processing")
-    
+
     while not _shutdown_flag:
         try:
             buffer_size = 4096  # Must match producer's write size
@@ -104,7 +105,9 @@ async def _fifo_reading_loop():
                 # Only process if we have spectrogram clients
                 if _spectrogram_clients and _spectrogram_service:
                     # Process spectrogram in this dedicated service
-                    spectrogram_data = await _spectrogram_service.process_audio_chunk(audio_data_bytes)
+                    spectrogram_data = await _spectrogram_service.process_audio_chunk(
+                        audio_data_bytes
+                    )
                     # Note: spectrogram_service.process_audio_chunk already sends to clients
             else:
                 await asyncio.sleep(0.01)
@@ -156,21 +159,16 @@ async def _main_async() -> None:
         logger.info("SpectrogramService instantiated and ready for connections.")
 
         # Start WebSocket server on port 9002 for spectrogram only
-        _websocket_server = await serve(
-            _websocket_handler,
-            "0.0.0.0",
-            9002,
-            logger=logger
-        )
+        _websocket_server = await serve(_websocket_handler, "0.0.0.0", 9002, logger=logger)
         logger.info("Spectrogram WebSocket server started on 0.0.0.0:9002")
 
         # Create a task for the FIFO reading loop
         fifo_task = asyncio.create_task(_fifo_reading_loop())
-        
+
         # Wait for shutdown signal
         while not _shutdown_flag:
             await asyncio.sleep(0.1)
-        
+
         # Cancel FIFO task
         fifo_task.cancel()
         try:

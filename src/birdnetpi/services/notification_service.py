@@ -30,16 +30,18 @@ class NotificationService:
         """Register Blinker signal listeners."""
         detection_signal.connect(self._handle_detection_event)
         logger.info("NotificationService listeners registered.")
-    
+
     def add_websocket(self, websocket) -> None:
         """Add a WebSocket to the active connections set."""
         self.active_websockets.add(websocket)
         logger.info(f"WebSocket added to active connections. Total: {len(self.active_websockets)}")
-    
+
     def remove_websocket(self, websocket) -> None:
         """Remove a WebSocket from the active connections set."""
         self.active_websockets.discard(websocket)
-        logger.info(f"WebSocket removed from active connections. Total: {len(self.active_websockets)}")
+        logger.info(
+            f"WebSocket removed from active connections. Total: {len(self.active_websockets)}"
+        )
 
     def _handle_detection_event(self, sender: object, detection: Detection) -> None:
         """Handle a new detection event by sending notifications."""
@@ -79,35 +81,37 @@ class NotificationService:
         """Send detection notifications to all connected WebSocket clients."""
         if not self.active_websockets:
             return
-        
+
         # Create notification payload
         notification_data = {
             "type": "detection",
             "detection": {
-                "species": detection.common_name,
-                "common_name": detection.common_name,
+                "species": detection.common_name_ioc or detection.common_name_tensor,
+                "common_name": detection.common_name_ioc or detection.common_name_tensor,
                 "scientific_name": detection.scientific_name,
                 "confidence": detection.confidence,
-                "datetime": detection.datetime.isoformat() if detection.datetime else None,
-            }
+                "datetime": detection.timestamp.isoformat() if detection.timestamp else None,
+            },
         }
-        
+
         notification_json = json.dumps(notification_data)
-        
+
         # Send to all connected WebSocket clients
         disconnected_websockets = set()
         for ws in self.active_websockets.copy():  # Copy to avoid modification during iteration
             try:
                 await ws.send_text(notification_json)
-                logger.debug(f"Sent detection notification to WebSocket: {detection.get_display_name()}")
+                logger.debug(
+                    f"Sent detection notification to WebSocket: {detection.get_display_name()}"
+                )
             except Exception as e:
                 logger.warning(f"Failed to send WebSocket notification: {e}")
                 disconnected_websockets.add(ws)
-        
+
         # Remove disconnected WebSocket clients
         for ws in disconnected_websockets:
             self.active_websockets.discard(ws)
-            logger.info(f"Removed disconnected WebSocket from active connections")
+            logger.info("Removed disconnected WebSocket from active connections")
 
     async def _send_iot_notifications(self, detection: Detection) -> None:
         """Send MQTT and webhook notifications for a detection event."""

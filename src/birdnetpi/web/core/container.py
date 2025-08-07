@@ -51,7 +51,7 @@ class Container(containers.DeclarativeContainer):
         resolver=file_resolver,
     )
 
-    database_service = providers.Singleton(
+    bnp_database_service = providers.Singleton(
         DatabaseService,
         db_path=database_path,
     )
@@ -64,7 +64,7 @@ class Container(containers.DeclarativeContainer):
 
     detection_manager = providers.Singleton(
         DetectionManager,
-        db_service=database_service,
+        db_service=bnp_database_service,
     )
 
     location_service = providers.Singleton(

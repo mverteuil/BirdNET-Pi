@@ -50,9 +50,9 @@ class DetectionEventManager:
             spectrogram_path=detection_data.get("spectrogram_path"),
             latitude=detection_data.get("latitude"),
             longitude=detection_data.get("longitude"),
-            cutoff=detection_data.get("cutoff"),
+            species_confidence_threshold=detection_data.get("species_confidence_threshold"),
             week=detection_data.get("week"),
-            sensitivity=detection_data.get("sensitivity"),
+            sensitivity_setting=detection_data.get("sensitivity_setting"),
             overlap=detection_data.get("overlap"),
             is_extracted=detection_data.get("is_extracted", False),
         )

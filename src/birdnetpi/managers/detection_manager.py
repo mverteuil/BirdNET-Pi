@@ -41,9 +41,9 @@ class DetectionManager:
                     audio_file_id=audio_file.id,
                     latitude=detection_event.latitude,
                     longitude=detection_event.longitude,
-                    cutoff=detection_event.cutoff,
+                    species_confidence_threshold=detection_event.species_confidence_threshold,
                     week=detection_event.week,
-                    sensitivity=detection_event.sensitivity,
+                    sensitivity_setting=detection_event.sensitivity_setting,
                     overlap=detection_event.overlap,
                 )
                 db.add(detection)
@@ -244,17 +244,17 @@ class DetectionManager:
                 )
                 return [
                     {
-                        "Date": d.timestamp.strftime("%Y-%m-%d"),
-                        "Time": d.timestamp.strftime("%H:%M:%S"),
-                        "Sci_Name": d.scientific_name or "",
-                        "common_name_ioc": d.common_name_ioc or d.common_name_tensor or "",
-                        "Confidence": d.confidence,
-                        "Lat": d.latitude,
-                        "Lon": d.longitude,
-                        "Cutoff": d.cutoff,
-                        "Week": d.week,
-                        "Sens": d.sensitivity,
-                        "Overlap": d.overlap,
+                        "date": d.timestamp.strftime("%Y-%m-%d"),
+                        "time": d.timestamp.strftime("%H:%M:%S"),
+                        "scientific_name": d.scientific_name or "",
+                        "common_name": d.common_name_ioc or d.common_name_tensor or "",
+                        "confidence": d.confidence,
+                        "latitude": d.latitude,
+                        "longitude": d.longitude,
+                        "species_confidence_threshold": d.species_confidence_threshold,
+                        "week": d.week,
+                        "sensitivity_setting": d.sensitivity_setting,
+                        "overlap": d.overlap,
                     }
                     for d in recent_detections
                 ]
@@ -294,17 +294,17 @@ class DetectionManager:
 
                 return [
                     {
-                        "Date": d.timestamp.strftime("%Y-%m-%d"),
-                        "Time": d.timestamp.strftime("%H:%M:%S"),
-                        "Sci_Name": d.scientific_name or "",
-                        "common_name_ioc": d.common_name_ioc or d.common_name_tensor or "",
-                        "Confidence": d.confidence,
-                        "Lat": d.latitude,
-                        "Lon": d.longitude,
-                        "Cutoff": d.cutoff,
-                        "Week": d.week,
-                        "Sens": d.sensitivity,
-                        "Overlap": d.overlap,
+                        "date": d.timestamp.strftime("%Y-%m-%d"),
+                        "time": d.timestamp.strftime("%H:%M:%S"),
+                        "scientific_name": d.scientific_name or "",
+                        "common_name": d.common_name_ioc or d.common_name_tensor or "",
+                        "confidence": d.confidence,
+                        "latitude": d.latitude,
+                        "longitude": d.longitude,
+                        "species_confidence_threshold": d.species_confidence_threshold,
+                        "week": d.week,
+                        "sensitivity_setting": d.sensitivity_setting,
+                        "overlap": d.overlap,
                     }
                     for d in best_detections
                 ]

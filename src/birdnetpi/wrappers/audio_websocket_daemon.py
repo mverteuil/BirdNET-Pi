@@ -1,10 +1,8 @@
 import asyncio
 import atexit
-import json
 import logging
 import os
 import signal
-import time
 from types import FrameType
 
 import websockets
@@ -47,46 +45,51 @@ def _cleanup_fifo_and_service() -> None:
 async def _websocket_handler(websocket):
     """Route WebSocket connections based on path."""
     global _audio_clients, _spectrogram_clients
-    
+
     # Debug: Log what attributes are available
-    logger.debug("WebSocket attributes: %s", [attr for attr in dir(websocket) if not attr.startswith('_')][:10])
-    
+    logger.debug(
+        "WebSocket attributes: %s",
+        [attr for attr in dir(websocket) if not attr.startswith("_")][:10],
+    )
+
     # The new websockets library passes the path differently
     # We need to check multiple possible locations
     path = None
-    
+
     try:
         # Method 1: Direct path attribute (some versions)
-        if hasattr(websocket, 'path'):
+        if hasattr(websocket, "path"):
             path = websocket.path
             logger.info("Got path from websocket.path: %s", path)
         # Method 2: From request object
-        elif hasattr(websocket, 'request'):
-            if hasattr(websocket.request, 'path'):
+        elif hasattr(websocket, "request"):
+            if hasattr(websocket.request, "path"):
                 path = websocket.request.path
                 logger.info("Got path from websocket.request.path: %s", path)
         # Method 3: From request_headers (HTTP/2 style)
-        elif hasattr(websocket, 'request_headers'):
+        elif hasattr(websocket, "request_headers"):
             for name, value in websocket.request_headers.raw_items():
                 logger.debug("Header: %s = %s", name, value)
-                if name.lower() == b':path':
-                    path = value.decode('utf-8')
+                if name.lower() == b":path":
+                    path = value.decode("utf-8")
                     logger.info("Got path from request_headers: %s", path)
                     break
-        
+
         # If we still don't have a path, log all attributes for debugging
         if path is None:
-            logger.warning("Could not find path in websocket object. Available attributes: %s", 
-                         [attr for attr in dir(websocket) if not attr.startswith('_')])
+            logger.warning(
+                "Could not find path in websocket object. Available attributes: %s",
+                [attr for attr in dir(websocket) if not attr.startswith("_")],
+            )
             # Default to root which will trigger the unknown endpoint handler
             path = "/"
-            
+
         logger.info("WebSocket connection attempt with final path: '%s'", path)
-        
+
     except Exception as e:
         logger.error("Error extracting path from websocket: %s", e, exc_info=True)
         path = "/"
-    
+
     if path == "/ws/audio":
         _audio_clients.add(websocket)
         logger.info("Audio WebSocket client connected. Total: %d", len(_audio_clients))
@@ -99,12 +102,14 @@ async def _websocket_handler(websocket):
         finally:
             _audio_clients.discard(websocket)
             logger.info("Audio WebSocket client disconnected. Remaining: %d", len(_audio_clients))
-    
+
     elif path == "/ws/spectrogram":
         # Spectrogram now handled by separate service on port 9002
-        logger.info("Spectrogram request redirected - should be handled by separate service on port 9002")
+        logger.info(
+            "Spectrogram request redirected - should be handled by separate service on port 9002"
+        )
         await websocket.close(code=4003, reason="Spectrogram moved to dedicated service")
-    
+
     else:
         logger.warning("Unknown WebSocket endpoint: %s", path)
         await websocket.close(code=4004, reason="Unknown endpoint")
@@ -117,13 +122,13 @@ async def _broadcast_audio_data(audio_data_bytes: bytes):
         try:
             # Send raw PCM data directly - no CPU-intensive encoding!
             # The browser can decode PCM directly using Web Audio API
-            
+
             # Create a simple header for the client to understand the format
             # Format: 4 bytes length + PCM data
             data_length = len(audio_data_bytes)
-            header = data_length.to_bytes(4, byteorder='little')
+            header = data_length.to_bytes(4, byteorder="little")
             pcm_packet = header + audio_data_bytes
-            
+
             # Broadcast to all connected clients (much faster than MP3 encoding)
             disconnected = set()
             for client in _audio_clients:
@@ -131,10 +136,10 @@ async def _broadcast_audio_data(audio_data_bytes: bytes):
                     await client.send(pcm_packet)
                 except websockets.exceptions.ConnectionClosed:
                     disconnected.add(client)
-            
+
             # Remove disconnected clients
             _audio_clients -= disconnected
-            
+
         except Exception as e:
             logger.error("Error broadcasting audio data: %s", e, exc_info=True)
 
@@ -145,7 +150,7 @@ async def _broadcast_audio_data(audio_data_bytes: bytes):
 async def _fifo_reading_loop():
     """Read from FIFO and process audio data only. Spectrogram handled by separate service."""
     global _fifo_livestream_fd, _processing_active
-    
+
     while not _shutdown_flag:
         try:
             buffer_size = 4096  # Must match producer's write size
@@ -169,9 +174,7 @@ async def _fifo_reading_loop():
         except BlockingIOError:
             await asyncio.sleep(0.01)
         except Exception as e:
-            logger.error(
-                "Error reading from FIFO or broadcasting data: %s", e, exc_info=True
-            )
+            logger.error("Error reading from FIFO or broadcasting data: %s", e, exc_info=True)
             await asyncio.sleep(0.1)
 
 
@@ -201,21 +204,16 @@ async def _main_async() -> None:
         logger.info("Opened FIFO for reading: %s", _fifo_livestream_path)
 
         # Start WebSocket server on port 9001 for audio only (bind to all interfaces for Docker/Caddy)
-        _websocket_server = await serve(
-            _websocket_handler,
-            "0.0.0.0",
-            9001,
-            logger=logger
-        )
+        _websocket_server = await serve(_websocket_handler, "0.0.0.0", 9001, logger=logger)
         logger.info("WebSocket server started on 0.0.0.0:9001")
 
         # Create a task for the FIFO reading loop
         fifo_task = asyncio.create_task(_fifo_reading_loop())
-        
+
         # Wait for shutdown signal
         while not _shutdown_flag:
             await asyncio.sleep(0.1)
-        
+
         # Cancel FIFO task
         fifo_task.cancel()
         try:

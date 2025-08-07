@@ -57,11 +57,11 @@ async def get_detections(
             {
                 "Date": d.timestamp.strftime("%Y-%m-%d") if d.timestamp else "",
                 "Time": d.timestamp.strftime("%H:%M:%S") if d.timestamp else "",
-                "Sci_Name": d.scientific_name or "",
-                "common_name_ioc": d.common_name_ioc or d.common_name_tensor or "",
-                "Confidence": d.confidence or 0,
-                "Lat": d.latitude or "",
-                "Lon": d.longitude or "",
+                "scientific_name": d.scientific_name or "",
+                "common_name": d.common_name_ioc or d.common_name_tensor or "",
+                "confidence": d.confidence or 0,
+                "latitude": d.latitude or "",
+                "longitude": d.longitude or "",
             }
             for d in all_detections
         ]
@@ -162,8 +162,8 @@ async def get_charts(
         # Generate daily plot
         # Handle empty DataFrame case for species selection
         most_common_species = (
-            df["common_name_ioc"].mode()[0]
-            if not df.empty and len(df["common_name_ioc"].mode()) > 0
+            df["common_name"].mode()[0]
+            if not df.empty and len(df["common_name"].mode()) > 0
             else "All"
         )
         daily_fig = plotting_manager.generate_daily_detections_plot(

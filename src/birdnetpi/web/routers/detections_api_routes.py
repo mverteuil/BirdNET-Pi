@@ -142,9 +142,9 @@ async def get_detection(
             "timestamp": detection.timestamp.isoformat(),
             "latitude": detection.latitude,
             "longitude": detection.longitude,
-            "cutoff": detection.cutoff,
+            "species_confidence_threshold": detection.species_confidence_threshold,
             "week": detection.week,
-            "sensitivity": detection.sensitivity,
+            "sensitivity_setting": detection.sensitivity_setting,
             "overlap": detection.overlap,
         }
         return JSONResponse(detection_data)

@@ -36,27 +36,25 @@ class DataPreparationManager:
 
     def get_species_counts(self, df: pd.DataFrame) -> pd.Series:
         """Calculate the counts of each common name in the DataFrame."""
-        return df["common_name_ioc"].value_counts()
+        return df["common_name"].value_counts()
 
     def get_hourly_crosstab(self, df: pd.DataFrame) -> pd.DataFrame:
         """Generate a crosstabulation of common names by hour."""
         datetime_index = cast(pd.DatetimeIndex, df.index)
-        return pd.crosstab(
-            df["common_name_ioc"], datetime_index.hour.values, dropna=True, margins=True
-        )  # type: ignore[attr-defined]
+        return pd.crosstab(df["common_name"], datetime_index.hour.values, dropna=True, margins=True)  # type: ignore[attr-defined]
 
     def get_daily_crosstab(self, df: pd.DataFrame) -> pd.DataFrame:
         """Generate a crosstabulation of common names by date."""
         datetime_index = cast(pd.DatetimeIndex, df.index)
-        return pd.crosstab(df["common_name_ioc"], datetime_index.date, dropna=True, margins=True)  # type: ignore[attr-defined]
+        return pd.crosstab(df["common_name"], datetime_index.date, dropna=True, margins=True)  # type: ignore[attr-defined]
 
     def time_resample(self, df: pd.DataFrame, resample_time: str) -> pd.DataFrame:
         """Resample the DataFrame based on the given time interval."""
         if resample_time == "Raw":
-            df_resample = df[["common_name_ioc"]]
+            df_resample = df[["common_name"]]
         else:
             series_result = (
-                df.resample(resample_time.lower())["common_name_ioc"].aggregate("unique").explode()
+                df.resample(resample_time.lower())["common_name"].aggregate("unique").explode()
             )
             df_resample = series_result.to_frame()
         return cast(pd.DataFrame, df_resample)
@@ -80,8 +78,8 @@ class DataPreparationManager:
         """Prepare data for the daily detections plot."""
         # Filter the DataFrame first, then get the series and resample
         # Ensure we're working with proper pandas objects by accessing the series directly
-        species_mask = df["common_name_ioc"] == config.species
-        species_series = df.loc[species_mask, "common_name_ioc"]
+        species_mask = df["common_name"] == config.species
+        species_series = df.loc[species_mask, "common_name"]
         df4 = cast(pd.Series, species_series.resample("15min").count())
         datetime_index = cast(pd.DatetimeIndex, df4.index)
         df4.index = [datetime_index.date, datetime_index.time]  # type: ignore[attr-defined]

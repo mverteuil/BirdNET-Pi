@@ -43,13 +43,17 @@ def test_get_best_recordings(client):
     mock_reporting_manager = client.app.container.reporting_manager()
     mock_reporting_manager.get_best_detections.return_value = [
         {
-            "Date": "2025-07-26",
-            "Time": "10:00:00",
-            "Sci_Name": "Cardinalis cardinalis",
-            "Com_Name": "Northern Cardinal",
-            "Confidence": 0.9,
-            "Lat": 38.8951,
-            "Lon": -77.0364,
+            "date": "2025-07-26",
+            "time": "10:00:00",
+            "scientific_name": "Cardinalis cardinalis",
+            "common_name": "Northern Cardinal",
+            "confidence": 0.9,
+            "latitude": 38.8951,
+            "longitude": -77.0364,
+            "species_confidence_threshold": 0.5,
+            "week": 1,
+            "sensitivity_setting": 1.0,
+            "overlap": 0.0,
         }
     ]
 
@@ -69,13 +73,13 @@ def test_get_todays_detections(client):
     # Configure the mock reporting manager to return test data
     mock_detections = [
         {
-            "Date": "2025-07-26",
-            "Time": "10:00:00",
-            "Sci_Name": "Zenaida macroura",
-            "Com_Name": "Mourning Dove",
-            "Confidence": 0.85,
-            "Lat": 38.8951,
-            "Lon": -77.0364,
+            "date": "2025-07-26",
+            "time": "10:00:00",
+            "scientific_name": "Zenaida macroura",
+            "common_name": "Mourning Dove",
+            "confidence": 0.85,
+            "latitude": 38.8951,
+            "longitude": -77.0364,
         }
     ]
 

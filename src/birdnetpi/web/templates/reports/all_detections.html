@@ -42,7 +42,7 @@
         </div>
         <div class="stat-item">
           <span class="stat-value"
-            >{{ "%.1f"|format((all_detections|map(attribute='Confidence')|sum /
+            >{{ "%.1f"|format((all_detections|map(attribute='confidence')|sum /
             all_detections|length * 100)) }}%</span
           >
           <span class="stat-label">Avg Confidence</span>
@@ -98,19 +98,19 @@
           >
             <div class="detection-info">
               <div class="detection-species">
-                {{ detection.common_name_ioc or detection.Sci_Name }}
+                {{ detection.common_name_ioc or detection.scientific_name }}
               </div>
               <div class="detection-time">
                 {{ detection.Date }} {{ detection.Time }} {% if
-                detection.Sci_Name and detection.common_name_ioc %} -
-                <em>{{ detection.Sci_Name }}</em>
-                {% endif %} {% if detection.Lat and detection.Lon %} - 📍 {{
-                "%.4f"|format(detection.Lat) }}, {{ "%.4f"|format(detection.Lon)
-                }} {% endif %}
+                detection.scientific_name and detection.common_name_ioc %} -
+                <em>{{ detection.scientific_name }}</em>
+                {% endif %} {% if detection.latitude and detection.longitude %}
+                - 📍 {{ "%.4f"|format(detection.latitude) }}, {{
+                "%.4f"|format(detection.longitude) }} {% endif %}
               </div>
             </div>
             <div class="detection-confidence">
-              {{ "%.1f"|format(detection.Confidence * 100) }}%
+              {{ "%.1f"|format(detection.confidence * 100) }}%
             </div>
           </div>
           {% endfor %}

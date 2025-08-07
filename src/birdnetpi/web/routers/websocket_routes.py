@@ -17,22 +17,22 @@ router = APIRouter()
 @inject
 async def websocket_endpoint(
     websocket: WebSocket,
-    notification_service: NotificationService = Depends(Provide[Container.notification_service])
+    notification_service: NotificationService = Depends(Provide[Container.notification_service]),
 ) -> None:
     """Handle WebSocket connections for real-time notifications and updates."""
     try:
         await websocket.accept()
         logger.info("WebSocket client connected")
-        
+
         # Add to active websockets through the notification service
         notification_service.add_websocket(websocket)
         logger.info("WebSocket added to notification service")
-        
+
         # Keep connection alive
         while True:
             message = await websocket.receive_text()
             logger.debug(f"Received WebSocket message: {message}")
-            
+
     except WebSocketDisconnect:
         logger.info("WebSocket client disconnected")
         notification_service.remove_websocket(websocket)

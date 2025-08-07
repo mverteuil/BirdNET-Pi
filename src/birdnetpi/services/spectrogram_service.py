@@ -98,14 +98,14 @@ class SpectrogramService:
 
         Args:
             audio_data_bytes: Raw audio data as bytes (int16 format)
-            
+
         Returns:
             dict | None: Spectrogram data dict if generated, None if not ready
         """
         logger.debug(
             "Processing audio chunk: %d bytes for %d client(s)",
             len(audio_data_bytes),
-            len(self.connected_websockets)
+            len(self.connected_websockets),
         )
 
         # Convert bytes to numpy array
@@ -123,7 +123,7 @@ class SpectrogramService:
             logger.debug("Generating spectrogram with %d samples", len(self.audio_buffer))
             try:
                 spectrogram_data = await self._generate_spectrogram()
-                
+
                 # Send to FastAPI WebSocket clients if any are connected
                 if self.connected_websockets:
                     await self._send_to_websocket_clients(spectrogram_data)
@@ -131,7 +131,7 @@ class SpectrogramService:
                 # Keep some overlap for continuity
                 overlap_samples = int(self.samples_per_update * 0.25)
                 self.audio_buffer = self.audio_buffer[-overlap_samples:]
-                
+
                 return spectrogram_data
             except Exception as e:
                 logger.error("Error processing spectrogram: %s", e, exc_info=True)
@@ -139,12 +139,12 @@ class SpectrogramService:
                 overlap_samples = int(self.samples_per_update * 0.25)
                 self.audio_buffer = self.audio_buffer[-overlap_samples:]
                 return None
-        
+
         return None
 
     async def _generate_spectrogram(self) -> dict:
         """Generate spectrogram data from current buffer.
-        
+
         Returns:
             dict: Spectrogram data ready for transmission
         """
@@ -169,16 +169,18 @@ class SpectrogramService:
 
                 # Convert to dB scale for better visualization
                 spectrogram_db = 20 * np.log10(np.maximum(spectrogram, 1e-10))
-                
+
                 # Transpose so data is [time][frequency] for JavaScript indexing
                 spectrogram_transposed = spectrogram_db.T  # Now shape is (time, frequency)
-                
+
                 # Convert numpy array to list for JSON (this is also expensive)
                 return spectrogram_transposed.tolist(), spectrogram_transposed.shape
 
             # Run the CPU-intensive computation in a thread pool
             loop = asyncio.get_event_loop()
-            spectrogram_list, shape = await loop.run_in_executor(None, compute_spectrogram, audio_segment)
+            spectrogram_list, shape = await loop.run_in_executor(
+                None, compute_spectrogram, audio_segment
+            )
 
             # Prepare data for transmission
             spectrogram_data = {
@@ -187,7 +189,7 @@ class SpectrogramService:
                 "data": spectrogram_list,
                 "shape": shape,
             }
-            
+
             return spectrogram_data
 
         except Exception as e:

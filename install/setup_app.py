@@ -5,9 +5,9 @@ import sys
 # Add the src directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
+from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.models.config import BirdNETConfig
-from birdnetpi.services.database_manager import DatabaseManager
-from birdnetpi.services.file_manager import FileManager
+from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
@@ -22,7 +22,7 @@ class AppSetup:
         self.config_parser = ConfigFileParser(self.config_file_path)
         self.config: BirdNETConfig = self.config_parser.parse()
         self.file_manager = FileManager(self.repo_root)
-        self.database_manager = DatabaseManager(self.file_path_resolver.get_database_path())
+        self.bnp_database_service = DatabaseService(self.file_path_resolver.get_database_path())
         self.venv_path = self.file_path_resolver.get_absolute_path("birdnet")
 
     def _run_command(self, command: list[str], description: str) -> None:
@@ -64,7 +64,7 @@ class AppSetup:
     def initialize_database(self) -> None:
         """Initialize the application database."""
         print("\nInitializing database...")
-        self.database_manager.initialize_database()
+        self.bnp_database_service.initialize_database()
         print("Database initialized.")
 
     def setup_systemd_services(self) -> None:

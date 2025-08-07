@@ -95,14 +95,14 @@ def reporting_manager(
 def test_get_most_recent_detections(reporting_manager, detection_manager):
     """Should return a list of recent detections."""
     detection_manager.get_most_recent_detections.return_value = [
-        {"com_name": "American Robin", "Date": "2025-07-12", "Time": "10:00:00"},
-        {"com_name": "Northern Cardinal", "Date": "2025-07-12", "Time": "09:59:00"},
+        {"common_name": "American Robin", "date": "2025-07-12", "time": "10:00:00"},
+        {"common_name": "Northern Cardinal", "date": "2025-07-12", "time": "09:59:00"},
     ]
 
     recent_detections = reporting_manager.get_most_recent_detections(limit=2)
 
     assert len(recent_detections) == 2
-    assert recent_detections[0]["com_name"] == "American Robin"
+    assert recent_detections[0]["common_name"] == "American Robin"
     detection_manager.get_most_recent_detections.assert_called_once_with(2)
 
 
@@ -121,12 +121,14 @@ def test_get_weekly_report_data(reporting_manager, detection_manager):
 
         detection_manager.get_top_species_with_prior_counts.return_value = [
             {
-                "species": "American Robin",
+                "scientific_name": "Turdus migratorius",
+                "common_name": "American Robin",
                 "current_count": 20,
                 "prior_count": 15,
             },
             {
-                "species": "Northern Cardinal",
+                "scientific_name": "Cardinalis cardinalis",
+                "common_name": "Northern Cardinal",
                 "current_count": 15,
                 "prior_count": 10,
             },
@@ -144,10 +146,10 @@ def test_get_weekly_report_data(reporting_manager, detection_manager):
         assert report_data["unique_species_current"] == 10
         assert report_data["percentage_diff_unique_species"] == 25
         assert len(report_data["top_10_species"]) == 2
-        assert report_data["top_10_species"][0]["com_name"] == "American Robin"
+        assert report_data["top_10_species"][0]["common_name"] == "American Robin"
         assert report_data["top_10_species"][0]["percentage_diff"] == 33
         assert len(report_data["new_species"]) == 1
-        assert report_data["new_species"][0]["com_name"] == "Blue Jay"
+        assert report_data["new_species"][0]["common_name"] == "Blue Jay"
 
         # Assertions for detection_manager method calls
         # Extract the actual calls made to get_detection_counts_by_date_range
@@ -230,22 +232,22 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
 
     # Assertions
     assert isinstance(day_hour_freq, pd.DataFrame)
-    assert "American Robin" in df["Com_Name"].unique()
-    assert "Northern Cardinal" in df["Com_Name"].unique()
+    assert "American Robin" in df["common_name"].unique()
+    assert "Northern Cardinal" in df["common_name"].unique()
 
 
 def test_get_best_detections(reporting_manager, detection_manager):
     """Should return a list of best detections sorted by confidence."""
     detection_manager.get_best_detections.return_value = [
-        {"com_name": "Northern Cardinal", "Confidence": 0.95},
-        {"com_name": "American Robin", "Confidence": 0.9},
+        {"common_name": "Northern Cardinal", "confidence": 0.95},
+        {"common_name": "American Robin", "confidence": 0.9},
     ]
 
     best_detections = reporting_manager.get_best_detections(limit=2)
 
     assert len(best_detections) == 2
-    assert best_detections[0]["com_name"] == "Northern Cardinal"
-    assert best_detections[0]["Confidence"] == 0.95
+    assert best_detections[0]["common_name"] == "Northern Cardinal"
+    assert best_detections[0]["confidence"] == 0.95
     detection_manager.get_best_detections.assert_called_once_with(2)
 
 
@@ -260,16 +262,16 @@ def test_get_data_empty_detections(reporting_manager, detection_manager):
     # Verify DataFrame is empty but has correct structure
     assert df.empty
     assert list(df.columns) == [
-        "Com_Name",
+        "common_name",
         "Date",
         "Time",
-        "Sci_Name",
-        "Confidence",
-        "Lat",
-        "Lon",
-        "Cutoff",
+        "scientific_name",
+        "confidence",
+        "latitude",
+        "longitude",
+        "species_confidence_threshold",
         "Week",
-        "Sens",
+        "sensitivity_setting",
         "Overlap",
     ]
     assert df.index.name == "DateTime"
@@ -329,11 +331,11 @@ def test_get_todays_detections(reporting_manager, detection_manager):
 
         # Verify the results - only 2 detections from today
         assert len(todays_detections) == 2
-        assert todays_detections[0]["Com_Name"] == "American Robin"
-        assert todays_detections[1]["Com_Name"] == "Northern Cardinal"
-        assert todays_detections[0]["Date"] == "2025-07-15"
-        assert todays_detections[0]["Time"] == "10:00:00"
-        assert todays_detections[0]["Confidence"] == 0.9
+        assert todays_detections[0]["common_name"] == "American Robin"
+        assert todays_detections[1]["common_name"] == "Northern Cardinal"
+        assert todays_detections[0]["date"] == "2025-07-15"
+        assert todays_detections[0]["time"] == "10:00:00"
+        assert todays_detections[0]["confidence"] == 0.9
 
         # Verify the detection manager was called
         detection_manager.get_all_detections.assert_called_once()

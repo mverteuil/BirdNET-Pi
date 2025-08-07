@@ -231,7 +231,7 @@ def test_get_top_species_with_prior_counts_success(detection_manager):
     detection_manager.db_service.get_db.assert_called_once_with()
     mock_db_session.query.assert_called()  # Called multiple times for subqueries and main query
     assert len(result) == 2
-    assert result[0]["species"] == "species1"
+    assert result[0]["scientific_name"] == "species1"
 
 
 def test_get_top_species_with_prior_counts_failure(detection_manager):
@@ -257,8 +257,8 @@ def test_get_new_species_data_success(detection_manager):
     detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     (mock_db_session.query().filter().distinct().subquery().return_value) = MagicMock()
     (mock_db_session.query().filter().group_by().order_by().all.return_value) = [
-        MagicMock(scientific_name="species1", count=10),
-        MagicMock(scientific_name="species2", count=8),
+        MagicMock(scientific_name="species1", common_name="species1", count=10),
+        MagicMock(scientific_name="species2", common_name="species2", count=8),
     ]
 
     result = detection_manager.get_new_species_data(datetime(2023, 1, 1), datetime(2023, 1, 31))
@@ -294,9 +294,9 @@ def test_get_most_recent_detections_success(detection_manager):
     mock_detection.confidence = 0.9
     mock_detection.latitude = 1.0
     mock_detection.longitude = 2.0
-    mock_detection.cutoff = 0.5
+    mock_detection.species_confidence_threshold = 0.5
     mock_detection.week = 1
-    mock_detection.sensitivity = 1.0
+    mock_detection.sensitivity_setting = 1.0
     mock_detection.overlap = 0.0
     mock_db_session.query.return_value.order_by.return_value.limit.return_value.all.return_value = [
         mock_detection
@@ -310,8 +310,8 @@ def test_get_most_recent_detections_success(detection_manager):
     mock_db_session.query.return_value.order_by.return_value.limit.assert_called_once_with(1)
     mock_db_session.query.return_value.order_by.return_value.limit.return_value.all.assert_called_once()
     assert len(result) == 1
-    assert result[0]["Com_Name"] == "Common Blackbird"
-    assert result[0]["Sci_Name"] == "Turdus merula"
+    assert result[0]["common_name"] == "Common Blackbird"
+    assert result[0]["scientific_name"] == "Turdus merula"
 
 
 def test_get_most_recent_detections_failure(detection_manager):
@@ -378,7 +378,7 @@ def test_get_best_detections_success(detection_manager):
 
     # Assertions
     assert len(result) == 2
-    assert result[0]["Confidence"] == 0.95
-    assert result[1]["Confidence"] == 0.9
-    assert result[0]["Com_Name"] == "Northern Cardinal"
-    assert result[1]["Com_Name"] == "American Robin"
+    assert result[0]["confidence"] == 0.95
+    assert result[1]["confidence"] == 0.9
+    assert result[0]["common_name"] == "Northern Cardinal"
+    assert result[1]["common_name"] == "American Robin"

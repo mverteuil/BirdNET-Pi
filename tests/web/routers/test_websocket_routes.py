@@ -170,7 +170,7 @@ class TestWebSocketRouter:
 
         from birdnetpi.web.routers.websocket_routes import websocket_endpoint
 
-        # Endpoint should take websocket parameter  
+        # Endpoint should take websocket parameter
         sig = inspect.signature(websocket_endpoint)
         params = list(sig.parameters.keys())
         assert "websocket" in params

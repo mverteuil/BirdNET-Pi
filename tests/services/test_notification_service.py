@@ -44,10 +44,6 @@ def test_handle_detection_event_basic(notification_service, caplog):
         assert (
             f"NotificationService received detection: {detection.get_display_name()}" in caplog.text
         )
-        assert (
-            f"Simulating sending detection to websocket: {detection.get_display_name()}"
-            in caplog.text
-        )
 
 
 def test_handle_detection_event_with_apprise_enabled(mock_config, notification_service, caplog):
@@ -64,12 +60,4 @@ def test_handle_detection_event_with_apprise_enabled(mock_config, notification_s
         notification_service._handle_detection_event(None, detection)
         assert (
             f"NotificationService received detection: {detection.get_display_name()}" in caplog.text
-        )
-        assert (
-            f"Simulating sending detection to websocket: {detection.get_display_name()}"
-            in caplog.text
-        )
-        assert (
-            f"Simulating sending Apprise notification for: {detection.get_display_name()}"
-            in caplog.text
         )
