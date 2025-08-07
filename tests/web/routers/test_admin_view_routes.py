@@ -9,30 +9,44 @@ from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.web.core.factory import create_app
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def app_with_admin_view_routes(tmp_path):
     """Create FastAPI app with admin router and dependencies using the factory."""
     # Create test config file for settings endpoint
     config_file = tmp_path / "config.yaml"
     config_file.write_text("site_name: Test BirdNET-Pi\nlatitude: 40.7128\nlongitude: -74.0060")
 
+    # Mock the database service completely to avoid SQLite issues
+    mock_db_instance = Mock()
+    mock_db_instance.get_db.return_value.__enter__ = Mock()
+    mock_db_instance.get_db.return_value.__exit__ = Mock()
+
+    # Mock file resolver to use test config and temp database path
+    mock_resolver = Mock()
+    mock_resolver.get_birdnetpi_config_path.return_value = str(config_file)
+    mock_resolver.base_dir = str(tmp_path)
+    mock_resolver.get_database_path.return_value = str(tmp_path / f"test_db_{id(tmp_path)}.sqlite")
+
+    # Mock detection manager for test_detection endpoint
+    mock_detection_manager = MagicMock(spec=DetectionManager)
+    mock_detection_manager.create_detection.return_value = None
+
     # Create the app using the factory
     app = create_app()
 
     # Override dependencies to use mocks
     if hasattr(app, "container"):
-        # Mock file resolver to use test config
-        mock_resolver = Mock()
-        mock_resolver.get_birdnetpi_config_path.return_value = str(config_file)
-        mock_resolver.base_dir = str(tmp_path)
         app.container.file_resolver.override(mock_resolver)  # type: ignore[attr-defined]
-
-        # Mock detection manager for test_detection endpoint
-        mock_detection_manager = MagicMock(spec=DetectionManager)
-        mock_detection_manager.create_detection.return_value = None
         app.container.detection_manager.override(mock_detection_manager)  # type: ignore[attr-defined]
+        app.container.bnp_database_service.override(mock_db_instance)  # type: ignore[attr-defined]
 
-    return app
+    yield app
+
+    # Clean up: reset overrides after each test
+    if hasattr(app, "container"):
+        app.container.file_resolver.reset_override()  # type: ignore[attr-defined]
+        app.container.detection_manager.reset_override()  # type: ignore[attr-defined]
+        app.container.bnp_database_service.reset_override()  # type: ignore[attr-defined]
 
 
 @pytest.fixture
