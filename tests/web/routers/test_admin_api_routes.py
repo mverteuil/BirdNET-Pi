@@ -26,7 +26,7 @@ def client():
 
     # Wire the container
     container.wire(modules=["birdnetpi.web.routers.admin_api_routes"])
-    app.container = container
+    app.container = container  # type: ignore[attr-defined]
 
     # Include the router with the same prefix as in factory
     app.include_router(router, prefix="/admin/config")
@@ -35,7 +35,7 @@ def client():
     client = TestClient(app)
 
     # Store the mock for access in tests
-    client.mock_file_resolver = mock_file_resolver
+    client.mock_file_resolver = mock_file_resolver  # type: ignore[attr-defined]
 
     return client
 

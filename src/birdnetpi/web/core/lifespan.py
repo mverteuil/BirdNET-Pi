@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     notification_service = container.notification_service()
     # The websockets set is already initialized in the container
     # No need to create a new one or reassign private attributes
-    app.extra["active_websockets"] = notification_service.active_websockets
+    app.extra["active_websockets"] = notification_service.active_websockets  # type: ignore[assignment]
 
     # Configure webhook service from config
     webhook_service = container.webhook_service()

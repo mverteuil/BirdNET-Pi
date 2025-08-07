@@ -85,8 +85,15 @@ class DataPreparationManager:
         df4.index = [datetime_index.date, datetime_index.time]  # type: ignore[attr-defined]
         day_hour_freq = df4.unstack().fillna(0)
 
-        saved_time_labels = [self.hms_to_str(h) for h in day_hour_freq.columns.tolist()]
-        fig_dec_y = [self.hms_to_dec(h) for h in day_hour_freq.columns.tolist()]
+        # Convert column times (which should already be datetime.time objects) to strings
+        saved_time_labels = [
+            self.hms_to_str(h) if isinstance(h, datetime.time) else str(h)
+            for h in day_hour_freq.columns.tolist()
+        ]
+        fig_dec_y = [
+            self.hms_to_dec(h) if isinstance(h, datetime.time) else 0.0
+            for h in day_hour_freq.columns.tolist()
+        ]
         fig_x = []
         for d in day_hour_freq.index.tolist():
             if hasattr(d, "strftime"):

@@ -91,10 +91,11 @@ class TestDetection:
 
     def test_get_display_name_prefers_ioc_name(self):
         """Test get_display_name returns IOC name when available."""
-        detection = Detection()
-        detection.common_name_ioc = "American Robin"
-        detection.common_name_tensor = "American Robin Tensor"
-        detection.scientific_name = "Turdus migratorius"
+        detection = Detection(
+            common_name_ioc="American Robin",
+            common_name_tensor="American Robin Tensor",
+            scientific_name="Turdus migratorius",
+        )
 
         result = detection.get_display_name()
 
@@ -102,10 +103,11 @@ class TestDetection:
 
     def test_get_display_name_falls_back_to_tensor_name(self):
         """Test get_display_name returns tensor name when IOC name is None."""
-        detection = Detection()
-        detection.common_name_ioc = None
-        detection.common_name_tensor = "American Robin Tensor"
-        detection.scientific_name = "Turdus migratorius"
+        detection = Detection(
+            common_name_ioc=None,
+            common_name_tensor="American Robin Tensor",
+            scientific_name="Turdus migratorius",
+        )
 
         result = detection.get_display_name()
 
@@ -113,10 +115,9 @@ class TestDetection:
 
     def test_get_display_name_falls_back_to_scientific_name(self):
         """Test get_display_name returns scientific name when both common names are None."""
-        detection = Detection()
-        detection.common_name_ioc = None
-        detection.common_name_tensor = None
-        detection.scientific_name = "Turdus migratorius"
+        detection = Detection(
+            common_name_ioc=None, common_name_tensor=None, scientific_name="Turdus migratorius"
+        )
 
         result = detection.get_display_name()
 

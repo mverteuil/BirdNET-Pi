@@ -15,10 +15,13 @@ import logging
 import os
 import signal
 from types import FrameType
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from websockets.asyncio.server import ServerConnection
 
 import websockets
 from websockets.asyncio.server import serve
-from websockets.legacy.server import WebSocketServerProtocol
 
 from birdnetpi.services.spectrogram_service import SpectrogramService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
@@ -35,7 +38,7 @@ _fifo_livestream_path = None
 _fifo_livestream_fd = None
 _spectrogram_service = None
 _websocket_server = None
-_spectrogram_clients: set[WebSocketServerProtocol] = set()
+_spectrogram_clients: set[ServerConnection] = set()
 
 
 def _signal_handler(signum: int, frame: FrameType | None) -> None:
@@ -55,7 +58,7 @@ def _cleanup_fifo_and_service() -> None:
         logger.info("Spectrogram WebSocket server closed")
 
 
-async def _websocket_handler(websocket: WebSocketServerProtocol) -> None:
+async def _websocket_handler(websocket: ServerConnection) -> None:
     """Handle WebSocket connections for spectrogram data."""
     global _spectrogram_clients, _spectrogram_service
 
@@ -64,7 +67,7 @@ async def _websocket_handler(websocket: WebSocketServerProtocol) -> None:
 
     # Create a mock WebSocket object that matches FastAPI WebSocket interface
     class MockWebSocket:
-        def __init__(self, websocket: WebSocketServerProtocol):
+        def __init__(self, websocket: ServerConnection):
             self.websocket = websocket
 
         async def send_json(self, data: dict) -> None:
@@ -75,7 +78,7 @@ async def _websocket_handler(websocket: WebSocketServerProtocol) -> None:
 
     # Register client with the SpectrogramService
     if _spectrogram_service:
-        await _spectrogram_service.connect_websocket(mock_ws)
+        await _spectrogram_service.connect_websocket(mock_ws)  # type: ignore[arg-type]
 
     try:
         async for _ in websocket:
@@ -87,7 +90,7 @@ async def _websocket_handler(websocket: WebSocketServerProtocol) -> None:
         _spectrogram_clients.discard(websocket)
         # Unregister from SpectrogramService
         if _spectrogram_service:
-            await _spectrogram_service.disconnect_websocket(mock_ws)
+            await _spectrogram_service.disconnect_websocket(mock_ws)  # type: ignore[arg-type]
         logger.info(
             "Spectrogram WebSocket client disconnected. Remaining: %d", len(_spectrogram_clients)
         )

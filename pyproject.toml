@@ -25,7 +25,7 @@ dev = [
   "types-urllib3>=1.26.25.14",
   "types-sqlalchemy>=1.4.53.38",
   "types-pillow>=10.2.0.20240822",
-  "types-decorator>=5.2.0.20250324",
+  "types-decorator>=5.2.0.20250324"
 ]
 
 [project]

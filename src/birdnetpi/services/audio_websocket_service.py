@@ -6,7 +6,10 @@ import logging
 import os
 import signal
 from types import FrameType
-from typing import Any
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from websockets.asyncio.server import ServerConnection
 
 import websockets
 from websockets.asyncio.server import serve
@@ -51,32 +54,37 @@ class AudioWebSocketService:
             self._websocket_server.close()
             logger.info("WebSocket server closed")
 
-    async def _extract_websocket_path(self, websocket: Any) -> str:
-        """Extract the path from a WebSocket connection."""
-        path = None
+    async def _extract_websocket_path(self, websocket: ServerConnection) -> str:
+        """Extract the path from a WebSocket connection using the new API."""
         try:
-            if hasattr(websocket, "path"):
-                path = websocket.path
-            elif hasattr(websocket, "request") and hasattr(websocket.request, "path"):
+            # In the new websockets API, use the request attribute
+            if websocket.request and hasattr(websocket.request, "path"):
                 path = websocket.request.path
-            elif hasattr(websocket, "request_headers"):
-                for name, value in websocket.request_headers.raw_items():
-                    if name.lower() == b":path":
-                        path = value.decode("utf-8")
-                        break
+                logger.info("WebSocket connection attempt with path: '%s'", path)
+                return path
 
-            if path is None:
-                logger.warning("Could not extract path from websocket, defaulting to /")
-                path = "/"
+            # Fallback: check if there's a raw path in the request line
+            if websocket.request:
+                # The request might have a raw_path or similar
+                request_line = str(websocket.request)
+                if " " in request_line:
+                    # Format is typically "GET /path HTTP/1.1"
+                    parts = request_line.split()
+                    if len(parts) >= 2:
+                        path = parts[1]
+                        logger.info(
+                            "WebSocket connection path extracted from request line: '%s'", path
+                        )
+                        return path
 
-            logger.info("WebSocket connection attempt with path: '%s'", path)
+            logger.warning("Could not extract path from websocket, defaulting to /")
+            return "/"
+
         except Exception as e:
             logger.error("Error extracting path from websocket: %s", e, exc_info=True)
-            path = "/"
+            return "/"
 
-        return path
-
-    async def _handle_audio_websocket(self, websocket: Any) -> None:
+    async def _handle_audio_websocket(self, websocket: ServerConnection) -> None:
         """Handle a WebSocket connection for audio streaming."""
         self._audio_clients.add(websocket)
         logger.info("Audio WebSocket client connected. Total: %d", len(self._audio_clients))
@@ -92,7 +100,7 @@ class AudioWebSocketService:
                 "Audio WebSocket client disconnected. Remaining: %d", len(self._audio_clients)
             )
 
-    async def _websocket_handler(self, websocket: Any) -> None:
+    async def _websocket_handler(self, websocket: ServerConnection) -> None:
         """Route WebSocket connections based on path."""
         path = await self._extract_websocket_path(websocket)
 

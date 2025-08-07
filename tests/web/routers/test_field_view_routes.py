@@ -18,10 +18,10 @@ def app_with_field_view_routes(file_path_resolver):
     if hasattr(app, "container"):
         # Mock templates
         mock_templates = MagicMock(spec=Jinja2Templates)
-        app.container.templates.override(mock_templates)
+        app.container.templates.override(mock_templates)  # type: ignore[attr-defined]
 
         # Override file resolver
-        app.container.file_resolver.override(file_path_resolver)
+        app.container.file_resolver.override(file_path_resolver)  # type: ignore[attr-defined]
 
     return app
 
@@ -38,7 +38,7 @@ class TestFieldViewRoutes:
     def test_get_field_mode(self, client):
         """Test field mode page rendering."""
         # Mock the template response with a proper HTMLResponse
-        mock_templates = client.app.container.templates()
+        mock_templates = client.app.container.templates()  # type: ignore[attr-defined]
         mock_html_response = HTMLResponse("<html><body>Field Mode</body></html>")
         mock_templates.TemplateResponse.return_value = mock_html_response
 

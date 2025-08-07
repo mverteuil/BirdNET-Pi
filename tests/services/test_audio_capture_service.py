@@ -17,7 +17,7 @@ class TestAudioCaptureService(unittest.TestCase):
         self.mock_config.audio_channels = 1
         self.mock_audio_queue = Queue()
         self.service = AudioCaptureService(
-            self.mock_config, self.mock_audio_queue, livestream_fifo_fd=-1
+            self.mock_config, analysis_fifo_fd=-1, livestream_fifo_fd=-1
         )
 
     @patch("sounddevice.InputStream")

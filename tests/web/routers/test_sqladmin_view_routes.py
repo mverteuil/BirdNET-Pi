@@ -21,7 +21,7 @@ class TestSQLAdminViewRoutes:
         assert DetectionAdmin.column_list is not None
 
         # Check that expected columns are configured
-        column_names = [col.name for col in DetectionAdmin.column_list]
+        column_names = DetectionAdmin.column_list  # Already strings
         expected_columns = ["id", "scientific_name", "common_name_ioc", "confidence", "timestamp"]
 
         for expected_col in expected_columns:
@@ -34,7 +34,7 @@ class TestSQLAdminViewRoutes:
         assert AudioFileAdmin.column_list is not None
 
         # Check that expected columns are configured
-        column_names = [col.name for col in AudioFileAdmin.column_list]
+        column_names = AudioFileAdmin.column_list  # Already strings
         expected_columns = ["id", "file_path", "duration"]
 
         for expected_col in expected_columns:
@@ -50,7 +50,7 @@ class TestSQLAdminViewRoutes:
         mock_engine = MagicMock()
         mock_db_service.engine = mock_engine
         mock_container.bnp_database_service.return_value = mock_db_service
-        app.container = mock_container
+        app.container = mock_container  # type: ignore[attr-defined]
 
         # Create mock Admin instance
         mock_admin_instance = MagicMock()
@@ -82,7 +82,7 @@ class TestSQLAdminViewRoutes:
         mock_engine = MagicMock()
         mock_db_service.engine = mock_engine
         mock_container.bnp_database_service.return_value = mock_db_service
-        app.container = mock_container
+        app.container = mock_container  # type: ignore[attr-defined]
 
         mock_admin_instance = MagicMock()
         mock_admin_class.return_value = mock_admin_instance

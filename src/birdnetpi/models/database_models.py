@@ -20,7 +20,7 @@ class GUID(TypeDecorator):
         """Load CHAR(36) for all database types."""
         return dialect.type_descriptor(CHAR(36))
 
-    def process_bind_param(self, value: Any, dialect: Dialect) -> str | None:  # noqa: ANN401
+    def process_bind_param(self, value: Any, dialect: Dialect) -> Any:  # noqa: ANN401
         """Convert UUID to string for database storage."""
         if value is None:
             return value
@@ -28,7 +28,7 @@ class GUID(TypeDecorator):
             return str(uuid.UUID(value))
         return str(value)
 
-    def process_result_value(self, value: Any, dialect: Dialect) -> uuid.UUID | None:  # noqa: ANN401
+    def process_result_value(self, value: Any, dialect: Dialect) -> Any:  # noqa: ANN401
         """Convert string back to UUID from database."""
         if value is None:
             return value

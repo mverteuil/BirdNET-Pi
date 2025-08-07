@@ -17,7 +17,7 @@ def app_with_system_router():
     if hasattr(app, "container"):
         # Mock hardware monitor service
         mock_hardware_monitor = MagicMock(spec=HardwareMonitorService)
-        app.container.hardware_monitor_service.override(mock_hardware_monitor)
+        app.container.hardware_monitor_service.override(mock_hardware_monitor)  # type: ignore[attr-defined]
 
     return app
 
@@ -34,7 +34,7 @@ class TestHardwareEndpoints:
     def test_get_hardware_status(self, client):
         """Should return system hardware status."""
         mock_status = {"cpu": "healthy", "memory": "normal", "temperature": 45.2}
-        client.app.container.hardware_monitor_service().get_all_status.return_value = mock_status
+        client.app.container.hardware_monitor_service().get_all_status.return_value = mock_status  # type: ignore[attr-defined]
 
         response = client.get("/api/system/hardware/status")
 
@@ -44,7 +44,7 @@ class TestHardwareEndpoints:
     def test_get_hardware_component_success(self, client):
         """Should return specific component status."""
         mock_status = {"status": "healthy", "value": 45.2}
-        client.app.container.hardware_monitor_service().get_component_status.return_value = (
+        client.app.container.hardware_monitor_service().get_component_status.return_value = (  # type: ignore[attr-defined]
             mock_status
         )
 
@@ -57,7 +57,7 @@ class TestHardwareEndpoints:
 
     def test_get_hardware_component_not_found(self, client):
         """Should return 404 for unknown component."""
-        client.app.container.hardware_monitor_service().get_component_status.return_value = None
+        client.app.container.hardware_monitor_service().get_component_status.return_value = None  # type: ignore[attr-defined]
 
         response = client.get("/api/system/hardware/component/unknown")
 
@@ -75,7 +75,7 @@ class TestHardwareEndpoints:
         # This is a placeholder - adjust based on actual implementation
 
         # For now, just test that the hardware status endpoint works
-        client.app.container.hardware_monitor_service().get_all_status.return_value = mock_overview[
+        client.app.container.hardware_monitor_service().get_all_status.return_value = mock_overview[  # type: ignore[attr-defined]
             "hardware"
         ]
 

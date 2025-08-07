@@ -16,7 +16,7 @@ class TestWebhookConfiguration:
         if isinstance(webhook_urls, str):
             webhook_url_list = [url.strip() for url in webhook_urls.split(",") if url.strip()]
         else:
-            webhook_url_list = [url.strip() for url in webhook_urls if url.strip()]
+            webhook_url_list = [url.strip() for url in webhook_urls if url.strip()]  # type: ignore[unreachable]
 
         webhook_service_mock.configure_webhooks_from_urls(webhook_url_list)
 
@@ -35,7 +35,7 @@ class TestWebhookConfiguration:
         if isinstance(webhook_urls, str):
             webhook_url_list = [url.strip() for url in webhook_urls.split(",") if url.strip()]
         else:
-            webhook_url_list = [url.strip() for url in webhook_urls if url.strip()]
+            webhook_url_list = [url.strip() for url in webhook_urls if url.strip()]  # type: ignore[unreachable]
 
         webhook_service_mock.configure_webhooks_from_urls(webhook_url_list)
 
@@ -54,7 +54,7 @@ class TestWebhookConfiguration:
         if isinstance(webhook_urls, str):
             webhook_url_list = [url.strip() for url in webhook_urls.split(",") if url.strip()]
         else:
-            webhook_url_list = [url.strip() for url in webhook_urls if url.strip()]
+            webhook_url_list = [url.strip() for url in webhook_urls if url.strip()]  # type: ignore[unreachable]
 
         webhook_service_mock.configure_webhooks_from_urls(webhook_url_list)
 
@@ -73,7 +73,7 @@ class TestWebhookConfiguration:
         if isinstance(webhook_urls, str):
             webhook_url_list = [url.strip() for url in webhook_urls.split(",") if url.strip()]
         else:
-            webhook_url_list = [url.strip() for url in webhook_urls if url.strip()]
+            webhook_url_list = [url.strip() for url in webhook_urls if url.strip()]  # type: ignore[unreachable]
 
         webhook_service_mock.configure_webhooks_from_urls(webhook_url_list)
 

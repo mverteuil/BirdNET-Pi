@@ -18,15 +18,15 @@ def app_with_mocks(file_path_resolver):
         mock_detection_manager = MagicMock(spec=DetectionManager)
         mock_detection_manager.get_best_detections.return_value = []
         mock_detection_manager.get_all_detections.return_value = []
-        app.container.detection_manager.override(mock_detection_manager)
+        app.container.detection_manager.override(mock_detection_manager)  # type: ignore[attr-defined]
 
         # Mock reporting manager
         mock_reporting_manager = MagicMock(spec=ReportingManager)
         mock_reporting_manager.detection_manager = mock_detection_manager
-        app.container.reporting_manager.override(mock_reporting_manager)
+        app.container.reporting_manager.override(mock_reporting_manager)  # type: ignore[attr-defined]
 
         # Override file resolver
-        app.container.file_resolver.override(file_path_resolver)
+        app.container.file_resolver.override(file_path_resolver)  # type: ignore[attr-defined]
 
     return app
 
@@ -40,7 +40,7 @@ def client(app_with_mocks):
 def test_get_best_recordings(client):
     """Should retrieve the best recordings successfully."""
     # Configure the mock reporting manager to return test data for best recordings
-    mock_reporting_manager = client.app.container.reporting_manager()
+    mock_reporting_manager = client.app.container.reporting_manager()  # type: ignore[attr-defined]
     mock_reporting_manager.get_best_detections.return_value = [
         {
             "date": "2025-07-26",
@@ -84,7 +84,7 @@ def test_get_todays_detections(client):
     ]
 
     # Mock get_todays_detections since that's what the route calls
-    mock_reporting_manager = client.app.container.reporting_manager()
+    mock_reporting_manager = client.app.container.reporting_manager()  # type: ignore[attr-defined]
     mock_reporting_manager.get_todays_detections.return_value = mock_detections
 
     response = client.get("/reports/today")

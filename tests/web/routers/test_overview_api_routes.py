@@ -38,7 +38,7 @@ def app_with_overview_services(file_path_resolver, temp_db):
     if hasattr(app, "container"):
         # Use real detection manager with temp database
         detection_manager = DetectionManager(DatabaseService(temp_db))
-        app.container.detection_manager.override(detection_manager)
+        app.container.detection_manager.override(detection_manager)  # type: ignore[attr-defined]
 
         # Mock hardware monitor service
         mock_hardware_monitor = MagicMock(spec=HardwareMonitorService)
@@ -47,12 +47,12 @@ def app_with_overview_services(file_path_resolver, temp_db):
             "cpu_temperature": "45.2°C",
             "memory_usage": {"percent": 40.0},
         }
-        app.container.hardware_monitor_service.override(mock_hardware_monitor)
+        app.container.hardware_monitor_service.override(mock_hardware_monitor)  # type: ignore[attr-defined]
 
         # Mock reporting manager that uses the detection manager
         mock_reporting_manager = MagicMock(spec=ReportingManager)
         mock_reporting_manager.detection_manager = detection_manager
-        app.container.reporting_manager.override(mock_reporting_manager)
+        app.container.reporting_manager.override(mock_reporting_manager)  # type: ignore[attr-defined]
 
     return app
 

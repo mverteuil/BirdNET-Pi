@@ -11,22 +11,22 @@ from birdnetpi.models.database_models import AudioFile, Detection
 class DetectionAdmin(ModelView, model=Detection):
     """Admin interface for Detection model."""
 
-    column_list: ClassVar = [
-        Detection.id,
-        Detection.scientific_name,
-        Detection.common_name_ioc,
-        Detection.confidence,
-        Detection.timestamp,
+    column_list: ClassVar[list[str]] = [  # type: ignore[assignment]
+        "id",
+        "scientific_name",
+        "common_name_ioc",
+        "confidence",
+        "timestamp",
     ]
 
 
 class AudioFileAdmin(ModelView, model=AudioFile):
     """Admin interface for AudioFile model."""
 
-    column_list: ClassVar = [
-        AudioFile.id,
-        AudioFile.file_path,
-        AudioFile.duration,
+    column_list: ClassVar[list[str]] = [  # type: ignore[assignment]
+        "id",
+        "file_path",
+        "duration",
     ]
 
 

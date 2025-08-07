@@ -18,11 +18,11 @@ def app_with_iot_router():
     if hasattr(app, "container"):
         # Mock MQTT service
         mock_mqtt_service = MagicMock(spec=MQTTService)
-        app.container.mqtt_service.override(mock_mqtt_service)
+        app.container.mqtt_service.override(mock_mqtt_service)  # type: ignore[attr-defined]
 
         # Mock webhook service
         mock_webhook_service = MagicMock(spec=WebhookService)
-        app.container.webhook_service.override(mock_webhook_service)
+        app.container.webhook_service.override(mock_webhook_service)  # type: ignore[attr-defined]
 
     return app
 
@@ -38,7 +38,7 @@ class TestIoTEndpoints:
 
     def test_get_mqtt_status_enabled(self, client):
         """Should return MQTT status when enabled."""
-        mqtt_service = client.app.container.mqtt_service()
+        mqtt_service = client.app.container.mqtt_service()  # type: ignore[attr-defined]
         mqtt_service.enable_mqtt = True
         mqtt_service.is_connected = True
         mqtt_service.broker_host = "localhost"
@@ -66,7 +66,7 @@ class TestIoTEndpoints:
 
     def test_get_mqtt_status_disabled(self, client):
         """Should return MQTT status when disabled."""
-        mqtt_service = client.app.container.mqtt_service()
+        mqtt_service = client.app.container.mqtt_service()  # type: ignore[attr-defined]
         mqtt_service.enable_mqtt = False
         mqtt_service.get_connection_status.return_value = {
             "enabled": False,
@@ -90,7 +90,7 @@ class TestIoTEndpoints:
 
     def test_get_webhook_status_enabled(self, client):
         """Should return webhook status when enabled."""
-        webhook_service = client.app.container.webhook_service()
+        webhook_service = client.app.container.webhook_service()  # type: ignore[attr-defined]
         webhook_service.enable_webhooks = True
         webhook_service.webhooks = [
             "http://example.com/webhook1",
@@ -125,7 +125,7 @@ class TestIoTEndpoints:
 
     def test_get_webhook_status_disabled(self, client):
         """Should return webhook status when disabled."""
-        webhook_service = client.app.container.webhook_service()
+        webhook_service = client.app.container.webhook_service()  # type: ignore[attr-defined]
         webhook_service.enable_webhooks = False
         webhook_service.get_webhook_status.return_value = {
             "enabled": False,
@@ -144,7 +144,7 @@ class TestIoTEndpoints:
     def test_test_iot_services(self, client):
         """Should test IoT service connectivity."""
         # Setup MQTT service
-        mqtt_service = client.app.container.mqtt_service()
+        mqtt_service = client.app.container.mqtt_service()  # type: ignore[attr-defined]
         mqtt_service.enable_mqtt = True
         mqtt_service.is_connected = True
         mqtt_service.get_connection_status.return_value = {
@@ -160,7 +160,7 @@ class TestIoTEndpoints:
         mqtt_service.publish_system_stats.return_value = True
 
         # Setup webhook service
-        webhook_service = client.app.container.webhook_service()
+        webhook_service = client.app.container.webhook_service()  # type: ignore[attr-defined]
         webhook_service.enable_webhooks = True
         webhook_service.webhooks = ["http://example.com/webhook"]
         webhook_service.get_webhook_status.return_value = {
@@ -191,7 +191,7 @@ class TestIoTEndpoints:
 
     def test_mqtt_publish_message(self, client):
         """Should publish message to MQTT broker."""
-        mqtt_service = client.app.container.mqtt_service()
+        mqtt_service = client.app.container.mqtt_service()  # type: ignore[attr-defined]
         mqtt_service.enable_mqtt = True
         mqtt_service.is_connected = True
 
@@ -208,7 +208,7 @@ class TestIoTEndpoints:
 
     def test_webhook_test_send(self, client):
         """Should test webhook delivery."""
-        webhook_service = client.app.container.webhook_service()
+        webhook_service = client.app.container.webhook_service()  # type: ignore[attr-defined]
         webhook_service.enable_webhooks = True
         webhook_service.webhooks = ["http://example.com/webhook"]
         webhook_service.test_webhook.return_value = {"success": True, "status_code": 200}

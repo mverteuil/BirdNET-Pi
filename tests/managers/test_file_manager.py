@@ -161,4 +161,4 @@ def test_save_detection_audio(file_manager):
         # Calculate expected duration: len(bytes) / (sample_rate * channels * 2)
         # 2000 / (44100 * 1 * 2) = 2000 / 88200 ≈ 0.02268
         expected_duration = 2000 / (44100 * 1 * 2)
-        assert abs(float(result.duration) - expected_duration) < 0.0001
+        assert abs(float(result.duration) - expected_duration) < 0.0001  # type: ignore[arg-type]

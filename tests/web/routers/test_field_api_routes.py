@@ -39,7 +39,7 @@ def client():
 
     # Wire the container
     container.wire(modules=["birdnetpi.web.routers.field_api_routes"])
-    app.container = container
+    app.container = container  # type: ignore[attr-defined]
 
     # Include the router
     app.include_router(router, prefix="/api/field")
@@ -48,11 +48,11 @@ def client():
     client = TestClient(app)
 
     # Store the mocks for access in tests
-    client.mock_detection_manager = mock_detection_manager
-    client.mock_gps_service = mock_gps_service
-    client.mock_hardware_monitor_service = mock_hardware_monitor_service
-    client.mock_mqtt_service = mock_mqtt_service
-    client.mock_webhook_service = mock_webhook_service
+    client.mock_detection_manager = mock_detection_manager  # type: ignore[attr-defined]
+    client.mock_gps_service = mock_gps_service  # type: ignore[attr-defined]
+    client.mock_hardware_monitor_service = mock_hardware_monitor_service  # type: ignore[attr-defined]
+    client.mock_mqtt_service = mock_mqtt_service  # type: ignore[attr-defined]
+    client.mock_webhook_service = mock_webhook_service  # type: ignore[attr-defined]
 
     return client
 

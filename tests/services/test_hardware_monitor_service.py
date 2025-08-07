@@ -209,7 +209,7 @@ class TestHardwareMonitorService:
         # Check that alert was triggered
         assert alert_called is True
         assert alert_component == "test_component"
-        assert alert_status.status == HealthStatus.CRITICAL
+        assert alert_status.status == HealthStatus.CRITICAL  # type: ignore[union-attr]
 
     def test_get_component_status(self, hardware_monitor):
         """Test getting component status."""
