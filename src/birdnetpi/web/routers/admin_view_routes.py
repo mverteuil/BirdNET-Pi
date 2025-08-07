@@ -129,7 +129,7 @@ async def post_settings(
         metadata_model=metadata_model,
         species_confidence_threshold=species_confidence_threshold,
         confidence=confidence,
-        sensitivity=sensitivity,
+        sensitivity_setting=sensitivity,
         week=week,
         audio_format=audio_format,
         extraction_length=extraction_length,

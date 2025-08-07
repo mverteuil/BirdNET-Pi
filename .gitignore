@@ -2,11 +2,11 @@
 # Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
 
 # User-specific stuff
-.idea/**/workspace.xml
-.idea/**/tasks.xml
-.idea/**/usage.statistics.xml
 .idea/**/dictionaries
 .idea/**/shelf
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/workspace.xml
 
 # AWS User-specific
 .idea/**/aws.xml
@@ -16,46 +16,46 @@
 .idea
 
 # Sensitive or high-churn files
-.idea/**/dataSources/
 .idea/**/dataSources.ids
 .idea/**/dataSources.local.xml
-.idea/**/sqlDataSources.xml
-.idea/**/dynamic.xml
-.idea/**/uiDesigner.xml
+.idea/**/dataSources/
 .idea/**/dbnavigator.xml
+.idea/**/dynamic.xml
+.idea/**/sqlDataSources.xml
+.idea/**/uiDesigner.xml
 
-.DS_Store
-*/*.egg-info/*
-*.pyc
+*.coverage*
 *.flac
-.vscode
+*.pyc
+*/*.egg-info/*
+*coverage.xml
 .claude
+.DS_Store
 .gemini
-GEMINI.md
+.git_commit_message.txt
+.vscode
 AGENT.md
-model/*
-datasets/
-birdnet.conf
-IdentifiedSoFar.txt
-IdentifiedSoFar.txt.bak
-Birders_Guide_Installer_Configuration.txt
-birdnet/
-templates/*.service
-scripts/*.txt
-scripts/birds.db
 analyzing_now.txt
 apprise.txt
 BirdDB.txt
+Birders_Guide_Installer_Configuration.txt
+birdnet.conf
+birdnet/
+build/
+config/
+datasets/
 exclude_species_list.txt
 firstrun.ini
+GEMINI.md
 HUMAN.txt
-node_modules
+IdentifiedSoFar.txt
+IdentifiedSoFar.txt.bak
 include_species_list.txt
-build/
-/config/
-*.coverage*
-*coverage.xml
-.git_commit_message.txt
+model/*
+node_modules
+scripts/*.txt
+scripts/birds.db
+templates/*.service
 
 # Data directory (models, databases, generated files - distributed via releases, not committed)
 data/
@@ -65,10 +65,10 @@ ioc_names_v*.xml
 ioc_multilingual_v*.xlsx
 
 # Large binary files (should be distributed via asset releases)
-*.tflite
-*.whl
 *.db
 *.h5
-*.pkl
-*.pb
 *.onnx
+*.pb
+*.pkl
+*.tflite
+*.whl

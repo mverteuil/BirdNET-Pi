@@ -266,7 +266,7 @@ class TestConfigFileParserAdvancedLoading:
         assert config.model == "BirdNET_GLOBAL_6K_V2.4_Model_FP16"
         assert config.species_confidence_threshold == 0.03
         assert config.confidence == 0.7
-        assert config.sensitivity == 1.25
+        assert config.sensitivity_setting == 1.25
 
 
 class TestWebhookUrlParsing:

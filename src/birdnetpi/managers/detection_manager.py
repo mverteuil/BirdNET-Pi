@@ -7,14 +7,20 @@ from sqlalchemy.sql import func
 from birdnetpi.models.database_models import AudioFile, Detection
 from birdnetpi.models.detection_event import DetectionEvent
 from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.services.detection_query_service import DetectionQueryService, DetectionWithIOCData
 from birdnetpi.utils.signals import detection_signal
 
 
 class DetectionManager:
     """Manages detection operations via DatabaseService."""
 
-    def __init__(self, db_service: DatabaseService) -> None:
+    def __init__(
+        self,
+        db_service: DatabaseService,
+        detection_query_service: DetectionQueryService | None = None,
+    ) -> None:
         self.db_service = db_service
+        self.detection_query_service = detection_query_service
 
     def create_detection(self, detection_event: DetectionEvent) -> Detection:
         """Create a new detection record and associated audio file record in the database."""
@@ -385,3 +391,123 @@ class DetectionManager:
                 db.rollback()
                 print(f"Error updating detection location: {e}")
                 raise
+
+    def get_detections_with_ioc_data(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        language_code: str = "en",
+        since: datetime.datetime | None = None,
+        scientific_name_filter: str | None = None,
+        family_filter: str | None = None,
+    ) -> list[DetectionWithIOCData]:
+        """Get detections with IOC species and translation data.
+
+        This method uses the DetectionQueryService to join detection data with IOC
+        taxonomic information, providing enriched data including translated names,
+        family, genus, and order information.
+
+        Args:
+            limit: Maximum number of results
+            offset: Number of results to skip
+            language_code: Language for translations (default: en)
+            since: Only return detections after this timestamp
+            scientific_name_filter: Filter by specific scientific name
+            family_filter: Filter by taxonomic family
+
+        Returns:
+            List of DetectionWithIOCData objects
+        """
+        if not self.detection_query_service:
+            raise RuntimeError(
+                "DetectionQueryService not available - using fallback to regular detections"
+            )
+
+        return self.detection_query_service.get_detections_with_ioc_data(
+            limit=limit,
+            offset=offset,
+            language_code=language_code,
+            since=since,
+            scientific_name_filter=scientific_name_filter,
+            family_filter=family_filter,
+        )
+
+    def get_most_recent_detections_with_ioc(
+        self, limit: int = 10, language_code: str = "en"
+    ) -> list[dict]:
+        """Retrieve the most recent detection records with IOC data from the database."""
+        if not self.detection_query_service:
+            # Fallback to existing method
+            return self.get_most_recent_detections(limit)
+
+        try:
+            detections_with_ioc = self.detection_query_service.get_detections_with_ioc_data(
+                limit=limit, language_code=language_code
+            )
+            return [
+                {
+                    "date": d.timestamp.strftime("%Y-%m-%d"),
+                    "time": d.timestamp.strftime("%H:%M:%S"),
+                    "scientific_name": d.scientific_name or "",
+                    "common_name": d.get_best_common_name(prefer_translation=True),
+                    "confidence": d.confidence,
+                    "latitude": d.detection.latitude,
+                    "longitude": d.detection.longitude,
+                    "species_confidence_threshold": d.detection.species_confidence_threshold,
+                    "week": d.detection.week,
+                    "sensitivity_setting": d.detection.sensitivity_setting,
+                    "overlap": d.detection.overlap,
+                    "ioc_english_name": d.ioc_english_name,
+                    "translated_name": d.translated_name,
+                    "family": d.family,
+                    "genus": d.genus,
+                    "order_name": d.order_name,
+                }
+                for d in detections_with_ioc
+            ]
+        except Exception as e:
+            print(f"Error getting most recent detections with IOC: {e}")
+            # Fallback to existing method
+            return self.get_most_recent_detections(limit)
+
+    def get_species_summary(
+        self,
+        language_code: str = "en",
+        since: datetime.datetime | None = None,
+        family_filter: str | None = None,
+    ) -> list[dict]:
+        """Get detection count summary by species with IOC data.
+
+        Args:
+            language_code: Language for translations
+            since: Only include detections after this timestamp
+            family_filter: Filter by taxonomic family
+
+        Returns:
+            List of species summary dictionaries
+        """
+        if not self.detection_query_service:
+            raise RuntimeError("DetectionQueryService not available")
+
+        return self.detection_query_service.get_species_summary(
+            language_code=language_code, since=since, family_filter=family_filter
+        )
+
+    def get_family_summary(
+        self, language_code: str = "en", since: datetime.datetime | None = None
+    ) -> list[dict]:
+        """Get detection count summary by taxonomic family.
+
+        Args:
+            language_code: Language for translations
+            since: Only include detections after this timestamp
+
+        Returns:
+            List of family summary dictionaries
+        """
+        if not self.detection_query_service:
+            raise RuntimeError("DetectionQueryService not available")
+
+        return self.detection_query_service.get_family_summary(
+            language_code=language_code, since=since
+        )

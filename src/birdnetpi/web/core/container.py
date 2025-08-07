@@ -12,8 +12,10 @@ from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.services.audio_websocket_service import AudioWebSocketService
 from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.services.detection_query_service import DetectionQueryService
 from birdnetpi.services.gps_service import GPSService
 from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
+from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.services.location_service import LocationService
 from birdnetpi.services.mqtt_service import MQTTService
 from birdnetpi.services.notification_service import NotificationService
@@ -55,6 +57,20 @@ class Container(containers.DeclarativeContainer):
         db_path=database_path,
     )
 
+    ioc_database_service = providers.Singleton(
+        IOCDatabaseService,
+        ioc_database_path=providers.Factory(
+            lambda resolver: resolver.get_ioc_database_path(),
+            resolver=file_resolver,
+        ),
+    )
+
+    detection_query_service = providers.Singleton(
+        DetectionQueryService,
+        db_service=bnp_database_service,
+        ioc_db_service=ioc_database_service,
+    )
+
     # Core business services - singletons
     file_manager = providers.Singleton(
         FileManager,
@@ -64,6 +80,7 @@ class Container(containers.DeclarativeContainer):
     detection_manager = providers.Singleton(
         DetectionManager,
         db_service=bnp_database_service,
+        detection_query_service=detection_query_service,
     )
 
     location_service = providers.Singleton(

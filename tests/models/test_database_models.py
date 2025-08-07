@@ -89,22 +89,9 @@ class TestGUIDTypeDecorator:
 class TestDetection:
     """Test the Detection model class."""
 
-    def test_get_display_name_prefers_ioc_name(self):
-        """Test get_display_name returns IOC name when available."""
+    def test_get_display_name_returns_common_name(self):
+        """Test get_display_name returns common name when available."""
         detection = Detection(
-            common_name="American Robin",
-            common_name="American Robin Tensor",
-            scientific_name="Turdus migratorius",
-        )
-
-        result = detection.get_display_name()
-
-        assert result == "American Robin"
-
-    def test_get_display_name_falls_back_to_tensor_name(self):
-        """Test get_display_name returns tensor name when IOC name is None."""
-        detection = Detection(
-            common_name=None,
             common_name="American Robin Tensor",
             scientific_name="Turdus migratorius",
         )
@@ -114,9 +101,10 @@ class TestDetection:
         assert result == "American Robin Tensor"
 
     def test_get_display_name_falls_back_to_scientific_name(self):
-        """Test get_display_name returns scientific name when both common names are None."""
+        """Test get_display_name returns scientific name when common name is None."""
         detection = Detection(
-            common_name=None, scientific_name="Turdus migratorius"
+            common_name=None,
+            scientific_name="Turdus migratorius",
         )
 
         result = detection.get_display_name()

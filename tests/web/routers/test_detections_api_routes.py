@@ -25,6 +25,10 @@ def client():
     # Override services with mocks
     mock_detection_manager = MagicMock(spec=DetectionManager)
     mock_plotting_manager = MagicMock(spec=PlottingManager)
+
+    # Add detection_query_service attribute to the mock detection manager
+    mock_detection_manager.detection_query_service = None
+
     container.detection_manager.override(mock_detection_manager)
     container.plotting_manager.override(mock_plotting_manager)
 
@@ -84,7 +88,8 @@ class TestDetectionsAPIRoutes:
         mock_detections = [
             MagicMock(
                 id=1,
-                species="Robin",
+                scientific_name="Turdus migratorius",
+                common_name="Robin",
                 confidence=0.95,
                 timestamp=datetime(2025, 1, 15, 10, 30),
                 latitude=40.0,
@@ -92,7 +97,8 @@ class TestDetectionsAPIRoutes:
             ),
             MagicMock(
                 id=2,
-                species="Sparrow",
+                scientific_name="Passer domesticus",
+                common_name="Sparrow",
                 confidence=0.88,
                 timestamp=datetime(2025, 1, 15, 11, 0),
                 latitude=40.1,
@@ -101,13 +107,13 @@ class TestDetectionsAPIRoutes:
         ]
         client.mock_detection_manager.get_recent_detections.return_value = mock_detections
 
-        response = client.get("/api/detections/recent?limit=10")
+        response = client.get("/api/detections/recent?limit=10&include_ioc=false")
 
         assert response.status_code == 200
         data = response.json()
         assert data["count"] == 2
         assert len(data["detections"]) == 2
-        assert data["detections"][0]["species"] == "Robin"
+        assert data["detections"][0]["common_name"] == "Robin"
 
     def test_get_detection_count_success(self, client):
         """Should return detection count for date."""
@@ -123,7 +129,8 @@ class TestDetectionsAPIRoutes:
         """Should return specific detection."""
         mock_detection = MagicMock(
             id=123,
-            species="Test Bird",
+            scientific_name="Testus species",
+            common_name="Test Bird",
             confidence=0.95,
             timestamp=datetime(2025, 1, 15, 10, 30),
             latitude=40.0,
@@ -135,18 +142,18 @@ class TestDetectionsAPIRoutes:
         )
         client.mock_detection_manager.get_detection_by_id.return_value = mock_detection
 
-        response = client.get("/api/detections/123")
+        response = client.get("/api/detections/123?include_ioc=false")
 
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == 123
-        assert data["species"] == "Test Bird"
+        assert data["common_name"] == "Test Bird"
 
     def test_get_detection_by_id_not_found(self, client):
         """Should return 404 for non-existent detection."""
         client.mock_detection_manager.get_detection_by_id.return_value = None
 
-        response = client.get("/api/detections/999")
+        response = client.get("/api/detections/999?include_ioc=false")
 
         assert response.status_code == 404
 

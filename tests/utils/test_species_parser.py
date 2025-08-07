@@ -109,7 +109,6 @@ class TestSpeciesDisplayOptions:
         components = SpeciesComponents(
             scientific_name="Turdus migratorius",
             common_name="American Robin",
-            common_name="American Robin",
             full_species="American Robin (Turdus migratorius)",
         )
 
@@ -124,7 +123,6 @@ class TestSpeciesDisplayOptions:
         components = SpeciesComponents(
             scientific_name="Turdus migratorius",
             common_name="American Robin",
-            common_name="American Robin",
             full_species="American Robin (Turdus migratorius)",
         )
 
@@ -138,7 +136,6 @@ class TestSpeciesDisplayOptions:
         """Test formatting species for scientific name only."""
         components = SpeciesComponents(
             scientific_name="Turdus migratorius",
-            common_name="American Robin",
             common_name="American Robin",
             full_species="American Robin (Turdus migratorius)",
         )
@@ -228,7 +225,6 @@ class TestSpeciesParserWithIOC:
         components = SpeciesComponents(
             scientific_name="Turdus migratorius",
             common_name="American Robin",
-            common_name="American Robin",
             full_species="American Robin (Turdus migratorius)",
         )
 
@@ -245,7 +241,6 @@ class TestSpeciesParserWithIOC:
         components = SpeciesComponents(
             scientific_name="Turdus migratorius",
             common_name="American Robin",
-            common_name="American Robin",
             full_species="American Robin (Turdus migratorius)",
         )
 
@@ -254,7 +249,7 @@ class TestSpeciesParserWithIOC:
             show_scientific_name=True,
             show_common_name=True,
             language_code="es",  # Spanish
-            fallback_to_tensor=True,
+            fallback_to_common=True,
         )
 
         result = SpeciesParser.format_species_for_display(components, display_options)

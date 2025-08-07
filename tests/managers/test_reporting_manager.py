@@ -30,7 +30,10 @@ def mock_data_preparation_manager():
 @pytest.fixture
 def detection_manager():
     """Provide a mock DatabaseManager instance."""
-    return MagicMock()
+    mock = MagicMock()
+    # Set up detection_query_service to make reporting manager use IOC methods
+    mock.detection_query_service = MagicMock()
+    return mock
 
 
 @pytest.fixture
@@ -94,7 +97,7 @@ def reporting_manager(
 
 def test_get_most_recent_detections(reporting_manager, detection_manager):
     """Should return a list of recent detections."""
-    detection_manager.get_most_recent_detections.return_value = [
+    detection_manager.get_most_recent_detections_with_ioc.return_value = [
         {"common_name": "American Robin", "date": "2025-07-12", "time": "10:00:00"},
         {"common_name": "Northern Cardinal", "date": "2025-07-12", "time": "09:59:00"},
     ]
@@ -103,7 +106,7 @@ def test_get_most_recent_detections(reporting_manager, detection_manager):
 
     assert len(recent_detections) == 2
     assert recent_detections[0]["common_name"] == "American Robin"
-    detection_manager.get_most_recent_detections.assert_called_once_with(2)
+    detection_manager.get_most_recent_detections_with_ioc.assert_called_once_with(2, "en")
 
 
 def test_get_weekly_report_data(reporting_manager, detection_manager):
@@ -177,7 +180,68 @@ def test_get_weekly_report_data(reporting_manager, detection_manager):
 
 def test_get_daily_detection_data_for_plotting(reporting_manager, detection_manager):
     """Should prepare daily detection data for plotting."""
-    # Mock the return value of get_all_detections
+    # Mock DetectionWithIOCData objects for the IOC service
+    from unittest.mock import MagicMock
+
+    mock_detection_with_ioc_1 = MagicMock()
+    mock_detection_with_ioc_1.get_best_common_name.return_value = "American Robin"
+    mock_detection_with_ioc_1.timestamp = datetime.datetime(2025, 7, 15, 8, 0, 0)
+    mock_detection_with_ioc_1.scientific_name = "Turdus migratorius"
+    mock_detection_with_ioc_1.confidence = 0.9
+    mock_detection_with_ioc_1.detection.latitude = None
+    mock_detection_with_ioc_1.detection.longitude = None
+    mock_detection_with_ioc_1.detection.species_confidence_threshold = 0.03
+    mock_detection_with_ioc_1.detection.week = 1
+    mock_detection_with_ioc_1.detection.sensitivity_setting = 1.25
+    mock_detection_with_ioc_1.detection.overlap = 0.0
+    mock_detection_with_ioc_1.ioc_english_name = "American Robin"
+    mock_detection_with_ioc_1.translated_name = "American Robin"
+    mock_detection_with_ioc_1.family = "Turdidae"
+    mock_detection_with_ioc_1.genus = "Turdus"
+    mock_detection_with_ioc_1.order_name = "Passeriformes"
+
+    mock_detection_with_ioc_2 = MagicMock()
+    mock_detection_with_ioc_2.get_best_common_name.return_value = "American Robin"
+    mock_detection_with_ioc_2.timestamp = datetime.datetime(2025, 7, 15, 8, 15, 0)
+    mock_detection_with_ioc_2.scientific_name = "Turdus migratorius"
+    mock_detection_with_ioc_2.confidence = 0.8
+    mock_detection_with_ioc_2.detection.latitude = None
+    mock_detection_with_ioc_2.detection.longitude = None
+    mock_detection_with_ioc_2.detection.species_confidence_threshold = 0.03
+    mock_detection_with_ioc_2.detection.week = 1
+    mock_detection_with_ioc_2.detection.sensitivity_setting = 1.25
+    mock_detection_with_ioc_2.detection.overlap = 0.0
+    mock_detection_with_ioc_2.ioc_english_name = "American Robin"
+    mock_detection_with_ioc_2.translated_name = "American Robin"
+    mock_detection_with_ioc_2.family = "Turdidae"
+    mock_detection_with_ioc_2.genus = "Turdus"
+    mock_detection_with_ioc_2.order_name = "Passeriformes"
+
+    mock_detection_with_ioc_3 = MagicMock()
+    mock_detection_with_ioc_3.get_best_common_name.return_value = "Northern Cardinal"
+    mock_detection_with_ioc_3.timestamp = datetime.datetime(2025, 7, 15, 9, 0, 0)
+    mock_detection_with_ioc_3.scientific_name = "Cardinalis cardinalis"
+    mock_detection_with_ioc_3.confidence = 0.95
+    mock_detection_with_ioc_3.detection.latitude = None
+    mock_detection_with_ioc_3.detection.longitude = None
+    mock_detection_with_ioc_3.detection.species_confidence_threshold = 0.03
+    mock_detection_with_ioc_3.detection.week = 1
+    mock_detection_with_ioc_3.detection.sensitivity_setting = 1.25
+    mock_detection_with_ioc_3.detection.overlap = 0.0
+    mock_detection_with_ioc_3.ioc_english_name = "Northern Cardinal"
+    mock_detection_with_ioc_3.translated_name = "Northern Cardinal"
+    mock_detection_with_ioc_3.family = "Cardinalidae"
+    mock_detection_with_ioc_3.genus = "Cardinalis"
+    mock_detection_with_ioc_3.order_name = "Passeriformes"
+
+    # Mock the IOC service method to return our mock DetectionWithIOCData objects
+    detection_manager.detection_query_service.get_detections_with_ioc_data.return_value = [
+        mock_detection_with_ioc_1,
+        mock_detection_with_ioc_2,
+        mock_detection_with_ioc_3,
+    ]
+
+    # Mock the fallback get_all_detections in case IOC fails
     mock_detections = [
         Detection(
             id=1,

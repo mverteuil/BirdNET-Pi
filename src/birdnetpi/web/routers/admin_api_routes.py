@@ -49,7 +49,7 @@ async def validate_yaml_config(
                 config_data.get("species_confidence_threshold", config_data.get("sf_thresh", 0.03))
             ),
             confidence=float(config_data.get("confidence", 0.7)),
-            sensitivity=float(config_data.get("sensitivity", 1.25)),
+            sensitivity_setting=float(config_data.get("sensitivity", 1.25)),
             week=int(config_data.get("week", 0)),
             audio_format=config_data.get("audio_format", "mp3"),
             extraction_length=float(config_data.get("extraction_length", 6.0)),

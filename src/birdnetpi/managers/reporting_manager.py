@@ -30,26 +30,69 @@ class ReportingManager:
         self.data_preparation_manager = data_preparation_manager
         self.location_service = location_service
 
-    def get_data(self) -> pd.DataFrame:
-        """Retrieve all detection data from the database and format it into a DataFrame."""
-        detections = self.detection_manager.get_all_detections()
-        data = [
-            {
-                "common_name": d.common_name or "",
-                "datetime": d.timestamp,
-                "date": d.timestamp.strftime("%Y-%m-%d"),
-                "time": d.timestamp.strftime("%H:%M:%S"),
-                "scientific_name": d.scientific_name or "",
-                "confidence": d.confidence,
-                "latitude": d.latitude,
-                "longitude": d.longitude,
-                "species_confidence_threshold": d.species_confidence_threshold,
-                "week": d.week,
-                "sensitivity_setting": d.sensitivity_setting,
-                "overlap": d.overlap,
-            }
-            for d in detections
-        ]
+    def get_data(self, use_ioc_data: bool = True, language_code: str = "en") -> pd.DataFrame:
+        """Retrieve all detection data from the database and format it into a DataFrame.
+
+        Args:
+            use_ioc_data: Whether to use IOC taxonomic data for enriched information
+            language_code: Language for IOC translations
+        """
+        if use_ioc_data and self.detection_manager.detection_query_service:
+            try:
+                # Get detections with IOC data (all detections, no limit)
+                detections_with_ioc = (
+                    self.detection_manager.detection_query_service.get_detections_with_ioc_data(
+                        limit=10000,  # Large limit to get all data
+                        language_code=language_code,
+                    )
+                )
+                data = [
+                    {
+                        "common_name": d.get_best_common_name(prefer_translation=True),
+                        "datetime": d.timestamp,
+                        "date": d.timestamp.strftime("%Y-%m-%d"),
+                        "time": d.timestamp.strftime("%H:%M:%S"),
+                        "scientific_name": d.scientific_name or "",
+                        "confidence": d.confidence,
+                        "latitude": d.detection.latitude,
+                        "longitude": d.detection.longitude,
+                        "species_confidence_threshold": d.detection.species_confidence_threshold,
+                        "week": d.detection.week,
+                        "sensitivity_setting": d.detection.sensitivity_setting,
+                        "overlap": d.detection.overlap,
+                        "ioc_english_name": d.ioc_english_name,
+                        "translated_name": d.translated_name,
+                        "family": d.family,
+                        "genus": d.genus,
+                        "order_name": d.order_name,
+                    }
+                    for d in detections_with_ioc
+                ]
+            except Exception as e:
+                print(f"Error retrieving IOC data, falling back to regular detections: {e}")
+                # Fall back to regular detection data
+                use_ioc_data = False
+
+        if not use_ioc_data:
+            # Original implementation without IOC data
+            detections = self.detection_manager.get_all_detections()
+            data = [
+                {
+                    "common_name": d.common_name or "",
+                    "datetime": d.timestamp,
+                    "date": d.timestamp.strftime("%Y-%m-%d"),
+                    "time": d.timestamp.strftime("%H:%M:%S"),
+                    "scientific_name": d.scientific_name or "",
+                    "confidence": d.confidence,
+                    "latitude": d.latitude,
+                    "longitude": d.longitude,
+                    "species_confidence_threshold": d.species_confidence_threshold,
+                    "week": d.week,
+                    "sensitivity_setting": d.sensitivity_setting,
+                    "overlap": d.overlap,
+                }
+                for d in detections
+            ]
         df = pd.DataFrame(data)
         if not df.empty:
             df["datetime"] = pd.to_datetime(df["datetime"])
@@ -239,18 +282,89 @@ class ReportingManager:
             "new_species": new_species,
         }
 
-    def get_most_recent_detections(self, limit: int = 10) -> list[dict[str, Any]]:
-        """Retrieve the most recent detection records from the database."""
+    def get_most_recent_detections(
+        self, limit: int = 10, language_code: str = "en", use_ioc_data: bool = True
+    ) -> list[dict[str, Any]]:
+        """Retrieve the most recent detection records from the database.
+
+        Args:
+            limit: Maximum number of detections to return
+            language_code: Language for IOC translations
+            use_ioc_data: Whether to include IOC taxonomic data
+        """
+        if use_ioc_data and self.detection_manager.detection_query_service:
+            try:
+                return self.detection_manager.get_most_recent_detections_with_ioc(
+                    limit, language_code
+                )
+            except Exception as e:
+                print(f"Error getting recent detections with IOC data, falling back: {e}")
+
+        # Fallback to original method
         recent_detections = self.detection_manager.get_most_recent_detections(limit)
         return recent_detections
 
-    def get_todays_detections(self) -> list[dict[str, Any]]:
-        """Retrieve all detection records from the database for the current day."""
+    def get_todays_detections(
+        self, language_code: str = "en", use_ioc_data: bool = True
+    ) -> list[dict[str, Any]]:
+        """Retrieve all detection records from the database for the current day.
+
+        Args:
+            language_code: Language for IOC translations
+            use_ioc_data: Whether to include IOC taxonomic data
+        """
         today = datetime.date.today()
         start_datetime = datetime.datetime.combine(today, datetime.time.min)
         end_datetime = datetime.datetime.combine(today, datetime.time.max)
-        # TODO: Implement get_detections_by_date_range method in DetectionManager
-        # For now, use get_all_detections and filter manually
+
+        # Try to use IOC-enhanced data if available
+        if use_ioc_data and self.detection_manager.detection_query_service:
+            try:
+                detections_with_ioc = (
+                    self.detection_manager.detection_query_service.get_detections_with_ioc_data(
+                        limit=1000, since=start_datetime, language_code=language_code
+                    )
+                )
+
+                # Filter for today's detections
+                todays_detections = [
+                    d for d in detections_with_ioc if start_datetime <= d.timestamp <= end_datetime
+                ]
+
+                # If no detections for today, get the most recent day's detections
+                if not todays_detections and detections_with_ioc:
+                    # Find the most recent date with detections
+                    latest_date = max(d.timestamp.date() for d in detections_with_ioc)
+                    start_datetime = datetime.datetime.combine(latest_date, datetime.time.min)
+                    end_datetime = datetime.datetime.combine(latest_date, datetime.time.max)
+                    todays_detections = [
+                        d
+                        for d in detections_with_ioc
+                        if start_datetime <= d.timestamp <= end_datetime
+                    ]
+
+                # Convert DetectionWithIOCData objects to dictionaries
+                return [
+                    {
+                        "date": d.timestamp.strftime("%Y-%m-%d"),
+                        "time": d.timestamp.strftime("%H:%M:%S"),
+                        "scientific_name": d.scientific_name or "",
+                        "common_name": d.get_best_common_name(prefer_translation=True),
+                        "confidence": d.confidence or 0,
+                        "latitude": d.detection.latitude or "",
+                        "longitude": d.detection.longitude or "",
+                        "ioc_english_name": d.ioc_english_name,
+                        "translated_name": d.translated_name,
+                        "family": d.family,
+                        "genus": d.genus,
+                        "order_name": d.order_name,
+                    }
+                    for d in todays_detections
+                ]
+            except Exception as e:
+                print(f"Error getting today's detections with IOC data, falling back: {e}")
+
+        # Fallback to original implementation
         all_detections = self.detection_manager.get_all_detections()
         todays_detections = [
             d

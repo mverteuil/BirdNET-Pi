@@ -5,6 +5,8 @@ and translation data. It uses SQLite's ATTACH DATABASE functionality to efficien
 join across databases while minimizing write operations to protect SD card longevity.
 """
 
+import hashlib
+import time
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -64,10 +66,10 @@ class DetectionWithIOCData:
 
     def get_best_common_name(self, prefer_translation: bool = False) -> str:
         """Get the best available common name for display.
-        
+
         Args:
             prefer_translation: Whether to prefer translated name over IOC English name
-            
+
         Returns:
             Best available common name
         """
@@ -83,22 +85,97 @@ class DetectionWithIOCData:
 class DetectionQueryService:
     """Service for Detection queries requiring IOC database joins."""
 
-    def __init__(self, db_service: DatabaseService, ioc_db_service: IOCDatabaseService):
+    def __init__(
+        self, db_service: DatabaseService, ioc_db_service: IOCDatabaseService, cache_ttl: int = 300
+    ):
         """Initialize detection query service.
 
         Args:
             db_service: Main database service for detections
             ioc_db_service: IOC reference database service
+            cache_ttl: Cache time-to-live in seconds (default: 5 minutes)
         """
         self.db_service = db_service
         self.ioc_db_service = ioc_db_service
+        self.cache_ttl = cache_ttl
+
+        # In-memory cache: {cache_key: (data, expiry_timestamp)}
+        self._cache = {}
+
+    def _generate_cache_key(self, method: str, **kwargs: Any) -> str:
+        """Generate a cache key based on method name and parameters.
+
+        Args:
+            method: Method name being cached
+            **kwargs: Method parameters
+
+        Returns:
+            SHA-256 hash of the cache key components
+        """
+        # Sort parameters for consistent key generation
+        key_parts = [method]
+        for key, value in sorted(kwargs.items()):
+            if isinstance(value, datetime):
+                key_parts.append(f"{key}:{value.isoformat()}")
+            elif value is not None:
+                key_parts.append(f"{key}:{value!s}")
+
+        cache_string = "|".join(key_parts)
+        return hashlib.sha256(cache_string.encode()).hexdigest()
+
+    def _get_from_cache(self, cache_key: str) -> Any:
+        """Get data from cache if available and not expired.
+
+        Args:
+            cache_key: Cache key to retrieve
+
+        Returns:
+            Cached data if available and valid, None otherwise
+        """
+        if cache_key not in self._cache:
+            return None
+
+        data, expiry = self._cache[cache_key]
+        current_time = time.time()
+
+        if current_time > expiry:
+            # Cache expired, remove it
+            del self._cache[cache_key]
+            return None
+
+        return data
+
+    def _set_cache(self, cache_key: str, data: Any) -> None:
+        """Store data in cache with TTL expiry.
+
+        Args:
+            cache_key: Cache key to store under
+            data: Data to cache
+        """
+        expiry = time.time() + self.cache_ttl
+        self._cache[cache_key] = (data, expiry)
+
+        # Simple cache cleanup: remove expired entries periodically
+        if len(self._cache) > 100:  # Cleanup when cache gets large
+            self._cleanup_expired_cache()
+
+    def _cleanup_expired_cache(self) -> None:
+        """Remove expired cache entries."""
+        current_time = time.time()
+        expired_keys = [key for key, (_, expiry) in self._cache.items() if current_time > expiry]
+        for key in expired_keys:
+            del self._cache[key]
+
+    def clear_cache(self) -> None:
+        """Clear all cached data."""
+        self._cache.clear()
 
     def _parse_timestamp(self, timestamp_value: Any) -> datetime:
         """Parse timestamp from various formats.
-        
+
         Args:
             timestamp_value: Timestamp as string, datetime, or other format
-            
+
         Returns:
             Parsed datetime object
         """
@@ -157,11 +234,23 @@ class DetectionQueryService:
         Returns:
             DetectionWithIOCData object or None if not found
         """
+        # Generate cache key for single detection
+        cache_key = self._generate_cache_key(
+            "get_detection_with_ioc_data",
+            detection_id=str(detection_id),
+            language_code=language_code,
+        )
+
+        # Try to get from cache first
+        cached_result = self._get_from_cache(cache_key)
+        if cached_result is not None:
+            return cached_result
+
         with self.db_service.get_db() as session:
             self.ioc_db_service.attach_to_session(session)
             try:
                 query_sql = text("""
-                    SELECT 
+                    SELECT
                         d.id,
                         d.species_tensor,
                         d.scientific_name,
@@ -182,7 +271,7 @@ class DetectionQueryService:
                         s.order_name
                     FROM detections d
                     LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
-                    LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name 
+                    LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
                         AND t.language_code = :language_code
                     WHERE d.id = :detection_id
                 """)
@@ -211,7 +300,7 @@ class DetectionQueryService:
                     overlap=result.overlap,
                 )
 
-                return DetectionWithIOCData(
+                detection_with_ioc = DetectionWithIOCData(
                     detection=detection,
                     ioc_english_name=result.ioc_english_name,
                     translated_name=result.translated_name,
@@ -219,6 +308,10 @@ class DetectionQueryService:
                     genus=result.genus,
                     order_name=result.order_name,
                 )
+
+                # Cache the result before returning
+                self._set_cache(cache_key, detection_with_ioc)
+                return detection_with_ioc
 
             finally:
                 self.ioc_db_service.detach_from_session(session)
@@ -239,6 +332,19 @@ class DetectionQueryService:
         Returns:
             List of species summary dictionaries
         """
+        # Generate cache key for species summary
+        cache_key = self._generate_cache_key(
+            "get_species_summary",
+            language_code=language_code,
+            since=since,
+            family_filter=family_filter,
+        )
+
+        # Try to get from cache first
+        cached_result = self._get_from_cache(cache_key)
+        if cached_result is not None:
+            return cached_result
+
         with self.db_service.get_db() as session:
             self.ioc_db_service.attach_to_session(session)
             try:
@@ -254,7 +360,7 @@ class DetectionQueryService:
                     params["family"] = family_filter
 
                 query_sql = text(f"""
-                    SELECT 
+                    SELECT
                         d.scientific_name,
                         COUNT(*) as detection_count,
                         AVG(d.confidence) as avg_confidence,
@@ -266,7 +372,7 @@ class DetectionQueryService:
                         s.order_name
                     FROM detections d
                     LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
-                    LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name 
+                    LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
                         AND t.language_code = :language_code
                     {where_clause}
                     GROUP BY d.scientific_name, s.english_name, t.common_name, s.family, s.genus, s.order_name
@@ -275,12 +381,14 @@ class DetectionQueryService:
 
                 results = session.execute(query_sql, params).fetchall()
 
-                return [
+                species_summary = [
                     {
                         "scientific_name": result.scientific_name,
                         "detection_count": result.detection_count,
                         "avg_confidence": round(result.avg_confidence, 3),
-                        "latest_detection": self._parse_timestamp(result.latest_detection) if result.latest_detection else None,
+                        "latest_detection": self._parse_timestamp(result.latest_detection)
+                        if result.latest_detection
+                        else None,
                         "ioc_english_name": result.ioc_english_name,
                         "translated_name": result.translated_name,
                         "family": result.family,
@@ -290,6 +398,10 @@ class DetectionQueryService:
                     }
                     for result in results
                 ]
+
+                # Cache the result before returning
+                self._set_cache(cache_key, species_summary)
+                return species_summary
 
             finally:
                 self.ioc_db_service.detach_from_session(session)
@@ -306,6 +418,16 @@ class DetectionQueryService:
         Returns:
             List of family summary dictionaries
         """
+        # Generate cache key for family summary
+        cache_key = self._generate_cache_key(
+            "get_family_summary", language_code=language_code, since=since
+        )
+
+        # Try to get from cache first
+        cached_result = self._get_from_cache(cache_key)
+        if cached_result is not None:
+            return cached_result
+
         with self.db_service.get_db() as session:
             self.ioc_db_service.attach_to_session(session)
             try:
@@ -317,7 +439,7 @@ class DetectionQueryService:
                     params["since"] = since
 
                 query_sql = text(f"""
-                    SELECT 
+                    SELECT
                         s.family,
                         s.order_name,
                         COUNT(*) as detection_count,
@@ -333,17 +455,23 @@ class DetectionQueryService:
 
                 results = session.execute(query_sql, params).fetchall()
 
-                return [
+                family_summary = [
                     {
                         "family": result.family,
                         "order_name": result.order_name,
                         "detection_count": result.detection_count,
                         "species_count": result.species_count,
                         "avg_confidence": round(result.avg_confidence, 3),
-                        "latest_detection": self._parse_timestamp(result.latest_detection) if result.latest_detection else None,
+                        "latest_detection": self._parse_timestamp(result.latest_detection)
+                        if result.latest_detection
+                        else None,
                     }
                     for result in results
                 ]
+
+                # Cache the result before returning
+                self._set_cache(cache_key, family_summary)
+                return family_summary
 
             finally:
                 self.ioc_db_service.detach_from_session(session)
@@ -375,7 +503,7 @@ class DetectionQueryService:
             params["family"] = family_filter
 
         query_sql = text(f"""
-            SELECT 
+            SELECT
                 d.id,
                 d.species_tensor,
                 d.scientific_name,
@@ -396,7 +524,7 @@ class DetectionQueryService:
                 s.order_name
             FROM detections d
             LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
-            LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name 
+            LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
                 AND t.language_code = :language_code
             {where_clause}
             ORDER BY d.timestamp DESC
