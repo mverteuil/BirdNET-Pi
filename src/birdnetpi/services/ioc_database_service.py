@@ -5,9 +5,12 @@ which is separate from the main detections database but can be joined using
 SQLite's ATTACH DATABASE functionality.
 """
 
+import contextlib
 import os
+from collections.abc import Generator
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
@@ -40,6 +43,15 @@ class IOCDatabaseService:
         # Auto-upgrade existing databases with performance indexes
         self._ensure_performance_indexes()
 
+    @contextlib.contextmanager
+    def get_db(self) -> Generator[Session, Any, None]:
+        """Provide a database session for dependency injection."""
+        db = self.session_local()
+        try:
+            yield db
+        finally:
+            db.close()
+
     def populate_from_ioc_service(self, ioc_service: IOCReferenceService) -> None:
         """Populate database from IOCReferenceService data with optimizations.
 
@@ -49,106 +61,104 @@ class IOCDatabaseService:
         if not ioc_service._loaded:
             raise ValueError("IOC service must be loaded before populating database")
 
-        session = self.session_local()
-        try:
-            # Optimize SQLite settings for bulk insert
-            session.execute(text("PRAGMA journal_mode = OFF"))
-            session.execute(text("PRAGMA synchronous = OFF"))
-            session.execute(text("PRAGMA temp_store = MEMORY"))
-            session.execute(text("PRAGMA mmap_size = 268435456"))  # 256MB
+        with self.get_db() as session:
+            try:
+                # Optimize SQLite settings for bulk insert
+                session.execute(text("PRAGMA journal_mode = OFF"))
+                session.execute(text("PRAGMA synchronous = OFF"))
+                session.execute(text("PRAGMA temp_store = MEMORY"))
+                session.execute(text("PRAGMA mmap_size = 268435456"))  # 256MB
 
-            # Clear existing data
-            session.query(IOCTranslation).delete()
-            session.query(IOCSpecies).delete()
-            session.query(IOCLanguage).delete()
-            session.query(IOCMetadata).delete()
-            session.commit()
+                # Clear existing data
+                session.query(IOCTranslation).delete()
+                session.query(IOCSpecies).delete()
+                session.query(IOCLanguage).delete()
+                session.query(IOCMetadata).delete()
+                session.commit()
 
-            # Prepare bulk insert data
-            species_data = []
-            species_count = 0
-            for _scientific_name, species_info in ioc_service._species_data.items():
-                species_data.append(
-                    {
-                        "scientific_name": species_info.scientific_name,
-                        "english_name": species_info.english_name,
-                        "order_name": species_info.order,
-                        "family": species_info.family,
-                        "genus": species_info.genus,
-                        "species_epithet": species_info.species,
-                        "authority": species_info.authority,
-                        "breeding_regions": species_info.breeding_regions,
-                        "breeding_subregions": species_info.breeding_subregions,
-                    }
-                )
-                species_count += 1
-
-            # Bulk insert species
-            session.bulk_insert_mappings(IOCSpecies, species_data)  # type: ignore[arg-type]
-            session.commit()
-            print(f"Inserted {species_count} species total")
-
-            # Prepare bulk insert for translations
-            translation_data = []
-            translation_count = 0
-            language_counts: dict[str, int] = {}
-
-            for scientific_name, translations in ioc_service._translations.items():
-                for language_code, common_name in translations.items():
-                    translation_data.append(
+                # Prepare bulk insert data
+                species_data = []
+                species_count = 0
+                for _scientific_name, species_info in ioc_service._species_data.items():
+                    species_data.append(
                         {
-                            "scientific_name": scientific_name,
-                            "language_code": language_code,
-                            "common_name": common_name,
+                            "scientific_name": species_info.scientific_name,
+                            "english_name": species_info.english_name,
+                            "order_name": species_info.order,
+                            "family": species_info.family,
+                            "genus": species_info.genus,
+                            "species_epithet": species_info.species,
+                            "authority": species_info.authority,
+                            "breeding_regions": species_info.breeding_regions,
+                            "breeding_subregions": species_info.breeding_subregions,
                         }
                     )
-                    translation_count += 1
-                    language_counts[language_code] = language_counts.get(language_code, 0) + 1
+                    species_count += 1
 
-            # Bulk insert translations
-            session.bulk_insert_mappings(IOCTranslation, translation_data)  # type: ignore[arg-type]
-            session.commit()
-            print(f"Inserted {translation_count} translations total")
+                # Bulk insert species
+                session.bulk_insert_mappings(IOCSpecies, species_data)  # type: ignore[arg-type]
+                session.commit()
+                print(f"Inserted {species_count} species total")
 
-            # Insert language metadata
-            language_names = self._get_language_names()
-            for language_code, count in language_counts.items():
-                language_name = language_names.get(language_code, language_code.upper())
-                db_language = IOCLanguage(
-                    language_code=language_code,
-                    language_name=language_name,
-                    translation_count=count,
+                # Prepare bulk insert for translations
+                translation_data = []
+                translation_count = 0
+                language_counts: dict[str, int] = {}
+
+                for scientific_name, translations in ioc_service._translations.items():
+                    for language_code, common_name in translations.items():
+                        translation_data.append(
+                            {
+                                "scientific_name": scientific_name,
+                                "language_code": language_code,
+                                "common_name": common_name,
+                            }
+                        )
+                        translation_count += 1
+                        language_counts[language_code] = language_counts.get(language_code, 0) + 1
+
+                # Bulk insert translations
+                session.bulk_insert_mappings(IOCTranslation, translation_data)  # type: ignore[arg-type]
+                session.commit()
+                print(f"Inserted {translation_count} translations total")
+
+                # Insert language metadata
+                language_names = self._get_language_names()
+                for language_code, count in language_counts.items():
+                    language_name = language_names.get(language_code, language_code.upper())
+                    db_language = IOCLanguage(
+                        language_code=language_code,
+                        language_name=language_name,
+                        translation_count=count,
+                    )
+                    session.add(db_language)
+
+                # Insert metadata
+                metadata_entries = [
+                    IOCMetadata(key="ioc_version", value=ioc_service.get_ioc_version()),
+                    IOCMetadata(key="created_at", value=datetime.utcnow().isoformat()),
+                    IOCMetadata(key="species_count", value=str(species_count)),
+                    IOCMetadata(key="translation_count", value=str(translation_count)),
+                    IOCMetadata(
+                        key="languages_available", value=",".join(sorted(language_counts.keys()))
+                    ),
+                ]
+
+                for metadata in metadata_entries:
+                    session.add(metadata)
+
+                session.commit()
+                print(
+                    f"IOC database populated successfully: {species_count} species, "
+                    f"{translation_count} translations"
                 )
-                session.add(db_language)
 
-            # Insert metadata
-            metadata_entries = [
-                IOCMetadata(key="ioc_version", value=ioc_service.get_ioc_version()),
-                IOCMetadata(key="created_at", value=datetime.utcnow().isoformat()),
-                IOCMetadata(key="species_count", value=str(species_count)),
-                IOCMetadata(key="translation_count", value=str(translation_count)),
-                IOCMetadata(
-                    key="languages_available", value=",".join(sorted(language_counts.keys()))
-                ),
-            ]
+                # Create performance indexes for JOIN operations
+                self._create_performance_indexes()
 
-            for metadata in metadata_entries:
-                session.add(metadata)
-
-            session.commit()
-            print(
-                f"IOC database populated successfully: {species_count} species, "
-                f"{translation_count} translations"
-            )
-
-            # Create performance indexes for JOIN operations
-            self._create_performance_indexes()
-
-        except Exception as e:
-            session.rollback()
-            raise RuntimeError(f"Failed to populate IOC database: {e}") from e
-        finally:
-            session.close()
+            except Exception as e:
+                session.rollback()
+                raise RuntimeError(f"Failed to populate IOC database: {e}") from e
 
     def _create_performance_indexes(self) -> None:
         """Create database indexes for optimal JOIN performance.
@@ -158,62 +168,60 @@ class IOCDatabaseService:
         populated from external sources, we need to add these indexes
         programmatically after population.
         """
-        session = self.session_local()
-        try:
-            print("Creating performance indexes for IOC database...")
+        with self.get_db() as session:
+            try:
+                print("Creating performance indexes for IOC database...")
 
-            # Indexes for species table (taxonomy-based queries)
-            session.execute(
-                text("""
-                CREATE INDEX IF NOT EXISTS idx_species_family
-                ON species(family)
-            """)
-            )
+                # Indexes for species table (taxonomy-based queries)
+                session.execute(
+                    text("""
+                    CREATE INDEX IF NOT EXISTS idx_species_family
+                    ON species(family)
+                """)
+                )
 
-            session.execute(
-                text("""
-                CREATE INDEX IF NOT EXISTS idx_species_genus
-                ON species(genus)
-            """)
-            )
+                session.execute(
+                    text("""
+                    CREATE INDEX IF NOT EXISTS idx_species_genus
+                    ON species(genus)
+                """)
+                )
 
-            session.execute(
-                text("""
-                CREATE INDEX IF NOT EXISTS idx_species_order_family
-                ON species(order_name, family)
-            """)
-            )
+                session.execute(
+                    text("""
+                    CREATE INDEX IF NOT EXISTS idx_species_order_family
+                    ON species(order_name, family)
+                """)
+                )
 
-            session.execute(
-                text("""
-                CREATE INDEX IF NOT EXISTS idx_species_english_name
-                ON species(english_name)
-            """)
-            )
+                session.execute(
+                    text("""
+                    CREATE INDEX IF NOT EXISTS idx_species_english_name
+                    ON species(english_name)
+                """)
+                )
 
-            # Critical indexes for translations table (JOIN performance)
-            session.execute(
-                text("""
-                CREATE INDEX IF NOT EXISTS idx_translations_scientific_language
-                ON translations(scientific_name, language_code)
-            """)
-            )
+                # Critical indexes for translations table (JOIN performance)
+                session.execute(
+                    text("""
+                    CREATE INDEX IF NOT EXISTS idx_translations_scientific_language
+                    ON translations(scientific_name, language_code)
+                """)
+                )
 
-            session.execute(
-                text("""
-                CREATE INDEX IF NOT EXISTS idx_translations_language_common
-                ON translations(language_code, common_name)
-            """)
-            )
+                session.execute(
+                    text("""
+                    CREATE INDEX IF NOT EXISTS idx_translations_language_common
+                    ON translations(language_code, common_name)
+                """)
+                )
 
-            session.commit()
-            print("Performance indexes created successfully")
+                session.commit()
+                print("Performance indexes created successfully")
 
-        except Exception as e:
-            session.rollback()
-            raise RuntimeError(f"Failed to create performance indexes: {e}") from e
-        finally:
-            session.close()
+            except Exception as e:
+                session.rollback()
+                raise RuntimeError(f"Failed to create performance indexes: {e}") from e
 
     def create_performance_indexes(self) -> None:
         """Public method to create performance indexes on existing IOC database.
@@ -243,34 +251,30 @@ class IOCDatabaseService:
 
     def _has_data(self) -> bool:
         """Check if IOC database has been populated with data."""
-        session = self.session_local()
-        try:
-            # Check if species table has any data
-            result = session.execute(text("SELECT COUNT(*) FROM species")).scalar()
-            return (result or 0) > 0
-        except Exception:
-            # Table might not exist or other DB error
-            return False
-        finally:
-            session.close()
+        with self.get_db() as session:
+            try:
+                # Check if species table has any data
+                result = session.execute(text("SELECT COUNT(*) FROM species")).scalar()
+                return (result or 0) > 0
+            except Exception:
+                # Table might not exist or other DB error
+                return False
 
     def _indexes_exist(self) -> bool:
         """Check if performance indexes already exist in the database."""
-        session = self.session_local()
-        try:
-            # Check for the key composite index on translations table
-            result = session.execute(
-                text("""
-                SELECT name FROM sqlite_master
-                WHERE type='index'
-                AND name='idx_translations_scientific_language'
-            """)
-            ).fetchone()
-            return result is not None
-        except Exception:
-            return False
-        finally:
-            session.close()
+        with self.get_db() as session:
+            try:
+                # Check for the key composite index on translations table
+                result = session.execute(
+                    text("""
+                    SELECT name FROM sqlite_master
+                    WHERE type='index'
+                    AND name='idx_translations_scientific_language'
+                """)
+                ).fetchone()
+                return result is not None
+            except Exception:
+                return False
 
     def _get_language_names(self) -> dict[str, str]:
         """Get mapping of language codes to display names."""
@@ -330,11 +334,8 @@ class IOCDatabaseService:
         Returns:
             IOCSpecies object or None if not found
         """
-        session = self.session_local()
-        try:
+        with self.get_db() as session:
             return session.query(IOCSpecies).filter_by(scientific_name=scientific_name).first()
-        finally:
-            session.close()
 
     def get_translation(self, scientific_name: str, language_code: str) -> str | None:
         """Get translated common name for species and language.
@@ -346,8 +347,7 @@ class IOCDatabaseService:
         Returns:
             Translated common name or None if not found
         """
-        session = self.session_local()
-        try:
+        with self.get_db() as session:
             translation = (
                 session.query(IOCTranslation)
                 .filter_by(scientific_name=scientific_name, language_code=language_code)
@@ -357,8 +357,6 @@ class IOCDatabaseService:
                 common_name = getattr(translation, "common_name", None)
                 return str(common_name) if common_name else None
             return None
-        finally:
-            session.close()
 
     def search_species_by_common_name(
         self, common_name: str, language_code: str = "en", limit: int = 10
@@ -373,8 +371,7 @@ class IOCDatabaseService:
         Returns:
             List of matching IOCSpecies objects
         """
-        session = self.session_local()
-        try:
+        with self.get_db() as session:
             search_term = f"%{common_name.lower()}%"
 
             if language_code == "en":
@@ -397,8 +394,6 @@ class IOCDatabaseService:
                     .limit(limit)
                     .all()
                 )
-        finally:
-            session.close()
 
     def get_available_languages(self) -> list[IOCLanguage]:
         """Get all available languages with translation counts.
@@ -406,11 +401,8 @@ class IOCDatabaseService:
         Returns:
             List of IOCLanguage objects
         """
-        session = self.session_local()
-        try:
+        with self.get_db() as session:
             return session.query(IOCLanguage).order_by(IOCLanguage.language_code).all()
-        finally:
-            session.close()
 
     def get_metadata(self) -> dict[str, str]:
         """Get all metadata key-value pairs.
@@ -418,12 +410,9 @@ class IOCDatabaseService:
         Returns:
             Dictionary of metadata
         """
-        session = self.session_local()
-        try:
+        with self.get_db() as session:
             metadata_list = session.query(IOCMetadata).all()
             return {str(item.key): str(item.value) for item in metadata_list}
-        finally:
-            session.close()
 
     def get_database_size(self) -> int:
         """Get database file size in bytes.
