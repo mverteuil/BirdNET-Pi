@@ -263,18 +263,18 @@ def test_get_data_empty_detections(reporting_manager, detection_manager):
     assert df.empty
     assert list(df.columns) == [
         "common_name",
-        "Date",
-        "Time",
+        "date",
+        "time",
         "scientific_name",
         "confidence",
         "latitude",
         "longitude",
         "species_confidence_threshold",
-        "Week",
+        "week",
         "sensitivity_setting",
-        "Overlap",
+        "overlap",
     ]
-    assert df.index.name == "DateTime"
+    assert df.index.name == "datetime"
     assert pd.api.types.is_datetime64_any_dtype(df.index)
 
 

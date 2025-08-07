@@ -36,43 +36,43 @@ class ReportingManager:
         data = [
             {
                 "common_name": d.common_name_ioc or d.common_name_tensor or "",
-                "DateTime": d.timestamp,
-                "Date": d.timestamp.strftime("%Y-%m-%d"),
-                "Time": d.timestamp.strftime("%H:%M:%S"),
+                "datetime": d.timestamp,
+                "date": d.timestamp.strftime("%Y-%m-%d"),
+                "time": d.timestamp.strftime("%H:%M:%S"),
                 "scientific_name": d.scientific_name or "",
                 "confidence": d.confidence,
                 "latitude": d.latitude,
                 "longitude": d.longitude,
                 "species_confidence_threshold": d.species_confidence_threshold,
-                "Week": d.week,
+                "week": d.week,
                 "sensitivity_setting": d.sensitivity_setting,
-                "Overlap": d.overlap,
+                "overlap": d.overlap,
             }
             for d in detections
         ]
         df = pd.DataFrame(data)
         if not df.empty:
-            df["DateTime"] = pd.to_datetime(df["DateTime"])
-            df = df.set_index("DateTime")
+            df["datetime"] = pd.to_datetime(df["datetime"])
+            df = df.set_index("datetime")
         else:
             # Create empty DataFrame with expected columns when no data
             column_names = [
                 "common_name",
-                "DateTime",
-                "Date",
-                "Time",
+                "datetime",
+                "date",
+                "time",
                 "scientific_name",
                 "confidence",
                 "latitude",
                 "longitude",
                 "species_confidence_threshold",
-                "Week",
+                "week",
                 "sensitivity_setting",
-                "Overlap",
+                "overlap",
             ]
             df = pd.DataFrame({col: [] for col in column_names})
-            df["DateTime"] = pd.to_datetime(df["DateTime"])
-            df = df.set_index("DateTime")
+            df["datetime"] = pd.to_datetime(df["datetime"])
+            df = df.set_index("datetime")
         return df
 
     def _get_weekly_stats(

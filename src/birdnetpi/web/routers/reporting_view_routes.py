@@ -55,8 +55,8 @@ async def get_detections(
         # Convert to dictionary format similar to other reports
         detections_data = [
             {
-                "Date": d.timestamp.strftime("%Y-%m-%d") if d.timestamp else "",
-                "Time": d.timestamp.strftime("%H:%M:%S") if d.timestamp else "",
+                "date": d.timestamp.strftime("%Y-%m-%d") if d.timestamp else "",
+                "time": d.timestamp.strftime("%H:%M:%S") if d.timestamp else "",
                 "scientific_name": d.scientific_name or "",
                 "common_name": d.common_name_ioc or d.common_name_tensor or "",
                 "confidence": d.confidence or 0,

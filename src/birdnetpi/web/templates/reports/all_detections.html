@@ -35,7 +35,7 @@
         <div class="stat-item">
           <span class="stat-value"
             >{{
-            all_detections|map(attribute='common_name_ioc')|unique|list|length
+            all_detections|map(attribute='common_name')|unique|list|length
             }}</span
           >
           <span class="stat-label">Unique Species</span>
@@ -93,24 +93,24 @@
           {% for detection in all_detections %}
           <div
             class="detection-item"
-            data-species="{{ detection.common_name_ioc|lower }}"
-            data-date="{{ detection.Date }}"
+            data-species="{{ detection['common_name']|lower }}"
+            data-date="{{ detection['date'] }}"
           >
             <div class="detection-info">
               <div class="detection-species">
-                {{ detection.common_name_ioc or detection.scientific_name }}
+                {{ detection['common_name'] or detection['scientific_name'] }}
               </div>
               <div class="detection-time">
-                {{ detection.Date }} {{ detection.Time }} {% if
-                detection.scientific_name and detection.common_name_ioc %} -
-                <em>{{ detection.scientific_name }}</em>
-                {% endif %} {% if detection.latitude and detection.longitude %}
-                - 📍 {{ "%.4f"|format(detection.latitude) }}, {{
-                "%.4f"|format(detection.longitude) }} {% endif %}
+                {{ detection['date'] }} {{ detection['time'] }} {% if
+                detection['scientific_name'] and detection['common_name'] %} -
+                <em>{{ detection['scientific_name'] }}</em>
+                {% endif %} {% if detection['latitude'] and detection['longitude'] %}
+                - 📍 {{ "%.4f"|format(detection['latitude']) }}, {{
+                "%.4f"|format(detection['longitude']) }} {% endif %}
               </div>
             </div>
             <div class="detection-confidence">
-              {{ "%.1f"|format(detection.confidence * 100) }}%
+              {{ "%.1f"|format(detection['confidence'] * 100) }}%
             </div>
           </div>
           {% endfor %}
