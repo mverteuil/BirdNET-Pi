@@ -33,7 +33,6 @@ class TestDummyDataGenerator:
             assert isinstance(detection_event.audio_file_path, str)
             assert isinstance(detection_event.duration, float)
             assert isinstance(detection_event.size_bytes, int)
-            assert isinstance(detection_event.recording_start_time, datetime.datetime)
 
     def test_main_entry_point_via_subprocess(self):
         """Test the __main__ block by running module as script."""

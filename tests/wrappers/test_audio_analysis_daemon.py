@@ -176,7 +176,7 @@ class TestAudioAnalysisDaemon:
     def test_main_no_audio_data_sleep(self, mocker, mock_dependencies, caplog):
         """Should sleep when no audio data is available (line 71)."""
         mock_os = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.os")
-        mock_signal = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.signal")
+        mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.signal")
         mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.atexit")
         mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.asyncio")
         mock_time = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.time")
@@ -203,7 +203,7 @@ class TestAudioAnalysisDaemon:
     def test_main_general_exception_handling(self, mocker, mock_dependencies, caplog):
         """Should handle general exceptions in main function (lines 84-85)."""
         mock_os = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.os")
-        mock_signal = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.signal")
+        mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.signal")
         mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.atexit")
         mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.asyncio")
         mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.time")

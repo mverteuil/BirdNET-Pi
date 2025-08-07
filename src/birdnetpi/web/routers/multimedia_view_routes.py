@@ -15,8 +15,8 @@ router = APIRouter()
 @inject
 async def get_livestream(
     request: Request,
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),
-    config: BirdNETConfig = Depends(Provide[Container.config]),
+    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
+    config: BirdNETConfig = Depends(Provide[Container.config]),  # noqa: B008
 ) -> HTMLResponse:
     """Render the livestream page."""
     return templates.TemplateResponse(request, "livestream.html", {"site_name": config.site_name})

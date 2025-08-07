@@ -485,7 +485,7 @@ class TestMain:
                 patch("birdnetpi.wrappers.ioc_data_processor.show_ioc_info"),
                 patch("birdnetpi.wrappers.ioc_data_processor.lookup_species"),
             ):
-                with patch.object(sys, "argv", ["ioc-processor"] + args):
+                with patch.object(sys, "argv", ["ioc-processor", *args]):
                     try:
                         main()
                     except SystemExit:

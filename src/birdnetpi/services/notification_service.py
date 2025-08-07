@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 
+from fastapi import WebSocket
+
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.models.database_models import Detection
 from birdnetpi.services.mqtt_service import MQTTService
@@ -16,7 +18,7 @@ class NotificationService:
 
     def __init__(
         self,
-        active_websockets: set,
+        active_websockets: set[WebSocket],
         config: BirdNETConfig,
         mqtt_service: MQTTService | None = None,
         webhook_service: WebhookService | None = None,
@@ -31,12 +33,12 @@ class NotificationService:
         detection_signal.connect(self._handle_detection_event)
         logger.info("NotificationService listeners registered.")
 
-    def add_websocket(self, websocket) -> None:
+    def add_websocket(self, websocket: WebSocket) -> None:
         """Add a WebSocket to the active connections set."""
         self.active_websockets.add(websocket)
         logger.info(f"WebSocket added to active connections. Total: {len(self.active_websockets)}")
 
-    def remove_websocket(self, websocket) -> None:
+    def remove_websocket(self, websocket: WebSocket) -> None:
         """Remove a WebSocket from the active connections set."""
         self.active_websockets.discard(websocket)
         logger.info(
@@ -53,7 +55,7 @@ class NotificationService:
                 loop = asyncio.get_running_loop()
                 task = loop.create_task(self._send_websocket_notifications(detection))
                 # Store task reference to avoid potential garbage collection issues
-                self._websocket_tasks = getattr(self, "_websocket_tasks", set())
+                self._websocket_tasks: set = getattr(self, "_websocket_tasks", set())
                 self._websocket_tasks.add(task)
                 task.add_done_callback(self._websocket_tasks.discard)
             except RuntimeError:
@@ -70,7 +72,7 @@ class NotificationService:
             loop = asyncio.get_running_loop()
             task = loop.create_task(self._send_iot_notifications(detection))
             # Store task reference to avoid potential garbage collection issues
-            self._background_tasks = getattr(self, "_background_tasks", set())
+            self._background_tasks: set = getattr(self, "_background_tasks", set())
             self._background_tasks.add(task)
             task.add_done_callback(self._background_tasks.discard)
         except RuntimeError:

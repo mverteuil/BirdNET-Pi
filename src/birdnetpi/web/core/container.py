@@ -145,7 +145,6 @@ class Container(containers.DeclarativeContainer):
         webhook_service=webhook_service,
     )
 
-
     # Request-scoped managers (factories - new instance per request)
     reporting_manager = providers.Factory(
         ReportingManager,

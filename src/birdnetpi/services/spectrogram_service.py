@@ -152,7 +152,7 @@ class SpectrogramService:
             # Use the most recent samples for spectrogram generation
             audio_segment = self.audio_buffer[-self.samples_per_update :]
 
-            def compute_spectrogram(audio_data):
+            def compute_spectrogram(audio_data: np.ndarray) -> tuple[list, tuple]:
                 """Compute spectrogram in thread pool to avoid blocking async loop."""
                 # Convert int16 to float for processing
                 audio_float = audio_data.astype(np.float32) / 32768.0

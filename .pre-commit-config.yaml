@@ -47,4 +47,3 @@ repos:
     rev: v1.1.403
     hooks:
     -   id: pyright
-        additional_dependencies: [.]

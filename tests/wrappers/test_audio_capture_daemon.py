@@ -47,9 +47,7 @@ class TestAudioCaptureDaemon:
         mock_open = mocker.patch(
             "birdnetpi.wrappers.audio_capture_daemon.os.open", side_effect=[123, 456]
         )
-        mock_close = mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon.os.close"
-        )  # Mock os.close here
+        mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.close")  # Mock os.close here
         mocker.patch(
             "birdnetpi.wrappers.audio_capture_daemon.os.path.exists",
             side_effect=[False, False, True, True],

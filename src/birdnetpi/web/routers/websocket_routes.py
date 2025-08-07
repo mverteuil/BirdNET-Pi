@@ -17,7 +17,9 @@ router = APIRouter()
 @inject
 async def websocket_endpoint(
     websocket: WebSocket,
-    notification_service: NotificationService = Depends(Provide[Container.notification_service]),
+    notification_service: NotificationService = Depends(  # noqa: B008
+        Provide[Container.notification_service]
+    ),
 ) -> None:
     """Handle WebSocket connections for real-time notifications and updates."""
     try:

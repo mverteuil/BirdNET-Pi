@@ -23,7 +23,9 @@ class YAMLConfigRequest(BaseModel):
 @inject
 async def validate_yaml_config(
     config_request: YAMLConfigRequest,
-    file_resolver: FilePathResolver = Depends(Provide[Container.file_resolver]),
+    file_resolver: FilePathResolver = Depends(  # noqa: B008
+        Provide[Container.file_resolver]
+    ),
 ) -> dict:
     """Validate YAML configuration content."""
     try:
@@ -116,12 +118,16 @@ async def validate_yaml_config(
 @inject
 async def save_yaml_config(
     config_request: YAMLConfigRequest,
-    file_resolver: FilePathResolver = Depends(Provide[Container.file_resolver]),
+    file_resolver: FilePathResolver = Depends(  # noqa: B008
+        Provide[Container.file_resolver]
+    ),
 ) -> dict:
     """Save YAML configuration content."""
     try:
         # First validate the YAML
-        validation_result = await validate_yaml_config(config_request)
+        validation_result = await validate_yaml_config(
+            config_request, file_resolver
+        )  # Pass resolver
         if not validation_result["valid"]:
             return {"success": False, "error": validation_result["error"]}
 

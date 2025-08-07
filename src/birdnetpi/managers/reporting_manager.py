@@ -1,5 +1,5 @@
 import datetime
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
@@ -172,9 +172,9 @@ class ReportingManager:
         if all_detections:
             # Get the date range of available data
             detection_dates = [
-                d.timestamp.date()
+                (d.timestamp).date()
                 for d in all_detections
-                if isinstance(d.timestamp, datetime.datetime)
+                if (d.timestamp) is not None and isinstance((d.timestamp), datetime.datetime)
             ]
             if detection_dates:
                 # Use the most recent week with data
@@ -252,18 +252,17 @@ class ReportingManager:
         # TODO: Implement get_detections_by_date_range method in DetectionManager
         # For now, use get_all_detections and filter manually
         all_detections = self.detection_manager.get_all_detections()
-        todays_detections = [
-            d
-            for d in all_detections
-            if isinstance(d.timestamp, datetime.datetime)
-            and start_datetime <= d.timestamp <= end_datetime
-        ]
+        todays_detections = []
+        for d in all_detections:
+            if isinstance(d.timestamp, datetime.datetime):
+                if start_datetime <= cast(datetime.datetime, d.timestamp) <= end_datetime:
+                    todays_detections.append(d)
 
         # If no detections for today, get the most recent day's detections for demo purposes
         if not todays_detections and all_detections:
             # Find the most recent date with detections
             latest_date = max(
-                d.timestamp.date()
+                cast(datetime.datetime, d.timestamp).date()
                 for d in all_detections
                 if isinstance(d.timestamp, datetime.datetime)
             )

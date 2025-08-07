@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
 
 from birdnetpi.models.ioc_database_models import (
     IOCLanguage,
@@ -438,7 +439,7 @@ class TestDatabaseAttachment:
         finally:
             try:
                 populated_db_service.detach_from_session(session, "test_ioc")
-            except:
+            except Exception:
                 pass  # Ignore errors during cleanup
             session.close()
 
@@ -451,7 +452,7 @@ class TestDatabaseAttachment:
             populated_db_service.detach_from_session(session, "test_ioc")
 
             # Verify detachment by trying to query (should fail)
-            with pytest.raises(Exception):
+            with pytest.raises(OperationalError):
                 session.execute(text("SELECT * FROM test_ioc.species LIMIT 1"))
 
         finally:
@@ -460,8 +461,8 @@ class TestDatabaseAttachment:
     def test_attach_with_custom_alias(self, populated_db_service):
         """Should attach database with custom alias."""
         session = populated_db_service.session_local()
+        alias = "custom_alias"
         try:
-            alias = "custom_alias"
             populated_db_service.attach_to_session(session, alias)
 
             # Verify attachment with custom alias
@@ -474,7 +475,7 @@ class TestDatabaseAttachment:
         finally:
             try:
                 populated_db_service.detach_from_session(session, alias)
-            except:
+            except Exception:
                 pass
             session.close()
 
@@ -510,7 +511,7 @@ class TestCrossDatabaseQueries:
         finally:
             try:
                 populated_db_service.detach_from_session(session, "ioc")
-            except:
+            except Exception:
                 pass
             session.close()
 
@@ -574,7 +575,7 @@ class TestErrorHandling:
         invalid_service._loaded = True
         invalid_service._species_data = "not a dict"  # Invalid data type
 
-        with pytest.raises(Exception):  # Will raise some kind of error
+        with pytest.raises(TypeError):  # Will raise some kind of error
             db_service.populate_from_ioc_service(invalid_service)
 
     def test_session_handling_in_queries(self, populated_db_service):
@@ -586,17 +587,17 @@ class TestErrorHandling:
             mock_session_local.return_value = mock_session
 
             # These should all handle the exception and close the session
-            with pytest.raises(Exception):
+            with pytest.raises(TypeError):
                 populated_db_service.get_species_by_scientific_name("test")
             mock_session.close.assert_called()
 
             mock_session.reset_mock()
-            with pytest.raises(Exception):
+            with pytest.raises(TypeError):
                 populated_db_service.get_translation("test", "en")
             mock_session.close.assert_called()
 
             mock_session.reset_mock()
-            with pytest.raises(Exception):
+            with pytest.raises(TypeError):
                 populated_db_service.search_species_by_common_name("test")
             mock_session.close.assert_called()
 

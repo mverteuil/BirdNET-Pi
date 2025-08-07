@@ -27,7 +27,9 @@ class LocationUpdate(BaseModel):
 @inject
 async def create_detection(
     detection_event: DetectionEvent,
-    detection_manager: DetectionManager = Depends(Provide[Container.detection_manager]),
+    detection_manager: DetectionManager = Depends(  # noqa: B008
+        Provide[Container.detection_manager]
+    ),
 ) -> dict:
     """Receive a new detection event and dispatch it."""
     logger.info(
@@ -46,7 +48,9 @@ async def create_detection(
 async def get_recent_detections(
     limit: int = 10,
     offset: int = 0,  # Added for compatibility with old endpoint
-    detection_manager: DetectionManager = Depends(Provide[Container.detection_manager]),
+    detection_manager: DetectionManager = Depends(  # noqa: B008
+        Provide[Container.detection_manager]
+    ),
 ) -> JSONResponse:
     """Get recent bird detections."""
     try:
@@ -72,7 +76,9 @@ async def get_recent_detections(
 @inject
 async def get_detection_count(
     target_date: date | None = None,
-    detection_manager: DetectionManager = Depends(Provide[Container.detection_manager]),
+    detection_manager: DetectionManager = Depends(  # noqa: B008
+        Provide[Container.detection_manager]
+    ),
 ) -> JSONResponse:
     """Get detection count for a specific date (defaults to today)."""
     try:
@@ -91,7 +97,9 @@ async def get_detection_count(
 async def update_detection_location(
     detection_id: int,
     location: LocationUpdate,
-    detection_manager: DetectionManager = Depends(Provide[Container.detection_manager]),
+    detection_manager: DetectionManager = Depends(  # noqa: B008
+        Provide[Container.detection_manager]
+    ),
 ) -> JSONResponse:
     """Update detection location with GPS coordinates."""
     try:
@@ -127,7 +135,9 @@ async def update_detection_location(
 @inject
 async def get_detection(
     detection_id: int,
-    detection_manager: DetectionManager = Depends(Provide[Container.detection_manager]),
+    detection_manager: DetectionManager = Depends(  # noqa: B008
+        Provide[Container.detection_manager]
+    ),
 ) -> JSONResponse:
     """Get a specific detection by ID."""
     try:
@@ -159,8 +169,10 @@ async def get_detection(
 @inject
 async def get_detection_spectrogram(
     detection_id: int,
-    detection_manager: DetectionManager = Depends(Provide[Container.detection_manager]),
-    plotting_manager: PlottingManager = Depends(Provide[Container.plotting_manager]),
+    detection_manager: DetectionManager = Depends(  # noqa: B008
+        Provide[Container.detection_manager]
+    ),
+    plotting_manager: PlottingManager = Depends(Provide[Container.plotting_manager]),  # noqa: B008
 ) -> StreamingResponse:
     """Generate and return a spectrogram for a specific detection's audio file."""
     try:

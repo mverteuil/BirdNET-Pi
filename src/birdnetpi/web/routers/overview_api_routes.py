@@ -11,8 +11,12 @@ router = APIRouter()
 @router.get("/overview")
 @inject
 async def get_overview_data(
-    reporting_manager: ReportingManager = Depends(Provide[Container.reporting_manager]),
-    hardware_monitor: HardwareMonitorService = Depends(Provide[Container.hardware_monitor_service]),
+    reporting_manager: ReportingManager = Depends(  # noqa: B008
+        Provide[Container.reporting_manager]
+    ),
+    hardware_monitor: HardwareMonitorService = Depends(  # noqa: B008
+        Provide[Container.hardware_monitor_service]
+    ),
 ) -> dict:
     """Retrieve various system and application overview data."""
     # Get system monitoring data from hardware monitor service

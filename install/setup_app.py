@@ -1,234 +1,260 @@
 import os
 import subprocess
 import sys
-
-# Add the src directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
-
-from birdnetpi.managers.file_manager import FileManager
-from birdnetpi.models.config import BirdNETConfig
-from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.utils.config_file_parser import ConfigFileParser
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from pathlib import Path
 
 
-class AppSetup:
-    """Manages the setup process for the BirdNET-Pi application."""
+def setup_systemd_services(venv_path: Path) -> None:
+    """Set up systemd services for the application."""
+    print("\nSetting up systemd services...")
+    systemd_dir = "/etc/systemd/system/"
+    user = "birdnetpi"
+    python_exec = venv_path / "bin" / "python3"
+    repo_root = Path("/opt/birdnetpi")
 
-    def __init__(self, repo_root: str) -> None:
-        self.repo_root = repo_root
-        self.file_path_resolver = FilePathResolver(repo_root)
-        self.config_file_path = self.file_path_resolver.get_absolute_path("etc/birdnetpi.yaml")
-        self.config_parser = ConfigFileParser(self.config_file_path)
-        self.config: BirdNETConfig = self.config_parser.parse()
-        self.file_manager = FileManager(self.repo_root)
-        self.bnp_database_service = DatabaseService(self.file_path_resolver.get_database_path())
-        self.venv_path = self.file_path_resolver.get_absolute_path("birdnet")
+    services = [
+        {
+            "name": "birdnet_caddy.service",
+            "description": "Caddy Web Server",
+            "after": "network-online.target",
+            "exec_start": "/usr/bin/caddy run --config /etc/caddy/Caddyfile",
+        },
+        {
+            "name": "birdnet_fastapi.service",
+            "description": "BirdNET FastAPI Server",
+            "after": "network-online.target",
+            "exec_start": (
+                f"{python_exec} -m uvicorn birdnetpi.web.main:app --host 0.0.0.0 --port 8000"
+            ),
+            "environment": "PYTHONPATH=/opt/birdnetpi/src",
+        },
+        {
+            "name": "birdnet_pulseaudio.service",
+            "description": "PulseAudio Sound Server",
+            "after": "network-online.target",
+            "exec_start": "pulseaudio --daemonize=no --exit-idle-time=-1",
+        },
+        {
+            "name": "birdnet_audio_capture.service",
+            "description": "BirdNET Audio Capture",
+            "after": "network-online.target",
+            "exec_start": f"{python_exec} -m birdnetpi.wrappers.audio_capture_daemon",
+            "environment": "PYTHONPATH=/opt/birdnetpi/src",
+        },
+        {
+            "name": "birdnet_audio_analysis.service",
+            "description": "BirdNET Audio Analysis",
+            "after": "network-online.target",
+            "exec_start": f"{python_exec} -m birdnetpi.wrappers.audio_analysis_daemon",
+            "environment": "PYTHONPATH=/opt/birdnetpi/src",
+        },
+        {
+            "name": "birdnet_audio_websocket.service",
+            "description": "BirdNET Audio Websocket",
+            "after": "network-online.target",
+            "exec_start": f"{python_exec} -m birdnetpi.wrappers.audio_websocket_daemon",
+            "environment": "PYTHONPATH=/opt/birdnetpi/src",
+        },
+        {
+            "name": "birdnet_spectrogram_websocket.service",
+            "description": "BirdNET Spectrogram Websocket",
+            "after": "network-online.target",
+            "exec_start": f"{python_exec} -m birdnetpi.wrappers.spectrogram_websocket_daemon",
+            "environment": "PYTHONPATH=/opt/birdnetpi/src",
+        },
+    ]
 
-    def _run_command(self, command: list[str], description: str) -> None:
-        print(f"\n{description}...")
-        try:
-            subprocess.run(command, check=True, capture_output=True, text=True)
-            print(f"{description} complete.")
-        except subprocess.CalledProcessError as e:
-            print(f"Error during {description}: {e.stderr}")
-            sys.exit(1)
-        except Exception as e:
-            print(f"An unexpected error occurred during {description}: {e}")
-            sys.exit(1)
+    for service_config in services:
+        service_name = service_config["name"]
+        service_file_path = os.path.join(systemd_dir, service_name)
+        content = "[Unit]\n"
+        if "after" in service_config:
+            content += f"After={service_config['after']}\n"
+        content += """
+[Service]
+Restart=always
+Type=simple
+"""
+        if "environment" in service_config:
+            content += f"Environment={service_config['environment']}\n"
+        content += f"""User={user}
+ExecStart={service_config["exec_start"]}
+WorkingDirectory={repo_root}
 
-    def setup_virtual_environment(self) -> None:
-        """Set up the Python virtual environment and install dependencies."""
-        venv_path = self.file_path_resolver.get_absolute_path("birdnet")
-        self._run_command(
-            [sys.executable, "-m", "venv", venv_path],
-            "Setting up Python virtual environment",
+[Install]
+WantedBy=multi-user.target
+"""
+        temp_file_path = f"/tmp/{service_name}"
+        with open(temp_file_path, "w") as f:
+            f.write(content)
+
+        subprocess.run(["sudo", "mv", temp_file_path, service_file_path], check=True)
+        subprocess.run(["sudo", "systemctl", "enable", service_name], check=True)
+        subprocess.run(["sudo", "systemctl", "start", service_name], check=True)
+
+    subprocess.run(["sudo", "systemctl", "daemon-reload"], check=True)
+    print("Systemd services setup complete.")
+
+
+def main() -> None:
+    """Set up the BirdNET-Pi application."""
+    if os.geteuid() == 0:
+        print(
+            "This script should not be run as root. "
+            "Please run as a non-root user with sudo privileges."
         )
-        pip_path = os.path.join(venv_path, "bin", "pip")
-        requirements_path = self.file_path_resolver.get_absolute_path("requirements.txt")
-        self._run_command(
-            [pip_path, "install", "-r", requirements_path],
-            "Installing Python dependencies",
+        sys.exit(1)
+
+    # Install system dependencies
+    subprocess.run(["sudo", "apt-get", "update"], check=True)
+    dependencies = [
+        "ffmpeg",
+        "sqlite3",
+        "icecast2",
+        "lsof",
+        "net-tools",
+        "alsa-utils",
+        "pulseaudio",
+        "avahi-utils",
+        "sox",
+        "libsox-fmt-mp3",
+        "bc",
+        "libjpeg-dev",
+        "zlib1g-dev",
+        "debian-keyring",
+        "debian-archive-keyring",
+        "apt-transport-https",
+        "gnupg",
+        "curl",
+        "ca-certificates",
+        "python3-venv",
+        "caddy",
+        "iproute2",
+        "libportaudio2",
+        "portaudio19-dev",
+        "systemd-journal-remote",
+    ]
+    subprocess.run(
+        ["sudo", "apt-get", "install", "-y", "--no-install-recommends", *dependencies],
+        check=True,
+    )
+
+    # Configure Caddy
+    subprocess.run(
+        [
+            "sudo",
+            "curl",
+            "-1sLf",
+            "https://dl.cloudsmith.io/public/caddy/stable/gpg.key",
+            "-o",
+            "/usr/share/keyrings/caddy-stable-archive-keyring.gpg",
+        ],
+        check=True,
+    )
+    subprocess.run(
+        [
+            "sudo",
+            "sh",
+            "-c",
+            "curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' "
+            "| tee /etc/apt/sources.list.d/caddy-stable.list",
+        ],
+        check=True,
+    )
+    caddyfile = Path("/etc/caddy/Caddyfile")
+    if not caddyfile.exists():
+        subprocess.run(["sudo", "cp", "config_templates/Caddyfile", str(caddyfile)], check=True)
+        subprocess.run(["sudo", "chown", "root:root", str(caddyfile)], check=True)
+
+    # Create user and directories
+    subprocess.run(["sudo", "useradd", "-m", "-s", "/bin/bash", "birdnetpi"], check=False)
+    subprocess.run(["sudo", "usermod", "-aG", "audio,video,dialout", "birdnetpi"], check=True)
+    dirs_to_create = [
+        "/var/log/birdnetpi",
+        "/opt/birdnetpi",
+        "/var/lib/birdnetpi/config",
+        "/var/lib/birdnetpi/models",
+        "/var/lib/birdnetpi/recordings",
+        "/var/lib/birdnetpi/database",
+    ]
+    for d in dirs_to_create:
+        subprocess.run(["sudo", "mkdir", "-p", d], check=True)
+    subprocess.run(["sudo", "chmod", "777", "/var/log"], check=True)
+    subprocess.run(
+        [
+            "sudo",
+            "chown",
+            "-R",
+            "birdnetpi:birdnetpi",
+            "/var/log/birdnetpi",
+            "/opt/birdnetpi",
+            "/var/lib/birdnetpi",
+        ],
+        check=True,
+    )
+
+    # Use a virtual environment for the application
+    venv_dir = Path("/opt/birdnetpi/.venv")
+    if not venv_dir.exists():
+        subprocess.run(
+            ["sudo", "-u", "birdnetpi", "python3.11", "-m", "venv", str(venv_dir)], check=True
         )
 
-    def create_directories(self) -> None:
-        """Create necessary directories for the application."""
-        print("\nCreating necessary directories...")
-        self.file_manager.create_directory(self.file_path_resolver.get_recordings_dir())
-        self.file_manager.create_directory(self.config.data.extracted_dir)
-        self.file_manager.create_directory(os.path.join(self.config.data.extracted_dir, "By_Date"))
-        self.file_manager.create_directory(os.path.join(self.config.data.extracted_dir, "Charts"))
-        self.file_manager.create_directory(self.config.data.processed_dir)
-        print("Necessary directories created.")
+    # Install Python dependencies
+    pip_path = str(venv_dir / "bin" / "pip")
+    subprocess.run(["sudo", "-u", "birdnetpi", pip_path, "install", "uv"], check=True)
+    uv_path = str(venv_dir / "bin" / "uv")
+    pyproject_path = Path("/opt/birdnetpi/pyproject.toml")
+    if not pyproject_path.exists():
+        subprocess.run(["sudo", "cp", "pyproject.toml", str(pyproject_path)], check=True)
+        subprocess.run(["sudo", "chown", "birdnetpi:birdnetpi", str(pyproject_path)], check=True)
 
-    def initialize_database(self) -> None:
-        """Initialize the application database."""
-        print("\nInitializing database...")
-        self.bnp_database_service.initialize_database()
-        print("Database initialized.")
+    uv_lock_path = Path("/opt/birdnetpi/uv.lock")
+    if not uv_lock_path.exists():
+        subprocess.run(["sudo", "cp", "uv.lock", str(uv_lock_path)], check=True)
+        subprocess.run(["sudo", "chown", "birdnetpi:birdnetpi", str(uv_lock_path)], check=True)
 
-    def setup_systemd_services(self) -> None:
-        """Set up systemd services for the application."""
-        print("\nSetting up systemd services...")
-        systemd_dir = "/etc/systemd/system/"
-        user = "birdnetpi"  # Assuming 'birdnetpi' user is created by install.sh
-        python_exec = os.path.join(self.venv_path, "bin", "python3")
+    subprocess.run(
+        [
+            "sudo",
+            "-u",
+            "birdnetpi",
+            uv_path,
+            "sync",
+            "--locked",
+            "--no-dev",
+            f"--python={sys.executable}",
+        ],
+        check=True,
+    )
 
-        services = [
-            {
-                "name": "birdnet_analysis.service",
-                "description": "BirdNET Analysis",
-                "after": "birdnet_server.service",
-                "requires": "birdnet_server.service",
-                "exec_start": self.file_path_resolver.get_absolute_path(
-                    "scripts/birdnet_analysis.sh"
-                ),
-            },
-            {
-                "name": "birdnet_server.service",
-                "description": "BirdNET Analysis Server",
-                "before": "birdnet_analysis.service",
-                "exec_start": (
-                    f"{python_exec} {self.file_path_resolver.get_absolute_path('src/main.py')}"
-                ),  # Assuming main.py is the server entry
-            },
-            {
-                "name": "extraction.service",
-                "description": "BirdNET BirdSound Extraction",
-                "exec_start": (
-                    f"/usr/bin/env bash -c 'while true;do "
-                    f"{self.file_path_resolver.get_absolute_path('scripts/extract_new_birdsounds.sh')};"
-                    f"sleep 3;done'"
-                ),
-                "restart": "on-failure",
-            },
-            {
-                "name": "birdnet_recording.service",
-                "description": "BirdNET Recording",
-                "exec_start": self.file_path_resolver.get_absolute_path(
-                    "scripts/birdnet_recording.sh"
-                ),
-                "environment": "XDG_RUNTIME_DIR=/run/user/1000",
-            },
-            {
-                "name": "custom_recording.service",
-                "description": "BirdNET Custom Recording",
-                "exec_start": self.file_path_resolver.get_absolute_path(
-                    "scripts/custom_recording.sh"
-                ),
-                "environment": "XDG_RUNTIME_DIR=/run/user/1000",
-            },
-            {
-                "name": "birdnet_stats.service",
-                "description": "BirdNET Stats",
-                "exec_start": (
-                    f"{python_exec} -m streamlit run "
-                    f"{self.file_path_resolver.get_absolute_path('src/reporting_dashboard.py')}"
-                    f" --browser.gatherUsageStats false --server.address localhost "
-                    f' --server.baseUrlPath "/stats"'
-                ),
-                "restart": "on-failure",
-            },
-            {
-                "name": "spectrogram_viewer.service",
-                "description": "BirdNET-Pi Spectrogram Viewer",
-                "exec_start": self.file_path_resolver.get_absolute_path("scripts/spectrogram.sh"),
-            },
-            {
-                "name": "chart_viewer.service",
-                "description": "BirdNET-Pi Chart Viewer Service",
-                "exec_start": (
-                    f"{python_exec} "
-                    f"{self.file_path_resolver.get_absolute_path('scripts/daily_plot.py')}"
-                ),  # Assuming daily_plot.py exists
-            },
-            {
-                "name": "birdnet_log.service",
-                "description": "BirdNET Analysis Log",
-                "exec_start": (
-                    f"/usr/local/bin/gotty --address localhost -p 8080 -P log "
-                    f'--title-format "BirdNET-Pi Log" '
-                    f"{self.file_path_resolver.get_absolute_path('scripts/birdnet_log.sh')}"
-                ),
-                "restart": "on-failure",
-                "environment": "TERM=xterm-256color",
-            },
-            {
-                "name": "web_terminal.service",
-                "description": "BirdNET-Pi Web Terminal",
-                "exec_start": (
-                    "/usr/local/bin/gotty --address localhost -w -p 8888 -P terminal "
-                    '--title-format "BirdNET-Pi Terminal" login'
-                ),
-                "restart": "on-failure",
-                "environment": "TERM=xterm-256color",
-            },
-            {
-                "name": "livestream.service",
-                "description": "BirdNET-Pi Live Stream",
-                "exec_start": self.file_path_resolver.get_absolute_path("scripts/livestream.sh"),
-                "after": "network-online.target",
-                "requires": "network-online.target",
-                "environment": "XDG_RUNTIME_DIR=/run/user/1000",
-            },
-        ]
+    # Copy source code
+    subprocess.run(["sudo", "cp", "-r", "src/birdnetpi", "/opt/birdnetpi/"], check=True)
+    subprocess.run(
+        ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/birdnetpi"], check=True
+    )
 
-        for service_config in services:
-            service_name = service_config["name"]
-            service_file_path = os.path.join(systemd_dir, service_name)
-            content = f"[Unit]\nDescription={service_config['description']}\n"
-            if "after" in service_config:
-                content += f"After={service_config['after']}\n"
-            if "before" in service_config:
-                content += f"Before={service_config['before']}\n"
-            if "requires" in service_config:
-                content += f"Requires={service_config['requires']}\n"
-            content += f"[Service]\nRestart=always\nType=simple\nUser={user}\n"
-            if "restart" in service_config:
-                content += f"Restart={service_config['restart']}\n"
-            if "restart_sec" in service_config:
-                content += f"RestartSec={service_config['restart_sec']}\n"
-            if "environment" in service_config:
-                content += f"Environment={service_config['environment']}\n"
-            content += f"ExecStart={service_config['exec_start']}\n"
-            content += "[Install]\nWantedBy=multi-user.target\n"
+    # Install assets
+    asset_installer_path = venv_dir / "bin" / "asset-installer"
+    subprocess.run(
+        [
+            "sudo",
+            "-u",
+            "birdnetpi",
+            str(asset_installer_path),
+            "install",
+            "v1.0.2",
+            "--include-models",
+            "--include-ioc-db",
+        ],
+        check=True,
+    )
 
-            # Write to a temporary file first
-            temp_file_path = f"/tmp/{service_name}"
-            with open(temp_file_path, "w") as f:
-                f.write(content)
+    # Setup systemd services
+    setup_systemd_services(venv_dir)
 
-            # Move with sudo
-            self._run_command(
-                ["sudo", "mv", temp_file_path, service_file_path],
-                f"Creating {service_name}",
-            )
-            self._run_command(
-                ["sudo", "systemctl", "enable", service_name],
-                f"Enabling {service_name}",
-            )
-            self._run_command(
-                ["sudo", "systemctl", "start", service_name], f"Starting {service_name}"
-            )
-
-        self._run_command(["sudo", "systemctl", "daemon-reload"], "Reloading systemd daemon")
-        print("Systemd services setup complete.")
-
-    def run_setup(self) -> None:
-        """Run the complete application setup process."""
-        print("\nStarting BirdNET-Pi application setup...")
-        self.setup_virtual_environment()
-        self.create_directories()
-        self.initialize_database()
-        self.setup_systemd_services()
-        print("BirdNET-Pi application setup complete.")
+    print("Installation complete.")
 
 
 if __name__ == "__main__":
-    # Assuming the script is run from the BirdNET-Pi directory or its parent
-    # Determine repo_root dynamically
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    repo_root = os.path.abspath(os.path.join(script_dir, ".."))
-
-    app_setup = AppSetup(repo_root)
-    app_setup.run_setup()
+    main()

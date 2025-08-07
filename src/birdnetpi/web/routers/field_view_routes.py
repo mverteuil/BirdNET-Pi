@@ -15,8 +15,8 @@ router = APIRouter()
 @inject
 async def get_field_mode(
     request: Request,
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),
-    config: BirdNETConfig = Depends(Provide[Container.config]),
+    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
+    config: BirdNETConfig = Depends(Provide[Container.config]),  # noqa: B008
 ) -> HTMLResponse:
     """Render the field mode interface."""
     return templates.TemplateResponse(request, "field_mode.html", {"site_name": config.site_name})

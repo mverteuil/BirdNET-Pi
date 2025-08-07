@@ -14,7 +14,9 @@ router = APIRouter()
 @router.get("/hardware/status")
 @inject
 async def get_hardware_status(
-    hardware_monitor: HardwareMonitorService = Depends(Provide[Container.hardware_monitor_service]),
+    hardware_monitor: HardwareMonitorService = Depends(  # noqa: B008
+        Provide[Container.hardware_monitor_service]
+    ),
 ) -> dict:
     """Get hardware monitoring status."""
     return hardware_monitor.get_all_status()
@@ -24,7 +26,9 @@ async def get_hardware_status(
 @inject
 async def get_hardware_component(
     component_name: str,
-    hardware_monitor: HardwareMonitorService = Depends(Provide[Container.hardware_monitor_service]),
+    hardware_monitor: HardwareMonitorService = Depends(  # noqa: B008
+        Provide[Container.hardware_monitor_service]
+    ),
 ) -> dict:
     """Get specific hardware component status."""
     status = hardware_monitor.get_component_status(component_name)
@@ -36,7 +40,9 @@ async def get_hardware_component(
 @router.get("/overview")
 @inject
 async def get_system_overview(
-    reporting_manager: ReportingManager = Depends(Provide[Container.reporting_manager]),
+    reporting_manager: ReportingManager = Depends(  # noqa: B008
+        Provide[Container.reporting_manager]
+    ),
 ) -> dict:
     """Get system overview data including disk usage, system info, and total detections."""
     system_monitor = SystemMonitorService()

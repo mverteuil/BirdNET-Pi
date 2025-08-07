@@ -20,7 +20,7 @@ router = APIRouter()
 @router.get("/gps/status")
 @inject
 async def get_gps_status(
-    gps_service: GPSService = Depends(Provide[Container.gps_service]),
+    gps_service: GPSService = Depends(Provide[Container.gps_service]),  # noqa: B008
 ) -> JSONResponse:
     """Get current GPS status and location information."""
     if not gps_service:
@@ -50,7 +50,7 @@ async def get_gps_status(
 @router.get("/gps/location")
 @inject
 async def get_current_location(
-    gps_service: GPSService = Depends(Provide[Container.gps_service]),
+    gps_service: GPSService = Depends(Provide[Container.gps_service]),  # noqa: B008
 ) -> JSONResponse:
     """Get current GPS coordinates."""
     if not gps_service:
@@ -80,7 +80,7 @@ async def get_current_location(
 @inject
 async def get_location_history(
     hours: int = Query(default=24, ge=1, le=168),  # 1 hour to 1 week
-    gps_service: GPSService = Depends(Provide[Container.gps_service]),
+    gps_service: GPSService = Depends(Provide[Container.gps_service]),  # noqa: B008
 ) -> JSONResponse:
     """Get GPS location history."""
     if not gps_service:
@@ -108,7 +108,9 @@ async def get_location_history(
 @router.get("/hardware/status")
 @inject
 async def get_hardware_status(
-    hardware_monitor: HardwareMonitorService = Depends(Provide[Container.hardware_monitor_service]),
+    hardware_monitor: HardwareMonitorService = Depends(  # noqa: B008
+        Provide[Container.hardware_monitor_service]
+    ),
 ) -> JSONResponse:
     """Get comprehensive hardware status."""
     if not hardware_monitor:
@@ -132,7 +134,9 @@ async def get_hardware_status(
 @inject
 async def get_component_status(
     component_name: str,
-    hardware_monitor: HardwareMonitorService = Depends(Provide[Container.hardware_monitor_service]),
+    hardware_monitor: HardwareMonitorService = Depends(  # noqa: B008
+        Provide[Container.hardware_monitor_service]
+    ),
 ) -> JSONResponse:
     """Get status for a specific hardware component."""
     if not hardware_monitor:
@@ -162,9 +166,13 @@ async def get_component_status(
 @router.get("/summary")
 @inject
 async def get_field_summary(
-    detection_manager: DetectionManager = Depends(Provide[Container.detection_manager]),
-    gps_service: GPSService = Depends(Provide[Container.gps_service]),
-    hardware_monitor: HardwareMonitorService = Depends(Provide[Container.hardware_monitor_service]),
+    detection_manager: DetectionManager = Depends(  # noqa: B008
+        Provide[Container.detection_manager]
+    ),
+    gps_service: GPSService = Depends(Provide[Container.gps_service]),  # noqa: B008
+    hardware_monitor: HardwareMonitorService = Depends(  # noqa: B008
+        Provide[Container.hardware_monitor_service]
+    ),
 ) -> JSONResponse:
     """Get comprehensive field mode summary."""
     try:

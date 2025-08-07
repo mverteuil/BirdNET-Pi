@@ -1,4 +1,3 @@
-from datetime import datetime
 from unittest.mock import patch
 
 import pytest
@@ -135,7 +134,6 @@ def test_save_detection_audio(file_manager):
         raw_audio_bytes = b"\x00\x01" * 1000  # 2000 bytes of audio data
         sample_rate = 44100
         channels = 1
-        recording_start_time = datetime(2025, 1, 15, 12, 0, 0)
 
         # Call the method
         result = file_manager.save_detection_audio(

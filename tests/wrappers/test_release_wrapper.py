@@ -565,7 +565,7 @@ class TestMain:
                 patch("birdnetpi.wrappers.release_wrapper.create_release"),
                 patch("birdnetpi.wrappers.release_wrapper.list_assets"),
             ):
-                with patch.object(sys, "argv", ["release-manager"] + args):
+                with patch.object(sys, "argv", ["release-manager", *args]):
                     try:
                         main()
                     except SystemExit:

@@ -75,7 +75,10 @@ class TestSpectrogramService:
 
     @pytest.mark.asyncio
     async def test_process_audio_chunk_no_clients(self, spectrogram_service):
-        """Test that processing accumulates data but doesn't generate spectrograms when no clients are connected."""
+        """Test that processing accumulates data but doesn't generate spectrograms
+
+        when no clients are connected.
+        """
         service = spectrogram_service
 
         # Create test audio data

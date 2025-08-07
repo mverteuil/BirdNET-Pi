@@ -118,7 +118,7 @@ class IoTStatusResponse(BaseModel):
 @router.get("/mqtt/status", response_model=MQTTStatusResponse)
 @inject
 async def get_mqtt_status(
-    mqtt_service: MQTTService = Depends(Provide[Container.mqtt_service]),
+    mqtt_service: MQTTService = Depends(Provide[Container.mqtt_service]),  # noqa: B008
 ) -> MQTTStatusResponse:
     """Get MQTT connection status and configuration."""
     try:
@@ -135,7 +135,7 @@ async def get_mqtt_status(
 @router.post("/mqtt/test")
 @inject
 async def test_mqtt_connection(
-    mqtt_service: MQTTService = Depends(Provide[Container.mqtt_service]),
+    mqtt_service: MQTTService = Depends(Provide[Container.mqtt_service]),  # noqa: B008
 ) -> dict[str, Any]:
     """Test MQTT connection and publish a test message."""
     try:
@@ -181,7 +181,9 @@ async def test_mqtt_connection(
 @router.get("/webhooks/status", response_model=WebhookStatusResponse)
 @inject
 async def get_webhook_status(
-    webhook_service: WebhookService = Depends(Provide[Container.webhook_service]),
+    webhook_service: WebhookService = Depends(  # noqa: B008
+        Provide[Container.webhook_service]
+    ),
 ) -> WebhookStatusResponse:
     """Get webhook service status and configuration."""
     try:
@@ -199,7 +201,9 @@ async def get_webhook_status(
 @inject
 async def add_webhook(
     config: WebhookConfigRequest,
-    webhook_service: WebhookService = Depends(Provide[Container.webhook_service]),
+    webhook_service: WebhookService = Depends(  # noqa: B008
+        Provide[Container.webhook_service]
+    ),
 ) -> WebhookConfigResponse:
     """Add a new webhook configuration."""
     try:
@@ -241,7 +245,9 @@ async def add_webhook(
 @inject
 async def remove_webhook(
     url: str,
-    webhook_service: WebhookService = Depends(Provide[Container.webhook_service]),
+    webhook_service: WebhookService = Depends(  # noqa: B008
+        Provide[Container.webhook_service]
+    ),
 ) -> dict[str, Any]:
     """Remove a webhook configuration by URL."""
     try:
@@ -270,7 +276,9 @@ async def remove_webhook(
 @inject
 async def test_webhook(
     test_request: WebhookTestRequest,
-    webhook_service: WebhookService = Depends(Provide[Container.webhook_service]),
+    webhook_service: WebhookService = Depends(  # noqa: B008
+        Provide[Container.webhook_service]
+    ),
 ) -> WebhookTestResponse:
     """Test a webhook URL by sending a test payload."""
     try:
@@ -299,8 +307,10 @@ async def test_webhook(
 @router.get("/status", response_model=IoTStatusResponse)
 @inject
 async def get_iot_status(
-    mqtt_service: MQTTService = Depends(Provide[Container.mqtt_service]),
-    webhook_service: WebhookService = Depends(Provide[Container.webhook_service]),
+    mqtt_service: MQTTService = Depends(Provide[Container.mqtt_service]),  # noqa: B008
+    webhook_service: WebhookService = Depends(  # noqa: B008
+        Provide[Container.webhook_service]
+    ),
 ) -> IoTStatusResponse:
     """Get overall IoT integration status including MQTT and webhooks."""
     try:
@@ -323,8 +333,10 @@ async def get_iot_status(
 @router.post("/publish/test")
 @inject
 async def publish_test_events(
-    mqtt_service: MQTTService = Depends(Provide[Container.mqtt_service]),
-    webhook_service: WebhookService = Depends(Provide[Container.webhook_service]),
+    mqtt_service: MQTTService = Depends(Provide[Container.mqtt_service]),  # noqa: B008
+    webhook_service: WebhookService = Depends(  # noqa: B008
+        Provide[Container.webhook_service]
+    ),
 ) -> dict[str, Any]:
     """Publish test events to both MQTT and webhooks for testing purposes."""
     try:

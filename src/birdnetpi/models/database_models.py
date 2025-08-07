@@ -62,13 +62,13 @@ class Detection(Base):
     species_confidence_threshold = Column(Float)  # Previously cutoff
     week = Column(Integer)
     sensitivity_setting = Column(Float)  # Previously sensitivity
-    overlap = Column(Float)  # Audio analysis window overlap (0.0-1.0) for signal processing continuity
+    overlap = Column(
+        Float
+    )  # Audio analysis window overlap (0.0-1.0) for signal processing continuity
 
     def get_display_name(self) -> str:
         """Get the best available species display name."""
-        return str(
-            self.common_name_ioc or self.common_name_tensor or self.scientific_name
-        )
+        return str(self.common_name_ioc or self.common_name_tensor or self.scientific_name)
 
 
 class AudioFile(Base):

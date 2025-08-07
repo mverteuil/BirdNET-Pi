@@ -101,7 +101,8 @@ class TestInstallAssets:
 
         install_assets(args)
 
-        # Should exit at least once with status 1 (could be called multiple times if download also fails)
+        # Should exit at least once with status 1
+        # (could be called multiple times if download also fails)
         mock_exit.assert_called_with(1)
 
     @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
@@ -369,7 +370,7 @@ class TestMain:
                 patch("birdnetpi.wrappers.asset_installer_wrapper.list_available_assets"),
                 patch("birdnetpi.wrappers.asset_installer_wrapper.check_local_assets"),
             ):
-                with patch.object(sys, "argv", ["asset-installer"] + args):
+                with patch.object(sys, "argv", ["asset-installer", *args]):
                     try:
                         main()
                     except SystemExit:

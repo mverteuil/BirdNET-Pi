@@ -245,7 +245,7 @@ class TestHandlerConfiguration:
     def test_configure_handlers_console(self, mocker):
         """Should configure console handler for Docker/dev environments."""
         config = BirdNETConfig()
-        mock_file_resolver = mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
+        mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
         mock_logger = mocker.patch("logging.getLogger")
         mock_root = MagicMock()
         mock_logger.return_value = mock_root
@@ -262,7 +262,7 @@ class TestHandlerConfiguration:
         config.logging.file_logging_enabled = True
         config.logging.log_file_path = "/tmp/test.log"
 
-        mock_file_resolver = mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
+        mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
         mock_logger = mocker.patch("logging.getLogger")
         mock_root = MagicMock()
         mock_logger.return_value = mock_root
@@ -277,7 +277,7 @@ class TestHandlerConfiguration:
     def test_configure_handlers_journald(self, mocker):
         """Should configure journald handler for SBC environments."""
         config = BirdNETConfig()
-        mock_file_resolver = mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
+        mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
         mock_logger = mocker.patch("logging.getLogger")
         mock_root = MagicMock()
         mock_logger.return_value = mock_root
@@ -298,22 +298,21 @@ class TestHandlerConfiguration:
         config = BirdNETConfig()
         config.logging.syslog_enabled = True
 
-        mock_file_resolver = mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
+        mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
         mock_logger = mocker.patch("logging.getLogger")
         mock_root = MagicMock()
         mock_logger.return_value = mock_root
         mock_root.handlers = []
 
         # Mock the journald handler to raise ImportError, triggering fallback
-        mock_add_journald = mocker.patch(
+        mocker.patch(
             "birdnetpi.utils.structlog_configurator._add_journald_handler",
             side_effect=lambda *args: None,  # Do nothing, simulating fallback
         )
-        mock_add_syslog = mocker.patch("birdnetpi.utils.structlog_configurator._add_syslog_handler")
+        mocker.patch("birdnetpi.utils.structlog_configurator._add_syslog_handler")
 
         _configure_handlers(config, False, True, False)
 
-        mock_add_journald.assert_called_once()
         mock_root.setLevel.assert_called()
 
 

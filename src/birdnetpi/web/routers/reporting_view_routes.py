@@ -17,7 +17,7 @@ router = APIRouter()
 @inject
 async def get_reports_index(
     request: Request,
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),
+    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
 ) -> HTMLResponse:
     """Render the reports index page with navigation to different reports."""
     return templates.TemplateResponse(request, "reports/index.html", {})
@@ -27,8 +27,10 @@ async def get_reports_index(
 @inject
 async def get_best_recordings(
     request: Request,
-    reporting_manager: ReportingManager = Depends(Provide[Container.reporting_manager]),
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),
+    reporting_manager: ReportingManager = Depends(  # noqa: B008
+        Provide[Container.reporting_manager]
+    ),
+    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
 ) -> HTMLResponse:
     """Retrieve a list of the best recorded audio files based on confidence."""
     try:
@@ -45,8 +47,10 @@ async def get_best_recordings(
 @inject
 async def get_detections(
     request: Request,
-    reporting_manager: ReportingManager = Depends(Provide[Container.reporting_manager]),
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),
+    reporting_manager: ReportingManager = Depends(  # noqa: B008
+        Provide[Container.reporting_manager]
+    ),
+    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
 ) -> HTMLResponse:
     """Retrieve and display all detections."""
     try:
@@ -77,8 +81,10 @@ async def get_detections(
 @inject
 async def get_todays_detections(
     request: Request,
-    reporting_manager: ReportingManager = Depends(Provide[Container.reporting_manager]),
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),
+    reporting_manager: ReportingManager = Depends(  # noqa: B008
+        Provide[Container.reporting_manager]
+    ),
+    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
 ) -> HTMLResponse:
     """Retrieve a list of today's detections."""
     try:
@@ -97,8 +103,10 @@ async def get_todays_detections(
 @inject
 async def get_weekly_report(
     request: Request,
-    reporting_manager: ReportingManager = Depends(Provide[Container.reporting_manager]),
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),
+    reporting_manager: ReportingManager = Depends(  # noqa: B008
+        Provide[Container.reporting_manager]
+    ),
+    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
 ) -> HTMLResponse:
     """Retrieve and display weekly report data."""
     try:
@@ -127,10 +135,14 @@ async def get_weekly_report(
 @inject
 async def get_charts(
     request: Request,
-    reporting_manager: ReportingManager = Depends(Provide[Container.reporting_manager]),
-    plotting_manager: PlottingManager = Depends(Provide[Container.plotting_manager]),
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),
-    config: BirdNETConfig = Depends(Provide[Container.config]),
+    reporting_manager: ReportingManager = Depends(  # noqa: B008
+        Provide[Container.reporting_manager]
+    ),
+    plotting_manager: PlottingManager = Depends(  # noqa: B008
+        Provide[Container.plotting_manager]
+    ),
+    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
+    config: BirdNETConfig = Depends(Provide[Container.config]),  # noqa: B008
 ) -> HTMLResponse:
     """Generate and display various charts related to bird detections."""
     try:

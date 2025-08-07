@@ -45,12 +45,12 @@ class DetectionEventManager:
             duration=detection_data.get("duration", 0.0),
             size_bytes=detection_data.get("size_bytes", 0),
             spectrogram_path=detection_data.get("spectrogram_path"),
-            latitude=detection_data.get("latitude"),
-            longitude=detection_data.get("longitude"),
-            species_confidence_threshold=detection_data.get("species_confidence_threshold"),
-            week=detection_data.get("week"),
-            sensitivity_setting=detection_data.get("sensitivity_setting"),
-            overlap=detection_data.get("overlap"),
+            latitude=detection_data.get("latitude", 0.0),
+            longitude=detection_data.get("longitude", 0.0),
+            species_confidence_threshold=detection_data.get("species_confidence_threshold", 0.0),
+            week=detection_data.get("week", 0),
+            sensitivity_setting=detection_data.get("sensitivity_setting", 0.0),
+            overlap=detection_data.get("overlap", 0.0),
         )
 
         logger.info(f"Saving detection to DB: {detection_data['species']}")

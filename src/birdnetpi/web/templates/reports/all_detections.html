@@ -34,8 +34,7 @@
         </div>
         <div class="stat-item">
           <span class="stat-value"
-            >{{
-            all_detections|map(attribute='common_name')|unique|list|length
+            >{{ all_detections|map(attribute='common_name')|unique|list|length
             }}</span
           >
           <span class="stat-label">Unique Species</span>
@@ -104,8 +103,9 @@
                 {{ detection['date'] }} {{ detection['time'] }} {% if
                 detection['scientific_name'] and detection['common_name'] %} -
                 <em>{{ detection['scientific_name'] }}</em>
-                {% endif %} {% if detection['latitude'] and detection['longitude'] %}
-                - 📍 {{ "%.4f"|format(detection['latitude']) }}, {{
+                {% endif %} {% if detection['latitude'] and
+                detection['longitude'] %} - 📍 {{
+                "%.4f"|format(detection['latitude']) }}, {{
                 "%.4f"|format(detection['longitude']) }} {% endif %}
               </div>
             </div>

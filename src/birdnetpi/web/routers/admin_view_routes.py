@@ -32,8 +32,10 @@ async def read_admin() -> dict[str, str]:
 @inject
 async def get_settings(
     request: Request,
-    file_resolver: FilePathResolver = Depends(Provide[Container.file_resolver]),
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),
+    file_resolver: FilePathResolver = Depends(  # noqa: B008
+        Provide[Container.file_resolver]
+    ),
+    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
 ) -> Response:
     """Render the settings page with the current configuration."""
     config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())
@@ -107,7 +109,9 @@ async def post_settings(
     enable_webhooks: bool = Form(False),
     webhook_urls: str = Form(""),  # Will be parsed as comma-separated list
     webhook_events: str = Form("detection,health,gps,system"),
-    file_resolver: FilePathResolver = Depends(Provide[Container.file_resolver]),
+    file_resolver: FilePathResolver = Depends(  # noqa: B008
+        Provide[Container.file_resolver]
+    ),
 ) -> RedirectResponse:
     """Process the submitted settings form and save the updated configuration."""
     config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())
@@ -202,7 +206,7 @@ async def get_log_content() -> PlainTextResponse:
 @inject
 async def test_detection_form(
     request: Request,
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),
+    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
 ) -> HTMLResponse:
     """Render the form for testing detections."""
     return templates.TemplateResponse(request, "admin/test_detection_modal.html", {})
@@ -211,7 +215,9 @@ async def test_detection_form(
 @router.get("/test_detection")
 @inject
 async def test_detection(
-    detection_manager: DetectionManager = Depends(Provide[Container.detection_manager]),
+    detection_manager: DetectionManager = Depends(  # noqa: B008
+        Provide[Container.detection_manager]
+    ),
     species: str = "Test Bird",
     confidence: float = 0.99,
     timestamp: str | None = None,
@@ -269,8 +275,10 @@ async def test_detection(
 @inject
 async def get_advanced_settings(
     request: Request,
-    file_resolver: FilePathResolver = Depends(Provide[Container.file_resolver]),
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),
+    file_resolver: FilePathResolver = Depends(  # noqa: B008
+        Provide[Container.file_resolver]
+    ),
+    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
 ) -> Response:
     """Render the advanced YAML configuration editor."""
     config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())

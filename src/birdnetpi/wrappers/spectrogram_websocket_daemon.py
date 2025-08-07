@@ -16,6 +16,7 @@ from types import FrameType
 
 import websockets
 from websockets.asyncio.server import serve
+from websockets.server import WebSocketServerProtocol
 
 from birdnetpi.services.spectrogram_service import SpectrogramService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
@@ -32,7 +33,7 @@ _fifo_livestream_path = None
 _fifo_livestream_fd = None
 _spectrogram_service = None
 _websocket_server = None
-_spectrogram_clients = set()
+_spectrogram_clients: set[WebSocketServerProtocol] = set()
 
 
 def _signal_handler(signum: int, frame: FrameType | None) -> None:
@@ -52,7 +53,7 @@ def _cleanup_fifo_and_service() -> None:
         logger.info("Spectrogram WebSocket server closed")
 
 
-async def _websocket_handler(websocket):
+async def _websocket_handler(websocket: WebSocketServerProtocol) -> None:
     """Handle WebSocket connections for spectrogram data."""
     global _spectrogram_clients, _spectrogram_service
 
@@ -61,10 +62,10 @@ async def _websocket_handler(websocket):
 
     # Create a mock WebSocket object that matches FastAPI WebSocket interface
     class MockWebSocket:
-        def __init__(self, websocket):
+        def __init__(self, websocket: WebSocketServerProtocol):
             self.websocket = websocket
 
-        async def send_json(self, data):
+        async def send_json(self, data: dict) -> None:
             json_str = json.dumps(data)
             await self.websocket.send(json_str)
 
@@ -75,7 +76,7 @@ async def _websocket_handler(websocket):
         await _spectrogram_service.connect_websocket(mock_ws)
 
     try:
-        async for message in websocket:
+        async for _ in websocket:
             # Keep connection alive
             pass
     except websockets.exceptions.ConnectionClosed:
@@ -90,7 +91,7 @@ async def _websocket_handler(websocket):
         )
 
 
-async def _fifo_reading_loop():
+async def _fifo_reading_loop() -> None:
     """Read from FIFO and process spectrogram data only."""
     global _fifo_livestream_fd, _spectrogram_service
 
@@ -99,15 +100,16 @@ async def _fifo_reading_loop():
     while not _shutdown_flag:
         try:
             buffer_size = 4096  # Must match producer's write size
+            if _fifo_livestream_fd is None:
+                await asyncio.sleep(0.01)
+                continue
             audio_data_bytes = os.read(_fifo_livestream_fd, buffer_size)
 
             if audio_data_bytes:
                 # Only process if we have spectrogram clients
                 if _spectrogram_clients and _spectrogram_service:
                     # Process spectrogram in this dedicated service
-                    spectrogram_data = await _spectrogram_service.process_audio_chunk(
-                        audio_data_bytes
-                    )
+                    await _spectrogram_service.process_audio_chunk(audio_data_bytes)
                     # Note: spectrogram_service.process_audio_chunk already sends to clients
             else:
                 await asyncio.sleep(0.01)
