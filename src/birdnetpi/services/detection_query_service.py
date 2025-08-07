@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from dateutil import parser as date_parser
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -91,6 +92,21 @@ class DetectionQueryService:
         """
         self.db_service = db_service
         self.ioc_db_service = ioc_db_service
+
+    def _parse_timestamp(self, timestamp_value: Any) -> datetime:
+        """Parse timestamp from various formats.
+        
+        Args:
+            timestamp_value: Timestamp as string, datetime, or other format
+            
+        Returns:
+            Parsed datetime object
+        """
+        if isinstance(timestamp_value, datetime):
+            return timestamp_value
+        if isinstance(timestamp_value, str):
+            return date_parser.parse(timestamp_value)
+        return datetime.fromisoformat(str(timestamp_value))
 
     def get_detections_with_ioc_data(
         self,
@@ -185,7 +201,7 @@ class DetectionQueryService:
                     scientific_name=result.scientific_name,
                     common_name=result.common_name,
                     confidence=result.confidence,
-                    timestamp=result.timestamp,
+                    timestamp=self._parse_timestamp(result.timestamp),
                     audio_file_id=UUID(result.audio_file_id) if result.audio_file_id else None,
                     latitude=result.latitude,
                     longitude=result.longitude,
@@ -264,7 +280,7 @@ class DetectionQueryService:
                         "scientific_name": result.scientific_name,
                         "detection_count": result.detection_count,
                         "avg_confidence": round(result.avg_confidence, 3),
-                        "latest_detection": result.latest_detection,
+                        "latest_detection": self._parse_timestamp(result.latest_detection) if result.latest_detection else None,
                         "ioc_english_name": result.ioc_english_name,
                         "translated_name": result.translated_name,
                         "family": result.family,
@@ -324,7 +340,7 @@ class DetectionQueryService:
                         "detection_count": result.detection_count,
                         "species_count": result.species_count,
                         "avg_confidence": round(result.avg_confidence, 3),
-                        "latest_detection": result.latest_detection,
+                        "latest_detection": self._parse_timestamp(result.latest_detection) if result.latest_detection else None,
                     }
                     for result in results
                 ]
@@ -398,7 +414,7 @@ class DetectionQueryService:
                 scientific_name=result.scientific_name,
                 common_name=result.common_name,
                 confidence=result.confidence,
-                timestamp=result.timestamp,
+                timestamp=self._parse_timestamp(result.timestamp),
                 audio_file_id=UUID(result.audio_file_id) if result.audio_file_id else None,
                 latitude=result.latitude,
                 longitude=result.longitude,
