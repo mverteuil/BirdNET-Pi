@@ -116,12 +116,12 @@ class AudioAnalysisService:
             "duration": audio_file_instance.duration,
             "size_bytes": audio_file_instance.size_bytes,
             "spectrogram_path": None,
-            "latitude": None,
-            "longitude": None,
-            "species_confidence_threshold": None,
-            "week": None,
-            "sensitivity_setting": None,
-            "overlap": None,
+            "latitude": self.config.latitude,
+            "longitude": self.config.longitude,
+            "species_confidence_threshold": self.config.confidence,
+            "week": current_week,
+            "sensitivity_setting": self.config.sensitivity,
+            "overlap": 0.5,  # Fixed overlap from buffer processing
         }
         try:
             async with httpx.AsyncClient() as client:

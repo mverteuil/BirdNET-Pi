@@ -43,14 +43,14 @@ def plotting_manager(mock_data_preparation_manager):
 def sample_dataframe():
     """Provide a sample DataFrame for testing plotting methods."""
     data = {
-        "com_name": [
+        "common_name": [
             "Common Blackbird",
             "Eurasian Robin",
             "Common Blackbird",
             "Eurasian Robin",
             "House Sparrow",
         ],
-        "DateTime": [
+        "datetime": [
             datetime.datetime(2023, 1, 1, 8, 0, 0),
             datetime.datetime(2023, 1, 1, 9, 0, 0),
             datetime.datetime(2023, 1, 1, 10, 0, 0),
@@ -87,10 +87,10 @@ def test_create_multi_day_plot_figure_should_return_figure(
     species = "SpeciesA"
     df5 = pd.DataFrame(
         {
-            "com_name": ["SpeciesA", "SpeciesB"],
-            "DateTime": [datetime.datetime(2023, 1, 1), datetime.datetime(2023, 1, 2)],
+            "common_name": ["SpeciesA", "SpeciesB"],
+            "datetime": [datetime.datetime(2023, 1, 1), datetime.datetime(2023, 1, 2)],
         }
-    ).set_index("DateTime")
+    ).set_index("datetime")
 
     # Mock the delegated calls
     mock_data_preparation_manager.get_daily_crosstab.return_value = pd.DataFrame(

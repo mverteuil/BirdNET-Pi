@@ -59,7 +59,12 @@ class TestDetectionEventManager:
             "audio_file_path": "/path/to/audio.wav",
             "duration": 5.0,
             "size_bytes": 1024,
-            "recording_start_time": "2025-07-29T09:59:55Z",
+            "latitude": 40.7128,
+            "longitude": -74.0060,
+            "species_confidence_threshold": 0.1,
+            "week": 30,
+            "sensitivity_setting": 1.25,
+            "overlap": 0.5,
         }
 
         # Trigger the signal and await its processing

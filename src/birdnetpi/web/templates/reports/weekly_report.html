@@ -83,7 +83,7 @@
             {% for species in weekly_data.top_10_species %}
             <div class="detection-item" style="margin-bottom: 0.5rem">
               <div class="detection-info">
-                <div class="detection-species">{{ species.com_name }}</div>
+                <div class="detection-species">{{ species.common_name }}</div>
                 <div class="detection-time">{{ species.count }} detections</div>
               </div>
               <div class="detection-confidence">
@@ -116,7 +116,7 @@
             {% for species in weekly_data.new_species %}
             <div class="detection-item" style="margin-bottom: 0.5rem">
               <div class="detection-info">
-                <div class="detection-species">{{ species.com_name }}</div>
+                <div class="detection-species">{{ species.common_name }}</div>
                 <div class="detection-time">{{ species.count }} detections</div>
               </div>
               <div class="detection-confidence">

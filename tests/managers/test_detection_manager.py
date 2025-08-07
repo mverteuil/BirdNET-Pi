@@ -29,7 +29,12 @@ def test_create_detection_success(detection_manager):
         audio_file_path="/path/to/audio.wav",
         duration=10.0,
         size_bytes=1024,
-        recording_start_time=datetime(2023, 1, 1, 11, 59, 50),
+        latitude=40.7128,
+        longitude=-74.0060,
+        species_confidence_threshold=0.1,
+        week=1,
+        sensitivity_setting=1.25,
+        overlap=0.5,
     )
     mock_db_session = MagicMock()
     detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
@@ -56,7 +61,12 @@ def test_create_detection_failure(detection_manager):
         audio_file_path="/path/to/audio.wav",
         duration=10.0,
         size_bytes=1024,
-        recording_start_time=datetime(2023, 1, 1, 11, 59, 50),
+        latitude=40.7128,
+        longitude=-74.0060,
+        species_confidence_threshold=0.1,
+        week=1,
+        sensitivity_setting=1.25,
+        overlap=0.5,
     )
     mock_db_session = MagicMock()
     detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
