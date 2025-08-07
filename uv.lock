@@ -146,6 +146,7 @@ dependencies = [
     { name = "httpx" },
     { name = "librosa" },
     { name = "numpy" },
+    { name = "openpyxl" },
     { name = "paho-mqtt" },
     { name = "pandas" },
     { name = "pip" },
@@ -176,7 +177,6 @@ dependencies = [
 dev = [
     { name = "ast-grep-cli" },
     { name = "httpx" },
-    { name = "openpyxl" },
     { name = "pandas-stubs" },
     { name = "pyleak" },
     { name = "pyright" },
@@ -209,6 +209,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "librosa" },
     { name = "numpy", specifier = "<2" },
+    { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "paho-mqtt" },
     { name = "pandas" },
     { name = "pip" },
@@ -239,7 +240,6 @@ requires-dist = [
 dev = [
     { name = "ast-grep-cli", specifier = ">=0.39.2" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas-stubs" },
     { name = "pyleak", specifier = ">=0.1.14" },
     { name = "pyright", specifier = ">=1.1.390" },

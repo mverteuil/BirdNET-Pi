@@ -6,7 +6,6 @@ build-backend = "setuptools.build_meta"
 dev = [
   "ast-grep-cli>=0.39.2",
   "httpx>=0.28.1",
-  "openpyxl>=3.1.5",
   "pandas-stubs",
   "pyleak>=0.1.14",
   "pyright>=1.1.390",
@@ -49,6 +48,7 @@ dependencies = [
   "httpx>=0.28.1",
   "librosa",
   "numpy<2",
+  "openpyxl>=3.1.5",
   "paho-mqtt",
   "pandas",
   "plotly",
