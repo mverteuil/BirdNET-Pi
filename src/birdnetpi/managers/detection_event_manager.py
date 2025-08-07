@@ -44,9 +44,6 @@ class DetectionEventManager:
             audio_file_path=detection_data["audio_file_path"],
             duration=detection_data.get("duration", 0.0),
             size_bytes=detection_data.get("size_bytes", 0),
-            recording_start_time=datetime.fromisoformat(detection_data["recording_start_time"])
-            if isinstance(detection_data.get("recording_start_time"), str)
-            else detection_data.get("recording_start_time", datetime.now()),
             spectrogram_path=detection_data.get("spectrogram_path"),
             latitude=detection_data.get("latitude"),
             longitude=detection_data.get("longitude"),
@@ -54,7 +51,6 @@ class DetectionEventManager:
             week=detection_data.get("week"),
             sensitivity_setting=detection_data.get("sensitivity_setting"),
             overlap=detection_data.get("overlap"),
-            is_extracted=detection_data.get("is_extracted", False),
         )
 
         logger.info(f"Saving detection to DB: {detection_data['species']}")

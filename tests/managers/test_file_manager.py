@@ -143,7 +143,6 @@ def test_save_detection_audio(file_manager):
             raw_audio_bytes=raw_audio_bytes,
             sample_rate=sample_rate,
             channels=channels,
-            recording_start_time=recording_start_time,
         )
 
         # Verify soundfile.write was called correctly

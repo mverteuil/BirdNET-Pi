@@ -57,16 +57,18 @@ class Detection(Base):
     audio_file = relationship("AudioFile", backref=backref("detection", uselist=False))
 
     # Location and analysis parameters
-    latitude = Column(Float, nullable=True)
-    longitude = Column(Float, nullable=True)
-    species_confidence_threshold = Column(Float, nullable=True)  # Previously cutoff
-    week = Column(Integer, nullable=True)
-    sensitivity_setting = Column(Float, nullable=True)  # Previously sensitivity
-    overlap = Column(Float, nullable=True)
+    latitude = Column(Float)
+    longitude = Column(Float)
+    species_confidence_threshold = Column(Float)  # Previously cutoff
+    week = Column(Integer)
+    sensitivity_setting = Column(Float)  # Previously sensitivity
+    overlap = Column(Float)  # Audio analysis window overlap (0.0-1.0) for signal processing continuity
 
     def get_display_name(self) -> str:
         """Get the best available species display name."""
-        return str(self.common_name_ioc or self.common_name_tensor or self.scientific_name)
+        return str(
+            self.common_name_ioc or self.common_name_tensor or self.scientific_name
+        )
 
 
 class AudioFile(Base):
@@ -78,5 +80,4 @@ class AudioFile(Base):
     file_path = Column(String, unique=True, index=True)
     duration = Column(Float)
     size_bytes = Column(Integer)
-    recording_start_time = Column(DateTime(timezone=True))
     # Add more fields as needed

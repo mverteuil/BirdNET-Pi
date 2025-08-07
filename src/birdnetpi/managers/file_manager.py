@@ -73,7 +73,6 @@ class FileManager:
         raw_audio_bytes: bytes,
         sample_rate: int,
         channels: int,
-        recording_start_time: datetime,
     ) -> AudioFile:
         """Save raw audio bytes to a WAV file and return an in-memory AudioFile instance."""
         full_path = self.get_full_path(relative_path)
@@ -91,5 +90,4 @@ class FileManager:
             file_path=relative_path,
             duration=duration,
             size_bytes=size_bytes,
-            recording_start_time=recording_start_time,
         )

@@ -35,7 +35,7 @@ class TestSQLAdminViewRoutes:
 
         # Check that expected columns are configured
         column_names = [col.name for col in AudioFileAdmin.column_list]
-        expected_columns = ["id", "file_path", "duration", "recording_start_time"]
+        expected_columns = ["id", "file_path", "duration"]
 
         for expected_col in expected_columns:
             assert expected_col in column_names

@@ -27,7 +27,6 @@ class AudioFileAdmin(ModelView, model=AudioFile):
         AudioFile.id,
         AudioFile.file_path,
         AudioFile.duration,
-        AudioFile.recording_start_time,
     ]
 
 

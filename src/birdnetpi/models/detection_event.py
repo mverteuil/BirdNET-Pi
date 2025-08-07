@@ -22,14 +22,12 @@ class DetectionEvent(BaseModel):
     audio_file_path: str
     duration: float
     size_bytes: int
-    recording_start_time: datetime
 
     # Optional fields
     spectrogram_path: str | None = None
-    latitude: float | None = None
-    longitude: float | None = None
-    species_confidence_threshold: float | None = None
-    week: int | None = None
-    sensitivity_setting: float | None = None
-    overlap: float | None = None
-    is_extracted: bool = False
+    latitude: float
+    longitude: float
+    species_confidence_threshold: float
+    week: int
+    sensitivity_setting: float
+    overlap: float

@@ -102,7 +102,6 @@ class AudioAnalysisService:
                 ),  # Ensure raw_audio_bytes is int16 numpy array
                 self.config.sample_rate,  # Get from config
                 self.config.audio_channels,  # Get from config
-                timestamp,  # Pass recording_start_time
             )
             logger.info(f"Saved detection audio to {audio_file_instance.file_path}")
         except Exception as e:
@@ -116,7 +115,6 @@ class AudioAnalysisService:
             "audio_file_path": audio_file_instance.file_path,
             "duration": audio_file_instance.duration,
             "size_bytes": audio_file_instance.size_bytes,
-            "recording_start_time": audio_file_instance.recording_start_time.isoformat(),
             "spectrogram_path": None,
             "latitude": None,
             "longitude": None,
@@ -124,7 +122,6 @@ class AudioAnalysisService:
             "week": None,
             "sensitivity_setting": None,
             "overlap": None,
-            "is_extracted": False,
         }
         try:
             async with httpx.AsyncClient() as client:

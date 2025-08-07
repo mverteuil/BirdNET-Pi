@@ -49,10 +49,8 @@ def generate_dummy_detections(
             "week": timestamp.isocalendar()[1],
             "sensitivity_setting": random.uniform(0.5, 0.9),
             "overlap": random.uniform(0.0, 0.5),
-            "is_extracted": False,
             "duration": 5.0,  # Added for DetectionEvent
             "size_bytes": 1024,  # Added for DetectionEvent
-            "recording_start_time": timestamp,  # Added for DetectionEvent
         }
         # Convert dict to DetectionEvent object
         detection_event = DetectionEvent(**detection_data)

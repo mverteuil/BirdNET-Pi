@@ -25,7 +25,6 @@ class DetectionManager:
                     file_path=detection_event.audio_file_path,
                     duration=detection_event.duration,
                     size_bytes=detection_event.size_bytes,
-                    recording_start_time=detection_event.recording_start_time,
                 )
                 db.add(audio_file)
                 db.flush()  # Flush to get audio_file.id before committing
