@@ -13,7 +13,19 @@ dev = [
   "pytest-cov>=6.2.1",
   "pytest-mock==3.7.0",
   "pyright>=1.1.390",
-  "ruff>=0.12.5"
+  "ruff>=0.12.5",
+  "types-pytz",
+  "types-tzlocal",
+  "types-paho-mqtt",
+  "types-setuptools",
+  "types-psutil",
+  "types-tqdm",
+  "pandas-stubs",
+  "types-requests>=2.32.4.20250611",
+  "types-urllib3>=1.26.25.14",
+  "types-sqlalchemy>=1.4.53.38",
+  "types-pillow>=10.2.0.20240822",
+  "types-decorator>=5.2.0.20250324",
 ]
 
 [project]
