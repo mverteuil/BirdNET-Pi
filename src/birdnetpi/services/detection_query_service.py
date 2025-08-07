@@ -86,17 +86,20 @@ class DetectionQueryService:
     """Service for Detection queries requiring IOC database joins."""
 
     def __init__(
-        self, db_service: DatabaseService, ioc_db_service: IOCDatabaseService, cache_ttl: int = 300
+        self,
+        bnp_database_service: DatabaseService,
+        ioc_database_service: IOCDatabaseService,
+        cache_ttl: int = 300,
     ):
         """Initialize detection query service.
 
         Args:
-            db_service: Main database service for detections
-            ioc_db_service: IOC reference database service
+            bnp_database_service: Main database service for detections
+            ioc_database_service: IOC reference database service
             cache_ttl: Cache time-to-live in seconds (default: 5 minutes)
         """
-        self.db_service = db_service
-        self.ioc_db_service = ioc_db_service
+        self.bnp_database_service = bnp_database_service
+        self.ioc_database_service = ioc_database_service
         self.cache_ttl = cache_ttl
 
         # In-memory cache: {cache_key: (data, expiry_timestamp)}
@@ -207,8 +210,8 @@ class DetectionQueryService:
         Returns:
             List of DetectionWithIOCData objects
         """
-        with self.db_service.get_db() as session:
-            self.ioc_db_service.attach_to_session(session)
+        with self.bnp_database_service.get_db() as session:
+            self.ioc_database_service.attach_to_session(session)
             try:
                 return self._execute_join_query(
                     session=session,
@@ -220,7 +223,7 @@ class DetectionQueryService:
                     family_filter=family_filter,
                 )
             finally:
-                self.ioc_db_service.detach_from_session(session)
+                self.ioc_database_service.detach_from_session(session)
 
     def get_detection_with_ioc_data(
         self, detection_id: UUID, language_code: str = "en"
@@ -246,8 +249,8 @@ class DetectionQueryService:
         if cached_result is not None:
             return cached_result
 
-        with self.db_service.get_db() as session:
-            self.ioc_db_service.attach_to_session(session)
+        with self.bnp_database_service.get_db() as session:
+            self.ioc_database_service.attach_to_session(session)
             try:
                 query_sql = text("""
                     SELECT
@@ -314,7 +317,7 @@ class DetectionQueryService:
                 return detection_with_ioc
 
             finally:
-                self.ioc_db_service.detach_from_session(session)
+                self.ioc_database_service.detach_from_session(session)
 
     def get_species_summary(
         self,
@@ -345,8 +348,8 @@ class DetectionQueryService:
         if cached_result is not None:
             return cached_result
 
-        with self.db_service.get_db() as session:
-            self.ioc_db_service.attach_to_session(session)
+        with self.bnp_database_service.get_db() as session:
+            self.ioc_database_service.attach_to_session(session)
             try:
                 where_clause = "WHERE 1=1"
                 params: dict[str, Any] = {"language_code": language_code}
@@ -404,7 +407,7 @@ class DetectionQueryService:
                 return species_summary
 
             finally:
-                self.ioc_db_service.detach_from_session(session)
+                self.ioc_database_service.detach_from_session(session)
 
     def get_family_summary(
         self, language_code: str = "en", since: datetime | None = None
@@ -428,8 +431,8 @@ class DetectionQueryService:
         if cached_result is not None:
             return cached_result
 
-        with self.db_service.get_db() as session:
-            self.ioc_db_service.attach_to_session(session)
+        with self.bnp_database_service.get_db() as session:
+            self.ioc_database_service.attach_to_session(session)
             try:
                 where_clause = "WHERE s.family IS NOT NULL"
                 params: dict[str, Any] = {"language_code": language_code}
@@ -474,7 +477,7 @@ class DetectionQueryService:
                 return family_summary
 
             finally:
-                self.ioc_db_service.detach_from_session(session)
+                self.ioc_database_service.detach_from_session(session)
 
     def _execute_join_query(
         self,

@@ -33,27 +33,27 @@ def temp_ioc_db():
 
 
 @pytest.fixture
-def db_service(temp_main_db):
+def bnp_database_service(temp_main_db):
     """Create main database service."""
     return DatabaseService(temp_main_db)
 
 
 @pytest.fixture
-def ioc_db_service(temp_ioc_db):
+def ioc_database_service(temp_ioc_db):
     """Create IOC database service."""
     return IOCDatabaseService(temp_ioc_db)
 
 
 @pytest.fixture
-def query_service(db_service, ioc_db_service):
+def query_service(bnp_database_service, ioc_database_service):
     """Create detection query service."""
-    return DetectionQueryService(db_service, ioc_db_service)
+    return DetectionQueryService(bnp_database_service, ioc_database_service)
 
 
 @pytest.fixture
-def populated_ioc_db(ioc_db_service):
+def populated_ioc_db(ioc_database_service):
     """Populate IOC database with test data."""
-    with ioc_db_service.get_db() as session:
+    with ioc_database_service.get_db() as session:
         # Add test species
         test_species = [
             IOCSpecies(
@@ -112,16 +112,16 @@ def populated_ioc_db(ioc_db_service):
 
         session.commit()
 
-    return ioc_db_service
+    return ioc_database_service
 
 
 @pytest.fixture
-def sample_detections(db_service):
+def sample_detections(bnp_database_service):
     """Create sample detections in main database."""
     detections = []
     base_time = datetime.now()
 
-    with db_service.get_db() as session:
+    with bnp_database_service.get_db() as session:
         test_detections = [
             Detection(
                 id=uuid4(),
@@ -296,12 +296,12 @@ class TestDetectionWithIOCData:
 class TestDetectionQueryServiceInitialization:
     """Test service initialization."""
 
-    def test_service_initialization(self, db_service, ioc_db_service):
+    def test_service_initialization(self, bnp_database_service, ioc_database_service):
         """Should initialize with required services."""
-        service = DetectionQueryService(db_service, ioc_db_service)
+        service = DetectionQueryService(bnp_database_service, ioc_database_service)
 
-        assert service.db_service == db_service
-        assert service.ioc_db_service == ioc_db_service
+        assert service.bnp_database_service == bnp_database_service
+        assert service.ioc_database_service == ioc_database_service
 
 
 class TestGetDetectionsWithIOCData:
@@ -390,14 +390,14 @@ class TestGetDetectionsWithIOCData:
     ):
         """Should properly attach and detach IOC database."""
         # Store original methods
-        original_attach = query_service.ioc_db_service.attach_to_session
-        original_detach = query_service.ioc_db_service.detach_from_session
+        original_attach = query_service.ioc_database_service.attach_to_session
+        original_detach = query_service.ioc_database_service.detach_from_session
 
         with patch.object(
-            query_service.ioc_db_service, "attach_to_session", side_effect=original_attach
+            query_service.ioc_database_service, "attach_to_session", side_effect=original_attach
         ) as mock_attach:
             with patch.object(
-                query_service.ioc_db_service, "detach_from_session", side_effect=original_detach
+                query_service.ioc_database_service, "detach_from_session", side_effect=original_detach
             ) as mock_detach:
                 query_service.get_detections_with_ioc_data()
 
@@ -412,9 +412,9 @@ class TestGetDetectionsWithIOCData:
         with patch.object(
             query_service, "_execute_join_query", side_effect=Exception("Query failed")
         ):
-            with patch.object(query_service.ioc_db_service, "attach_to_session"):
+            with patch.object(query_service.ioc_database_service, "attach_to_session"):
                 with patch.object(
-                    query_service.ioc_db_service, "detach_from_session"
+                    query_service.ioc_database_service, "detach_from_session"
                 ) as mock_detach:
                     with pytest.raises(Exception, match="Query failed"):
                         query_service.get_detections_with_ioc_data()
@@ -472,14 +472,14 @@ class TestGetDetectionWithIOCData:
         detection_id = sample_detections[0].id
 
         # Store original methods
-        original_attach = query_service.ioc_db_service.attach_to_session
-        original_detach = query_service.ioc_db_service.detach_from_session
+        original_attach = query_service.ioc_database_service.attach_to_session
+        original_detach = query_service.ioc_database_service.detach_from_session
 
         with patch.object(
-            query_service.ioc_db_service, "attach_to_session", side_effect=original_attach
+            query_service.ioc_database_service, "attach_to_session", side_effect=original_attach
         ) as mock_attach:
             with patch.object(
-                query_service.ioc_db_service, "detach_from_session", side_effect=original_detach
+                query_service.ioc_database_service, "detach_from_session", side_effect=original_detach
             ) as mock_detach:
                 query_service.get_detection_with_ioc_data(detection_id)
 
@@ -644,7 +644,7 @@ class TestErrorHandling:
     def test_database_attachment_failure(self, query_service):
         """Should handle database attachment failures."""
         with patch.object(
-            query_service.ioc_db_service,
+            query_service.ioc_database_service,
             "attach_to_session",
             side_effect=OperationalError("", "", ""),
         ):
@@ -653,7 +653,7 @@ class TestErrorHandling:
 
     def test_query_execution_failure(self, query_service, populated_ioc_db):
         """Should handle query execution failures."""
-        with patch.object(query_service.db_service, "get_db") as mock_get_db:
+        with patch.object(query_service.bnp_database_service, "get_db") as mock_get_db:
             mock_session = MagicMock()
             mock_session.execute.side_effect = Exception("Query failed")
             mock_get_db.return_value.__enter__.return_value = mock_session
@@ -905,7 +905,7 @@ class TestCachingFunctionality:
         result1 = query_service.get_species_summary(language_code="en")
 
         # Second call with same parameters - should use cache
-        with patch.object(query_service.db_service, "get_db") as mock_get_db:
+        with patch.object(query_service.bnp_database_service, "get_db") as mock_get_db:
             result2 = query_service.get_species_summary(language_code="en")
 
             # Database should not be called on second request
@@ -920,7 +920,7 @@ class TestCachingFunctionality:
         result1 = query_service.get_family_summary(language_code="en")
 
         # Second call with same parameters - should use cache
-        with patch.object(query_service.db_service, "get_db") as mock_get_db:
+        with patch.object(query_service.bnp_database_service, "get_db") as mock_get_db:
             result2 = query_service.get_family_summary(language_code="en")
 
             # Database should not be called on second request
@@ -938,7 +938,7 @@ class TestCachingFunctionality:
             result1 = query_service.get_detection_with_ioc_data(detection_id)
 
             # Second call with same parameters - should use cache
-            with patch.object(query_service.db_service, "get_db") as mock_get_db:
+            with patch.object(query_service.bnp_database_service, "get_db") as mock_get_db:
                 result2 = query_service.get_detection_with_ioc_data(detection_id)
 
                 # Database should not be called on second request
@@ -969,7 +969,7 @@ class TestCachingFunctionality:
         result1 = query_service.get_species_summary(since=cutoff_time)
 
         # Second call with same since parameter - should use cache
-        with patch.object(query_service.db_service, "get_db") as mock_get_db:
+        with patch.object(query_service.bnp_database_service, "get_db") as mock_get_db:
             result2 = query_service.get_species_summary(since=cutoff_time)
 
             mock_get_db.assert_not_called()

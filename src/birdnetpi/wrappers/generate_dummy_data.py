@@ -13,16 +13,16 @@ def main() -> None:
 
     # Check if the database file exists and has data
     if os.path.exists(db_path) and os.path.getsize(db_path) > 0:
-        db_service = DatabaseService(db_path)
-        detection_manager = DetectionManager(db_service)
+        bnp_database_service = DatabaseService(db_path)
+        detection_manager = DetectionManager(bnp_database_service)
         if detection_manager.get_all_detections():
             print("Database already contains data. Skipping dummy data generation.")
             return
 
     # If database is empty or doesn't exist, generate dummy data
     print("Database is empty or does not exist. Generating dummy data...")
-    db_service = DatabaseService(db_path)
-    detection_manager = DetectionManager(db_service)
+    bnp_database_service = DatabaseService(db_path)
+    detection_manager = DetectionManager(bnp_database_service)
     generate_dummy_detections(detection_manager)
     print("Dummy data generation complete.")
 

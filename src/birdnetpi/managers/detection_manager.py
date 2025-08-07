@@ -16,15 +16,15 @@ class DetectionManager:
 
     def __init__(
         self,
-        db_service: DatabaseService,
+        bnp_database_service: DatabaseService,
         detection_query_service: DetectionQueryService | None = None,
     ) -> None:
-        self.db_service = db_service
+        self.bnp_database_service = bnp_database_service
         self.detection_query_service = detection_query_service
 
     def create_detection(self, detection_event: DetectionEvent) -> Detection:
         """Create a new detection record and associated audio file record in the database."""
-        with self.db_service.get_db() as db:
+        with self.bnp_database_service.get_db() as db:
             try:
                 # Create AudioFile record
                 audio_file = AudioFile(
@@ -65,7 +65,7 @@ class DetectionManager:
 
     def get_all_detections(self) -> list[Detection]:
         """Retrieve all detection records from the database."""
-        with self.db_service.get_db() as db:
+        with self.bnp_database_service.get_db() as db:
             try:
                 return db.query(Detection).all()
             except SQLAlchemyError as e:
@@ -75,7 +75,7 @@ class DetectionManager:
 
     def get_audio_file_by_path(self, file_path: str) -> AudioFile | None:
         """Retrieve an AudioFile record by its file path."""
-        with self.db_service.get_db() as db:
+        with self.bnp_database_service.get_db() as db:
             try:
                 return db.query(AudioFile).filter_by(file_path=file_path).first()
             except SQLAlchemyError as e:
@@ -85,7 +85,7 @@ class DetectionManager:
 
     def delete_detection(self, detection_id: int) -> None:
         """Delete a detection record from the database."""
-        with self.db_service.get_db() as db:
+        with self.bnp_database_service.get_db() as db:
             try:
                 detection = db.query(Detection).get(detection_id)
                 if detection:
@@ -98,7 +98,7 @@ class DetectionManager:
 
     def get_detections_by_species(self, species_name: str) -> list[Detection]:
         """Retrieve all detection records for a given species from the database."""
-        with self.db_service.get_db() as db:
+        with self.bnp_database_service.get_db() as db:
             try:
                 return db.query(Detection).filter_by(scientific_name=species_name).all()
             except SQLAlchemyError as e:
@@ -110,7 +110,7 @@ class DetectionManager:
         self, start_date: datetime.datetime, end_date: datetime.datetime
     ) -> dict:
         """Get total detection count and unique species count within a date range."""
-        with self.db_service.get_db() as db:
+        with self.bnp_database_service.get_db() as db:
             try:
                 total_count = (
                     db.query(Detection)
@@ -140,7 +140,7 @@ class DetectionManager:
         prior_end_date: datetime.datetime,
     ) -> list[dict]:
         """Fetch top 10 species for current and prior weeks."""
-        with self.db_service.get_db() as db:
+        with self.bnp_database_service.get_db() as db:
             try:
                 current_week_subquery = (
                     db.query(
@@ -201,7 +201,7 @@ class DetectionManager:
         self, start_date: datetime.datetime, end_date: datetime.datetime
     ) -> list[dict]:
         """Fetch new species not present in prior data."""
-        with self.db_service.get_db() as db:
+        with self.bnp_database_service.get_db() as db:
             try:
                 # Subquery to find all species detected before the start_date
                 prior_species_subquery = (
@@ -240,7 +240,7 @@ class DetectionManager:
 
     def get_most_recent_detections(self, limit: int = 10) -> list[dict]:
         """Retrieve the most recent detection records from the database."""
-        with self.db_service.get_db() as db:
+        with self.bnp_database_service.get_db() as db:
             try:
                 recent_detections = (
                     db.query(Detection).order_by(Detection.timestamp.desc()).limit(limit).all()
@@ -268,7 +268,7 @@ class DetectionManager:
 
     def get_best_detections(self, limit: int = 10) -> list[dict]:
         """Retrieve the best detection for each species, sorted by confidence."""
-        with self.db_service.get_db() as db:
+        with self.bnp_database_service.get_db() as db:
             try:
                 # Subquery to rank detections by confidence for each species
                 ranked_subquery = db.query(
@@ -318,7 +318,7 @@ class DetectionManager:
 
     def get_detection(self, detection_id: int) -> Detection | None:
         """Retrieve a single detection record from the database."""
-        with self.db_service.get_db() as db:
+        with self.bnp_database_service.get_db() as db:
             try:
                 return db.query(Detection).get(detection_id)
             except SQLAlchemyError as e:
@@ -328,7 +328,7 @@ class DetectionManager:
 
     def get_total_detections(self) -> int:
         """Retrieve the total count of all detection records from the database."""
-        with self.db_service.get_db() as db:
+        with self.bnp_database_service.get_db() as db:
             try:
                 return db.query(Detection).count()
             except SQLAlchemyError as e:
@@ -338,7 +338,7 @@ class DetectionManager:
 
     def get_recent_detections(self, limit: int = 10) -> list[Detection]:
         """Retrieve recent detection records from the database."""
-        with self.db_service.get_db() as db:
+        with self.bnp_database_service.get_db() as db:
             try:
                 return db.query(Detection).order_by(Detection.timestamp.desc()).limit(limit).all()
             except SQLAlchemyError as e:
@@ -348,7 +348,7 @@ class DetectionManager:
 
     def get_detection_by_id(self, detection_id: int) -> Detection | None:
         """Retrieve a detection by its ID."""
-        with self.db_service.get_db() as db:
+        with self.bnp_database_service.get_db() as db:
             try:
                 return db.query(Detection).filter(Detection.id == detection_id).first()
             except SQLAlchemyError as e:
@@ -358,7 +358,7 @@ class DetectionManager:
 
     def get_detections_count_by_date(self, target_date: date) -> int:
         """Get count of detections for a specific date."""
-        with self.db_service.get_db() as db:
+        with self.bnp_database_service.get_db() as db:
             try:
                 start_datetime = datetime.datetime.combine(target_date, datetime.time.min)
                 end_datetime = datetime.datetime.combine(target_date, datetime.time.max)
@@ -378,7 +378,7 @@ class DetectionManager:
         self, detection_id: int, latitude: float, longitude: float
     ) -> bool:
         """Update the location for a specific detection."""
-        with self.db_service.get_db() as db:
+        with self.bnp_database_service.get_db() as db:
             try:
                 detection = db.query(Detection).filter(Detection.id == detection_id).first()
                 if detection:

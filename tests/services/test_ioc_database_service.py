@@ -39,7 +39,7 @@ def temp_db_path():
 
 
 @pytest.fixture
-def db_service(temp_db_path):
+def ioc_database_service(temp_db_path):
     """Create IOC database service instance."""
     return IOCDatabaseService(temp_db_path)
 
@@ -91,10 +91,10 @@ def mock_ioc_reference_service():
 
 
 @pytest.fixture
-def populated_db_service(db_service, mock_ioc_reference_service):
+def populated_ioc_database_service(ioc_database_service, mock_ioc_reference_service):
     """Create populated database service."""
-    db_service.populate_from_ioc_service(mock_ioc_reference_service)
-    return db_service
+    ioc_database_service.populate_from_ioc_service(mock_ioc_reference_service)
+    return ioc_database_service
 
 
 class TestIOCDatabaseServiceInitialization:
@@ -122,12 +122,12 @@ class TestIOCDatabaseServiceInitialization:
 class TestPopulateFromIOCService:
     """Test database population from IOC reference service."""
 
-    def test_populate_success(self, db_service, mock_ioc_reference_service, capsys):
+    def test_populate_success(self, ioc_database_service, mock_ioc_reference_service, capsys):
         """Should populate database successfully."""
-        db_service.populate_from_ioc_service(mock_ioc_reference_service)
+        ioc_database_service.populate_from_ioc_service(mock_ioc_reference_service)
 
         # Verify species were inserted
-        session = db_service.session_local()
+        session = ioc_database_service.session_local()
         try:
             species_count = session.query(IOCSpecies).count()
             assert species_count == 2
@@ -182,18 +182,18 @@ class TestPopulateFromIOCService:
         assert "Inserted 6 translations total" in captured.out
         assert "IOC database populated successfully" in captured.out
 
-    def test_populate_service_not_loaded(self, db_service):
+    def test_populate_service_not_loaded(self, ioc_database_service):
         """Should raise error if IOC service not loaded."""
         mock_service = MagicMock()
         mock_service._loaded = False
 
         with pytest.raises(ValueError, match="IOC service must be loaded"):
-            db_service.populate_from_ioc_service(mock_service)
+            ioc_database_service.populate_from_ioc_service(mock_service)
 
-    def test_populate_clears_existing_data(self, populated_db_service, mock_ioc_reference_service):
+    def test_populate_clears_existing_data(self, populated_ioc_database_service, mock_ioc_reference_service):
         """Should clear existing data before repopulating."""
         # Verify initial data exists
-        session = populated_db_service.session_local()
+        session = populated_ioc_database_service.session_local()
         try:
             initial_count = session.query(IOCSpecies).count()
             assert initial_count == 2
@@ -201,10 +201,10 @@ class TestPopulateFromIOCService:
             session.close()
 
         # Repopulate with same data
-        populated_db_service.populate_from_ioc_service(mock_ioc_reference_service)
+        populated_ioc_database_service.populate_from_ioc_service(mock_ioc_reference_service)
 
         # Verify data was cleared and repopulated (not duplicated)
-        session = populated_db_service.session_local()
+        session = populated_ioc_database_service.session_local()
         try:
             final_count = session.query(IOCSpecies).count()
             assert final_count == 2
@@ -213,15 +213,15 @@ class TestPopulateFromIOCService:
 
     @patch("birdnetpi.services.ioc_database_service.datetime")
     def test_populate_with_mocked_datetime(
-        self, mock_datetime, db_service, mock_ioc_reference_service
+        self, mock_datetime, ioc_database_service, mock_ioc_reference_service
     ):
         """Should use current datetime for metadata."""
         mock_now = datetime(2025, 1, 15, 10, 30, 0)
         mock_datetime.utcnow.return_value = mock_now
 
-        db_service.populate_from_ioc_service(mock_ioc_reference_service)
+        ioc_database_service.populate_from_ioc_service(mock_ioc_reference_service)
 
-        session = db_service.session_local()
+        session = ioc_database_service.session_local()
         try:
             created_metadata = session.query(IOCMetadata).filter_by(key="created_at").first()
             assert created_metadata is not None
@@ -229,16 +229,16 @@ class TestPopulateFromIOCService:
         finally:
             session.close()
 
-    def test_populate_database_error(self, db_service, mock_ioc_reference_service):
+    def test_populate_database_error(self, ioc_database_service, mock_ioc_reference_service):
         """Should handle database errors gracefully."""
         # Mock session to raise exception during commit
-        with patch.object(db_service, "session_local") as mock_session_local:
+        with patch.object(ioc_database_service, "session_local") as mock_session_local:
             mock_session = MagicMock()
             mock_session.bulk_insert_mappings.side_effect = Exception("Database error")
             mock_session_local.return_value = mock_session
 
             with pytest.raises(RuntimeError, match="Failed to populate IOC database"):
-                db_service.populate_from_ioc_service(mock_ioc_reference_service)
+                ioc_database_service.populate_from_ioc_service(mock_ioc_reference_service)
 
             # Verify rollback was called
             mock_session.rollback.assert_called_once()
@@ -248,9 +248,9 @@ class TestPopulateFromIOCService:
 class TestSpeciesLookup:
     """Test species lookup functionality."""
 
-    def test_get_species_by_scientific_name_found(self, populated_db_service):
+    def test_get_species_by_scientific_name_found(self, populated_ioc_database_service):
         """Should return species when found."""
-        species = populated_db_service.get_species_by_scientific_name("Turdus migratorius")
+        species = populated_ioc_database_service.get_species_by_scientific_name("Turdus migratorius")
 
         assert species is not None
         assert species.scientific_name == "Turdus migratorius"
@@ -258,87 +258,87 @@ class TestSpeciesLookup:
         assert species.order_name == "Passeriformes"
         assert species.family == "Turdidae"
 
-    def test_get_species_by_scientific_name_not_found(self, populated_db_service):
+    def test_get_species_by_scientific_name_not_found(self, populated_ioc_database_service):
         """Should return None when species not found."""
-        species = populated_db_service.get_species_by_scientific_name("Nonexistent species")
+        species = populated_ioc_database_service.get_species_by_scientific_name("Nonexistent species")
         assert species is None
 
-    def test_get_species_by_scientific_name_empty_string(self, populated_db_service):
+    def test_get_species_by_scientific_name_empty_string(self, populated_ioc_database_service):
         """Should handle empty string gracefully."""
-        species = populated_db_service.get_species_by_scientific_name("")
+        species = populated_ioc_database_service.get_species_by_scientific_name("")
         assert species is None
 
 
 class TestTranslationLookup:
     """Test translation lookup functionality."""
 
-    def test_get_translation_found(self, populated_db_service):
+    def test_get_translation_found(self, populated_ioc_database_service):
         """Should return translation when found."""
-        translation = populated_db_service.get_translation("Turdus migratorius", "es")
+        translation = populated_ioc_database_service.get_translation("Turdus migratorius", "es")
         assert translation == "Petirrojo Americano"
 
-    def test_get_translation_not_found_species(self, populated_db_service):
+    def test_get_translation_not_found_species(self, populated_ioc_database_service):
         """Should return None for unknown species."""
-        translation = populated_db_service.get_translation("Nonexistent species", "es")
+        translation = populated_ioc_database_service.get_translation("Nonexistent species", "es")
         assert translation is None
 
-    def test_get_translation_not_found_language(self, populated_db_service):
+    def test_get_translation_not_found_language(self, populated_ioc_database_service):
         """Should return None for unknown language."""
-        translation = populated_db_service.get_translation("Turdus migratorius", "unknown")
+        translation = populated_ioc_database_service.get_translation("Turdus migratorius", "unknown")
         assert translation is None
 
-    def test_get_translation_empty_parameters(self, populated_db_service):
+    def test_get_translation_empty_parameters(self, populated_ioc_database_service):
         """Should handle empty parameters gracefully."""
-        translation = populated_db_service.get_translation("", "")
+        translation = populated_ioc_database_service.get_translation("", "")
         assert translation is None
 
 
 class TestSpeciesSearch:
     """Test species search functionality."""
 
-    def test_search_species_by_common_name_english(self, populated_db_service):
+    def test_search_species_by_common_name_english(self, populated_ioc_database_service):
         """Should search English names successfully."""
-        results = populated_db_service.search_species_by_common_name("Robin", "en")
+        results = populated_ioc_database_service.search_species_by_common_name("Robin", "en")
 
         assert len(results) == 1
         assert results[0].scientific_name == "Turdus migratorius"
         assert results[0].english_name == "American Robin"
 
-    def test_search_species_by_common_name_case_insensitive(self, populated_db_service):
+    def test_search_species_by_common_name_case_insensitive(self, populated_ioc_database_service):
         """Should perform case-insensitive search."""
-        results = populated_db_service.search_species_by_common_name("ROBIN", "en")
+        results = populated_ioc_database_service.search_species_by_common_name("ROBIN", "en")
 
         assert len(results) == 1
         assert results[0].scientific_name == "Turdus migratorius"
 
-    def test_search_species_by_common_name_partial_match(self, populated_db_service):
+    def test_search_species_by_common_name_partial_match(self, populated_ioc_database_service):
         """Should find partial matches."""
-        results = populated_db_service.search_species_by_common_name("Black", "en")
+        results = populated_ioc_database_service.search_species_by_common_name("Black", "en")
 
         assert len(results) == 1
         assert results[0].scientific_name == "Turdus merula"
         assert "Blackbird" in results[0].english_name
 
-    def test_search_species_by_common_name_translated(self, populated_db_service):
+    def test_search_species_by_common_name_translated(self, populated_ioc_database_service):
         """Should search translated names."""
-        results = populated_db_service.search_species_by_common_name("Petirrojo", "es")
+        results = populated_ioc_database_service.search_species_by_common_name("Petirrojo", "es")
 
         assert len(results) == 1
         assert results[0].scientific_name == "Turdus migratorius"
 
-    def test_search_species_by_common_name_no_results(self, populated_db_service):
+    def test_search_species_by_common_name_no_results(self, populated_ioc_database_service):
         """Should return empty list when no matches found."""
-        results = populated_db_service.search_species_by_common_name("Nonexistent", "en")
+        results = populated_ioc_database_service.search_species_by_common_name("Nonexistent", "en")
         assert results == []
 
-    def test_search_species_by_common_name_with_limit(self, populated_db_service):
+    def test_search_species_by_common_name_with_limit(self, populated_ioc_database_service):
         """Should respect limit parameter."""
-        results = populated_db_service.search_species_by_common_name("Turdus", "en", limit=1)
+        results = populated_ioc_database_service.search_species_by_common_name("Turdus", "en", limit=1)
         assert len(results) <= 1
 
-    def test_search_species_by_common_name_empty_search(self, populated_db_service):
+    def test_search_species_by_common_name_empty_search(self, populated_ioc_database_service):
         """Should handle empty search term."""
-        results = populated_db_service.search_species_by_common_name("", "en")
+        results = populated_ioc_database_service.search_species_by_common_name("", "en")
         # Empty search should match all species
         assert len(results) == 2
 
@@ -346,9 +346,9 @@ class TestSpeciesSearch:
 class TestLanguageMetadata:
     """Test language metadata functionality."""
 
-    def test_get_available_languages(self, populated_db_service):
+    def test_get_available_languages(self, populated_ioc_database_service):
         """Should return available languages."""
-        languages = populated_db_service.get_available_languages()
+        languages = populated_ioc_database_service.get_available_languages()
 
         assert len(languages) == 3
         language_codes = [lang.language_code for lang in languages]
@@ -361,18 +361,18 @@ class TestLanguageMetadata:
         assert spanish_lang.language_name == "Spanish"
         assert spanish_lang.translation_count == 2  # 2 species with Spanish translations
 
-    def test_get_available_languages_empty_db(self, db_service):
+    def test_get_available_languages_empty_db(self, ioc_database_service):
         """Should return empty list for empty database."""
-        languages = db_service.get_available_languages()
+        languages = ioc_database_service.get_available_languages()
         assert languages == []
 
 
 class TestMetadata:
     """Test metadata functionality."""
 
-    def test_get_metadata(self, populated_db_service):
+    def test_get_metadata(self, populated_ioc_database_service):
         """Should return all metadata."""
-        metadata = populated_db_service.get_metadata()
+        metadata = populated_ioc_database_service.get_metadata()
 
         assert isinstance(metadata, dict)
         assert "ioc_version" in metadata
@@ -391,18 +391,18 @@ class TestMetadata:
         assert "fr" in languages
         assert "de" in languages
 
-    def test_get_metadata_empty_db(self, db_service):
+    def test_get_metadata_empty_db(self, ioc_database_service):
         """Should return empty dict for empty database."""
-        metadata = db_service.get_metadata()
+        metadata = ioc_database_service.get_metadata()
         assert metadata == {}
 
 
 class TestDatabaseUtilities:
     """Test database utility functions."""
 
-    def test_get_database_size_exists(self, populated_db_service):
+    def test_get_database_size_exists(self, populated_ioc_database_service):
         """Should return database file size when file exists."""
-        size = populated_db_service.get_database_size()
+        size = populated_ioc_database_service.get_database_size()
         assert size > 0
         assert isinstance(size, int)
 
@@ -419,12 +419,12 @@ class TestDatabaseUtilities:
 class TestDatabaseAttachment:
     """Test database attachment functionality."""
 
-    def test_attach_to_session(self, populated_db_service):
+    def test_attach_to_session(self, populated_ioc_database_service):
         """Should attach database to session."""
-        session = populated_db_service.session_local()
+        session = populated_ioc_database_service.session_local()
         try:
             # Attach database
-            populated_db_service.attach_to_session(session, "test_ioc")
+            populated_ioc_database_service.attach_to_session(session, "test_ioc")
 
             # Verify attachment by querying attached database
             result = session.execute(
@@ -438,18 +438,18 @@ class TestDatabaseAttachment:
 
         finally:
             try:
-                populated_db_service.detach_from_session(session, "test_ioc")
+                populated_ioc_database_service.detach_from_session(session, "test_ioc")
             except Exception:
                 pass  # Ignore errors during cleanup
             session.close()
 
-    def test_detach_from_session(self, populated_db_service):
+    def test_detach_from_session(self, populated_ioc_database_service):
         """Should detach database from session."""
-        session = populated_db_service.session_local()
+        session = populated_ioc_database_service.session_local()
         try:
             # Attach and then detach
-            populated_db_service.attach_to_session(session, "test_ioc")
-            populated_db_service.detach_from_session(session, "test_ioc")
+            populated_ioc_database_service.attach_to_session(session, "test_ioc")
+            populated_ioc_database_service.detach_from_session(session, "test_ioc")
 
             # Verify detachment by trying to query (should fail)
             with pytest.raises(OperationalError):
@@ -458,12 +458,12 @@ class TestDatabaseAttachment:
         finally:
             session.close()
 
-    def test_attach_with_custom_alias(self, populated_db_service):
+    def test_attach_with_custom_alias(self, populated_ioc_database_service):
         """Should attach database with custom alias."""
-        session = populated_db_service.session_local()
+        session = populated_ioc_database_service.session_local()
         alias = "custom_alias"
         try:
-            populated_db_service.attach_to_session(session, alias)
+            populated_ioc_database_service.attach_to_session(session, alias)
 
             # Verify attachment with custom alias
             result = session.execute(
@@ -474,7 +474,7 @@ class TestDatabaseAttachment:
 
         finally:
             try:
-                populated_db_service.detach_from_session(session, alias)
+                populated_ioc_database_service.detach_from_session(session, alias)
             except Exception:
                 pass
             session.close()
@@ -483,12 +483,12 @@ class TestDatabaseAttachment:
 class TestCrossDatabaseQueries:
     """Test cross-database query functionality."""
 
-    def test_cross_database_query_example(self, populated_db_service):
+    def test_cross_database_query_example(self, populated_ioc_database_service):
         """Should perform cross-database queries as shown in docstring."""
-        session = populated_db_service.session_local()
+        session = populated_ioc_database_service.session_local()
         try:
             # Attach IOC database
-            populated_db_service.attach_to_session(session, "ioc")
+            populated_ioc_database_service.attach_to_session(session, "ioc")
 
             # Simulate the example query pattern (simplified without main detections table)
             result = session.execute(
@@ -510,7 +510,7 @@ class TestCrossDatabaseQueries:
 
         finally:
             try:
-                populated_db_service.detach_from_session(session, "ioc")
+                populated_ioc_database_service.detach_from_session(session, "ioc")
             except Exception:
                 pass
             session.close()
@@ -547,9 +547,9 @@ class TestCreateIOCDatabaseFromFiles:
 class TestLanguageNameMapping:
     """Test language name mapping functionality."""
 
-    def test_get_language_names_mapping(self, db_service):
+    def test_get_language_names_mapping(self, ioc_database_service):
         """Should provide comprehensive language name mapping."""
-        language_names = db_service._get_language_names()
+        language_names = ioc_database_service._get_language_names()
 
         # Test some key languages
         assert language_names["es"] == "Spanish"
@@ -569,84 +569,84 @@ class TestLanguageNameMapping:
 class TestErrorHandling:
     """Test error handling across the service."""
 
-    def test_populate_with_invalid_service(self, db_service):
+    def test_populate_with_invalid_service(self, ioc_database_service):
         """Should handle invalid service gracefully."""
         invalid_service = MagicMock()
         invalid_service._loaded = True
         invalid_service._species_data = "not a dict"  # Invalid data type
 
         with pytest.raises(RuntimeError):  # Will raise RuntimeError from the service
-            db_service.populate_from_ioc_service(invalid_service)
+            ioc_database_service.populate_from_ioc_service(invalid_service)
 
-    def test_session_handling_in_queries(self, populated_db_service):
+    def test_session_handling_in_queries(self, populated_ioc_database_service):
         """Should properly handle sessions in all query methods."""
         # Test that sessions are properly closed even if queries fail
         from sqlalchemy.exc import SQLAlchemyError
 
-        with patch.object(populated_db_service, "session_local") as mock_session_local:
+        with patch.object(populated_ioc_database_service, "session_local") as mock_session_local:
             mock_session = MagicMock()
             mock_session.query.side_effect = SQLAlchemyError("Query error")
             mock_session_local.return_value = mock_session
 
             # These should all handle the exception and close the session
             with pytest.raises(SQLAlchemyError):
-                populated_db_service.get_species_by_scientific_name("test")
+                populated_ioc_database_service.get_species_by_scientific_name("test")
             mock_session.close.assert_called()
 
             mock_session.reset_mock()
             with pytest.raises(SQLAlchemyError):
-                populated_db_service.get_translation("test", "en")
+                populated_ioc_database_service.get_translation("test", "en")
             mock_session.close.assert_called()
 
             mock_session.reset_mock()
             with pytest.raises(SQLAlchemyError):
-                populated_db_service.search_species_by_common_name("test")
+                populated_ioc_database_service.search_species_by_common_name("test")
             mock_session.close.assert_called()
 
 
 class TestIntegration:
     """Integration tests for IOC database service."""
 
-    def test_complete_workflow(self, db_service, mock_ioc_reference_service):
+    def test_complete_workflow(self, ioc_database_service, mock_ioc_reference_service):
         """Should complete full workflow from service population to queries."""
         # Populate database
-        db_service.populate_from_ioc_service(mock_ioc_reference_service)
+        ioc_database_service.populate_from_ioc_service(mock_ioc_reference_service)
 
         # Test species lookup
-        species = db_service.get_species_by_scientific_name("Turdus migratorius")
+        species = ioc_database_service.get_species_by_scientific_name("Turdus migratorius")
         assert species is not None
         assert species.english_name == "American Robin"
 
         # Test translation lookup
-        translation = db_service.get_translation("Turdus migratorius", "es")
+        translation = ioc_database_service.get_translation("Turdus migratorius", "es")
         assert translation == "Petirrojo Americano"
 
         # Test search functionality
-        search_results = db_service.search_species_by_common_name("Robin", "en")
+        search_results = ioc_database_service.search_species_by_common_name("Robin", "en")
         assert len(search_results) == 1
         assert search_results[0].scientific_name == "Turdus migratorius"
 
         # Test metadata retrieval
-        metadata = db_service.get_metadata()
+        metadata = ioc_database_service.get_metadata()
         assert metadata["ioc_version"] == "15.1"
         assert metadata["species_count"] == "2"
 
         # Test language metadata
-        languages = db_service.get_available_languages()
+        languages = ioc_database_service.get_available_languages()
         assert len(languages) == 3
 
         # Test database size
-        size = db_service.get_database_size()
+        size = ioc_database_service.get_database_size()
         assert size > 0
 
-    def test_empty_database_behavior(self, db_service):
+    def test_empty_database_behavior(self, ioc_database_service):
         """Should handle empty database gracefully."""
         # All queries should return empty/None results
-        assert db_service.get_species_by_scientific_name("any") is None
-        assert db_service.get_translation("any", "en") is None
-        assert db_service.search_species_by_common_name("any") == []
-        assert db_service.get_available_languages() == []
-        assert db_service.get_metadata() == {}
+        assert ioc_database_service.get_species_by_scientific_name("any") is None
+        assert ioc_database_service.get_translation("any", "en") is None
+        assert ioc_database_service.search_species_by_common_name("any") == []
+        assert ioc_database_service.get_available_languages() == []
+        assert ioc_database_service.get_metadata() == {}
 
         # Database size should be > 0 (schema exists)
-        assert db_service.get_database_size() > 0
+        assert ioc_database_service.get_database_size() > 0

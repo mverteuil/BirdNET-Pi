@@ -7,35 +7,35 @@ from birdnetpi.services.database_service import DatabaseService
 
 
 @pytest.fixture
-def db_service(tmp_path) -> DatabaseService:
+def bnp_database_service(tmp_path) -> DatabaseService:
     """Provide a DatabaseService instance for testing."""
     db_path = tmp_path / "test.db"
     return DatabaseService(str(db_path))
 
 
-def test_clear_database_success(db_service):
+def test_clear_database_success(bnp_database_service):
     """Should clear all data from the database tables successfully"""
     # This test now checks that the clear_database method runs without error.
     # A more thorough test would involve adding data and then checking that it was deleted.
-    db_service.clear_database()
+    bnp_database_service.clear_database()
 
 
-def test_clear_database_failure(db_service, monkeypatch):
+def test_clear_database_failure(bnp_database_service, monkeypatch):
     """Should handle clear database failure and rollback"""
     # We now need to mock the session object used by the service
     mock_session = MagicMock()
     mock_session.execute.side_effect = SQLAlchemyError("Test Error")
-    monkeypatch.setattr(db_service, "session_local", lambda: mock_session)
+    monkeypatch.setattr(bnp_database_service, "session_local", lambda: mock_session)
 
     with pytest.raises(SQLAlchemyError):
-        db_service.clear_database()
+        bnp_database_service.clear_database()
 
     mock_session.rollback.assert_called_once()
 
 
-def test_checkpoint_wal_success(db_service):
+def test_checkpoint_wal_success(bnp_database_service):
     """Should successfully checkpoint WAL file"""
-    with patch.object(db_service, "get_db") as mock_get_db:
+    with patch.object(bnp_database_service, "get_db") as mock_get_db:
         mock_session = MagicMock()
         mock_session.execute.return_value.fetchone.return_value = (
             0,
@@ -44,26 +44,26 @@ def test_checkpoint_wal_success(db_service):
         )  # busy, log_pages, checkpointed
         mock_get_db.return_value.__enter__.return_value = mock_session
 
-        db_service.checkpoint_wal("RESTART")
+        bnp_database_service.checkpoint_wal("RESTART")
 
         mock_session.execute.assert_called_once()
         mock_session.commit.assert_called_once()
 
 
-def test_checkpoint_wal_failure(db_service):
+def test_checkpoint_wal_failure(bnp_database_service):
     """Should handle WAL checkpoint failure gracefully"""
-    with patch.object(db_service, "get_db") as mock_get_db:
+    with patch.object(bnp_database_service, "get_db") as mock_get_db:
         mock_session = MagicMock()
         mock_session.execute.side_effect = SQLAlchemyError("WAL Error")
         mock_get_db.return_value.__enter__.return_value = mock_session
 
         # Should not raise exception, just print warning
-        db_service.checkpoint_wal("RESTART")
+        bnp_database_service.checkpoint_wal("RESTART")
 
         mock_session.execute.assert_called_once()
 
 
-def test_get_database_stats(db_service, tmp_path):
+def test_get_database_stats(bnp_database_service, tmp_path):
     """Should return database statistics"""
     # Create fake database files
     db_path = tmp_path / "test.db"
@@ -76,9 +76,9 @@ def test_get_database_stats(db_service, tmp_path):
     shm_path.write_text("fake shm")
 
     # Mock the database path and session queries
-    db_service.db_path = str(db_path)
+    bnp_database_service.db_path = str(db_path)
 
-    with patch.object(db_service, "get_db") as mock_get_db:
+    with patch.object(bnp_database_service, "get_db") as mock_get_db:
         mock_session = MagicMock()
 
         # Mock pragma results
@@ -90,7 +90,7 @@ def test_get_database_stats(db_service, tmp_path):
         ]
         mock_get_db.return_value.__enter__.return_value = mock_session
 
-        stats = db_service.get_database_stats()
+        stats = bnp_database_service.get_database_stats()
 
         # Verify file size calculations
         assert "main_db_size" in stats
@@ -105,26 +105,26 @@ def test_get_database_stats(db_service, tmp_path):
         assert stats["journal_mode"] == "wal"
 
 
-def test_vacuum_database_success(db_service):
+def test_vacuum_database_success(bnp_database_service):
     """Should successfully vacuum database"""
-    with patch.object(db_service, "get_db") as mock_get_db:
+    with patch.object(bnp_database_service, "get_db") as mock_get_db:
         mock_session = MagicMock()
         mock_get_db.return_value.__enter__.return_value = mock_session
 
-        db_service.vacuum_database()
+        bnp_database_service.vacuum_database()
 
         mock_session.execute.assert_called_once()
         mock_session.commit.assert_called_once()
 
 
-def test_vacuum_database_failure(db_service):
+def test_vacuum_database_failure(bnp_database_service):
     """Should handle vacuum database failure"""
-    with patch.object(db_service, "get_db") as mock_get_db:
+    with patch.object(bnp_database_service, "get_db") as mock_get_db:
         mock_session = MagicMock()
         mock_session.execute.side_effect = SQLAlchemyError("Vacuum Error")
         mock_get_db.return_value.__enter__.return_value = mock_session
 
         with pytest.raises(SQLAlchemyError):
-            db_service.vacuum_database()
+            bnp_database_service.vacuum_database()
 
         mock_session.rollback.assert_called_once()

@@ -67,8 +67,8 @@ class Container(containers.DeclarativeContainer):
 
     detection_query_service = providers.Singleton(
         DetectionQueryService,
-        db_service=bnp_database_service,
-        ioc_db_service=ioc_database_service,
+        bnp_database_service=bnp_database_service,
+        ioc_database_service=ioc_database_service,
     )
 
     # Core business services - singletons
@@ -79,7 +79,7 @@ class Container(containers.DeclarativeContainer):
 
     detection_manager = providers.Singleton(
         DetectionManager,
-        db_service=bnp_database_service,
+        bnp_database_service=bnp_database_service,
         detection_query_service=detection_query_service,
     )
 
