@@ -6,6 +6,8 @@ generation without blocking the main audio pipeline. It connects to the same
 FIFO and serves spectrogram data via WebSocket on a dedicated port.
 """
 
+from __future__ import annotations
+
 import asyncio
 import atexit
 import json
@@ -16,7 +18,7 @@ from types import FrameType
 
 import websockets
 from websockets.asyncio.server import serve
-from websockets.server import WebSocketServerProtocol
+from websockets.legacy.server import WebSocketServerProtocol
 
 from birdnetpi.services.spectrogram_service import SpectrogramService
 from birdnetpi.utils.config_file_parser import ConfigFileParser

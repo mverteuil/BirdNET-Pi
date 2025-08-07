@@ -6,10 +6,10 @@ import logging
 import os
 import signal
 from types import FrameType
+from typing import Any
 
 import websockets
 from websockets.asyncio.server import serve
-from websockets.server import WebSocketServerProtocol
 
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
@@ -51,7 +51,7 @@ class AudioWebSocketService:
             self._websocket_server.close()
             logger.info("WebSocket server closed")
 
-    async def _extract_websocket_path(self, websocket: WebSocketServerProtocol) -> str:
+    async def _extract_websocket_path(self, websocket: Any) -> str:
         """Extract the path from a WebSocket connection."""
         path = None
         try:
@@ -76,7 +76,7 @@ class AudioWebSocketService:
 
         return path
 
-    async def _handle_audio_websocket(self, websocket: WebSocketServerProtocol) -> None:
+    async def _handle_audio_websocket(self, websocket: Any) -> None:
         """Handle a WebSocket connection for audio streaming."""
         self._audio_clients.add(websocket)
         logger.info("Audio WebSocket client connected. Total: %d", len(self._audio_clients))
@@ -92,7 +92,7 @@ class AudioWebSocketService:
                 "Audio WebSocket client disconnected. Remaining: %d", len(self._audio_clients)
             )
 
-    async def _websocket_handler(self, websocket: WebSocketServerProtocol) -> None:
+    async def _websocket_handler(self, websocket: Any) -> None:
         """Route WebSocket connections based on path."""
         path = await self._extract_websocket_path(websocket)
 

@@ -224,7 +224,6 @@ async def test_detection(
     audio_file_path: str = "test_audio/test_bird.wav",
     duration: float = 3.0,
     size_bytes: int = 1024,
-    recording_start_time: str | None = None,
     latitude: float = 0.0,
     longitude: float = 0.0,
     species_confidence_threshold: float = 0.0,
@@ -256,9 +255,6 @@ async def test_detection(
         audio_file_path=audio_file_path,
         duration=duration,
         size_bytes=size_bytes,
-        recording_start_time=datetime.datetime.fromisoformat(recording_start_time)
-        if recording_start_time
-        else datetime.datetime.now(),
         latitude=latitude,
         longitude=longitude,
         species_confidence_threshold=species_confidence_threshold,

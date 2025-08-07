@@ -252,11 +252,12 @@ class ReportingManager:
         # TODO: Implement get_detections_by_date_range method in DetectionManager
         # For now, use get_all_detections and filter manually
         all_detections = self.detection_manager.get_all_detections()
-        todays_detections = []
-        for d in all_detections:
-            if isinstance(d.timestamp, datetime.datetime):
-                if start_datetime <= cast(datetime.datetime, d.timestamp) <= end_datetime:
-                    todays_detections.append(d)
+        todays_detections = [
+            d
+            for d in all_detections
+            if isinstance(d.timestamp, datetime.datetime)
+            and start_datetime <= d.timestamp <= end_datetime
+        ]
 
         # If no detections for today, get the most recent day's detections for demo purposes
         if not todays_detections and all_detections:
