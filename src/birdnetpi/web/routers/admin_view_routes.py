@@ -221,9 +221,9 @@ async def test_detection(
     recording_start_time: str | None = None,
     latitude: float = 0.0,
     longitude: float = 0.0,
-    cutoff: float = 0.0,
+    species_confidence_threshold: float = 0.0,
     week: int = 0,
-    sensitivity: float = 0.0,
+    sensitivity_setting: float = 0.0,
     overlap: float = 0.0,
 ) -> dict[str, str]:
     """Publishes a test detection event for demonstration purposes."""
@@ -255,9 +255,9 @@ async def test_detection(
         else datetime.datetime.now(),
         latitude=latitude,
         longitude=longitude,
-        cutoff=cutoff,
+        species_confidence_threshold=species_confidence_threshold,
         week=week,
-        sensitivity=sensitivity,
+        sensitivity_setting=sensitivity_setting,
         overlap=overlap,
     )
     detection_manager.create_detection(detection_event_data)

@@ -120,9 +120,9 @@ class AudioAnalysisService:
             "spectrogram_path": None,
             "latitude": None,
             "longitude": None,
-            "cutoff": None,
+            "species_confidence_threshold": None,
             "week": None,
-            "sensitivity": None,
+            "sensitivity_setting": None,
             "overlap": None,
             "is_extracted": False,
         }
