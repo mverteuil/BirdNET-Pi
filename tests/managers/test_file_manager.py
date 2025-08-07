@@ -157,7 +157,7 @@ def test_save_detection_audio(file_manager):
         # Verify the returned AudioFile object
         assert isinstance(result, AudioFile)
         assert str(result.file_path) == str(relative_path)
-        assert result.recording_start_time == recording_start_time  # type: ignore[operator]
+        # recording_start_time field has been removed as redundant
         assert result.size_bytes == 2000  # len(raw_audio_bytes)  # type: ignore[operator]
 
         # Calculate expected duration: len(bytes) / (sample_rate * channels * 2)

@@ -89,6 +89,7 @@ class AudioAnalysisService:
         """Send a detection event to the FastAPI application."""
         # Get relative path for the audio file
         timestamp = datetime.datetime.now()
+        current_week = timestamp.isocalendar()[1]
         relative_audio_file_path = self.file_path_resolver.get_detection_audio_path(
             species, timestamp
         )

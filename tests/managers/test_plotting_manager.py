@@ -59,8 +59,8 @@ def sample_dataframe():
         ],
     }
     df = pd.DataFrame(data)
-    df["DateTime"] = pd.to_datetime(df["DateTime"])
-    df = df.set_index("DateTime")
+    df["datetime"] = pd.to_datetime(df["datetime"])
+    df = df.set_index("datetime")
     return df
 
 
