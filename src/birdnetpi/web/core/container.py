@@ -10,7 +10,6 @@ from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
-from birdnetpi.services.audio_fifo_reader_service import AudioFifoReaderService
 from birdnetpi.services.audio_websocket_service import AudioWebSocketService
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.gps_service import GPSService
@@ -146,16 +145,6 @@ class Container(containers.DeclarativeContainer):
         webhook_service=webhook_service,
     )
 
-    # Audio FIFO reader service - singleton
-    audio_fifo_reader_service = providers.Singleton(
-        AudioFifoReaderService,
-        fifo_path=providers.Factory(
-            lambda resolver: f"{resolver.get_fifo_base_path()}/birdnet_audio_livestream.fifo",
-            resolver=file_resolver,
-        ),
-        audio_websocket_service=audio_websocket_service,
-        spectrogram_service=spectrogram_service,
-    )
 
     # Request-scoped managers (factories - new instance per request)
     reporting_manager = providers.Factory(

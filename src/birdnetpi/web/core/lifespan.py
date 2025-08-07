@@ -78,7 +78,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Start all services in proper order
     try:
         # Skip audio services - handled by standalone audio_websocket_daemon for better reliability
-        # await container.audio_fifo_reader_service().start()
 
         # Start field mode services
         await container.gps_service().start()
@@ -102,7 +101,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await container.hardware_monitor_service().stop()
             await container.gps_service().stop()
             # Skip audio services - handled by standalone audio_websocket_daemon
-            # await container.audio_fifo_reader_service().stop()
 
             logger.info("All services stopped successfully")
 
