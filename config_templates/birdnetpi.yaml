@@ -9,7 +9,7 @@ model: BirdNET_GLOBAL_6K_V2.4_Model_FP16.tflite
 metadata_model: BirdNET_GLOBAL_6K_V2.4_MData_Model_V2_FP16.tflite
 species_confidence_threshold: 0.03  # Minimum confidence threshold for species detection
 confidence: 0.7
-sensitivity: 1.25
+sensitivity_setting: 1.25
 week: 0
 audio_format: mp3
 extraction_length: 6.0

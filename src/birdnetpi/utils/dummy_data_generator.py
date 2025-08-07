@@ -33,13 +33,12 @@ def generate_dummy_detections(
 
         # Parse species components
         species_tensor = random.choice(species_list)
-        scientific_name, common_name_tensor = species_tensor.split("_", 1)
+        scientific_name, common_name = species_tensor.split("_", 1)
 
         detection_data = {
             "species_tensor": species_tensor,
             "scientific_name": scientific_name,
-            "common_name_tensor": common_name_tensor,
-            "common_name_ioc": common_name_tensor,  # Using tensor name as placeholder for IOC
+            "common_name": common_name,
             "confidence": round(random.uniform(0.5, 0.99), 2),
             "timestamp": timestamp,
             "audio_file_path": f"/app/audio/{timestamp.strftime('%Y%m%d_%H%M%S')}.wav",

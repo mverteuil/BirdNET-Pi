@@ -13,8 +13,7 @@ class DetectionEvent(BaseModel):
     # Species identification (parsed from tensor output)
     species_tensor: str  # Raw tensor output: "Scientific_name_Common Name"
     scientific_name: str  # Parsed: "Genus species" (IOC primary key)
-    common_name_tensor: str  # Parsed: tensor common name
-    common_name_ioc: str | None = None  # IOC canonical English name (resolved via IOC service)
+    common_name: str  # Standardized common name from tensor
 
     # Detection metadata
     confidence: float

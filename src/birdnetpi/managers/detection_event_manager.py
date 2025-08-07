@@ -34,7 +34,7 @@ class DetectionEventManager:
             scientific_name=detection_data.get("species", "").split("_")[0]
             if "_" in detection_data.get("species", "")
             else detection_data.get("species", ""),
-            common_name_tensor=detection_data.get("species", "").split("_")[1]
+            common_name=detection_data.get("species", "").split("_")[1]
             if "_" in detection_data.get("species", "")
             else detection_data.get("species", ""),
             confidence=detection_data["confidence"],

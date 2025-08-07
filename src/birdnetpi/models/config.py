@@ -53,7 +53,7 @@ class BirdNETConfig:
     metadata_model: str = "BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16"  # Metadata model filename
     species_confidence_threshold: float = 0.03  # Minimum confidence threshold for species detection
     confidence: float = 0.7  # Default from birdnet.conf.template
-    sensitivity: float = 1.25  # Default from birdnet.conf.template
+    sensitivity_setting: float = 1.25  # Audio analysis sensitivity setting
     week: int = 0  # Default from birdnet.conf.template
     audio_format: str = "mp3"  # Default from birdnet.conf.template
     extraction_length: float = 6.0  # Default from birdnet.conf.template

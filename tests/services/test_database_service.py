@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
@@ -31,3 +31,100 @@ def test_clear_database_failure(db_service, monkeypatch):
         db_service.clear_database()
 
     mock_session.rollback.assert_called_once()
+
+
+def test_checkpoint_wal_success(db_service):
+    """Should successfully checkpoint WAL file"""
+    with patch.object(db_service, "get_db") as mock_get_db:
+        mock_session = MagicMock()
+        mock_session.execute.return_value.fetchone.return_value = (
+            0,
+            100,
+            100,
+        )  # busy, log_pages, checkpointed
+        mock_get_db.return_value.__enter__.return_value = mock_session
+
+        db_service.checkpoint_wal("RESTART")
+
+        mock_session.execute.assert_called_once()
+        mock_session.commit.assert_called_once()
+
+
+def test_checkpoint_wal_failure(db_service):
+    """Should handle WAL checkpoint failure gracefully"""
+    with patch.object(db_service, "get_db") as mock_get_db:
+        mock_session = MagicMock()
+        mock_session.execute.side_effect = SQLAlchemyError("WAL Error")
+        mock_get_db.return_value.__enter__.return_value = mock_session
+
+        # Should not raise exception, just print warning
+        db_service.checkpoint_wal("RESTART")
+
+        mock_session.execute.assert_called_once()
+
+
+def test_get_database_stats(db_service, tmp_path):
+    """Should return database statistics"""
+    # Create fake database files
+    db_path = tmp_path / "test.db"
+    db_path.write_text("fake db content")
+
+    wal_path = tmp_path / "test.db-wal"
+    wal_path.write_text("fake wal")
+
+    shm_path = tmp_path / "test.db-shm"
+    shm_path.write_text("fake shm")
+
+    # Mock the database path and session queries
+    db_service.db_path = str(db_path)
+
+    with patch.object(db_service, "get_db") as mock_get_db:
+        mock_session = MagicMock()
+
+        # Mock pragma results
+        mock_session.execute.side_effect = [
+            MagicMock(fetchone=lambda: [1000]),  # page_count
+            MagicMock(fetchone=lambda: [4096]),  # page_size
+            MagicMock(fetchone=lambda: [0, 50, 50]),  # wal_checkpoint
+            MagicMock(fetchone=lambda: ["wal"]),  # journal_mode
+        ]
+        mock_get_db.return_value.__enter__.return_value = mock_session
+
+        stats = db_service.get_database_stats()
+
+        # Verify file size calculations
+        assert "main_db_size" in stats
+        assert "wal_size" in stats
+        assert "shm_size" in stats
+        assert "total_size" in stats
+        assert stats["total_size"] == stats["main_db_size"] + stats["wal_size"] + stats["shm_size"]
+
+        # Verify SQLite stats
+        assert stats["page_count"] == 1000
+        assert stats["page_size"] == 4096
+        assert stats["journal_mode"] == "wal"
+
+
+def test_vacuum_database_success(db_service):
+    """Should successfully vacuum database"""
+    with patch.object(db_service, "get_db") as mock_get_db:
+        mock_session = MagicMock()
+        mock_get_db.return_value.__enter__.return_value = mock_session
+
+        db_service.vacuum_database()
+
+        mock_session.execute.assert_called_once()
+        mock_session.commit.assert_called_once()
+
+
+def test_vacuum_database_failure(db_service):
+    """Should handle vacuum database failure"""
+    with patch.object(db_service, "get_db") as mock_get_db:
+        mock_session = MagicMock()
+        mock_session.execute.side_effect = SQLAlchemyError("Vacuum Error")
+        mock_get_db.return_value.__enter__.return_value = mock_session
+
+        with pytest.raises(SQLAlchemyError):
+            db_service.vacuum_database()
+
+        mock_session.rollback.assert_called_once()

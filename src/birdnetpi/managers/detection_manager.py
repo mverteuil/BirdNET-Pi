@@ -33,8 +33,7 @@ class DetectionManager:
                 detection = Detection(
                     species_tensor=detection_event.species_tensor,
                     scientific_name=detection_event.scientific_name,
-                    common_name_tensor=detection_event.common_name_tensor,
-                    common_name_ioc=detection_event.common_name_ioc,
+                    common_name=detection_event.common_name,
                     confidence=detection_event.confidence,
                     timestamp=detection_event.timestamp,
                     audio_file_id=audio_file.id,
@@ -141,8 +140,7 @@ class DetectionManager:
                     db.query(
                         Detection.scientific_name.label("scientific_name"),
                         func.coalesce(
-                            Detection.common_name_ioc,
-                            Detection.common_name_tensor,
+                            Detection.common_name,
                             Detection.scientific_name,
                         ).label("common_name"),
                         func.count(Detection.scientific_name).label("current_count"),
@@ -211,8 +209,7 @@ class DetectionManager:
                     db.query(
                         Detection.scientific_name,
                         func.coalesce(
-                            Detection.common_name_ioc,
-                            Detection.common_name_tensor,
+                            Detection.common_name,
                             Detection.scientific_name,
                         ).label("common_name"),
                         func.count(Detection.scientific_name).label("count"),
@@ -247,7 +244,7 @@ class DetectionManager:
                         "date": d.timestamp.strftime("%Y-%m-%d"),
                         "time": d.timestamp.strftime("%H:%M:%S"),
                         "scientific_name": d.scientific_name or "",
-                        "common_name": d.common_name_ioc or d.common_name_tensor or "",
+                        "common_name": d.common_name or "",
                         "confidence": d.confidence,
                         "latitude": d.latitude,
                         "longitude": d.longitude,
@@ -297,7 +294,7 @@ class DetectionManager:
                         "date": d.timestamp.strftime("%Y-%m-%d"),
                         "time": d.timestamp.strftime("%H:%M:%S"),
                         "scientific_name": d.scientific_name or "",
-                        "common_name": d.common_name_ioc or d.common_name_tensor or "",
+                        "common_name": d.common_name or "",
                         "confidence": d.confidence,
                         "latitude": d.latitude,
                         "longitude": d.longitude,

@@ -237,17 +237,17 @@ async def test_detection(
     if "_" in species:
         # Already in tensor format
         species_tensor = species
-        scientific_name, common_name_tensor = species.split("_", 1)
+        scientific_name, common_name = species.split("_", 1)
     else:
         # Convert single name to tensor format (use generic genus for test)
         species_tensor = f"Testus species_{species}"
         scientific_name = "Testus species"
-        common_name_tensor = species
+        common_name = species
 
     detection_event_data = DetectionEvent(
         species_tensor=species_tensor,
         scientific_name=scientific_name,
-        common_name_tensor=common_name_tensor,
+        common_name=common_name,
         confidence=confidence,
         timestamp=datetime.datetime.fromisoformat(timestamp)
         if timestamp

@@ -39,6 +39,6 @@ def test_sqladmin_detection_list_e2e(docker_compose_up_down: Any) -> None:
     assert "Detections" in response.text
 
     assert "id" in response.text
-    assert "scientific_name" in response.text or "common_name_ioc" in response.text
+    assert "scientific_name" in response.text or "common_name" in response.text
     assert "confidence" in response.text
     assert "timestamp" in response.text

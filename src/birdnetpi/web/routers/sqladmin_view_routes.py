@@ -14,7 +14,7 @@ class DetectionAdmin(ModelView, model=Detection):
     column_list: ClassVar[list[str]] = [  # type: ignore[assignment]
         "id",
         "scientific_name",
-        "common_name_ioc",
+        "common_name",
         "confidence",
         "timestamp",
     ]

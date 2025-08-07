@@ -1,7 +1,7 @@
 import uuid
 from typing import Any
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import backref, declarative_base, relationship
 from sqlalchemy.sql import func
@@ -47,12 +47,11 @@ class Detection(Base):
     # Species identification (parsed from tensor output)
     species_tensor = Column(String, index=True)  # Raw tensor output: "Scientific_name_Common Name"
     scientific_name = Column(String(80), index=True)  # Parsed: "Genus species" (IOC primary key)
-    common_name_tensor = Column(String(100))  # Parsed: tensor common name
-    common_name_ioc = Column(String(100))  # IOC canonical English name (from attached IOC DB)
+    common_name = Column(String(100))  # Standardized common name from tensor
 
     # Detection metadata
     confidence = Column(Float)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     audio_file_id = Column(GUID(), ForeignKey("audio_files.id"), unique=True)
     audio_file = relationship("AudioFile", backref=backref("detection", uselist=False))
 
@@ -68,7 +67,17 @@ class Detection(Base):
 
     def get_display_name(self) -> str:
         """Get the best available species display name."""
-        return str(self.common_name_ioc or self.common_name_tensor or self.scientific_name)
+        return str(self.common_name or self.scientific_name)
+
+    # Indexes for JOIN performance optimization
+    __table_args__ = (
+        # Composite index for common query patterns
+        Index("idx_detections_timestamp_species", "timestamp", "scientific_name"),
+        # Index for filtering by confidence and species
+        Index("idx_detections_confidence_species", "confidence", "scientific_name"),
+        # Index for date range queries with family filtering (requires JOIN)
+        Index("idx_detections_timestamp_confidence", "timestamp", "confidence"),
+    )
 
 
 class AudioFile(Base):

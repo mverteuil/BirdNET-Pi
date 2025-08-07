@@ -132,7 +132,7 @@ class ConfigFileParser:
             "metadata_model": config.metadata_model,
             "species_confidence_threshold": config.species_confidence_threshold,
             "confidence": config.confidence,
-            "sensitivity": config.sensitivity,
+            "sensitivity_setting": config.sensitivity_setting,
             "week": config.week,
             "audio_format": config.audio_format,
             "extraction_length": config.extraction_length,

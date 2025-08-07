@@ -22,7 +22,7 @@ class TestSQLAdminViewRoutes:
 
         # Check that expected columns are configured
         column_names = DetectionAdmin.column_list  # Already strings
-        expected_columns = ["id", "scientific_name", "common_name_ioc", "confidence", "timestamp"]
+        expected_columns = ["id", "scientific_name", "common_name", "confidence", "timestamp"]
 
         for expected_col in expected_columns:
             assert expected_col in column_names

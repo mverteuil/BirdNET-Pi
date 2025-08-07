@@ -17,12 +17,11 @@ from typing import NamedTuple
 
 
 class SpeciesComponents(NamedTuple):
-    """Components of a parsed species name with IOC normalization."""
+    """Components of a parsed species name with standardized naming."""
 
     scientific_name: str  # Primary key - immutable identifier
-    common_name_tensor: str  # Raw common name from tensor model
-    common_name_ioc: str  # IOC canonical English common name
-    full_species: str  # Formatted as "IOC Common Name (Scientific Name)"
+    common_name: str  # Standardized common name from tensor model
+    full_species: str  # Formatted as "Common Name (Scientific Name)"
 
 
 @dataclass
@@ -33,7 +32,7 @@ class SpeciesDisplayOptions:
     show_common_name: bool = True  # Whether to include common name
     language_code: str = "en"  # Language for common name display
     format_template: str = "{common_name} ({scientific_name})"  # Display format
-    fallback_to_tensor: bool = True  # Fallback to tensor name if IOC unavailable
+    fallback_to_common: bool = True  # Always use standardized common name
 
 
 class SpeciesParser:
@@ -80,22 +79,20 @@ class SpeciesParser:
             )
 
         scientific_name = parts[0].strip()
-        common_name_tensor = parts[1].strip()
+        common_name = parts[1].strip()
 
-        if not scientific_name or not common_name_tensor:
+        if not scientific_name or not common_name:
             raise ValueError(f"Invalid species components in: '{tensor_output}'")
 
-        # For now, use tensor common name as IOC placeholder until IOC service is implemented
-        # TODO: Implement IOC lookup service to get canonical IOC English name
-        common_name_ioc = common_name_tensor  # Placeholder - will be replaced by IOC lookup
+        # Use standardized common name from tensor model
+        # TODO: Future enhancement could add IOC lookup service for canonical names
 
         # Construct the full species name using IOC common name
-        full_species = f"{common_name_ioc} ({scientific_name})"
+        full_species = f"{common_name} ({scientific_name})"
 
         return SpeciesComponents(
             scientific_name=scientific_name,
-            common_name_tensor=common_name_tensor,
-            common_name_ioc=common_name_ioc,
+            common_name=common_name,
             full_species=full_species,
         )
 
@@ -114,15 +111,15 @@ class SpeciesParser:
         """
         if not display_options.show_common_name and not display_options.show_scientific_name:
             # Fallback to common name if both are disabled
-            return species_components.common_name_ioc
+            return species_components.common_name
 
         # Determine which common name to use based on language preferences
         # TODO: Implement IOC translation lookup for non-English languages
-        common_name_display = species_components.common_name_ioc
-        if display_options.language_code != "en" and display_options.fallback_to_tensor:
+        common_name_display = species_components.common_name
+        if display_options.language_code != "en" and display_options.fallback_to_common:
             # Placeholder: In future, lookup IOC translation for language_code
             # For now, fallback to IOC English
-            common_name_display = species_components.common_name_ioc
+            common_name_display = species_components.common_name
 
         if display_options.show_common_name and not display_options.show_scientific_name:
             return common_name_display
@@ -149,7 +146,7 @@ class SpeciesParser:
             Common name (IOC canonical if prefer_ioc=True, otherwise tensor)
         """
         components = SpeciesParser.parse_tensor_species(tensor_output)
-        return components.common_name_ioc if prefer_ioc else components.common_name_tensor
+        return components.common_name if prefer_ioc else components.common_name
 
     @staticmethod
     def extract_scientific_name(tensor_output: str) -> str:

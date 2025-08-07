@@ -69,7 +69,7 @@ class AudioAnalysisService:
                 lat=self.config.latitude,
                 lon=self.config.longitude,
                 week=current_week,
-                sensitivity=self.config.sensitivity,
+                sensitivity=self.config.sensitivity_setting,
             )
 
             # Process results and send detection events for confident detections
@@ -121,7 +121,7 @@ class AudioAnalysisService:
             "longitude": self.config.longitude,
             "species_confidence_threshold": self.config.confidence,
             "week": current_week,
-            "sensitivity_setting": self.config.sensitivity,
+            "sensitivity_setting": self.config.sensitivity_setting,
             "overlap": 0.5,  # Fixed overlap from buffer processing
         }
         try:

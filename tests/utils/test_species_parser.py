@@ -20,9 +20,9 @@ class TestSpeciesParser:
         components = SpeciesParser.parse_tensor_species(tensor_output)
 
         assert components.scientific_name == "Abeillia abeillei"
-        assert components.common_name_tensor == "Emerald-chinned Hummingbird"
+        assert components.common_name == "Emerald-chinned Hummingbird"
         assert (
-            components.common_name_ioc == "Emerald-chinned Hummingbird"
+            components.common_name == "Emerald-chinned Hummingbird"
         )  # Placeholder until IOC service
         assert components.full_species == "Emerald-chinned Hummingbird (Abeillia abeillei)"
 
@@ -33,8 +33,8 @@ class TestSpeciesParser:
         components = SpeciesParser.parse_tensor_species(tensor_output)
 
         assert components.scientific_name == "Turdus migratorius"
-        assert components.common_name_tensor == "American Robin"
-        assert components.common_name_ioc == "American Robin"
+        assert components.common_name == "American Robin"
+        assert components.common_name == "American Robin"
         assert components.full_species == "American Robin (Turdus migratorius)"
 
     def test_parse_tensor_species_invalid_format_no_underscore(self):
@@ -108,8 +108,8 @@ class TestSpeciesDisplayOptions:
         """Test formatting species for full display."""
         components = SpeciesComponents(
             scientific_name="Turdus migratorius",
-            common_name_tensor="American Robin",
-            common_name_ioc="American Robin",
+            common_name="American Robin",
+            common_name="American Robin",
             full_species="American Robin (Turdus migratorius)",
         )
 
@@ -123,8 +123,8 @@ class TestSpeciesDisplayOptions:
         """Test formatting species for common name only."""
         components = SpeciesComponents(
             scientific_name="Turdus migratorius",
-            common_name_tensor="American Robin",
-            common_name_ioc="American Robin",
+            common_name="American Robin",
+            common_name="American Robin",
             full_species="American Robin (Turdus migratorius)",
         )
 
@@ -138,8 +138,8 @@ class TestSpeciesDisplayOptions:
         """Test formatting species for scientific name only."""
         components = SpeciesComponents(
             scientific_name="Turdus migratorius",
-            common_name_tensor="American Robin",
-            common_name_ioc="American Robin",
+            common_name="American Robin",
+            common_name="American Robin",
             full_species="American Robin (Turdus migratorius)",
         )
 
@@ -227,8 +227,8 @@ class TestSpeciesParserWithIOC:
         """Test format_species_for_display fallback when both display options are disabled."""
         components = SpeciesComponents(
             scientific_name="Turdus migratorius",
-            common_name_tensor="American Robin",
-            common_name_ioc="American Robin",
+            common_name="American Robin",
+            common_name="American Robin",
             full_species="American Robin (Turdus migratorius)",
         )
 
@@ -237,15 +237,15 @@ class TestSpeciesParserWithIOC:
 
         result = SpeciesParser.format_species_for_display(components, display_options)
 
-        # Should fallback to common_name_ioc (line 117)
+        # Should fallback to common_name (line 117)
         assert result == "American Robin"
 
     def test_format_species_display_non_english_language_fallback(self):
         """Test format_species_for_display with non-English language code fallback."""
         components = SpeciesComponents(
             scientific_name="Turdus migratorius",
-            common_name_tensor="American Robin",
-            common_name_ioc="American Robin",
+            common_name="American Robin",
+            common_name="American Robin",
             full_species="American Robin (Turdus migratorius)",
         )
 

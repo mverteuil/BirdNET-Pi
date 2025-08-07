@@ -23,7 +23,7 @@ def test_create_detection_success(detection_manager):
     detection_event = DetectionEvent(
         species_tensor="Turdus migratorius_Test Species",
         scientific_name="Turdus migratorius",
-        common_name_tensor="Test Species",
+        common_name="Test Species",
         confidence=0.9,
         timestamp=datetime(2023, 1, 1, 12, 0, 0),
         audio_file_path="/path/to/audio.wav",
@@ -55,7 +55,7 @@ def test_create_detection_failure(detection_manager):
     detection_event = DetectionEvent(
         species_tensor="Turdus migratorius_Test Species",
         scientific_name="Turdus migratorius",
-        common_name_tensor="Test Species",
+        common_name="Test Species",
         confidence=0.9,
         timestamp=datetime(2023, 1, 1, 12, 0, 0),
         audio_file_path="/path/to/audio.wav",
@@ -309,8 +309,8 @@ def test_get_most_recent_detections_success(detection_manager):
     mock_detection.timestamp.strftime.side_effect = ["2023-01-01", "12:00:00"]
     mock_detection.species_tensor = "Turdus merula_Common Blackbird"
     mock_detection.scientific_name = "Turdus merula"
-    mock_detection.common_name_tensor = "Common Blackbird"
-    mock_detection.common_name_ioc = "Common Blackbird"
+    mock_detection.common_name = "Common Blackbird"
+    mock_detection.common_name = "Common Blackbird"
     mock_detection.confidence = 0.9
     mock_detection.latitude = 1.0
     mock_detection.longitude = 2.0
@@ -357,8 +357,8 @@ def test_get_best_detections_success(detection_manager):
     mock_cardinal_high.timestamp.strftime.side_effect = ["2023-01-01", "12:00:00"]
     mock_cardinal_high.species_tensor = "Cardinalis cardinalis_Northern Cardinal"
     mock_cardinal_high.scientific_name = "Cardinalis cardinalis"
-    mock_cardinal_high.common_name_tensor = "Northern Cardinal"
-    mock_cardinal_high.common_name_ioc = "Northern Cardinal"
+    mock_cardinal_high.common_name = "Northern Cardinal"
+    mock_cardinal_high.common_name = "Northern Cardinal"
     mock_cardinal_high.confidence = 0.95
 
     mock_cardinal_low = MagicMock(spec=Detection)
@@ -366,8 +366,8 @@ def test_get_best_detections_success(detection_manager):
     mock_cardinal_low.timestamp.strftime.side_effect = ["2023-01-01", "12:01:00"]
     mock_cardinal_low.species_tensor = "Cardinalis cardinalis_Northern Cardinal"
     mock_cardinal_low.scientific_name = "Cardinalis cardinalis"
-    mock_cardinal_low.common_name_tensor = "Northern Cardinal"
-    mock_cardinal_low.common_name_ioc = "Northern Cardinal"
+    mock_cardinal_low.common_name = "Northern Cardinal"
+    mock_cardinal_low.common_name = "Northern Cardinal"
     mock_cardinal_low.confidence = 0.85
 
     mock_robin_high = MagicMock(spec=Detection)
@@ -375,8 +375,8 @@ def test_get_best_detections_success(detection_manager):
     mock_robin_high.timestamp.strftime.side_effect = ["2023-01-02", "14:00:00"]
     mock_robin_high.species_tensor = "Turdus migratorius_American Robin"
     mock_robin_high.scientific_name = "Turdus migratorius"
-    mock_robin_high.common_name_tensor = "American Robin"
-    mock_robin_high.common_name_ioc = "American Robin"
+    mock_robin_high.common_name = "American Robin"
+    mock_robin_high.common_name = "American Robin"
     mock_robin_high.confidence = 0.9
 
     mock_robin_low = MagicMock(spec=Detection)
@@ -384,8 +384,8 @@ def test_get_best_detections_success(detection_manager):
     mock_robin_low.timestamp.strftime.side_effect = ["2023-01-02", "14:01:00"]
     mock_robin_low.species_tensor = "Turdus migratorius_American Robin"
     mock_robin_low.scientific_name = "Turdus migratorius"
-    mock_robin_low.common_name_tensor = "American Robin"
-    mock_robin_low.common_name_ioc = "American Robin"
+    mock_robin_low.common_name = "American Robin"
+    mock_robin_low.common_name = "American Robin"
     mock_robin_low.confidence = 0.8
 
     # Mock the final query to return the best detection for each species

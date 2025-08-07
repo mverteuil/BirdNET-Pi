@@ -57,7 +57,7 @@ class TestDetectionsAPIRoutes:
         detection_data = {
             "species_tensor": "Testus species_Test Bird",
             "scientific_name": "Testus species",
-            "common_name_tensor": "Test Bird",
+            "common_name": "Test Bird",
             "confidence": 0.95,
             "timestamp": "2025-01-15T10:30:00",
             "audio_file_path": "/test/audio.wav",

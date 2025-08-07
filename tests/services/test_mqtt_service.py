@@ -167,7 +167,7 @@ class TestMQTTService:
         detection = Detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
-            common_name_tensor="Test Bird",
+            common_name="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
             latitude=40.7128,
@@ -196,7 +196,7 @@ class TestMQTTService:
         detection = Detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
-            common_name_tensor="Test Bird",
+            common_name="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
             latitude=40.7128,
@@ -409,7 +409,7 @@ class TestMQTTService:
         detection = Detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
-            common_name_tensor="Test Bird",
+            common_name="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
             species_confidence_threshold=0.03,
@@ -434,7 +434,7 @@ class TestMQTTService:
         detection = Detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
-            common_name_tensor="Test Bird",
+            common_name="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
             species_confidence_threshold=0.03,

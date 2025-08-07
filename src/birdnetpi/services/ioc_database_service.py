@@ -37,6 +37,9 @@ class IOCDatabaseService:
         IOCBase.metadata.create_all(self.engine)
         self.session_local = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
 
+        # Auto-upgrade existing databases with performance indexes
+        self._ensure_performance_indexes()
+
     def populate_from_ioc_service(self, ioc_service: IOCReferenceService) -> None:
         """Populate database from IOCReferenceService data with optimizations.
 
@@ -138,9 +141,134 @@ class IOCDatabaseService:
                 f"{translation_count} translations"
             )
 
+            # Create performance indexes for JOIN operations
+            self._create_performance_indexes()
+
         except Exception as e:
             session.rollback()
             raise RuntimeError(f"Failed to populate IOC database: {e}") from e
+        finally:
+            session.close()
+
+    def _create_performance_indexes(self) -> None:
+        """Create database indexes for optimal JOIN performance.
+
+        This method creates indexes on the IOC database tables to optimize
+        queries used by DetectionQueryService. Since the IOC database is
+        populated from external sources, we need to add these indexes
+        programmatically after population.
+        """
+        session = self.session_local()
+        try:
+            print("Creating performance indexes for IOC database...")
+
+            # Indexes for species table (taxonomy-based queries)
+            session.execute(
+                text("""
+                CREATE INDEX IF NOT EXISTS idx_species_family
+                ON species(family)
+            """)
+            )
+
+            session.execute(
+                text("""
+                CREATE INDEX IF NOT EXISTS idx_species_genus
+                ON species(genus)
+            """)
+            )
+
+            session.execute(
+                text("""
+                CREATE INDEX IF NOT EXISTS idx_species_order_family
+                ON species(order_name, family)
+            """)
+            )
+
+            session.execute(
+                text("""
+                CREATE INDEX IF NOT EXISTS idx_species_english_name
+                ON species(english_name)
+            """)
+            )
+
+            # Critical indexes for translations table (JOIN performance)
+            session.execute(
+                text("""
+                CREATE INDEX IF NOT EXISTS idx_translations_scientific_language
+                ON translations(scientific_name, language_code)
+            """)
+            )
+
+            session.execute(
+                text("""
+                CREATE INDEX IF NOT EXISTS idx_translations_language_common
+                ON translations(language_code, common_name)
+            """)
+            )
+
+            session.commit()
+            print("Performance indexes created successfully")
+
+        except Exception as e:
+            session.rollback()
+            raise RuntimeError(f"Failed to create performance indexes: {e}") from e
+        finally:
+            session.close()
+
+    def create_performance_indexes(self) -> None:
+        """Public method to create performance indexes on existing IOC database.
+
+        This can be called to add indexes to IOC databases that were created
+        before the performance optimization feature was implemented.
+        """
+        self._create_performance_indexes()
+
+    def _ensure_performance_indexes(self) -> None:
+        """Ensure performance indexes exist, creating them if missing.
+
+        This method is called during service initialization to automatically
+        upgrade existing IOC databases that may lack performance indexes.
+        """
+        if not os.path.exists(self.db_path):
+            return  # No database file exists yet
+
+        if not self._has_data():
+            return  # Empty database, indexes will be created when populated
+
+        if self._indexes_exist():
+            return  # Indexes already present
+
+        print("Upgrading IOC database with performance indexes...")
+        self._create_performance_indexes()
+
+    def _has_data(self) -> bool:
+        """Check if IOC database has been populated with data."""
+        session = self.session_local()
+        try:
+            # Check if species table has any data
+            result = session.execute(text("SELECT COUNT(*) FROM species")).scalar()
+            return (result or 0) > 0
+        except Exception:
+            # Table might not exist or other DB error
+            return False
+        finally:
+            session.close()
+
+    def _indexes_exist(self) -> bool:
+        """Check if performance indexes already exist in the database."""
+        session = self.session_local()
+        try:
+            # Check for the key composite index on translations table
+            result = session.execute(
+                text("""
+                SELECT name FROM sqlite_master
+                WHERE type='index'
+                AND name='idx_translations_scientific_language'
+            """)
+            ).fetchone()
+            return result is not None
+        except Exception:
+            return False
         finally:
             session.close()
 
