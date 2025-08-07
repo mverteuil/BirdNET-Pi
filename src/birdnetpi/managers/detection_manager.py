@@ -227,8 +227,8 @@ class DetectionManager:
                 )
 
                 return [
-                    {"species": row[0], "count": row[1]}
-                    for row in new_species_results  # common_name, count
+                    {"species": row[0], "count": row[2]}
+                    for row in new_species_results  # scientific_name, common_name, count
                 ]
             except SQLAlchemyError as e:
                 db.rollback()

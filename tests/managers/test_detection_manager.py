@@ -227,8 +227,18 @@ def test_get_top_species_with_prior_counts_success(detection_manager):
     mock_db_session = MagicMock()
     detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     (mock_db_session.query().outerjoin().order_by().limit().all.return_value) = [
-        MagicMock(scientific_name="species1", current_count=10, prior_count=5),
-        MagicMock(scientific_name="species2", current_count=8, prior_count=2),
+        (
+            "species1",
+            "Species One",
+            10,
+            5,
+        ),  # scientific_name, common_name, current_count, prior_count
+        (
+            "species2",
+            "Species Two",
+            8,
+            2,
+        ),  # scientific_name, common_name, current_count, prior_count
     ]
 
     result = detection_manager.get_top_species_with_prior_counts(
@@ -267,8 +277,8 @@ def test_get_new_species_data_success(detection_manager):
     detection_manager.db_service.get_db.return_value.__enter__.return_value = mock_db_session
     (mock_db_session.query().filter().distinct().subquery().return_value) = MagicMock()
     (mock_db_session.query().filter().group_by().order_by().all.return_value) = [
-        MagicMock(scientific_name="species1", common_name="species1", count=10),
-        MagicMock(scientific_name="species2", common_name="species2", count=8),
+        ("species1", "Species One", 10),  # scientific_name, common_name, count
+        ("species2", "Species Two", 8),  # scientific_name, common_name, count
     ]
 
     result = detection_manager.get_new_species_data(datetime(2023, 1, 1), datetime(2023, 1, 31))

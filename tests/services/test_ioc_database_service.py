@@ -575,29 +575,31 @@ class TestErrorHandling:
         invalid_service._loaded = True
         invalid_service._species_data = "not a dict"  # Invalid data type
 
-        with pytest.raises(TypeError):  # Will raise some kind of error
+        with pytest.raises(RuntimeError):  # Will raise RuntimeError from the service
             db_service.populate_from_ioc_service(invalid_service)
 
     def test_session_handling_in_queries(self, populated_db_service):
         """Should properly handle sessions in all query methods."""
         # Test that sessions are properly closed even if queries fail
+        from sqlalchemy.exc import SQLAlchemyError
+
         with patch.object(populated_db_service, "session_local") as mock_session_local:
             mock_session = MagicMock()
-            mock_session.query.side_effect = Exception("Query error")
+            mock_session.query.side_effect = SQLAlchemyError("Query error")
             mock_session_local.return_value = mock_session
 
             # These should all handle the exception and close the session
-            with pytest.raises(TypeError):
+            with pytest.raises(SQLAlchemyError):
                 populated_db_service.get_species_by_scientific_name("test")
             mock_session.close.assert_called()
 
             mock_session.reset_mock()
-            with pytest.raises(TypeError):
+            with pytest.raises(SQLAlchemyError):
                 populated_db_service.get_translation("test", "en")
             mock_session.close.assert_called()
 
             mock_session.reset_mock()
-            with pytest.raises(TypeError):
+            with pytest.raises(SQLAlchemyError):
                 populated_db_service.search_species_by_common_name("test")
             mock_session.close.assert_called()
 

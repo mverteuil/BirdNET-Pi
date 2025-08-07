@@ -58,7 +58,7 @@ class TestAudioWebSocketService:
     async def test_websocket_handler_audio_path(self, audio_websocket_service):
         """Should handle audio websocket connections correctly."""
         mock_websocket = AsyncMock()
-        mock_websocket.path = "/ws/audio"
+        mock_websocket.request.path = "/ws/audio"
 
         # Configure the websocket to be async iterable (empty iteration - immediate exit)
         mock_websocket.__aiter__.return_value = [].__iter__()
@@ -72,7 +72,7 @@ class TestAudioWebSocketService:
     async def test_websocket_handler_spectrogram_path(self, audio_websocket_service):
         """Should close spectrogram websocket connections with redirect message."""
         mock_websocket = MagicMock()
-        mock_websocket.path = "/ws/spectrogram"
+        mock_websocket.request.path = "/ws/spectrogram"
         mock_websocket.close = AsyncMock()
 
         await audio_websocket_service._websocket_handler(mock_websocket)
@@ -85,7 +85,7 @@ class TestAudioWebSocketService:
     async def test_websocket_handler_unknown_path(self, audio_websocket_service):
         """Should close unknown websocket connections."""
         mock_websocket = MagicMock()
-        mock_websocket.path = "/unknown"
+        mock_websocket.request.path = "/unknown"
         mock_websocket.close = AsyncMock()
 
         await audio_websocket_service._websocket_handler(mock_websocket)
