@@ -225,7 +225,7 @@ class TestAudioAnalysisService:
 
         # Check the calls using test data
         calls = mock_send_detection_event.call_args_list
-        expected_species = [call[0] for call in test_species_data["mixed"] if call[1] >= 0.7]
+        expected_species = [call for call in test_species_data["mixed"] if call[1] >= 0.7]
         assert calls[0][0][0] == expected_species[0][0]  # Robin
         assert calls[0][0][1] == expected_species[0][1]  # 0.85
         assert calls[1][0][0] == expected_species[1][0]  # Crow  

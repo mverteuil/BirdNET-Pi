@@ -37,6 +37,15 @@ def detection_manager():
 
 
 @pytest.fixture
+def detection_manager_no_ioc():
+    """Provide a mock DatabaseManager instance without IOC service."""
+    mock = MagicMock()
+    # Disable IOC methods to test fallback path
+    mock.detection_query_service = None
+    return mock
+
+
+@pytest.fixture
 def mock_config():
     """Provide a mock BirdNETConfig instance."""
     mock = Mock(spec=BirdNETConfig)
@@ -339,8 +348,11 @@ def test_get_data__empty_detections(reporting_manager, detection_manager):
     assert pd.api.types.is_datetime64_any_dtype(df.index)
 
 
-def test_get_todays_detections(reporting_manager, detection_manager):
+def test_get_todays_detections(reporting_manager, detection_manager_no_ioc):
     """Should retrieve detections for the current day."""
+    # Replace the detection_manager in the reporting_manager with non-IOC version
+    reporting_manager.detection_manager = detection_manager_no_ioc
+    
     today = datetime.date(2025, 7, 15)
 
     with patch(
@@ -349,40 +361,41 @@ def test_get_todays_detections(reporting_manager, detection_manager):
         mock_date.today.return_value = today
 
         # Create mock Detection objects
+        import uuid
         from birdnetpi.models.database_models import Detection
 
         mock_detections = [
             Detection(
-                id=1,
+                id=uuid.uuid4(),
                 species_tensor="Turdus migratorius_American Robin",
                 scientific_name="Turdus migratorius",
                 common_name_tensor="American Robin",
                 timestamp=datetime.datetime(2025, 7, 15, 10, 0, 0),
                 confidence=0.9,
-                audio_file_id=101,
+                audio_file_id=uuid.uuid4(),
             ),
             Detection(
-                id=2,
+                id=uuid.uuid4(),
                 species_tensor="Cardinalis cardinalis_Northern Cardinal",
                 scientific_name="Cardinalis cardinalis",
                 common_name_tensor="Northern Cardinal",
                 timestamp=datetime.datetime(2025, 7, 15, 14, 30, 0),
                 confidence=0.95,
-                audio_file_id=102,
+                audio_file_id=uuid.uuid4(),
             ),
             # Add a detection from a different day that should be filtered out
             Detection(
-                id=3,
+                id=uuid.uuid4(),
                 species_tensor="Cyanocitta cristata_Blue Jay",
                 scientific_name="Cyanocitta cristata",
                 common_name_tensor="Blue Jay",
                 timestamp=datetime.datetime(2025, 7, 14, 12, 0, 0),  # Different day
                 confidence=0.85,
-                audio_file_id=103,
+                audio_file_id=uuid.uuid4(),
             ),
         ]
 
-        detection_manager.get_all_detections.return_value = mock_detections
+        detection_manager_no_ioc.get_all_detections.return_value = mock_detections
 
         # Call the method
         todays_detections = reporting_manager.get_todays_detections()
@@ -396,7 +409,7 @@ def test_get_todays_detections(reporting_manager, detection_manager):
         assert todays_detections[0]["confidence"] == 0.9
 
         # Verify the detection manager was called
-        detection_manager.get_all_detections.assert_called_once()
+        detection_manager_no_ioc.get_all_detections.assert_called_once()
 
 
 def test_date_filter(reporting_manager):

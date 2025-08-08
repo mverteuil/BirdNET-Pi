@@ -287,7 +287,8 @@ class TestDetectionWithIOCData:
         assert result == "American Robin"
 
         # Test scientific name fallback
-        detection.common_name = None
+        detection.common_name_tensor = None
+        detection.common_name_ioc = None
         data = DetectionWithIOCData(detection=detection)
         result = data.get_best_common_name()
         assert result == "Turdus migratorius"
