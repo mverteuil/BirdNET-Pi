@@ -13,6 +13,7 @@ repos:
         args: [ "--select", "I", "--fix" ]
         exclude: ^build/
       - id: ruff-check
+        name: "ruff-check"
         args: [ "--fix" ]
         exclude: ^build/
       - id: ruff-format

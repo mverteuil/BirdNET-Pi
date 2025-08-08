@@ -50,7 +50,7 @@ def main() -> None:
     fifo_base_path = file_resolver.get_fifo_base_path()
     _fifo_analysis_path = os.path.join(fifo_base_path, "birdnet_audio_analysis.fifo")
 
-    file_manager = FileManager(file_resolver.base_dir)
+    file_manager = FileManager(file_resolver.data_dir)
     config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())
     config = config_parser.load_config()
     audio_analysis_service = AudioAnalysisService(file_manager, file_resolver, config)

@@ -31,7 +31,7 @@ class TestWebSocketRouter:
             mock_resolver = Mock()
             # Static assets from real directories
             mock_resolver.app_dir = real_app_dir
-            mock_resolver.base_dir = str(real_app_dir)
+            mock_resolver.data_dir = real_app_dir  # For tests, use same dir
             mock_resolver.get_config_template_path.return_value = str(
                 real_app_dir / "config_templates" / "birdnetpi.yaml"
             )

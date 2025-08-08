@@ -24,7 +24,7 @@ def app_with_admin_view_routes(tmp_path):
     # Mock file resolver to use test config and temp database path
     mock_resolver = Mock()
     mock_resolver.get_birdnetpi_config_path.return_value = str(config_file)
-    mock_resolver.base_dir = str(tmp_path)
+    mock_resolver.data_dir = tmp_path
     mock_resolver.get_database_path.return_value = str(tmp_path / f"test_db_{id(tmp_path)}.sqlite")
 
     # Mock detection manager for test_detection endpoint

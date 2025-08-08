@@ -16,9 +16,6 @@ class FilePathResolver:
         self.app_dir = Path(os.getenv("BIRDNETPI_APP", "/opt/birdnetpi"))
         self.data_dir = Path(os.getenv("BIRDNETPI_DATA", "/var/lib/birdnetpi"))
 
-        # Legacy base_dir for compatibility during transition
-        self.base_dir = str(self.app_dir)
-
     def get_birdnetpi_config_path(self) -> str:
         """Get the path to the main configuration file.
 
@@ -115,6 +112,10 @@ class FilePathResolver:
     def get_templates_dir(self) -> str:
         """Get the directory for HTML templates."""
         return str(self.app_dir / "src" / "birdnetpi" / "web" / "templates")
+
+    def get_locales_dir(self) -> str:
+        """Get the directory for i18n locale files (.po/.mo)."""
+        return str(self.app_dir / "locales")
 
     def get_fifo_base_path(self) -> str:
         """Get the base path for FIFO files (temporary)."""

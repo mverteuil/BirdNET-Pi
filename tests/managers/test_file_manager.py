@@ -9,7 +9,7 @@ from birdnetpi.models.database_models import AudioFile
 @pytest.fixture
 def file_manager(tmp_path):
     """Provide a FileManager instance for testing."""
-    return FileManager(base_path=str(tmp_path))
+    return FileManager(base_path=tmp_path)
 
 
 def test_create_directory(file_manager):

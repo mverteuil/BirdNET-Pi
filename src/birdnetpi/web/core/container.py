@@ -58,7 +58,7 @@ class Container(containers.DeclarativeContainer):
     )
 
     # IOC database service factory with error handling
-    def _create_ioc_service(resolver):
+    def _create_ioc_service(resolver: FilePathResolver) -> IOCDatabaseService | None:
         """Create IOC database service with graceful error handling."""
         try:
             return IOCDatabaseService(resolver.get_ioc_database_path())
@@ -72,7 +72,7 @@ class Container(containers.DeclarativeContainer):
     )
 
     # Detection query service factory with error handling
-    def _create_detection_query_service(bnp_service, ioc_service):
+    def _create_detection_query_service(bnp_service: DatabaseService, ioc_service: IOCDatabaseService | None) -> DetectionQueryService | None:
         """Create detection query service with graceful error handling."""
         try:
             if ioc_service is None:
@@ -91,7 +91,7 @@ class Container(containers.DeclarativeContainer):
     # Core business services - singletons
     file_manager = providers.Singleton(
         FileManager,
-        base_dir=file_resolver.provided.base_dir,
+        base_path=file_resolver.provided.data_dir,
     )
 
     detection_manager = providers.Singleton(

@@ -20,9 +20,8 @@ class TranslationManager:
 
     def __init__(self, file_resolver: FilePathResolver):
         self.file_resolver = file_resolver
-        # TODO: Implement resolve_data_file method in FilePathResolver
-        # For now, hardcode a reasonable default path
-        self.locales_dir = "locales"  # self.file_resolver.resolve_data_file("locales")
+        # Locale files (.po/.mo) are source files, stored in app directory
+        self.locales_dir = file_resolver.get_locales_dir()
         self.translations: dict[str, GNUTranslations | NullTranslations] = {}
         self.default_language = "en"
 

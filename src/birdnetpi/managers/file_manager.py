@@ -9,8 +9,8 @@ from birdnetpi.models.database_models import AudioFile
 class FileManager:
     """Manages file system operations within a specified base path."""
 
-    def __init__(self, base_path: str) -> None:
-        self.base_path = Path(base_path)
+    def __init__(self, base_path: Path) -> None:
+        self.base_path = base_path
 
     def get_full_path(self, relative_path: str) -> Path:
         """Return the full absolute Path for a given relative path within the base_path."""
