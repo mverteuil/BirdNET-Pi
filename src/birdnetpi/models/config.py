@@ -82,9 +82,7 @@ class BirdNETConfig:
     enable_gps_check: bool = False  # Enable GPS device monitoring
 
     # Analysis model configuration
-    # Removed duplicate - use species_confidence_threshold instead
     privacy_threshold: float = 10.0  # Privacy threshold percentage for human detection cutoff
-    # Removed data_model_version - use metadata_model filename instead
 
     # MQTT Integration settings
     enable_mqtt: bool = False  # Enable MQTT publishing

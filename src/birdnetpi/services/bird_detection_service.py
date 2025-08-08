@@ -27,7 +27,7 @@ class BirdDetectionService:
         self.current_week = None
         self.model_name = None
         self.privacy_threshold = None
-        self.sf_threshold = None
+        self.species_frequency_threshold = None
         self.mdata = None
         self.mdata_params = None
 
@@ -44,7 +44,7 @@ class BirdDetectionService:
     def _load_global_model(self) -> None:
         self.model_name = self.config.model
         self.privacy_threshold = self.config.privacy_threshold
-        self.sf_threshold = self.config.species_confidence_threshold
+        self.species_frequency_threshold = self.config.species_confidence_threshold
         self._load_model()
 
     def _load_model(self) -> None:
@@ -128,7 +128,11 @@ class BirdDetectionService:
                 self.current_week = week
                 self.predicted_species_list = []  # Clear previous list
                 l_filter = self._predict_filter_raw(lat, lon, week)
-                threshold = self.sf_threshold if self.sf_threshold is not None else 0.03
+                threshold = (
+                    self.species_frequency_threshold
+                    if self.species_frequency_threshold is not None
+                    else 0.03
+                )
                 l_filter = np.where(l_filter >= float(threshold), l_filter, 0)
 
                 # Zip with labels and filter for non-zero scores
@@ -211,10 +215,14 @@ class BirdDetectionService:
         """Perform analysis on an audio chunk and return filtered (species, confidence) pairs."""
         raw_predictions = self.get_raw_prediction(audio_chunk, lat, lon, week, sensitivity)
 
-        sf_threshold = self.sf_threshold if self.sf_threshold is not None else 0.03
+        species_frequency_threshold = (
+            self.species_frequency_threshold
+            if self.species_frequency_threshold is not None
+            else 0.03
+        )
         filtered_results = []
         for species, confidence in raw_predictions:
-            if confidence >= sf_threshold:
+            if confidence >= species_frequency_threshold:
                 filtered_results.append((species, confidence))
 
         return filtered_results
