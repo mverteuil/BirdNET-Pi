@@ -17,21 +17,15 @@ class IOCSpecies(IOCBase):
 
     __tablename__ = "species"
 
-    scientific_name = Column(
-        String(80), primary_key=True
-    )  # e.g., "Turdus migratorius" - no extra index needed
-    english_name = Column(String(80), nullable=False)  # e.g., "American Robin" - removed index
-    order_name = Column(
-        String(30), nullable=False
-    )  # e.g., "PASSERIFORMES" - reduced size, removed index
-    family = Column(String(30), nullable=False)  # e.g., "Turdidae" - reduced size, removed index
-    genus = Column(String(30), nullable=False)  # e.g., "Turdus" - reduced size, removed index
-    species_epithet = Column(String(30), nullable=False)  # e.g., "migratorius" - reduced size
-    authority = Column(String(60), nullable=True)  # e.g., "Linnaeus, 1766" - reduced size
-    breeding_regions = Column(String(20), nullable=True)  # e.g., "NA" - reduced size
-    breeding_subregions = Column(
-        String(200), nullable=True
-    )  # Changed from Text to String - more compact
+    scientific_name = Column(String(80), primary_key=True)  # e.g., "Turdus migratorius"
+    english_name = Column(String(80), nullable=False)  # e.g., "American Robin"
+    order_name = Column(String(30), nullable=False)  # e.g., "PASSERIFORMES"
+    family = Column(String(30), nullable=False)  # e.g., "Turdidae"
+    genus = Column(String(30), nullable=False)  # e.g., "Turdus"
+    species_epithet = Column(String(30), nullable=False)  # e.g., "migratorius"
+    authority = Column(String(60), nullable=True)  # e.g., "Linnaeus, 1766"
+    breeding_regions = Column(String(20), nullable=True)  # e.g., "NA"
+    breeding_subregions = Column(String(200), nullable=True)  # e.g., "n,c,e"
 
     # Relationships
     translations = relationship("IOCTranslation", back_populates="species")
@@ -47,17 +41,13 @@ class IOCTranslation(IOCBase):
         String(80),
         ForeignKey("species.scientific_name", ondelete="CASCADE"),
         nullable=False,
-        # Removed individual index - only composite index below is needed
     )
-    language_code = Column(
-        String(8), nullable=False
-    )  # e.g., "es", "fr", "zh-TW" - reduced size, removed index
-    common_name = Column(String(120), nullable=False)  # e.g., "Zorzal robín" - reduced size
+    language_code = Column(String(8), nullable=False)  # e.g., "es", "fr", "zh-TW"
+    common_name = Column(String(120), nullable=False)  # e.g., "Zorzal robín"
 
     # Relationships
     species = relationship("IOCSpecies", back_populates="translations")
 
-    # Only one composite index for the most common lookup pattern
     __table_args__ = ({"sqlite_autoincrement": True},)
 
 
