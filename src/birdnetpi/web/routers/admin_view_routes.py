@@ -81,10 +81,6 @@ async def post_settings(
     language: str = Form("en"),
     species_display_mode: str = Form("full"),
     timezone: str = Form("UTC"),
-    # Web Settings
-    caddy_pwd: str = Form(""),
-    silence_update_indicator: bool = Form(False),
-    birdnetpi_url: str = Form(""),
     # Species Filtering
     apprise_only_notify_species_names: str = Form(""),
     apprise_only_notify_species_names_2: str = Form(""),
@@ -150,10 +146,6 @@ async def post_settings(
         language=language,
         species_display_mode=species_display_mode,
         timezone=timezone,
-        # Web Settings
-        caddy_pwd=caddy_pwd,
-        silence_update_indicator=silence_update_indicator,
-        birdnetpi_url=birdnetpi_url,
         # Species Filtering
         apprise_only_notify_species_names=apprise_only_notify_species_names,
         apprise_only_notify_species_names_2=apprise_only_notify_species_names_2,

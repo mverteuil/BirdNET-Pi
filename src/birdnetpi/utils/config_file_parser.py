@@ -79,9 +79,6 @@ class ConfigFileParser:
             ),
             species_display_mode=config_data.get("species_display_mode", "full"),
             timezone=config_data.get("timezone", "UTC"),
-            caddy_pwd=config_data.get("caddy_pwd", ""),
-            silence_update_indicator=bool(config_data.get("silence_update_indicator", False)),
-            birdnetpi_url=config_data.get("birdnetpi_url", ""),
             apprise_only_notify_species_names=config_data.get(
                 "apprise_only_notify_species_names", ""
             ),
@@ -143,9 +140,6 @@ class ConfigFileParser:
             "language": config.language,
             "species_display_mode": config.species_display_mode,
             "timezone": config.timezone,
-            "caddy_pwd": config.caddy_pwd,
-            "silence_update_indicator": config.silence_update_indicator,
-            "birdnetpi_url": config.birdnetpi_url,
             "apprise_only_notify_species_names": config.apprise_only_notify_species_names,
             "apprise_only_notify_species_names_2": config.apprise_only_notify_species_names_2,
             "audio_device_index": config.audio_device_index,

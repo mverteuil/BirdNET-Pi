@@ -45,10 +45,6 @@ language: en  # Language code for database and species name translation
 species_display_mode: full  # Options: "full" (Common Name (Scientific Name)), "common_name", "scientific_name"
 timezone: UTC
 
-# Web Interface Settings
-caddy_pwd: ""
-silence_update_indicator: false
-birdnetpi_url: ""
 
 # Species Filtering
 apprise_only_notify_species_names: ""

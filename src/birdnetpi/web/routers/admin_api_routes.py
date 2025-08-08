@@ -69,9 +69,6 @@ async def validate_yaml_config(
             ),
             species_display_mode=config_data.get("species_display_mode", "full"),
             timezone=config_data.get("timezone", "UTC"),
-            caddy_pwd=config_data.get("caddy_pwd", ""),
-            silence_update_indicator=bool(config_data.get("silence_update_indicator", False)),
-            birdnetpi_url=config_data.get("birdnetpi_url", ""),
             apprise_only_notify_species_names=config_data.get(
                 "apprise_only_notify_species_names", ""
             ),

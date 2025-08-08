@@ -36,9 +36,6 @@ def config_file(tmp_path):
         "flickr_filter_email": "test_email",
         "database_lang": "fr",
         "timezone": "Europe/Paris",
-        "caddy_pwd": "test_pwd",
-        "silence_update_indicator": True,
-        "birdnetpi_url": "test_url",
         "apprise_only_notify_species_names": "test_species",
         "apprise_only_notify_species_names_2": "test_species_2",
     }

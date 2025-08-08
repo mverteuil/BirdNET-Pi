@@ -54,7 +54,7 @@ def mock_config():
     mock.latitude = 0.0
     mock.longitude = 0.0
     mock.model = "test_model"
-    mock.cutoff = 0.0
+    mock.species_confidence_threshold = 0.0
     mock.birdweather_id = "test_id"
     mock.apprise_input = "test_input"
     mock.apprise_notification_title = "test_title"
@@ -68,9 +68,6 @@ def mock_config():
     mock.flickr_filter_email = "test_email"
     mock.database_lang = "en"
     mock.timezone = "UTC"
-    mock.caddy_pwd = "test_pwd"
-    mock.silence_update_indicator = False
-    mock.birdnetpi_url = "test_url"
     mock.apprise_only_notify_species_names = ""
     mock.apprise_only_notify_species_names_2 = ""
     mock.database = MagicMock(path="/tmp/test.db")  # Mock database path
@@ -199,9 +196,9 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
     mock_detection_with_ioc_1.confidence = 0.9
     mock_detection_with_ioc_1.detection.latitude = None
     mock_detection_with_ioc_1.detection.longitude = None
-    mock_detection_with_ioc_1.detection.cutoff = 0.03
+    mock_detection_with_ioc_1.detection.species_confidence_threshold = 0.03
     mock_detection_with_ioc_1.detection.week = 1
-    mock_detection_with_ioc_1.detection.sensitivity = 1.25
+    mock_detection_with_ioc_1.detection.sensitivity_setting = 1.25
     mock_detection_with_ioc_1.detection.overlap = 0.0
     mock_detection_with_ioc_1.ioc_english_name = "American Robin"
     mock_detection_with_ioc_1.translated_name = "American Robin"
@@ -216,9 +213,9 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
     mock_detection_with_ioc_2.confidence = 0.8
     mock_detection_with_ioc_2.detection.latitude = None
     mock_detection_with_ioc_2.detection.longitude = None
-    mock_detection_with_ioc_2.detection.cutoff = 0.03
+    mock_detection_with_ioc_2.detection.species_confidence_threshold = 0.03
     mock_detection_with_ioc_2.detection.week = 1
-    mock_detection_with_ioc_2.detection.sensitivity = 1.25
+    mock_detection_with_ioc_2.detection.sensitivity_setting = 1.25
     mock_detection_with_ioc_2.detection.overlap = 0.0
     mock_detection_with_ioc_2.ioc_english_name = "American Robin"
     mock_detection_with_ioc_2.translated_name = "American Robin"
@@ -233,9 +230,9 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
     mock_detection_with_ioc_3.confidence = 0.95
     mock_detection_with_ioc_3.detection.latitude = None
     mock_detection_with_ioc_3.detection.longitude = None
-    mock_detection_with_ioc_3.detection.cutoff = 0.03
+    mock_detection_with_ioc_3.detection.species_confidence_threshold = 0.03
     mock_detection_with_ioc_3.detection.week = 1
-    mock_detection_with_ioc_3.detection.sensitivity = 1.25
+    mock_detection_with_ioc_3.detection.sensitivity_setting = 1.25
     mock_detection_with_ioc_3.detection.overlap = 0.0
     mock_detection_with_ioc_3.ioc_english_name = "Northern Cardinal"
     mock_detection_with_ioc_3.translated_name = "Northern Cardinal"
@@ -256,7 +253,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
             id=1,
             species_tensor="Turdus migratorius_American Robin",
             scientific_name="Turdus migratorius",
-            common_name_tensor="American Robin",
+            common_name="American Robin",
             timestamp=datetime.datetime(2025, 7, 15, 8, 0, 0),
             confidence=0.9,
             audio_file_id=101,  # Assign a mock audio_file_id
@@ -265,7 +262,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
             id=2,
             species_tensor="Turdus migratorius_American Robin",
             scientific_name="Turdus migratorius",
-            common_name_tensor="American Robin",
+            common_name="American Robin",
             timestamp=datetime.datetime(2025, 7, 15, 8, 15, 0),
             confidence=0.8,
             audio_file_id=102,  # Assign a mock audio_file_id
@@ -274,7 +271,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
             id=3,
             species_tensor="Cardinalis cardinalis_Northern Cardinal",
             scientific_name="Cardinalis cardinalis",
-            common_name_tensor="Northern Cardinal",
+            common_name="Northern Cardinal",
             timestamp=datetime.datetime(2025, 7, 15, 9, 0, 0),
             confidence=0.95,
             audio_file_id=103,  # Assign a mock audio_file_id
@@ -370,7 +367,7 @@ def test_get_todays_detections(reporting_manager, detection_manager_no_ioc):
                 id=uuid.uuid4(),
                 species_tensor="Turdus migratorius_American Robin",
                 scientific_name="Turdus migratorius",
-                common_name_tensor="American Robin",
+                common_name="American Robin",
                 timestamp=datetime.datetime(2025, 7, 15, 10, 0, 0),
                 confidence=0.9,
                 audio_file_id=uuid.uuid4(),
@@ -379,7 +376,7 @@ def test_get_todays_detections(reporting_manager, detection_manager_no_ioc):
                 id=uuid.uuid4(),
                 species_tensor="Cardinalis cardinalis_Northern Cardinal",
                 scientific_name="Cardinalis cardinalis",
-                common_name_tensor="Northern Cardinal",
+                common_name="Northern Cardinal",
                 timestamp=datetime.datetime(2025, 7, 15, 14, 30, 0),
                 confidence=0.95,
                 audio_file_id=uuid.uuid4(),
@@ -389,7 +386,7 @@ def test_get_todays_detections(reporting_manager, detection_manager_no_ioc):
                 id=uuid.uuid4(),
                 species_tensor="Cyanocitta cristata_Blue Jay",
                 scientific_name="Cyanocitta cristata",
-                common_name_tensor="Blue Jay",
+                common_name="Blue Jay",
                 timestamp=datetime.datetime(2025, 7, 14, 12, 0, 0),  # Different day
                 confidence=0.85,
                 audio_file_id=uuid.uuid4(),

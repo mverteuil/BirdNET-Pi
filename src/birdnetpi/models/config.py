@@ -67,11 +67,6 @@ class BirdNETConfig:
     species_display_mode: str = "full"  # Options: "full", "common_name", "scientific_name"
     timezone: str = "UTC"  # Default from SystemUtils
 
-    # Other settings from legacy configuration files
-    caddy_pwd: str = ""  # Used for authentication, but stored in config
-    silence_update_indicator: bool = False  # Controls update indicator display
-    birdnetpi_url: str = ""  # External URL for web hosting
-
     # Species filtering
     apprise_only_notify_species_names: str = ""  # comma separated string
     apprise_only_notify_species_names_2: str = ""  # comma separated string
