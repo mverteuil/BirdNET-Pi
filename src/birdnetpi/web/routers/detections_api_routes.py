@@ -1,5 +1,6 @@
 import logging
 from datetime import UTC, date, datetime
+from uuid import UUID
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -163,7 +164,7 @@ async def update_detection_location(
 @router.get("/{detection_id}")
 @inject
 async def get_detection(
-    detection_id: int,
+    detection_id: UUID | int,
     language_code: str = "en",
     include_ioc: bool = True,
     detection_manager: DetectionManager = Depends(  # noqa: B008
@@ -175,12 +176,14 @@ async def get_detection(
         # Try to get IOC-enhanced data first
         if include_ioc and detection_manager.detection_query_service:
             try:
-                # Convert int detection_id to UUID format
-                from uuid import UUID
-
-                detection_uuid = (
-                    UUID(str(detection_id)) if isinstance(detection_id, str) else detection_id
-                )
+                # Convert int detection_id to UUID format if needed
+                if isinstance(detection_id, UUID):
+                    detection_uuid = detection_id
+                elif isinstance(detection_id, int):
+                    # Convert integer to UUID (assuming some conversion logic exists)
+                    detection_uuid = UUID(int=detection_id)
+                else:
+                    detection_uuid = UUID(str(detection_id))
                 detection_with_ioc = (
                     detection_manager.detection_query_service.get_detection_with_ioc_data(
                         detection_uuid, language_code
@@ -216,7 +219,9 @@ async def get_detection(
                 )
 
         # Fallback to regular detection
-        detection = detection_manager.get_detection_by_id(detection_id)
+        # Convert UUID to int if needed for the detection manager
+        id_for_manager = int(detection_id) if isinstance(detection_id, UUID) else detection_id
+        detection = detection_manager.get_detection_by_id(id_for_manager)
         if not detection:
             raise HTTPException(status_code=404, detail="Detection not found")
 

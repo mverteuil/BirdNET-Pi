@@ -88,7 +88,7 @@ class TestDetectionBufferingEndToEnd:
 
     @pytest.fixture(autouse=True)
     def setup_cleanup(self, audio_analysis_service_integration):
-        """Setup and cleanup for integration tests."""
+        """Set up and clean up for integration tests."""
         yield
         audio_analysis_service_integration.stop_buffer_flush_task()
 
@@ -162,7 +162,7 @@ class TestDetectionBufferingEndToEnd:
             """Simulate continuous bird detections."""
             try:
                 # Process multiple audio chunks while admin operation runs
-                for i in range(5):
+                for _i in range(5):
                     audio_chunk = np.ones(48000 * 3, dtype=np.float32) * 0.1
                     await service._analyze_audio_chunk(audio_chunk)
                     detection_results["detections_processed"] += 1
@@ -242,7 +242,7 @@ class TestDetectionBufferingEndToEnd:
                     service.detection_buffer.clear()
 
                 # Process many detections to trigger overflow
-                for i in range(10):
+                for _i in range(10):
                     audio_chunk = np.ones(48000 * 3, dtype=np.float32) * 0.1
                     await service._analyze_audio_chunk(audio_chunk)
 
@@ -399,10 +399,10 @@ class TestDetectionBufferingWithAdminOperations:
             with (
                 patch(
                     "birdnetpi.wrappers.generate_dummy_data.FilePathResolver"
-                ) as mock_file_path_resolver,
+                ) as _mock_file_path_resolver,
                 patch(
                     "birdnetpi.wrappers.generate_dummy_data.DatabaseService"
-                ) as mock_database_service,
+                ) as _mock_database_service,
                 patch(
                     "birdnetpi.wrappers.generate_dummy_data.DetectionManager"
                 ) as mock_detection_manager,
@@ -411,8 +411,8 @@ class TestDetectionBufferingWithAdminOperations:
                 ) as mock_system_control_service,
                 patch(
                     "birdnetpi.wrappers.generate_dummy_data.generate_dummy_detections"
-                ) as mock_generate_dummy_detections,
-                patch("birdnetpi.wrappers.generate_dummy_data.time") as mock_time,
+                ) as _mock_generate_dummy_detections,
+                patch("birdnetpi.wrappers.generate_dummy_data.time") as _mock_time,
                 patch("birdnetpi.wrappers.generate_dummy_data.os") as mock_os,
             ):
                 # Configure mocks for generate_dummy_data

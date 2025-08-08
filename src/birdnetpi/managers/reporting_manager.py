@@ -37,6 +37,8 @@ class ReportingManager:
             use_ioc_data: Whether to use IOC taxonomic data for enriched information
             language_code: Language for IOC translations
         """
+        data = []  # Initialize data to avoid unbound variable error
+
         if use_ioc_data and self.detection_manager.detection_query_service:
             try:
                 # Get detections with IOC data (all detections, no limit)
@@ -93,6 +95,7 @@ class ReportingManager:
                 }
                 for d in detections
             ]
+
         df = pd.DataFrame(data)
         if not df.empty:
             df["datetime"] = pd.to_datetime(df["datetime"])

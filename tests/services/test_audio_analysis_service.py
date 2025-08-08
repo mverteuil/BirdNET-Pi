@@ -420,7 +420,7 @@ class TestDetectionBuffering:
 
     @pytest.fixture(autouse=True)
     def setup_cleanup(self, audio_analysis_service):
-        """Setup and cleanup for buffer flush task tests."""
+        """Set up and clean up for buffer flush task tests."""
         yield
         # Always stop the flush task after test to prevent background threads
         audio_analysis_service.stop_buffer_flush_task()
@@ -468,7 +468,7 @@ class TestDetectionBuffering:
             # Verify detection was buffered
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
-                buffered = list(audio_analysis_service.detection_buffer)[0]
+                buffered = next(iter(audio_analysis_service.detection_buffer))
                 assert buffered["species"] == species
                 assert buffered["confidence"] == confidence
 
@@ -608,7 +608,7 @@ class TestDetectionBuffering:
             # Verify one detection was re-buffered (the failed one)
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
-                rebuffered = list(audio_analysis_service.detection_buffer)[0]
+                rebuffered = next(iter(audio_analysis_service.detection_buffer))
                 assert rebuffered["species"] == "Crow"  # The middle one that failed
 
             assert "Attempting to flush 3 buffered detections" in caplog.text
@@ -639,7 +639,7 @@ class TestDetectionBuffering:
             # Verify detection was re-buffered
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
-                rebuffered = list(audio_analysis_service.detection_buffer)[0]
+                rebuffered = next(iter(audio_analysis_service.detection_buffer))
                 assert rebuffered["species"] == "Robin"
 
             assert "Attempting to flush 1 buffered detections" in caplog.text
@@ -764,7 +764,7 @@ class TestDetectionBuffering:
         # Should have some detections (might be less than 30 due to buffer size limit)
         assert buffer_size > 0
         # Should have detections from multiple threads
-        thread_prefixes = set(species.split("_")[0] for species in species_list)
+        thread_prefixes = {species.split("_")[0] for species in species_list}
         assert len(thread_prefixes) > 1
 
     async def test_background_flush_integration(self, audio_analysis_service, caplog):
@@ -853,7 +853,7 @@ class TestDetectionBufferingIntegration:
 
     @pytest.fixture(autouse=True)
     def setup_cleanup(self, audio_analysis_service):
-        """Setup and cleanup for integration tests."""
+        """Set up and clean up for integration tests."""
         yield
         audio_analysis_service.stop_buffer_flush_task()
 
@@ -888,7 +888,7 @@ class TestDetectionBufferingIntegration:
             # Verify detection was buffered
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
-                buffered = list(audio_analysis_service.detection_buffer)[0]
+                buffered = next(iter(audio_analysis_service.detection_buffer))
                 assert buffered["species"] == "Robin"
                 assert buffered["confidence"] == 0.85
 
@@ -959,7 +959,7 @@ class TestDetectionBufferingIntegration:
             # Verify only failed detection was buffered
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
-                buffered = list(audio_analysis_service.detection_buffer)[0]
+                buffered = next(iter(audio_analysis_service.detection_buffer))
                 assert buffered["species"] == "Crow"
 
             # Verify successful sends were logged

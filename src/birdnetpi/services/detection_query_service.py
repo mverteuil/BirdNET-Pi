@@ -42,27 +42,27 @@ class DetectionWithIOCData:
     @property
     def id(self) -> UUID:
         """Get detection ID."""
-        return self.detection.id
+        return self.detection.id  # type: ignore[return-value]
 
     @property
     def scientific_name(self) -> str:
         """Get scientific name."""
-        return self.detection.scientific_name
+        return self.detection.scientific_name  # type: ignore[return-value]
 
     @property
     def common_name(self) -> str:
         """Get common name from detection."""
-        return self.detection.common_name
+        return self.detection.common_name  # type: ignore[return-value]
 
     @property
     def confidence(self) -> float:
         """Get detection confidence."""
-        return self.detection.confidence
+        return self.detection.confidence  # type: ignore[return-value]
 
     @property
     def timestamp(self) -> datetime:
         """Get detection timestamp."""
-        return self.detection.timestamp
+        return self.detection.timestamp  # type: ignore[return-value]
 
     def get_best_common_name(self, prefer_translation: bool = False) -> str:
         """Get the best available common name for display.
@@ -105,7 +105,9 @@ class DetectionQueryService:
         # In-memory cache: {cache_key: (data, expiry_timestamp)}
         self._cache = {}
 
-    def _generate_cache_key(self, method: str, **kwargs: Any) -> str:
+    def _generate_cache_key(
+        self, method: str, **kwargs: str | int | float | datetime | None
+    ) -> str:
         """Generate a cache key based on method name and parameters.
 
         Args:
@@ -126,7 +128,9 @@ class DetectionQueryService:
         cache_string = "|".join(key_parts)
         return hashlib.sha256(cache_string.encode()).hexdigest()
 
-    def _get_from_cache(self, cache_key: str) -> Any:
+    def _get_from_cache(
+        self, cache_key: str
+    ) -> DetectionWithIOCData | list[DetectionWithIOCData] | list[dict[str, Any]] | None:
         """Get data from cache if available and not expired.
 
         Args:
@@ -148,7 +152,11 @@ class DetectionQueryService:
 
         return data
 
-    def _set_cache(self, cache_key: str, data: Any) -> None:
+    def _set_cache(
+        self,
+        cache_key: str,
+        data: (DetectionWithIOCData | list[DetectionWithIOCData] | list[dict[str, Any]]),
+    ) -> None:
         """Store data in cache with TTL expiry.
 
         Args:
@@ -173,7 +181,7 @@ class DetectionQueryService:
         """Clear all cached data."""
         self._cache.clear()
 
-    def _parse_timestamp(self, timestamp_value: Any) -> datetime:
+    def _parse_timestamp(self, timestamp_value: datetime | str | int | float) -> datetime:
         """Parse timestamp from various formats.
 
         Args:
@@ -246,7 +254,7 @@ class DetectionQueryService:
 
         # Try to get from cache first
         cached_result = self._get_from_cache(cache_key)
-        if cached_result is not None:
+        if cached_result is not None and isinstance(cached_result, DetectionWithIOCData):
             return cached_result
 
         with self.bnp_database_service.get_db() as session:
@@ -288,28 +296,28 @@ class DetectionQueryService:
 
                 # Create Detection object
                 detection = Detection(
-                    id=UUID(result.id),
-                    species_tensor=result.species_tensor,
-                    scientific_name=result.scientific_name,
-                    common_name=result.common_name,
-                    confidence=result.confidence,
-                    timestamp=self._parse_timestamp(result.timestamp),
-                    audio_file_id=UUID(result.audio_file_id) if result.audio_file_id else None,
-                    latitude=result.latitude,
-                    longitude=result.longitude,
-                    species_confidence_threshold=result.species_confidence_threshold,
-                    week=result.week,
-                    sensitivity_setting=result.sensitivity_setting,
-                    overlap=result.overlap,
+                    id=UUID(result.id),  # type: ignore[attr-defined]
+                    species_tensor=result.species_tensor,  # type: ignore[attr-defined]
+                    scientific_name=result.scientific_name,  # type: ignore[attr-defined]
+                    common_name=result.common_name,  # type: ignore[attr-defined]
+                    confidence=result.confidence,  # type: ignore[attr-defined]
+                    timestamp=self._parse_timestamp(result.timestamp),  # type: ignore[attr-defined]
+                    audio_file_id=UUID(result.audio_file_id) if result.audio_file_id else None,  # type: ignore[attr-defined]
+                    latitude=result.latitude,  # type: ignore[attr-defined]
+                    longitude=result.longitude,  # type: ignore[attr-defined]
+                    species_confidence_threshold=result.species_confidence_threshold,  # type: ignore[attr-defined]
+                    week=result.week,  # type: ignore[attr-defined]
+                    sensitivity_setting=result.sensitivity_setting,  # type: ignore[attr-defined]
+                    overlap=result.overlap,  # type: ignore[attr-defined]
                 )
 
                 detection_with_ioc = DetectionWithIOCData(
                     detection=detection,
-                    ioc_english_name=result.ioc_english_name,
-                    translated_name=result.translated_name,
-                    family=result.family,
-                    genus=result.genus,
-                    order_name=result.order_name,
+                    ioc_english_name=result.ioc_english_name,  # type: ignore[attr-defined]
+                    translated_name=result.translated_name,  # type: ignore[attr-defined]
+                    family=result.family,  # type: ignore[attr-defined]
+                    genus=result.genus,  # type: ignore[attr-defined]
+                    order_name=result.order_name,  # type: ignore[attr-defined]
                 )
 
                 # Cache the result before returning
@@ -345,8 +353,8 @@ class DetectionQueryService:
 
         # Try to get from cache first
         cached_result = self._get_from_cache(cache_key)
-        if cached_result is not None:
-            return cached_result
+        if cached_result is not None and isinstance(cached_result, list):
+            return cached_result  # type: ignore[return-value]
 
         with self.bnp_database_service.get_db() as session:
             self.ioc_database_service.attach_to_session(session)
@@ -387,18 +395,18 @@ class DetectionQueryService:
 
                 species_summary = [
                     {
-                        "scientific_name": result.scientific_name,
-                        "detection_count": result.detection_count,
-                        "avg_confidence": round(result.avg_confidence, 3),
-                        "latest_detection": self._parse_timestamp(result.latest_detection)
-                        if result.latest_detection
+                        "scientific_name": result.scientific_name,  # type: ignore[attr-defined]
+                        "detection_count": result.detection_count,  # type: ignore[attr-defined]
+                        "avg_confidence": round(float(result.avg_confidence), 3),  # type: ignore[attr-defined]
+                        "latest_detection": self._parse_timestamp(result.latest_detection)  # type: ignore[attr-defined]
+                        if result.latest_detection  # type: ignore[attr-defined]
                         else None,
-                        "ioc_english_name": result.ioc_english_name,
-                        "translated_name": result.translated_name,
-                        "family": result.family,
-                        "genus": result.genus,
-                        "order_name": result.order_name,
-                        "best_common_name": result.translated_name or result.ioc_english_name,
+                        "ioc_english_name": result.ioc_english_name,  # type: ignore[attr-defined]
+                        "translated_name": result.translated_name,  # type: ignore[attr-defined]
+                        "family": result.family,  # type: ignore[attr-defined]
+                        "genus": result.genus,  # type: ignore[attr-defined]
+                        "order_name": result.order_name,  # type: ignore[attr-defined]
+                        "best_common_name": result.translated_name or result.ioc_english_name,  # type: ignore[attr-defined]
                     }
                     for result in results
                 ]
@@ -429,8 +437,8 @@ class DetectionQueryService:
 
         # Try to get from cache first
         cached_result = self._get_from_cache(cache_key)
-        if cached_result is not None:
-            return cached_result
+        if cached_result is not None and isinstance(cached_result, list):
+            return cached_result  # type: ignore[return-value]
 
         with self.bnp_database_service.get_db() as session:
             self.ioc_database_service.attach_to_session(session)
@@ -461,13 +469,13 @@ class DetectionQueryService:
 
                 family_summary = [
                     {
-                        "family": result.family,
-                        "order_name": result.order_name,
-                        "detection_count": result.detection_count,
-                        "species_count": result.species_count,
-                        "avg_confidence": round(result.avg_confidence, 3),
-                        "latest_detection": self._parse_timestamp(result.latest_detection)
-                        if result.latest_detection
+                        "family": result.family,  # type: ignore[attr-defined]
+                        "order_name": result.order_name,  # type: ignore[attr-defined]
+                        "detection_count": result.detection_count,  # type: ignore[attr-defined]
+                        "species_count": result.species_count,  # type: ignore[attr-defined]
+                        "avg_confidence": round(float(result.avg_confidence), 3),  # type: ignore[attr-defined]
+                        "latest_detection": self._parse_timestamp(result.latest_detection)  # type: ignore[attr-defined]
+                        if result.latest_detection  # type: ignore[attr-defined]
                         else None,
                     }
                     for result in results
@@ -541,29 +549,29 @@ class DetectionQueryService:
         for result in results:
             # Create Detection object
             detection = Detection(
-                id=UUID(result.id),
-                species_tensor=result.species_tensor,
-                scientific_name=result.scientific_name,
-                common_name=result.common_name,
-                confidence=result.confidence,
-                timestamp=self._parse_timestamp(result.timestamp),
-                audio_file_id=UUID(result.audio_file_id) if result.audio_file_id else None,
-                latitude=result.latitude,
-                longitude=result.longitude,
-                species_confidence_threshold=result.species_confidence_threshold,
-                week=result.week,
-                sensitivity_setting=result.sensitivity_setting,
-                overlap=result.overlap,
+                id=UUID(result.id),  # type: ignore[attr-defined]
+                species_tensor=result.species_tensor,  # type: ignore[attr-defined]
+                scientific_name=result.scientific_name,  # type: ignore[attr-defined]
+                common_name=result.common_name,  # type: ignore[attr-defined]
+                confidence=result.confidence,  # type: ignore[attr-defined]
+                timestamp=self._parse_timestamp(result.timestamp),  # type: ignore[attr-defined]
+                audio_file_id=UUID(result.audio_file_id) if result.audio_file_id else None,  # type: ignore[attr-defined]
+                latitude=result.latitude,  # type: ignore[attr-defined]
+                longitude=result.longitude,  # type: ignore[attr-defined]
+                species_confidence_threshold=result.species_confidence_threshold,  # type: ignore[attr-defined]
+                week=result.week,  # type: ignore[attr-defined]
+                sensitivity_setting=result.sensitivity_setting,  # type: ignore[attr-defined]
+                overlap=result.overlap,  # type: ignore[attr-defined]
             )
 
             detection_data_list.append(
                 DetectionWithIOCData(
                     detection=detection,
-                    ioc_english_name=result.ioc_english_name,
-                    translated_name=result.translated_name,
-                    family=result.family,
-                    genus=result.genus,
-                    order_name=result.order_name,
+                    ioc_english_name=result.ioc_english_name,  # type: ignore[attr-defined]
+                    translated_name=result.translated_name,  # type: ignore[attr-defined]
+                    family=result.family,  # type: ignore[attr-defined]
+                    genus=result.genus,  # type: ignore[attr-defined]
+                    order_name=result.order_name,  # type: ignore[attr-defined]
                 )
             )
 

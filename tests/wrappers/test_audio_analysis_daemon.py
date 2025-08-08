@@ -42,7 +42,10 @@ def test_error_scenarios():
         "general_error": Exception("General error"),
         "blocking_io": BlockingIOError(),
         "expected_error_messages": {
-            "fifo_not_found": "FIFO not found at /tmp/fifo/birdnet_audio_analysis.fifo. Ensure audio_capture is running and creating it.",
+            "fifo_not_found": (
+                "FIFO not found at /tmp/fifo/birdnet_audio_analysis.fifo. "
+                "Ensure audio_capture is running and creating it."
+            ),
             "read_error": "Error reading from FIFO",
             "general_error": "An error occurred in the audio analysis wrapper: General error",
         },
@@ -98,7 +101,7 @@ class TestAudioAnalysisDaemon:
         caplog,
     ):
         """Should open FIFO, read data, process, and close on shutdown."""
-        mock_signal = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.signal")
+        _mock_signal = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.signal")
         mock_atexit = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.atexit")
         mock_asyncio = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.asyncio")
         mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.time")
@@ -128,8 +131,8 @@ class TestAudioAnalysisDaemon:
             )
         )
         mock_atexit.register.assert_called_once_with(daemon._cleanup_fifo)
-        mock_signal.signal.assert_any_call(mock_signal.SIGTERM, daemon._signal_handler)
-        mock_signal.signal.assert_any_call(mock_signal.SIGINT, daemon._signal_handler)
+        _mock_signal.signal.assert_any_call(_mock_signal.SIGTERM, daemon._signal_handler)
+        _mock_signal.signal.assert_any_call(_mock_signal.SIGINT, daemon._signal_handler)
 
         expected_logs = [
             "Starting audio analysis wrapper.",
@@ -149,7 +152,7 @@ class TestAudioAnalysisDaemon:
     ):
         """Should log an error if the FIFO is not found."""
         mock_os = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.os")
-        mock_signal = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.signal")
+        _mock_signal = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.signal")
         mock_asyncio = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.asyncio")
         mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.atexit")
         mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.time")
@@ -169,8 +172,8 @@ class TestAudioAnalysisDaemon:
         assert test_error_scenarios["expected_error_messages"]["fifo_not_found"] in caplog.text
         mock_os.read.assert_not_called()
         mock_asyncio.run.assert_not_called()
-        mock_signal.signal.assert_any_call(mock_signal.SIGTERM, daemon._signal_handler)
-        mock_signal.signal.assert_any_call(mock_signal.SIGINT, daemon._signal_handler)
+        _mock_signal.signal.assert_any_call(_mock_signal.SIGTERM, daemon._signal_handler)
+        _mock_signal.signal.assert_any_call(_mock_signal.SIGINT, daemon._signal_handler)
 
     def test_main__error_reading_fifo(
         self,
@@ -183,7 +186,7 @@ class TestAudioAnalysisDaemon:
     ):
         """Should log an error if reading from FIFO fails."""
         mock_os = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.os")
-        mock_signal = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.signal")
+        _mock_signal = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.signal")
         mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.atexit")
         mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.asyncio")
         mock_time = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.time")
@@ -214,8 +217,8 @@ class TestAudioAnalysisDaemon:
             for r in caplog.records
         )
         mock_time_sleep.assert_called()
-        mock_signal.signal.assert_any_call(mock_signal.SIGTERM, daemon._signal_handler)
-        mock_signal.signal.assert_any_call(mock_signal.SIGINT, daemon._signal_handler)
+        _mock_signal.signal.assert_any_call(_mock_signal.SIGTERM, daemon._signal_handler)
+        _mock_signal.signal.assert_any_call(_mock_signal.SIGINT, daemon._signal_handler)
 
     def test_signal_handler(self, mocker):
         """Should set the shutdown flag when a signal is received."""
@@ -336,7 +339,7 @@ class TestAudioAnalysisDaemon:
         caplog,
     ):
         """Should handle exceptions during audio processing gracefully."""
-        mock_signal = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.signal")
+        _mock_signal = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.signal")
         mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.atexit")
         mock_asyncio = mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.asyncio")
         mocker.patch("birdnetpi.wrappers.audio_analysis_daemon.time")
