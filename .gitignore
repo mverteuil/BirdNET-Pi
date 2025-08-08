@@ -47,7 +47,6 @@ datasets/
 exclude_species_list.txt
 firstrun.ini
 GEMINI.md
-HUMAN.txt
 IdentifiedSoFar.txt
 IdentifiedSoFar.txt.bak
 include_species_list.txt

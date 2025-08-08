@@ -1,4 +1,3 @@
-import datetime
 import logging
 import math
 import operator
@@ -197,20 +196,6 @@ class BirdDetectionService:
 
         privacy_threshold = self.privacy_threshold if self.privacy_threshold is not None else 10.0
         human_cutoff = max(10, int(len(p_sorted) * privacy_threshold / 100.0))
-
-        log.debug("BirdDetectionService: DATABASE SIZE: %d", len(p_sorted))
-        log.debug("BirdDetectionService: HUMAN-CUTOFF AT: %d", human_cutoff)
-
-        for i in range(min(10, len(p_sorted))):
-            if p_sorted[i][0] == "Human_Human":
-                with open(os.path.join(self.user_dir, "BirdNET-Pi/HUMAN.txt"), "a") as rfile:
-                    rfile.write(
-                        str(datetime.datetime.now())
-                        + str(p_sorted[i])
-                        + " "
-                        + str(human_cutoff)
-                        + "\n"
-                    )
 
         # Convert numpy float32 to Python float for consistent type handling
         return [(species, float(confidence)) for species, confidence in p_sorted[:human_cutoff]]
