@@ -286,10 +286,16 @@ class TestDetectionWithIOCData:
         result = data.get_best_common_name()
         assert result == "American Robin"
 
-        # Test scientific name fallback
-        detection.common_name_tensor = None
-        detection.common_name_ioc = None
-        data = DetectionWithIOCData(detection=detection)
+        # Test scientific name fallback - create new detection without common names
+        fallback_detection = Detection(
+            id=uuid4(),
+            scientific_name="Turdus migratorius",
+            common_name_tensor=None,
+            common_name_ioc=None,
+            confidence=0.85,
+            timestamp=datetime.now(),
+        )
+        data = DetectionWithIOCData(detection=fallback_detection)
         result = data.get_best_common_name()
         assert result == "Turdus migratorius"
 
@@ -398,7 +404,9 @@ class TestGetDetectionsWithIOCData:
             query_service.ioc_database_service, "attach_to_session", side_effect=original_attach
         ) as mock_attach:
             with patch.object(
-                query_service.ioc_database_service, "detach_from_session", side_effect=original_detach
+                query_service.ioc_database_service,
+                "detach_from_session",
+                side_effect=original_detach,
             ) as mock_detach:
                 query_service.get_detections_with_ioc_data()
 
@@ -480,7 +488,9 @@ class TestGetDetectionWithIOCData:
             query_service.ioc_database_service, "attach_to_session", side_effect=original_attach
         ) as mock_attach:
             with patch.object(
-                query_service.ioc_database_service, "detach_from_session", side_effect=original_detach
+                query_service.ioc_database_service,
+                "detach_from_session",
+                side_effect=original_detach,
             ) as mock_detach:
                 query_service.get_detection_with_ioc_data(detection_id)
 
