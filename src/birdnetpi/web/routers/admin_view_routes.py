@@ -78,8 +78,7 @@ async def post_settings(
     flickr_api_key: str = Form(""),
     flickr_filter_email: str = Form(""),
     # Localization
-    database_lang: str = Form("en"),
-    language_code: str = Form("en"),
+    language: str = Form("en"),
     species_display_mode: str = Form("full"),
     timezone: str = Form("UTC"),
     # Web Settings
@@ -148,8 +147,7 @@ async def post_settings(
         flickr_api_key=flickr_api_key,
         flickr_filter_email=flickr_filter_email,
         # Localization
-        database_lang=database_lang,
-        language_code=language_code,
+        language=language,
         species_display_mode=species_display_mode,
         timezone=timezone,
         # Web Settings

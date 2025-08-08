@@ -64,8 +64,9 @@ async def validate_yaml_config(
             minimum_time_limit=int(config_data.get("minimum_time_limit", 0)),
             flickr_api_key=config_data.get("flickr_api_key", ""),
             flickr_filter_email=config_data.get("flickr_filter_email", ""),
-            database_lang=config_data.get("database_lang", "en"),
-            language_code=config_data.get("language_code", "en"),
+            language=config_data.get(
+                "language", config_data.get("language_code", config_data.get("database_lang", "en"))
+            ),
             species_display_mode=config_data.get("species_display_mode", "full"),
             timezone=config_data.get("timezone", "UTC"),
             caddy_pwd=config_data.get("caddy_pwd", ""),

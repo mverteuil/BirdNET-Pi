@@ -200,7 +200,7 @@ def create_display_options_from_config(config) -> SpeciesDisplayOptions:  # noqa
     """
     # Get display and language preferences from config
     species_display_mode = config.species_display_mode
-    language_code = config.language_code
+    language_code = config.language
 
     if species_display_mode == "common_name":
         return SpeciesDisplayOptions(
