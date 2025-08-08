@@ -78,7 +78,7 @@ class ReportingManager:
             detections = self.detection_manager.get_all_detections()
             data = [
                 {
-                    "common_name": d.common_name or "",
+                    "common_name": (d.common_name_ioc or d.common_name_tensor) or "",
                     "datetime": d.timestamp,
                     "date": d.timestamp.strftime("%Y-%m-%d"),
                     "time": d.timestamp.strftime("%H:%M:%S"),
@@ -402,7 +402,7 @@ class ReportingManager:
                 "date": d.timestamp.strftime("%Y-%m-%d") if d.timestamp else "",
                 "time": d.timestamp.strftime("%H:%M:%S") if d.timestamp else "",
                 "scientific_name": d.scientific_name or "",
-                "common_name": d.common_name or "",
+                "common_name": (d.common_name_ioc or d.common_name_tensor) or "",
                 "confidence": d.confidence or 0,
                 "latitude": d.latitude or "",
                 "longitude": d.longitude or "",

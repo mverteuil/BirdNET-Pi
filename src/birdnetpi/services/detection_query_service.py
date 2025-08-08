@@ -52,7 +52,7 @@ class DetectionWithIOCData:
     @property
     def common_name(self) -> str:
         """Get common name from tensor."""
-        return self.detection.common_name
+        return (self.detection.common_name_ioc or self.detection.common_name_tensor)
 
     @property
     def confidence(self) -> float:

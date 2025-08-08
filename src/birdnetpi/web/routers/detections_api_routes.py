@@ -87,7 +87,7 @@ async def get_recent_detections(
                 {
                     "id": detection.id,
                     "scientific_name": detection.scientific_name,
-                    "common_name": detection.common_name,
+                    "common_name": (detection.common_name_ioc or detection.common_name_tensor),
                     "confidence": detection.confidence,
                     "timestamp": detection.timestamp.isoformat(),
                     "latitude": detection.latitude,
@@ -221,7 +221,7 @@ async def get_detection(
         detection_data = {
             "id": detection.id,
             "scientific_name": detection.scientific_name,
-            "common_name": detection.common_name,
+            "common_name": (detection.common_name_ioc or detection.common_name_tensor),
             "confidence": detection.confidence,
             "timestamp": detection.timestamp.isoformat(),
             "latitude": detection.latitude,
