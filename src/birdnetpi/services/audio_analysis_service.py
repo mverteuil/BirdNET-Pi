@@ -152,8 +152,8 @@ class AudioAnalysisService:
             # Perform BirdNET analysis
             results = self.analysis_client.get_analysis_results(
                 audio_chunk=audio_chunk,
-                lat=self.config.latitude,
-                lon=self.config.longitude,
+                latitude=self.config.latitude,
+                longitude=self.config.longitude,
                 week=current_week,
                 sensitivity=self.config.sensitivity_setting,
             )

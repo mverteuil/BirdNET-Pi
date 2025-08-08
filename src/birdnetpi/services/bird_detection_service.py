@@ -107,27 +107,27 @@ class BirdDetectionService:
 
         log.info("BirdDetectionService: loaded META model")
 
-    def _predict_filter_raw(self, lat: float, lon: float, week: int) -> np.ndarray:
+    def _predict_filter_raw(self, latitude: float, longitude: float, week: int) -> np.ndarray:
         if self.m_interpreter is None:
             self._load_meta_model()
 
         if self.m_interpreter is None:
             raise RuntimeError("Meta interpreter not initialized after load")
 
-        sample = np.expand_dims(np.array([lat, lon, week], dtype="float32"), 0)
+        sample = np.expand_dims(np.array([latitude, longitude, week], dtype="float32"), 0)
 
         self.m_interpreter.set_tensor(self.m_input_layer_index, sample)
         self.m_interpreter.invoke()
 
         return self.m_interpreter.get_tensor(self.m_output_layer_index)[0]
 
-    def get_filtered_species_list(self, lat: float, lon: float, week: int) -> list[str]:
+    def get_filtered_species_list(self, latitude: float, longitude: float, week: int) -> list[str]:
         """Return a list of species predicted by the meta-model for a given location and week."""
         if self.model_name == "BirdNET_GLOBAL_6K_V2.4_Model_FP16":
             if week != self.current_week or not self.predicted_species_list:
                 self.current_week = week
                 self.predicted_species_list = []  # Clear previous list
-                l_filter = self._predict_filter_raw(lat, lon, week)
+                l_filter = self._predict_filter_raw(latitude, longitude, week)
                 threshold = (
                     self.species_frequency_threshold
                     if self.species_frequency_threshold is not None
@@ -162,16 +162,16 @@ class BirdDetectionService:
     def get_raw_prediction(
         self,
         audio_chunk: np.ndarray,
-        lat: float,
-        lon: float,
+        latitude: float,
+        longitude: float,
         week: int,
         sensitivity: float,
     ) -> list[tuple[str, float]]:
         """Perform raw prediction on an audio chunk."""
         # Prepare metadata for the main model
-        if self.mdata_params != [lat, lon, week]:
-            self.mdata_params = [lat, lon, week]
-            self.mdata = self._convert_metadata(np.array([lat, lon, week]))
+        if self.mdata_params != [latitude, longitude, week]:
+            self.mdata_params = [latitude, longitude, week]
+            self.mdata = self._convert_metadata(np.array([latitude, longitude, week]))
             self.mdata = np.expand_dims(self.mdata, 0)
 
         # Prepare audio chunk as input signal
@@ -207,13 +207,19 @@ class BirdDetectionService:
     def get_analysis_results(
         self,
         audio_chunk: np.ndarray,
-        lat: float,
-        lon: float,
+        latitude: float,
+        longitude: float,
         week: int,
         sensitivity: float,
     ) -> list[tuple[str, float]]:
         """Perform analysis on an audio chunk and return filtered (species, confidence) pairs."""
-        raw_predictions = self.get_raw_prediction(audio_chunk, lat, lon, week, sensitivity)
+        raw_predictions = self.get_raw_prediction(
+            audio_chunk,
+            latitude,
+            longitude,
+            week,
+            sensitivity,
+        )
 
         species_frequency_threshold = (
             self.species_frequency_threshold

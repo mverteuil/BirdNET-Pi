@@ -19,10 +19,10 @@ def test_get_raw_prediction(bird_detection_service):
     """Should return raw predictions for an audio chunk."""
     # Create a realistic audio chunk (3 seconds at 48kHz sample rate)
     audio_chunk = np.random.random(144000).astype(np.float32)
-    lat, lon, week, sensitivity = 40.7128, -74.0060, 1, 1.0
+    latitude, longitude, week, sensitivity = 40.7128, -74.0060, 1, 1.0
 
     predictions = bird_detection_service.get_raw_prediction(
-        audio_chunk, lat, lon, week, sensitivity
+        audio_chunk, latitude, longitude, week, sensitivity
     )
 
     assert isinstance(predictions, list)
@@ -34,9 +34,9 @@ def test_get_raw_prediction(bird_detection_service):
 
 def test_get_filtered_species_list(bird_detection_service):
     """Should return a filtered list of species based on meta-model prediction."""
-    lat, lon, week = 40.7128, -74.0060, 1
+    latitude, longitude, week = 40.7128, -74.0060, 1
 
-    species_list = bird_detection_service.get_filtered_species_list(lat, lon, week)
+    species_list = bird_detection_service.get_filtered_species_list(latitude, longitude, week)
 
     assert isinstance(species_list, list)
     # Note: The filtered species list may be empty if the meta-model doesn't predict
