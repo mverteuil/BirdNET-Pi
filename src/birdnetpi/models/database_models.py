@@ -66,24 +66,9 @@ class Detection(Base):
         Float
     )  # Audio analysis window overlap (0.0-1.0) for signal processing continuity
 
-    @property
-    def common_name(self) -> str | None:
-        """Get the best available common name for backwards compatibility."""
-        return self.common_name_ioc or self.common_name_tensor
-
-    @property
-    def species_confidence_threshold(self) -> float | None:
-        """Get cutoff value for backwards compatibility."""
-        return self.cutoff
-
-    @property
-    def sensitivity_setting(self) -> float | None:
-        """Get sensitivity value for backwards compatibility."""
-        return self.sensitivity
-
     def get_display_name(self) -> str:
         """Get the best available species display name."""
-        return str(self.common_name or self.scientific_name)
+        return str((self.common_name_ioc or self.common_name_tensor) or self.scientific_name)
 
     # Indexes for JOIN performance optimization
     __table_args__ = (

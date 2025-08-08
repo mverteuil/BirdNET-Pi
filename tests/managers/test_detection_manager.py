@@ -350,7 +350,7 @@ def test_get_most_recent_detections(detection_manager):
     mock_detection.longitude = 2.0
     mock_detection.cutoff = 0.5
     mock_detection.week = 1
-    mock_detection.sensitivity_setting = 1.0
+    mock_detection.sensitivity = 1.0
     mock_detection.overlap = 0.0
     mock_db_session.query.return_value.order_by.return_value.limit.return_value.all.return_value = [
         mock_detection

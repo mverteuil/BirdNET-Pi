@@ -5,7 +5,7 @@ import httpx
 import pytest
 
 from birdnetpi.managers.update_manager import UpdateManager
-from birdnetpi.models.config import CaddyConfig, GitUpdateConfig
+from birdnetpi.models.config import GitUpdateConfig
 
 
 @pytest.fixture
@@ -32,8 +32,7 @@ def test_update_birdnet(mock_run, update_manager):
 @patch("birdnetpi.managers.update_manager.subprocess.run")
 def test_update_caddyfile(mock_run, update_manager):
     """Should update the Caddyfile successfully."""
-    config = CaddyConfig(birdnetpi_url="test_url")
-    update_manager.update_caddyfile(config)
+    update_manager.update_caddyfile("test_url")
     assert mock_run.call_count == 4
 
 
@@ -484,9 +483,7 @@ class TestCaddyfileUpdate:
     def test_update_caddyfile__backup(self, mock_run, mock_file, mock_exists, update_manager):
         """Should backup existing Caddyfile before updating."""
         mock_exists.return_value = True
-        config = CaddyConfig(birdnetpi_url="example.com")
-
-        update_manager.update_caddyfile(config)
+        update_manager.update_caddyfile("example.com")
 
         # Should have more calls including backup
         assert mock_run.call_count >= 4
@@ -500,16 +497,13 @@ class TestCaddyfileUpdate:
     def test_update_caddyfile_subprocess_error(self, mock_run, update_manager):
         """Should handle subprocess errors during Caddyfile update."""
         mock_run.side_effect = subprocess.CalledProcessError(1, "sudo", stderr="Permission denied")
-        config = CaddyConfig(birdnetpi_url="example.com")
-
         with pytest.raises(subprocess.CalledProcessError):
-            update_manager.update_caddyfile(config)
+            update_manager.update_caddyfile("example.com")
 
     @patch("birdnetpi.managers.update_manager.subprocess.run")
     def test_update_caddyfile_unexpected_error(self, mock_run, update_manager):
         """Should handle unexpected errors during Caddyfile update."""
         mock_run.side_effect = Exception("Unexpected error")
-        config = CaddyConfig(birdnetpi_url="example.com")
 
         with pytest.raises(Exception, match="Unexpected error"):
-            update_manager.update_caddyfile(config)
+            update_manager.update_caddyfile("example.com")

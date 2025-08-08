@@ -58,7 +58,7 @@ class ReportingManager:
                         "longitude": d.detection.longitude,
                         "species_confidence_threshold": d.detection.cutoff,
                         "week": d.detection.week,
-                        "sensitivity_setting": d.detection.sensitivity_setting,
+                        "sensitivity_setting": d.detection.sensitivity,
                         "overlap": d.detection.overlap,
                         "ioc_english_name": d.ioc_english_name,
                         "translated_name": d.translated_name,
@@ -88,7 +88,7 @@ class ReportingManager:
                     "longitude": d.longitude,
                     "species_confidence_threshold": d.cutoff,
                     "week": d.week,
-                    "sensitivity_setting": d.sensitivity_setting,
+                    "sensitivity_setting": d.sensitivity,
                     "overlap": d.overlap,
                 }
                 for d in detections

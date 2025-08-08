@@ -210,7 +210,7 @@ class MQTTService:
                 "analysis": {
                     "species_confidence_threshold": detection.cutoff,
                     "week": detection.week,
-                    "sensitivity_setting": detection.sensitivity_setting,
+                    "sensitivity_setting": detection.sensitivity,
                     "overlap": detection.overlap,
                 },
                 "detection_id": detection.id,

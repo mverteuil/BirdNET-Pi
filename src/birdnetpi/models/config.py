@@ -108,13 +108,6 @@ class BirdNETConfig:
 
 
 @dataclass
-class CaddyConfig:
-    """Configuration for Caddy web server settings."""
-
-    birdnetpi_url: str
-
-
-@dataclass
 class GitUpdateConfig:
     """Configuration for Git repository updates."""
 

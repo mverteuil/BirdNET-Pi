@@ -199,7 +199,7 @@ async def get_detection(
                         "longitude": detection_with_ioc.detection.longitude,
                         "species_confidence_threshold": detection_with_ioc.detection.cutoff,
                         "week": detection_with_ioc.detection.week,
-                        "sensitivity_setting": detection_with_ioc.detection.sensitivity_setting,
+                        "sensitivity_setting": detection_with_ioc.detection.sensitivity,
                         "overlap": detection_with_ioc.detection.overlap,
                         "ioc_english_name": detection_with_ioc.ioc_english_name,
                         "translated_name": detection_with_ioc.translated_name,
@@ -228,7 +228,7 @@ async def get_detection(
             "longitude": detection.longitude,
             "species_confidence_threshold": detection.cutoff,
             "week": detection.week,
-            "sensitivity_setting": detection.sensitivity_setting,
+            "sensitivity_setting": detection.sensitivity,
             "overlap": detection.overlap,
         }
         return JSONResponse(detection_data)

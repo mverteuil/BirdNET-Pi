@@ -361,9 +361,7 @@ class UpdateManager:
             print(f"Failed to list asset versions: {e}")
             return []
 
-    from birdnetpi.models.config import CaddyConfig
-
-    def update_caddyfile(self, config: CaddyConfig) -> None:
+    def update_caddyfile(self, birdnetpi_url: str) -> None:
         """Update the Caddyfile with new configuration and reload Caddy."""
         try:
             # Ensure /etc/caddy exists
@@ -379,7 +377,7 @@ class UpdateManager:
                 )
 
             caddyfile_content = (
-                f"http:// {config.birdnetpi_url} {{\n"
+                f"http:// {birdnetpi_url} {{\n"
                 "  reverse_proxy localhost:8000\n"
                 "  reverse_proxy /log* localhost:8080\n"
                 "  reverse_proxy /stats* localhost:8501\n"

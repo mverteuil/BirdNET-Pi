@@ -21,7 +21,6 @@ from typing import Any
 import structlog
 
 from birdnetpi.models.config import BirdNETConfig
-from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
 def is_docker_environment() -> bool:

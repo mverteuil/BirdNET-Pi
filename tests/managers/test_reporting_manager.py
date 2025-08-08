@@ -201,7 +201,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
     mock_detection_with_ioc_1.detection.longitude = None
     mock_detection_with_ioc_1.detection.cutoff = 0.03
     mock_detection_with_ioc_1.detection.week = 1
-    mock_detection_with_ioc_1.detection.sensitivity_setting = 1.25
+    mock_detection_with_ioc_1.detection.sensitivity = 1.25
     mock_detection_with_ioc_1.detection.overlap = 0.0
     mock_detection_with_ioc_1.ioc_english_name = "American Robin"
     mock_detection_with_ioc_1.translated_name = "American Robin"
@@ -218,7 +218,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
     mock_detection_with_ioc_2.detection.longitude = None
     mock_detection_with_ioc_2.detection.cutoff = 0.03
     mock_detection_with_ioc_2.detection.week = 1
-    mock_detection_with_ioc_2.detection.sensitivity_setting = 1.25
+    mock_detection_with_ioc_2.detection.sensitivity = 1.25
     mock_detection_with_ioc_2.detection.overlap = 0.0
     mock_detection_with_ioc_2.ioc_english_name = "American Robin"
     mock_detection_with_ioc_2.translated_name = "American Robin"
@@ -235,7 +235,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
     mock_detection_with_ioc_3.detection.longitude = None
     mock_detection_with_ioc_3.detection.cutoff = 0.03
     mock_detection_with_ioc_3.detection.week = 1
-    mock_detection_with_ioc_3.detection.sensitivity_setting = 1.25
+    mock_detection_with_ioc_3.detection.sensitivity = 1.25
     mock_detection_with_ioc_3.detection.overlap = 0.0
     mock_detection_with_ioc_3.ioc_english_name = "Northern Cardinal"
     mock_detection_with_ioc_3.translated_name = "Northern Cardinal"
