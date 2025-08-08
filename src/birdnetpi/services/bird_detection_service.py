@@ -159,7 +159,7 @@ class BirdDetectionService:
         Args:
             latitude: Geographic latitude (-90 to 90)
             longitude: Geographic longitude (-180 to 180)
-            week: Week of the year (1-52)
+            week: Week of the year (1-48)
 
         Returns:
             Array of occurrence probabilities for each species
@@ -190,7 +190,7 @@ class BirdDetectionService:
         Args:
             latitude: Geographic latitude (-90 to 90)
             longitude: Geographic longitude (-180 to 180)
-            week: Week of the year (1-52)
+            week: Week of the year (1-48)
 
         Returns:
             List of species names likely to be present at the specified
@@ -231,7 +231,7 @@ class BirdDetectionService:
             m: A numpy array containing [latitude, longitude, week] where:
                - latitude: Geographic latitude (-90 to 90)
                - longitude: Geographic longitude (-180 to 180)
-               - week: Week of the year (1-48, representing weeks throughout the year)
+               - week: Week of the year (1-48, representing 48 time periods throughout the year)
 
         Returns:
             A numpy array of length 6 containing:
@@ -302,7 +302,7 @@ class BirdDetectionService:
             audio_chunk: Audio samples as numpy array (typically 3 seconds at 48kHz)
             latitude: Recording location latitude (-90 to 90)
             longitude: Recording location longitude (-180 to 180)
-            week: Week of the year when recording was made (1-52)
+            week: Week of the year when recording was made (1-48)
             sensitivity: Detection sensitivity adjustment (0.5-1.5 typical)
                         Higher values increase sensitivity to faint sounds
 
@@ -367,7 +367,7 @@ class BirdDetectionService:
             audio_chunk: Audio samples as numpy array (typically 3 seconds at 48kHz)
             latitude: Recording location latitude (-90 to 90)
             longitude: Recording location longitude (-180 to 180)
-            week: Week of the year when recording was made (1-52)
+            week: Week of the year when recording was made (1-48)
             sensitivity: Detection sensitivity adjustment (0.5-1.5 typical)
 
         Returns:
