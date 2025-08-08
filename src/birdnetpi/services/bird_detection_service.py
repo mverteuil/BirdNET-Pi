@@ -1,7 +1,6 @@
 import logging
 import math
 import operator
-import os
 
 import numpy as np
 
@@ -20,7 +19,6 @@ class BirdDetectionService:
 
     def __init__(self, config: BirdNETConfig) -> None:
         self.config = config
-        self.user_dir = os.path.expanduser("~")
         self.interpreter: tflite.Interpreter | None = None  # type: ignore[name-defined]
         self.metadata_interpreter: tflite.Interpreter | None = None  # type: ignore[name-defined]
         self.predicted_species_list = []  # This list is populated by the meta-model
@@ -54,10 +52,11 @@ class BirdDetectionService:
         from birdnetpi.utils.file_path_resolver import FilePathResolver
 
         file_resolver = FilePathResolver()
-        modelpath = file_resolver.get_model_path(self.model_name or "")  # Handle None case
-        if modelpath is None:
+        model_path = file_resolver.get_model_path(self.model_name or "")  # Handle None
+        # case
+        if model_path is None:
             raise ValueError(f"Model path not found for model: {self.model_name}")
-        self.interpreter = tflite.Interpreter(model_path=modelpath, num_threads=2)  # type: ignore[attr-defined]
+        self.interpreter = tflite.Interpreter(model_path=model_path, num_threads=2)  # type: ignore[attr-defined]
         self.interpreter.allocate_tensors()  # type: ignore[union-attr]
 
         if self.interpreter is None:
@@ -127,23 +126,50 @@ class BirdDetectionService:
             if week != self.current_week or not self.predicted_species_list:
                 self.current_week = week
                 self.predicted_species_list = []  # Clear previous list
-                l_filter = self._predict_filter_raw(latitude, longitude, week)
+                location_filter = self._predict_filter_raw(latitude, longitude, week)
                 threshold = (
                     self.species_frequency_threshold
                     if self.species_frequency_threshold is not None
                     else 0.03
                 )
-                l_filter = np.where(l_filter >= float(threshold), l_filter, 0)
+                location_filter = np.where(location_filter >= float(threshold),
+                                         location_filter, 0)
 
                 # Zip with labels and filter for non-zero scores
                 filtered_species = [
-                    s[1] for s in zip(l_filter, self.classes, strict=False) if s[0] > 0
+                    s[1] for s in zip(location_filter, self.classes, strict=False) if s[0] > 0
                 ]
                 self.predicted_species_list.extend(filtered_species)
         return self.predicted_species_list
 
     def _convert_metadata(self, m: np.ndarray) -> np.ndarray:
-        if m[2] >= 1 and m[2] <= 48:
+        """Convert location and week metadata into model-compatible format.
+
+        This method transforms geographic coordinates and week number into a format
+        suitable for the BirdNET model's metadata input layer. It applies temporal
+        encoding to the week number and creates a validity mask for the metadata.
+
+        Args:
+            m: A numpy array containing [latitude, longitude, week] where:
+               - latitude: Geographic latitude (-90 to 90)
+               - longitude: Geographic longitude (-180 to 180)
+               - week: Week of the year (1-48, representing weeks throughout the year)
+
+        Returns:
+            A numpy array of length 6 containing:
+            - Original latitude (or -1 if invalid)
+            - Original longitude (or -1 if invalid)
+            - Encoded week value using cosine transformation (or -1 if out of range)
+            - Three mask values indicating validity of each metadata component
+
+        Notes:
+            - Week values 1-48 are encoded using cosine transformation to capture
+              seasonal periodicity: cos(week * 7.5°) + 1
+            - Invalid coordinates (latitude/longitude = -1) result in all mask values
+              being set to 0
+            - Week values outside 1-48 range are set to -1 with corresponding mask = 0
+        """
+        if 1 <= m[2] <= 48:
             m[2] = math.cos(math.radians(m[2] * 7.5)) + 1
         else:
             m[2] = -1
@@ -157,6 +183,27 @@ class BirdDetectionService:
         return np.concatenate([m, mask])
 
     def _custom_sigmoid(self, x: np.ndarray, sensitivity: float = 1.0) -> np.ndarray:
+        """Apply a custom sigmoid activation function with adjustable sensitivity.
+
+        This method applies a sigmoid transformation to convert raw model outputs
+        into probability values between 0 and 1. The sensitivity parameter allows
+        fine-tuning of the sigmoid curve's steepness.
+
+        Args:
+            x: Input array of raw prediction scores from the model
+            sensitivity: Scaling factor for the sigmoid function (default: 1.0)
+                        Higher values create a steeper curve (more decisive thresholding)
+                        Lower values create a gentler curve (smoother transitions)
+
+        Returns:
+            Array of probability values between 0 and 1, same shape as input
+
+        Notes:
+            The sigmoid function is: f(x) = 1 / (1 + e^(-sensitivity * x))
+            - When sensitivity = 1.0, this is the standard sigmoid function
+            - Higher sensitivity makes the function more like a step function
+            - Lower sensitivity makes the transition more gradual
+        """
         return 1 / (1.0 + np.exp(-sensitivity * x))
 
     def get_raw_prediction(
