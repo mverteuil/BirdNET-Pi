@@ -365,6 +365,8 @@ class ReportingManager:
                 ]
             except Exception as e:
                 print(f"Error getting today's detections with IOC data, falling back: {e}")
+                # Force fallback to regular detection method
+                use_ioc_data = False
 
         # Fallback to original implementation
         all_detections = self.detection_manager.get_all_detections()

@@ -57,18 +57,35 @@ class Container(containers.DeclarativeContainer):
         db_path=database_path,
     )
 
+    # IOC database service factory with error handling
+    def _create_ioc_service(resolver):
+        """Create IOC database service with graceful error handling."""
+        try:
+            return IOCDatabaseService(resolver.get_ioc_database_path())
+        except Exception as e:
+            print(f"Warning: IOC database service unavailable: {e}")
+            return None
+
     ioc_database_service = providers.Singleton(
-        IOCDatabaseService,
-        ioc_database_path=providers.Factory(
-            lambda resolver: resolver.get_ioc_database_path(),
-            resolver=file_resolver,
-        ),
+        _create_ioc_service,
+        resolver=file_resolver,
     )
 
-    detection_query_service = providers.Singleton(
-        DetectionQueryService,
-        bnp_database_service=bnp_database_service,
-        ioc_database_service=ioc_database_service,
+    # Detection query service factory with error handling
+    def _create_detection_query_service(bnp_service, ioc_service):
+        """Create detection query service with graceful error handling."""
+        try:
+            if ioc_service is None:
+                return None
+            return DetectionQueryService(bnp_service, ioc_service)
+        except Exception as e:
+            print(f"Warning: Detection query service unavailable: {e}")
+            return None
+
+    detection_query_service = providers.Factory(
+        _create_detection_query_service,
+        bnp_service=bnp_database_service,
+        ioc_service=ioc_database_service,
     )
 
     # Core business services - singletons
