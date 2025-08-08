@@ -6,7 +6,7 @@ import pandas as pd
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.plotting_manager import PlottingManager
-from birdnetpi.models.config import BirdNETConfig, DailyPlotConfig
+from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.location_service import LocationService
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
@@ -422,11 +422,12 @@ class ReportingManager:
         return filtered_df
 
     def get_daily_detection_data_for_plotting(
-        self, df: pd.DataFrame, resample_sel: str, species: str
+        self, df: pd.DataFrame, resample_selection: str, species: str
     ) -> tuple[pd.DataFrame, list[str], list[float], list[str]]:
         """Prepare daily detection data for plotting."""
-        config = DailyPlotConfig(resample_sel=resample_sel, species=species)
-        return self.data_preparation_manager.prepare_daily_plot_data(df, config)
+        return self.data_preparation_manager.prepare_daily_plot_data(
+            df, resample_selection, species
+        )
 
     def get_best_detections(self, limit: int = 20) -> list[dict]:
         """Retrieve the best detections from the database."""

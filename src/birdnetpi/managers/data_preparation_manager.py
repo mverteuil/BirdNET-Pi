@@ -3,7 +3,7 @@ from typing import cast
 
 import pandas as pd
 
-from birdnetpi.models.config import BirdNETConfig, DailyPlotConfig, MultiDayPlotConfig
+from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.location_service import LocationService
 
 
@@ -60,25 +60,25 @@ class DataPreparationManager:
         return cast(pd.DataFrame, df_resample)
 
     def prepare_multi_day_plot_data(
-        self, df: pd.DataFrame, config: MultiDayPlotConfig
+        self, df: pd.DataFrame, resample_selection: str, species: str, top_n_count: int
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, int]:
         """Prepare data for the multi-day species and hourly plot."""
-        df5 = self.time_resample(df, config.resample_sel)
+        df5 = self.time_resample(df, resample_selection)
         hourly = self.get_hourly_crosstab(df5)
-        top_n_species = self.get_species_counts(df5)[: config.top_n]
+        top_n_species = self.get_species_counts(df5)[:top_n_count]
 
-        counts_series = hourly[hourly.index == config.species]["All"]
+        counts_series = hourly[hourly.index == species]["All"]
         counts_series_cast = cast(pd.Series, counts_series)
         df_counts = int(counts_series_cast.iloc[0]) if len(counts_series_cast) > 0 else 0
         return df5, hourly, cast(pd.Series, top_n_species), df_counts
 
     def prepare_daily_plot_data(
-        self, df: pd.DataFrame, config: DailyPlotConfig
+        self, df: pd.DataFrame, resample_selection: str, species: str
     ) -> tuple[pd.DataFrame, list[str], list[float], list[str]]:
         """Prepare data for the daily detections plot."""
         # Filter the DataFrame first, then get the series and resample
         # Ensure we're working with proper pandas objects by accessing the series directly
-        species_mask = df["common_name"] == config.species
+        species_mask = df["common_name"] == species
         species_series = df.loc[species_mask, "common_name"]
         df4 = cast(pd.Series, species_series.resample("15min").count())
         datetime_index = cast(pd.DatetimeIndex, df4.index)

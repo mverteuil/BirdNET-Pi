@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
-from birdnetpi.models.config import BirdNETConfig, DailyPlotConfig, MultiDayPlotConfig
+from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.location_service import LocationService
 
 
@@ -143,13 +143,14 @@ class TestDataPreparationManager:
 
     def test_prepare_multi_day_plot_data(self, data_preparation_manager, sample_dataframe):
         """Test preparation of multi-day plot data."""
-        config = MagicMock(spec=MultiDayPlotConfig)
-        config.resample_sel = "H"
-        config.top_n = 2
-        config.species = "American Robin"
+        resample_selection = "H"
+        top_n_count = 2
+        species = "American Robin"
 
         df5, hourly, top_n_species, df_counts = (
-            data_preparation_manager.prepare_multi_day_plot_data(sample_dataframe, config)
+            data_preparation_manager.prepare_multi_day_plot_data(
+                sample_dataframe, resample_selection, species, top_n_count
+            )
         )
 
         assert not df5.empty
@@ -159,11 +160,13 @@ class TestDataPreparationManager:
 
     def test_prepare_daily_plot_data(self, data_preparation_manager, sample_dataframe):
         """Test preparation of daily plot data."""
-        config = MagicMock(spec=DailyPlotConfig)
-        config.species = "American Robin"
+        resample_selection = "15min"
+        species = "American Robin"
 
         day_hour_freq, saved_time_labels, fig_dec_y, fig_x = (
-            data_preparation_manager.prepare_daily_plot_data(sample_dataframe, config)
+            data_preparation_manager.prepare_daily_plot_data(
+                sample_dataframe, resample_selection, species
+            )
         )
 
         assert not day_hour_freq.empty

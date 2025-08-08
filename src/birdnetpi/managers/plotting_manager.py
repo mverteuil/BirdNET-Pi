@@ -14,7 +14,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
-from birdnetpi.models.config import DailyPlotConfig, MultiDayPlotConfig
 
 
 class PlottingManager:
@@ -108,10 +107,10 @@ class PlottingManager:
     def _create_multi_day_plot_figure(
         self,
         df_counts: int,
-        top_n: int,
+        top_n_count: int,
         start_date: str,
         end_date: str,
-        resample_sel: str,
+        resample_selection: str,
         top_n_species: pd.Series,
         hourly: pd.DataFrame,
         species: str,
@@ -127,8 +126,8 @@ class PlottingManager:
                 [None, {"type": "xy", "rowspan": 1}],
             ],
             subplot_titles=(
-                f"<b>Top {top_n} Species in Date Range {start_date} to "
-                f"{end_date}<br>for {resample_sel} sampling interval.</b>",
+                f"<b>Top {top_n_count} Species in Date Range {start_date} to "
+                f"{end_date}<br>for {resample_selection} sampling interval.</b>",
                 f"Total Detect:{df_counts:,}",
             ),
         )
@@ -169,10 +168,10 @@ class PlottingManager:
     def generate_multi_day_species_and_hourly_plot(
         self,
         df: pd.DataFrame,
-        resample_sel: str,
+        resample_selection: str,
         start_date: str,
         end_date: str,
-        top_n: int,
+        top_n_count: int,
         species: str,
     ) -> go.Figure:
         """Generate a multi-day species and hourly plot."""
@@ -180,17 +179,18 @@ class PlottingManager:
         if df.empty or len(df) == 0:
             return self._create_empty_plot("No data available for multi-day plot")
 
-        config = MultiDayPlotConfig(resample_sel=resample_sel, species=species, top_n=top_n)
         df5, hourly, top_n_species, df_counts = (
-            self.data_preparation_manager.prepare_multi_day_plot_data(df, config)
+            self.data_preparation_manager.prepare_multi_day_plot_data(
+                df, resample_selection, species, top_n_count
+            )
         )
 
         fig = self._create_multi_day_plot_figure(
             df_counts,
-            top_n,
+            top_n_count,
             start_date,
             end_date,
-            resample_sel,
+            resample_selection,
             top_n_species,
             hourly,
             species,
@@ -252,7 +252,7 @@ class PlottingManager:
     def generate_daily_detections_plot(
         self,
         df: pd.DataFrame,
-        resample_sel: str,
+        resample_selection: str,
         start_date: str,
         species: str,
         num_days_to_display: int,
@@ -263,9 +263,8 @@ class PlottingManager:
         if df.empty or len(df) == 0:
             return self._create_empty_plot("No data available for daily plot")
 
-        config = DailyPlotConfig(resample_sel=resample_sel, species=species)
         day_hour_freq, saved_time_labels, fig_dec_y, fig_x = (
-            self.data_preparation_manager.prepare_daily_plot_data(df, config)
+            self.data_preparation_manager.prepare_daily_plot_data(df, resample_selection, species)
         )
 
         day_hour_freq.columns = fig_dec_y

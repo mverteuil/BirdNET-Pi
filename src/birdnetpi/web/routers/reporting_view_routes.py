@@ -159,7 +159,7 @@ async def get_charts(
             if not df.empty
             else pd.Timestamp.now().date()
         )
-        top_n = 10
+        top_n_count = 10
 
         species = "All"
         num_days_to_display = getattr(config, "num_days_to_display", 7)  # Default to 7 days
@@ -167,7 +167,7 @@ async def get_charts(
 
         # Generate multi-day plot
         multi_day_fig = plotting_manager.generate_multi_day_species_and_hourly_plot(
-            df, "1h", str(start_date), str(end_date), top_n, species
+            df, "1h", str(start_date), str(end_date), top_n_count, species
         )
         multi_day_plot_json = pio.to_json(multi_day_fig)
 

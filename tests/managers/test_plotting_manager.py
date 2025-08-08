@@ -9,7 +9,7 @@ import pytest
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.plotting_manager import PlottingManager
-from birdnetpi.models.config import BirdNETConfig, MultiDayPlotConfig
+from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.location_service import LocationService
 
 
@@ -78,10 +78,10 @@ def test_create_multi_day_plot_figure_should_return_figure(
 ):
     """Should return a plotly figure for multi-day plots."""
     df_counts = 10
-    top_n = 5
+    top_n_count = 5
     start_date = "2023-01-01"
     end_date = "23-01-07"
-    resample_sel = "D"
+    resample_selection = "D"
     top_n_species = pd.Series([5, 3], index=["SpeciesA", "SpeciesB"])
     hourly = pd.DataFrame({"All": [1, 2, 3]}, index=pd.Index([0, 1, 2]))
     species = "SpeciesA"
@@ -99,10 +99,10 @@ def test_create_multi_day_plot_figure_should_return_figure(
 
     fig = plotting_manager._create_multi_day_plot_figure(
         df_counts,
-        top_n,
+        top_n_count,
         start_date,
         end_date,
-        resample_sel,
+        resample_selection,
         top_n_species,
         hourly,
         species,
@@ -116,14 +116,11 @@ def test_generate_multi_day_species__hourly_plot_should_return_figure(
 ):
     """Should return a plotly figure for multi-day species and hourly plots."""
     df = sample_dataframe
-    resample_sel = "H"
+    resample_selection = "H"
     start_date = "2023-01-01"
     end_date = "2023-01-02"
-    top_n = 3
+    top_n_count = 3
     species = "Common Blackbird"
-
-    # Create a MultiDayPlotConfig instance
-    config = MultiDayPlotConfig(resample_sel=resample_sel, species=species, top_n=top_n)
 
     # Mock the internal data preparation method that PlottingManager calls
     mock_data_preparation_manager.prepare_multi_day_plot_data.return_value = (
@@ -137,7 +134,7 @@ def test_generate_multi_day_species__hourly_plot_should_return_figure(
     )
 
     fig = plotting_manager.generate_multi_day_species_and_hourly_plot(
-        df, config.resample_sel, start_date, end_date, config.top_n, config.species
+        df, resample_selection, start_date, end_date, top_n_count, species
     )
     assert isinstance(fig, go.Figure)
 
@@ -180,7 +177,7 @@ def test_generate_daily_detections_plot_should_return_figure(
 ):
     """Should return a plotly figure for daily detections plot."""
     df = sample_dataframe
-    resample_sel = "15min"
+    resample_selection = "15min"
     start_date = "2023-01-01"
     species = "Common Blackbird"
     num_days_to_display = 7
@@ -201,7 +198,7 @@ def test_generate_daily_detections_plot_should_return_figure(
     )
 
     fig = plotting_manager.generate_daily_detections_plot(
-        df, resample_sel, start_date, species, num_days_to_display, selected_pal
+        df, resample_selection, start_date, species, num_days_to_display, selected_pal
     )
     assert isinstance(fig, go.Figure)
 

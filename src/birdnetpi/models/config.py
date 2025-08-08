@@ -103,20 +103,3 @@ class BirdNETConfig:
     # Git Update settings
     git_remote: str = "origin"  # Git remote name for updates
     git_branch: str = "main"  # Git branch name for updates
-
-
-@dataclass
-class DailyPlotConfig:
-    """Dataclass to hold configuration for the daily plot."""
-
-    resample_sel: str
-    species: str
-
-
-@dataclass
-class MultiDayPlotConfig:
-    """Configuration for multi-day plot data preparation."""
-
-    resample_sel: str
-    species: str
-    top_n: int

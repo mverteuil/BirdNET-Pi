@@ -293,7 +293,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
     # Call the method under test
     day_hour_freq, saved_time_labels, fig_dec_y, fig_x = (
         reporting_manager.get_daily_detection_data_for_plotting(
-            df, resample_sel="15min", species="American Robin"
+            df, resample_selection="15min", species="American Robin"
         )
     )
 
