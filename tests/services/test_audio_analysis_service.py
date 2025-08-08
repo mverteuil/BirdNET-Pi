@@ -24,9 +24,9 @@ def test_config_data():
         "latitude": 40.7128,
         "longitude": -74.0060,
         "sensitivity": 1.25,
-        "confidence": 0.7,
+        "species_confidence_threshold": 0.7,
         "detection_threshold": 0.7,
-        "buffer_size_seconds": 3
+        "buffer_size_seconds": 3,
     }
 
 
@@ -38,7 +38,7 @@ def test_detection_result():
         "duration": 10.0,
         "size_bytes": 1000,
         "recording_start_time": datetime.now(),
-        "audio_path": "/mock/path/audio.wav"
+        "audio_path": "/mock/path/audio.wav",
     }
 
 
@@ -51,7 +51,7 @@ def test_audio_data():
         "buffer_size_samples": 48000 * 3,  # 3 seconds
         "duration_seconds": 3.0,
         "silence_chunk": np.zeros(48000 * 3, dtype=np.float32),
-        "test_chunk": np.ones(48000 * 3, dtype=np.float32) * 0.1
+        "test_chunk": np.ones(48000 * 3, dtype=np.float32) * 0.1,
     }
 
 
@@ -96,11 +96,11 @@ def audio_analysis_service(
     mock_analysis_client_class.return_value = mock_analysis_client
 
     service = AudioAnalysisService(
-        mock_file_manager, 
-        mock_file_path_resolver, 
+        mock_file_manager,
+        mock_file_path_resolver,
         mock_config,
         detection_buffer_max_size=100,  # Smaller buffer for testing
-        buffer_flush_interval=0.1  # Faster interval for testing
+        buffer_flush_interval=0.1,  # Faster interval for testing
     )
     service.analysis_client = mock_analysis_client
     return service
@@ -110,20 +110,13 @@ def audio_analysis_service(
 def test_species_data():
     """Provide test species detection data."""
     return {
-        "confident": [
-            ("Robin", 0.85),
-            ("Crow", 0.75),
-            ("Sparrow", 0.80)
-        ],
-        "low_confidence": [
-            ("Human", 0.65),
-            ("Unknown", 0.45)
-        ],
+        "confident": [("Robin", 0.85), ("Crow", 0.75), ("Sparrow", 0.80)],
+        "low_confidence": [("Human", 0.65), ("Unknown", 0.45)],
         "mixed": [
             ("Robin", 0.85),
             ("Human", 0.65),  # Below threshold
-            ("Crow", 0.72)
-        ]
+            ("Crow", 0.72),
+        ],
     }
 
 
@@ -140,7 +133,7 @@ def mock_detection_data(test_config_data, test_detection_result):
         "spectrogram_path": None,
         "latitude": test_config_data["latitude"],
         "longitude": test_config_data["longitude"],
-        "species_confidence_threshold": test_config_data["confidence"],
+        "species_confidence_threshold": test_config_data["species_confidence_threshold"],
         "week": 1,
         "sensitivity_setting": test_config_data["sensitivity"],
         "overlap": 0.5,
@@ -171,7 +164,9 @@ class TestAudioAnalysisService:
         assert audio_analysis_service._flush_task is not None
 
     @pytest.mark.asyncio
-    async def test_process_audio_chunk_accumulates_buffer(self, audio_analysis_service, test_audio_data):
+    async def test_process_audio_chunk_accumulates_buffer(
+        self, audio_analysis_service, test_audio_data
+    ):
         """Should accumulate audio data in buffer."""
         initial_buffer_length = len(audio_analysis_service.audio_buffer)
         audio_data = b"\x00\x01\x02\x03"
@@ -213,7 +208,9 @@ class TestAudioAnalysisService:
     ):
         """Should send detection events for confident detections."""
         # Use test data for species detections
-        audio_analysis_service.analysis_client.get_analysis_results.return_value = test_species_data["mixed"]
+        audio_analysis_service.analysis_client.get_analysis_results.return_value = (
+            test_species_data["mixed"]
+        )
 
         # Use test audio chunk
         audio_chunk = test_audio_data["silence_chunk"]
@@ -228,7 +225,7 @@ class TestAudioAnalysisService:
         expected_species = [call for call in test_species_data["mixed"] if call[1] >= 0.7]
         assert calls[0][0][0] == expected_species[0][0]  # Robin
         assert calls[0][0][1] == expected_species[0][1]  # 0.85
-        assert calls[1][0][0] == expected_species[1][0]  # Crow  
+        assert calls[1][0][0] == expected_species[1][0]  # Crow
         assert calls[1][0][1] == expected_species[1][1]  # 0.72
 
     @pytest.mark.asyncio
@@ -261,7 +258,12 @@ class TestAudioAnalysisService:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient")
     async def test_send_detection_event_audio_save_failure(
-        self, mock_async_client, audio_analysis_service, mock_file_manager, test_species_data, caplog
+        self,
+        mock_async_client,
+        audio_analysis_service,
+        mock_file_manager,
+        test_species_data,
+        caplog,
     ):
         """Should log an error and not send HTTP request if audio save fails."""
         mock_file_manager.save_detection_audio.side_effect = Exception("Audio save error")
@@ -368,15 +370,13 @@ class TestAudioAnalysisService:
 
         # Should not raise exception with empty detections
         await audio_analysis_service._analyze_audio_chunk(audio_chunk)
-        
+
         # Buffer should remain empty since no detections
         with audio_analysis_service.buffer_lock:
             assert len(audio_analysis_service.detection_buffer) == 0
 
     @pytest.mark.asyncio
-    async def test_analyze_audio_chunk__invalid_audio_format(
-        self, audio_analysis_service, caplog
-    ):
+    async def test_analyze_audio_chunk__invalid_audio_format(self, audio_analysis_service, caplog):
         """Should handle invalid audio format gracefully."""
         # Mock analysis client to raise specific audio format error
         audio_analysis_service.analysis_client.get_analysis_results.side_effect = ValueError(
@@ -390,30 +390,26 @@ class TestAudioAnalysisService:
 
         assert "Error during BirdNET analysis: Invalid audio format" in caplog.text
 
-    @pytest.mark.asyncio 
-    async def test_process_audio_chunk__empty_chunk(
-        self, audio_analysis_service
-    ):
+    @pytest.mark.asyncio
+    async def test_process_audio_chunk__empty_chunk(self, audio_analysis_service):
         """Should handle empty audio chunks gracefully."""
         initial_buffer_length = len(audio_analysis_service.audio_buffer)
-        
+
         # Process empty chunk
         await audio_analysis_service.process_audio_chunk(b"")
-        
+
         # Buffer length should remain unchanged
         assert len(audio_analysis_service.audio_buffer) == initial_buffer_length
 
     @pytest.mark.asyncio
-    async def test_process_audio_chunk__malformed_audio(
-        self, audio_analysis_service, caplog
-    ):
+    async def test_process_audio_chunk__malformed_audio(self, audio_analysis_service, caplog):
         """Should handle malformed audio data gracefully."""
         # Send malformed audio data that can't be processed
-        malformed_data = b"\xFF\xFF\xFF\xFF"  # Invalid audio data
-        
+        malformed_data = b"\xff\xff\xff\xff"  # Invalid audio data
+
         # Should not raise exception
         await audio_analysis_service.process_audio_chunk(malformed_data)
-        
+
         # Should still accumulate in buffer despite being malformed
         assert len(audio_analysis_service.audio_buffer) > 0
 
@@ -438,10 +434,10 @@ class TestDetectionBuffering:
         """Should stop the background buffer flush task cleanly."""
         # Verify task is running
         assert audio_analysis_service._flush_task.is_alive()
-        
+
         # Stop the task
         audio_analysis_service.stop_buffer_flush_task()
-        
+
         # Verify task is stopped
         assert audio_analysis_service._stop_flush_task
         # Task should stop within timeout
@@ -457,24 +453,24 @@ class TestDetectionBuffering:
             mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
                 "Connection failed", request=httpx.Request("POST", "http://test.com")
             )
-            
+
             # Clear buffer first
             with audio_analysis_service.buffer_lock:
                 audio_analysis_service.detection_buffer.clear()
-            
+
             species = "Test Species"
             confidence = 0.8
             raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
-            
+
             await audio_analysis_service._send_detection_event(species, confidence, raw_audio_bytes)
-            
+
             # Verify detection was buffered
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 buffered = list(audio_analysis_service.detection_buffer)[0]
                 assert buffered["species"] == species
                 assert buffered["confidence"] == confidence
-            
+
             assert "FastAPI unavailable, buffering detection" in caplog.text
             assert "Buffered detection event for Test Species (buffer size: 1)" in caplog.text
 
@@ -488,21 +484,21 @@ class TestDetectionBuffering:
             mock_client.return_value.__aenter__.return_value.post.side_effect = (
                 httpx.HTTPStatusError("Server Error", request=MagicMock(), response=mock_response)
             )
-            
+
             # Clear buffer first
             with audio_analysis_service.buffer_lock:
                 audio_analysis_service.detection_buffer.clear()
-            
+
             species = "Test Species"
             confidence = 0.8
             raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
-            
+
             await audio_analysis_service._send_detection_event(species, confidence, raw_audio_bytes)
-            
+
             # Verify detection was buffered
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
-            
+
             assert "FastAPI unavailable, buffering detection" in caplog.text
 
     async def test_send_detection_event_buffers_on_generic_exception(
@@ -514,21 +510,21 @@ class TestDetectionBuffering:
             mock_client.return_value.__aenter__.return_value.post.side_effect = Exception(
                 "Unexpected error"
             )
-            
+
             # Clear buffer first
             with audio_analysis_service.buffer_lock:
                 audio_analysis_service.detection_buffer.clear()
-            
+
             species = "Test Species"
             confidence = 0.8
             raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
-            
+
             await audio_analysis_service._send_detection_event(species, confidence, raw_audio_bytes)
-            
+
             # Verify detection was buffered
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
-            
+
             assert "Unexpected error sending detection, buffering" in caplog.text
 
     async def test_flush_detection_buffer__empty_buffer(self, audio_analysis_service, caplog):
@@ -536,9 +532,9 @@ class TestDetectionBuffering:
         # Clear buffer
         with audio_analysis_service.buffer_lock:
             audio_analysis_service.detection_buffer.clear()
-        
+
         await audio_analysis_service._flush_detection_buffer()
-        
+
         # Should not log anything for empty buffer
         assert "Attempting to flush" not in caplog.text
 
@@ -550,25 +546,25 @@ class TestDetectionBuffering:
             "confidence": 0.9,
             "timestamp": datetime.now().isoformat(),
         }
-        
+
         with audio_analysis_service.buffer_lock:
             audio_analysis_service.detection_buffer.append(test_detection)
-        
+
         with patch("httpx.AsyncClient") as mock_client:
             # Mock successful HTTP response
             mock_response = MagicMock()
             mock_response.raise_for_status = MagicMock()
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
-            
+
             await audio_analysis_service._flush_detection_buffer()
-            
+
             # Verify buffer is empty after successful flush
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 0
-            
+
             # Verify HTTP request was made
             mock_client.return_value.__aenter__.return_value.post.assert_called_once()
-            
+
             assert "Attempting to flush 1 buffered detections" in caplog.text
             assert "Successfully flushed 1 buffered detections" in caplog.text
 
@@ -580,40 +576,40 @@ class TestDetectionBuffering:
             {"species": "Crow", "confidence": 0.8, "timestamp": datetime.now().isoformat()},
             {"species": "Sparrow", "confidence": 0.7, "timestamp": datetime.now().isoformat()},
         ]
-        
+
         with audio_analysis_service.buffer_lock:
             audio_analysis_service.detection_buffer.clear()
             for detection in test_detections:
                 audio_analysis_service.detection_buffer.append(detection)
-        
+
         with patch("httpx.AsyncClient") as mock_client:
             # Mock mixed success/failure responses
             post_mock = mock_client.return_value.__aenter__.return_value.post
-            
+
             responses = []
             # First call succeeds
             success_response = MagicMock()
             success_response.raise_for_status = MagicMock()
             responses.append(success_response)
-            
+
             # Second call fails
             responses.append(httpx.RequestError("Connection failed", request=MagicMock()))
-            
+
             # Third call succeeds
             success_response2 = MagicMock()
             success_response2.raise_for_status = MagicMock()
             responses.append(success_response2)
-            
+
             post_mock.side_effect = responses
-            
+
             await audio_analysis_service._flush_detection_buffer()
-            
+
             # Verify one detection was re-buffered (the failed one)
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 rebuffered = list(audio_analysis_service.detection_buffer)[0]
                 assert rebuffered["species"] == "Crow"  # The middle one that failed
-            
+
             assert "Attempting to flush 3 buffered detections" in caplog.text
             assert "Successfully flushed 2 buffered detections" in caplog.text
             assert "Re-buffered 1 failed detections" in caplog.text
@@ -626,25 +622,25 @@ class TestDetectionBuffering:
             "confidence": 0.9,
             "timestamp": datetime.now().isoformat(),
         }
-        
+
         with audio_analysis_service.buffer_lock:
             audio_analysis_service.detection_buffer.clear()
             audio_analysis_service.detection_buffer.append(test_detection)
-        
+
         with patch("httpx.AsyncClient") as mock_client:
             # Mock HTTP failure
-            mock_client.return_value.__aenter__.return_value.post.side_effect = (
-                httpx.RequestError("Connection failed", request=MagicMock())
+            mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
+                "Connection failed", request=MagicMock()
             )
-            
+
             await audio_analysis_service._flush_detection_buffer()
-            
+
             # Verify detection was re-buffered
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 rebuffered = list(audio_analysis_service.detection_buffer)[0]
                 assert rebuffered["species"] == "Robin"
-            
+
             assert "Attempting to flush 1 buffered detections" in caplog.text
             assert "Re-buffered 1 failed detections" in caplog.text
             assert "Successfully flushed" not in caplog.text  # No successful flushes
@@ -659,29 +655,31 @@ class TestDetectionBuffering:
             "confidence": 0.9,
             "timestamp": datetime.now().isoformat(),
         }
-        
+
         with audio_analysis_service.buffer_lock:
             audio_analysis_service.detection_buffer.clear()
             audio_analysis_service.detection_buffer.append(test_detection)
-        
+
         with patch("httpx.AsyncClient") as mock_client:
             # Mock unexpected exception
             mock_client.return_value.__aenter__.return_value.post.side_effect = Exception(
                 "Unexpected error"
             )
-            
+
             await audio_analysis_service._flush_detection_buffer()
-            
+
             # Verify detection was re-buffered
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
-            
+
             assert "Attempting to flush 1 buffered detections" in caplog.text
             assert "Unexpected error flushing detection" in caplog.text
             assert "Re-buffered 1 failed detections" in caplog.text
 
     @patch("birdnetpi.services.audio_analysis_service.BirdDetectionService")
-    async def test_detection_buffer_max_size_enforcement(self, mock_analysis_client_class, audio_analysis_service):
+    async def test_detection_buffer_max_size_enforcement(
+        self, mock_analysis_client_class, audio_analysis_service
+    ):
         """Should enforce maximum buffer size by evicting oldest detections."""
         # Mock the BirdDetectionService constructor
         mock_analysis_client = MagicMock()
@@ -694,10 +692,10 @@ class TestDetectionBuffering:
             audio_analysis_service.file_path_resolver,
             audio_analysis_service.config,
             detection_buffer_max_size=max_size,
-            buffer_flush_interval=1.0
+            buffer_flush_interval=1.0,
         )
         service.analysis_client = mock_analysis_client
-        
+
         # Add more detections than max size
         with service.buffer_lock:
             for i in range(max_size + 3):
@@ -707,7 +705,7 @@ class TestDetectionBuffering:
                     "timestamp": datetime.now().isoformat(),
                 }
                 service.detection_buffer.append(detection)
-        
+
         # Verify buffer respects max size
         with service.buffer_lock:
             assert len(service.detection_buffer) == max_size
@@ -715,13 +713,13 @@ class TestDetectionBuffering:
             latest_species = [d["species"] for d in service.detection_buffer]
             assert "Species_3" in latest_species  # Should keep recent ones
             assert "Species_0" not in latest_species  # Should have evicted oldest
-        
+
         service.stop_buffer_flush_task()
 
     async def test_buffer_thread_safety(self, audio_analysis_service):
         """Should handle concurrent buffer operations safely."""
         results = []
-        
+
         def add_detections(thread_id: int):
             """Add detections from a thread."""
             try:
@@ -737,31 +735,31 @@ class TestDetectionBuffering:
                 results.append(f"thread_{thread_id}_success")
             except Exception as e:
                 results.append(f"thread_{thread_id}_error_{e}")
-        
+
         # Clear buffer first
         with audio_analysis_service.buffer_lock:
             audio_analysis_service.detection_buffer.clear()
-        
+
         # Start multiple threads adding to buffer
         threads = []
         for i in range(3):
             thread = threading.Thread(target=add_detections, args=(i,))
             threads.append(thread)
             thread.start()
-        
+
         # Wait for all threads to complete
         for thread in threads:
             thread.join(timeout=1.0)
-        
+
         # Verify all threads completed successfully
         assert len(results) == 3
         assert all("success" in result for result in results)
-        
+
         # Verify buffer contains detections from all threads
         with audio_analysis_service.buffer_lock:
             buffer_size = len(audio_analysis_service.detection_buffer)
             species_list = [d["species"] for d in audio_analysis_service.detection_buffer]
-        
+
         # Should have some detections (might be less than 30 due to buffer size limit)
         assert buffer_size > 0
         # Should have detections from multiple threads
@@ -772,31 +770,31 @@ class TestDetectionBuffering:
         """Should automatically flush buffer in background with working FastAPI."""
         # Use faster flush interval for testing
         audio_analysis_service.flush_interval = 0.1
-        
+
         with patch("httpx.AsyncClient") as mock_client:
             # Mock successful HTTP response
             mock_response = MagicMock()
             mock_response.raise_for_status = MagicMock()
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
-            
+
             # Add detection to buffer
             test_detection = {
                 "species": "Robin",
                 "confidence": 0.9,
                 "timestamp": datetime.now().isoformat(),
             }
-            
+
             with audio_analysis_service.buffer_lock:
                 audio_analysis_service.detection_buffer.clear()
                 audio_analysis_service.detection_buffer.append(test_detection)
-            
+
             # Wait for background flush to occur
             await asyncio.sleep(0.2)
-            
+
             # Buffer should be empty after automatic flush
             with audio_analysis_service.buffer_lock:
                 buffer_size = len(audio_analysis_service.detection_buffer)
-            
+
             assert buffer_size == 0
             assert "Successfully flushed 1 buffered detections" in caplog.text
 
@@ -804,47 +802,47 @@ class TestDetectionBuffering:
         """Should keep retrying buffered detections in background when FastAPI fails."""
         # Use faster flush interval for testing
         audio_analysis_service.flush_interval = 0.1
-        
+
         with patch("httpx.AsyncClient") as mock_client:
             # Mock HTTP failure initially
-            mock_client.return_value.__aenter__.return_value.post.side_effect = (
-                httpx.RequestError("Connection failed", request=MagicMock())
+            mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
+                "Connection failed", request=MagicMock()
             )
-            
+
             # Add detection to buffer
             test_detection = {
-                "species": "Robin", 
+                "species": "Robin",
                 "confidence": 0.9,
                 "timestamp": datetime.now().isoformat(),
             }
-            
+
             with audio_analysis_service.buffer_lock:
                 audio_analysis_service.detection_buffer.clear()
                 audio_analysis_service.detection_buffer.append(test_detection)
-            
+
             # Wait for first flush attempt (should fail)
             await asyncio.sleep(0.2)
-            
+
             # Buffer should still contain the detection
             with audio_analysis_service.buffer_lock:
                 buffer_size = len(audio_analysis_service.detection_buffer)
-            
+
             assert buffer_size == 1
             assert "Re-buffered 1 failed detections" in caplog.text
-            
+
             # Now mock successful response
             mock_response = MagicMock()
             mock_response.raise_for_status = MagicMock()
             mock_client.return_value.__aenter__.return_value.post.side_effect = None
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
-            
+
             # Wait for another flush attempt (should succeed)
             await asyncio.sleep(0.2)
-            
+
             # Buffer should now be empty
             with audio_analysis_service.buffer_lock:
                 buffer_size = len(audio_analysis_service.detection_buffer)
-            
+
             assert buffer_size == 0
             assert "Successfully flushed 1 buffered detections" in caplog.text
 
@@ -864,53 +862,55 @@ class TestDetectionBufferingIntegration:
         audio_analysis_service.analysis_client.get_analysis_results.return_value = [
             ("Robin", 0.85),
         ]
-        
+
         # Mock file manager
         audio_analysis_service.file_manager.save_detection_audio.return_value = MagicMock(
             file_path="/mock/audio.wav",
             duration=3.0,
             size_bytes=1000,
         )
-        
+
         with patch("httpx.AsyncClient") as mock_client:
             # First, simulate FastAPI unavailable
-            mock_client.return_value.__aenter__.return_value.post.side_effect = (
-                httpx.RequestError("Connection failed", request=MagicMock())
+            mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
+                "Connection failed", request=MagicMock()
             )
-            
+
             # Clear buffer
             with audio_analysis_service.buffer_lock:
                 audio_analysis_service.detection_buffer.clear()
-            
+
             # Process audio that triggers detection
             audio_chunk = np.ones(48000 * 3, dtype=np.float32) * 0.1  # 3 seconds of low-level audio
             await audio_analysis_service._analyze_audio_chunk(audio_chunk)
-            
+
             # Verify detection was buffered
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 buffered = list(audio_analysis_service.detection_buffer)[0]
                 assert buffered["species"] == "Robin"
                 assert buffered["confidence"] == 0.85
-            
+
             assert "Buffered detection event for Robin" in caplog.text
-            
+
             # Now simulate FastAPI becomes available
             mock_response = MagicMock()
             mock_response.raise_for_status = MagicMock()
             mock_client.return_value.__aenter__.return_value.post.side_effect = None
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
-            
+
             # Manually trigger flush (simulating background flush)
             await audio_analysis_service._flush_detection_buffer()
-            
+
             # Verify buffer is empty after flush
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 0
-            
+
             assert "Successfully flushed 1 buffered detections" in caplog.text
 
-    async def test_mixed_success__failure_detection_processing(self, audio_analysis_service, caplog):
+    async def test_mixed_success__failure_detection_processing(
+        self, audio_analysis_service, caplog
+    ):
         """Should handle mixed scenarios where some detections succeed and others buffer."""
         # Mock analysis to return multiple detections
         audio_analysis_service.analysis_client.get_analysis_results.return_value = [
@@ -918,49 +918,49 @@ class TestDetectionBufferingIntegration:
             ("Crow", 0.75),
             ("Sparrow", 0.80),
         ]
-        
+
         # Mock file manager
         audio_analysis_service.file_manager.save_detection_audio.return_value = MagicMock(
             file_path="/mock/audio.wav",
             duration=3.0,
             size_bytes=1000,
         )
-        
+
         with patch("httpx.AsyncClient") as mock_client:
             post_mock = mock_client.return_value.__aenter__.return_value.post
-            
+
             # Mock responses: success, failure, success
             responses = []
-            
+
             # First detection succeeds
             success_response = MagicMock()
             success_response.raise_for_status = MagicMock()
             responses.append(success_response)
-            
+
             # Second detection fails
             responses.append(httpx.RequestError("Connection failed", request=MagicMock()))
-            
-            # Third detection succeeds  
+
+            # Third detection succeeds
             success_response2 = MagicMock()
             success_response2.raise_for_status = MagicMock()
             responses.append(success_response2)
-            
+
             post_mock.side_effect = responses
-            
+
             # Clear buffer
             with audio_analysis_service.buffer_lock:
                 audio_analysis_service.detection_buffer.clear()
-            
+
             # Process audio that triggers detections
             audio_chunk = np.ones(48000 * 3, dtype=np.float32) * 0.1
             await audio_analysis_service._analyze_audio_chunk(audio_chunk)
-            
+
             # Verify only failed detection was buffered
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 buffered = list(audio_analysis_service.detection_buffer)[0]
                 assert buffered["species"] == "Crow"
-            
+
             # Verify successful sends were logged
             assert "Detection event sent: Robin" in caplog.text
             assert "Detection event sent: Sparrow" in caplog.text

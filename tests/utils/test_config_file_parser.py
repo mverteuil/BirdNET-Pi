@@ -265,7 +265,6 @@ class TestConfigFileParserAdvancedLoading:
         assert config.longitude == 0.0
         assert config.model == "BirdNET_GLOBAL_6K_V2.4_Model_FP16"
         assert config.species_confidence_threshold == 0.03
-        assert config.confidence == 0.7
         assert config.sensitivity_setting == 1.25
 
 
@@ -428,9 +427,8 @@ class TestConfigFileEnsureExists:
             "latitude": 0.0,
             "longitude": 0.0,
             "model": "BirdNET_GLOBAL_6K_V2.4_Model_FP16",
-            "sf_thresh": 0.03,
-            "confidence": 0.7,
-            "sensitivity": 1.25,
+            "species_confidence_threshold": 0.03,
+            "sensitivity_setting": 1.25,
         }
         assert content == expected_minimal
 

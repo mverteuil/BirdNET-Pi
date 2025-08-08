@@ -156,7 +156,7 @@ class AudioAnalysisService:
 
             # Process results and send detection events for confident detections
             for species, confidence in results:
-                if confidence >= self.config.confidence:
+                if confidence >= self.config.species_confidence_threshold:
                     # Convert audio chunk back to bytes for saving
                     audio_bytes = (audio_chunk * 32767).astype(np.int16).tobytes()
                     await self._send_detection_event(species, confidence, audio_bytes)
@@ -201,7 +201,7 @@ class AudioAnalysisService:
             "spectrogram_path": None,
             "latitude": self.config.latitude,
             "longitude": self.config.longitude,
-            "species_confidence_threshold": self.config.confidence,
+            "species_confidence_threshold": self.config.species_confidence_threshold,
             "week": current_week,
             "sensitivity_setting": self.config.sensitivity_setting,
             "overlap": 0.5,  # Fixed overlap from buffer processing

@@ -352,7 +352,7 @@ def test_get_todays_detections(reporting_manager, detection_manager_no_ioc):
     """Should retrieve detections for the current day."""
     # Replace the detection_manager in the reporting_manager with non-IOC version
     reporting_manager.detection_manager = detection_manager_no_ioc
-    
+
     today = datetime.date(2025, 7, 15)
 
     with patch(
@@ -362,6 +362,7 @@ def test_get_todays_detections(reporting_manager, detection_manager_no_ioc):
 
         # Create mock Detection objects
         import uuid
+
         from birdnetpi.models.database_models import Detection
 
         mock_detections = [

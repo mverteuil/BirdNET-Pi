@@ -56,7 +56,7 @@ class TestAdminAPIRoutes:
 site_name: "Test BirdNET-Pi"
 latitude: 40.7128
 longitude: -74.0060
-confidence: 0.7
+species_confidence_threshold: 0.03
         """
 
         response = client.post("/admin/config/validate", json={"yaml_content": valid_yaml})
@@ -100,7 +100,7 @@ invalid_yaml: [unclosed bracket
 site_name: "New Test Site"
 latitude: 41.0
 longitude: -75.0
-confidence: 0.8
+species_confidence_threshold: 0.05
         """
 
         response = client.post("/admin/config/save", json={"yaml_content": new_yaml})

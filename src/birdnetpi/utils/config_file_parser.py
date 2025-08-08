@@ -58,11 +58,7 @@ class ConfigFileParser:
             species_confidence_threshold=float(
                 config_data.get("species_confidence_threshold", config_data.get("sf_thresh", 0.03))
             ),
-            confidence=float(config_data.get("confidence", 0.7)),
             sensitivity_setting=float(config_data.get("sensitivity", 1.25)),
-            week=int(config_data.get("week", 0)),
-            audio_format=config_data.get("audio_format", "mp3"),
-            extraction_length=float(config_data.get("extraction_length", 6.0)),
             birdweather_id=config_data.get("birdweather_id", ""),
             apprise_input=config_data.get("apprise_input", ""),
             apprise_notification_title=config_data.get("apprise_notification_title", ""),
@@ -131,11 +127,7 @@ class ConfigFileParser:
             "model": config.model,
             "metadata_model": config.metadata_model,
             "species_confidence_threshold": config.species_confidence_threshold,
-            "confidence": config.confidence,
             "sensitivity_setting": config.sensitivity_setting,
-            "week": config.week,
-            "audio_format": config.audio_format,
-            "extraction_length": config.extraction_length,
             "birdweather_id": config.birdweather_id,
             "apprise_input": config.apprise_input,
             "apprise_notification_title": config.apprise_notification_title,
@@ -250,9 +242,8 @@ class ConfigFileParser:
                     "latitude": 0.0,
                     "longitude": 0.0,
                     "model": "BirdNET_GLOBAL_6K_V2.4_Model_FP16",
-                    "sf_thresh": 0.03,
-                    "confidence": 0.7,
-                    "sensitivity": 1.25,
+                    "species_confidence_threshold": 0.03,
+                    "sensitivity_setting": 1.25,
                 }
                 with open(config_path, "w") as f:
                     yaml.safe_dump(minimal_config, f, sort_keys=False)
