@@ -108,6 +108,9 @@ class ConfigFileParser:
             mqtt_client_id=config_data.get("mqtt_client_id", "birdnet-pi"),
             enable_webhooks=bool(config_data.get("enable_webhooks", False)),
             webhook_urls=self._parse_webhook_urls(config_data.get("webhook_urls", [])),
+            # Git settings
+            git_remote=config_data.get("git_remote", "origin"),
+            git_branch=config_data.get("git_branch", "main"),
             # Logging configuration
             logging=self._parse_logging_config(logging_section),
         )
@@ -162,6 +165,9 @@ class ConfigFileParser:
             "mqtt_client_id": config.mqtt_client_id,
             "enable_webhooks": config.enable_webhooks,
             "webhook_urls": config.webhook_urls,
+            # Git settings
+            "git_remote": config.git_remote,
+            "git_branch": config.git_branch,
         }
 
         # Data paths are now managed by FilePathResolver via environment variables

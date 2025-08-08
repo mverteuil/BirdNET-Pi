@@ -76,3 +76,7 @@ mqtt_client_id: birdnet-pi
 enable_webhooks: false
 webhook_urls: []  # List of webhook URLs, e.g., ["http://example.com/webhook", "http://another.com/hook"]
 webhook_events: detection,health,gps,system
+
+# Git Update Settings
+git_remote: origin  # Git remote name for updates
+git_branch: main    # Git branch name for updates

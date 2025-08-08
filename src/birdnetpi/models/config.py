@@ -100,13 +100,9 @@ class BirdNETConfig:
     webhook_urls: list[str] = field(default_factory=list)  # List of webhook URLs
     webhook_events: str = "detection,health,gps,system"  # Events to send via webhooks
 
-
-@dataclass
-class GitUpdateConfig:
-    """Configuration for Git repository updates."""
-
-    remote: str = "origin"
-    branch: str = "main"
+    # Git Update settings
+    git_remote: str = "origin"  # Git remote name for updates
+    git_branch: str = "main"  # Git branch name for updates
 
 
 @dataclass

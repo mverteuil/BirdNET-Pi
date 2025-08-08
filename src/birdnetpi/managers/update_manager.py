@@ -9,7 +9,7 @@ from typing import Any
 import httpx
 from tqdm import tqdm
 
-from birdnetpi.models.config import GitUpdateConfig
+from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
@@ -52,7 +52,7 @@ class UpdateManager:
             print(f"An unexpected error occurred: {e}")
             return -1  # Indicate an error
 
-    def update_birdnet(self, config: GitUpdateConfig) -> None:
+    def update_birdnet(self, config: BirdNETConfig) -> None:
         """Update the BirdNET-Pi repository to the latest version."""
         try:
             # Get current HEAD hash
@@ -72,7 +72,7 @@ class UpdateManager:
 
             # Fetches latest changes
             subprocess.run(
-                ["git", "-C", self.repo_path, "fetch", config.remote, config.branch],
+                ["git", "-C", self.repo_path, "fetch", config.git_remote, config.git_branch],
                 check=True,
                 capture_output=True,
             )
@@ -85,9 +85,9 @@ class UpdateManager:
                     self.repo_path,
                     "switch",
                     "-C",
-                    config.branch,
+                    config.git_branch,
                     "--track",
-                    f"{config.remote}/{config.branch}",
+                    f"{config.git_remote}/{config.git_branch}",
                 ],
                 check=True,
                 capture_output=True,

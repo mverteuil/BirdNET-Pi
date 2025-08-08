@@ -5,7 +5,7 @@ import httpx
 import pytest
 
 from birdnetpi.managers.update_manager import UpdateManager
-from birdnetpi.models.config import GitUpdateConfig
+from birdnetpi.models.config import BirdNETConfig
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def update_manager(tmp_path):
 @patch("birdnetpi.managers.update_manager.subprocess.run")
 def test_update_birdnet(mock_run, update_manager):
     """Should update BirdNET successfully."""
-    config = GitUpdateConfig()
+    config = BirdNETConfig()
     update_manager.update_birdnet(config)
     assert mock_run.call_count == 12
 
