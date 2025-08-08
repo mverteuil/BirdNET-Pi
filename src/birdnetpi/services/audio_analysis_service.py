@@ -4,6 +4,7 @@ import logging
 import threading
 import time
 from collections import deque
+from datetime import UTC
 from typing import Any
 
 import httpx
@@ -146,7 +147,7 @@ class AudioAnalysisService:
         """Analyze an audio chunk using BirdNET and send detection events."""
         try:
             # Get current week for species filtering
-            current_week = datetime.datetime.now().isocalendar()[1]
+            current_week = datetime.datetime.now(UTC).isocalendar()[1]
 
             # Perform BirdNET analysis
             results = self.analysis_client.get_analysis_results(
@@ -173,7 +174,7 @@ class AudioAnalysisService:
     ) -> None:
         """Send a detection event to the FastAPI application."""
         # Get relative path for the audio file
-        timestamp = datetime.datetime.now()
+        timestamp = datetime.datetime.now(UTC)
         current_week = timestamp.isocalendar()[1]
         relative_audio_file_path = self.file_path_resolver.get_detection_audio_path(
             species, timestamp

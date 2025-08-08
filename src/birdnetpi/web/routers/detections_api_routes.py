@@ -1,5 +1,5 @@
 import logging
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -112,7 +112,7 @@ async def get_detection_count(
     """Get detection count for a specific date (defaults to today)."""
     try:
         if target_date is None:
-            target_date = datetime.now().date()
+            target_date = datetime.now(UTC).date()
 
         count = detection_manager.get_detections_count_by_date(target_date)
         return JSONResponse({"date": target_date.isoformat(), "count": count})
@@ -175,7 +175,7 @@ async def get_detection(
         # Try to get IOC-enhanced data first
         if include_ioc and detection_manager.detection_query_service:
             try:
-                # Convert int detection_id to UUID format - assuming detection_id is actually a UUID string
+                # Convert int detection_id to UUID format
                 from uuid import UUID
 
                 detection_uuid = (

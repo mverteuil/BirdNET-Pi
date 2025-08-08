@@ -2,6 +2,7 @@
 
 import datetime
 import logging
+from datetime import UTC
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Form, Request, Response
@@ -247,7 +248,7 @@ async def test_detection(
         confidence=confidence,
         timestamp=datetime.datetime.fromisoformat(timestamp)
         if timestamp
-        else datetime.datetime.now(),
+        else datetime.datetime.now(UTC),
         audio_file_path=audio_file_path,
         duration=duration,
         size_bytes=size_bytes,

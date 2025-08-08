@@ -1,5 +1,6 @@
 import datetime
 import random
+from datetime import UTC
 
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.models.detection_event import DetectionEvent
@@ -24,7 +25,7 @@ def generate_dummy_detections(
     ]
 
     for _ in range(num_detections):
-        timestamp = datetime.datetime.now() - datetime.timedelta(
+        timestamp = datetime.datetime.now(UTC) - datetime.timedelta(
             days=random.randint(0, 30),
             hours=random.randint(0, 23),
             minutes=random.randint(0, 59),

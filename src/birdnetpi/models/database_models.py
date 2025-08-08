@@ -51,7 +51,7 @@ class Detection(Base):
 
     # Detection metadata
     confidence = Column(Float)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.utcnow(), index=True)
     audio_file_id = Column(GUID(), ForeignKey("audio_files.id"), unique=True)
     audio_file = relationship("AudioFile", backref=backref("detection", uselist=False))
 
