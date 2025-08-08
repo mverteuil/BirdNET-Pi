@@ -334,14 +334,16 @@ class ReportingManager:
                 # If no detections for today, get the most recent day's detections
                 if not todays_detections and detections_with_ioc:
                     # Find the most recent date with detections
-                    latest_date = max(d.timestamp.date() for d in detections_with_ioc)
-                    start_datetime = datetime.datetime.combine(latest_date, datetime.time.min)
-                    end_datetime = datetime.datetime.combine(latest_date, datetime.time.max)
-                    todays_detections = [
-                        d
-                        for d in detections_with_ioc
-                        if start_datetime <= d.timestamp <= end_datetime
-                    ]
+                    detection_dates = [d.timestamp.date() for d in detections_with_ioc]
+                    if detection_dates:
+                        latest_date = max(detection_dates)
+                        start_datetime = datetime.datetime.combine(latest_date, datetime.time.min)
+                        end_datetime = datetime.datetime.combine(latest_date, datetime.time.max)
+                        todays_detections = [
+                            d
+                            for d in detections_with_ioc
+                            if start_datetime <= d.timestamp <= end_datetime
+                        ]
 
                 # Convert DetectionWithIOCData objects to dictionaries
                 return [
@@ -376,19 +378,23 @@ class ReportingManager:
         # If no detections for today, get the most recent day's detections for demo purposes
         if not todays_detections and all_detections:
             # Find the most recent date with detections
-            latest_date = max(
-                cast(datetime.datetime, d.timestamp).date()
-                for d in all_detections
+            valid_detections = [
+                d for d in all_detections 
                 if isinstance(d.timestamp, datetime.datetime)
-            )
-            start_datetime = datetime.datetime.combine(latest_date, datetime.time.min)
-            end_datetime = datetime.datetime.combine(latest_date, datetime.time.max)
-            todays_detections = [
-                d
-                for d in all_detections
-                if isinstance(d.timestamp, datetime.datetime)
-                and start_datetime <= d.timestamp <= end_datetime
             ]
+            if valid_detections:
+                latest_date = max(
+                    cast(datetime.datetime, d.timestamp).date()
+                    for d in valid_detections
+                )
+                start_datetime = datetime.datetime.combine(latest_date, datetime.time.min)
+                end_datetime = datetime.datetime.combine(latest_date, datetime.time.max)
+                todays_detections = [
+                    d
+                    for d in all_detections
+                    if isinstance(d.timestamp, datetime.datetime)
+                    and start_datetime <= d.timestamp <= end_datetime
+                ]
 
         # Convert Detection objects to dictionaries matching the template expectations
         return [
