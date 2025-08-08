@@ -48,7 +48,6 @@ timezone: UTC
 
 # Species Filtering
 apprise_only_notify_species_names: ""
-apprise_only_notify_species_names_2: ""
 
 # Field Mode and GPS Settings
 enable_gps: false

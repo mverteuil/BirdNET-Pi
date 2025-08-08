@@ -36,7 +36,6 @@ def config_file(tmp_path):
         "database_lang": "fr",
         "timezone": "Europe/Paris",
         "apprise_only_notify_species_names": "test_species",
-        "apprise_only_notify_species_names_2": "test_species_2",
     }
     path = tmp_path / "test_config.yaml"
     with open(path, "w") as f:

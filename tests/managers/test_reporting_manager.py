@@ -69,7 +69,6 @@ def mock_config():
     mock.database_lang = "en"
     mock.timezone = "UTC"
     mock.apprise_only_notify_species_names = ""
-    mock.apprise_only_notify_species_names_2 = ""
     mock.database = MagicMock(path="/tmp/test.db")  # Mock database path
     return mock
 

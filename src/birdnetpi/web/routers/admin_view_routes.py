@@ -83,7 +83,6 @@ async def post_settings(
     timezone: str = Form("UTC"),
     # Species Filtering
     apprise_only_notify_species_names: str = Form(""),
-    apprise_only_notify_species_names_2: str = Form(""),
     # Field Mode and GPS
     enable_gps: bool = Form(False),
     gps_update_interval: float = Form(5.0),
@@ -148,7 +147,6 @@ async def post_settings(
         timezone=timezone,
         # Species Filtering
         apprise_only_notify_species_names=apprise_only_notify_species_names,
-        apprise_only_notify_species_names_2=apprise_only_notify_species_names_2,
         # Field Mode and GPS
         enable_gps=enable_gps,
         gps_update_interval=gps_update_interval,

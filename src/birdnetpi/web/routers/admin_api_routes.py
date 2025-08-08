@@ -72,9 +72,6 @@ async def validate_yaml_config(
             apprise_only_notify_species_names=config_data.get(
                 "apprise_only_notify_species_names", ""
             ),
-            apprise_only_notify_species_names_2=config_data.get(
-                "apprise_only_notify_species_names_2", ""
-            ),
             audio_device_index=int(config_data.get("audio_device_index", -1)),
             sample_rate=int(config_data.get("sample_rate", 48000)),
             audio_channels=int(config_data.get("audio_channels", 1)),

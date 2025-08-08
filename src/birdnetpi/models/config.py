@@ -46,11 +46,12 @@ class BirdNETConfig:
 
     # Notifications
     apprise_input: str = ""  # This will store the raw apprise config URLs
-    apprise_notification_title: str = ""
     apprise_notification_body: str = ""
+    apprise_notification_title: str = ""
     apprise_notify_each_detection: bool = False
     apprise_notify_new_species: bool = False
     apprise_notify_new_species_each_day: bool = False
+    apprise_only_notify_species_names: str = ""  # comma separated string
     apprise_weekly_report: bool = False
     minimum_time_limit: int = 0  # Assuming seconds, integer
 
@@ -62,10 +63,6 @@ class BirdNETConfig:
     language: str = "en"  # Language code for database and species name translation
     species_display_mode: str = "full"  # Options: "full", "common_name", "scientific_name"
     timezone: str = "UTC"  # Default from SystemUtils
-
-    # Species filtering
-    apprise_only_notify_species_names: str = ""  # comma separated string
-    apprise_only_notify_species_names_2: str = ""  # comma separated string
 
     # Field mode and GPS settings
     enable_gps: bool = False  # Enable GPS tracking for field deployments
