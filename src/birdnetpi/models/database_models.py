@@ -47,8 +47,7 @@ class Detection(Base):
     # Species identification (parsed from tensor output)
     species_tensor = Column(String, index=True)  # Raw tensor output: "Scientific_name_Common Name"
     scientific_name = Column(String(80), index=True)  # Parsed: "Genus species" (IOC primary key)
-    common_name_tensor = Column(String(100))  # Common name extracted from tensor
-    common_name_ioc = Column(String(100))  # IOC standardized common name
+    common_name = Column(String(100))  # Common name (IOC preferred, tensor fallback)
 
     # Detection metadata
     confidence = Column(Float)
@@ -59,16 +58,16 @@ class Detection(Base):
     # Location and analysis parameters
     latitude = Column(Float)
     longitude = Column(Float)
-    cutoff = Column(Float)  # Species confidence threshold
+    species_confidence_threshold = Column(Float)  # Species confidence threshold
     week = Column(Integer)
-    sensitivity = Column(Float)  # Analysis sensitivity setting
+    sensitivity_setting = Column(Float)  # Analysis sensitivity setting
     overlap = Column(
         Float
     )  # Audio analysis window overlap (0.0-1.0) for signal processing continuity
 
     def get_display_name(self) -> str:
         """Get the best available species display name."""
-        return str((self.common_name_ioc or self.common_name_tensor) or self.scientific_name)
+        return str(self.common_name or self.scientific_name)
 
     # Indexes for JOIN performance optimization
     __table_args__ = (

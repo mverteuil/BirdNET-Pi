@@ -178,9 +178,9 @@ class WebhookService:
                 if detection.latitude is not None and detection.longitude is not None
                 else None,
                 "analysis": {
-                    "species_confidence_threshold": detection.cutoff,
+                    "species_confidence_threshold": detection.species_confidence_threshold,
                     "week": detection.week,
-                    "sensitivity_setting": detection.sensitivity,
+                    "sensitivity_setting": detection.sensitivity_setting,
                     "overlap": detection.overlap,
                 },
             },

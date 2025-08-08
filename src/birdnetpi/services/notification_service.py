@@ -88,8 +88,8 @@ class NotificationService:
         notification_data = {
             "type": "detection",
             "detection": {
-                "species": (detection.common_name_ioc or detection.common_name_tensor),
-                "common_name": (detection.common_name_ioc or detection.common_name_tensor),
+                "species": detection.common_name,
+                "common_name": detection.common_name,
                 "scientific_name": detection.scientific_name,
                 "confidence": detection.confidence,
                 "datetime": detection.timestamp.isoformat() if detection.timestamp else None,

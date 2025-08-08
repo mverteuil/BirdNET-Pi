@@ -56,9 +56,9 @@ class ReportingManager:
                         "confidence": d.confidence,
                         "latitude": d.detection.latitude,
                         "longitude": d.detection.longitude,
-                        "species_confidence_threshold": d.detection.cutoff,
+                        "species_confidence_threshold": d.detection.species_confidence_threshold,
                         "week": d.detection.week,
-                        "sensitivity_setting": d.detection.sensitivity,
+                        "sensitivity_setting": d.detection.sensitivity_setting,
                         "overlap": d.detection.overlap,
                         "ioc_english_name": d.ioc_english_name,
                         "translated_name": d.translated_name,
@@ -78,7 +78,7 @@ class ReportingManager:
             detections = self.detection_manager.get_all_detections()
             data = [
                 {
-                    "common_name": (d.common_name_ioc or d.common_name_tensor) or "",
+                    "common_name": d.common_name or "",
                     "datetime": d.timestamp,
                     "date": d.timestamp.strftime("%Y-%m-%d"),
                     "time": d.timestamp.strftime("%H:%M:%S"),
@@ -86,9 +86,9 @@ class ReportingManager:
                     "confidence": d.confidence,
                     "latitude": d.latitude,
                     "longitude": d.longitude,
-                    "species_confidence_threshold": d.cutoff,
+                    "species_confidence_threshold": d.species_confidence_threshold,
                     "week": d.week,
-                    "sensitivity_setting": d.sensitivity,
+                    "sensitivity_setting": d.sensitivity_setting,
                     "overlap": d.overlap,
                 }
                 for d in detections
@@ -402,7 +402,7 @@ class ReportingManager:
                 "date": d.timestamp.strftime("%Y-%m-%d") if d.timestamp else "",
                 "time": d.timestamp.strftime("%H:%M:%S") if d.timestamp else "",
                 "scientific_name": d.scientific_name or "",
-                "common_name": (d.common_name_ioc or d.common_name_tensor) or "",
+                "common_name": d.common_name or "",
                 "confidence": d.confidence or 0,
                 "latitude": d.latitude or "",
                 "longitude": d.longitude or "",

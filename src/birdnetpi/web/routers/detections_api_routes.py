@@ -87,7 +87,7 @@ async def get_recent_detections(
                 {
                     "id": detection.id,
                     "scientific_name": detection.scientific_name,
-                    "common_name": (detection.common_name_ioc or detection.common_name_tensor),
+                    "common_name": detection.common_name,
                     "confidence": detection.confidence,
                     "timestamp": detection.timestamp.isoformat(),
                     "latitude": detection.latitude,
@@ -197,9 +197,9 @@ async def get_detection(
                         "timestamp": detection_with_ioc.timestamp.isoformat(),
                         "latitude": detection_with_ioc.detection.latitude,
                         "longitude": detection_with_ioc.detection.longitude,
-                        "species_confidence_threshold": detection_with_ioc.detection.cutoff,
+                        "species_confidence_threshold": detection_with_ioc.detection.species_confidence_threshold,
                         "week": detection_with_ioc.detection.week,
-                        "sensitivity_setting": detection_with_ioc.detection.sensitivity,
+                        "sensitivity_setting": detection_with_ioc.detection.sensitivity_setting,
                         "overlap": detection_with_ioc.detection.overlap,
                         "ioc_english_name": detection_with_ioc.ioc_english_name,
                         "translated_name": detection_with_ioc.translated_name,
@@ -221,14 +221,14 @@ async def get_detection(
         detection_data = {
             "id": detection.id,
             "scientific_name": detection.scientific_name,
-            "common_name": (detection.common_name_ioc or detection.common_name_tensor),
+            "common_name": detection.common_name,
             "confidence": detection.confidence,
             "timestamp": detection.timestamp.isoformat(),
             "latitude": detection.latitude,
             "longitude": detection.longitude,
-            "species_confidence_threshold": detection.cutoff,
+            "species_confidence_threshold": detection.species_confidence_threshold,
             "week": detection.week,
-            "sensitivity_setting": detection.sensitivity,
+            "sensitivity_setting": detection.sensitivity_setting,
             "overlap": detection.overlap,
         }
         return JSONResponse(detection_data)

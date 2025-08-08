@@ -344,13 +344,12 @@ def test_get_most_recent_detections(detection_manager):
     mock_detection.species_tensor = "Turdus merula_Common Blackbird"
     mock_detection.scientific_name = "Turdus merula"
     mock_detection.common_name = "Common Blackbird"
-    mock_detection.common_name = "Common Blackbird"
     mock_detection.confidence = 0.9
     mock_detection.latitude = 1.0
     mock_detection.longitude = 2.0
-    mock_detection.cutoff = 0.5
+    mock_detection.species_confidence_threshold = 0.5
     mock_detection.week = 1
-    mock_detection.sensitivity = 1.0
+    mock_detection.sensitivity_setting = 1.0
     mock_detection.overlap = 0.0
     mock_db_session.query.return_value.order_by.return_value.limit.return_value.all.return_value = [
         mock_detection
@@ -396,7 +395,6 @@ def test_get_best_detections(detection_manager):
     mock_cardinal_high.species_tensor = "Cardinalis cardinalis_Northern Cardinal"
     mock_cardinal_high.scientific_name = "Cardinalis cardinalis"
     mock_cardinal_high.common_name = "Northern Cardinal"
-    mock_cardinal_high.common_name = "Northern Cardinal"
     mock_cardinal_high.confidence = 0.95
 
     mock_cardinal_low = MagicMock(spec=Detection)
@@ -404,7 +402,6 @@ def test_get_best_detections(detection_manager):
     mock_cardinal_low.timestamp.strftime.side_effect = ["2023-01-01", "12:01:00"]
     mock_cardinal_low.species_tensor = "Cardinalis cardinalis_Northern Cardinal"
     mock_cardinal_low.scientific_name = "Cardinalis cardinalis"
-    mock_cardinal_low.common_name = "Northern Cardinal"
     mock_cardinal_low.common_name = "Northern Cardinal"
     mock_cardinal_low.confidence = 0.85
 
@@ -414,7 +411,6 @@ def test_get_best_detections(detection_manager):
     mock_robin_high.species_tensor = "Turdus migratorius_American Robin"
     mock_robin_high.scientific_name = "Turdus migratorius"
     mock_robin_high.common_name = "American Robin"
-    mock_robin_high.common_name = "American Robin"
     mock_robin_high.confidence = 0.9
 
     mock_robin_low = MagicMock(spec=Detection)
@@ -422,7 +418,6 @@ def test_get_best_detections(detection_manager):
     mock_robin_low.timestamp.strftime.side_effect = ["2023-01-02", "14:01:00"]
     mock_robin_low.species_tensor = "Turdus migratorius_American Robin"
     mock_robin_low.scientific_name = "Turdus migratorius"
-    mock_robin_low.common_name = "American Robin"
     mock_robin_low.common_name = "American Robin"
     mock_robin_low.confidence = 0.8
 

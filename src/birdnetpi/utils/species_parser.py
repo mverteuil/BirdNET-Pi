@@ -146,7 +146,7 @@ class SpeciesParser:
             Common name (IOC canonical if prefer_ioc=True, otherwise tensor)
         """
         components = SpeciesParser.parse_tensor_species(tensor_output)
-        return components.common_name if prefer_ioc else components.common_name
+        return components.common_name
 
     @staticmethod
     def extract_scientific_name(tensor_output: str) -> str:

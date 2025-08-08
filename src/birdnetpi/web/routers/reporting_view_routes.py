@@ -62,7 +62,7 @@ async def get_detections(
                 "date": d.timestamp.strftime("%Y-%m-%d") if d.timestamp else "",
                 "time": d.timestamp.strftime("%H:%M:%S") if d.timestamp else "",
                 "scientific_name": d.scientific_name or "",
-                "common_name": (d.common_name_ioc or d.common_name_tensor) or "",
+                "common_name": d.common_name or "",
                 "confidence": d.confidence or 0,
                 "latitude": d.latitude or "",
                 "longitude": d.longitude or "",

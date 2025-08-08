@@ -51,8 +51,8 @@ class DetectionWithIOCData:
 
     @property
     def common_name(self) -> str:
-        """Get common name from tensor."""
-        return (self.detection.common_name_ioc or self.detection.common_name_tensor)
+        """Get common name from detection."""
+        return self.detection.common_name
 
     @property
     def confidence(self) -> float:
@@ -257,16 +257,15 @@ class DetectionQueryService:
                         d.id,
                         d.species_tensor,
                         d.scientific_name,
-                        d.common_name_tensor,
-                        d.common_name_ioc,
+                        d.common_name,
                         d.confidence,
                         d.timestamp,
                         d.audio_file_id,
                         d.latitude,
                         d.longitude,
-                        d.cutoff,
+                        d.species_confidence_threshold,
                         d.week,
-                        d.sensitivity,
+                        d.sensitivity_setting,
                         d.overlap,
                         s.english_name as ioc_english_name,
                         COALESCE(t.common_name, s.english_name) as translated_name,
@@ -292,16 +291,15 @@ class DetectionQueryService:
                     id=UUID(result.id),
                     species_tensor=result.species_tensor,
                     scientific_name=result.scientific_name,
-                    common_name_tensor=result.common_name_tensor,
-                    common_name_ioc=result.common_name_ioc,
+                    common_name=result.common_name,
                     confidence=result.confidence,
                     timestamp=self._parse_timestamp(result.timestamp),
                     audio_file_id=UUID(result.audio_file_id) if result.audio_file_id else None,
                     latitude=result.latitude,
                     longitude=result.longitude,
-                    cutoff=result.cutoff,
+                    species_confidence_threshold=result.species_confidence_threshold,
                     week=result.week,
-                    sensitivity=result.sensitivity,
+                    sensitivity_setting=result.sensitivity_setting,
                     overlap=result.overlap,
                 )
 
@@ -380,7 +378,8 @@ class DetectionQueryService:
                     LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
                         AND t.language_code = :language_code
                     {where_clause}
-                    GROUP BY d.scientific_name, s.english_name, t.common_name, s.family, s.genus, s.order_name
+                    GROUP BY d.scientific_name, s.english_name, t.common_name, s.family, s.genus,
+                             s.order_name
                     ORDER BY detection_count DESC
                 """)
 
@@ -512,16 +511,15 @@ class DetectionQueryService:
                 d.id,
                 d.species_tensor,
                 d.scientific_name,
-                d.common_name_tensor,
-                d.common_name_ioc,
+                d.common_name,
                 d.confidence,
                 d.timestamp,
                 d.audio_file_id,
                 d.latitude,
                 d.longitude,
-                d.cutoff,
+                d.species_confidence_threshold,
                 d.week,
-                d.sensitivity,
+                d.sensitivity_setting,
                 d.overlap,
                 s.english_name as ioc_english_name,
                 COALESCE(t.common_name, s.english_name) as translated_name,
@@ -546,16 +544,15 @@ class DetectionQueryService:
                 id=UUID(result.id),
                 species_tensor=result.species_tensor,
                 scientific_name=result.scientific_name,
-                common_name_tensor=result.common_name_tensor,
-                common_name_ioc=result.common_name_ioc,
+                common_name=result.common_name,
                 confidence=result.confidence,
                 timestamp=self._parse_timestamp(result.timestamp),
                 audio_file_id=UUID(result.audio_file_id) if result.audio_file_id else None,
                 latitude=result.latitude,
                 longitude=result.longitude,
-                cutoff=result.cutoff,
+                species_confidence_threshold=result.species_confidence_threshold,
                 week=result.week,
-                sensitivity=result.sensitivity,
+                sensitivity_setting=result.sensitivity_setting,
                 overlap=result.overlap,
             )
 
