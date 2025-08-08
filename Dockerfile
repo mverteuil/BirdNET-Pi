@@ -44,6 +44,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libportaudio2 \
     portaudio19-dev \
     systemd-journal-remote \
+    python3-systemd \
     && \
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg && \
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list && \
@@ -54,12 +55,16 @@ COPY config_templates/Caddyfile /etc/caddy/Caddyfile
 RUN chown root:root /etc/caddy/Caddyfile
 COPY config_templates/supervisord.conf /etc/supervisor/supervisord.conf
 
+# Copy and install journald configuration to reduce SD card writes
+COPY config_templates/journald.conf /etc/systemd/journald.conf
+RUN chown root:root /etc/systemd/journald.conf && \
+    chmod 644 /etc/systemd/journald.conf
+
 # Create birdnetpi user and set up necessary directories
 RUN useradd -m -s /bin/bash birdnetpi && \
     usermod -aG audio,video,dialout birdnetpi && \
-    mkdir -p /var/log/birdnetpi /var/run/supervisor /opt/birdnetpi /var/lib/birdnetpi/config /var/lib/birdnetpi/models /var/lib/birdnetpi/recordings /var/lib/birdnetpi/database && \
-    chmod 777 /var/log && \
-    chown -R birdnetpi:birdnetpi /var/log/birdnetpi /var/run/supervisor /opt/birdnetpi /var/lib/birdnetpi && \
+    mkdir -p /var/run/supervisor /opt/birdnetpi /var/lib/birdnetpi/config /var/lib/birdnetpi/models /var/lib/birdnetpi/recordings /var/lib/birdnetpi/database && \
+    chown -R birdnetpi:birdnetpi /var/run/supervisor /opt/birdnetpi /var/lib/birdnetpi && \
     chmod 777 /var/run/supervisor
 
 # Switch to birdnetpi user for all application-related operations
