@@ -381,13 +381,11 @@ class ReportingManager:
         if not todays_detections and all_detections:
             # Find the most recent date with detections
             valid_detections = [
-                d for d in all_detections 
-                if isinstance(d.timestamp, datetime.datetime)
+                d for d in all_detections if isinstance(d.timestamp, datetime.datetime)
             ]
             if valid_detections:
                 latest_date = max(
-                    cast(datetime.datetime, d.timestamp).date()
-                    for d in valid_detections
+                    cast(datetime.datetime, d.timestamp).date() for d in valid_detections
                 )
                 start_datetime = datetime.datetime.combine(latest_date, datetime.time.min)
                 end_datetime = datetime.datetime.combine(latest_date, datetime.time.max)

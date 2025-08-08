@@ -70,12 +70,12 @@ class Detection(Base):
     def common_name(self) -> str | None:
         """Get the best available common name for backwards compatibility."""
         return self.common_name_ioc or self.common_name_tensor
-    
+
     @property
     def species_confidence_threshold(self) -> float | None:
         """Get cutoff value for backwards compatibility."""
         return self.cutoff
-    
+
     @property
     def sensitivity_setting(self) -> float | None:
         """Get sensitivity value for backwards compatibility."""

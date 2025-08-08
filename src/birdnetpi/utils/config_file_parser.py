@@ -210,14 +210,7 @@ class ConfigFileParser:
             json_logs=json_logs,
             include_caller=include_caller,
             extra_fields=extra_fields,
-            # Legacy fields for backward compatibility
-            syslog_enabled=bool(logging_section.get("syslog_enabled", False)),
-            syslog_host=logging_section.get("syslog_host", "localhost"),
-            syslog_port=int(logging_section.get("syslog_port", 514)),
-            file_logging_enabled=bool(logging_section.get("file_logging_enabled", False)),
-            log_file_path=logging_section.get("log_file_path", ""),
-            max_log_file_size_mb=int(logging_section.get("max_log_file_size_mb", 10)),
-            log_file_backup_count=int(logging_section.get("log_file_backup_count", 5)),
+            # Legacy field for backward compatibility
             log_level=logging_section.get("log_level", level),  # For backward compatibility
         )
 

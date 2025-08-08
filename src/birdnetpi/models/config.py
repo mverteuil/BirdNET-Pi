@@ -24,14 +24,7 @@ class LoggingConfig:
     include_caller: bool = False  # Include file:line info (useful for debugging)
     extra_fields: dict[str, str] = field(default_factory=lambda: {"service": "birdnet-pi"})
 
-    # Legacy fields for backward compatibility
-    syslog_enabled: bool = False
-    syslog_host: str = "localhost"
-    syslog_port: int = 514
-    file_logging_enabled: bool = False
-    log_file_path: str = ""  # Will be resolved by FilePathResolver if not specified
-    max_log_file_size_mb: int = 10  # 10 MB
-    log_file_backup_count: int = 5
+    # Legacy field for backward compatibility
     log_level: str = "INFO"  # Deprecated: use 'level' instead
 
     def __post_init__(self) -> None:

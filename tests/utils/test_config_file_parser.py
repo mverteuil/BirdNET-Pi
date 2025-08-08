@@ -146,13 +146,6 @@ class TestConfigFileParserAdvancedLoading:
                 "json_logs": True,
                 "include_caller": True,
                 "extra_fields": {"service": "test-service", "env": "test"},
-                "syslog_enabled": True,
-                "syslog_host": "test-syslog",
-                "syslog_port": 514,
-                "file_logging_enabled": True,
-                "log_file_path": "/test/logs/app.log",
-                "max_log_file_size_mb": 50,
-                "log_file_backup_count": 10,
             },
         }
 
@@ -197,13 +190,6 @@ class TestConfigFileParserAdvancedLoading:
         assert config.logging.json_logs is True
         assert config.logging.include_caller is True
         assert config.logging.extra_fields == {"service": "test-service", "env": "test"}
-        assert config.logging.syslog_enabled is True
-        assert config.logging.syslog_host == "test-syslog"
-        assert config.logging.syslog_port == 514
-        assert config.logging.file_logging_enabled is True
-        assert config.logging.log_file_path == "/test/logs/app.log"
-        assert config.logging.max_log_file_size_mb == 50
-        assert config.logging.log_file_backup_count == 10
 
     def test_load_config__legacy_sf_thresh(self, tmp_path):
         """Should handle legacy sf_thresh field for species_confidence_threshold."""
@@ -323,13 +309,6 @@ class TestLoggingConfigParsing:
             "json_logs": True,
             "include_caller": True,
             "extra_fields": {"service": "test-service", "env": "test"},
-            "syslog_enabled": True,
-            "syslog_host": "test-syslog",
-            "syslog_port": 514,
-            "file_logging_enabled": True,
-            "log_file_path": "/test/logs/app.log",
-            "max_log_file_size_mb": 50,
-            "log_file_backup_count": 10,
             "log_level": "INFO",  # Legacy field, should be overridden by level
         }
 
@@ -339,13 +318,6 @@ class TestLoggingConfigParsing:
         assert result.json_logs is True
         assert result.include_caller is True
         assert result.extra_fields == {"service": "test-service", "env": "test"}
-        assert result.syslog_enabled is True
-        assert result.syslog_host == "test-syslog"
-        assert result.syslog_port == 514
-        assert result.file_logging_enabled is True
-        assert result.log_file_path == "/test/logs/app.log"
-        assert result.max_log_file_size_mb == 50
-        assert result.log_file_backup_count == 10
         assert result.log_level == "INFO"  # For backward compatibility
 
     def test_parse_logging_config__minimal_config(self):
@@ -360,13 +332,6 @@ class TestLoggingConfigParsing:
         assert result.json_logs is None
         assert result.include_caller is False
         assert result.extra_fields == {"service": "birdnet-pi"}
-        assert result.syslog_enabled is False
-        assert result.syslog_host == "localhost"
-        assert result.syslog_port == 514
-        assert result.file_logging_enabled is False
-        assert result.log_file_path == ""
-        assert result.max_log_file_size_mb == 10
-        assert result.log_file_backup_count == 5
 
 
 class TestConfigFileEnsureExists:

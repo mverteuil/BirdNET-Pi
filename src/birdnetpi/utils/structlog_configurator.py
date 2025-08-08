@@ -16,7 +16,6 @@ import os
 import subprocess
 import sys
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
 
 import structlog
@@ -160,7 +159,6 @@ def _configure_handlers(
     config: BirdNETConfig, is_docker: bool, has_systemd: bool, is_development: bool
 ) -> None:
     """Configure logging handlers based on environment."""
-    file_resolver = FilePathResolver()
     root_logger = logging.getLogger()
     log_level = getattr(logging, config.logging.log_level.upper(), logging.INFO)
 
@@ -177,47 +175,15 @@ def _configure_handlers(
         console_handler.setFormatter(logging.Formatter("%(message)s"))
         root_logger.addHandler(console_handler)
 
-    # File logging for development if enabled
-    if is_development and config.logging.file_logging_enabled:
-        _add_file_handler(config, file_resolver, root_logger, log_level)
-
-    # Journald for SBC deployments
-    if has_systemd and not is_development:
+    # Journald for SBC deployments (or systemd environments)
+    if has_systemd:
         _add_journald_handler(config, root_logger, log_level)
-
-    # Additional syslog if explicitly enabled
-    if config.logging.syslog_enabled:
-        _add_syslog_handler(config, root_logger, log_level)
-
-
-def _add_file_handler(
-    config: BirdNETConfig,
-    file_resolver: FilePathResolver,
-    root_logger: logging.Logger,
-    log_level: int,
-) -> None:
-    """Add file logging handler."""
-    log_file_path = config.logging.log_file_path
-    if not log_file_path:
-        log_file_path = str(Path(file_resolver.get_temp_dir()) / "birdnetpi.log")
-    else:
-        log_file_path = os.path.expanduser(log_file_path)
-
-    os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
-    file_handler = logging.handlers.RotatingFileHandler(
-        log_file_path,
-        maxBytes=config.logging.max_log_file_size_mb * 1024 * 1024,
-        backupCount=config.logging.log_file_backup_count,
-    )
-    file_handler.setLevel(log_level)
-    file_handler.setFormatter(logging.Formatter("%(message)s"))
-    root_logger.addHandler(file_handler)
 
 
 def _add_journald_handler(
     config: BirdNETConfig, root_logger: logging.Logger, log_level: int
 ) -> None:
-    """Add journald handler for SBC deployments."""
+    """Add journald handler for systemd environments."""
     try:
         from systemd import journal  # type: ignore[import-untyped]
 
@@ -226,23 +192,11 @@ def _add_journald_handler(
         journal_handler.setFormatter(logging.Formatter("%(message)s"))
         root_logger.addHandler(journal_handler)
     except ImportError:
-        # Fallback to syslog if systemd-python not available
-        if config.logging.syslog_enabled:
-            _add_syslog_handler(config, root_logger, log_level)
-
-
-def _add_syslog_handler(config: BirdNETConfig, root_logger: logging.Logger, log_level: int) -> None:
-    """Add syslog handler."""
-    try:
-        syslog_handler = logging.handlers.SysLogHandler(
-            address=(config.logging.syslog_host, config.logging.syslog_port)
-        )
-        syslog_handler.setLevel(log_level)
-        syslog_handler.setFormatter(logging.Formatter("%(message)s"))
-        root_logger.addHandler(syslog_handler)
-    except Exception as e:
-        logger = structlog.get_logger(__name__)
-        logger.error("Failed to configure syslog", error=str(e))
+        # Fallback to stderr if systemd-python not available
+        stderr_handler = logging.StreamHandler(sys.stderr)
+        stderr_handler.setLevel(log_level)
+        stderr_handler.setFormatter(logging.Formatter("%(message)s"))
+        root_logger.addHandler(stderr_handler)
 
 
 def configure_structlog(config: BirdNETConfig) -> None:
@@ -282,9 +236,7 @@ def configure_structlog(config: BirdNETConfig) -> None:
         git_version=get_git_version(),
         log_level=config.logging.level,
         environment=get_deployment_environment(),
-        file_logging=is_development and config.logging.file_logging_enabled,
-        journald=has_systemd and not is_development,
-        syslog=config.logging.syslog_enabled,
+        journald=has_systemd,
         json_output=config.logging.json_logs,
     )
 

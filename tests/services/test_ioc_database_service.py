@@ -190,7 +190,9 @@ class TestPopulateFromIOCService:
         with pytest.raises(ValueError, match="IOC service must be loaded"):
             ioc_database_service.populate_from_ioc_service(mock_service)
 
-    def test_populate_clears_existing_data(self, populated_ioc_database_service, mock_ioc_reference_service):
+    def test_populate_clears_existing_data(
+        self, populated_ioc_database_service, mock_ioc_reference_service
+    ):
         """Should clear existing data before repopulating."""
         # Verify initial data exists
         session = populated_ioc_database_service.session_local()
@@ -250,7 +252,9 @@ class TestSpeciesLookup:
 
     def test_get_species_by_scientific_name_found(self, populated_ioc_database_service):
         """Should return species when found."""
-        species = populated_ioc_database_service.get_species_by_scientific_name("Turdus migratorius")
+        species = populated_ioc_database_service.get_species_by_scientific_name(
+            "Turdus migratorius"
+        )
 
         assert species is not None
         assert species.scientific_name == "Turdus migratorius"
@@ -260,7 +264,9 @@ class TestSpeciesLookup:
 
     def test_get_species_by_scientific_name_not_found(self, populated_ioc_database_service):
         """Should return None when species not found."""
-        species = populated_ioc_database_service.get_species_by_scientific_name("Nonexistent species")
+        species = populated_ioc_database_service.get_species_by_scientific_name(
+            "Nonexistent species"
+        )
         assert species is None
 
     def test_get_species_by_scientific_name__empty_string(self, populated_ioc_database_service):
@@ -284,7 +290,9 @@ class TestTranslationLookup:
 
     def test_get_translation_not_found_language(self, populated_ioc_database_service):
         """Should return None for unknown language."""
-        translation = populated_ioc_database_service.get_translation("Turdus migratorius", "unknown")
+        translation = populated_ioc_database_service.get_translation(
+            "Turdus migratorius", "unknown"
+        )
         assert translation is None
 
     def test_get_translation__empty_parameters(self, populated_ioc_database_service):
@@ -333,7 +341,9 @@ class TestSpeciesSearch:
 
     def test_search_species_by_common_name__limit(self, populated_ioc_database_service):
         """Should respect limit parameter."""
-        results = populated_ioc_database_service.search_species_by_common_name("Turdus", "en", limit=1)
+        results = populated_ioc_database_service.search_species_by_common_name(
+            "Turdus", "en", limit=1
+        )
         assert len(results) <= 1
 
     def test_search_species_by_common_name__empty_search(self, populated_ioc_database_service):

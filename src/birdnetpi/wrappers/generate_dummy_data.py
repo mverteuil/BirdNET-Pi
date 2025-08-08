@@ -15,10 +15,10 @@ def main() -> None:
 
     # Initialize system control service
     system_control = SystemControlService()
-    
+
     # Determine the FastAPI service name based on environment
     fastapi_service_name = _get_fastapi_service_name()
-    
+
     # Check if database already has data
     if os.path.exists(db_path) and os.path.getsize(db_path) > 0:
         bnp_database_service = DatabaseService(db_path)
@@ -33,7 +33,9 @@ def main() -> None:
         status = system_control.get_service_status(fastapi_service_name)
         fastapi_was_running = status == "active"
         if fastapi_was_running:
-            print(f"FastAPI service ({fastapi_service_name}) is running. Stopping it temporarily...")
+            print(
+                f"FastAPI service ({fastapi_service_name}) is running. Stopping it temporarily..."
+            )
             system_control.stop_service(fastapi_service_name)
             # Wait a moment for the service to stop and release database locks
             time.sleep(3)
@@ -48,7 +50,7 @@ def main() -> None:
         detection_manager = DetectionManager(bnp_database_service)
         generate_dummy_detections(detection_manager)
         print("Dummy data generation complete.")
-        
+
     finally:
         # Restart FastAPI if it was running before
         if fastapi_was_running:
@@ -59,6 +61,7 @@ def main() -> None:
             except Exception as e:
                 print(f"Warning: Could not restart FastAPI service: {e}")
                 print("You may need to manually restart the service.")
+
 
 def _get_fastapi_service_name() -> str:
     """Determine the FastAPI service name based on the environment."""

@@ -256,19 +256,15 @@ class TestHandlerConfiguration:
         mock_root.addHandler.assert_called()
         mock_root.setLevel.assert_called()
 
-    def test_configure_handlers_file_logging(self, mocker):
-        """Should configure file handler when enabled in development."""
+    def test_configure_handlers_console_only(self, mocker):
+        """Should configure console handler for development without systemd."""
         config = BirdNETConfig()
-        config.logging.file_logging_enabled = True
-        config.logging.log_file_path = "/tmp/test.log"
 
         mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
         mock_logger = mocker.patch("logging.getLogger")
         mock_root = MagicMock()
         mock_logger.return_value = mock_root
         mock_root.handlers = []
-        mocker.patch("os.makedirs")
-        mocker.patch("logging.handlers.RotatingFileHandler")
 
         _configure_handlers(config, False, False, True)
 
@@ -294,9 +290,8 @@ class TestHandlerConfiguration:
         mock_root.setLevel.assert_called()
 
     def test_configure_handlers_journald_fallback(self, mocker):
-        """Should fallback to syslog when journald unavailable."""
+        """Should fallback to stderr when journald unavailable."""
         config = BirdNETConfig()
-        config.logging.syslog_enabled = True
 
         mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
         mock_logger = mocker.patch("logging.getLogger")
@@ -304,12 +299,8 @@ class TestHandlerConfiguration:
         mock_logger.return_value = mock_root
         mock_root.handlers = []
 
-        # Mock the journald handler to raise ImportError, triggering fallback
-        mocker.patch(
-            "birdnetpi.utils.structlog_configurator._add_journald_handler",
-            side_effect=lambda *args: None,  # Do nothing, simulating fallback
-        )
-        mocker.patch("birdnetpi.utils.structlog_configurator._add_syslog_handler")
+        # Mock the journald import to fail, triggering stderr fallback
+        mocker.patch("birdnetpi.utils.structlog_configurator._add_journald_handler")
 
         _configure_handlers(config, False, True, False)
 

@@ -210,9 +210,7 @@ class TestShowIOCInfo:
         mock_exit.assert_called_with(1)
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    def test_show_ioc_info(
-        self, mock_service_class, mock_ioc_reference_service, tmp_path, capsys
-    ):
+    def test_show_ioc_info(self, mock_service_class, mock_ioc_reference_service, tmp_path, capsys):
         """Should show IOC info successfully."""
         # Setup file
         json_file = tmp_path / "test.json"

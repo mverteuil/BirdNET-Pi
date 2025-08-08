@@ -134,7 +134,9 @@ class TestTranslationManager:
             mock_get.assert_called_once_with("es")
             mock_trans.install.assert_called_once()
 
-    def test_install_for_request__no_accept_language_header(self, translation_manager, mock_request):
+    def test_install_for_request__no_accept_language_header(
+        self, translation_manager, mock_request
+    ):
         """Should use default language when no Accept-Language header."""
         mock_request.headers = {}
         mock_trans = MagicMock(spec=gettext.GNUTranslations)

@@ -37,7 +37,9 @@ def test_create_detection(detection_manager):
         overlap=0.5,
     )
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     mock_detection = MagicMock(spec=Detection)
 
     mock_db_session.add.side_effect = [None, None]  # For audio_file and detection
@@ -69,7 +71,9 @@ def test_create_detection_failure(detection_manager):
         overlap=0.5,
     )
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     mock_db_session.add.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
@@ -81,7 +85,9 @@ def test_create_detection_failure(detection_manager):
 def test_get_all_detections(detection_manager):
     """Should retrieve all detection records successfully"""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     mock_detections = [MagicMock(spec=Detection), MagicMock(spec=Detection)]
     mock_db_session.query.return_value.all.return_value = mock_detections
 
@@ -96,7 +102,9 @@ def test_get_all_detections(detection_manager):
 def test_get_all_detections_failure(detection_manager):
     """Should handle get all detections failure"""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
@@ -108,7 +116,9 @@ def test_get_all_detections_failure(detection_manager):
 def test_get_detection(detection_manager):
     """Should retrieve a detection record successfully."""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     mock_detection = MagicMock(spec=Detection)
     mock_db_session.query.return_value.get.return_value = mock_detection
 
@@ -123,7 +133,9 @@ def test_get_detection(detection_manager):
 def test_get_detection_failure(detection_manager):
     """Should handle get detection failure."""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
@@ -135,7 +147,9 @@ def test_get_detection_failure(detection_manager):
 def test_delete_detection(detection_manager):
     """Should delete a detection record successfully."""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     mock_detection = MagicMock(spec=Detection)
     mock_db_session.query.return_value.get.return_value = mock_detection
 
@@ -151,7 +165,9 @@ def test_delete_detection(detection_manager):
 def test_delete_detection_failure(detection_manager):
     """Should handle delete detection failure."""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
@@ -163,7 +179,9 @@ def test_delete_detection_failure(detection_manager):
 def test_get_detections_by_species(detection_manager):
     """Should retrieve all detection records for a species successfully."""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     mock_detections = [MagicMock(spec=Detection), MagicMock(spec=Detection)]
     mock_db_session.query.return_value.filter_by.return_value.all.return_value = mock_detections
 
@@ -181,7 +199,9 @@ def test_get_detections_by_species(detection_manager):
 def test_get_detections_by_species_failure(detection_manager):
     """Should handle get detections by species failure."""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
@@ -193,7 +213,9 @@ def test_get_detections_by_species_failure(detection_manager):
 def test_get_detection_counts_by_date_range(detection_manager):
     """Should retrieve detection counts by date range successfully."""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     mock_db_session.query.return_value.filter.return_value.count.side_effect = [10, 5]
     (
         mock_db_session.query.return_value.filter.return_value.distinct.return_value.count.return_value
@@ -211,7 +233,9 @@ def test_get_detection_counts_by_date_range(detection_manager):
 def test_get_detection_counts_by_date_range_failure(detection_manager):
     """Should handle get detection counts by date range failure."""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
@@ -225,7 +249,9 @@ def test_get_detection_counts_by_date_range_failure(detection_manager):
 def test_get_top_species__prior_counts(detection_manager):
     """Should retrieve top species with prior counts successfully."""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     (mock_db_session.query().outerjoin().order_by().limit().all.return_value) = [
         (
             "species1",
@@ -257,7 +283,9 @@ def test_get_top_species__prior_counts(detection_manager):
 def test_get_top_species__prior_counts_failure(detection_manager):
     """Should handle get top species with prior counts failure."""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
@@ -274,7 +302,9 @@ def test_get_top_species__prior_counts_failure(detection_manager):
 def test_get_new_species_data(detection_manager):
     """Should retrieve new species data successfully."""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     (mock_db_session.query().filter().distinct().subquery().return_value) = MagicMock()
     (mock_db_session.query().filter().group_by().order_by().all.return_value) = [
         ("species1", "Species One", 10),  # scientific_name, common_name, count
@@ -292,7 +322,9 @@ def test_get_new_species_data(detection_manager):
 def test_get_new_species_data_failure(detection_manager):
     """Should handle get new species data failure."""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
@@ -304,7 +336,9 @@ def test_get_new_species_data_failure(detection_manager):
 def test_get_most_recent_detections(detection_manager):
     """Should retrieve most recent detections successfully."""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     mock_detection = MagicMock(spec=Detection)
     mock_detection.timestamp.strftime.side_effect = ["2023-01-01", "12:00:00"]
     mock_detection.species_tensor = "Turdus merula_Common Blackbird"
@@ -337,7 +371,9 @@ def test_get_most_recent_detections(detection_manager):
 def test_get_most_recent_detections_failure(detection_manager):
     """Should handle get most recent detections failure."""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
     mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
 
     with pytest.raises(SQLAlchemyError):
@@ -349,7 +385,9 @@ def test_get_most_recent_detections_failure(detection_manager):
 def test_get_best_detections(detection_manager):
     """Should retrieve the best detection for each species, sorted by confidence."""
     mock_db_session = MagicMock()
-    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
 
     # Create multiple mock detections with varying confidence levels for each species
     mock_cardinal_high = MagicMock(spec=Detection)

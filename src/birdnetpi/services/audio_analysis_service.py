@@ -37,12 +37,12 @@ class AudioAnalysisService:
         # Buffer for accumulating audio chunks for analysis
         self.audio_buffer = np.array([], dtype=np.int16)
         self.buffer_size_samples = int(3.0 * config.sample_rate)  # 3 seconds of audio
-        
+
         # In-memory buffer for detection events when FastAPI is unavailable
         self.detection_buffer: deque[dict[str, Any]] = deque(maxlen=detection_buffer_max_size)
         self.buffer_lock = threading.Lock()
         self.flush_interval = buffer_flush_interval
-        
+
         # Start background buffer flush task
         self._stop_flush_task = False
         self._flush_task = None
@@ -50,6 +50,7 @@ class AudioAnalysisService:
 
     def _start_buffer_flush_task(self) -> None:
         """Start the background task to flush detection buffer."""
+
         def flush_loop():
             while not self._stop_flush_task:
                 try:
@@ -57,7 +58,7 @@ class AudioAnalysisService:
                 except Exception as e:
                     logger.error(f"Error in buffer flush loop: {e}", exc_info=True)
                 time.sleep(self.flush_interval)
-        
+
         flush_thread = threading.Thread(target=flush_loop, daemon=True)
         flush_thread.start()
         self._flush_task = flush_thread
@@ -66,21 +67,21 @@ class AudioAnalysisService:
         """Attempt to flush buffered detection events to FastAPI."""
         if not self.detection_buffer:
             return
-        
+
         # Copy and clear buffer atomically
         with self.buffer_lock:
             buffered_detections = list(self.detection_buffer)
             self.detection_buffer.clear()
-        
+
         if not buffered_detections:
             return
-        
+
         logger.info(f"Attempting to flush {len(buffered_detections)} buffered detections")
-        
+
         # Try to send each buffered detection
         successful_sends = 0
         failed_detections = []
-        
+
         async with httpx.AsyncClient(timeout=10.0) as client:
             for detection_data in buffered_detections:
                 try:
@@ -89,21 +90,23 @@ class AudioAnalysisService:
                     )
                     response.raise_for_status()
                     successful_sends += 1
-                    logger.debug(f"Successfully flushed buffered detection: {detection_data['species']}")
+                    logger.debug(
+                        f"Successfully flushed buffered detection: {detection_data['species']}"
+                    )
                 except (httpx.RequestError, httpx.HTTPStatusError) as e:
                     logger.debug(f"Failed to flush detection (will re-buffer): {e}")
                     failed_detections.append(detection_data)
                 except Exception as e:
                     logger.error(f"Unexpected error flushing detection: {e}", exc_info=True)
                     failed_detections.append(detection_data)
-        
+
         # Re-add failed detections to buffer
         if failed_detections:
             with self.buffer_lock:
                 for detection in failed_detections:
                     self.detection_buffer.append(detection)
             logger.warning(f"Re-buffered {len(failed_detections)} failed detections")
-        
+
         if successful_sends > 0:
             logger.info(f"Successfully flushed {successful_sends} buffered detections")
 
@@ -221,11 +224,12 @@ class AudioAnalysisService:
             logger.warning(f"FastAPI unavailable, buffering detection: {e}")
         except Exception as e:
             logger.warning(f"Unexpected error sending detection, buffering: {e}")
-        
+
         # FastAPI is unavailable - buffer the detection
         with self.buffer_lock:
             self.detection_buffer.append(detection_data)
             buffer_size = len(self.detection_buffer)
-        
-        logger.info(f"Buffered detection event for {detection_data['species']} "
-                   f"(buffer size: {buffer_size})")
+
+        logger.info(
+            f"Buffered detection event for {detection_data['species']} (buffer size: {buffer_size})"
+        )

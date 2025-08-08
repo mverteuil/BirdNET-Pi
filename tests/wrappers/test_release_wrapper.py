@@ -99,7 +99,9 @@ class TestBuildAssetList:
         assert assets[0].description == "Custom asset description"
 
     @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
-    def test_build_asset_list__missing_models_warning(self, mock_exit, mock_release_manager, capsys):
+    def test_build_asset_list__missing_models_warning(
+        self, mock_exit, mock_release_manager, capsys
+    ):
         """Should warn when models are requested but missing."""
         mock_exit.side_effect = SystemExit(1)
         args = argparse.Namespace(include_models=True, include_ioc_db=False, custom_assets=None)

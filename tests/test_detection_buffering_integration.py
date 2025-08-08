@@ -8,17 +8,17 @@ import asyncio
 import logging
 import threading
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import httpx
 import numpy as np
 import pytest
 
+import birdnetpi.wrappers.generate_dummy_data as gdd
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.audio_analysis_service import AudioAnalysisService
 from birdnetpi.utils.file_path_resolver import FilePathResolver
-import birdnetpi.wrappers.generate_dummy_data as gdd
 
 
 @pytest.fixture
@@ -97,7 +97,7 @@ class TestDetectionBufferingEndToEnd:
     ):
         """Should buffer detections during FastAPI outage and flush when available."""
         service = audio_analysis_service_integration
-        
+
         # Mock analysis to return detections
         service.analysis_client.get_analysis_results.return_value = [
             ("Robin", 0.85),
@@ -106,8 +106,8 @@ class TestDetectionBufferingEndToEnd:
 
         # Phase 1: FastAPI unavailable - detections should be buffered
         with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.post.side_effect = (
-                httpx.RequestError("Connection failed", request=MagicMock())
+            mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
+                "Connection failed", request=MagicMock()
             )
 
             # Clear buffer
@@ -149,7 +149,7 @@ class TestDetectionBufferingEndToEnd:
     ):
         """Should handle concurrent detections during admin operations without data loss."""
         service = audio_analysis_service_integration
-        
+
         # Mock analysis to return detections
         service.analysis_client.get_analysis_results.return_value = [
             ("Robin", 0.85),
@@ -173,14 +173,14 @@ class TestDetectionBufferingEndToEnd:
         def simulate_admin_operation():
             """Simulate admin operation that affects FastAPI."""
             time.sleep(0.1)  # Let some detections start
-            
+
             # Simulate FastAPI going down
             with patch("httpx.AsyncClient") as mock_client:
                 mock_client.return_value.__aenter__.return_value.post.side_effect = (
                     httpx.RequestError("Connection failed", request=MagicMock())
                 )
                 time.sleep(0.2)  # Admin operation in progress
-            
+
             admin_operation_complete["value"] = True
 
         # Clear buffer
@@ -204,7 +204,7 @@ class TestDetectionBufferingEndToEnd:
         # Verify some detections were buffered during outage
         with service.buffer_lock:
             buffer_size = len(service.detection_buffer)
-        
+
         assert buffer_size > 0, "Some detections should be buffered during admin operation"
         assert "Buffered detection event for Robin" in caplog.text
 
@@ -225,7 +225,7 @@ class TestDetectionBufferingEndToEnd:
             detection_buffer_max_size=3,  # Small buffer to trigger overflow
             buffer_flush_interval=0.1,
         )
-        
+
         # Mock analysis
         service.analysis_client = MagicMock()
         service.analysis_client.get_analysis_results.return_value = [("Robin", 0.85)]
@@ -252,7 +252,7 @@ class TestDetectionBufferingEndToEnd:
 
                 # Verify logging indicates buffering is happening
                 assert "Buffered detection event for Robin" in caplog.text
-                
+
         finally:
             service.stop_buffer_flush_task()
 
@@ -261,14 +261,14 @@ class TestDetectionBufferingEndToEnd:
     ):
         """Should flush buffered detections when service recovers after restart simulation."""
         service = audio_analysis_service_integration
-        
+
         # Mock analysis
         service.analysis_client.get_analysis_results.return_value = [("Robin", 0.85)]
 
         # Phase 1: Service unavailable, buffer detections
         with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.post.side_effect = (
-                httpx.RequestError("Connection failed", request=MagicMock())
+            mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
+                "Connection failed", request=MagicMock()
             )
 
             # Clear buffer and add detections
@@ -306,7 +306,7 @@ class TestDetectionBufferingEndToEnd:
     ):
         """Should handle mixed success/failure scenarios during partial service recovery."""
         service = audio_analysis_service_integration
-        
+
         # Mock analysis to return multiple detections
         service.analysis_client.get_analysis_results.return_value = [
             ("Robin", 0.85),
@@ -317,7 +317,7 @@ class TestDetectionBufferingEndToEnd:
 
         with patch("httpx.AsyncClient") as mock_client:
             post_mock = mock_client.return_value.__aenter__.return_value.post
-            
+
             # Mock intermittent failures: success, fail, success, fail
             responses = []
             for i in range(4):
@@ -326,8 +326,10 @@ class TestDetectionBufferingEndToEnd:
                     success_response.raise_for_status = MagicMock()
                     responses.append(success_response)
                 else:  # Odd indices fail
-                    responses.append(httpx.RequestError("Intermittent failure", request=MagicMock()))
-            
+                    responses.append(
+                        httpx.RequestError("Intermittent failure", request=MagicMock())
+                    )
+
             post_mock.side_effect = responses
 
             # Clear buffer
@@ -354,7 +356,7 @@ class TestDetectionBufferingEndToEnd:
             # Verify successful sends were logged
             assert "Detection event sent: Robin" in caplog.text
             assert "Detection event sent: Sparrow" in caplog.text
-            
+
             # Verify failed detections were buffered
             assert "Buffered detection event for Crow" in caplog.text
             assert "Buffered detection event for Cardinal" in caplog.text
@@ -368,7 +370,7 @@ class TestDetectionBufferingWithAdminOperations:
     ):
         """Should coordinate detection buffering during generate_dummy_data execution."""
         service = audio_analysis_service_integration
-        
+
         # Mock analysis
         service.analysis_client.get_analysis_results.return_value = [("Robin", 0.85)]
 
@@ -395,11 +397,21 @@ class TestDetectionBufferingWithAdminOperations:
 
             # Simulate admin operation affecting FastAPI
             with (
-                patch("birdnetpi.wrappers.generate_dummy_data.FilePathResolver") as mock_file_path_resolver,
-                patch("birdnetpi.wrappers.generate_dummy_data.DatabaseService") as mock_database_service,
-                patch("birdnetpi.wrappers.generate_dummy_data.DetectionManager") as mock_detection_manager,
-                patch("birdnetpi.wrappers.generate_dummy_data.SystemControlService") as mock_system_control_service,
-                patch("birdnetpi.wrappers.generate_dummy_data.generate_dummy_detections") as mock_generate_dummy_detections,
+                patch(
+                    "birdnetpi.wrappers.generate_dummy_data.FilePathResolver"
+                ) as mock_file_path_resolver,
+                patch(
+                    "birdnetpi.wrappers.generate_dummy_data.DatabaseService"
+                ) as mock_database_service,
+                patch(
+                    "birdnetpi.wrappers.generate_dummy_data.DetectionManager"
+                ) as mock_detection_manager,
+                patch(
+                    "birdnetpi.wrappers.generate_dummy_data.SystemControlService"
+                ) as mock_system_control_service,
+                patch(
+                    "birdnetpi.wrappers.generate_dummy_data.generate_dummy_detections"
+                ) as mock_generate_dummy_detections,
                 patch("birdnetpi.wrappers.generate_dummy_data.time") as mock_time,
                 patch("birdnetpi.wrappers.generate_dummy_data.os") as mock_os,
             ):
@@ -450,7 +462,7 @@ class TestDetectionBufferingWithAdminOperations:
     ):
         """Should maintain buffer integrity across multiple admin operation cycles."""
         service = audio_analysis_service_integration
-        
+
         # Mock analysis
         service.analysis_client.get_analysis_results.return_value = [("Robin", 0.85)]
 
@@ -477,7 +489,7 @@ class TestDetectionBufferingWithAdminOperations:
             # Cycle 2: Partial flush, then more failures
             with patch("httpx.AsyncClient") as mock_client:
                 post_mock = mock_client.return_value.__aenter__.return_value.post
-                
+
                 # First flush attempt: partial success
                 responses = [
                     MagicMock(),  # Success
@@ -485,9 +497,9 @@ class TestDetectionBufferingWithAdminOperations:
                     MagicMock(),  # Success
                 ]
                 for response in responses:
-                    if hasattr(response, 'raise_for_status'):
+                    if hasattr(response, "raise_for_status"):
                         response.raise_for_status = MagicMock()
-                
+
                 post_mock.side_effect = responses
 
                 # Manually trigger flush
@@ -502,7 +514,7 @@ class TestDetectionBufferingWithAdminOperations:
                 mock_client.return_value.__aenter__.return_value.post.side_effect = (
                     httpx.RequestError("Still down", request=MagicMock())
                 )
-                
+
                 for _ in range(2):
                     audio_chunk = np.ones(48000 * 3, dtype=np.float32) * 0.1
                     await service._analyze_audio_chunk(audio_chunk)

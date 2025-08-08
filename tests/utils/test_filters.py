@@ -17,12 +17,7 @@ from birdnetpi.utils.filters import (
 @pytest.fixture
 def test_audio_config():
     """Provide test audio configuration data."""
-    return {
-        "sample_rate": 48000,
-        "channels": 1,
-        "duration_seconds": 0.1,
-        "chunk_size": 1024
-    }
+    return {"sample_rate": 48000, "channels": 1, "duration_seconds": 0.1, "chunk_size": 1024}
 
 
 @pytest.fixture
@@ -32,7 +27,7 @@ def test_filter_config():
         "highpass_cutoff": 1000.0,
         "lowpass_cutoff": 2000.0,
         "filter_order": 4,
-        "high_cutoff_warning": 30000.0  # Above Nyquist for 48kHz
+        "high_cutoff_warning": 30000.0,  # Above Nyquist for 48kHz
     }
 
 
@@ -42,14 +37,14 @@ def test_audio_signals(test_audio_config):
     sample_rate = test_audio_config["sample_rate"]
     duration = test_audio_config["duration_seconds"]
     t = np.linspace(0, duration, int(sample_rate * duration), False)
-    
+
     return {
         "low_freq_100hz": np.sin(2 * np.pi * 100 * t),
         "mid_freq_1500hz": np.sin(2 * np.pi * 1500 * t),
         "high_freq_5000hz": np.sin(2 * np.pi * 5000 * t),
         "very_high_8000hz": np.sin(2 * np.pi * 8000 * t),
         "time_array": t,
-        "scale_factor": 16384  # Use half of int16 range
+        "scale_factor": 16384,  # Use half of int16 range
     }
 
 
@@ -60,7 +55,7 @@ def sample_int16_data():
         "small": np.array([1000, 2000, 3000], dtype=np.int16),
         "medium": np.array([1000, 2000, 3000, -1000, -2000], dtype=np.int16),
         "zeros": np.zeros(100, dtype=np.int16),
-        "wrong_dtype": np.array([0.1, 0.2, 0.3], dtype=np.float32)
+        "wrong_dtype": np.array([0.1, 0.2, 0.3], dtype=np.float32),
     }
 
 
@@ -182,7 +177,9 @@ class TestHighPassFilter:
 
     def test_highpass_filter_initialization(self, test_filter_config):
         """Should initialize HighPassFilter with correct parameters."""
-        filter_instance = HighPassFilter(cutoff_frequency=test_filter_config["highpass_cutoff"], name="TrafficFilter")
+        filter_instance = HighPassFilter(
+            cutoff_frequency=test_filter_config["highpass_cutoff"], name="TrafficFilter"
+        )
 
         assert filter_instance.name == "TrafficFilter"
         assert filter_instance.cutoff_frequency == test_filter_config["highpass_cutoff"]
@@ -198,7 +195,9 @@ class TestHighPassFilter:
         assert filter_instance._channels == test_audio_config["channels"]
         assert filter_instance._sos is not None
 
-    def test_highpass_filter_processing(self, test_audio_config, test_filter_config, test_audio_signals):
+    def test_highpass_filter_processing(
+        self, test_audio_config, test_filter_config, test_audio_signals
+    ):
         """Should filter out low frequencies and preserve high frequencies."""
         filter_instance = HighPassFilter(cutoff_frequency=test_filter_config["highpass_cutoff"])
         filter_instance.configure(test_audio_config["sample_rate"], test_audio_config["channels"])
@@ -219,12 +218,16 @@ class TestHighPassFilter:
         assert result.shape == test_data.shape
         assert result.dtype == np.int16
 
-    def test_highpass_filter_cutoff_too_high_warning(self, test_audio_config, test_filter_config, caplog):
+    def test_highpass_filter_cutoff_too_high_warning(
+        self, test_audio_config, test_filter_config, caplog
+    ):
         """Should warn when cutoff frequency exceeds Nyquist limit."""
         filter_instance = HighPassFilter(cutoff_frequency=test_filter_config["high_cutoff_warning"])
 
         with caplog.at_level(logging.WARNING):
-            filter_instance.configure(test_audio_config["sample_rate"], test_audio_config["channels"])
+            filter_instance.configure(
+                test_audio_config["sample_rate"], test_audio_config["channels"]
+            )
 
         assert "cutoff" in caplog.text.lower()
         assert "nyquist" in caplog.text.lower()
