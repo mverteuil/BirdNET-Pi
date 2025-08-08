@@ -198,20 +198,17 @@ class ConfigFileParser:
 
     def _parse_logging_config(self, logging_section: dict) -> LoggingConfig:
         """Parse logging configuration section."""
-        # Parse new structlog fields
-        level = logging_section.get("level", logging_section.get("log_level", "INFO"))
+        # Parse structlog fields
+        level = logging_section.get("level", "INFO")
         json_logs = logging_section.get("json_logs")
         include_caller = bool(logging_section.get("include_caller", False))
         extra_fields = logging_section.get("extra_fields", {"service": "birdnet-pi"})
 
         return LoggingConfig(
-            # New structlog fields
             level=level,
             json_logs=json_logs,
             include_caller=include_caller,
             extra_fields=extra_fields,
-            # Legacy field for backward compatibility
-            log_level=logging_section.get("log_level", level),  # For backward compatibility
         )
 
     def _ensure_config_exists(self) -> None:

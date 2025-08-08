@@ -5,7 +5,6 @@ from unittest.mock import MagicMock
 import pytest
 import yaml
 
-from birdnetpi.models.config import LoggingConfig
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 
 
@@ -306,16 +305,14 @@ class TestLoggingConfigParsing:
             "json_logs": True,
             "include_caller": True,
             "extra_fields": {"service": "test-service", "env": "test"},
-            "log_level": "INFO",  # Legacy field, should be overridden by level
         }
 
         result = parser._parse_logging_config(logging_section)
 
-        assert result.level == "DEBUG"  # Not the legacy log_level
+        assert result.level == "DEBUG"
         assert result.json_logs is True
         assert result.include_caller is True
         assert result.extra_fields == {"service": "test-service", "env": "test"}
-        assert result.log_level == "INFO"  # For backward compatibility
 
     def test_parse_logging_config__minimal_config(self):
         """Should parse minimal logging configuration with defaults."""
@@ -393,30 +390,3 @@ class TestConfigFileEnsureExists:
             "sensitivity_setting": 1.25,
         }
         assert content == expected_minimal
-
-
-class TestLoggingConfigPostInit:
-    """Test LoggingConfig __post_init__ method for backward compatibility."""
-
-    def test_logging_config_post_init_uses_log_level__level_is_default(self):
-        """Test that log_level overrides level when level is default and log_level is different."""
-        config = LoggingConfig(log_level="DEBUG")  # level stays at default "INFO"
-
-        # The __post_init__ should have set level to log_level value
-        assert config.level == "DEBUG"
-        assert config.log_level == "DEBUG"
-
-    def test_logging_config_post_init_keeps_level__explicitly_set(self):
-        """Test that level is preserved when explicitly set, even if log_level is different."""
-        config = LoggingConfig(level="WARNING", log_level="DEBUG")
-
-        # level should remain as explicitly set, not overridden by log_level
-        assert config.level == "WARNING"
-        assert config.log_level == "DEBUG"
-
-    def test_logging_config_post_init__no_change__both_default(self):
-        """Test that nothing changes when both level and log_level are at defaults."""
-        config = LoggingConfig()  # Both level and log_level default to "INFO"
-
-        assert config.level == "INFO"
-        assert config.log_level == "INFO"

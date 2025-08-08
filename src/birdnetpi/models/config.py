@@ -16,15 +16,6 @@ class LoggingConfig:
     include_caller: bool = False  # Include file:line info (useful for debugging)
     extra_fields: dict[str, str] = field(default_factory=lambda: {"service": "birdnet-pi"})
 
-    # Legacy field for backward compatibility
-    log_level: str = "INFO"  # Deprecated: use 'level' instead
-
-    def __post_init__(self) -> None:
-        """Handle backward compatibility for log_level."""
-        # Use log_level if level is still default and log_level was changed
-        if self.level == "INFO" and self.log_level != "INFO":
-            self.level = self.log_level
-
 
 @dataclass
 class BirdNETConfig:

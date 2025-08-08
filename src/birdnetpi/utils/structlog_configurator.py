@@ -159,7 +159,7 @@ def _configure_handlers(
 ) -> None:
     """Configure logging handlers based on environment."""
     root_logger = logging.getLogger()
-    log_level = getattr(logging, config.logging.log_level.upper(), logging.INFO)
+    log_level = getattr(logging, config.logging.level.upper(), logging.INFO)
 
     # Clear existing handlers
     for handler in root_logger.handlers[:]:
