@@ -22,22 +22,22 @@ class BirdDetectionService:
         self.config = config
         self.user_dir = os.path.expanduser("~")
         self.interpreter: tflite.Interpreter | None = None  # type: ignore[name-defined]
-        self.m_interpreter: tflite.Interpreter | None = None  # type: ignore[name-defined]
+        self.metadata_interpreter: tflite.Interpreter | None = None  # type: ignore[name-defined]
         self.predicted_species_list = []  # This list is populated by the meta-model
         self.current_week = None
         self.model_name = None
         self.privacy_threshold = None
         self.species_frequency_threshold = None
-        self.mdata = None
-        self.mdata_params = None
+        self.metadata = None
+        self.metadata_params = None
 
         self.input_layer_index = None
         self.output_layer_index = None
-        self.mdata_input_index = None
+        self.metadata_input_index = None
         self.classes = []
 
-        self.m_input_layer_index = None
-        self.m_output_layer_index = None
+        self.metadata_input_layer_index = None
+        self.metadata_output_layer_index = None
 
         self._load_global_model()
 
@@ -68,7 +68,7 @@ class BirdDetectionService:
 
         self.input_layer_index = input_details[0]["index"]
         if self.model_name == "BirdNET_6K_GLOBAL_MODEL":
-            self.mdata_input_index = input_details[1]["index"]
+            self.metadata_input_index = input_details[1]["index"]
         self.output_layer_index = output_details[0]["index"]
 
         # Get number of output classes from model
@@ -93,33 +93,33 @@ class BirdDetectionService:
                 f"Model path not found for metadata model: {self.config.metadata_model}"
             )
 
-        self.m_interpreter = tflite.Interpreter(model_path=model_path)  # type: ignore[attr-defined]
-        self.m_interpreter.allocate_tensors()  # type: ignore[union-attr]
+        self.metadata_interpreter = tflite.Interpreter(model_path=model_path)  # type: ignore[attr-defined]
+        self.metadata_interpreter.allocate_tensors()  # type: ignore[union-attr]
 
-        if self.m_interpreter is None:
+        if self.metadata_interpreter is None:
             raise RuntimeError("Meta interpreter not initialized")
 
-        input_details = self.m_interpreter.get_input_details()
-        output_details = self.m_interpreter.get_output_details()
+        input_details = self.metadata_interpreter.get_input_details()
+        output_details = self.metadata_interpreter.get_output_details()
 
-        self.m_input_layer_index = input_details[0]["index"]
-        self.m_output_layer_index = output_details[0]["index"]
+        self.metadata_input_layer_index = input_details[0]["index"]
+        self.metadata_output_layer_index = output_details[0]["index"]
 
         log.info("BirdDetectionService: loaded META model")
 
     def _predict_filter_raw(self, latitude: float, longitude: float, week: int) -> np.ndarray:
-        if self.m_interpreter is None:
+        if self.metadata_interpreter is None:
             self._load_meta_model()
 
-        if self.m_interpreter is None:
+        if self.metadata_interpreter is None:
             raise RuntimeError("Meta interpreter not initialized after load")
 
         sample = np.expand_dims(np.array([latitude, longitude, week], dtype="float32"), 0)
 
-        self.m_interpreter.set_tensor(self.m_input_layer_index, sample)
-        self.m_interpreter.invoke()
+        self.metadata_interpreter.set_tensor(self.metadata_input_layer_index, sample)
+        self.metadata_interpreter.invoke()
 
-        return self.m_interpreter.get_tensor(self.m_output_layer_index)[0]
+        return self.metadata_interpreter.get_tensor(self.metadata_output_layer_index)[0]
 
     def get_filtered_species_list(self, latitude: float, longitude: float, week: int) -> list[str]:
         """Return a list of species predicted by the meta-model for a given location and week."""
@@ -169,10 +169,10 @@ class BirdDetectionService:
     ) -> list[tuple[str, float]]:
         """Perform raw prediction on an audio chunk."""
         # Prepare metadata for the main model
-        if self.mdata_params != [latitude, longitude, week]:
-            self.mdata_params = [latitude, longitude, week]
-            self.mdata = self._convert_metadata(np.array([latitude, longitude, week]))
-            self.mdata = np.expand_dims(self.mdata, 0)
+        if self.metadata_params != [latitude, longitude, week]:
+            self.metadata_params = [latitude, longitude, week]
+            self.metadata = self._convert_metadata(np.array([latitude, longitude, week]))
+            self.metadata = np.expand_dims(self.metadata, 0)
 
         # Prepare audio chunk as input signal
         sig = np.expand_dims(audio_chunk, 0)
@@ -184,7 +184,7 @@ class BirdDetectionService:
         self.interpreter.set_tensor(self.input_layer_index, np.array(sig, dtype="float32"))
         if self.model_name == "BirdNET_6K_GLOBAL_MODEL":
             self.interpreter.set_tensor(
-                self.mdata_input_index, np.array(self.mdata, dtype="float32")
+                self.metadata_input_index, np.array(self.metadata, dtype="float32")
             )
         self.interpreter.invoke()
         prediction = self.interpreter.get_tensor(self.output_layer_index)[0]
