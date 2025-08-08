@@ -210,8 +210,7 @@ class BirdDetectionService:
                     if self.species_frequency_threshold is not None
                     else 0.03
                 )
-                location_filter = np.where(location_filter >= float(threshold),
-                                         location_filter, 0)
+                location_filter = np.where(location_filter >= float(threshold), location_filter, 0)
 
                 # Zip with labels and filter for non-zero scores
                 filtered_species = [

@@ -26,6 +26,29 @@ from birdnetpi.utils.file_path_resolver import FilePathResolver
 from birdnetpi.web.core.config import get_config
 
 
+# Factory functions for services with error handling
+def _create_ioc_service(resolver: FilePathResolver) -> IOCDatabaseService | None:
+    """Create IOC database service with graceful error handling."""
+    try:
+        return IOCDatabaseService(resolver.get_ioc_database_path())
+    except Exception as e:
+        print(f"Warning: IOC database service unavailable: {e}")
+        return None
+
+
+def _create_detection_query_service(
+    bnp_service: DatabaseService, ioc_service: IOCDatabaseService | None
+) -> DetectionQueryService | None:
+    """Create detection query service with graceful error handling."""
+    try:
+        if ioc_service is None:
+            return None
+        return DetectionQueryService(bnp_service, ioc_service)
+    except Exception as e:
+        print(f"Warning: Detection query service unavailable: {e}")
+        return None
+
+
 class Container(containers.DeclarativeContainer):
     """Application dependency injection container.
 
@@ -58,29 +81,12 @@ class Container(containers.DeclarativeContainer):
     )
 
     # IOC database service factory with error handling
-    def _create_ioc_service(resolver: FilePathResolver) -> IOCDatabaseService | None:
-        """Create IOC database service with graceful error handling."""
-        try:
-            return IOCDatabaseService(resolver.get_ioc_database_path())
-        except Exception as e:
-            print(f"Warning: IOC database service unavailable: {e}")
-            return None
-
     ioc_database_service = providers.Singleton(
         _create_ioc_service,
         resolver=file_resolver,
     )
 
     # Detection query service factory with error handling
-    def _create_detection_query_service(bnp_service: DatabaseService, ioc_service: IOCDatabaseService | None) -> DetectionQueryService | None:
-        """Create detection query service with graceful error handling."""
-        try:
-            if ioc_service is None:
-                return None
-            return DetectionQueryService(bnp_service, ioc_service)
-        except Exception as e:
-            print(f"Warning: Detection query service unavailable: {e}")
-            return None
 
     detection_query_service = providers.Factory(
         _create_detection_query_service,

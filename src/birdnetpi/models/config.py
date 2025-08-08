@@ -34,10 +34,15 @@ class BirdNETConfig:
     site_name: str = "BirdNET-Pi"
     latitude: float = 0.0
     longitude: float = 0.0
-    model: str = "BirdNET_GLOBAL_6K_V2.4_Model_FP16"
-    metadata_model: str = "BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16"  # Metadata model filename
-    species_confidence_threshold: float = 0.03  # Minimum confidence threshold for species detection
+
+    # Model Configuration
+    model: str = "BirdNET_GLOBAL_6K_V2.4_Model_FP16"  # Main detection model filename
+    metadata_model: str = "BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16"  # Metadata model for filtering
+    species_confidence_threshold: float = 0.03  # Min confidence threshold for species detection
     sensitivity_setting: float = 1.25  # Audio analysis sensitivity setting
+    privacy_threshold: float = 10.0  # Privacy threshold percentage for human detection cutoff
+
+    # Audio Configuration
     audio_device_index: int = -1  # Default to -1 for system default or auto-detection
     sample_rate: int = 48000  # Default sample rate
     audio_channels: int = 1  # Default to mono
@@ -80,9 +85,6 @@ class BirdNETConfig:
     enable_audio_device_check: bool = True  # Enable audio device monitoring
     enable_system_resource_check: bool = True  # Enable system resource monitoring
     enable_gps_check: bool = False  # Enable GPS device monitoring
-
-    # Analysis model configuration
-    privacy_threshold: float = 10.0  # Privacy threshold percentage for human detection cutoff
 
     # MQTT Integration settings
     enable_mqtt: bool = False  # Enable MQTT publishing

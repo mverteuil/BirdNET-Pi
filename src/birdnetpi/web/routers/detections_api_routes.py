@@ -197,7 +197,9 @@ async def get_detection(
                         "timestamp": detection_with_ioc.timestamp.isoformat(),
                         "latitude": detection_with_ioc.detection.latitude,
                         "longitude": detection_with_ioc.detection.longitude,
-                        "species_confidence_threshold": detection_with_ioc.detection.species_confidence_threshold,
+                        "species_confidence_threshold": (
+                            detection_with_ioc.detection.species_confidence_threshold
+                        ),
                         "week": detection_with_ioc.detection.week,
                         "sensitivity_setting": detection_with_ioc.detection.sensitivity_setting,
                         "overlap": detection_with_ioc.detection.overlap,

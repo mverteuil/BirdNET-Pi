@@ -52,7 +52,7 @@ class AudioAnalysisService:
     def _start_buffer_flush_task(self) -> None:
         """Start the background task to flush detection buffer."""
 
-        def flush_loop():
+        def flush_loop() -> None:
             while not self._stop_flush_task:
                 try:
                     asyncio.run(self._flush_detection_buffer())

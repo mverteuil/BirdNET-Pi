@@ -217,7 +217,8 @@ class TestAudioAnalysisService:
 
         await audio_analysis_service._analyze_audio_chunk(audio_chunk)
 
-        # Should have called send_detection_event twice (for Robin and Crow, not Human below threshold)
+        # Should have called send_detection_event twice
+        # (for Robin and Crow, not Human below threshold)
         assert mock_send_detection_event.call_count == 2
 
         # Check the calls using test data
