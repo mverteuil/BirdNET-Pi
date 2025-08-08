@@ -8,14 +8,6 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class DataConfig:
-    """Legacy data configuration - now handled by FilePathResolver."""
-
-    # All data paths now resolved via FilePathResolver and environment variables
-    pass
-
-
-@dataclass
 class LoggingConfig:
     """Structlog-based logging configuration."""
 
@@ -49,9 +41,6 @@ class BirdNETConfig:
     audio_device_index: int = -1  # Default to -1 for system default or auto-detection
     sample_rate: int = 48000  # Default sample rate
     audio_channels: int = 1  # Default to mono
-
-    # Data paths
-    data: DataConfig = field(default_factory=DataConfig)
 
     # Logging settings
     logging: LoggingConfig = field(default_factory=LoggingConfig)
