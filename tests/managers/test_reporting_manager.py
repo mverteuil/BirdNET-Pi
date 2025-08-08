@@ -54,7 +54,7 @@ def mock_config():
     mock.latitude = 0.0
     mock.longitude = 0.0
     mock.model = "test_model"
-    mock.species_confidence_threshold = 0.0
+    mock.cutoff = 0.0
     mock.birdweather_id = "test_id"
     mock.apprise_input = "test_input"
     mock.apprise_notification_title = "test_title"
@@ -199,7 +199,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
     mock_detection_with_ioc_1.confidence = 0.9
     mock_detection_with_ioc_1.detection.latitude = None
     mock_detection_with_ioc_1.detection.longitude = None
-    mock_detection_with_ioc_1.detection.species_confidence_threshold = 0.03
+    mock_detection_with_ioc_1.detection.cutoff = 0.03
     mock_detection_with_ioc_1.detection.week = 1
     mock_detection_with_ioc_1.detection.sensitivity_setting = 1.25
     mock_detection_with_ioc_1.detection.overlap = 0.0
@@ -216,7 +216,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
     mock_detection_with_ioc_2.confidence = 0.8
     mock_detection_with_ioc_2.detection.latitude = None
     mock_detection_with_ioc_2.detection.longitude = None
-    mock_detection_with_ioc_2.detection.species_confidence_threshold = 0.03
+    mock_detection_with_ioc_2.detection.cutoff = 0.03
     mock_detection_with_ioc_2.detection.week = 1
     mock_detection_with_ioc_2.detection.sensitivity_setting = 1.25
     mock_detection_with_ioc_2.detection.overlap = 0.0
@@ -233,7 +233,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
     mock_detection_with_ioc_3.confidence = 0.95
     mock_detection_with_ioc_3.detection.latitude = None
     mock_detection_with_ioc_3.detection.longitude = None
-    mock_detection_with_ioc_3.detection.species_confidence_threshold = 0.03
+    mock_detection_with_ioc_3.detection.cutoff = 0.03
     mock_detection_with_ioc_3.detection.week = 1
     mock_detection_with_ioc_3.detection.sensitivity_setting = 1.25
     mock_detection_with_ioc_3.detection.overlap = 0.0

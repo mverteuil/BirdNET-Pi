@@ -348,7 +348,7 @@ def test_get_most_recent_detections(detection_manager):
     mock_detection.confidence = 0.9
     mock_detection.latitude = 1.0
     mock_detection.longitude = 2.0
-    mock_detection.species_confidence_threshold = 0.5
+    mock_detection.cutoff = 0.5
     mock_detection.week = 1
     mock_detection.sensitivity_setting = 1.0
     mock_detection.overlap = 0.0
