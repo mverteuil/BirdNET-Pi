@@ -15,9 +15,26 @@ log = logging.getLogger(__name__)
 
 
 class BirdDetectionService:
-    """Manage BirdNET analysis involving TensorFlow Lite model interactions."""
+    """Service for bird species detection using BirdNET TensorFlow Lite models.
+
+    This service manages the loading and execution of BirdNET models for acoustic
+    bird species identification. It supports both global and region-specific models
+    with metadata-based filtering for location and time-aware predictions.
+
+    The service handles:
+    - Loading and managing TensorFlow Lite models for inference
+    - Location and temporal filtering using metadata models
+    - Converting raw audio chunks into species predictions
+    - Applying confidence thresholds and sensitivity adjustments
+    """
 
     def __init__(self, config: BirdNETConfig) -> None:
+        """Initialize the bird detection service with configuration.
+
+        Args:
+            config: BirdNET configuration containing model paths, thresholds,
+                   and other detection parameters
+        """
         self.config = config
         self.interpreter: tflite.Interpreter | None = None  # type: ignore[name-defined]
         self.metadata_interpreter: tflite.Interpreter | None = None  # type: ignore[name-defined]
@@ -40,12 +57,29 @@ class BirdDetectionService:
         self._load_global_model()
 
     def _load_global_model(self) -> None:
+        """Load the global BirdNET model and initialize configuration parameters.
+
+        This method sets up the model name, privacy threshold, and species frequency
+        threshold from the configuration, then loads the main detection model.
+        """
         self.model_name = self.config.model
         self.privacy_threshold = self.config.privacy_threshold
         self.species_frequency_threshold = self.config.species_confidence_threshold
         self._load_model()
 
     def _load_model(self) -> None:
+        """Load the main TensorFlow Lite model for bird species detection.
+
+        This method:
+        - Loads the TensorFlow Lite model from the configured path
+        - Allocates tensors and prepares the interpreter
+        - Extracts input/output layer indices for inference
+        - Initializes the species class labels
+
+        Raises:
+            ValueError: If the model path is not found
+            RuntimeError: If the interpreter fails to initialize
+        """
         log.info("BirdDetectionService: LOADING TF LITE MODEL...")
 
         # Use FilePathResolver to get model path (filename-only approach)
@@ -82,6 +116,16 @@ class BirdDetectionService:
         log.info("BirdDetectionService: LOADING DONE!")
 
     def _load_meta_model(self) -> None:
+        """Load the metadata model for location and temporal filtering.
+
+        The metadata model predicts which species are likely to be present
+        at a given location and time of year, enabling more accurate
+        species identification by filtering out unlikely candidates.
+
+        Raises:
+            ValueError: If the metadata model path is not found
+            RuntimeError: If the metadata interpreter fails to initialize
+        """
         # Use FilePathResolver for data model path
         from birdnetpi.utils.file_path_resolver import FilePathResolver
 
@@ -107,6 +151,22 @@ class BirdDetectionService:
         log.info("BirdDetectionService: loaded META model")
 
     def _predict_filter_raw(self, latitude: float, longitude: float, week: int) -> np.ndarray:
+        """Generate species occurrence probabilities for a location and time.
+
+        Uses the metadata model to predict which species are likely to be
+        present at the specified location during the given week of the year.
+
+        Args:
+            latitude: Geographic latitude (-90 to 90)
+            longitude: Geographic longitude (-180 to 180)
+            week: Week of the year (1-52)
+
+        Returns:
+            Array of occurrence probabilities for each species
+
+        Raises:
+            RuntimeError: If the metadata interpreter is not initialized
+        """
         if self.metadata_interpreter is None:
             self._load_meta_model()
 
@@ -121,7 +181,25 @@ class BirdDetectionService:
         return self.metadata_interpreter.get_tensor(self.metadata_output_layer_index)[0]
 
     def get_filtered_species_list(self, latitude: float, longitude: float, week: int) -> list[str]:
-        """Return a list of species predicted by the meta-model for a given location and week."""
+        """Get species likely to be present at a location and time.
+
+        Filters the complete species list based on location and temporal
+        occurrence data from the metadata model. Only species with occurrence
+        probability above the threshold are included.
+
+        Args:
+            latitude: Geographic latitude (-90 to 90)
+            longitude: Geographic longitude (-180 to 180)
+            week: Week of the year (1-52)
+
+        Returns:
+            List of species names likely to be present at the specified
+            location and time
+
+        Notes:
+            - Results are cached per week to avoid redundant predictions
+            - Only applies to certain model versions that support metadata filtering
+        """
         if self.model_name == "BirdNET_GLOBAL_6K_V2.4_Model_FP16":
             if week != self.current_week or not self.predicted_species_list:
                 self.current_week = week
@@ -214,7 +292,27 @@ class BirdDetectionService:
         week: int,
         sensitivity: float,
     ) -> list[tuple[str, float]]:
-        """Perform raw prediction on an audio chunk."""
+        """Generate species predictions from an audio chunk.
+
+        Processes a 3-second audio chunk through the BirdNET model to identify
+        bird species present in the recording. Applies location and temporal
+        metadata for context-aware predictions.
+
+        Args:
+            audio_chunk: Audio samples as numpy array (typically 3 seconds at 48kHz)
+            latitude: Recording location latitude (-90 to 90)
+            longitude: Recording location longitude (-180 to 180)
+            week: Week of the year when recording was made (1-52)
+            sensitivity: Detection sensitivity adjustment (0.5-1.5 typical)
+                        Higher values increase sensitivity to faint sounds
+
+        Returns:
+            List of (species_name, confidence_score) tuples, sorted by
+            confidence in descending order. Confidence scores range from 0 to 1.
+
+        Raises:
+            RuntimeError: If the model interpreter is not initialized
+        """
         # Prepare metadata for the main model
         if self.metadata_params != [latitude, longitude, week]:
             self.metadata_params = [latitude, longitude, week]
@@ -259,7 +357,27 @@ class BirdDetectionService:
         week: int,
         sensitivity: float,
     ) -> list[tuple[str, float]]:
-        """Perform analysis on an audio chunk and return filtered (species, confidence) pairs."""
+        """Analyze audio and return filtered species detections.
+
+        Similar to get_raw_prediction but applies additional filtering based on
+        the species frequency threshold. Only returns species with confidence
+        scores above the configured threshold.
+
+        Args:
+            audio_chunk: Audio samples as numpy array (typically 3 seconds at 48kHz)
+            latitude: Recording location latitude (-90 to 90)
+            longitude: Recording location longitude (-180 to 180)
+            week: Week of the year when recording was made (1-52)
+            sensitivity: Detection sensitivity adjustment (0.5-1.5 typical)
+
+        Returns:
+            List of (species_name, confidence_score) tuples for species
+            exceeding the confidence threshold, sorted by confidence
+
+        Notes:
+            This is the primary method for production use as it filters out
+            low-confidence predictions that are likely to be false positives.
+        """
         raw_predictions = self.get_raw_prediction(
             audio_chunk,
             latitude,
