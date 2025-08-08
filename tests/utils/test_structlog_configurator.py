@@ -245,7 +245,6 @@ class TestHandlerConfiguration:
     def test_configure_handlers_console(self, mocker):
         """Should configure console handler for Docker/dev environments."""
         config = BirdNETConfig()
-        mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
         mock_logger = mocker.patch("logging.getLogger")
         mock_root = MagicMock()
         mock_logger.return_value = mock_root
@@ -260,7 +259,6 @@ class TestHandlerConfiguration:
         """Should configure console handler for development without systemd."""
         config = BirdNETConfig()
 
-        mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
         mock_logger = mocker.patch("logging.getLogger")
         mock_root = MagicMock()
         mock_logger.return_value = mock_root
@@ -273,7 +271,6 @@ class TestHandlerConfiguration:
     def test_configure_handlers_journald(self, mocker):
         """Should configure journald handler for SBC environments."""
         config = BirdNETConfig()
-        mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
         mock_logger = mocker.patch("logging.getLogger")
         mock_root = MagicMock()
         mock_logger.return_value = mock_root
@@ -293,7 +290,6 @@ class TestHandlerConfiguration:
         """Should fallback to stderr when journald unavailable."""
         config = BirdNETConfig()
 
-        mocker.patch("birdnetpi.utils.structlog_configurator.FilePathResolver")
         mock_logger = mocker.patch("logging.getLogger")
         mock_root = MagicMock()
         mock_logger.return_value = mock_root
