@@ -409,12 +409,12 @@ class TestMQTTService:
         detection = Detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
-            common_name="Test Bird",
+            common_name_tensor="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
-            species_confidence_threshold=0.03,
+            cutoff=0.03,
             week=15,
-            sensitivity_setting=1.25,
+            sensitivity=1.25,
             overlap=0.5,
         )
 
@@ -434,12 +434,12 @@ class TestMQTTService:
         detection = Detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
-            common_name="Test Bird",
+            common_name_tensor="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
-            species_confidence_threshold=0.03,
+            cutoff=0.03,
             week=15,
-            sensitivity_setting=1.25,
+            sensitivity=1.25,
             overlap=0.5,
         )
 

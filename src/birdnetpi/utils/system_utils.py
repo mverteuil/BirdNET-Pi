@@ -13,7 +13,7 @@ class SystemUtils:
                 tz_data = f.read().strip()
                 if tz_data:
                     return tz_data
-        except FileNotFoundError:
+        except (FileNotFoundError, PermissionError, OSError):
             pass
 
         # Fallback to timedatectl

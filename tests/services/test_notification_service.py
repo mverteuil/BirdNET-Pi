@@ -36,7 +36,7 @@ def test_handle_detection_event_basic(notification_service, caplog):
         detection = Detection(
             species_tensor="Turdus merula_Common Blackbird",
             scientific_name="Turdus merula",
-            common_name="Common Blackbird",
+            common_name_tensor="Common Blackbird",
             confidence=0.95,
         )
         notification_service.active_websockets.add(Mock())  # Add a mock websocket
@@ -53,7 +53,7 @@ def test_handle_detection_event__apprise_enabled(mock_config, notification_servi
         detection = Detection(
             species_tensor="Erithacus rubecula_European Robin",
             scientific_name="Erithacus rubecula",
-            common_name="European Robin",
+            common_name_tensor="European Robin",
             confidence=0.88,
         )
         notification_service.active_websockets.add(Mock())  # Add a mock websocket
