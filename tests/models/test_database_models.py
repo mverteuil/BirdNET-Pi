@@ -9,7 +9,7 @@ from birdnetpi.models.database_models import GUID, Detection
 class TestGUIDTypeDecorator:
     """Test the GUID TypeDecorator class."""
 
-    def test_process_bind_param_with_none(self):
+    def test_process_bind_param__none(self):
         """Test process_bind_param returns None when value is None."""
         guid = GUID()
         dialect = MagicMock()
@@ -18,7 +18,7 @@ class TestGUIDTypeDecorator:
 
         assert result is None  # This covers line 26
 
-    def test_process_bind_param_with_uuid_instance(self):
+    def test_process_bind_param__uuid_instance(self):
         """Test process_bind_param returns string when value is UUID instance."""
         guid = GUID()
         dialect = MagicMock()
@@ -28,7 +28,7 @@ class TestGUIDTypeDecorator:
 
         assert result == str(test_uuid)
 
-    def test_process_bind_param_with_string_uuid(self):
+    def test_process_bind_param__string_uuid(self):
         """Test process_bind_param converts string to UUID then string."""
         guid = GUID()
         dialect = MagicMock()
@@ -39,7 +39,7 @@ class TestGUIDTypeDecorator:
         # This covers line 28 - converting string to UUID then back to string
         assert result == test_uuid_str
 
-    def test_process_result_value_with_none(self):
+    def test_process_result_value__none(self):
         """Test process_result_value returns None when value is None."""
         guid = GUID()
         dialect = MagicMock()
@@ -48,7 +48,7 @@ class TestGUIDTypeDecorator:
 
         assert result is None  # This covers line 34
 
-    def test_process_result_value_with_uuid_instance(self):
+    def test_process_result_value__uuid_instance(self):
         """Test process_result_value returns UUID when value is already UUID."""
         guid = GUID()
         dialect = MagicMock()
@@ -58,7 +58,7 @@ class TestGUIDTypeDecorator:
 
         assert result == test_uuid  # This covers line 37
 
-    def test_process_result_value_with_string(self):
+    def test_process_result_value__string(self):
         """Test process_result_value converts string to UUID."""
         guid = GUID()
         dialect = MagicMock()
@@ -92,7 +92,7 @@ class TestDetection:
     def test_get_display_name_returns_common_name(self):
         """Test get_display_name returns common name when available."""
         detection = Detection(
-            common_name="American Robin Tensor",
+            common_name_tensor="American Robin Tensor",
             scientific_name="Turdus migratorius",
         )
 
@@ -103,7 +103,7 @@ class TestDetection:
     def test_get_display_name_falls_back_to_scientific_name(self):
         """Test get_display_name returns scientific name when common name is None."""
         detection = Detection(
-            common_name=None,
+            common_name_tensor=None,
             scientific_name="Turdus migratorius",
         )
 

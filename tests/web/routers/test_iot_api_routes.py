@@ -141,7 +141,7 @@ class TestIoTEndpoints:
         assert data["enabled"] is False
         assert data["webhook_count"] == 0
 
-    def test_test_iot_services(self, client):
+    def test_iot_services(self, client):
         """Should test IoT service connectivity."""
         # Setup MQTT service
         mqtt_service = client.app.container.mqtt_service()  # type: ignore[attr-defined]
@@ -206,7 +206,7 @@ class TestIoTEndpoints:
         else:
             assert response.status_code == 200
 
-    def test_webhook_test_send(self, client):
+    def test_webhook_send(self, client):
         """Should test webhook delivery."""
         webhook_service = client.app.container.webhook_service()  # type: ignore[attr-defined]
         webhook_service.enable_webhooks = True

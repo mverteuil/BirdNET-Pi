@@ -20,12 +20,12 @@ from birdnetpi.utils.structlog_configurator import (
 class TestEnvironmentDetection:
     """Test environment detection functions."""
 
-    def test_is_docker_environment_with_dockerenv(self, mocker):
+    def test_is_docker_environment__dockerenv(self, mocker):
         """Should return True when /.dockerenv exists."""
         mocker.patch("os.path.exists", return_value=True)
         assert is_docker_environment() is True
 
-    def test_is_docker_environment_with_env_var(self, mocker):
+    def test_is_docker_environment__env_var(self, mocker):
         """Should return True when DOCKER_CONTAINER env var is set."""
         mocker.patch("os.path.exists", return_value=False)
         mocker.patch.dict(os.environ, {"DOCKER_CONTAINER": "true"})
@@ -58,7 +58,7 @@ class TestEnvironmentDetection:
 class TestGitVersion:
     """Test git version detection."""
 
-    def test_get_git_version_success(self, mocker):
+    def test_get_git_version(self, mocker):
         """Should return formatted version when git commands succeed."""
         mock_run = mocker.patch("subprocess.run")
         mock_run.side_effect = [
@@ -207,7 +207,7 @@ class TestProcessorConfiguration:
         # Should end with ConsoleRenderer for development
         assert any("ConsoleRenderer" in str(type(p)) for p in processors)
 
-    def test_configure_processors_with_location(self, mocker):
+    def test_configure_processors__location(self, mocker):
         """Should include location when coordinates are set."""
         config = BirdNETConfig(latitude=40.7128, longitude=-74.0060)
         mocker.patch(
@@ -319,7 +319,7 @@ class TestHandlerConfiguration:
 class TestMainConfiguration:
     """Test main configuration function."""
 
-    def test_configure_structlog_success(self, mocker):
+    def test_configure_structlog(self, mocker):
         """Should configure structlog successfully."""
         config = BirdNETConfig()
 

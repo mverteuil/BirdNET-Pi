@@ -41,7 +41,7 @@ class TestHardwareEndpoints:
         assert response.status_code == 200
         assert response.json() == mock_status
 
-    def test_get_hardware_component_success(self, client):
+    def test_get_hardware_component(self, client):
         """Should return specific component status."""
         mock_status = {"status": "healthy", "value": 45.2}
         client.app.container.hardware_monitor_service().get_component_status.return_value = (  # type: ignore[attr-defined]

@@ -22,7 +22,7 @@ def update_manager(tmp_path):
 
 
 @patch("birdnetpi.managers.update_manager.subprocess.run")
-def test_update_birdnet_success(mock_run, update_manager):
+def test_update_birdnet(mock_run, update_manager):
     """Should update BirdNET successfully."""
     config = GitUpdateConfig()
     update_manager.update_birdnet(config)
@@ -30,7 +30,7 @@ def test_update_birdnet_success(mock_run, update_manager):
 
 
 @patch("birdnetpi.managers.update_manager.subprocess.run")
-def test_update_caddyfile_success(mock_run, update_manager):
+def test_update_caddyfile(mock_run, update_manager):
     """Should update the Caddyfile successfully."""
     config = CaddyConfig(birdnetpi_url="test_url")
     update_manager.update_caddyfile(config)
@@ -38,7 +38,7 @@ def test_update_caddyfile_success(mock_run, update_manager):
 
 
 @patch("birdnetpi.managers.update_manager.subprocess.run")
-def test_get_commits_behind_success(mock_run, update_manager):
+def test_get_commits_behind(mock_run, update_manager):
     """Should return the number of commits behind."""
     mock_run.return_value.stdout = (
         "Your branch is behind 'origin/main' by 3 commits, and can be fast-forwarded."
@@ -101,7 +101,7 @@ class TestVersionResolution:
         assert result == "v1.5.0"
 
     @patch("httpx.Client")
-    def test_resolve_latest_asset_version_success(self, mock_client_class, update_manager):
+    def test_resolve_latest_asset_version(self, mock_client_class, update_manager):
         """Should resolve latest asset version from releases."""
         mock_client = MagicMock()
         mock_client_class.return_value.__enter__.return_value = mock_client
@@ -120,7 +120,7 @@ class TestVersionResolution:
         mock_client.get.assert_called_once_with("https://api.github.com/repos/owner/repo/releases")
 
     @patch("httpx.Client")
-    def test_resolve_latest_asset_version_no_assets(self, mock_client_class, update_manager):
+    def test_resolve_latest_asset_version__no_assets(self, mock_client_class, update_manager):
         """Should raise error when no asset releases found."""
         mock_client = MagicMock()
         mock_client_class.return_value.__enter__.return_value = mock_client
@@ -168,7 +168,7 @@ class TestAssetValidation:
         )
 
     @patch("httpx.Client")
-    def test_validate_asset_release_with_v_prefix(self, mock_client_class, update_manager):
+    def test_validate_asset_release__v_prefix(self, mock_client_class, update_manager):
         """Should handle version with 'v' prefix correctly."""
         mock_client = MagicMock()
         mock_client_class.return_value.__enter__.return_value = mock_client
@@ -221,7 +221,7 @@ class TestAssetDownload:
     @patch("shutil.unpack_archive")
     @patch("httpx.Client")
     @patch("builtins.open", new_callable=mock_open)
-    def test_download_and_extract_assets_success(
+    def test_download__extract_assets(
         self, mock_file, mock_client_class, mock_unpack, mock_mkdtemp, update_manager, tmp_path
     ):
         """Should download and extract assets successfully."""
@@ -254,7 +254,7 @@ class TestAssetDownload:
     @patch("tempfile.mkdtemp")
     @patch("shutil.unpack_archive")
     @patch("httpx.Client")
-    def test_download_and_extract_assets_no_extracted_dir(
+    def test_download__extract_assets__no_extracted_dir(
         self, mock_client_class, mock_unpack, mock_mkdtemp, update_manager, tmp_path
     ):
         """Should raise error when no extracted directory found."""
@@ -286,7 +286,7 @@ class TestDownloadReleaseAssets:
     @patch.object(UpdateManager, "_resolve_latest_asset_version")
     @patch("birdnetpi.managers.update_manager.FilePathResolver")
     @patch("shutil.copy2")
-    def test_download_release_assets_success(
+    def test_download_release_assets(
         self,
         mock_copy,
         mock_file_resolver_class,
@@ -370,7 +370,7 @@ class TestDownloadReleaseAssets:
     @patch.object(UpdateManager, "_download_and_extract_assets")
     @patch.object(UpdateManager, "_validate_asset_release")
     @patch("birdnetpi.managers.update_manager.FilePathResolver")
-    def test_download_release_assets_missing_models(
+    def test_download_release_assets__missing_models(
         self,
         mock_file_resolver_class,
         mock_validate,
@@ -411,7 +411,7 @@ class TestListVersions:
     """Test version listing functionality."""
 
     @patch("httpx.Client")
-    def test_list_available_versions_success(self, mock_client_class, update_manager):
+    def test_list_available_versions(self, mock_client_class, update_manager):
         """Should list available code release versions."""
         mock_client = MagicMock()
         mock_client_class.return_value.__enter__.return_value = mock_client
@@ -431,7 +431,7 @@ class TestListVersions:
         mock_client.get.assert_called_once_with("https://api.github.com/repos/owner/repo/releases")
 
     @patch("httpx.Client")
-    def test_list_available_asset_versions_success(self, mock_client_class, update_manager):
+    def test_list_available_asset_versions(self, mock_client_class, update_manager):
         """Should list available asset release versions."""
         mock_client = MagicMock()
         mock_client_class.return_value.__enter__.return_value = mock_client
@@ -481,7 +481,7 @@ class TestCaddyfileUpdate:
     @patch("os.path.exists")
     @patch("builtins.open", new_callable=mock_open)
     @patch("birdnetpi.managers.update_manager.subprocess.run")
-    def test_update_caddyfile_with_backup(self, mock_run, mock_file, mock_exists, update_manager):
+    def test_update_caddyfile__backup(self, mock_run, mock_file, mock_exists, update_manager):
         """Should backup existing Caddyfile before updating."""
         mock_exists.return_value = True
         config = CaddyConfig(birdnetpi_url="example.com")

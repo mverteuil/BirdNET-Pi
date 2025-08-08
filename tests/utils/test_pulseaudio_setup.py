@@ -55,13 +55,13 @@ class TestPulseAudioSetup:
         assert PulseAudioSetup.is_pulseaudio_installed() is False
 
     @patch("birdnetpi.utils.pulseaudio_setup.subprocess.run", side_effect=FileNotFoundError)
-    def test_is_pulseaudio_installed_no_brew(self, mock_run):
+    def test_is_pulseaudio_installed__no_brew(self, mock_run):
         """Should return False when brew is not found."""
         assert PulseAudioSetup.is_pulseaudio_installed() is False
 
     @patch("birdnetpi.utils.pulseaudio_setup.PulseAudioSetup.is_macos", return_value=True)
     @patch("birdnetpi.utils.pulseaudio_setup.subprocess.run")
-    def test_install_pulseaudio_success(self, mock_run, mock_is_macos):
+    def test_install_pulseaudio(self, mock_run, mock_is_macos):
         """Should successfully install PulseAudio."""
         mock_run.return_value.returncode = 0
 
@@ -105,7 +105,7 @@ class TestPulseAudioSetup:
         assert (mock_config_dir / "default.pa.backup").exists()
         assert (mock_config_dir / "daemon.conf.backup").exists()
 
-    def test_backup_existing_config_no_files(self, mock_config_dir):
+    def test_backup_existing_config__no_files(self, mock_config_dir):
         """Should return None when no config files exist."""
         mock_config_dir.mkdir(parents=True, exist_ok=True)
 
@@ -157,7 +157,7 @@ class TestPulseAudioSetup:
         assert oct(cookie_path.stat().st_mode)[-3:] == "600"
 
     @patch("birdnetpi.utils.pulseaudio_setup.subprocess.run")
-    def test_start_pulseaudio_server_success(self, mock_run):
+    def test_start_pulseaudio_server(self, mock_run):
         """Should successfully start PulseAudio server."""
         mock_run.return_value.returncode = 0
         mock_run.return_value.stderr = ""
@@ -182,7 +182,7 @@ class TestPulseAudioSetup:
         assert "error message" in message
 
     @patch("birdnetpi.utils.pulseaudio_setup.subprocess.run")
-    def test_stop_pulseaudio_server_success(self, mock_run):
+    def test_stop_pulseaudio_server(self, mock_run):
         """Should successfully stop PulseAudio server."""
         mock_run.return_value.returncode = 0
 
@@ -192,7 +192,7 @@ class TestPulseAudioSetup:
         assert "stopped successfully" in message
 
     @patch("birdnetpi.utils.pulseaudio_setup.subprocess.run")
-    def test_test_connection_success(self, mock_run):
+    def test_connection(self, mock_run):
         """Should successfully test connection to container."""
         mock_run.return_value.returncode = 0
         mock_run.return_value.stderr = ""
@@ -207,7 +207,7 @@ class TestPulseAudioSetup:
         assert "Successfully connected" in message
 
     @patch("birdnetpi.utils.pulseaudio_setup.subprocess.run")
-    def test_test_connection_failure(self, mock_run):
+    def test_connection_failure(self, mock_run):
         """Should handle connection failure."""
         mock_run.return_value.returncode = 1
         mock_run.return_value.stderr = "Connection refused"
@@ -235,7 +235,7 @@ class TestPulseAudioSetup:
         assert devices[0]["description"] == "Microphone 1"
 
     @patch("birdnetpi.utils.pulseaudio_setup.subprocess.run", side_effect=FileNotFoundError)
-    def test_get_audio_devices_no_pactl(self, mock_run):
+    def test_get_audio_devices__no_pactl(self, mock_run):
         """Should return empty list when pactl is not available."""
         devices = PulseAudioSetup.get_audio_devices()
         assert devices == []
@@ -250,7 +250,7 @@ class TestPulseAudioSetup:
     @patch("birdnetpi.utils.pulseaudio_setup.PulseAudioSetup.create_auth_cookie")
     @patch("birdnetpi.utils.pulseaudio_setup.PulseAudioSetup.stop_pulseaudio_server")
     @patch("birdnetpi.utils.pulseaudio_setup.PulseAudioSetup.start_pulseaudio_server")
-    def test_setup_streaming_success(
+    def test_setup_streaming(
         self,
         mock_start,
         mock_stop,

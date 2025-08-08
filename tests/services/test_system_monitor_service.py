@@ -48,7 +48,7 @@ def test_check_disk_space_low(mock_disk_usage, system_monitor_service):
 line2
 """,
 )
-def test_dump_logs_success(mock_open, mock_exists, system_monitor_service):
+def test_dump_logs(mock_open, mock_exists, system_monitor_service):
     """Should dump log file content when file exists"""
     result = system_monitor_service.dump_logs("/var/log/test.log")
     assert result == "line1\nline2"
@@ -78,7 +78,7 @@ def test_dump_logs_read_error(
 
 
 @patch("birdnetpi.services.system_monitor_service.subprocess.check_output")
-def test_get_extra_info_success(mock_check_output, system_monitor_service):
+def test_get_extra_info(mock_check_output, system_monitor_service):
     """Should return CPU temperature and memory usage successfully"""
     mock_check_output.side_effect = [
         # vcgencmd measure_temp

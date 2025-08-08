@@ -150,7 +150,7 @@ class TestIOCSpecies:
         assert species.breeding_regions is None
         assert species.breeding_subregions is None
 
-    def test_ioc_species_with_optional_fields(self):
+    def test_ioc_species__optional_fields(self):
         """Should create IOCSpecies with optional breeding region fields."""
         species = IOCSpecies(
             scientific_name="Turdus migratorius",
@@ -250,7 +250,7 @@ class TestXMLLoading:
     """Test XML data loading functionality."""
 
     @patch("birdnetpi.services.ioc_reference_service.ET.parse")
-    def test_load_xml_data_success(self, mock_parse, ioc_service, mock_xml_data, tmp_path):
+    def test_load_xml_data(self, mock_parse, ioc_service, mock_xml_data, tmp_path):
         """Should load XML data successfully."""
         # Setup mock XML parsing
         mock_tree = MagicMock()
@@ -328,7 +328,7 @@ class TestXLSXLoading:
     """Test XLSX translation loading functionality."""
 
     @patch("birdnetpi.services.ioc_reference_service.openpyxl.load_workbook")
-    def test_load_xlsx_translations_success(
+    def test_load_xlsx_translations(
         self, mock_load_workbook, ioc_service, mock_xlsx_data, tmp_path
     ):
         """Should load XLSX translations successfully."""
@@ -371,7 +371,7 @@ class TestXLSXLoading:
         assert robin_translations.get("de") == "Wanderdrossel"
 
     @patch("birdnetpi.services.ioc_reference_service.openpyxl.load_workbook")
-    def test_load_xlsx_translations_no_worksheet(self, mock_load_workbook, ioc_service, tmp_path):
+    def test_load_xlsx_translations__no_worksheet(self, mock_load_workbook, ioc_service, tmp_path):
         """Should handle missing worksheet error."""
         mock_workbook = MagicMock()
         mock_workbook.active = None
@@ -552,7 +552,7 @@ class TestSpeciesSearch:
         assert results[0].scientific_name == "Turdus merula"
         assert "Blackbird" in results[0].english_name
 
-    def test_search_species_by_common_name_no_results(self, populated_service):
+    def test_search_species_by_common_name__no_results(self, populated_service):
         """Should return empty list when no matches found."""
         results = populated_service.search_species_by_common_name("Nonexistent")
         assert results == []
@@ -736,7 +736,7 @@ class TestJSONImport:
 class TestErrorHandling:
     """Test error handling across the service."""
 
-    def test_xml_parsing_error_handling(self, ioc_service, tmp_path):
+    def test_xml_parsing__error_handling(self, ioc_service, tmp_path):
         """Should handle XML parsing errors gracefully."""
         xml_file = tmp_path / "invalid.xml"
         xml_file.write_text("invalid xml content")

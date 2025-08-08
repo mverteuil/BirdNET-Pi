@@ -15,7 +15,7 @@ from birdnetpi.utils.service_strategies import (
 class TestServiceManagementStrategy:
     """Tests for the ServiceManagementStrategy abstract base class."""
 
-    def test_should_raise_type_error_on_instantiation(self):
+    def test_should_raise_type__error_on_instantiation(self):
         """Should raise TypeError if ServiceManagementStrategy is instantiated directly."""
         with pytest.raises(TypeError):
             ServiceManagementStrategy()  # type: ignore[abstract]
@@ -242,7 +242,7 @@ class TestServiceStrategySelector:
 
     @patch.dict(os.environ, {"DOCKER_CONTAINER": "true"})
     @patch("os.path.exists", return_value=True)
-    def test_should_return_docker_supervisord_strategy_if_docker_env_var_set(self, mock_exists):
+    def test_should_return_docker_supervisord_strategy__docker_env_var_set(self, mock_exists):
         """Should return DockerSupervisordStrategy if DOCKER_CONTAINER env var is 'true'."""
         strategy = ServiceStrategySelector.get_strategy()
         assert isinstance(strategy, DockerSupervisordStrategy)
@@ -250,7 +250,7 @@ class TestServiceStrategySelector:
 
     @patch.dict(os.environ, {}, clear=True)
     @patch("os.path.exists", return_value=True)
-    def test_should_return_docker_supervisord_strategy_if_dockerenv_file_exists(self, mock_exists):
+    def test_should_return_docker_supervisord_strategy__dockerenv_file_exists(self, mock_exists):
         """Should return DockerSupervisordStrategy if /.dockerenv file exists."""
         strategy = ServiceStrategySelector.get_strategy()
         assert isinstance(strategy, DockerSupervisordStrategy)

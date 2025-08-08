@@ -37,21 +37,21 @@ class TestSpeciesParser:
         assert components.common_name == "American Robin"
         assert components.full_species == "American Robin (Turdus migratorius)"
 
-    def test_parse_tensor_species_invalid_format_no_underscore(self):
+    def test_parse_tensor_species__invalid_format__no_underscore(self):
         """Test parsing fails with invalid format (no underscore)."""
         tensor_output = "Abeillia abeillei Emerald-chinned Hummingbird"
 
         with pytest.raises(ValueError, match="Invalid tensor species format"):
             SpeciesParser.parse_tensor_species(tensor_output)
 
-    def test_parse_tensor_species_invalid_format_empty_parts(self):
+    def test_parse_tensor_species__invalid_format__empty_parts(self):
         """Test parsing fails with empty components."""
         tensor_output = "_Emerald-chinned Hummingbird"
 
         with pytest.raises(ValueError, match="Invalid species components"):
             SpeciesParser.parse_tensor_species(tensor_output)
 
-    def test_parse_tensor_species_invalid_format_empty_string(self):
+    def test_parse_tensor_species__invalid_format__empty_string(self):
         """Test parsing fails with empty string."""
         with pytest.raises(ValueError, match="Invalid tensor output"):
             SpeciesParser.parse_tensor_species("")
@@ -211,7 +211,7 @@ class TestConfigIntegration:
 class TestSpeciesParserWithIOC:
     """Test SpeciesParser functionality with IOC service."""
 
-    def test_species_parser_initialization_with_ioc_service(self):
+    def test_species_parser_initialization__ioc_service(self):
         """Test SpeciesParser initialization with IOC service."""
         from birdnetpi.utils.species_parser import IOCReferenceService
 

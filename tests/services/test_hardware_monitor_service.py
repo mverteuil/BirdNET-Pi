@@ -70,7 +70,7 @@ class TestHardwareMonitorService:
         assert test_callback not in service.alert_callbacks
 
     @pytest.mark.asyncio
-    async def test_check_audio_devices_success(self, hardware_monitor):
+    async def test_check_audio_devices(self, hardware_monitor):
         """Test audio device check when audio is working."""
         service = hardware_monitor
         check_time = datetime.now(UTC)
@@ -181,7 +181,7 @@ class TestHardwareMonitorService:
         assert status == HealthStatus.CRITICAL
 
     @pytest.mark.asyncio
-    async def test_update_component_status_with_alerts(self, hardware_monitor):
+    async def test_update_component_status__alerts(self, hardware_monitor):
         """Test component status updates and alert triggering."""
         service = hardware_monitor
         alert_called = False
@@ -263,7 +263,7 @@ class TestHardwareMonitorService:
         assert len(summary["components"]) == 0
         assert summary["alert_count"] == 0
 
-    def test_get_health_summary_with_components(self, hardware_monitor):
+    def test_get_health_summary__components(self, hardware_monitor):
         """Test health summary with various component statuses."""
         service = hardware_monitor
 
@@ -312,7 +312,7 @@ class TestHardwareMonitorService:
         assert gps_status is None
 
     @pytest.mark.asyncio
-    async def test_alert_callback_exception_handling(self, hardware_monitor):
+    async def test_alert_callback__exception_handling(self, hardware_monitor):
         """Test that exceptions in alert callbacks don't break the service."""
         service = hardware_monitor
 

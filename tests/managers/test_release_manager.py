@@ -109,7 +109,7 @@ class TestReleaseConfig:
 class TestReleaseManager:
     """Test ReleaseManager functionality."""
 
-    def test_init_with_repo_path(self, mock_file_resolver, tmp_path):
+    def test_init__repo_path(self, mock_file_resolver, tmp_path):
         """Should initialize with provided repo path."""
         manager = ReleaseManager(mock_file_resolver, tmp_path)
         assert manager.file_resolver == mock_file_resolver
@@ -122,18 +122,18 @@ class TestReleaseManager:
             manager = ReleaseManager(mock_file_resolver)
             assert manager.repo_path == Path("/current/dir")
 
-    def test_validate_assets_exist_success(self, release_manager, sample_assets):
+    def test_validate_assets_exist(self, release_manager, sample_assets):
         """Should pass validation when all assets exist."""
         # Should not raise any exception
         release_manager._validate_assets_exist(sample_assets)
 
-    def test_validate_assets_exist_missing_asset(self, release_manager):
+    def test_validate_assets_exist__missing_asset(self, release_manager):
         """Should raise FileNotFoundError for missing assets."""
         missing_assets = [ReleaseAsset("/nonexistent/path", "target", "description")]
         with pytest.raises(FileNotFoundError, match="Missing assets"):
             release_manager._validate_assets_exist(missing_assets)
 
-    def test_get_current_branch_success(self, release_manager):
+    def test_get_current_branch(self, release_manager):
         """Should return current branch name."""
         with patch.object(release_manager, "_run_git_command") as mock_git:
             mock_git.return_value = "main\n"
@@ -213,7 +213,7 @@ class TestReleaseManager:
         assert result == "/prod/path"
 
     @patch("subprocess.run")
-    def test_run_command_success(self, mock_run, release_manager):
+    def test_run_command(self, mock_run, release_manager):
         """Should run command successfully."""
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = "output"
@@ -306,7 +306,7 @@ class TestReleaseManager:
     @patch.object(ReleaseManager, "_create_orphaned_commit")
     @patch.object(ReleaseManager, "_get_current_branch")
     @patch.object(ReleaseManager, "_validate_assets_exist")
-    def test_create_asset_release_success(
+    def test_create_asset_release(
         self,
         mock_validate,
         mock_get_branch,
@@ -334,7 +334,7 @@ class TestReleaseManager:
     @patch.object(ReleaseManager, "_create_orphaned_commit")
     @patch.object(ReleaseManager, "_get_current_branch")
     @patch.object(ReleaseManager, "_validate_assets_exist")
-    def test_create_asset_release_with_cleanup_on_error(
+    def test_create_asset_release__cleanup_on_error(
         self,
         mock_validate,
         mock_get_branch,
@@ -394,7 +394,7 @@ class TestReleaseManager:
         assert any("push" in str(call) for call in git_calls)
 
     @patch.object(ReleaseManager, "_run_git_command")
-    def test_cleanup_and_return_to_branch_success(self, mock_git, release_manager):
+    def test_cleanup__return_to_branch(self, mock_git, release_manager):
         """Should cleanup and return to original branch successfully."""
         mock_git.side_effect = [
             None,  # checkout original branch
@@ -408,7 +408,7 @@ class TestReleaseManager:
         assert mock_git.call_count >= 2
 
     @patch.object(ReleaseManager, "_run_git_command")
-    def test_cleanup_and_return_to_branch_checkout_failure(self, mock_git, release_manager):
+    def test_cleanup__return_to_branch_checkout_failure(self, mock_git, release_manager):
         """Should handle checkout failure with reset and retry."""
         mock_git.side_effect = [
             subprocess.CalledProcessError(1, "git checkout"),  # checkout fails

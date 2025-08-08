@@ -38,7 +38,7 @@ def mock_file_resolver():
 class TestBuildAssetList:
     """Test _build_asset_list function."""
 
-    def test_build_asset_list_with_models(self, mock_release_manager, tmp_path):
+    def test_build_asset_list__models(self, mock_release_manager, tmp_path):
         """Should build asset list with models when they exist."""
         # Create test models directory
         models_dir = tmp_path / "models"
@@ -59,7 +59,7 @@ class TestBuildAssetList:
         assert assets[0].target_name == "data/models"
         assert assets[0].description == "BirdNET models"
 
-    def test_build_asset_list_with_ioc_db(self, mock_release_manager, tmp_path):
+    def test_build_asset_list__ioc_db(self, mock_release_manager, tmp_path):
         """Should build asset list with IOC database when it exists."""
         # Create test IOC database
         ioc_db = tmp_path / "ioc.db"
@@ -79,7 +79,7 @@ class TestBuildAssetList:
         assert assets[0].target_name == "data/database/ioc_reference.db"
         assert assets[0].description == "IOC database"
 
-    def test_build_asset_list_with_custom_assets(self, mock_release_manager, tmp_path):
+    def test_build_asset_list__custom_assets(self, mock_release_manager, tmp_path):
         """Should build asset list with custom assets."""
         # Create test custom asset
         custom_file = tmp_path / "custom.txt"
@@ -99,7 +99,7 @@ class TestBuildAssetList:
         assert assets[0].description == "Custom asset description"
 
     @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
-    def test_build_asset_list_missing_models_warning(self, mock_exit, mock_release_manager, capsys):
+    def test_build_asset_list__missing_models_warning(self, mock_exit, mock_release_manager, capsys):
         """Should warn when models are requested but missing."""
         mock_exit.side_effect = SystemExit(1)
         args = argparse.Namespace(include_models=True, include_ioc_db=False, custom_assets=None)
@@ -112,7 +112,7 @@ class TestBuildAssetList:
         mock_exit.assert_called_with(1)
 
     @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
-    def test_build_asset_list_no_assets(self, mock_exit, mock_release_manager):
+    def test_build_asset_list__no_assets(self, mock_exit, mock_release_manager):
         """Should exit when no assets are specified."""
         mock_exit.side_effect = SystemExit(1)
         args = argparse.Namespace(include_models=False, include_ioc_db=False, custom_assets=None)
@@ -148,7 +148,7 @@ class TestAddCustomAssets:
         assert assets[1].description == "Description 2"
 
     @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
-    def test_add_custom_assets_invalid_format(self, mock_exit):
+    def test_add_custom_assets__invalid_format(self, mock_exit):
         """Should exit when custom asset format is invalid."""
         mock_exit.side_effect = SystemExit(1)
         custom_assets = ["invalid:format"]  # Missing description
@@ -160,7 +160,7 @@ class TestAddCustomAssets:
         mock_exit.assert_called_once_with(1)
 
     @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
-    def test_add_custom_assets_missing_file(self, mock_exit):
+    def test_add_custom_assets__missing_file(self, mock_exit):
         """Should exit when custom asset file doesn't exist."""
         mock_exit.side_effect = SystemExit(1)
         custom_assets = ["/nonexistent/file:target:Description"]
@@ -209,7 +209,7 @@ class TestHandleGithubRelease:
         assert "GitHub release created: v2.1.0" in captured.out
         assert "Release URL: https://github.com/user/repo/releases/tag/v2.1.0" in captured.out
 
-    def test_handle_github_release_no_url(self, mock_release_manager, capsys):
+    def test_handle_github_release__no_url(self, mock_release_manager, capsys):
         """Should handle GitHub release without URL."""
         mock_github_result = {
             "tag_name": "v2.1.0",
@@ -238,7 +238,7 @@ class TestCreateRelease:
     @patch("birdnetpi.wrappers.release_wrapper.ReleaseManager")
     @patch("birdnetpi.wrappers.release_wrapper._build_asset_list")
     @patch("birdnetpi.wrappers.release_wrapper._handle_github_release")
-    def test_create_release_success(
+    def test_create_release(
         self,
         mock_handle_github,
         mock_build_assets,
@@ -294,7 +294,7 @@ class TestCreateRelease:
     @patch("birdnetpi.wrappers.release_wrapper.FilePathResolver")
     @patch("birdnetpi.wrappers.release_wrapper.ReleaseManager")
     @patch("birdnetpi.wrappers.release_wrapper._build_asset_list")
-    def test_create_release_with_custom_options(
+    def test_create_release__custom_options(
         self, mock_build_assets, mock_manager_class, mock_resolver_class
     ):
         """Should create release with custom branch and commit message."""
@@ -339,7 +339,7 @@ class TestCreateRelease:
     @patch("birdnetpi.wrappers.release_wrapper.ReleaseManager")
     @patch("birdnetpi.wrappers.release_wrapper._build_asset_list")
     @patch("birdnetpi.wrappers.release_wrapper._handle_github_release")
-    def test_create_release_with_json_output(
+    def test_create_release__json_output(
         self,
         mock_handle_github,
         mock_build_assets,
@@ -394,7 +394,7 @@ class TestCreateRelease:
     @patch("birdnetpi.wrappers.release_wrapper.ReleaseManager")
     @patch("birdnetpi.wrappers.release_wrapper._build_asset_list")
     @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
-    def test_create_release_error_handling(
+    def test_create_release__error_handling(
         self, mock_exit, mock_build_assets, mock_manager_class, mock_resolver_class
     ):
         """Should handle release creation errors."""
@@ -428,7 +428,7 @@ class TestListAssets:
 
     @patch("birdnetpi.wrappers.release_wrapper.FilePathResolver")
     @patch("birdnetpi.wrappers.release_wrapper.ReleaseManager")
-    def test_list_assets_success(self, mock_manager_class, mock_resolver_class, tmp_path, capsys):
+    def test_list_assets(self, mock_manager_class, mock_resolver_class, tmp_path, capsys):
         """Should list available assets."""
         # Create test assets
         models_dir = tmp_path / "models"
@@ -464,7 +464,7 @@ class TestListAssets:
 
     @patch("birdnetpi.wrappers.release_wrapper.FilePathResolver")
     @patch("birdnetpi.wrappers.release_wrapper.ReleaseManager")
-    def test_list_assets_with_file_sizes(
+    def test_list_assets__file_sizes(
         self, mock_manager_class, mock_resolver_class, tmp_path, capsys
     ):
         """Should show file sizes for existing assets."""
@@ -541,7 +541,7 @@ class TestMain:
 
         mock_list.assert_called_once()
 
-    def test_main_no_command_shows_help(self, capsys):
+    def test_main__no_command_shows_help(self, capsys):
         """Should show help when no command specified."""
         test_args = ["release-manager"]
 

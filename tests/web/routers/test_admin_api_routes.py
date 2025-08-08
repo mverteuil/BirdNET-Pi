@@ -87,7 +87,7 @@ invalid_yaml: [unclosed bracket
         assert data["valid"] is False
         assert "error" in data
 
-    def test_save_yaml_config_success(self, client, tmp_path):
+    def test_save_yaml_config(self, client, tmp_path):
         """Test saving YAML config successfully."""
         # Create a temporary config file
         config_file = tmp_path / "config.yaml"

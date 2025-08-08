@@ -14,11 +14,61 @@ from birdnetpi.utils.filters import (
 )
 
 
+@pytest.fixture
+def test_audio_config():
+    """Provide test audio configuration data."""
+    return {
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration_seconds": 0.1,
+        "chunk_size": 1024
+    }
+
+
+@pytest.fixture
+def test_filter_config():
+    """Provide test filter configuration data."""
+    return {
+        "highpass_cutoff": 1000.0,
+        "lowpass_cutoff": 2000.0,
+        "filter_order": 4,
+        "high_cutoff_warning": 30000.0  # Above Nyquist for 48kHz
+    }
+
+
+@pytest.fixture
+def test_audio_signals(test_audio_config):
+    """Provide test audio signals for filtering tests."""
+    sample_rate = test_audio_config["sample_rate"]
+    duration = test_audio_config["duration_seconds"]
+    t = np.linspace(0, duration, int(sample_rate * duration), False)
+    
+    return {
+        "low_freq_100hz": np.sin(2 * np.pi * 100 * t),
+        "mid_freq_1500hz": np.sin(2 * np.pi * 1500 * t),
+        "high_freq_5000hz": np.sin(2 * np.pi * 5000 * t),
+        "very_high_8000hz": np.sin(2 * np.pi * 8000 * t),
+        "time_array": t,
+        "scale_factor": 16384  # Use half of int16 range
+    }
+
+
+@pytest.fixture
+def sample_int16_data():
+    """Provide sample int16 audio data for basic tests."""
+    return {
+        "small": np.array([1000, 2000, 3000], dtype=np.int16),
+        "medium": np.array([1000, 2000, 3000, -1000, -2000], dtype=np.int16),
+        "zeros": np.zeros(100, dtype=np.int16),
+        "wrong_dtype": np.array([0.1, 0.2, 0.3], dtype=np.float32)
+    }
+
+
 class TestAudioFilter:
     """Test the abstract AudioFilter base class."""
 
     def test_passthrough_filter_initialization(self):
-        """Test that PassThroughFilter initializes correctly."""
+        """Should initialize PassThroughFilter with correct default values."""
         filter_instance = PassThroughFilter("TestFilter", enabled=True)
 
         assert filter_instance.name == "TestFilter"
@@ -26,50 +76,50 @@ class TestAudioFilter:
         assert filter_instance._sample_rate is None
         assert filter_instance._channels is None
 
-    def test_passthrough_filter_configuration(self):
-        """Test filter configuration with audio parameters."""
+    def test_passthrough_filter_configuration(self, test_audio_config):
+        """Should configure filter with audio parameters from test data."""
         filter_instance = PassThroughFilter()
-        filter_instance.configure(48000, 1)
+        filter_instance.configure(test_audio_config["sample_rate"], test_audio_config["channels"])
 
-        assert filter_instance._sample_rate == 48000
-        assert filter_instance._channels == 1
+        assert filter_instance._sample_rate == test_audio_config["sample_rate"]
+        assert filter_instance._channels == test_audio_config["channels"]
 
-    def test_passthrough_filter_process(self):
-        """Test that PassThroughFilter returns data unchanged."""
+    def test_passthrough_filter_process(self, test_audio_config, sample_int16_data):
+        """Should return audio data unchanged through PassThroughFilter."""
         filter_instance = PassThroughFilter()
-        filter_instance.configure(48000, 1)
+        filter_instance.configure(test_audio_config["sample_rate"], test_audio_config["channels"])
 
-        # Create test audio data
-        test_data = np.array([1000, 2000, 3000, -1000, -2000], dtype=np.int16)
+        # Use test data
+        test_data = sample_int16_data["medium"]
         result = filter_instance.apply(test_data)
 
         np.testing.assert_array_equal(result, test_data)
 
-    def test_filter_disabled_returns_original_data(self):
-        """Test that disabled filter returns original data."""
+    def test_filter_disabled_returns_original_data(self, test_audio_config, sample_int16_data):
+        """Should return original data when filter is disabled."""
         filter_instance = PassThroughFilter(enabled=False)
-        filter_instance.configure(48000, 1)
+        filter_instance.configure(test_audio_config["sample_rate"], test_audio_config["channels"])
 
-        test_data = np.array([1000, 2000, 3000], dtype=np.int16)
+        test_data = sample_int16_data["small"]
         result = filter_instance.apply(test_data)
 
         np.testing.assert_array_equal(result, test_data)
 
-    def test_filter_not_configured_raises_error(self):
-        """Test that unconfigured filter raises RuntimeError."""
+    def test_filter_not_configured_raises_error(self, sample_int16_data):
+        """Should raise RuntimeError when filter is not configured."""
         filter_instance = PassThroughFilter()
-        test_data = np.array([1000, 2000, 3000], dtype=np.int16)
+        test_data = sample_int16_data["small"]
 
         with pytest.raises(RuntimeError, match="not configured"):
             filter_instance.apply(test_data)
 
-    def test_filter_wrong_dtype_raises_error(self):
-        """Test that wrong audio data type raises ValueError."""
+    def test_filter_wrong_dtype_raises_error(self, test_audio_config, sample_int16_data):
+        """Should raise ValueError when audio data has wrong dtype."""
         filter_instance = PassThroughFilter()
-        filter_instance.configure(48000, 1)
+        filter_instance.configure(test_audio_config["sample_rate"], test_audio_config["channels"])
 
-        # Wrong dtype (float32 instead of int16)
-        test_data = np.array([0.1, 0.2, 0.3], dtype=np.float32)
+        # Use test data with wrong dtype
+        test_data = sample_int16_data["wrong_dtype"]
 
         with pytest.raises(ValueError, match="Expected int16"):
             filter_instance.apply(test_data)
@@ -130,41 +180,35 @@ class TestAudioFilter:
 class TestHighPassFilter:
     """Test the HighPassFilter implementation."""
 
-    def test_highpass_filter_initialization(self):
-        """Test HighPassFilter initialization."""
-        filter_instance = HighPassFilter(cutoff_frequency=500.0, name="TrafficFilter")
+    def test_highpass_filter_initialization(self, test_filter_config):
+        """Should initialize HighPassFilter with correct parameters."""
+        filter_instance = HighPassFilter(cutoff_frequency=test_filter_config["highpass_cutoff"], name="TrafficFilter")
 
         assert filter_instance.name == "TrafficFilter"
-        assert filter_instance.cutoff_frequency == 500.0
-        assert filter_instance.order == 4
+        assert filter_instance.cutoff_frequency == test_filter_config["highpass_cutoff"]
+        assert filter_instance.order == test_filter_config["filter_order"]
         assert filter_instance._sos is None
 
-    def test_highpass_filter_configuration(self):
-        """Test HighPassFilter configuration."""
-        filter_instance = HighPassFilter(cutoff_frequency=500.0)
-        filter_instance.configure(48000, 1)
+    def test_highpass_filter_configuration(self, test_audio_config, test_filter_config):
+        """Should configure HighPassFilter and create filter coefficients."""
+        filter_instance = HighPassFilter(cutoff_frequency=test_filter_config["highpass_cutoff"])
+        filter_instance.configure(test_audio_config["sample_rate"], test_audio_config["channels"])
 
-        assert filter_instance._sample_rate == 48000
-        assert filter_instance._channels == 1
+        assert filter_instance._sample_rate == test_audio_config["sample_rate"]
+        assert filter_instance._channels == test_audio_config["channels"]
         assert filter_instance._sos is not None
 
-    def test_highpass_filter_processing(self):
-        """Test HighPassFilter processing functionality."""
-        filter_instance = HighPassFilter(cutoff_frequency=1000.0)
-        filter_instance.configure(48000, 1)
+    def test_highpass_filter_processing(self, test_audio_config, test_filter_config, test_audio_signals):
+        """Should filter out low frequencies and preserve high frequencies."""
+        filter_instance = HighPassFilter(cutoff_frequency=test_filter_config["highpass_cutoff"])
+        filter_instance.configure(test_audio_config["sample_rate"], test_audio_config["channels"])
 
         # Create test signal: low frequency (100Hz) + high frequency (5000Hz)
-        duration = 0.1  # 100ms
-        sample_rate = 48000
-        t = np.linspace(0, duration, int(sample_rate * duration), False)
-
-        # Low frequency component (should be attenuated)
-        low_freq = np.sin(2 * np.pi * 100 * t)
-        # High frequency component (should pass through)
-        high_freq = np.sin(2 * np.pi * 5000 * t)
+        low_freq = test_audio_signals["low_freq_100hz"]
+        high_freq = test_audio_signals["high_freq_5000hz"]
 
         # Combine signals and convert to int16
-        combined = (low_freq + high_freq) * 16384  # Scale to use half of int16 range
+        combined = (low_freq + high_freq) * test_audio_signals["scale_factor"]
         test_data = combined.astype(np.int16)
 
         result = filter_instance.apply(test_data)
@@ -175,34 +219,37 @@ class TestHighPassFilter:
         assert result.shape == test_data.shape
         assert result.dtype == np.int16
 
-    def test_highpass_filter_cutoff_too_high_warning(self, caplog):
-        """Test warning when cutoff frequency is too high."""
-        filter_instance = HighPassFilter(cutoff_frequency=30000.0)  # Higher than Nyquist for 48kHz
+    def test_highpass_filter_cutoff_too_high_warning(self, test_audio_config, test_filter_config, caplog):
+        """Should warn when cutoff frequency exceeds Nyquist limit."""
+        filter_instance = HighPassFilter(cutoff_frequency=test_filter_config["high_cutoff_warning"])
 
         with caplog.at_level(logging.WARNING):
-            filter_instance.configure(48000, 1)
+            filter_instance.configure(test_audio_config["sample_rate"], test_audio_config["channels"])
 
         assert "cutoff" in caplog.text.lower()
         assert "nyquist" in caplog.text.lower()
 
-    def test_highpass_filter_not_configured_error(self):
-        """Test error when processing without configuration."""
-        filter_instance = HighPassFilter(cutoff_frequency=500.0)
-        test_data = np.array([1000, 2000, 3000], dtype=np.int16)
+    def test_highpass_filter_not_configured_error(self, test_filter_config, sample_int16_data):
+        """Should raise RuntimeError when processing without configuration."""
+        filter_instance = HighPassFilter(cutoff_frequency=test_filter_config["highpass_cutoff"])
+        test_data = sample_int16_data["small"]
 
         with pytest.raises(RuntimeError, match="not configured"):
             filter_instance.process(test_data)
 
-    def test_highpass_filter_parameters(self):
-        """Test HighPassFilter parameter retrieval."""
-        filter_instance = HighPassFilter(cutoff_frequency=800.0, order=6)
-        filter_instance.configure(48000, 1)
+    def test_highpass_filter_parameters(self, test_audio_config):
+        """Should return correct filter parameters after configuration."""
+        test_cutoff = 800.0
+        test_order = 6
+        filter_instance = HighPassFilter(cutoff_frequency=test_cutoff, order=test_order)
+        filter_instance.configure(test_audio_config["sample_rate"], test_audio_config["channels"])
 
         params = filter_instance.get_parameters()
 
-        assert params["cutoff_frequency"] == 800.0
-        assert params["order"] == 6
+        assert params["cutoff_frequency"] == test_cutoff
+        assert params["order"] == test_order
         assert params["type"] == "HighPassFilter"
+        assert params["sample_rate"] == test_audio_config["sample_rate"]
 
 
 class TestLowPassFilter:
@@ -372,7 +419,7 @@ class TestFilterChain:
         expected = np.array([102, 202, 302], dtype=np.int16)
         np.testing.assert_array_equal(result, expected)
 
-    def test_filter_chain_processing_with_disabled_filter(self):
+    def test_filter_chain_processing__disabled_filter(self):
         """Test FilterChain skips disabled filters."""
         chain = FilterChain("TestChain")
 
@@ -429,7 +476,7 @@ class TestFilterChain:
 class TestFilterErrorHandling:
     """Test error handling in filter framework."""
 
-    def test_filter_process_exception_returns_original_data(self, caplog):
+    def test_filter_process__exception_returns_original_data(self, caplog):
         """Test that filter exceptions return original data and log error."""
 
         class BrokenFilter(AudioFilter):

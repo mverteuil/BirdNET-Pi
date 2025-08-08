@@ -122,7 +122,7 @@ class TestIOCDatabaseServiceInitialization:
 class TestPopulateFromIOCService:
     """Test database population from IOC reference service."""
 
-    def test_populate_success(self, ioc_database_service, mock_ioc_reference_service, capsys):
+    def test_populate(self, ioc_database_service, mock_ioc_reference_service, capsys):
         """Should populate database successfully."""
         ioc_database_service.populate_from_ioc_service(mock_ioc_reference_service)
 
@@ -212,7 +212,7 @@ class TestPopulateFromIOCService:
             session.close()
 
     @patch("birdnetpi.services.ioc_database_service.datetime")
-    def test_populate_with_mocked_datetime(
+    def test_populate__mocked_datetime(
         self, mock_datetime, ioc_database_service, mock_ioc_reference_service
     ):
         """Should use current datetime for metadata."""
@@ -263,7 +263,7 @@ class TestSpeciesLookup:
         species = populated_ioc_database_service.get_species_by_scientific_name("Nonexistent species")
         assert species is None
 
-    def test_get_species_by_scientific_name_empty_string(self, populated_ioc_database_service):
+    def test_get_species_by_scientific_name__empty_string(self, populated_ioc_database_service):
         """Should handle empty string gracefully."""
         species = populated_ioc_database_service.get_species_by_scientific_name("")
         assert species is None
@@ -287,7 +287,7 @@ class TestTranslationLookup:
         translation = populated_ioc_database_service.get_translation("Turdus migratorius", "unknown")
         assert translation is None
 
-    def test_get_translation_empty_parameters(self, populated_ioc_database_service):
+    def test_get_translation__empty_parameters(self, populated_ioc_database_service):
         """Should handle empty parameters gracefully."""
         translation = populated_ioc_database_service.get_translation("", "")
         assert translation is None
@@ -326,17 +326,17 @@ class TestSpeciesSearch:
         assert len(results) == 1
         assert results[0].scientific_name == "Turdus migratorius"
 
-    def test_search_species_by_common_name_no_results(self, populated_ioc_database_service):
+    def test_search_species_by_common_name__no_results(self, populated_ioc_database_service):
         """Should return empty list when no matches found."""
         results = populated_ioc_database_service.search_species_by_common_name("Nonexistent", "en")
         assert results == []
 
-    def test_search_species_by_common_name_with_limit(self, populated_ioc_database_service):
+    def test_search_species_by_common_name__limit(self, populated_ioc_database_service):
         """Should respect limit parameter."""
         results = populated_ioc_database_service.search_species_by_common_name("Turdus", "en", limit=1)
         assert len(results) <= 1
 
-    def test_search_species_by_common_name_empty_search(self, populated_ioc_database_service):
+    def test_search_species_by_common_name__empty_search(self, populated_ioc_database_service):
         """Should handle empty search term."""
         results = populated_ioc_database_service.search_species_by_common_name("", "en")
         # Empty search should match all species
@@ -361,7 +361,7 @@ class TestLanguageMetadata:
         assert spanish_lang.language_name == "Spanish"
         assert spanish_lang.translation_count == 2  # 2 species with Spanish translations
 
-    def test_get_available_languages_empty_db(self, ioc_database_service):
+    def test_get_available_languages__empty_db(self, ioc_database_service):
         """Should return empty list for empty database."""
         languages = ioc_database_service.get_available_languages()
         assert languages == []
@@ -391,7 +391,7 @@ class TestMetadata:
         assert "fr" in languages
         assert "de" in languages
 
-    def test_get_metadata_empty_db(self, ioc_database_service):
+    def test_get_metadata__empty_db(self, ioc_database_service):
         """Should return empty dict for empty database."""
         metadata = ioc_database_service.get_metadata()
         assert metadata == {}
@@ -458,7 +458,7 @@ class TestDatabaseAttachment:
         finally:
             session.close()
 
-    def test_attach_with_custom_alias(self, populated_ioc_database_service):
+    def test_attach__custom_alias(self, populated_ioc_database_service):
         """Should attach database with custom alias."""
         session = populated_ioc_database_service.session_local()
         alias = "custom_alias"
@@ -569,7 +569,7 @@ class TestLanguageNameMapping:
 class TestErrorHandling:
     """Test error handling across the service."""
 
-    def test_populate_with_invalid_service(self, ioc_database_service):
+    def test_populate___invalid_service(self, ioc_database_service):
         """Should handle invalid service gracefully."""
         invalid_service = MagicMock()
         invalid_service._loaded = True

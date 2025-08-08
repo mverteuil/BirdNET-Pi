@@ -36,7 +36,7 @@ def mock_dependencies(mocker):
 class TestGenerateDummyData:
     """Test the generate_dummy_data wrapper."""
 
-    def test_main_database_exists_and_has_data(self, mocker, mock_dependencies, capsys):
+    def test_main_database_exists__has_data(self, mocker, mock_dependencies, capsys):
         """Should skip dummy data generation if database exists and has data."""
         mock_os = mocker.patch("birdnetpi.wrappers.generate_dummy_data.os")
         mock_os.path.exists.return_value = True
@@ -53,7 +53,7 @@ class TestGenerateDummyData:
         # Should not interact with system control service if skipping generation
         mock_dependencies["SystemControlService"].return_value.get_service_status.assert_not_called()
 
-    def test_main_database_exists_but_is_empty__fastapi_not_running(self, mocker, mock_dependencies, capsys):
+    def test_main_database_exists_but_is__empty__fastapi_not_running(self, mocker, mock_dependencies, capsys):
         """Should generate dummy data if database exists but is empty and FastAPI is not running."""
         mock_os = mocker.patch("birdnetpi.wrappers.generate_dummy_data.os")
         mock_os.path.exists.return_value = True
@@ -72,7 +72,7 @@ class TestGenerateDummyData:
         mock_dependencies["SystemControlService"].return_value.stop_service.assert_not_called()
         mock_dependencies["SystemControlService"].return_value.start_service.assert_not_called()
 
-    def test_main_database_exists_but_is_empty__fastapi_running(self, mocker, mock_dependencies, capsys):
+    def test_main_database_exists_but_is__empty__fastapi_running(self, mocker, mock_dependencies, capsys):
         """Should stop FastAPI, generate data, then restart FastAPI."""
         mock_os = mocker.patch("birdnetpi.wrappers.generate_dummy_data.os")
         mock_os.path.exists.return_value = True

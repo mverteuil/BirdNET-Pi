@@ -130,7 +130,7 @@ class TestAudioWebSocketService:
         assert mock_client2 not in audio_websocket_service._audio_clients
 
     @pytest.mark.asyncio
-    async def test_start_success(self, audio_websocket_service, mock_config):
+    async def test_start(self, audio_websocket_service, mock_config):
         """Should start service successfully."""
         with (
             patch(

@@ -57,7 +57,7 @@ class TestTranslationManager:
         assert manager.default_language == "en"
 
     @patch("birdnetpi.managers.translation_manager.translation")
-    def test_get_translation_success(self, mock_translation_func, translation_manager):
+    def test_get_translation(self, mock_translation_func, translation_manager):
         """Should get translation for specified language."""
         mock_trans = MagicMock(spec=gettext.GNUTranslations)
         mock_translation_func.return_value = mock_trans
@@ -134,7 +134,7 @@ class TestTranslationManager:
             mock_get.assert_called_once_with("es")
             mock_trans.install.assert_called_once()
 
-    def test_install_for_request_no_accept_language_header(self, translation_manager, mock_request):
+    def test_install_for_request__no_accept_language_header(self, translation_manager, mock_request):
         """Should use default language when no Accept-Language header."""
         mock_request.headers = {}
         mock_trans = MagicMock(spec=gettext.GNUTranslations)

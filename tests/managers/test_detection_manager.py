@@ -18,7 +18,7 @@ def detection_manager():
     return manager
 
 
-def test_create_detection_success(detection_manager):
+def test_create_detection(detection_manager):
     """Should create a detection record and associated audio file successfully"""
     detection_event = DetectionEvent(
         species_tensor="Turdus migratorius_Test Species",
@@ -78,7 +78,7 @@ def test_create_detection_failure(detection_manager):
     mock_db_session.rollback.assert_called_once()
 
 
-def test_get_all_detections_success(detection_manager):
+def test_get_all_detections(detection_manager):
     """Should retrieve all detection records successfully"""
     mock_db_session = MagicMock()
     detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
@@ -105,7 +105,7 @@ def test_get_all_detections_failure(detection_manager):
     mock_db_session.rollback.assert_called_once()
 
 
-def test_get_detection_success(detection_manager):
+def test_get_detection(detection_manager):
     """Should retrieve a detection record successfully."""
     mock_db_session = MagicMock()
     detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
@@ -132,7 +132,7 @@ def test_get_detection_failure(detection_manager):
     mock_db_session.rollback.assert_called_once()
 
 
-def test_delete_detection_success(detection_manager):
+def test_delete_detection(detection_manager):
     """Should delete a detection record successfully."""
     mock_db_session = MagicMock()
     detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
@@ -160,7 +160,7 @@ def test_delete_detection_failure(detection_manager):
     mock_db_session.rollback.assert_called_once()
 
 
-def test_get_detections_by_species_success(detection_manager):
+def test_get_detections_by_species(detection_manager):
     """Should retrieve all detection records for a species successfully."""
     mock_db_session = MagicMock()
     detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
@@ -190,7 +190,7 @@ def test_get_detections_by_species_failure(detection_manager):
     mock_db_session.rollback.assert_called_once()
 
 
-def test_get_detection_counts_by_date_range_success(detection_manager):
+def test_get_detection_counts_by_date_range(detection_manager):
     """Should retrieve detection counts by date range successfully."""
     mock_db_session = MagicMock()
     detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
@@ -222,7 +222,7 @@ def test_get_detection_counts_by_date_range_failure(detection_manager):
     mock_db_session.rollback.assert_called_once()
 
 
-def test_get_top_species_with_prior_counts_success(detection_manager):
+def test_get_top_species__prior_counts(detection_manager):
     """Should retrieve top species with prior counts successfully."""
     mock_db_session = MagicMock()
     detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
@@ -254,7 +254,7 @@ def test_get_top_species_with_prior_counts_success(detection_manager):
     assert result[0]["scientific_name"] == "species1"
 
 
-def test_get_top_species_with_prior_counts_failure(detection_manager):
+def test_get_top_species__prior_counts_failure(detection_manager):
     """Should handle get top species with prior counts failure."""
     mock_db_session = MagicMock()
     detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
@@ -271,7 +271,7 @@ def test_get_top_species_with_prior_counts_failure(detection_manager):
     mock_db_session.rollback.assert_called_once()
 
 
-def test_get_new_species_data_success(detection_manager):
+def test_get_new_species_data(detection_manager):
     """Should retrieve new species data successfully."""
     mock_db_session = MagicMock()
     detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
@@ -301,7 +301,7 @@ def test_get_new_species_data_failure(detection_manager):
     mock_db_session.rollback.assert_called_once()
 
 
-def test_get_most_recent_detections_success(detection_manager):
+def test_get_most_recent_detections(detection_manager):
     """Should retrieve most recent detections successfully."""
     mock_db_session = MagicMock()
     detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session
@@ -346,7 +346,7 @@ def test_get_most_recent_detections_failure(detection_manager):
     mock_db_session.rollback.assert_called_once()
 
 
-def test_get_best_detections_success(detection_manager):
+def test_get_best_detections(detection_manager):
     """Should retrieve the best detection for each species, sorted by confidence."""
     mock_db_session = MagicMock()
     detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = mock_db_session

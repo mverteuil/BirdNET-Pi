@@ -111,7 +111,7 @@ def test_create_multi_day_plot_figure_should_return_figure(
     assert isinstance(fig, go.Figure)
 
 
-def test_generate_multi_day_species_and_hourly_plot_should_return_figure(
+def test_generate_multi_day_species__hourly_plot_should_return_figure(
     plotting_manager, mock_data_preparation_manager, sample_dataframe
 ):
     """Should return a plotly figure for multi-day species and hourly plots."""
@@ -206,7 +206,7 @@ def test_generate_daily_detections_plot_should_return_figure(
     assert isinstance(fig, go.Figure)
 
 
-def test_create_empty_plot(plotting_manager):
+def test_create__empty_plot(plotting_manager):
     """Should create an empty plot with a message (covers lines 28-43)."""
     message = "No data available"
 
@@ -263,7 +263,7 @@ def test_generate_spectrogram(plotting_manager, mocker):
     assert isinstance(result, io.BytesIO)
 
 
-def test_generate_multi_day_plot_with_empty_dataframe(plotting_manager, mocker):
+def test_generate_multi_day_plot___empty_dataframe(plotting_manager, mocker):
     """Should return empty plot when dataframe is empty (covers line 181)."""
     # Create empty DataFrame
     empty_df = pd.DataFrame()
@@ -282,7 +282,7 @@ def test_generate_multi_day_plot_with_empty_dataframe(plotting_manager, mocker):
     assert isinstance(result, go.Figure)
 
 
-def test_generate_daily_detections_plot_with_empty_dataframe(plotting_manager, mocker):
+def test_generate_daily_detections_plot___empty_dataframe(plotting_manager, mocker):
     """Should return empty plot when dataframe is empty (covers line 264)."""
     # Create empty DataFrame
     empty_df = pd.DataFrame()

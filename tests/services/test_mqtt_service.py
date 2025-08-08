@@ -91,7 +91,7 @@ class TestMQTTService:
             assert service.client == mock_client
 
     @pytest.mark.asyncio
-    async def test_start_with_auth(self, enabled_mqtt_service):
+    async def test_start__auth(self, enabled_mqtt_service):
         """Test starting MQTT service with authentication."""
         service = enabled_mqtt_service
         service.username = "auth_user"
@@ -128,7 +128,7 @@ class TestMQTTService:
             assert service.is_connected is False
             assert service.client is None
 
-    def test_on_connect_success(self, enabled_mqtt_service):
+    def test_on_connect(self, enabled_mqtt_service):
         """Test successful MQTT connection callback."""
         service = enabled_mqtt_service
 
@@ -422,7 +422,7 @@ class TestMQTTService:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_publish_exception_handling(self, enabled_mqtt_service):
+    async def test_publish__exception_handling(self, enabled_mqtt_service):
         """Test exception handling during publish."""
         service = enabled_mqtt_service
         service.client = MagicMock()

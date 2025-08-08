@@ -12,7 +12,7 @@ def log_service():
 
 
 @patch("birdnetpi.services.log_service.subprocess.Popen")
-def test_get_logs_success(mock_popen, log_service):
+def test_get_logs(mock_popen, log_service):
     """Should return the logs as a string."""
     mock_process = MagicMock()
     mock_process.communicate.return_value = (b"test log output", b"")

@@ -13,7 +13,7 @@ def bnp_database_service(tmp_path) -> DatabaseService:
     return DatabaseService(str(db_path))
 
 
-def test_clear_database_success(bnp_database_service):
+def test_clear_database(bnp_database_service):
     """Should clear all data from the database tables successfully"""
     # This test now checks that the clear_database method runs without error.
     # A more thorough test would involve adding data and then checking that it was deleted.
@@ -33,7 +33,7 @@ def test_clear_database_failure(bnp_database_service, monkeypatch):
     mock_session.rollback.assert_called_once()
 
 
-def test_checkpoint_wal_success(bnp_database_service):
+def test_checkpoint_wal(bnp_database_service):
     """Should successfully checkpoint WAL file"""
     with patch.object(bnp_database_service, "get_db") as mock_get_db:
         mock_session = MagicMock()
@@ -105,7 +105,7 @@ def test_get_database_stats(bnp_database_service, tmp_path):
         assert stats["journal_mode"] == "wal"
 
 
-def test_vacuum_database_success(bnp_database_service):
+def test_vacuum_database(bnp_database_service):
     """Should successfully vacuum database"""
     with patch.object(bnp_database_service, "get_db") as mock_get_db:
         mock_session = MagicMock()

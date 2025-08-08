@@ -87,7 +87,7 @@ class TestGPSEndpoints:
         assert data["enabled"] is False
         assert data["active"] is False
 
-    def test_get_gps_location_success(self, client):
+    def test_get_gps_location(self, client):
         """Should return current GPS location when enabled."""
         gps_service = client.mock_gps_service
         mock_location = MagicMock()

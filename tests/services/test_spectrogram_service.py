@@ -74,7 +74,7 @@ class TestSpectrogramService:
         assert len(service.connected_websockets) == 0
 
     @pytest.mark.asyncio
-    async def test_process_audio_chunk_no_clients(self, spectrogram_service):
+    async def test_process_audio_chunk__no_clients(self, spectrogram_service):
         """Test that processing accumulates data but doesn't generate spectrograms
 
         when no clients are connected.
@@ -94,7 +94,7 @@ class TestSpectrogramService:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_process_audio_chunk_with_client(self, spectrogram_service, mock_websocket):
+    async def test_process_audio_chunk__client(self, spectrogram_service, mock_websocket):
         """Test audio processing with connected client."""
         service = spectrogram_service
         await service.connect_websocket(mock_websocket)
@@ -175,7 +175,7 @@ class TestSpectrogramService:
         assert len(service.audio_buffer) == samples_per_channel
 
     @pytest.mark.asyncio
-    async def test_websocket_error_handling(self, spectrogram_service):
+    async def test_websocket__error_handling(self, spectrogram_service):
         """Test error handling when WebSocket send fails."""
         service = spectrogram_service
 
@@ -260,7 +260,7 @@ class TestSpectrogramService:
         assert service.freq_bins[-1] < nyquist  # Should be less than Nyquist
 
     @pytest.mark.asyncio
-    async def test_spectrogram_generation_error_handling(
+    async def test_spectrogram_generation__error_handling(
         self, spectrogram_service, mock_websocket, caplog
     ):
         """Test error handling during spectrogram generation."""

@@ -16,36 +16,72 @@ from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
 @pytest.fixture
-def mock_file_manager():
-    """Return a mock FileManager instance."""
+def test_config_data():
+    """Provide test configuration data."""
+    return {
+        "sample_rate": 48000,
+        "audio_channels": 1,
+        "latitude": 40.7128,
+        "longitude": -74.0060,
+        "sensitivity": 1.25,
+        "confidence": 0.7,
+        "detection_threshold": 0.7,
+        "buffer_size_seconds": 3
+    }
+
+
+@pytest.fixture
+def test_detection_result():
+    """Provide test detection result data."""
+    return {
+        "file_path": "/mock/path/audio.wav",
+        "duration": 10.0,
+        "size_bytes": 1000,
+        "recording_start_time": datetime.now(),
+        "audio_path": "/mock/path/audio.wav"
+    }
+
+
+@pytest.fixture
+def test_audio_data():
+    """Provide test audio data for analysis."""
+    return {
+        "chunk_size": 1024,
+        "sample_rate": 48000,
+        "buffer_size_samples": 48000 * 3,  # 3 seconds
+        "duration_seconds": 3.0,
+        "silence_chunk": np.zeros(48000 * 3, dtype=np.float32),
+        "test_chunk": np.ones(48000 * 3, dtype=np.float32) * 0.1
+    }
+
+
+@pytest.fixture
+def mock_file_manager(test_detection_result):
+    """Return a mock FileManager instance with test data."""
     mock = MagicMock(spec=FileManager)
     mock.save_detection_audio.return_value = MagicMock(
-        file_path="/mock/path/audio.wav",
-        duration=10.0,
-        size_bytes=1000,
-        recording_start_time=datetime.now(),
+        file_path=test_detection_result["file_path"],
+        duration=test_detection_result["duration"],
+        size_bytes=test_detection_result["size_bytes"],
+        recording_start_time=test_detection_result["recording_start_time"],
     )
     return mock
 
 
 @pytest.fixture
-def mock_file_path_resolver():
-    """Return a mock FilePathResolver instance."""
+def mock_file_path_resolver(test_detection_result):
+    """Return a mock FilePathResolver instance with test data."""
     mock = MagicMock(spec=FilePathResolver)
-    mock.get_detection_audio_path.return_value = "/mock/path/audio.wav"
+    mock.get_detection_audio_path.return_value = test_detection_result["audio_path"]
     return mock
 
 
 @pytest.fixture
-def mock_config():
-    """Return a mock BirdNETConfig instance."""
+def mock_config(test_config_data):
+    """Return a mock BirdNETConfig instance with test data."""
     mock = MagicMock(spec=BirdNETConfig)
-    mock.sample_rate = 48000
-    mock.audio_channels = 1
-    mock.latitude = 40.7128
-    mock.longitude = -74.0060
-    mock.sensitivity = 1.25
-    mock.confidence = 0.7
+    for key, value in test_config_data.items():
+        setattr(mock, key, value)
     return mock
 
 
@@ -71,21 +107,42 @@ def audio_analysis_service(
 
 
 @pytest.fixture
-def mock_detection_data():
+def test_species_data():
+    """Provide test species detection data."""
+    return {
+        "confident": [
+            ("Robin", 0.85),
+            ("Crow", 0.75),
+            ("Sparrow", 0.80)
+        ],
+        "low_confidence": [
+            ("Human", 0.65),
+            ("Unknown", 0.45)
+        ],
+        "mixed": [
+            ("Robin", 0.85),
+            ("Human", 0.65),  # Below threshold
+            ("Crow", 0.72)
+        ]
+    }
+
+
+@pytest.fixture
+def mock_detection_data(test_config_data, test_detection_result):
     """Return mock detection data for testing."""
     return {
         "species": "Test Species",
         "confidence": 0.8,
         "timestamp": datetime.now().isoformat(),
-        "audio_file_path": "/mock/path/audio.wav",
-        "duration": 3.0,
-        "size_bytes": 1000,
+        "audio_file_path": test_detection_result["file_path"],
+        "duration": test_detection_result["duration"],
+        "size_bytes": test_detection_result["size_bytes"],
         "spectrogram_path": None,
-        "latitude": 40.7128,
-        "longitude": -74.0060,
-        "species_confidence_threshold": 0.7,
+        "latitude": test_config_data["latitude"],
+        "longitude": test_config_data["longitude"],
+        "species_confidence_threshold": test_config_data["confidence"],
         "week": 1,
-        "sensitivity_setting": 1.25,
+        "sensitivity_setting": test_config_data["sensitivity"],
         "overlap": 0.5,
     }
 
@@ -109,9 +166,12 @@ class TestAudioAnalysisService:
         assert audio_analysis_service.config == mock_config
         assert hasattr(audio_analysis_service, "analysis_client")
         assert hasattr(audio_analysis_service, "audio_buffer")
+        assert hasattr(audio_analysis_service, "detection_buffer")
+        assert hasattr(audio_analysis_service, "buffer_lock")
+        assert audio_analysis_service._flush_task is not None
 
     @pytest.mark.asyncio
-    async def test_process_audio_chunk_accumulates_buffer(self, audio_analysis_service):
+    async def test_process_audio_chunk_accumulates_buffer(self, audio_analysis_service, test_audio_data):
         """Should accumulate audio data in buffer."""
         initial_buffer_length = len(audio_analysis_service.audio_buffer)
         audio_data = b"\x00\x01\x02\x03"
@@ -123,20 +183,20 @@ class TestAudioAnalysisService:
         "birdnetpi.services.audio_analysis_service.AudioAnalysisService._analyze_audio_chunk",
         new_callable=AsyncMock,
     )
-    async def test_process_audio_chunk_calls_analyze_when_buffer_full(
-        self, mock_analyze_audio_chunk, audio_analysis_service
+    async def test_process_audio_chunk_calls_analyze__buffer_full(
+        self, mock_analyze_audio_chunk, audio_analysis_service, test_audio_data
     ):
         """Should call _analyze_audio_chunk when buffer has enough data."""
-        # Mock config for known sample rate
-        audio_analysis_service.config.sample_rate = 48000
-        audio_analysis_service.buffer_size_samples = 48000 * 3  # 3 seconds
+        # Use test data for consistent configuration
+        audio_analysis_service.config.sample_rate = test_audio_data["sample_rate"]
+        audio_analysis_service.buffer_size_samples = test_audio_data["buffer_size_samples"]
 
         # Create enough audio data to trigger analysis
-        chunk_size = 1024
+        chunk_size = test_audio_data["chunk_size"]
         audio_chunk = np.zeros(chunk_size, dtype=np.int16).tobytes()
 
         # Feed chunks until buffer is full
-        chunks_needed = (audio_analysis_service.buffer_size_samples // chunk_size) + 1
+        chunks_needed = (test_audio_data["buffer_size_samples"] // chunk_size) + 1
         for _ in range(chunks_needed):
             await audio_analysis_service.process_audio_chunk(audio_chunk)
 
@@ -148,49 +208,46 @@ class TestAudioAnalysisService:
         "birdnetpi.services.audio_analysis_service.AudioAnalysisService._send_detection_event",
         new_callable=AsyncMock,
     )
-    async def test_analyze_audio_chunk_with_detections(
-        self, mock_send_detection_event, audio_analysis_service
+    async def test_analyze_audio_chunk__detections(
+        self, mock_send_detection_event, audio_analysis_service, test_species_data, test_audio_data
     ):
         """Should send detection events for confident detections."""
-        # Mock the analysis client to return some detections
-        audio_analysis_service.analysis_client.get_analysis_results.return_value = [
-            ("Robin", 0.85),
-            ("Crow", 0.72),
-            ("Human", 0.65),  # Below confidence threshold
-        ]
+        # Use test data for species detections
+        audio_analysis_service.analysis_client.get_analysis_results.return_value = test_species_data["mixed"]
 
-        # Create a mock audio chunk
-        audio_chunk = np.zeros(48000 * 3, dtype=np.float32)  # 3 seconds of silence
+        # Use test audio chunk
+        audio_chunk = test_audio_data["silence_chunk"]
 
         await audio_analysis_service._analyze_audio_chunk(audio_chunk)
 
-        # Should have called send_detection_event twice (for Robin and Crow, not Human)
+        # Should have called send_detection_event twice (for Robin and Crow, not Human below threshold)
         assert mock_send_detection_event.call_count == 2
 
-        # Check the calls
+        # Check the calls using test data
         calls = mock_send_detection_event.call_args_list
-        assert calls[0][0][0] == "Robin"  # species
-        assert calls[0][0][1] == 0.85  # confidence
-        assert calls[1][0][0] == "Crow"  # species
-        assert calls[1][0][1] == 0.72  # confidence
+        expected_species = [call[0] for call in test_species_data["mixed"] if call[1] >= 0.7]
+        assert calls[0][0][0] == expected_species[0][0]  # Robin
+        assert calls[0][0][1] == expected_species[0][1]  # 0.85
+        assert calls[1][0][0] == expected_species[1][0]  # Crow  
+        assert calls[1][0][1] == expected_species[1][1]  # 0.72
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient")
-    async def test_send_detection_event_success(
+    async def test_send_detection_event(
         self,
         mock_async_client,
         audio_analysis_service,
         mock_file_manager,
         mock_file_path_resolver,
-        mock_config,
+        test_species_data,
         caplog,
     ):
         """Should successfully send a detection event and log info."""
         mock_post = AsyncMock(return_value=MagicMock(status_code=201))
         mock_async_client.return_value.__aenter__.return_value.post = mock_post
 
-        species = "Test Species"
-        confidence = 0.8
+        # Use test data for species information
+        species, confidence = test_species_data["confident"][0]  # Robin, 0.85
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
         await audio_analysis_service._send_detection_event(species, confidence, raw_audio_bytes)
@@ -204,13 +261,13 @@ class TestAudioAnalysisService:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient")
     async def test_send_detection_event_audio_save_failure(
-        self, mock_async_client, audio_analysis_service, mock_file_manager, caplog
+        self, mock_async_client, audio_analysis_service, mock_file_manager, test_species_data, caplog
     ):
         """Should log an error and not send HTTP request if audio save fails."""
         mock_file_manager.save_detection_audio.side_effect = Exception("Audio save error")
 
-        species = "Test Species"
-        confidence = 0.8
+        # Use test data for consistent species information
+        species, confidence = test_species_data["confident"][1]  # Crow, 0.75
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
         await audio_analysis_service._send_detection_event(species, confidence, raw_audio_bytes)
@@ -221,7 +278,7 @@ class TestAudioAnalysisService:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient")
     async def test_send_detection_event_httpx_request_error(
-        self, mock_async_client, audio_analysis_service, caplog
+        self, mock_async_client, audio_analysis_service, test_species_data, caplog
     ):
         """Should buffer detection when httpx.RequestError occurs."""
         mock_async_client.return_value.__aenter__.return_value.post.side_effect = (
@@ -231,19 +288,19 @@ class TestAudioAnalysisService:
             )
         )
 
-        species = "Test Species"
-        confidence = 0.8
+        # Use test data for consistent species information
+        species, confidence = test_species_data["confident"][2]  # Sparrow, 0.80
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
         await audio_analysis_service._send_detection_event(species, confidence, raw_audio_bytes)
 
         assert "FastAPI unavailable, buffering detection: Network error" in caplog.text
-        assert "Buffered detection event for Test Species" in caplog.text
+        assert f"Buffered detection event for {species}" in caplog.text
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient")
     async def test_send_detection_event_httpx_status_error(
-        self, mock_async_client, audio_analysis_service, caplog
+        self, mock_async_client, audio_analysis_service, test_species_data, caplog
     ):
         """Should buffer detection when httpx.HTTPStatusError occurs."""
         mock_response = MagicMock(status_code=404, text="Not Found")
@@ -251,37 +308,37 @@ class TestAudioAnalysisService:
             httpx.HTTPStatusError("Not Found", request=MagicMock(), response=mock_response)
         )
 
-        species = "Test Species"
-        confidence = 0.8
+        # Use test data for consistent species information
+        species, confidence = test_species_data["confident"][0]  # Robin, 0.85
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
         await audio_analysis_service._send_detection_event(species, confidence, raw_audio_bytes)
 
         assert "FastAPI unavailable, buffering detection: Not Found" in caplog.text
-        assert "Buffered detection event for Test Species" in caplog.text
+        assert f"Buffered detection event for {species}" in caplog.text
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient")
     async def test_send_detection_event_generic_exception(
-        self, mock_async_client, audio_analysis_service, caplog
+        self, mock_async_client, audio_analysis_service, test_species_data, caplog
     ):
         """Should buffer detection when an unexpected exception occurs."""
         mock_async_client.return_value.__aenter__.return_value.post.side_effect = Exception(
             "Unexpected error"
         )
 
-        species = "Test Species"
-        confidence = 0.8
+        # Use test data for consistent species information
+        species, confidence = test_species_data["confident"][1]  # Crow, 0.75
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
         await audio_analysis_service._send_detection_event(species, confidence, raw_audio_bytes)
 
         assert "Unexpected error sending detection, buffering: Unexpected error" in caplog.text
-        assert "Buffered detection event for Test Species" in caplog.text
+        assert f"Buffered detection event for {species}" in caplog.text
 
     @pytest.mark.asyncio
     async def test_analyze_audio_chunk_handles_analysis_client_exception(
-        self, audio_analysis_service, caplog
+        self, audio_analysis_service, test_audio_data, caplog
     ):
         """Should handle and log exceptions from the analysis client."""
         # Mock the analysis client to raise an exception
@@ -289,14 +346,76 @@ class TestAudioAnalysisService:
             "Analysis failed"
         )
 
-        # Create a mock audio chunk
-        audio_chunk = np.zeros(48000 * 3, dtype=np.float32)  # 3 seconds of silence
+        # Use test audio chunk
+        audio_chunk = test_audio_data["silence_chunk"]
 
         # This should not raise an exception, but should log an error
         await audio_analysis_service._analyze_audio_chunk(audio_chunk)
 
         # Should have logged the error
         assert "Error during BirdNET analysis: Analysis failed" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_analyze_audio_chunk__no_detections(
+        self, audio_analysis_service, test_audio_data
+    ):
+        """Should handle case with no detections from analysis client."""
+        # Mock analysis client to return empty results
+        audio_analysis_service.analysis_client.get_analysis_results.return_value = []
+
+        # Use test audio chunk
+        audio_chunk = test_audio_data["silence_chunk"]
+
+        # Should not raise exception with empty detections
+        await audio_analysis_service._analyze_audio_chunk(audio_chunk)
+        
+        # Buffer should remain empty since no detections
+        with audio_analysis_service.buffer_lock:
+            assert len(audio_analysis_service.detection_buffer) == 0
+
+    @pytest.mark.asyncio
+    async def test_analyze_audio_chunk__invalid_audio_format(
+        self, audio_analysis_service, caplog
+    ):
+        """Should handle invalid audio format gracefully."""
+        # Mock analysis client to raise specific audio format error
+        audio_analysis_service.analysis_client.get_analysis_results.side_effect = ValueError(
+            "Invalid audio format: expected float32"
+        )
+
+        # Create invalid audio chunk (wrong dtype)
+        invalid_chunk = np.array([1000, 2000, 3000], dtype=np.int16)
+
+        await audio_analysis_service._analyze_audio_chunk(invalid_chunk)
+
+        assert "Error during BirdNET analysis: Invalid audio format" in caplog.text
+
+    @pytest.mark.asyncio 
+    async def test_process_audio_chunk__empty_chunk(
+        self, audio_analysis_service
+    ):
+        """Should handle empty audio chunks gracefully."""
+        initial_buffer_length = len(audio_analysis_service.audio_buffer)
+        
+        # Process empty chunk
+        await audio_analysis_service.process_audio_chunk(b"")
+        
+        # Buffer length should remain unchanged
+        assert len(audio_analysis_service.audio_buffer) == initial_buffer_length
+
+    @pytest.mark.asyncio
+    async def test_process_audio_chunk__malformed_audio(
+        self, audio_analysis_service, caplog
+    ):
+        """Should handle malformed audio data gracefully."""
+        # Send malformed audio data that can't be processed
+        malformed_data = b"\xFF\xFF\xFF\xFF"  # Invalid audio data
+        
+        # Should not raise exception
+        await audio_analysis_service.process_audio_chunk(malformed_data)
+        
+        # Should still accumulate in buffer despite being malformed
+        assert len(audio_analysis_service.audio_buffer) > 0
 
 
 class TestDetectionBuffering:
@@ -412,7 +531,7 @@ class TestDetectionBuffering:
             
             assert "Unexpected error sending detection, buffering" in caplog.text
 
-    async def test_flush_detection_buffer_empty_buffer(self, audio_analysis_service, caplog):
+    async def test_flush_detection_buffer__empty_buffer(self, audio_analysis_service, caplog):
         """Should handle empty buffer gracefully."""
         # Clear buffer
         with audio_analysis_service.buffer_lock:
@@ -530,7 +649,7 @@ class TestDetectionBuffering:
             assert "Re-buffered 1 failed detections" in caplog.text
             assert "Successfully flushed" not in caplog.text  # No successful flushes
 
-    async def test_flush_detection_buffer_unexpected_error_handling(
+    async def test_flush_detection_buffer_unexpected__error_handling(
         self, audio_analysis_service, caplog
     ):
         """Should handle unexpected errors during flush and re-buffer detections."""
@@ -681,7 +800,7 @@ class TestDetectionBuffering:
             assert buffer_size == 0
             assert "Successfully flushed 1 buffered detections" in caplog.text
 
-    async def test_background_flush_with_failed_requests(self, audio_analysis_service, caplog):
+    async def test_background_flush__failed_requests(self, audio_analysis_service, caplog):
         """Should keep retrying buffered detections in background when FastAPI fails."""
         # Use faster flush interval for testing
         audio_analysis_service.flush_interval = 0.1
@@ -739,7 +858,7 @@ class TestDetectionBufferingIntegration:
         yield
         audio_analysis_service.stop_buffer_flush_task()
 
-    async def test_end_to_end_detection_with_buffering(self, audio_analysis_service, caplog):
+    async def test_end_to_end_detection__buffering(self, audio_analysis_service, caplog):
         """Should buffer detections during HTTP failures and flush when service recovers."""
         # Mock analysis to return confident detection
         audio_analysis_service.analysis_client.get_analysis_results.return_value = [
@@ -791,7 +910,7 @@ class TestDetectionBufferingIntegration:
             
             assert "Successfully flushed 1 buffered detections" in caplog.text
 
-    async def test_mixed_success_failure_detection_processing(self, audio_analysis_service, caplog):
+    async def test_mixed_success__failure_detection_processing(self, audio_analysis_service, caplog):
         """Should handle mixed scenarios where some detections succeed and others buffer."""
         # Mock analysis to return multiple detections
         audio_analysis_service.analysis_client.get_analysis_results.return_value = [

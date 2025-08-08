@@ -42,7 +42,7 @@ class TestWebhookConfig:
         assert config.retry_count == 2
         assert config.events == ["detection", "health"]
 
-    def test_initialization_with_defaults(self):
+    def test_initialization__defaults(self):
         """Test WebhookConfig initialization with default values."""
         config = WebhookConfig(url="https://example.com/webhook")
 
@@ -192,7 +192,7 @@ class TestWebhookService:
         assert service.webhooks[1].url == "https://api.test.com/webhook2"
         assert service.webhooks[2].url == "https://third.com/webhook3"
 
-    def test_configure_webhooks_with_invalid_url(self, enabled_webhook_service):
+    def test_configure_webhooks___invalid_url(self, enabled_webhook_service):
         """Test configuring webhooks with invalid URLs."""
         service = enabled_webhook_service
 
@@ -369,7 +369,7 @@ class TestWebhookService:
             assert service.stats["total_sent"] == 2
 
     @pytest.mark.asyncio
-    async def test_send_webhook_request_success(self, enabled_webhook_service):
+    async def test_send_webhook_request(self, enabled_webhook_service):
         """Test successful webhook request."""
         service = enabled_webhook_service
 
@@ -501,7 +501,7 @@ class TestWebhookService:
         assert status["statistics"]["total_failed"] == 2
 
     @pytest.mark.asyncio
-    async def test_test_webhook_success(self, enabled_webhook_service):
+    async def test_webhook(self, enabled_webhook_service):
         """Test webhook testing functionality - success case."""
         service = enabled_webhook_service
         service.client = AsyncMock()
@@ -515,7 +515,7 @@ class TestWebhookService:
             mock_send.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_test_webhook_failure(self, enabled_webhook_service):
+    async def test_webhook_failure(self, enabled_webhook_service):
         """Test webhook testing functionality - failure case."""
         service = enabled_webhook_service
         service.client = AsyncMock()
@@ -527,7 +527,7 @@ class TestWebhookService:
             assert result["url"] == "https://example.com/webhook"
 
     @pytest.mark.asyncio
-    async def test_test_webhook_no_client(self, enabled_webhook_service):
+    async def test_webhook__no_client(self, enabled_webhook_service):
         """Test webhook testing when service is not started."""
         service = enabled_webhook_service
         service.client = None
@@ -539,7 +539,7 @@ class TestWebhookService:
         assert result["error"] == "Webhook service not started"
 
     @pytest.mark.asyncio
-    async def test_test_webhook_exception(self, enabled_webhook_service):
+    async def test_webhook_exception(self, enabled_webhook_service):
         """Test webhook testing with exception."""
         service = enabled_webhook_service
         service.client = AsyncMock()
@@ -603,7 +603,7 @@ class TestWebhookService:
             assert "https://webhook3.com/api" in called_urls
             assert "https://webhook1.com/api" not in called_urls
 
-    async def test_send_health_webhook_when_cannot_send(self, enabled_webhook_service):
+    async def test_send_health_webhook__cannot_send(self, enabled_webhook_service):
         """Test send_health_webhook returns early when service cannot send."""
         service = enabled_webhook_service
 
@@ -615,7 +615,7 @@ class TestWebhookService:
             # Should not call _send_webhook_request (covers line 198)
             mock_send.assert_not_called()
 
-    async def test_send_gps_webhook_when_cannot_send(self, enabled_webhook_service):
+    async def test_send_gps_webhook__cannot_send(self, enabled_webhook_service):
         """Test send_gps_webhook returns early when service cannot send."""
         service = enabled_webhook_service
 
@@ -627,7 +627,7 @@ class TestWebhookService:
             # Should not call _send_webhook_request (covers line 219)
             mock_send.assert_not_called()
 
-    async def test_send_system_webhook_when_cannot_send(self, enabled_webhook_service):
+    async def test_send_system_webhook__cannot_send(self, enabled_webhook_service):
         """Test send_system_webhook returns early when service cannot send."""
         service = enabled_webhook_service
 
@@ -639,7 +639,7 @@ class TestWebhookService:
             # Should not call _send_webhook_request (covers line 240)
             mock_send.assert_not_called()
 
-    async def test_send_to_webhooks_no_client(self, enabled_webhook_service):
+    async def test_send_to_webhooks__no_client(self, enabled_webhook_service):
         """Test _send_to_webhooks returns early when no client."""
         service = enabled_webhook_service
         service.client = None  # Set client to None
@@ -649,7 +649,7 @@ class TestWebhookService:
             # Should return early without logging (covers line 258)
             mock_logger.debug.assert_not_called()
 
-    async def test_send_to_webhooks_no_relevant_webhooks(self, enabled_webhook_service, caplog):
+    async def test_send_to_webhooks__no_relevant_webhooks(self, enabled_webhook_service, caplog):
         """Test _send_to_webhooks logs and returns when no relevant webhooks."""
         import logging
 
@@ -664,7 +664,7 @@ class TestWebhookService:
         # Should log debug message and return (covers lines 266-267)
         assert "No webhooks configured for event type: detection" in caplog.text
 
-    async def test_send_webhook_request_no_client(self, enabled_webhook_service):
+    async def test_send_webhook_request__no_client(self, enabled_webhook_service):
         """Test _send_webhook_request returns False when no client."""
         service = enabled_webhook_service
         service.client = None
@@ -690,7 +690,7 @@ class TestWebhookService:
         assert "Webhook timeout" in caplog.text
         assert result is False
 
-    async def test_send_webhook_request_request_error_exception(
+    async def test_send_webhook_request_request__error_exception(
         self, enabled_webhook_service, caplog
     ):
         """Test _send_webhook_request handles request error exception."""

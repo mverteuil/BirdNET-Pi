@@ -49,7 +49,7 @@ class TestProcessIOCFiles:
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCDatabaseService")
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
     @patch("birdnetpi.wrappers.ioc_data_processor.sys.exit")
-    def test_process_ioc_files_missing_xml(
+    def test_process_ioc_files__missing_xml(
         self, mock_exit, mock_service_class, mock_db_class, tmp_path
     ):
         """Should exit when XML file is missing."""
@@ -65,7 +65,7 @@ class TestProcessIOCFiles:
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCDatabaseService")
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
     @patch("birdnetpi.wrappers.ioc_data_processor.sys.exit")
-    def test_process_ioc_files_missing_xlsx(
+    def test_process_ioc_files__missing_xlsx(
         self, mock_exit, mock_service_class, mock_db_class, tmp_path
     ):
         """Should exit when XLSX file is missing."""
@@ -80,7 +80,7 @@ class TestProcessIOCFiles:
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCDatabaseService")
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    def test_process_ioc_files_success(
+    def test_process_ioc_files(
         self, mock_service_class, mock_db_class, mock_ioc_reference_service, tmp_path, capsys
     ):
         """Should process IOC files successfully."""
@@ -115,7 +115,7 @@ class TestProcessIOCFiles:
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCDatabaseService")
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    def test_process_ioc_files_with_database(
+    def test_process_ioc_files__database(
         self,
         mock_service_class,
         mock_db_class,
@@ -174,7 +174,7 @@ class TestProcessIOCFiles:
         mock_exit.assert_called_with(1)
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    def test_process_ioc_files_with_compression(
+    def test_process_ioc_files__compression(
         self, mock_service_class, mock_ioc_reference_service, tmp_path
     ):
         """Should process files with compression enabled."""
@@ -201,7 +201,7 @@ class TestShowIOCInfo:
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
     @patch("birdnetpi.wrappers.ioc_data_processor.sys.exit")
-    def test_show_ioc_info_missing_file(self, mock_exit, mock_service_class, tmp_path):
+    def test_show_ioc_info__missing_file(self, mock_exit, mock_service_class, tmp_path):
         """Should exit when JSON file is missing."""
         json_file = tmp_path / "missing.json"
 
@@ -210,7 +210,7 @@ class TestShowIOCInfo:
         mock_exit.assert_called_with(1)
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    def test_show_ioc_info_success(
+    def test_show_ioc_info(
         self, mock_service_class, mock_ioc_reference_service, tmp_path, capsys
     ):
         """Should show IOC info successfully."""
@@ -258,7 +258,7 @@ class TestLookupSpecies:
 
     @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
     @patch("birdnetpi.wrappers.ioc_data_processor.sys.exit")
-    def test_lookup_missing_file(self, mock_exit, mock_service_class, tmp_path):
+    def test_lookup__missing_file(self, mock_exit, mock_service_class, tmp_path):
         """Should exit when JSON file is missing."""
         json_file = tmp_path / "missing.json"
 
@@ -435,7 +435,7 @@ class TestMain:
         assert args[2] == "es"
 
     @patch("birdnetpi.wrappers.ioc_data_processor.sys.exit")
-    def test_main_no_command(self, mock_exit, capsys):
+    def test_main__no_command(self, mock_exit, capsys):
         """Should exit when no command provided."""
         test_args = ["ioc-processor"]
 

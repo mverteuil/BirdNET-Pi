@@ -71,7 +71,7 @@ def test_save_config(config_file):
 class TestConfigFileParserInitialization:
     """Test ConfigFileParser initialization with different path configurations."""
 
-    def test_init_with_no_config_path_uses_file_resolver(self, mocker):
+    def test_init___no_config_path_uses_file_resolver(self, mocker):
         """Should use FilePathResolver when no config_path provided."""
         mock_resolver = mocker.patch("birdnetpi.utils.config_file_parser.FilePathResolver")
         mock_instance = MagicMock()
@@ -87,7 +87,7 @@ class TestConfigFileParserInitialization:
         mock_instance.get_birdnetpi_config_path.assert_called_once()
         mock_instance.get_config_template_path.assert_called_once()
 
-    def test_init_with_explicit_config_path(self):
+    def test_init__explicit_config_path(self):
         """Should use explicit path when provided and derive template path."""
         config_path = "/custom/path/config.yaml"
 
@@ -96,7 +96,7 @@ class TestConfigFileParserInitialization:
         assert parser.config_path == config_path
         assert parser.template_path == "/custom/config_templates/birdnetpi.yaml"
 
-    def test_init_with_nested_config_path(self):
+    def test_init__nested_config_path(self):
         """Should correctly derive template path from nested config path."""
         config_path = "/app/data/config/birdnetpi.yaml"
 
@@ -109,7 +109,7 @@ class TestConfigFileParserInitialization:
 class TestConfigFileParserAdvancedLoading:
     """Test advanced configuration file loading scenarios."""
 
-    def test_load_config_with_full_config_including_new_fields(self, tmp_path):
+    def test_load_config__full_config_including_new_fields(self, tmp_path):
         """Should load configuration with all new fields including GPS, MQTT, webhooks."""
         config_file = tmp_path / "full_config.yaml"
         config_data = {
@@ -205,7 +205,7 @@ class TestConfigFileParserAdvancedLoading:
         assert config.logging.max_log_file_size_mb == 50
         assert config.logging.log_file_backup_count == 10
 
-    def test_load_config_with_legacy_sf_thresh(self, tmp_path):
+    def test_load_config__legacy_sf_thresh(self, tmp_path):
         """Should handle legacy sf_thresh field for species_confidence_threshold."""
         config_file = tmp_path / "legacy_config.yaml"
         config_data = {
@@ -221,7 +221,7 @@ class TestConfigFileParserAdvancedLoading:
 
         assert config.species_confidence_threshold == 0.05
 
-    def test_load_config_creates_from_template_if_missing(self, tmp_path):
+    def test_load_config_creates_from_template__missing(self, tmp_path):
         """Should create config from template if config file doesn't exist."""
         template_file = tmp_path / "template.yaml"
         config_file = tmp_path / "config.yaml"
@@ -248,7 +248,7 @@ class TestConfigFileParserAdvancedLoading:
         assert config.latitude == 1.0
         assert config.longitude == 2.0
 
-    def test_load_config_creates_minimal_if_no_template(self, tmp_path):
+    def test_load_config_creates_minimal___no_template(self, tmp_path):
         """Should create minimal config if both config and template are missing."""
         config_file = tmp_path / "config.yaml"
         template_file = tmp_path / "nonexistent_template.yaml"
@@ -272,7 +272,7 @@ class TestConfigFileParserAdvancedLoading:
 class TestWebhookUrlParsing:
     """Test webhook URL parsing functionality."""
 
-    def test_parse_webhook_urls_with_string_format(self):
+    def test_parse_webhook_urls__string_format(self):
         """Should parse comma-separated string format webhook URLs."""
         parser = ConfigFileParser("/dummy/path")
 
@@ -286,7 +286,7 @@ class TestWebhookUrlParsing:
         ]
         assert result == expected
 
-    def test_parse_webhook_urls_with_list_format(self):
+    def test_parse_webhook_urls__list_format(self):
         """Should parse list format webhook URLs."""
         parser = ConfigFileParser("/dummy/path")
 
@@ -295,7 +295,7 @@ class TestWebhookUrlParsing:
 
         assert result == urls_list
 
-    def test_parse_webhook_urls_with_empty_string(self):
+    def test_parse_webhook_urls___empty_string(self):
         """Should handle empty string webhook URLs."""
         parser = ConfigFileParser("/dummy/path")
 
@@ -303,7 +303,7 @@ class TestWebhookUrlParsing:
 
         assert result == []
 
-    def test_parse_webhook_urls_with_none_input(self):
+    def test_parse_webhook_urls__none_input(self):
         """Should handle None input for webhook URLs."""
         parser = ConfigFileParser("/dummy/path")
 
@@ -315,7 +315,7 @@ class TestWebhookUrlParsing:
 class TestLoggingConfigParsing:
     """Test logging configuration parsing functionality."""
 
-    def test_parse_logging_config_with_full_config(self):
+    def test_parse_logging_config__full_config(self):
         """Should parse complete logging configuration."""
         parser = ConfigFileParser("/dummy/path")
 
@@ -349,7 +349,7 @@ class TestLoggingConfigParsing:
         assert result.log_file_backup_count == 10
         assert result.log_level == "INFO"  # For backward compatibility
 
-    def test_parse_logging_config_with_minimal_config(self):
+    def test_parse_logging_config__minimal_config(self):
         """Should parse minimal logging configuration with defaults."""
         parser = ConfigFileParser("/dummy/path")
 
@@ -373,7 +373,7 @@ class TestLoggingConfigParsing:
 class TestConfigFileEnsureExists:
     """Test configuration file existence ensuring functionality."""
 
-    def test_ensure_config_exists_does_nothing_if_file_exists(self, tmp_path):
+    def test_ensure_config_exists_does_nothing__file_exists(self, tmp_path):
         """Should not modify existing config file."""
         config_file = tmp_path / "config.yaml"
         original_content = {"site_name": "Existing Site"}
@@ -438,7 +438,7 @@ class TestConfigFileEnsureExists:
 class TestLoggingConfigPostInit:
     """Test LoggingConfig __post_init__ method for backward compatibility."""
 
-    def test_logging_config_post_init_uses_log_level_when_level_is_default(self):
+    def test_logging_config_post_init_uses_log_level__level_is_default(self):
         """Test that log_level overrides level when level is default and log_level is different."""
         config = LoggingConfig(log_level="DEBUG")  # level stays at default "INFO"
 
@@ -446,7 +446,7 @@ class TestLoggingConfigPostInit:
         assert config.level == "DEBUG"
         assert config.log_level == "DEBUG"
 
-    def test_logging_config_post_init_keeps_level_when_explicitly_set(self):
+    def test_logging_config_post_init_keeps_level__explicitly_set(self):
         """Test that level is preserved when explicitly set, even if log_level is different."""
         config = LoggingConfig(level="WARNING", log_level="DEBUG")
 
@@ -454,7 +454,7 @@ class TestLoggingConfigPostInit:
         assert config.level == "WARNING"
         assert config.log_level == "DEBUG"
 
-    def test_logging_config_post_init_no_change_when_both_default(self):
+    def test_logging_config_post_init__no_change__both_default(self):
         """Test that nothing changes when both level and log_level are at defaults."""
         config = LoggingConfig()  # Both level and log_level default to "INFO"
 

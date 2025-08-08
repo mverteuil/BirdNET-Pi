@@ -177,7 +177,7 @@ class TestAdminRouterIntegration:
         assert len(data["message"]) > 0
         assert "working" in data["message"].lower()
 
-    def test_admin_endpoint_no_side_effects(self, client):
+    def test_admin_endpoint__no_side_effects(self, client):
         """Should not cause any side effects when called."""
         # Call the endpoint multiple times
         for _ in range(3):
@@ -213,14 +213,14 @@ class TestAdminRouterIntegration:
         assert response.headers["content-type"] == "text/plain; charset=utf-8"
         assert "Test log content" in response.text
 
-    def test_test_detection_form_renders(self, client):
+    def test_detection_form_renders(self, client):
         """Should render test detection form template."""
         response = client.get("/admin/test_detection_form")
 
         assert response.status_code == 200
         assert response.headers["content-type"].startswith("text/html")
 
-    def test_test_detection_endpoint_creates_detection(self, client):
+    def test_detection_endpoint_creates_detection(self, client):
         """Should create a test detection event."""
         response = client.get("/admin/test_detection?species=Test Bird&confidence=0.95")
 
@@ -230,7 +230,7 @@ class TestAdminRouterIntegration:
         assert "Test detection published" in data["message"]
         assert "data" in data
 
-    def test_test_detection_endpoint_with_defaults(self, client):
+    def test_detection_endpoint__defaults(self, client):
         """Should use default values when parameters are not provided."""
         response = client.get("/admin/test_detection")
 

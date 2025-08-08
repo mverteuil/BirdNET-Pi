@@ -52,7 +52,7 @@ def client():
 class TestDetectionsAPIRoutes:
     """Test detections API endpoints."""
 
-    def test_create_detection_success(self, client):
+    def test_create_detection(self, client):
         """Should create detection successfully."""
         mock_detection = MagicMock()
         mock_detection.id = 123
@@ -83,7 +83,7 @@ class TestDetectionsAPIRoutes:
         assert data["message"] == "Detection received and dispatched"
         assert data["detection_id"] == 123
 
-    def test_get_recent_detections_success(self, client):
+    def test_get_recent_detections(self, client):
         """Should return recent detections."""
         mock_detections = [
             MagicMock(
@@ -115,7 +115,7 @@ class TestDetectionsAPIRoutes:
         assert len(data["detections"]) == 2
         assert data["detections"][0]["common_name"] == "Robin"
 
-    def test_get_detection_count_success(self, client):
+    def test_get_detection_count(self, client):
         """Should return detection count for date."""
         client.mock_detection_manager.get_detections_count_by_date.return_value = 5
 
@@ -125,7 +125,7 @@ class TestDetectionsAPIRoutes:
         data = response.json()
         assert data["count"] == 5
 
-    def test_get_detection_by_id_success(self, client):
+    def test_get_detection_by_id(self, client):
         """Should return specific detection."""
         mock_detection = MagicMock(
             id=123,
@@ -157,7 +157,7 @@ class TestDetectionsAPIRoutes:
 
         assert response.status_code == 404
 
-    def test_update_detection_location_success(self, client):
+    def test_update_detection_location(self, client):
         """Should update detection location."""
         mock_detection = MagicMock(id=123)
         client.mock_detection_manager.get_detection_by_id.return_value = mock_detection
@@ -172,7 +172,7 @@ class TestDetectionsAPIRoutes:
         assert data["message"] == "Location updated successfully"
         assert data["detection_id"] == 123
 
-    def test_get_detection_spectrogram_success(self, client):
+    def test_get_detection_spectrogram(self, client):
         """Should generate and return spectrogram for detection."""
         mock_detection = MagicMock()
         mock_detection.audio_file_path = "/path/to/audio.wav"
@@ -199,7 +199,7 @@ class TestDetectionsAPIRoutes:
         assert response.status_code == 404
         assert "Detection not found" in response.json()["detail"]
 
-    def test_get_detection_spectrogram_no_audio_file(self, client):
+    def test_get_detection_spectrogram__no_audio_file(self, client):
         """Should return 404 when detection has no audio file."""
         mock_detection = MagicMock()
         mock_detection.audio_file_path = None
@@ -210,7 +210,7 @@ class TestDetectionsAPIRoutes:
         assert response.status_code == 404
         assert "No audio file associated" in response.json()["detail"]
 
-    def test_get_detection_spectrogram_error_handling(self, client):
+    def test_get_detection_spectrogram__error_handling(self, client):
         """Should handle plotting manager errors."""
         mock_detection = MagicMock()
         mock_detection.audio_file_path = "/path/to/audio.wav"

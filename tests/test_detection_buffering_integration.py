@@ -144,7 +144,7 @@ class TestDetectionBufferingEndToEnd:
             assert buffer_size == 0
             assert "Successfully flushed 2 buffered detections" in caplog.text
 
-    async def test_concurrent_detection_and_admin_operations(
+    async def test_concurrent_detection__admin_operations(
         self, audio_analysis_service_integration, caplog
     ):
         """Should handle concurrent detections during admin operations without data loss."""
@@ -301,7 +301,7 @@ class TestDetectionBufferingEndToEnd:
             assert buffer_size == 0
             assert "Successfully flushed 3 buffered detections" in caplog.text
 
-    async def test_mixed_success_failure_during_partial_recovery(
+    async def test_mixed_success__failure_during_partial_recovery(
         self, audio_analysis_service_integration, caplog
     ):
         """Should handle mixed success/failure scenarios during partial service recovery."""
@@ -363,7 +363,7 @@ class TestDetectionBufferingEndToEnd:
 class TestDetectionBufferingWithAdminOperations:
     """Integration tests combining detection buffering with actual admin operations."""
 
-    async def test_generate_dummy_data_with_active_detection_service(
+    async def test_generate_dummy_data__active_detection_service(
         self, audio_analysis_service_integration, caplog
     ):
         """Should coordinate detection buffering during generate_dummy_data execution."""
@@ -394,21 +394,20 @@ class TestDetectionBufferingWithAdminOperations:
                 assert "Detection event sent: Robin" in caplog.text
 
             # Simulate admin operation affecting FastAPI
-            with patch.multiple(
-                "birdnetpi.wrappers.generate_dummy_data",
-                FilePathResolver=MagicMock(),
-                DatabaseService=MagicMock(),
-                DetectionManager=MagicMock(),
-                SystemControlService=MagicMock(),
-                generate_dummy_detections=MagicMock(),
-                time=MagicMock(),
-                os=MagicMock(),
-            ) as mocks:
+            with (
+                patch("birdnetpi.wrappers.generate_dummy_data.FilePathResolver") as mock_file_path_resolver,
+                patch("birdnetpi.wrappers.generate_dummy_data.DatabaseService") as mock_database_service,
+                patch("birdnetpi.wrappers.generate_dummy_data.DetectionManager") as mock_detection_manager,
+                patch("birdnetpi.wrappers.generate_dummy_data.SystemControlService") as mock_system_control_service,
+                patch("birdnetpi.wrappers.generate_dummy_data.generate_dummy_detections") as mock_generate_dummy_detections,
+                patch("birdnetpi.wrappers.generate_dummy_data.time") as mock_time,
+                patch("birdnetpi.wrappers.generate_dummy_data.os") as mock_os,
+            ):
                 # Configure mocks for generate_dummy_data
-                mocks["os"].path.exists.return_value = False
-                mocks["os"].getenv.return_value = "false"  # SBC environment
-                mocks["SystemControlService"].return_value.get_service_status.return_value = "active"
-                mocks["DetectionManager"].return_value.get_all_detections.return_value = []
+                mock_os.path.exists.return_value = False
+                mock_os.getenv.return_value = "false"  # SBC environment
+                mock_system_control_service.return_value.get_service_status.return_value = "active"
+                mock_detection_manager.return_value.get_all_detections.return_value = []
 
                 # During admin operation, simulate FastAPI being down
                 with patch("httpx.AsyncClient") as mock_client:

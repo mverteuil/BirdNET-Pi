@@ -46,7 +46,7 @@ def test_handle_detection_event_basic(notification_service, caplog):
         )
 
 
-def test_handle_detection_event_with_apprise_enabled(mock_config, notification_service, caplog):
+def test_handle_detection_event__apprise_enabled(mock_config, notification_service, caplog):
     """Should log an Apprise notification message when enabled for detection event."""
     mock_config.apprise_notify_each_detection = True  # Correctly set the nested attribute
     with caplog.at_level(logging.INFO):

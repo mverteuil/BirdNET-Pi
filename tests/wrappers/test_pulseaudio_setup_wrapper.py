@@ -27,7 +27,7 @@ class TestPulseAudioSetupWrapper:
 
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.setup_streaming")
     @patch("builtins.print")
-    def test_setup_command_success(self, mock_print, mock_setup):
+    def test_setup_command(self, mock_print, mock_setup):
         """Should successfully run setup command."""
         mock_args = MagicMock()
         mock_args.container_ip = "192.168.1.100"
@@ -70,7 +70,7 @@ class TestPulseAudioSetupWrapper:
 
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.test_connection")
     @patch("builtins.print")
-    def test_test_command_success(self, mock_print, mock_test):
+    def test_command(self, mock_print, mock_test):
         """Should successfully run test command."""
         mock_args = MagicMock()
         mock_args.container_ip = "127.0.0.1"
@@ -89,7 +89,7 @@ class TestPulseAudioSetupWrapper:
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.test_connection")
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.sys.exit")
     @patch("builtins.print")
-    def test_test_command_failure(self, mock_print, mock_exit, mock_test):
+    def test_command_failure(self, mock_print, mock_exit, mock_test):
         """Should handle test command failure."""
         mock_args = MagicMock()
         mock_args.container_ip = "127.0.0.1"
@@ -133,7 +133,7 @@ class TestPulseAudioSetupWrapper:
 
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_status")
     @patch("builtins.print")
-    def test_status_command_with_json(self, mock_print, mock_status):
+    def test_status_command__json(self, mock_print, mock_status):
         """Should display status with JSON output."""
         mock_args = MagicMock()
         mock_args.json = True
@@ -167,7 +167,7 @@ class TestPulseAudioSetupWrapper:
 
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_audio_devices")
     @patch("builtins.print")
-    def test_devices_command_success(self, mock_print, mock_devices):
+    def test_devices_command(self, mock_print, mock_devices):
         """Should list available audio devices."""
         mock_args = MagicMock()
         mock_args.json = False
@@ -188,7 +188,7 @@ class TestPulseAudioSetupWrapper:
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_audio_devices")
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.sys.exit")
     @patch("builtins.print")
-    def test_devices_command_no_devices(self, mock_print, mock_exit, mock_devices):
+    def test_devices_command__no_devices(self, mock_print, mock_exit, mock_devices):
         """Should handle no devices found."""
         mock_args = MagicMock()
         mock_args.json = False
@@ -294,7 +294,7 @@ class TestPulseAudioSetupWrapper:
         return_value=True,
     )
     @patch("builtins.print")
-    def test_install_command_success(self, mock_print, mock_install, mock_installed, mock_is_macos):
+    def test_install_command(self, mock_print, mock_install, mock_installed, mock_is_macos):
         """Should successfully install PulseAudio."""
         mock_args = MagicMock()
 
@@ -307,7 +307,7 @@ class TestPulseAudioSetupWrapper:
         assert any("installed successfully" in call for call in print_calls)
 
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.argparse.ArgumentParser")
-    def test_main_no_command(self, mock_parser_class):
+    def test_main__no_command(self, mock_parser_class):
         """Should print help when no command provided."""
         mock_parser = MagicMock()
         mock_parser_class.return_value = mock_parser
@@ -332,7 +332,7 @@ class TestPulseAudioSetupWrapper:
 
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.test_command")
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.argparse.ArgumentParser")
-    def test_main_test_command(self, mock_parser_class, mock_test_command):
+    def test_main_command(self, mock_parser_class, mock_test_command):
         """Should call test_command for test command."""
         mock_parser = MagicMock()
         mock_parser_class.return_value = mock_parser

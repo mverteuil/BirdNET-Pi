@@ -82,7 +82,7 @@ class TestWebhookConfiguration:
         call_args = webhook_service_mock.configure_webhooks_from_urls.call_args[0][0]
         assert call_args == ["https://single-webhook.com/api"]
 
-    def test_mixed_empty_webhook_urls_list(self):
+    def test_mixed__empty_webhook_urls_list(self):
         """Test processing list with mix of valid and empty URLs."""
         # Mock webhook service
         webhook_service_mock = MagicMock()

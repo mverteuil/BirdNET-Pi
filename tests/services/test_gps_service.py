@@ -72,13 +72,13 @@ class TestGPSService:
         location = gps_service.get_current_location()
         assert location is None
 
-    def test_get_current_location_no_fix(self, enabled_gps_service):
+    def test_get_current_location__no_fix(self, enabled_gps_service):
         """Test getting current location when no GPS fix is available."""
         service = enabled_gps_service
         location = service.get_current_location()
         assert location is None
 
-    def test_get_current_location_with_fix(self, enabled_gps_service):
+    def test_get_current_location__fix(self, enabled_gps_service):
         """Test getting current location with valid GPS fix."""
         service = enabled_gps_service
 
@@ -190,7 +190,7 @@ class TestGPSService:
         assert status["has_fix"] is False
         assert status["last_update"] is None
 
-    def test_get_gps_status_enabled_with_fix(self, enabled_gps_service):
+    def test_get_gps_status_enabled__fix(self, enabled_gps_service):
         """Test GPS status when enabled with GPS fix."""
         service = enabled_gps_service
         service.is_running = True
@@ -215,7 +215,7 @@ class TestGPSService:
         assert status["satellite_count"] == 8
 
     @pytest.mark.asyncio
-    async def test_update_location_no_client(self, enabled_gps_service):
+    async def test_update_location__no_client(self, enabled_gps_service):
         """Test location update when no GPSD client is available."""
         service = enabled_gps_service
         service.gpsd_client = None
@@ -225,7 +225,7 @@ class TestGPSService:
         assert service.current_location is None
 
     @pytest.mark.asyncio
-    async def test_update_location_no_fix(self, enabled_gps_service):
+    async def test_update_location__no_fix(self, enabled_gps_service):
         """Test location update when GPS has no fix."""
         service = enabled_gps_service
 
@@ -238,7 +238,7 @@ class TestGPSService:
         assert service.current_location is None
 
     @pytest.mark.asyncio
-    async def test_update_location_with_fix(self, enabled_gps_service):
+    async def test_update_location__fix(self, enabled_gps_service):
         """Test location update with valid GPS fix."""
         service = enabled_gps_service
 

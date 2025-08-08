@@ -16,6 +16,58 @@ from birdnetpi.wrappers.asset_installer_wrapper import (
 
 
 @pytest.fixture
+def test_version_data():
+    """Provide test version data."""
+    return {
+        "current": "v2.1.0",
+        "versions": ["v2.1.0", "v2.0.0", "v1.9.0"],
+        "empty": []
+    }
+
+
+@pytest.fixture
+def test_download_result():
+    """Provide test download result data."""
+    return {
+        "success": {
+            "version": "v2.1.0",
+            "downloaded_assets": ["Model: model1.tflite", "IOC reference database"],
+            "errors": [],
+        },
+        "partial": {
+            "version": "v2.1.0", 
+            "downloaded_assets": ["Model: model1.tflite"],
+            "errors": ["IOC database download failed"],
+        }
+    }
+
+
+@pytest.fixture 
+def test_install_args():
+    """Provide test installation arguments."""
+    return {
+        "basic": argparse.Namespace(
+            version="v2.1.0", 
+            include_models=True, 
+            include_ioc_db=True, 
+            output_json=None
+        ),
+        "models_only": argparse.Namespace(
+            version="v2.1.0",
+            include_models=True, 
+            include_ioc_db=False, 
+            output_json=None
+        ),
+        "none": argparse.Namespace(
+            version="v2.1.0", 
+            include_models=False, 
+            include_ioc_db=False, 
+            output_json=None
+        )
+    }
+
+
+@pytest.fixture
 def mock_update_manager():
     """Create a mock UpdateManager."""
     return MagicMock()
@@ -34,49 +86,33 @@ class TestInstallAssets:
     """Test install_assets function."""
 
     @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
-    def test_install_assets_success(self, mock_update_manager_class, tmp_path):
+    def test_install_assets(self, mock_update_manager_class, test_download_result, 
+                           test_install_args):
         """Should install assets successfully."""
         # Setup mock
         mock_manager = MagicMock()
         mock_update_manager_class.return_value = mock_manager
+        mock_manager.download_release_assets.return_value = test_download_result["success"]
 
-        mock_result = {
-            "version": "v2.1.0",
-            "downloaded_assets": ["Model: model1.tflite", "IOC reference database"],
-            "errors": [],
-        }
-        mock_manager.download_release_assets.return_value = mock_result
-
-        # Create args
-        args = argparse.Namespace(
-            version="v2.1.0", include_models=True, include_ioc_db=True, output_json=None
-        )
-
-        install_assets(args)
+        install_assets(test_install_args["basic"])
 
         mock_manager.download_release_assets.assert_called_once_with(
-            version="v2.1.0",
-            include_models=True,
-            include_ioc_db=True,
+            version=test_install_args["basic"].version,
+            include_models=test_install_args["basic"].include_models,
+            include_ioc_db=test_install_args["basic"].include_ioc_db,
             github_repo="mverteuil/BirdNET-Pi",
         )
 
     @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
-    def test_install_assets_with_json_output(self, mock_update_manager_class, tmp_path):
+    def test_install_assets___json_output(self, mock_update_manager_class, tmp_path, 
+                                             test_download_result):
         """Should install assets and write JSON output."""
         # Setup mock
         mock_manager = MagicMock()
         mock_update_manager_class.return_value = mock_manager
-
-        mock_result = {
-            "version": "v2.1.0",
-            "downloaded_assets": ["Model: model1.tflite"],
-            "errors": [],
-        }
-        mock_manager.download_release_assets.return_value = mock_result
+        mock_manager.download_release_assets.return_value = test_download_result["partial"]
 
         output_file = tmp_path / "result.json"
-
         args = argparse.Namespace(
             version="v2.1.0",
             include_models=True,
@@ -90,41 +126,59 @@ class TestInstallAssets:
         assert output_file.exists()
         with open(output_file) as f:
             data = json.load(f)
-        assert data == mock_result
+        assert data == test_download_result["partial"]
 
     @patch("birdnetpi.wrappers.asset_installer_wrapper.sys.exit")
-    def test_install_assets_no_asset_types_specified(self, mock_exit):
+    def test_install_assets___no_types_specified(self, mock_exit, test_install_args):
         """Should exit with error when no asset types specified."""
-        args = argparse.Namespace(
-            version="v2.1.0", include_models=False, include_ioc_db=False, output_json=None
-        )
+        install_assets(test_install_args["none"])
 
-        install_assets(args)
-
-        # Should exit at least once with status 1
-        # (could be called multiple times if download also fails)
+        # Should exit with status 1 for no asset types
         mock_exit.assert_called_with(1)
 
     @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
     @patch("birdnetpi.wrappers.asset_installer_wrapper.sys.exit")
-    def test_install_assets_download_error(self, mock_exit, mock_update_manager_class):
+    def test_install_assets__download_error(self, mock_exit, mock_update_manager_class,
+                                           test_install_args):
         """Should handle download errors gracefully."""
         # Setup mock to raise exception
         mock_manager = MagicMock()
         mock_update_manager_class.return_value = mock_manager
         mock_manager.download_release_assets.side_effect = Exception("Download failed")
 
-        args = argparse.Namespace(
-            version="v2.1.0", include_models=True, include_ioc_db=True, output_json=None
-        )
+        install_assets(test_install_args["basic"])
 
-        install_assets(args)
+        mock_exit.assert_called_once_with(1)
+        
+    @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
+    @patch("birdnetpi.wrappers.asset_installer_wrapper.sys.exit")
+    def test_install_assets__network_error(self, mock_exit, mock_update_manager_class,
+                                          test_install_args):
+        """Should handle network errors gracefully."""
+        mock_manager = MagicMock()
+        mock_update_manager_class.return_value = mock_manager
+        mock_manager.download_release_assets.side_effect = ConnectionError("Network unreachable")
+
+        install_assets(test_install_args["models_only"])
+
+        mock_exit.assert_called_once_with(1)
+        
+    @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
+    @patch("birdnetpi.wrappers.asset_installer_wrapper.sys.exit")
+    def test_install_assets__file_not_found(self, mock_exit, mock_update_manager_class,
+                                           test_install_args):
+        """Should handle file not found errors gracefully."""
+        mock_manager = MagicMock()
+        mock_update_manager_class.return_value = mock_manager
+        mock_manager.download_release_assets.side_effect = FileNotFoundError("Model file not found")
+
+        install_assets(test_install_args["basic"])
 
         mock_exit.assert_called_once_with(1)
 
     @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
     @patch("birdnetpi.wrappers.asset_installer_wrapper.sys.exit")
-    def test_install_assets_permission_error_help(
+    def test_install_assets__permission__error_help(
         self, mock_exit, mock_update_manager_class, capsys
     ):
         """Should show helpful message for permission errors."""
@@ -153,12 +207,12 @@ class TestListAvailableAssets:
     """Test list_available_assets function."""
 
     @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
-    def test_list_available_assets_success(self, mock_update_manager_class, capsys):
+    def test_list_available_assets(self, mock_update_manager_class, test_version_data, capsys):
         """Should list available asset versions."""
         # Setup mock
         mock_manager = MagicMock()
         mock_update_manager_class.return_value = mock_manager
-        mock_manager.list_available_versions.return_value = ["v2.1.0", "v2.0.0", "v1.9.0"]
+        mock_manager.list_available_versions.return_value = test_version_data["versions"]
 
         args = argparse.Namespace()
 
@@ -166,17 +220,17 @@ class TestListAvailableAssets:
 
         captured = capsys.readouterr()
         assert "Available asset versions:" in captured.out
-        assert "Latest version: v2.1.0" in captured.out
-        assert "v2.1.0" in captured.out
-        assert "v2.0.0" in captured.out
+        assert f"Latest version: {test_version_data['current']}" in captured.out
+        for version in test_version_data["versions"]:
+            assert version in captured.out
 
     @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
-    def test_list_available_assets_empty(self, mock_update_manager_class, capsys):
+    def test_list_available_assets__empty(self, mock_update_manager_class, test_version_data, capsys):
         """Should handle empty version list."""
         # Setup mock
         mock_manager = MagicMock()
         mock_update_manager_class.return_value = mock_manager
-        mock_manager.list_available_versions.return_value = []
+        mock_manager.list_available_versions.return_value = test_version_data["empty"]
 
         args = argparse.Namespace()
 
@@ -187,7 +241,7 @@ class TestListAvailableAssets:
 
     @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
     @patch("birdnetpi.wrappers.asset_installer_wrapper.sys.exit")
-    def test_list_available_assets_error(self, mock_exit, mock_update_manager_class):
+    def test_list_available_assets__error(self, mock_exit, mock_update_manager_class):
         """Should handle list errors gracefully."""
         # Setup mock to raise exception
         mock_manager = MagicMock()
@@ -269,7 +323,7 @@ class TestCheckLocalAssets:
         assert str(ioc_db) in captured.out
 
     @patch("birdnetpi.wrappers.asset_installer_wrapper.FilePathResolver")
-    def test_check_local_assets_missing_files(self, mock_file_resolver_class, tmp_path, capsys):
+    def test_check_local_assets__missing_files(self, mock_file_resolver_class, tmp_path, capsys):
         """Should show missing status for non-existent files."""
         # Setup mock resolver
         mock_resolver = MagicMock()
@@ -334,7 +388,7 @@ class TestMain:
         args = mock_check_assets.call_args[0][0]
         assert args.verbose is True
 
-    def test_main_no_command_shows_help(self, capsys):
+    def test_main__no_command_shows_help(self, capsys):
         """Should show help when no command specified."""
         test_args = ["asset-installer"]
 

@@ -14,7 +14,7 @@ def birdweather_service():
     return service
 
 
-def test_send_detection_to_birdweather_success(birdweather_service):
+def test_send_detection_to_birdweather(birdweather_service):
     """Should successfully send detection data to BirdWeather API."""
     detection_data = {"species": "Test Bird", "confidence": 0.9}
     with patch("requests.post") as mock_post:
@@ -50,7 +50,7 @@ def test_send_detection_to_birdweather_failure(birdweather_service):
         )
 
 
-def test_get_birdweather_data_success(birdweather_service):
+def test_get_birdweather_data(birdweather_service):
     """Should successfully retrieve BirdWeather data."""
     location_data = {"lat": 12.34, "lon": 56.78}
     expected_data = {"weather": "sunny"}

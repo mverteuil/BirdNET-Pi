@@ -247,7 +247,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
             id=1,
             species_tensor="Turdus migratorius_American Robin",
             scientific_name="Turdus migratorius",
-            common_name="American Robin",
+            common_name_tensor="American Robin",
             timestamp=datetime.datetime(2025, 7, 15, 8, 0, 0),
             confidence=0.9,
             audio_file_id=101,  # Assign a mock audio_file_id
@@ -256,7 +256,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
             id=2,
             species_tensor="Turdus migratorius_American Robin",
             scientific_name="Turdus migratorius",
-            common_name="American Robin",
+            common_name_tensor="American Robin",
             timestamp=datetime.datetime(2025, 7, 15, 8, 15, 0),
             confidence=0.8,
             audio_file_id=102,  # Assign a mock audio_file_id
@@ -265,7 +265,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
             id=3,
             species_tensor="Cardinalis cardinalis_Northern Cardinal",
             scientific_name="Cardinalis cardinalis",
-            common_name="Northern Cardinal",
+            common_name_tensor="Northern Cardinal",
             timestamp=datetime.datetime(2025, 7, 15, 9, 0, 0),
             confidence=0.95,
             audio_file_id=103,  # Assign a mock audio_file_id
@@ -312,7 +312,7 @@ def test_get_best_detections(reporting_manager, detection_manager):
     detection_manager.get_best_detections.assert_called_once_with(2)
 
 
-def test_get_data_empty_detections(reporting_manager, detection_manager):
+def test_get_data__empty_detections(reporting_manager, detection_manager):
     """Should handle empty detections and return empty DataFrame with correct columns."""
     # Mock empty detections
     detection_manager.get_all_detections.return_value = []
@@ -356,7 +356,7 @@ def test_get_todays_detections(reporting_manager, detection_manager):
                 id=1,
                 species_tensor="Turdus migratorius_American Robin",
                 scientific_name="Turdus migratorius",
-                common_name="American Robin",
+                common_name_tensor="American Robin",
                 timestamp=datetime.datetime(2025, 7, 15, 10, 0, 0),
                 confidence=0.9,
                 audio_file_id=101,
@@ -365,7 +365,7 @@ def test_get_todays_detections(reporting_manager, detection_manager):
                 id=2,
                 species_tensor="Cardinalis cardinalis_Northern Cardinal",
                 scientific_name="Cardinalis cardinalis",
-                common_name="Northern Cardinal",
+                common_name_tensor="Northern Cardinal",
                 timestamp=datetime.datetime(2025, 7, 15, 14, 30, 0),
                 confidence=0.95,
                 audio_file_id=102,
@@ -375,7 +375,7 @@ def test_get_todays_detections(reporting_manager, detection_manager):
                 id=3,
                 species_tensor="Cyanocitta cristata_Blue Jay",
                 scientific_name="Cyanocitta cristata",
-                common_name="Blue Jay",
+                common_name_tensor="Blue Jay",
                 timestamp=datetime.datetime(2025, 7, 14, 12, 0, 0),  # Different day
                 confidence=0.85,
                 audio_file_id=103,

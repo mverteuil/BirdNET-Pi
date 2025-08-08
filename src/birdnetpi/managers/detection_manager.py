@@ -39,15 +39,15 @@ class DetectionManager:
                 detection = Detection(
                     species_tensor=detection_event.species_tensor,
                     scientific_name=detection_event.scientific_name,
-                    common_name=detection_event.common_name,
+                    common_name_tensor=detection_event.common_name,
                     confidence=detection_event.confidence,
                     timestamp=detection_event.timestamp,
                     audio_file_id=audio_file.id,
                     latitude=detection_event.latitude,
                     longitude=detection_event.longitude,
-                    species_confidence_threshold=detection_event.species_confidence_threshold,
+                    cutoff=detection_event.species_confidence_threshold,
                     week=detection_event.week,
-                    sensitivity_setting=detection_event.sensitivity_setting,
+                    sensitivity=detection_event.sensitivity_setting,
                     overlap=detection_event.overlap,
                 )
                 db.add(detection)
