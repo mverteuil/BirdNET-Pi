@@ -12,6 +12,7 @@ from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
 from birdnetpi.managers.notification_manager import NotificationManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
+from birdnetpi.managers.translation_manager import TranslationManager
 from birdnetpi.services.audio_websocket_service import AudioWebSocketService
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.detection_query_service import DetectionQueryService
@@ -73,6 +74,12 @@ class Container(containers.DeclarativeContainer):
 
     # Core infrastructure services - singletons
     file_resolver = providers.Singleton(FilePathResolver)
+
+    # Translation manager - singleton
+    translation_manager = providers.Singleton(
+        TranslationManager,
+        file_resolver=file_resolver,
+    )
 
     # Templates configuration - singleton
     templates = providers.Singleton(

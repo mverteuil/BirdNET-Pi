@@ -3,8 +3,10 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
+from birdnetpi.managers.translation_manager import setup_jinja2_i18n
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.lifespan import lifespan
+from birdnetpi.web.middleware.i18n import LanguageMiddleware
 from birdnetpi.web.routers import (
     admin_api_routes,
     admin_view_routes,
@@ -41,6 +43,16 @@ def create_app() -> FastAPI:
 
     # Attach container to app (ignore type error - runtime dynamic attribute)
     app.container = container  # type: ignore[attr-defined]
+
+    # Set up translation manager in app state for middleware access
+    app.state.translation_manager = container.translation_manager()
+
+    # Add LanguageMiddleware
+    app.add_middleware(LanguageMiddleware)
+
+    # Configure Jinja2 templates with i18n support
+    templates = container.templates()
+    setup_jinja2_i18n(templates)
 
     # Wire dependencies for all router modules and factory
     container.wire(
