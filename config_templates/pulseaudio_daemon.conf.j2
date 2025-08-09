@@ -1,0 +1,25 @@
+# BirdNET-Pi PulseAudio Daemon Configuration
+
+# Allow network connections
+exit-idle-time = -1
+allow-module-loading = yes
+allow-exit = yes
+
+# Disable systemd integration on macOS
+daemonize = no
+use-pid-file = no
+system-instance = no
+
+# Audio settings
+default-sample-format = s16le
+default-sample-rate = 44100
+default-sample-channels = 2
+default-fragments = 8
+default-fragment-size-msec = 125
+
+# Network settings
+enable-lfe-remixing = no
+high-priority = yes
+nice-level = -15
+realtime-scheduling = yes
+realtime-priority = 5
