@@ -17,6 +17,7 @@ from birdnetpi.services.gps_service import GPSService
 from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
 from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.services.location_service import LocationService
+from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.services.mqtt_service import MQTTService
 from birdnetpi.services.notification_service import NotificationService
 from birdnetpi.services.spectrogram_service import SpectrogramService
@@ -33,6 +34,19 @@ def _create_ioc_service(resolver: FilePathResolver) -> IOCDatabaseService | None
         return IOCDatabaseService(resolver.get_ioc_database_path())
     except Exception as e:
         print(f"Warning: IOC database service unavailable: {e}")
+        return None
+
+
+def _create_multilingual_service(resolver: FilePathResolver) -> MultilingualDatabaseService | None:
+    """Create multilingual database service with graceful error handling."""
+    try:
+        return MultilingualDatabaseService(
+            ioc_db_path=resolver.get_ioc_database_path(),
+            avibase_db_path=resolver.get_avibase_database_path(),
+            patlevin_db_path=resolver.get_patlevin_database_path(),
+        )
+    except Exception as e:
+        print(f"Warning: Multilingual database service unavailable: {e}")
         return None
 
 
@@ -83,6 +97,12 @@ class Container(containers.DeclarativeContainer):
     # IOC database service factory with error handling
     ioc_database_service = providers.Singleton(
         _create_ioc_service,
+        resolver=file_resolver,
+    )
+
+    # Multilingual database service with all three bird name databases
+    multilingual_database_service = providers.Singleton(
+        _create_multilingual_service,
         resolver=file_resolver,
     )
 

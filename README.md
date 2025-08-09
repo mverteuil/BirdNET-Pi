@@ -91,10 +91,18 @@ foundational work of the following individuals and projects:
 * **Stefan Kahl (@kahst)**: For the powerful **BirdNET** analysis framework that serves as the project's core.
 * **Katsuya Hyodo (@PINTO0309)**: For the pre-compiled TFLite binaries that enable BirdNET to run on diverse hardware.
 * **Ben Webber (@benwebber)**: For the elegant orphaned-commit asset distribution strategy.
+* **Patrick Levin (@patlevin)**: For the comprehensive multilingual BirdNET label translations.
 * **Frank Gill, David Donsker & Pamela Rasmussen (Eds)**: For the indispensable **IOC World Bird List**, which powers our species naming and translations.
+* **Denis Lepage**: For **Avibase - the World Bird Database**, providing extensive multilingual bird names.
 
 **IOC World Bird List Citation:**
 Gill F, D Donsker & P Rasmussen (Eds). 2025. IOC World Bird List (v15.1). This list is provided under a [Creative Commons Attribution 3.0 Unported License](https://creativecommons.org/licenses/by/3.0/).
+
+**Avibase Citation:**
+Lepage, Denis. 2018. Avibase - the World Bird Database. Available at https://avibase.bsc-eoc.org/. Data used under [Creative Commons Attribution 4.0 International License](https://creativecommons.org/licenses/by/4.0/).
+
+**BirdNET Label Translations:**
+The multilingual label translations were originally compiled for the BirdNET-Pi project by Patrick Levin (@patlevin) and contributors, and are distributed under the same license as the BirdNET-Pi codebase.
 
 ## Open Source Dependencies
 

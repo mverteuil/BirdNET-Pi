@@ -34,6 +34,24 @@ def _build_asset_list(
         else:
             print("Warning: IOC database not found at expected locations")
 
+    if args.include_avibase_db:
+        avibase_asset = next(
+            (a for a in default_assets if "avibase_database.db" in a.target_name), None
+        )
+        if avibase_asset and Path(avibase_asset.source_path).exists():
+            assets.append(avibase_asset)
+        else:
+            print("Warning: Avibase database not found at expected locations")
+
+    if args.include_patlevin_db:
+        patlevin_asset = next(
+            (a for a in default_assets if "patlevin_database.db" in a.target_name), None
+        )
+        if patlevin_asset and Path(patlevin_asset.source_path).exists():
+            assets.append(patlevin_asset)
+        else:
+            print("Warning: PatLevin database not found at expected locations")
+
     # Add custom assets
     if args.custom_assets:
         _add_custom_assets(args.custom_assets, assets)
@@ -191,6 +209,14 @@ Examples:
     )
     create_parser.add_argument(
         "--include-ioc-db", action="store_true", help="Include IOC reference database"
+    )
+    create_parser.add_argument(
+        "--include-avibase-db", action="store_true", help="Include Avibase multilingual database"
+    )
+    create_parser.add_argument(
+        "--include-patlevin-db",
+        action="store_true",
+        help="Include PatLevin BirdNET labels database",
     )
     create_parser.add_argument(
         "--custom-assets",

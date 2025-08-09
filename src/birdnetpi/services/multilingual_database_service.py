@@ -1,0 +1,240 @@
+"""Service for managing multilingual bird name databases.
+
+This service provides access to three bird name databases:
+1. IOC World Bird List (authoritative taxonomy)
+2. Avibase (Lepage 2018, extensive multilingual coverage)
+3. PatLevin BirdNET labels (BirdNET-specific translations)
+
+Uses SQLite's ATTACH DATABASE for efficient cross-database queries with priority:
+IOC → PatLevin → Avibase
+"""
+
+from pathlib import Path
+from typing import Any
+
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+
+class MultilingualDatabaseService:
+    """Service for multilingual bird name lookups across three databases."""
+
+    def __init__(
+        self,
+        ioc_db_path: str | None = None,
+        avibase_db_path: str | None = None,
+        patlevin_db_path: str | None = None,
+    ):
+        """Initialize multilingual database service.
+
+        Args:
+            ioc_db_path: Path to IOC reference database
+            avibase_db_path: Path to Avibase multilingual database
+            patlevin_db_path: Path to PatLevin BirdNET labels database
+        """
+        self.ioc_db_path = ioc_db_path
+        self.avibase_db_path = avibase_db_path
+        self.patlevin_db_path = patlevin_db_path
+
+        # Track which databases are available
+        self.databases_available = []
+        if ioc_db_path and Path(ioc_db_path).exists():
+            self.databases_available.append("ioc")
+        if avibase_db_path and Path(avibase_db_path).exists():
+            self.databases_available.append("avibase")
+        if patlevin_db_path and Path(patlevin_db_path).exists():
+            self.databases_available.append("patlevin")
+
+    def attach_all_to_session(self, session: Session) -> None:
+        """Attach all available databases to session for cross-database queries.
+
+        Args:
+            session: SQLAlchemy session (typically from main detections database)
+        """
+        if "ioc" in self.databases_available and self.ioc_db_path:
+            session.execute(text(f"ATTACH DATABASE '{self.ioc_db_path}' AS ioc"))
+
+        if "avibase" in self.databases_available and self.avibase_db_path:
+            session.execute(text(f"ATTACH DATABASE '{self.avibase_db_path}' AS avibase"))
+
+        if "patlevin" in self.databases_available and self.patlevin_db_path:
+            session.execute(text(f"ATTACH DATABASE '{self.patlevin_db_path}' AS patlevin"))
+
+    def detach_all_from_session(self, session: Session) -> None:
+        """Detach all databases from session.
+
+        Args:
+            session: SQLAlchemy session
+        """
+        for db_alias in ["ioc", "avibase", "patlevin"]:
+            if db_alias in self.databases_available:
+                try:
+                    session.execute(text(f"DETACH DATABASE {db_alias}"))
+                except Exception:
+                    # Ignore errors if database wasn't attached
+                    pass
+
+    def get_best_common_name(
+        self, session: Session, scientific_name: str, language_code: str = "en"
+    ) -> dict[str, Any]:
+        """Get best available common name using priority: IOC → PatLevin → Avibase.
+
+        Args:
+            session: SQLAlchemy session with databases attached
+            scientific_name: Scientific name to look up
+            language_code: Language code for translation (default: en)
+
+        Returns:
+            Dictionary with common_name, source, and metadata
+        """
+        # Build COALESCE query based on available databases
+        select_parts = []
+        join_parts = []
+
+        if "ioc" in self.databases_available:
+            # IOC only has English names in the species table
+            if language_code == "en":
+                select_parts.append("ioc_species.english_name")
+                join_parts.append(
+                    """LEFT JOIN ioc.species ioc_species
+                       ON LOWER(ioc_species.scientific_name) = LOWER(:sci_name)"""
+                )
+            # IOC translations in separate table
+            select_parts.append("ioc_trans.common_name")
+            join_parts.append(
+                """LEFT JOIN ioc.translations ioc_trans
+                   ON LOWER(ioc_trans.scientific_name) = LOWER(:sci_name)
+                   AND ioc_trans.language_code = :lang"""
+            )
+
+        if "patlevin" in self.databases_available:
+            select_parts.append("patlevin.common_name")
+            join_parts.append(
+                """LEFT JOIN patlevin.patlevin_labels patlevin
+                   ON LOWER(patlevin.scientific_name) = LOWER(:sci_name)
+                   AND patlevin.language_code = :lang"""
+            )
+
+        if "avibase" in self.databases_available:
+            select_parts.append("avibase.common_name")
+            join_parts.append(
+                """LEFT JOIN avibase.avibase_names avibase
+                   ON LOWER(avibase.scientific_name) = LOWER(:sci_name)
+                   AND avibase.language_code = :lang"""
+            )
+
+        if not select_parts:
+            return {"common_name": None, "source": None}
+
+        # Build the query
+        coalesce_expr = f"COALESCE({', '.join(select_parts)})"
+
+        # Determine source
+        source_cases = []
+        if "ioc" in self.databases_available:
+            if language_code == "en":
+                source_cases.append("WHEN ioc_species.english_name IS NOT NULL THEN 'IOC'")
+            source_cases.append("WHEN ioc_trans.common_name IS NOT NULL THEN 'IOC'")
+        if "patlevin" in self.databases_available:
+            source_cases.append("WHEN patlevin.common_name IS NOT NULL THEN 'PatLevin'")
+        if "avibase" in self.databases_available:
+            source_cases.append("WHEN avibase.common_name IS NOT NULL THEN 'Avibase'")
+
+        source_expr = f"CASE {' '.join(source_cases)} ELSE NULL END"
+
+        query = f"""
+            SELECT
+                {coalesce_expr} as common_name,
+                {source_expr} as source
+            FROM (SELECT 1 as dummy) base
+            {" ".join(join_parts)}
+        """
+
+        result = session.execute(
+            text(query), {"sci_name": scientific_name, "lang": language_code}
+        ).fetchone()
+
+        if result:
+            return {"common_name": result[0], "source": result[1]}
+        return {"common_name": None, "source": None}
+
+    def get_all_translations(
+        self, session: Session, scientific_name: str
+    ) -> dict[str, list[dict[str, str]]]:
+        """Get all available translations from all databases.
+
+        Args:
+            session: SQLAlchemy session with databases attached
+            scientific_name: Scientific name to look up
+
+        Returns:
+            Dictionary with language codes as keys, list of {name, source} as values
+        """
+        translations = {}
+
+        # Get from IOC
+        if "ioc" in self.databases_available:
+            # English from species table
+            query = """
+                SELECT 'en' as lang, english_name as name
+                FROM ioc.species
+                WHERE LOWER(scientific_name) = LOWER(:sci_name)
+            """
+            result = session.execute(text(query), {"sci_name": scientific_name}).fetchone()
+            if result:
+                translations.setdefault("en", []).append({"name": result[1], "source": "IOC"})
+
+            # Other languages from translations table
+            query = """
+                SELECT language_code, common_name
+                FROM ioc.translations
+                WHERE LOWER(scientific_name) = LOWER(:sci_name)
+            """
+            for row in session.execute(text(query), {"sci_name": scientific_name}):
+                lang = row[0]
+                translations.setdefault(lang, []).append({"name": row[1], "source": "IOC"})
+
+        # Get from PatLevin
+        if "patlevin" in self.databases_available:
+            query = """
+                SELECT language_code, common_name
+                FROM patlevin.patlevin_labels
+                WHERE LOWER(scientific_name) = LOWER(:sci_name)
+            """
+            for row in session.execute(text(query), {"sci_name": scientific_name}):
+                lang = row[0]
+                # Check if not duplicate
+                existing_names = [t["name"] for t in translations.get(lang, [])]
+                if row[1] not in existing_names:
+                    translations.setdefault(lang, []).append({"name": row[1], "source": "PatLevin"})
+
+        # Get from Avibase
+        if "avibase" in self.databases_available:
+            query = """
+                SELECT language_code, common_name
+                FROM avibase.avibase_names
+                WHERE LOWER(scientific_name) = LOWER(:sci_name)
+            """
+            for row in session.execute(text(query), {"sci_name": scientific_name}):
+                lang = row[0]
+                # Check if not duplicate
+                existing_names = [t["name"] for t in translations.get(lang, [])]
+                if row[1] not in existing_names:
+                    translations.setdefault(lang, []).append({"name": row[1], "source": "Avibase"})
+
+        return translations
+
+    def get_attribution(self) -> list[str]:
+        """Get attribution strings for all available databases.
+
+        Returns:
+            List of attribution strings
+        """
+        attributions = []
+        if "ioc" in self.databases_available:
+            attributions.append("IOC World Bird List (www.worldbirdnames.org)")
+        if "patlevin" in self.databases_available:
+            attributions.append("Patrick Levin (patlevin) - BirdNET Label Translations")
+        if "avibase" in self.databases_available:
+            attributions.append("Avibase - Lepage, Denis (2018)")
+        return attributions

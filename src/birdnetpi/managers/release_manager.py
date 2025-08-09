@@ -257,6 +257,12 @@ class ReleaseManager:
         database_path = self._get_asset_path(
             "data/database/ioc_reference.db", self.file_resolver.get_ioc_database_path()
         )
+        avibase_path = self._get_asset_path(
+            "data/database/avibase_database.db", self.file_resolver.get_avibase_database_path()
+        )
+        patlevin_path = self._get_asset_path(
+            "data/database/patlevin_database.db", self.file_resolver.get_patlevin_database_path()
+        )
 
         return [
             ReleaseAsset(
@@ -268,6 +274,16 @@ class ReleaseManager:
                 source_path=database_path,
                 target_name="data/database/ioc_reference.db",
                 description="IOC World Bird Names reference database",
+            ),
+            ReleaseAsset(
+                source_path=avibase_path,
+                target_name="data/database/avibase_database.db",
+                description="Avibase multilingual bird names database (Lepage 2018, CC-BY-4.0)",
+            ),
+            ReleaseAsset(
+                source_path=patlevin_path,
+                target_name="data/database/patlevin_database.db",
+                description="BirdNET label translations compiled by Patrick Levin",
             ),
         ]
 

@@ -86,6 +86,14 @@ class FilePathResolver:
         """Get the path to the IOC reference database."""
         return str(self.data_dir / "database" / "ioc_reference.db")
 
+    def get_avibase_database_path(self) -> str:
+        """Get the path to the Avibase multilingual names database."""
+        return str(self.data_dir / "database" / "avibase_database.db")
+
+    def get_patlevin_database_path(self) -> str:
+        """Get the path to the PatLevin BirdNET labels database."""
+        return str(self.data_dir / "database" / "patlevin_database.db")
+
     def get_log_dir(self) -> str:
         """Get the directory for log files (default fallback)."""
         return "/var/log/birdnetpi"
