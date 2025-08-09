@@ -5,7 +5,7 @@ import logging
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
-from birdnetpi.services.notification_service import NotificationService
+from birdnetpi.managers.notification_manager import NotificationManager
 from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)
@@ -17,8 +17,8 @@ router = APIRouter()
 @inject
 async def websocket_endpoint(
     websocket: WebSocket,
-    notification_service: NotificationService = Depends(  # noqa: B008
-        Provide[Container.notification_service]
+    notification_manager: NotificationManager = Depends(  # noqa: B008
+        Provide[Container.notification_manager]
     ),
 ) -> None:
     """Handle WebSocket connections for real-time notifications and updates."""
@@ -27,7 +27,7 @@ async def websocket_endpoint(
         logger.info("WebSocket client connected")
 
         # Add to active websockets through the notification service
-        notification_service.add_websocket(websocket)
+        notification_manager.add_websocket(websocket)
         logger.info("WebSocket added to notification service")
 
         # Keep connection alive
@@ -37,10 +37,10 @@ async def websocket_endpoint(
 
     except WebSocketDisconnect:
         logger.info("WebSocket client disconnected")
-        notification_service.remove_websocket(websocket)
+        notification_manager.remove_websocket(websocket)
     except Exception as e:
         logger.error(f"WebSocket error: {e}", exc_info=True)
-        notification_service.remove_websocket(websocket)
+        notification_manager.remove_websocket(websocket)
 
 
 # Audio and spectrogram WebSocket endpoints are now handled by the standalone

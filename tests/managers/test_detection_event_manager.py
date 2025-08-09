@@ -6,7 +6,7 @@ import pytest
 
 from birdnetpi.managers.detection_event_manager import DetectionEventManager
 from birdnetpi.managers.detection_manager import DetectionManager
-from birdnetpi.services.notification_service import NotificationService
+from birdnetpi.managers.notification_manager import NotificationManager
 from birdnetpi.utils.signals import detection_signal
 
 
@@ -17,20 +17,20 @@ def mock_detection_manager():
 
 
 @pytest.fixture
-def mock_notification_service():
-    """Mock NotificationService instance."""
-    mock = AsyncMock(spec=NotificationService)
+def mock_notification_manager():
+    """Mock NotificationManager instance."""
+    mock = AsyncMock(spec=NotificationManager)
     mock.send_websocket_notification = AsyncMock()
     mock.send_apprise_notification = AsyncMock()
     return mock
 
 
 @pytest.fixture
-def detection_event_manager(mock_detection_manager, mock_notification_service):
+def detection_event_manager(mock_detection_manager, mock_notification_manager):
     """Return a DetectionEventManager instance for testing."""
     manager = DetectionEventManager(
         detection_manager=mock_detection_manager,
-        notification_service=mock_notification_service,
+        notification_manager=mock_notification_manager,
     )
     yield manager
     # Disconnect the signal after the test to prevent interference
@@ -49,7 +49,7 @@ class TestDetectionEventManager:
 
     @pytest.mark.asyncio
     async def test_handle_detection_event(
-        self, detection_event_manager, mock_detection_manager, mock_notification_service, caplog
+        self, detection_event_manager, mock_detection_manager, mock_notification_manager, caplog
     ):
         """Should process detection event, save to DB, and send notifications."""
         detection_data = {
@@ -84,8 +84,8 @@ class TestDetectionEventManager:
         assert call_args.audio_file_path == "/path/to/audio.wav"
 
         # Since the notification methods are commented out, we should not expect them to be called
-        mock_notification_service.send_websocket_notification.assert_not_called()
-        mock_notification_service.send_apprise_notification.assert_not_called()
+        mock_notification_manager.send_websocket_notification.assert_not_called()
+        mock_notification_manager.send_apprise_notification.assert_not_called()
 
         assert "Processing detection event for Common Blackbird" in caplog.text
         assert "Saving detection to DB: Common Blackbird" in caplog.text

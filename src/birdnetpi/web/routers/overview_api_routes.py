@@ -1,8 +1,8 @@
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends
 
+from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
 from birdnetpi.managers.reporting_manager import ReportingManager
-from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
 from birdnetpi.web.core.container import Container
 
 router = APIRouter()
@@ -14,8 +14,8 @@ async def get_overview_data(
     reporting_manager: ReportingManager = Depends(  # noqa: B008
         Provide[Container.reporting_manager]
     ),
-    hardware_monitor: HardwareMonitorService = Depends(  # noqa: B008
-        Provide[Container.hardware_monitor_service]
+    hardware_monitor: HardwareMonitorManager = Depends(  # noqa: B008
+        Provide[Container.hardware_monitor_manager]
     ),
 ) -> dict:
     """Retrieve various system and application overview data."""

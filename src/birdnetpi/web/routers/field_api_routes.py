@@ -8,8 +8,8 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
 from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
 from birdnetpi.services.gps_service import GPSService
-from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
 from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)
@@ -108,8 +108,8 @@ async def get_location_history(
 @router.get("/hardware/status")
 @inject
 async def get_hardware_status(
-    hardware_monitor: HardwareMonitorService = Depends(  # noqa: B008
-        Provide[Container.hardware_monitor_service]
+    hardware_monitor: HardwareMonitorManager = Depends(  # noqa: B008
+        Provide[Container.hardware_monitor_manager]
     ),
 ) -> JSONResponse:
     """Get comprehensive hardware status."""
@@ -134,8 +134,8 @@ async def get_hardware_status(
 @inject
 async def get_component_status(
     component_name: str,
-    hardware_monitor: HardwareMonitorService = Depends(  # noqa: B008
-        Provide[Container.hardware_monitor_service]
+    hardware_monitor: HardwareMonitorManager = Depends(  # noqa: B008
+        Provide[Container.hardware_monitor_manager]
     ),
 ) -> JSONResponse:
     """Get status for a specific hardware component."""
@@ -170,8 +170,8 @@ async def get_field_summary(
         Provide[Container.detection_manager]
     ),
     gps_service: GPSService = Depends(Provide[Container.gps_service]),  # noqa: B008
-    hardware_monitor: HardwareMonitorService = Depends(  # noqa: B008
-        Provide[Container.hardware_monitor_service]
+    hardware_monitor: HardwareMonitorManager = Depends(  # noqa: B008
+        Provide[Container.hardware_monitor_manager]
     ),
 ) -> JSONResponse:
     """Get comprehensive field mode summary."""

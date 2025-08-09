@@ -1,6 +1,6 @@
 """Integration tests for detection buffering system.
 
-These tests verify end-to-end scenarios combining AudioAnalysisService
+These tests verify end-to-end scenarios combining AudioAnalysisManager
 buffering with admin operations like generate_dummy_data.
 """
 
@@ -15,9 +15,9 @@ import numpy as np
 import pytest
 
 import birdnetpi.wrappers.generate_dummy_data as gdd
+from birdnetpi.managers.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.models.config import BirdNETConfig
-from birdnetpi.services.audio_analysis_service import AudioAnalysisService
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
@@ -59,12 +59,12 @@ def mock_file_path_resolver():
 def audio_analysis_service_integration(
     mock_analysis_client_class, mock_file_manager, mock_file_path_resolver, mock_config
 ):
-    """Return an AudioAnalysisService instance for integration testing."""
+    """Return an AudioAnalysisManager instance for integration testing."""
     # Mock the BirdDetectionService constructor
     mock_analysis_client = MagicMock()
     mock_analysis_client_class.return_value = mock_analysis_client
 
-    service = AudioAnalysisService(
+    service = AudioAnalysisManager(
         mock_file_manager,
         mock_file_path_resolver,
         mock_config,
@@ -217,7 +217,7 @@ class TestDetectionBufferingEndToEnd:
         mock_analysis_client_class.return_value = mock_analysis_client
 
         # Create service with small buffer for testing overflow
-        service = AudioAnalysisService(
+        service = AudioAnalysisManager(
             audio_analysis_service_integration.file_manager,
             audio_analysis_service_integration.file_path_resolver,
             audio_analysis_service_integration.config,

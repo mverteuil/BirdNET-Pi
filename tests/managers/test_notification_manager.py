@@ -3,9 +3,9 @@ from unittest.mock import Mock
 
 import pytest
 
+from birdnetpi.managers.notification_manager import NotificationManager
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.models.database_models import Detection
-from birdnetpi.managers.notification_manager import NotificationManager
 
 
 @pytest.fixture
@@ -23,14 +23,14 @@ def mock_active_websockets():
 
 
 @pytest.fixture
-def notification_service(mock_active_websockets, mock_config):
+def notification_manager(mock_active_websockets, mock_config):
     """Provide a NotificationManager instance for testing."""
     service = NotificationManager(active_websockets=mock_active_websockets, config=mock_config)
     service.register_listeners()  # Listeners
     return service
 
 
-def test_handle_detection_event_basic(notification_service, caplog):
+def test_handle_detection_event_basic(notification_manager, caplog):
     """Should log a basic notification message for detection event."""
     with caplog.at_level(logging.INFO):
         detection = Detection(
@@ -39,14 +39,14 @@ def test_handle_detection_event_basic(notification_service, caplog):
             common_name="Common Blackbird",
             confidence=0.95,
         )
-        notification_service.active_websockets.add(Mock())  # Add a mock websocket
-        notification_service._handle_detection_event(None, detection)
+        notification_manager.active_websockets.add(Mock())  # Add a mock websocket
+        notification_manager._handle_detection_event(None, detection)
         assert (
             f"NotificationManager received detection: {detection.get_display_name()}" in caplog.text
         )
 
 
-def test_handle_detection_event__apprise_enabled(mock_config, notification_service, caplog):
+def test_handle_detection_event__apprise_enabled(mock_config, notification_manager, caplog):
     """Should log an Apprise notification message when enabled for detection event."""
     mock_config.apprise_notify_each_detection = True  # Correctly set the nested attribute
     with caplog.at_level(logging.INFO):
@@ -56,8 +56,8 @@ def test_handle_detection_event__apprise_enabled(mock_config, notification_servi
             common_name="European Robin",
             confidence=0.88,
         )
-        notification_service.active_websockets.add(Mock())  # Add a mock websocket
-        notification_service._handle_detection_event(None, detection)
+        notification_manager.active_websockets.add(Mock())  # Add a mock websocket
+        notification_manager._handle_detection_event(None, detection)
         assert (
             f"NotificationManager received detection: {detection.get_display_name()}" in caplog.text
         )

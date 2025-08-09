@@ -72,7 +72,7 @@ def mock_dependencies(mocker):
         FilePathResolver=DEFAULT,
         FileManager=DEFAULT,
         ConfigFileParser=DEFAULT,
-        AudioAnalysisService=DEFAULT,
+        AudioAnalysisManager=DEFAULT,
     ) as mocks:
         # Configure mocks
         mocks["FilePathResolver"].return_value.get_fifo_base_path.return_value = "/tmp/fifo"
@@ -121,12 +121,12 @@ class TestAudioAnalysisDaemon:
         )
         assert mock_os_operations.read.call_count == 2
         mock_asyncio.run.assert_any_call(
-            mock_dependencies["AudioAnalysisService"].return_value.process_audio_chunk(
+            mock_dependencies["AudioAnalysisManager"].return_value.process_audio_chunk(
                 test_fifo_data["chunks"][0]
             )
         )
         mock_asyncio.run.assert_any_call(
-            mock_dependencies["AudioAnalysisService"].return_value.process_audio_chunk(
+            mock_dependencies["AudioAnalysisManager"].return_value.process_audio_chunk(
                 test_fifo_data["chunks"][1]
             )
         )

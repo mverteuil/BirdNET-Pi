@@ -7,8 +7,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
 from birdnetpi.services.gps_service import GPSService
-from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
 from birdnetpi.services.mqtt_service import MQTTService
 from birdnetpi.services.webhook_service import WebhookService
 from birdnetpi.web.core.container import Container
@@ -27,13 +27,13 @@ def client():
     # Override services with mocks
     mock_detection_manager = MagicMock(spec=DetectionManager)
     mock_gps_service = MagicMock(spec=GPSService)
-    mock_hardware_monitor_service = MagicMock(spec=HardwareMonitorService)
+    mock_hardware_monitor_manager = MagicMock(spec=HardwareMonitorManager)
     mock_mqtt_service = MagicMock(spec=MQTTService)
     mock_webhook_service = MagicMock(spec=WebhookService)
 
     container.detection_manager.override(mock_detection_manager)
     container.gps_service.override(mock_gps_service)
-    container.hardware_monitor_service.override(mock_hardware_monitor_service)
+    container.hardware_monitor_manager.override(mock_hardware_monitor_manager)
     container.mqtt_service.override(mock_mqtt_service)
     container.webhook_service.override(mock_webhook_service)
 
@@ -50,7 +50,7 @@ def client():
     # Store the mocks for access in tests
     client.mock_detection_manager = mock_detection_manager  # type: ignore[attr-defined]
     client.mock_gps_service = mock_gps_service  # type: ignore[attr-defined]
-    client.mock_hardware_monitor_service = mock_hardware_monitor_service  # type: ignore[attr-defined]
+    client.mock_hardware_monitor_manager = mock_hardware_monitor_manager  # type: ignore[attr-defined]
     client.mock_mqtt_service = mock_mqtt_service  # type: ignore[attr-defined]
     client.mock_webhook_service = mock_webhook_service  # type: ignore[attr-defined]
 
@@ -131,7 +131,7 @@ class TestFieldModeEndpoints:
         gps_service.get_gps_status.return_value = {"enabled": True}
 
         # Setup hardware monitor
-        hardware_monitor = client.mock_hardware_monitor_service
+        hardware_monitor = client.mock_hardware_monitor_manager
         hardware_monitor.get_health_summary.return_value = {"overall_status": "healthy"}
 
         # Setup detection manager

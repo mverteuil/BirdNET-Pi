@@ -54,10 +54,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.extra = {"templates": templates}
 
     # Get notification service and its websockets set
-    notification_service = container.notification_service()
+    notification_manager = container.notification_manager()
     # The websockets set is already initialized in the container
     # No need to create a new one or reassign private attributes
-    app.extra["active_websockets"] = notification_service.active_websockets  # type: ignore[assignment]
+    app.extra["active_websockets"] = notification_manager.active_websockets  # type: ignore[assignment]
 
     # Configure webhook service from config
     webhook_service = container.webhook_service()
@@ -71,7 +71,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         webhook_service.configure_webhooks_from_urls(webhook_url_list)
 
     # Register notification listeners
-    notification_service.register_listeners()
+    notification_manager.register_listeners()
 
     logger.info("Starting application services...")
 
@@ -81,7 +81,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         # Start field mode services
         await container.gps_service().start()
-        await container.hardware_monitor_service().start()
+        await container.hardware_monitor_manager().start()
 
         # Start IoT services
         await container.mqtt_service().start()
@@ -98,7 +98,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         try:
             await container.webhook_service().stop()
             await container.mqtt_service().stop()
-            await container.hardware_monitor_service().stop()
+            await container.hardware_monitor_manager().stop()
             await container.gps_service().stop()
             # Skip audio services - handled by standalone audio_websocket_daemon
 

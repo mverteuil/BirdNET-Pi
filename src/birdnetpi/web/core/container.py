@@ -8,18 +8,18 @@ from fastapi.templating import Jinja2Templates
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.file_manager import FileManager
+from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
+from birdnetpi.managers.notification_manager import NotificationManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.services.audio_websocket_service import AudioWebSocketService
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.detection_query_service import DetectionQueryService
 from birdnetpi.services.gps_service import GPSService
-from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
 from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.services.location_service import LocationService
 from birdnetpi.services.mqtt_service import MQTTService
 from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
-from birdnetpi.services.notification_service import NotificationService
 from birdnetpi.services.spectrogram_service import SpectrogramService
 from birdnetpi.services.system_control_service import SystemControlService
 from birdnetpi.services.webhook_service import WebhookService
@@ -166,9 +166,9 @@ class Container(containers.DeclarativeContainer):
         update_interval=config.provided.gps_update_interval,
     )
 
-    # Hardware monitoring service - singleton
-    hardware_monitor_service = providers.Singleton(
-        HardwareMonitorService,
+    # Hardware monitoring manager - singleton
+    hardware_monitor_manager = providers.Singleton(
+        HardwareMonitorManager,
         check_interval=config.provided.hardware_check_interval,
         audio_device_check=config.provided.enable_audio_device_check,
         system_resource_check=config.provided.enable_system_resource_check,
@@ -192,9 +192,9 @@ class Container(containers.DeclarativeContainer):
         enable_webhooks=config.provided.enable_webhooks,
     )
 
-    # Notification service - singleton (depends on other services)
-    notification_service = providers.Singleton(
-        NotificationService,
+    # Notification manager - singleton (depends on other services)
+    notification_manager = providers.Singleton(
+        NotificationManager,
         active_websockets=providers.Object(set()),  # Will be set by factory
         config=config,
         mqtt_service=mqtt_service,

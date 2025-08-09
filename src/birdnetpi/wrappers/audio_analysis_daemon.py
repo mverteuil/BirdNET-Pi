@@ -6,8 +6,8 @@ import signal
 import time
 from types import FrameType
 
+from birdnetpi.managers.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.managers.file_manager import FileManager
-from birdnetpi.services.audio_analysis_service import AudioAnalysisService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
@@ -53,7 +53,7 @@ def main() -> None:
     file_manager = FileManager(file_resolver.data_dir)
     config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())
     config = config_parser.load_config()
-    audio_analysis_service = AudioAnalysisService(file_manager, file_resolver, config)
+    audio_analysis_service = AudioAnalysisManager(file_manager, file_resolver, config)
 
     try:
         # Open FIFO for reading

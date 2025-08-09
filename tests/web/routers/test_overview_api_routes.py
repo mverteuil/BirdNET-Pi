@@ -7,9 +7,9 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
+from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
 
 
 @pytest.fixture
@@ -37,13 +37,13 @@ def app_with_overview_services(app_with_temp_data):
         # (no need to override since it's already using temp paths)
 
         # Mock hardware monitor service
-        mock_hardware_monitor = MagicMock(spec=HardwareMonitorService)
+        mock_hardware_monitor = MagicMock(spec=HardwareMonitorManager)
         mock_hardware_monitor.get_all_status.return_value = {
             "disk_usage": {"usage": 50.0, "used_gb": 50.0, "total_gb": 100.0, "free_gb": 50.0},
             "cpu_temperature": "45.2°C",
             "memory_usage": {"percent": 40.0},
         }
-        app.container.hardware_monitor_service.override(mock_hardware_monitor)  # type: ignore[attr-defined]
+        app.container.hardware_monitor_manager.override(mock_hardware_monitor)  # type: ignore[attr-defined]
 
         # Mock reporting manager that uses the detection manager
         mock_reporting_manager = MagicMock(spec=ReportingManager)
@@ -86,7 +86,7 @@ class TestOverviewRouterIntegration:
         # Verify system status has expected structure
         system_status = data["system_status"]
         assert isinstance(system_status, dict)
-        # HardwareMonitorService should return system status information
+        # HardwareMonitorManager should return system status information
         assert "disk_usage" in system_status
 
     def test_overview_endpoint_system_status_structure(self, client):
@@ -112,13 +112,13 @@ class TestOverviewRouterIntegration:
         assert isinstance(data["total_detections"], int)
 
     def test_overview_uses_real_hardware_monitor(self, client):
-        """Should use real HardwareMonitorService for system information."""
+        """Should use real HardwareMonitorManager for system information."""
         response = client.get("/api/overview")
 
         assert response.status_code == 200
         data = response.json()
 
-        # Real HardwareMonitorService should provide actual system data
+        # Real HardwareMonitorManager should provide actual system data
         # The exact content varies by system, but should be present
         assert "system_status" in data
         assert "total_detections" in data
@@ -142,7 +142,7 @@ class TestOverviewRouterIntegration:
         data = response.json()
 
         # Integration test: all components should work together
-        # - HardwareMonitorService provides system status
+        # - HardwareMonitorManager provides system status
         # - ReportingManager with DetectionManager provides detection count
         # - All data combined into single response
 

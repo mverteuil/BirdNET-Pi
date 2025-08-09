@@ -3,8 +3,8 @@
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException
 
+from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
 from birdnetpi.managers.reporting_manager import ReportingManager
-from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
 from birdnetpi.services.system_monitor_service import SystemMonitorService
 from birdnetpi.web.core.container import Container
 
@@ -14,8 +14,8 @@ router = APIRouter()
 @router.get("/hardware/status")
 @inject
 async def get_hardware_status(
-    hardware_monitor: HardwareMonitorService = Depends(  # noqa: B008
-        Provide[Container.hardware_monitor_service]
+    hardware_monitor: HardwareMonitorManager = Depends(  # noqa: B008
+        Provide[Container.hardware_monitor_manager]
     ),
 ) -> dict:
     """Get hardware monitoring status."""
@@ -26,8 +26,8 @@ async def get_hardware_status(
 @inject
 async def get_hardware_component(
     component_name: str,
-    hardware_monitor: HardwareMonitorService = Depends(  # noqa: B008
-        Provide[Container.hardware_monitor_service]
+    hardware_monitor: HardwareMonitorManager = Depends(  # noqa: B008
+        Provide[Container.hardware_monitor_manager]
     ),
 ) -> dict:
     """Get specific hardware component status."""

@@ -2,8 +2,8 @@ import logging
 from datetime import datetime
 
 from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.notification_manager import NotificationManager
 from birdnetpi.models.detection_event import DetectionEvent
-from birdnetpi.services.notification_service import NotificationService
 from birdnetpi.utils.signals import detection_signal
 
 logger = logging.getLogger(__name__)
@@ -13,10 +13,10 @@ class DetectionEventManager:
     """Manages detection events, saving them to the database and triggering notifications."""
 
     def __init__(
-        self, detection_manager: DetectionManager, notification_service: NotificationService
+        self, detection_manager: DetectionManager, notification_manager: NotificationManager
     ) -> None:
         self.detection_manager = detection_manager
-        self.notification_service = notification_service
+        self.notification_manager = notification_manager
         detection_signal.connect(self.handle_detection_event)  # Register signal handler
         logger.info("DetectionEventManager initialized and listening for signals.")
 
@@ -57,8 +57,8 @@ class DetectionEventManager:
         self.detection_manager.create_detection(detection_event)
 
         # 2. Send WebSocket notification
-        # TODO: Implement send_websocket_notification method in NotificationService
-        # await self.notification_service.send_websocket_notification(
+        # TODO: Implement send_websocket_notification method in NotificationManager
+        # await self.notification_manager.send_websocket_notification(
         #     {
         #         "type": "detection",
         #         "species": detection_data["species"],
@@ -68,8 +68,8 @@ class DetectionEventManager:
         # )
 
         # 3. Send Apprise notification
-        # TODO: Implement send_apprise_notification method in NotificationService
-        # await self.notification_service.send_apprise_notification(
+        # TODO: Implement send_apprise_notification method in NotificationManager
+        # await self.notification_manager.send_apprise_notification(
         #     title=f"New Bird Detection: {detection_data['species']}",
         #     body=f"Confidence: {detection_data['confidence']:.2f} at {detection_data['timestamp']}",  # noqa: E501
         # )
