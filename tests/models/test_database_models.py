@@ -92,18 +92,18 @@ class TestDetection:
     def test_get_display_name_returns_common_name(self):
         """Test get_display_name returns common name when available."""
         detection = Detection(
-            common_name_tensor="American Robin Tensor",
+            common_name="American Robin",
             scientific_name="Turdus migratorius",
         )
 
         result = detection.get_display_name()
 
-        assert result == "American Robin Tensor"
+        assert result == "American Robin"
 
     def test_get_display_name_falls_back_to_scientific_name(self):
         """Test get_display_name returns scientific name when common name is None."""
         detection = Detection(
-            common_name_tensor=None,
+            common_name=None,
             scientific_name="Turdus migratorius",
         )
 

@@ -156,7 +156,7 @@ class TestConfigIntegration:
 
         config = Mock()
         config.species_display_mode = "full"
-        config.language_code = "en"
+        config.language = "en"
 
         options = create_display_options_from_config(config)
 
@@ -170,7 +170,7 @@ class TestConfigIntegration:
 
         config = Mock()
         config.species_display_mode = "common_name"
-        config.language_code = "es"
+        config.language = "es"
 
         options = create_display_options_from_config(config)
 
@@ -184,7 +184,7 @@ class TestConfigIntegration:
 
         config = Mock()
         config.species_display_mode = "scientific_name"
-        config.language_code = "fr"
+        config.language = "fr"
 
         options = create_display_options_from_config(config)
 
@@ -199,7 +199,7 @@ class TestConfigIntegration:
         config = Mock()
         # Set attributes to what the function expects as defaults
         config.species_display_mode = "full"
-        config.language_code = "en"
+        config.language = "en"
 
         options = create_display_options_from_config(config)
 

@@ -19,6 +19,7 @@ from birdnetpi.utils.file_path_resolver import FilePathResolver
 def mock_file_resolver():
     """Create a mock FilePathResolver."""
     mock_resolver = MagicMock(spec=FilePathResolver)
+    mock_resolver.get_locales_dir.return_value = "locales"
     return mock_resolver
 
 

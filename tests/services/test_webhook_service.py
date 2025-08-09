@@ -215,14 +215,14 @@ class TestWebhookService:
         detection = Detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
-            common_name_tensor="Test Bird",
+            common_name="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
             latitude=40.7128,
             longitude=-74.0060,
-            cutoff=0.03,
+            species_confidence_threshold=0.03,
             week=15,
-            sensitivity=1.25,
+            sensitivity_setting=1.25,
             overlap=0.5,
         )
 
@@ -242,14 +242,14 @@ class TestWebhookService:
         detection = Detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
-            common_name_tensor="Test Bird",
+            common_name="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
             latitude=40.7128,
             longitude=-74.0060,
-            cutoff=0.03,
+            species_confidence_threshold=0.03,
             week=15,
-            sensitivity=1.25,
+            sensitivity_setting=1.25,
             overlap=0.5,
         )
 
@@ -352,12 +352,12 @@ class TestWebhookService:
         detection = Detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
-            common_name_tensor="Test Bird",
+            common_name="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
-            cutoff=0.03,
+            species_confidence_threshold=0.03,
             week=15,
-            sensitivity=1.25,
+            sensitivity_setting=1.25,
             overlap=0.5,
         )
 

@@ -30,7 +30,7 @@ def mock_config():
     mock.latitude = 40.7128
     mock.longitude = -74.0060
     mock.sensitivity_setting = 1.25
-    mock.confidence = 0.7
+    mock.species_confidence_threshold = 0.7
     return mock
 
 

@@ -20,6 +20,9 @@ def app_with_admin_view_routes(tmp_path):
     mock_db_instance = Mock()
     mock_db_instance.get_db.return_value.__enter__ = Mock()
     mock_db_instance.get_db.return_value.__exit__ = Mock()
+    # Add engine mock for SQLAdmin
+    mock_engine = Mock()
+    mock_db_instance.engine = mock_engine
 
     # Mock file resolver to use test config and temp database path
     mock_resolver = Mock()
@@ -31,14 +34,19 @@ def app_with_admin_view_routes(tmp_path):
     mock_detection_manager = MagicMock(spec=DetectionManager)
     mock_detection_manager.create_detection.return_value = None
 
-    # Create the app using the factory
-    app = create_app()
+    # Patch the SQLAdmin setup to avoid database issues entirely
+    def mock_setup_sqladmin(app):
+        """Mock SQLAdmin setup that does nothing."""
+        return Mock()
 
-    # Override dependencies to use mocks
+    with patch("birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin", side_effect=mock_setup_sqladmin):
+        # Create the app using the factory
+        app = create_app()
+
+    # Override additional dependencies to use mocks
     if hasattr(app, "container"):
         app.container.file_resolver.override(mock_resolver)  # type: ignore[attr-defined]
         app.container.detection_manager.override(mock_detection_manager)  # type: ignore[attr-defined]
-        app.container.bnp_database_service.override(mock_db_instance)  # type: ignore[attr-defined]
 
     yield app
 
@@ -46,7 +54,6 @@ def app_with_admin_view_routes(tmp_path):
     if hasattr(app, "container"):
         app.container.file_resolver.reset_override()  # type: ignore[attr-defined]
         app.container.detection_manager.reset_override()  # type: ignore[attr-defined]
-        app.container.bnp_database_service.reset_override()  # type: ignore[attr-defined]
 
 
 @pytest.fixture

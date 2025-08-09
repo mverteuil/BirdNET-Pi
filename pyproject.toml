@@ -29,10 +29,11 @@ dev = [
 
 [project]
 name = "birdnet-pi"
-version = "0.1.0"
-description = "A Python-based BirdNET-Pi application"
+version = "2.0.0"
+description = "The next generation of real-time, acoustic bird classification."
 authors = [
-  {name = "Your Name", email = "your.email@example.com"}
+  {name = "Matthew de Verteuil", email = "mverteuil@users.noreply.github.com"},
+  {name = "Patrick McGuire", email = "mcguirepr89@users.noreply.github.com"}
 ]
 requires-python = "==3.11.*"
 dependencies = [
@@ -82,7 +83,7 @@ generate-dummy-data = "birdnetpi.wrappers.generate_dummy_data:main"
 pulseaudio-setup = "birdnetpi.wrappers.pulseaudio_setup_wrapper:main"
 release-manager = "birdnetpi.wrappers.release_wrapper:main"
 reporting-manager = "birdnetpi.wrappers.reporting_manager_wrapper:main"
-
+spectrogram-websocket-daemon = "birdnetpi.wrappers.spectrogram_websocket_daemon"
 [tool.coverage.run]
 omit = ["tests/*", "*/dependency_injector/*"]
 
