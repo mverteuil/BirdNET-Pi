@@ -196,6 +196,7 @@ class ReleaseManager:
         """Build the release information dictionary."""
         return {
             "version": config.version,
+            "asset_branch": config.asset_branch_name,  # Kept for backward compatibility
             "asset_tag": config.asset_branch_name,  # Now refers to tag, not branch
             "commit_sha": commit_sha,
             "assets": [

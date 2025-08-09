@@ -1,7 +1,7 @@
 FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
 
 # Set release version for asset downloads (this can be overridden via build arg)
-ARG BIRDNET_ASSETS_VERSION=v1.0.2
+ARG BIRDNET_ASSETS_VERSION=v2.1.0
 
 ENV DNS_SERVER=8.8.8.8
 ENV DEBIAN_FRONTEND=noninteractive
@@ -108,7 +108,7 @@ RUN --mount=type=cache,target=/tmp/asset-cache,id=birdnet-assets \
         echo "Assets restored from cache successfully"; \
     else \
         echo "No cache found for version ${BIRDNET_ASSETS_VERSION}, downloading fresh assets" && \
-        su birdnetpi -c "cd /opt/birdnetpi && uv run asset-installer install \"${BIRDNET_ASSETS_VERSION}\" --include-models --include-ioc-db" && \
+        su birdnetpi -c "cd /opt/birdnetpi && uv run asset-installer install \"${BIRDNET_ASSETS_VERSION}\" --include-models --include-ioc-db --include-avibase-db --include-patlevin-db" && \
         cp -r /var/lib/birdnetpi/models/* /tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/models/ && \
         cp -r /var/lib/birdnetpi/database/* /tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/database/ && \
         echo "Assets cached for future builds"; \

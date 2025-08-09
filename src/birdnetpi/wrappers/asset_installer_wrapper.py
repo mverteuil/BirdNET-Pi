@@ -153,11 +153,11 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Install latest models and IOC database
-  asset-installer install latest --include-models --include-ioc-db
+  # Install latest models and all databases
+  asset-installer install latest --include-models --include-ioc-db --include-avibase-db --include-patlevin-db
 
   # Install only models for a specific version
-  asset-installer install v2.0.0 --include-models
+  asset-installer install v2.1.0 --include-models
 
   # List available versions
   asset-installer list-versions
