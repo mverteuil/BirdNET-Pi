@@ -5,6 +5,7 @@ import threading
 import time
 from collections import deque
 from datetime import UTC
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -190,7 +191,7 @@ class AudioAnalysisService:
                 self.config.sample_rate,  # Get from config
                 self.config.audio_channels,  # Get from config
             )
-            logger.info(f"Saved detection audio to {audio_file_instance.file_path}")
+            logger.info(f"Saved detection audio to {str(audio_file_instance.file_path)}")
         except Exception as e:
             logger.error(f"Failed to save detection audio: {e}", exc_info=True)
             return  # Don't send detection if audio save fails
@@ -199,7 +200,9 @@ class AudioAnalysisService:
             "species": species,
             "confidence": confidence,
             "timestamp": timestamp.isoformat(),  # Use the same timestamp for consistency
-            "audio_file_path": audio_file_instance.file_path,
+            "audio_file_path": str(
+                audio_file_instance.file_path
+            ),  # Convert Path to string for JSON serialization
             "duration": audio_file_instance.duration,
             "size_bytes": audio_file_instance.size_bytes,
             "spectrogram_path": None,
