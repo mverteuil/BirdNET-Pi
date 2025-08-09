@@ -7,6 +7,7 @@ services:
     restart: unless-stopped
     environment:
       PULSE_SERVER: host.docker.internal
+      DOCKER_CONTAINER: "true"
     ports:
       - "8000:8000"   # Caddy
     healthcheck:
@@ -16,7 +17,7 @@ services:
       retries: 5
     command: /usr/bin/supervisord -c /etc/supervisor/supervisord.conf -u birdnetpi
     volumes:
-      - birdnet-data:/mnt/birdnet # Persistent data storage
+      - birdnet-data:/var/lib/birdnetpi # Persistent data storage
       - ~/.config/pulse:/home/birdnetpi/.config/pulse
     networks:
       - birdnetpi-network

@@ -30,9 +30,8 @@ def main() -> None:
                 return
         except Exception as e:
             print(f"Warning: Could not check existing data due to database lock: {e}")
-            print("Database appears to be in use. Cannot generate dummy data while services are running.")
-            print("Please ensure all BirdNET-Pi services are stopped before running dummy data generation.")
-            return
+            print("Database appears to be in use. Attempting to stop services automatically...")
+            # Continue to service management instead of exiting early
 
     # Check if FastAPI is running
     fastapi_was_running = False
