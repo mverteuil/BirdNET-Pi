@@ -14,47 +14,85 @@ matplotlib.use("Agg")
 
 @pytest.fixture
 def file_path_resolver(tmp_path: Path) -> FilePathResolver:
-    """Provide a FilePathResolver with temp data_dir and explicit real repo overrides.
+    """Provide a FilePathResolver with proper separation of read-only and writable paths.
 
-    All data paths go to temp by default (robust against new path methods).
-    Explicitly override paths that should use real repo locations.
+    IMPORTANT: This fixture properly isolates test data by:
+    1. Using REAL repo paths for READ-ONLY assets that tests need to access:
+       - Models (*.tflite files)
+       - IOC reference database
+       - Avibase multilingual database
+       - PatLevin labels database
+       - Static files (CSS, JS, images)
+       - Templates (HTML templates)
+       - Config template (birdnetpi.yaml.template)
+
+    2. Using TEMP paths for WRITABLE data to prevent test pollution:
+       - Main database (birdnetpi.db) - prevents tests from writing to data/database/
+       - Config file (birdnetpi.yaml) - prevents tests from writing to data/config/
+       - Log files - prevents tests from writing to data/logs/
+       - Export files - prevents tests from writing to data/exports/
+
+    This separation is critical because:
+    - Tests need real assets (models, IOC db) to function properly
+    - Tests must NOT write to the real data/ directory (would pollute the repo)
+    - FilePathResolver has individual methods for each path type specifically
+      to enable this kind of mocking/overriding
+
+    DO NOT use environment variables to control paths - that approach fails because
+    it affects ALL paths uniformly, when we need selective path overriding.
     """
-    import os
-
-    # Store original environment variable
-    original_data_env = os.environ.get("BIRDNETPI_DATA")
-
-    # Set environment variable to temp path BEFORE creating FilePathResolver
-    os.environ["BIRDNETPI_DATA"] = str(tmp_path)
-
-    try:
-        resolver = FilePathResolver()
-    finally:
-        # Restore original environment variable
-        if original_data_env is not None:
-            os.environ["BIRDNETPI_DATA"] = original_data_env
-        else:
-            os.environ.pop("BIRDNETPI_DATA", None)
-
-    # Point config to the template file
-    resolver.get_birdnetpi_config_path = lambda: resolver.get_config_template_path()
-
-    # EXPLICIT OVERRIDES: paths that should use real repo locations
     from pathlib import Path
+    from unittest.mock import patch
 
     project_root = Path(__file__).parent.parent
     real_data_dir = project_root / "data"
+    real_app_dir = project_root
 
-    # IOC database - use real repo path
+    # Create resolver with real paths
+    resolver = FilePathResolver()
+
+    # Create temp directories for writable data
+    temp_database_dir = tmp_path / "database"
+    temp_database_dir.mkdir(parents=True)
+    temp_config_dir = tmp_path / "config"
+    temp_config_dir.mkdir(parents=True)
+    temp_logs_dir = tmp_path / "logs"
+    temp_logs_dir.mkdir(parents=True)
+    temp_exports_dir = tmp_path / "exports"
+    temp_exports_dir.mkdir(parents=True)
+
+    # Override WRITABLE paths to use temp directory
+    resolver.get_database_path = lambda: str(temp_database_dir / "birdnetpi.db")
+    resolver.get_birdnetpi_config_path = lambda: str(temp_config_dir / "birdnetpi.yaml")
+    resolver.get_logs_dir = lambda: str(temp_logs_dir)
+    resolver.get_exports_dir = lambda: str(temp_exports_dir)
+
+    # Keep READ-ONLY paths pointing to real repo locations
+    # These are already correct from the base FilePathResolver, but let's be explicit:
     resolver.get_ioc_database_path = lambda: str(real_data_dir / "database" / "ioc_reference.db")
-
-    # Models - use real repo path
+    resolver.get_avibase_database_path = lambda: str(
+        real_data_dir / "database" / "avibase_database.db"
+    )
+    resolver.get_patlevin_database_path = lambda: str(
+        real_data_dir / "database" / "patlevin_database.db"
+    )
     resolver.get_models_dir = lambda: str(real_data_dir / "models")
     resolver.get_model_path = lambda model_filename: str(
         real_data_dir
         / "models"
         / (model_filename if model_filename.endswith(".tflite") else f"{model_filename}.tflite")
     )
+    resolver.get_config_template_path = lambda: str(
+        real_app_dir / "config" / "birdnetpi.yaml.template"
+    )
+    resolver.get_static_dir = lambda: str(real_app_dir / "static")
+    resolver.get_templates_dir = lambda: str(real_app_dir / "templates")
+
+    # For config tests, copy template to temp config location
+    template_path = Path(resolver.get_config_template_path())
+    if template_path.exists():
+        config_path = Path(resolver.get_birdnetpi_config_path())
+        config_path.write_text(template_path.read_text())
 
     return resolver
 
@@ -70,71 +108,34 @@ def test_config(file_path_resolver: FilePathResolver):
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_environment():
-    """Set up test environment with proper paths to repo data directory."""
-    import os
-    from pathlib import Path
+    """Set up test environment.
 
-    # Get project root directory
-    project_root = Path(__file__).parent.parent
-
-    # Store original environment variables
-    original_app_env = os.environ.get("BIRDNETPI_APP")
-    original_data_env = os.environ.get("BIRDNETPI_DATA")
-
-    # Set environment variables to point to real repo directories for the entire test session
-    os.environ["BIRDNETPI_APP"] = str(project_root)
-    os.environ["BIRDNETPI_DATA"] = str(project_root / "data")
-
+    This fixture ensures that any test creating FilePathResolver without
+    using the file_path_resolver fixture will still work properly.
+    """
+    # Currently a no-op, but kept for potential future session-level setup
     yield
-
-    # Restore original environment variables
-    if original_app_env is not None:
-        os.environ["BIRDNETPI_APP"] = original_app_env
-    else:
-        os.environ.pop("BIRDNETPI_APP", None)
-
-    if original_data_env is not None:
-        os.environ["BIRDNETPI_DATA"] = original_data_env
-    else:
-        os.environ.pop("BIRDNETPI_DATA", None)
 
 
 @pytest.fixture(scope="session", autouse=True)
 def check_required_assets():
     """Check that required assets are available for testing."""
-    import os
     from pathlib import Path
-
-    from birdnetpi.utils.file_path_resolver import FilePathResolver
 
     # Get project root directory
     project_root = Path(__file__).parent.parent
-
-    # Store original environment variable
-    original_data_env = os.environ.get("BIRDNETPI_DATA")
-
-    # Set environment variable to point to real repo data directory
-    os.environ["BIRDNETPI_DATA"] = str(project_root / "data")
-
-    try:
-        file_resolver = FilePathResolver()
-    finally:
-        # Restore original environment variable
-        if original_data_env is not None:
-            os.environ["BIRDNETPI_DATA"] = original_data_env
-        else:
-            os.environ.pop("BIRDNETPI_DATA", None)
+    real_data_dir = project_root / "data"
     missing_assets = []
 
     # Check for model files
-    models_dir = Path(file_resolver.get_models_dir())
+    models_dir = real_data_dir / "models"
     if not models_dir.exists() or not any(models_dir.glob("*.tflite")):
         missing_assets.append("Model files (*.tflite)")
 
     # Note: labels.txt is legacy - IOC database is now used for bird species names
 
     # Check for IOC database
-    ioc_db_path = Path(file_resolver.get_ioc_database_path())
+    ioc_db_path = real_data_dir / "database" / "ioc_reference.db"
     if not ioc_db_path.exists():
         missing_assets.append("IOC reference database")
 

@@ -7,9 +7,16 @@ log = logging.getLogger(__name__)
 
 
 @pytest.fixture
-def bird_detection_service(test_config):
+def bird_detection_service(test_config, file_path_resolver, mocker):
     """Provide a BirdDetectionService instance for testing using real models."""
     from birdnetpi.services.bird_detection_service import BirdDetectionService
+
+    # Mock FilePathResolver to use our test resolver
+    # It's imported inside the _load_model method
+    mocker.patch(
+        "birdnetpi.utils.file_path_resolver.FilePathResolver",
+        return_value=file_path_resolver,
+    )
 
     service = BirdDetectionService(test_config)
     return service
