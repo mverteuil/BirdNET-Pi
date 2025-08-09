@@ -238,9 +238,11 @@ class UpdateManager:
         version: str = "latest",
         include_models: bool = True,
         include_ioc_db: bool = True,
+        include_avibase_db: bool = False,
+        include_patlevin_db: bool = False,
         github_repo: str = "mverteuil/BirdNET-Pi",
     ) -> dict[str, Any]:
-        """Download models and IOC database from orphaned commit asset release.
+        """Download models and databases from orphaned commit asset release.
 
         This method downloads assets from GitHub releases that use orphaned
         commits tagged as asset releases (e.g., assets-v1.0.0).
@@ -249,6 +251,8 @@ class UpdateManager:
             version: Asset release version (e.g., "v1.0.0" or "latest")
             include_models: Whether to download BirdNET models
             include_ioc_db: Whether to download IOC database
+            include_avibase_db: Whether to download Avibase multilingual database
+            include_patlevin_db: Whether to download PatLevin translations database
             github_repo: GitHub repository in format "owner/repo"
 
         Returns:
@@ -295,6 +299,34 @@ class UpdateManager:
                     print(f"Downloaded IOC database to {ioc_target}")
                 else:
                     results["errors"].append("IOC database not found in release")
+
+            # Download Avibase database if requested
+            if include_avibase_db:
+                avibase_source = asset_source_dir / "data" / "database" / "avibase_database.db"
+                if avibase_source.exists():
+                    avibase_target = Path(file_resolver.get_avibase_database_path())
+                    avibase_target.parent.mkdir(parents=True, exist_ok=True)
+
+                    shutil.copy2(avibase_source, avibase_target)
+                    results["downloaded_assets"].append("Avibase multilingual database")
+
+                    print(f"Downloaded Avibase database to {avibase_target}")
+                else:
+                    results["errors"].append("Avibase database not found in release")
+
+            # Download PatLevin database if requested
+            if include_patlevin_db:
+                patlevin_source = asset_source_dir / "data" / "database" / "patlevin_database.db"
+                if patlevin_source.exists():
+                    patlevin_target = Path(file_resolver.get_patlevin_database_path())
+                    patlevin_target.parent.mkdir(parents=True, exist_ok=True)
+
+                    shutil.copy2(patlevin_source, patlevin_target)
+                    results["downloaded_assets"].append("PatLevin translations database")
+
+                    print(f"Downloaded PatLevin database to {patlevin_target}")
+                else:
+                    results["errors"].append("PatLevin database not found in release")
 
             print(f"Asset download completed for version {version}")
             return results

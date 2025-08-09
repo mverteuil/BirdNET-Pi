@@ -9,40 +9,39 @@ Uses SQLite's ATTACH DATABASE for efficient cross-database queries with priority
 IOC → PatLevin → Avibase
 """
 
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+
+if TYPE_CHECKING:
+    from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
 class MultilingualDatabaseService:
     """Service for multilingual bird name lookups across three databases."""
 
-    def __init__(
-        self,
-        ioc_db_path: str | None = None,
-        avibase_db_path: str | None = None,
-        patlevin_db_path: str | None = None,
-    ):
+    def __init__(self, file_resolver: FilePathResolver):
         """Initialize multilingual database service.
 
         Args:
-            ioc_db_path: Path to IOC reference database
-            avibase_db_path: Path to Avibase multilingual database
-            patlevin_db_path: Path to PatLevin BirdNET labels database
+            file_resolver: File path resolver for database locations
         """
-        self.ioc_db_path = ioc_db_path
-        self.avibase_db_path = avibase_db_path
-        self.patlevin_db_path = patlevin_db_path
+        self.file_resolver = file_resolver
+        self.ioc_db_path = file_resolver.get_ioc_database_path()
+        self.avibase_db_path = file_resolver.get_avibase_database_path()
+        self.patlevin_db_path = file_resolver.get_patlevin_database_path()
 
         # Track which databases are available
         self.databases_available = []
-        if ioc_db_path and Path(ioc_db_path).exists():
+        if self.ioc_db_path and Path(self.ioc_db_path).exists():
             self.databases_available.append("ioc")
-        if avibase_db_path and Path(avibase_db_path).exists():
+        if self.avibase_db_path and Path(self.avibase_db_path).exists():
             self.databases_available.append("avibase")
-        if patlevin_db_path and Path(patlevin_db_path).exists():
+        if self.patlevin_db_path and Path(self.patlevin_db_path).exists():
             self.databases_available.append("patlevin")
 
     def attach_all_to_session(self, session: Session) -> None:

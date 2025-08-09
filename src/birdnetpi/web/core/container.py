@@ -40,11 +40,7 @@ def _create_ioc_service(resolver: FilePathResolver) -> IOCDatabaseService | None
 def _create_multilingual_service(resolver: FilePathResolver) -> MultilingualDatabaseService | None:
     """Create multilingual database service with graceful error handling."""
     try:
-        return MultilingualDatabaseService(
-            ioc_db_path=resolver.get_ioc_database_path(),
-            avibase_db_path=resolver.get_avibase_database_path(),
-            patlevin_db_path=resolver.get_patlevin_database_path(),
-        )
+        return MultilingualDatabaseService(resolver)
     except Exception as e:
         print(f"Warning: Multilingual database service unavailable: {e}")
         return None

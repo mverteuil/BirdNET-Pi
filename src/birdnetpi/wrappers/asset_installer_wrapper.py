@@ -20,8 +20,8 @@ def install_assets(args: argparse.Namespace) -> None:
 
     print(f"Installing assets for version: {args.version}")
 
-    if not args.include_models and not args.include_ioc_db:
-        print("Error: Must specify at least one asset type (--include-models or --include-ioc-db)")
+    if not any([args.include_models, args.include_ioc_db, args.include_avibase_db, args.include_patlevin_db]):
+        print("Error: Must specify at least one asset type (--include-models, --include-ioc-db, --include-avibase-db, or --include-patlevin-db)")
         sys.exit(1)
 
     try:
@@ -29,6 +29,8 @@ def install_assets(args: argparse.Namespace) -> None:
             version=args.version,
             include_models=args.include_models,
             include_ioc_db=args.include_ioc_db,
+            include_avibase_db=getattr(args, 'include_avibase_db', False),
+            include_patlevin_db=getattr(args, 'include_patlevin_db', False),
             github_repo="mverteuil/BirdNET-Pi",
         )
 
@@ -181,6 +183,16 @@ Examples:
         "--include-ioc-db",
         action="store_true",
         help="Include IOC World Bird Names reference database",
+    )
+    install_parser.add_argument(
+        "--include-avibase-db",
+        action="store_true",
+        help="Include Avibase multilingual bird names database",
+    )
+    install_parser.add_argument(
+        "--include-patlevin-db",
+        action="store_true",
+        help="Include PatLevin BirdNET label translations database",
     )
     install_parser.add_argument(
         "--remote", default="origin", help="Git remote to fetch from (default: origin)"

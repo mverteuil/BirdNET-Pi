@@ -409,16 +409,40 @@ class TestGetAllTranslations:
 
     def test_get_all_translations_all_databases(self, multilingual_service, mock_session):
         """Should retrieve translations from all available databases."""
+        # Create mock result objects with fetchone() and fetchall() methods
+        ioc_species_result = MagicMock()
+        ioc_species_result.fetchone.return_value = ("en", "American Robin")
+
+        ioc_translations_result = MagicMock()
+        ioc_translations_result.__iter__.return_value = iter(
+            [
+                ("es", "Petirrojo Americano"),
+                ("fr", "Merle d'Amérique"),
+            ]
+        )
+
+        patlevin_result = MagicMock()
+        patlevin_result.__iter__.return_value = iter(
+            [
+                ("de", "Wanderdrossel"),
+                ("es", "Petirrojo"),
+            ]
+        )  # es is duplicate, should be filtered
+
+        avibase_result = MagicMock()
+        avibase_result.__iter__.return_value = iter(
+            [
+                ("it", "Pettirosso americano"),
+                ("pt", "Tordo-americano"),
+            ]
+        )
+
         # Mock results from different databases
         mock_session.execute.side_effect = [
-            # IOC English from species table
-            [("en", "American Robin")],
-            # IOC translations table
-            [("es", "Petirrojo Americano"), ("fr", "Merle d'Amérique")],
-            # PatLevin database
-            [("de", "Wanderdrossel"), ("es", "Petirrojo")],  # es is duplicate, should be filtered
-            # Avibase database
-            [("it", "Pettirosso americano"), ("pt", "Tordo-americano")],
+            ioc_species_result,
+            ioc_translations_result,
+            patlevin_result,
+            avibase_result,
         ]
 
         result = multilingual_service.get_all_translations(mock_session, "Turdus migratorius")
@@ -451,13 +475,20 @@ class TestGetAllTranslations:
         self, multilingual_service__partial_databases, mock_session
     ):
         """Should retrieve translations only from available databases."""
+        # Create mock result objects with fetchone() and fetchall() methods
+        ioc_species_result = MagicMock()
+        ioc_species_result.fetchone.return_value = ("en", "American Robin")
+
+        ioc_translations_result = MagicMock()
+        ioc_translations_result.__iter__.return_value = iter([("es", "Petirrojo Americano")])
+
+        patlevin_result = MagicMock()
+        patlevin_result.__iter__.return_value = iter([("de", "Wanderdrossel")])
+
         mock_session.execute.side_effect = [
-            # IOC English from species table
-            [("en", "American Robin")],
-            # IOC translations table
-            [("es", "Petirrojo Americano")],
-            # PatLevin database
-            [("de", "Wanderdrossel")],
+            ioc_species_result,
+            ioc_translations_result,
+            patlevin_result,
         ]
 
         result = multilingual_service__partial_databases.get_all_translations(
