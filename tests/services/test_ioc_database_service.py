@@ -418,7 +418,7 @@ class TestDatabaseUtilities:
 
     def test_get_database_size_not_exists(self, tmp_path):
         """Should return 0 when database file doesn't exist."""
-        db_path = str(tmp_path / "nonexistent.db")
+        db_path = tmp_path / "nonexistent.db"
         service = IOCDatabaseService.__new__(IOCDatabaseService)
         service.db_path = db_path
 

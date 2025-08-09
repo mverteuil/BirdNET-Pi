@@ -55,13 +55,9 @@ def file_path_resolver(tmp_path: Path) -> FilePathResolver:
     temp_database_dir.mkdir(parents=True)
     temp_config_dir = tmp_path / "config"
     temp_config_dir.mkdir(parents=True)
-    temp_exports_dir = tmp_path / "exports"
-    temp_exports_dir.mkdir(parents=True)
-
     # Override WRITABLE paths to use temp directory
     resolver.get_database_path = lambda: temp_database_dir / "birdnetpi.db"
     resolver.get_birdnetpi_config_path = lambda: temp_config_dir / "birdnetpi.yaml"
-    resolver.get_exports_dir = lambda: temp_exports_dir
 
     # Keep READ-ONLY paths pointing to real repo locations
     # These are already correct from the base FilePathResolver, but let's be explicit:

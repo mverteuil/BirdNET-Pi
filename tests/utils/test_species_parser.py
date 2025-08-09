@@ -213,12 +213,16 @@ class TestSpeciesParserWithIOC:
 
     def test_species_parser_initialization__ioc_service(self):
         """Test SpeciesParser initialization with IOC service."""
-        from birdnetpi.utils.species_parser import IOCReferenceService
+        # Create a temporary database service for testing
+        import tempfile
 
-        ioc_service = IOCReferenceService()
-        parser = SpeciesParser(ioc_service)
+        from birdnetpi.services.ioc_database_service import IOCDatabaseService
 
-        assert parser.ioc_reference is ioc_service
+        with tempfile.NamedTemporaryFile(suffix=".db") as tmp_file:
+            ioc_service = IOCDatabaseService(tmp_file.name)
+            parser = SpeciesParser(ioc_service)
+
+            assert parser.ioc_database is ioc_service
 
     def test_format_species_display_fallback_to_common_name(self):
         """Test format_species_for_display fallback when both display options are disabled."""
@@ -258,36 +262,4 @@ class TestSpeciesParserWithIOC:
         assert result == "American Robin (Turdus migratorius)"
 
 
-class TestMockIOCReferenceService:
-    """Test MockIOCReferenceService functionality to cover missing lines."""
-
-    def test_mock_ioc_service_initialization(self):
-        """Test MockIOCReferenceService initialization."""
-        from birdnetpi.utils.species_parser import IOCReferenceService
-
-        service = IOCReferenceService()
-
-        # Test that initialization sets up empty data structures (lines 241-243)
-        assert service._ioc_reference == {}
-        assert service._ioc_translations == {}
-        assert service._ioc_version == "unknown"
-
-    def test_mock_ioc_service_get_ioc_common_name(self):
-        """Test MockIOCReferenceService get_ioc_common_name method."""
-        from birdnetpi.utils.species_parser import IOCReferenceService
-
-        service = IOCReferenceService()
-
-        # Test that method returns None (line 255)
-        result = service.get_ioc_common_name("Turdus migratorius")
-        assert result is None
-
-    def test_mock_ioc_service_get_translated_common_name(self):
-        """Test MockIOCReferenceService get_translated_common_name method."""
-        from birdnetpi.utils.species_parser import IOCReferenceService
-
-        service = IOCReferenceService()
-
-        # Test that method returns None (line 268)
-        result = service.get_translated_common_name("Turdus migratorius", "es")
-        assert result is None
+# TestMockIOCReferenceService class removed - obsolete after refactoring to IOCDatabaseService

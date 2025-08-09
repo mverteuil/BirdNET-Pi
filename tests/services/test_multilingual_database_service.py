@@ -680,9 +680,8 @@ class TestIntegrationWithRealSession:
         # Create the database files with minimal schema
         for db_path in [ioc_db, avibase_db, patlevin_db]:
             engine = create_engine(f"sqlite:///{db_path}")
-            with engine.connect() as conn:
+            with engine.begin() as conn:
                 conn.execute(text("CREATE TABLE test_table (id INTEGER PRIMARY KEY)"))
-                conn.commit()
             engine.dispose()
 
         # Override service paths with real files
