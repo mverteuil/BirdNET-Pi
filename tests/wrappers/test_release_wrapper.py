@@ -24,8 +24,8 @@ def mock_release_manager():
     """Create a mock ReleaseManager."""
     mock_manager = MagicMock()
     mock_manager.get_default_assets.return_value = [
-        ReleaseAsset(Path("/test/models"), "data/models", "BirdNET models"),
-        ReleaseAsset(Path("/test/ioc.db"), "data/database/ioc_reference.db", "IOC database"),
+        ReleaseAsset(Path("/test/models"), Path("data/models"), "BirdNET models"),
+        ReleaseAsset(Path("/test/ioc.db"), Path("data/database/ioc_reference.db"), "IOC database"),
     ]
     return mock_manager
 
@@ -48,9 +48,9 @@ class TestBuildAssetList:
 
         # Update mock to use real path
         mock_release_manager.get_default_assets.return_value = [
-            ReleaseAsset(models_dir, "data/models", "BirdNET models"),
+            ReleaseAsset(models_dir, Path("data/models"), "BirdNET models"),
             ReleaseAsset(
-                Path("/nonexistent/ioc.db"), "data/database/ioc_reference.db", "IOC database"
+                Path("/nonexistent/ioc.db"), Path("data/database/ioc_reference.db"), "IOC database"
             ),
         ]
 
@@ -65,7 +65,7 @@ class TestBuildAssetList:
         assets = _build_asset_list(args, mock_release_manager)
 
         assert len(assets) == 1
-        assert assets[0].target_name == "data/models"
+        assert assets[0].target_name == Path("data/models")
         assert assets[0].description == "BirdNET models"
 
     def test_build_asset_list__ioc_db(self, mock_release_manager, tmp_path):
@@ -76,8 +76,8 @@ class TestBuildAssetList:
 
         # Update mock to use real path
         mock_release_manager.get_default_assets.return_value = [
-            ReleaseAsset(Path("/nonexistent/models"), "data/models", "BirdNET models"),
-            ReleaseAsset(ioc_db, "data/database/ioc_reference.db", "IOC database"),
+            ReleaseAsset(Path("/nonexistent/models"), Path("data/models"), "BirdNET models"),
+            ReleaseAsset(ioc_db, Path("data/database/ioc_reference.db"), "IOC database"),
         ]
 
         args = argparse.Namespace(
@@ -91,7 +91,7 @@ class TestBuildAssetList:
         assets = _build_asset_list(args, mock_release_manager)
 
         assert len(assets) == 1
-        assert assets[0].target_name == "data/database/ioc_reference.db"
+        assert assets[0].target_name == Path("data/database/ioc_reference.db")
         assert assets[0].description == "IOC database"
 
     def test_build_asset_list__custom_assets(self, mock_release_manager, tmp_path):
@@ -111,8 +111,8 @@ class TestBuildAssetList:
         assets = _build_asset_list(args, mock_release_manager)
 
         assert len(assets) == 1
-        assert assets[0].source_path == str(custom_file)
-        assert assets[0].target_name == "custom/path"
+        assert assets[0].source_path == custom_file
+        assert assets[0].target_name == Path("custom/path")
         assert assets[0].description == "Custom asset description"
 
     @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
@@ -171,11 +171,11 @@ class TestAddCustomAssets:
         _add_custom_assets(custom_assets, assets)
 
         assert len(assets) == 2
-        assert assets[0].source_path == str(file1)
-        assert assets[0].target_name == "target1"
+        assert assets[0].source_path == file1
+        assert assets[0].target_name == Path("target1")
         assert assets[0].description == "Description 1"
-        assert assets[1].source_path == str(file2)
-        assert assets[1].target_name == "target2"
+        assert assets[1].source_path == file2
+        assert assets[1].target_name == Path("target2")
         assert assets[1].description == "Description 2"
 
     @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
@@ -286,7 +286,7 @@ class TestCreateRelease:
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
 
-        mock_assets = [ReleaseAsset(Path("/test/models"), "data/models", "Models")]
+        mock_assets = [ReleaseAsset(Path("/test/models"), Path("data/models"), "Models")]
         mock_build_assets.return_value = mock_assets
 
         mock_asset_result = {
@@ -336,7 +336,7 @@ class TestCreateRelease:
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
 
-        mock_assets = [ReleaseAsset(Path("/test/models"), "data/models", "Models")]
+        mock_assets = [ReleaseAsset(Path("/test/models"), Path("data/models"), "Models")]
         mock_build_assets.return_value = mock_assets
 
         mock_asset_result = {
@@ -386,7 +386,7 @@ class TestCreateRelease:
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
 
-        mock_assets = [ReleaseAsset(Path("/test/models"), "data/models", "Models")]
+        mock_assets = [ReleaseAsset(Path("/test/models"), Path("data/models"), "Models")]
         mock_build_assets.return_value = mock_assets
 
         mock_asset_result = {
@@ -437,7 +437,7 @@ class TestCreateRelease:
         mock_manager_class.return_value = mock_manager
         mock_manager.create_asset_release.side_effect = Exception("Release failed")
 
-        mock_assets = [ReleaseAsset(Path("/test/models"), "data/models", "Models")]
+        mock_assets = [ReleaseAsset(Path("/test/models"), Path("data/models"), "Models")]
         mock_build_assets.return_value = mock_assets
 
         args = argparse.Namespace(
@@ -476,9 +476,9 @@ class TestListAssets:
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
         mock_manager.get_default_assets.return_value = [
-            ReleaseAsset(models_dir, "data/models", "BirdNET models"),
-            ReleaseAsset(ioc_db, "data/database/ioc_reference.db", "IOC database"),
-            ReleaseAsset(Path("/nonexistent/file"), "missing/asset", "Missing asset"),
+            ReleaseAsset(models_dir, Path("data/models"), "BirdNET models"),
+            ReleaseAsset(ioc_db, Path("data/database/ioc_reference.db"), "IOC database"),
+            ReleaseAsset(Path("/nonexistent/file"), Path("missing/asset"), "Missing asset"),
         ]
 
         args = argparse.Namespace()
@@ -510,7 +510,7 @@ class TestListAssets:
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
         mock_manager.get_default_assets.return_value = [
-            ReleaseAsset(test_file, "test/file", "Test file")
+            ReleaseAsset(test_file, Path("test/file"), "Test file")
         ]
 
         args = argparse.Namespace()
@@ -622,7 +622,7 @@ class TestIntegration:
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
         mock_manager.get_default_assets.return_value = [
-            ReleaseAsset(models_dir, "data/models", "BirdNET models")
+            ReleaseAsset(models_dir, Path("data/models"), "BirdNET models")
         ]
 
         mock_asset_result = {
@@ -658,7 +658,7 @@ class TestIntegration:
         assert config.version == "v2.1.0"
         assert config.asset_branch_name == "assets-v2.1.0"
         assert len(config.assets) == 1
-        assert config.assets[0].target_name == "data/models"
+        assert config.assets[0].target_name == Path("data/models")
 
     def test_edge_case_handling(self, tmp_path):
         """Should handle various edge cases properly."""

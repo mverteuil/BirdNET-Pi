@@ -21,14 +21,16 @@ def _build_asset_list(
     default_assets = release_manager.get_default_assets()
 
     if args.include_models:
-        models_asset = next((a for a in default_assets if "models" in a.target_name), None)
+        models_asset = next((a for a in default_assets if "models" in str(a.target_name)), None)
         if models_asset and Path(models_asset.source_path).exists():
             assets.append(models_asset)
         else:
             print("Warning: Models not found at expected locations")
 
     if args.include_ioc_db:
-        db_asset = next((a for a in default_assets if "ioc_reference.db" in a.target_name), None)
+        db_asset = next(
+            (a for a in default_assets if "ioc_reference.db" in str(a.target_name)), None
+        )
         if db_asset and Path(db_asset.source_path).exists():
             assets.append(db_asset)
         else:
@@ -36,7 +38,7 @@ def _build_asset_list(
 
     if args.include_avibase_db:
         avibase_asset = next(
-            (a for a in default_assets if "avibase_database.db" in a.target_name), None
+            (a for a in default_assets if "avibase_database.db" in str(a.target_name)), None
         )
         if avibase_asset and Path(avibase_asset.source_path).exists():
             assets.append(avibase_asset)
@@ -45,7 +47,7 @@ def _build_asset_list(
 
     if args.include_patlevin_db:
         patlevin_asset = next(
-            (a for a in default_assets if "patlevin_database.db" in a.target_name), None
+            (a for a in default_assets if "patlevin_database.db" in str(a.target_name)), None
         )
         if patlevin_asset and Path(patlevin_asset.source_path).exists():
             assets.append(patlevin_asset)
@@ -77,7 +79,7 @@ def _add_custom_assets(custom_assets: list[str], assets: list[ReleaseAsset]) -> 
             print(f"Error: Asset not found: {source_path}")
             sys.exit(1)
 
-        assets.append(ReleaseAsset(source_path, target_name, description))
+        assets.append(ReleaseAsset(Path(source_path), Path(target_name), description))
 
 
 def _handle_github_release(

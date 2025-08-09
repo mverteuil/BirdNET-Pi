@@ -725,12 +725,8 @@ class TestPerformance:
         # Should execute without error (index optimization is internal)
         assert isinstance(results, list)
 
-    @pytest.mark.slow
     def test_large_dataset_performance(self, query_service, populated_ioc_db):
-        """Test performance with larger dataset."""
-        # This test would be marked as slow and only run in comprehensive test suites
-        # For now, just test that the query patterns work
-
+        """Should have reliable performance with larger dataset."""
         # Test that large limit values don't cause issues
         results = query_service.get_detections_with_ioc_data(limit=1000)
         assert isinstance(results, list)

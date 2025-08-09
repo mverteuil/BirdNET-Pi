@@ -91,9 +91,8 @@ class AudioAnalysisManager:
                     )
                     response.raise_for_status()
                     successful_sends += 1
-                    logger.debug(
-                        f"Successfully flushed buffered detection: {detection_data['species']}"
-                    )
+                    species_name = detection_data.get("species_tensor", "Unknown")
+                    logger.debug(f"Successfully flushed buffered detection: {species_name}")
                 except (httpx.RequestError, httpx.HTTPStatusError) as e:
                     logger.debug(f"Failed to flush detection (will re-buffer): {e}")
                     failed_detections.append(detection_data)
@@ -159,31 +158,44 @@ class AudioAnalysisManager:
             )
 
             # Process results and send detection events for confident detections
-            for species, confidence in results:
+            for species_tensor, confidence in results:
                 if confidence >= self.config.species_confidence_threshold:
+                    # Extract scientific name (before underscore if present)
+                    scientific_name = (
+                        species_tensor.split("_")[0] if "_" in species_tensor else species_tensor
+                    )
                     # Convert audio chunk back to bytes for saving
                     audio_bytes = (audio_chunk * 32767).astype(np.int16).tobytes()
-                    await self._send_detection_event(species, confidence, audio_bytes)
-                    logger.info(f"Bird detected: {species} (confidence: {confidence:.3f})")
+                    await self._send_detection_event(
+                        species_tensor, scientific_name, confidence, audio_bytes
+                    )
+                    logger.info(f"Bird detected: {species_tensor} (confidence: {confidence:.3f})")
 
         except Exception as e:
             logger.error(f"Error during BirdNET analysis: {e}", exc_info=True)
 
     async def _send_detection_event(
-        self, species: str, confidence: float, raw_audio_bytes: bytes
+        self, species_tensor: str, scientific_name: str, confidence: float, raw_audio_bytes: bytes
     ) -> None:
-        """Send a detection event to the FastAPI application."""
+        """Send a detection event to the FastAPI application.
+
+        Args:
+            species_tensor: Raw tensor output from BirdNET (Scientific_name_Common Name format)
+            scientific_name: The scientific name of the detected bird
+            confidence: Detection confidence score
+            raw_audio_bytes: Raw audio data bytes
+        """
         # Get relative path for the audio file
         timestamp = datetime.datetime.now(UTC)
         current_week = timestamp.isocalendar()[1]
-        relative_audio_file_path = self.file_path_resolver.get_detection_audio_path(
-            species, timestamp
+        audio_file_path = self.file_path_resolver.get_detection_audio_path(
+            scientific_name, timestamp
         )
 
         # Save raw audio to disk using FileManager
         try:
             audio_file_instance = self.file_manager.save_detection_audio(
-                relative_audio_file_path,
+                audio_file_path,
                 np.frombuffer(  # type: ignore[arg-type]
                     raw_audio_bytes, dtype=np.int16
                 ),  # Ensure raw_audio_bytes is int16 numpy array
@@ -195,8 +207,13 @@ class AudioAnalysisManager:
             logger.error(f"Failed to save detection audio: {e}", exc_info=True)
             return  # Don't send detection if audio save fails
 
+        # Parse common name from species_tensor if present
+        common_name = species_tensor.split("_")[1] if "_" in species_tensor else ""
+
         detection_data = {
-            "species": species,
+            "species_tensor": species_tensor,
+            "scientific_name": scientific_name,
+            "common_name": common_name,
             "confidence": confidence,
             "timestamp": timestamp.isoformat(),  # Use the same timestamp for consistency
             "audio_file_path": str(
@@ -221,7 +238,7 @@ class AudioAnalysisManager:
                     "http://fastapi:8888/api/detections", json=detection_data
                 )
                 response.raise_for_status()  # Raise an exception for bad status codes
-                logger.info(f"Detection event sent: {detection_data['species']}")
+                logger.info(f"Detection event sent: {species_tensor}")
                 return  # Success - no need to buffer
         except (httpx.RequestError, httpx.HTTPStatusError) as e:
             logger.warning(f"FastAPI unavailable, buffering detection: {e}")
@@ -233,6 +250,4 @@ class AudioAnalysisManager:
             self.detection_buffer.append(detection_data)
             buffer_size = len(self.detection_buffer)
 
-        logger.info(
-            f"Buffered detection event for {detection_data['species']} (buffer size: {buffer_size})"
-        )
+        logger.info(f"Buffered detection event for {species_tensor} (buffer size: {buffer_size})")

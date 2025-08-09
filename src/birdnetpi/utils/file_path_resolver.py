@@ -38,7 +38,8 @@ class FilePathResolver:
         """Get the path to a template file in config_templates directory.
 
         Args:
-            template_name: Name of the template file (e.g., 'Caddyfile.j2', 'pulseaudio_default.pa.j2')
+            template_name: Name of the template file
+                (e.g., 'Caddyfile.j2', 'pulseaudio_default.pa.j2')
 
         Returns:
             Path to the template file
@@ -68,32 +69,28 @@ class FilePathResolver:
         recordings_dir = self.data_dir / "recordings"
         return recordings_dir
 
-    def get_detection_audio_path(self, species: str, timestamp: datetime.datetime | float) -> str:
+    def get_detection_audio_path(self, scientific_name: str, timestamp: datetime.datetime) -> Path:
         """Get the relative path for saving detection audio files.
 
         Args:
-            species: The detected bird species name
-            timestamp: Timestamp of the detection
+            scientific_name: The detected bird's scientific name
+            timestamp: Timestamp of the detection (datetime object)
 
         Returns:
-            Relative path for the detection audio file
+            Path relative to data_dir for the detection audio file
         """
-        import datetime
+        # Create a safe filename from scientific name
+        safe_name = scientific_name.replace(" ", "_")
 
-        # Convert timestamp to datetime if it's not already
-        if isinstance(timestamp, datetime.datetime):
-            dt = timestamp
-        else:
-            dt = datetime.datetime.fromtimestamp(timestamp)
+        # Generate filename with timestamp
+        filename = f"{timestamp.strftime('%Y%m%d_%H%M%S')}.wav"
 
-        # Create a safe filename from species name
-        safe_species = species.replace(" ", "_").replace("/", "_").replace("'", "")
+        # Get the recordings directory and make it relative to data_dir
+        recordings_dir = self.get_recordings_dir()
+        relative_recordings = recordings_dir.relative_to(self.data_dir)
 
-        # Generate filename with timestamp: species_YYYYMMDD_HHMMSS.wav
-        filename = f"{safe_species}_{dt.strftime('%Y%m%d_%H%M%S')}.wav"
-
-        # Return relative path within recordings directory
-        return f"detections/{dt.strftime('%Y/%m/%d')}/{filename}"
+        # Return relative path from data_dir: recordings/safe_name/filename
+        return relative_recordings / safe_name / filename
 
     def get_database_dir(self) -> Path:
         """Get the directory for database files."""

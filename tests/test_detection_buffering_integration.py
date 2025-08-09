@@ -37,9 +37,13 @@ def mock_config():
 @pytest.fixture
 def mock_file_manager():
     """Return a mock FileManager instance for integration tests."""
+    from pathlib import Path
+
+    # FileManager returns the same relative path it receives
+    relative_path = Path("recordings/Test_bird/20240101_120000.wav")
     mock = MagicMock(spec=FileManager)
     mock.save_detection_audio.return_value = MagicMock(
-        file_path="/mock/path/audio.wav",
+        file_path=relative_path,
         duration=3.0,
         size_bytes=1000,
     )
@@ -49,8 +53,10 @@ def mock_file_manager():
 @pytest.fixture
 def mock_file_path_resolver():
     """Return a mock FilePathResolver instance for integration tests."""
+    from pathlib import Path
+
     mock = MagicMock(spec=FilePathResolver)
-    mock.get_detection_audio_path.return_value = "/mock/path/audio.wav"
+    mock.get_detection_audio_path.return_value = Path("recordings/Test_bird/20240101_120000.wav")
     return mock
 
 
@@ -121,7 +127,7 @@ class TestDetectionBufferingEndToEnd:
             # Verify detections were buffered
             with service.buffer_lock:
                 assert len(service.detection_buffer) == 2
-                species_list = [d["species"] for d in service.detection_buffer]
+                species_list = [d["species_tensor"] for d in service.detection_buffer]
                 assert "Robin" in species_list
                 assert "Crow" in species_list
 
@@ -343,7 +349,7 @@ class TestDetectionBufferingEndToEnd:
             with service.buffer_lock:
                 buffer_size = len(service.detection_buffer)
                 if buffer_size > 0:
-                    buffered_species = [d["species"] for d in service.detection_buffer]
+                    buffered_species = [d["species_tensor"] for d in service.detection_buffer]
                 else:
                     buffered_species = []
 

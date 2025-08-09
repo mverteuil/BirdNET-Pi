@@ -158,7 +158,8 @@ class ReleaseManager:
             except subprocess.CalledProcessError as e:
                 print(f"Warning: Failed to create GitHub release: {e}")
                 print(
-                    "The tag was created successfully, but you may need to create the release manually"
+                    "The tag was created successfully, but you may need to "
+                    "create the release manually"
                 )
 
             return commit_sha

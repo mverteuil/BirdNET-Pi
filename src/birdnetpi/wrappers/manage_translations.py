@@ -93,7 +93,7 @@ def init_language(resolver: FilePathResolver, language: str) -> bool:
 
 
 def main() -> None:
-    """Main script entry point."""
+    """Execute the main script entry point."""
     parser = argparse.ArgumentParser(description="Manage BirdNET-Pi translations")
     parser.add_argument(
         "command",

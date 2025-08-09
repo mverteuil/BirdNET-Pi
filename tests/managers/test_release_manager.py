@@ -38,11 +38,11 @@ def sample_assets(tmp_path):
 
     return [
         ReleaseAsset(
-            source_path=models_dir, target_name="data/models", description="BirdNET models"
+            source_path=models_dir, target_name=Path("data/models"), description="BirdNET models"
         ),
         ReleaseAsset(
             source_path=db_file,
-            target_name="data/database/ioc_reference.db",
+            target_name=Path("data/database/ioc_reference.db"),
             description="IOC database",
         ),
     ]
@@ -208,7 +208,7 @@ class TestReleaseManager:
 
     def test_get_asset_path_dev_exists(self, release_manager, tmp_path):
         """Should prefer dev path when it exists."""
-        dev_path = "data/models"
+        dev_path = Path("data/models")
         dev_full_path = tmp_path / dev_path
         dev_full_path.mkdir(parents=True)
 

@@ -30,7 +30,8 @@ def install_assets(args: argparse.Namespace) -> None:
         ]
     ):
         print(
-            "Error: Must specify at least one asset type (--include-models, --include-ioc-db, --include-avibase-db, or --include-patlevin-db)"
+            "Error: Must specify at least one asset type (--include-models, "
+            "--include-ioc-db, --include-avibase-db, or --include-patlevin-db)"
         )
         sys.exit(1)
         return  # Early return after exit call for test compatibility
@@ -168,7 +169,8 @@ def main() -> None:
         epilog="""
 Examples:
   # Install latest models and all databases
-  asset-installer install latest --include-models --include-ioc-db --include-avibase-db --include-patlevin-db
+  asset-installer install latest --include-models --include-ioc-db \\
+      --include-avibase-db --include-patlevin-db
 
   # Install only models for a specific version
   asset-installer install v2.1.0 --include-models

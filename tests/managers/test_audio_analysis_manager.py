@@ -33,12 +33,16 @@ def test_config_data():
 @pytest.fixture
 def test_detection_result():
     """Provide test detection result data."""
+    from pathlib import Path
+
+    # Both paths should be the same relative path
+    relative_path = Path("recordings/Test_species/20240101_120000.wav")
     return {
-        "file_path": "/mock/path/audio.wav",
+        "file_path": relative_path,  # FileManager returns the same relative path
         "duration": 10.0,
         "size_bytes": 1000,
         "recording_start_time": datetime.now(),
-        "audio_path": "/mock/path/audio.wav",
+        "audio_path": relative_path,  # Relative path from get_detection_audio_path
     }
 
 
@@ -224,10 +228,14 @@ class TestAudioAnalysisManager:
         # Check the calls using test data
         calls = mock_send_detection_event.call_args_list
         expected_species = [call for call in test_species_data["mixed"] if call[1] >= 0.7]
-        assert calls[0][0][0] == expected_species[0][0]  # Robin
-        assert calls[0][0][1] == expected_species[0][1]  # 0.85
-        assert calls[1][0][0] == expected_species[1][0]  # Crow
-        assert calls[1][0][1] == expected_species[1][1]  # 0.72
+        # First call arguments: (species_tensor, scientific_name, confidence, audio_bytes)
+        assert calls[0][0][0] == expected_species[0][0]  # Robin (species_tensor)
+        assert calls[0][0][1] == expected_species[0][0]  # Robin (scientific_name)
+        assert calls[0][0][2] == expected_species[0][1]  # 0.85 (confidence)
+        # Second call arguments
+        assert calls[1][0][0] == expected_species[1][0]  # Crow (species_tensor)
+        assert calls[1][0][1] == expected_species[1][0]  # Crow (scientific_name)
+        assert calls[1][0][2] == expected_species[1][1]  # 0.72 (confidence)
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient")
@@ -248,7 +256,9 @@ class TestAudioAnalysisManager:
         species, confidence = test_species_data["confident"][0]  # Robin, 0.85
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
-        await audio_analysis_service._send_detection_event(species, confidence, raw_audio_bytes)
+        await audio_analysis_service._send_detection_event(
+            f"{species}_Common Name", species, confidence, raw_audio_bytes
+        )
 
         mock_file_path_resolver.get_detection_audio_path.assert_called_once()
         mock_file_manager.save_detection_audio.assert_called_once()
@@ -273,7 +283,9 @@ class TestAudioAnalysisManager:
         species, confidence = test_species_data["confident"][1]  # Crow, 0.75
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
-        await audio_analysis_service._send_detection_event(species, confidence, raw_audio_bytes)
+        await audio_analysis_service._send_detection_event(
+            f"{species}_Common Name", species, confidence, raw_audio_bytes
+        )
 
         mock_async_client.assert_not_called()
         assert "Failed to save detection audio: Audio save error" in caplog.text
@@ -295,7 +307,9 @@ class TestAudioAnalysisManager:
         species, confidence = test_species_data["confident"][2]  # Sparrow, 0.80
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
-        await audio_analysis_service._send_detection_event(species, confidence, raw_audio_bytes)
+        await audio_analysis_service._send_detection_event(
+            f"{species}_Common Name", species, confidence, raw_audio_bytes
+        )
 
         assert "FastAPI unavailable, buffering detection: Network error" in caplog.text
         assert f"Buffered detection event for {species}" in caplog.text
@@ -315,7 +329,9 @@ class TestAudioAnalysisManager:
         species, confidence = test_species_data["confident"][0]  # Robin, 0.85
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
-        await audio_analysis_service._send_detection_event(species, confidence, raw_audio_bytes)
+        await audio_analysis_service._send_detection_event(
+            f"{species}_Common Name", species, confidence, raw_audio_bytes
+        )
 
         assert "FastAPI unavailable, buffering detection: Not Found" in caplog.text
         assert f"Buffered detection event for {species}" in caplog.text
@@ -334,7 +350,9 @@ class TestAudioAnalysisManager:
         species, confidence = test_species_data["confident"][1]  # Crow, 0.75
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
-        await audio_analysis_service._send_detection_event(species, confidence, raw_audio_bytes)
+        await audio_analysis_service._send_detection_event(
+            f"{species}_Common Name", species, confidence, raw_audio_bytes
+        )
 
         assert "Unexpected error sending detection, buffering: Unexpected error" in caplog.text
         assert f"Buffered detection event for {species}" in caplog.text
@@ -463,13 +481,15 @@ class TestDetectionBuffering:
             confidence = 0.8
             raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
-            await audio_analysis_service._send_detection_event(species, confidence, raw_audio_bytes)
+            await audio_analysis_service._send_detection_event(
+                species, species, confidence, raw_audio_bytes
+            )
 
             # Verify detection was buffered
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 buffered = next(iter(audio_analysis_service.detection_buffer))
-                assert buffered["species"] == species
+                assert buffered["species_tensor"] == species
                 assert buffered["confidence"] == confidence
 
             assert "FastAPI unavailable, buffering detection" in caplog.text
@@ -494,7 +514,9 @@ class TestDetectionBuffering:
             confidence = 0.8
             raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
-            await audio_analysis_service._send_detection_event(species, confidence, raw_audio_bytes)
+            await audio_analysis_service._send_detection_event(
+                species, species, confidence, raw_audio_bytes
+            )
 
             # Verify detection was buffered
             with audio_analysis_service.buffer_lock:
@@ -520,7 +542,9 @@ class TestDetectionBuffering:
             confidence = 0.8
             raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
-            await audio_analysis_service._send_detection_event(species, confidence, raw_audio_bytes)
+            await audio_analysis_service._send_detection_event(
+                species, species, confidence, raw_audio_bytes
+            )
 
             # Verify detection was buffered
             with audio_analysis_service.buffer_lock:
@@ -543,7 +567,7 @@ class TestDetectionBuffering:
         """Should successfully flush buffered detections."""
         # Add test detection to buffer
         test_detection = {
-            "species": "Robin",
+            "species_tensor": "Robin",
             "confidence": 0.9,
             "timestamp": datetime.now().isoformat(),
         }
@@ -573,9 +597,13 @@ class TestDetectionBuffering:
         """Should re-buffer failed detections and flush successful ones."""
         # Add multiple test detections to buffer
         test_detections = [
-            {"species": "Robin", "confidence": 0.9, "timestamp": datetime.now().isoformat()},
-            {"species": "Crow", "confidence": 0.8, "timestamp": datetime.now().isoformat()},
-            {"species": "Sparrow", "confidence": 0.7, "timestamp": datetime.now().isoformat()},
+            {"species_tensor": "Robin", "confidence": 0.9, "timestamp": datetime.now().isoformat()},
+            {"species_tensor": "Crow", "confidence": 0.8, "timestamp": datetime.now().isoformat()},
+            {
+                "species_tensor": "Sparrow",
+                "confidence": 0.7,
+                "timestamp": datetime.now().isoformat(),
+            },
         ]
 
         with audio_analysis_service.buffer_lock:
@@ -609,7 +637,7 @@ class TestDetectionBuffering:
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 rebuffered = next(iter(audio_analysis_service.detection_buffer))
-                assert rebuffered["species"] == "Crow"  # The middle one that failed
+                assert rebuffered["species_tensor"] == "Crow"  # The middle one that failed
 
             assert "Attempting to flush 3 buffered detections" in caplog.text
             assert "Successfully flushed 2 buffered detections" in caplog.text
@@ -619,7 +647,7 @@ class TestDetectionBuffering:
         """Should re-buffer all detections when all flush attempts fail."""
         # Add test detection to buffer
         test_detection = {
-            "species": "Robin",
+            "species_tensor": "Robin",
             "confidence": 0.9,
             "timestamp": datetime.now().isoformat(),
         }
@@ -640,7 +668,7 @@ class TestDetectionBuffering:
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 rebuffered = next(iter(audio_analysis_service.detection_buffer))
-                assert rebuffered["species"] == "Robin"
+                assert rebuffered["species_tensor"] == "Robin"
 
             assert "Attempting to flush 1 buffered detections" in caplog.text
             assert "Re-buffered 1 failed detections" in caplog.text
@@ -652,7 +680,7 @@ class TestDetectionBuffering:
         """Should handle unexpected errors during flush and re-buffer detections."""
         # Add test detection to buffer
         test_detection = {
-            "species": "Robin",
+            "species_tensor": "Robin",
             "confidence": 0.9,
             "timestamp": datetime.now().isoformat(),
         }
@@ -701,7 +729,7 @@ class TestDetectionBuffering:
         with service.buffer_lock:
             for i in range(max_size + 3):
                 detection = {
-                    "species": f"Species_{i}",
+                    "species_tensor": f"Species_{i}",
                     "confidence": 0.8,
                     "timestamp": datetime.now().isoformat(),
                 }
@@ -711,7 +739,7 @@ class TestDetectionBuffering:
         with service.buffer_lock:
             assert len(service.detection_buffer) == max_size
             # Should contain the latest detections
-            latest_species = [d["species"] for d in service.detection_buffer]
+            latest_species = [d["species_tensor"] for d in service.detection_buffer]
             assert "Species_3" in latest_species  # Should keep recent ones
             assert "Species_0" not in latest_species  # Should have evicted oldest
 
@@ -726,7 +754,7 @@ class TestDetectionBuffering:
             try:
                 for i in range(10):
                     detection = {
-                        "species": f"Thread{thread_id}_Species_{i}",
+                        "species_tensor": f"Thread{thread_id}_Species_{i}",
                         "confidence": 0.8,
                         "timestamp": datetime.now().isoformat(),
                     }
@@ -759,7 +787,7 @@ class TestDetectionBuffering:
         # Verify buffer contains detections from all threads
         with audio_analysis_service.buffer_lock:
             buffer_size = len(audio_analysis_service.detection_buffer)
-            species_list = [d["species"] for d in audio_analysis_service.detection_buffer]
+            species_list = [d["species_tensor"] for d in audio_analysis_service.detection_buffer]
 
         # Should have some detections (might be less than 30 due to buffer size limit)
         assert buffer_size > 0
@@ -780,7 +808,7 @@ class TestDetectionBuffering:
 
             # Add detection to buffer
             test_detection = {
-                "species": "Robin",
+                "species_tensor": "Robin",
                 "confidence": 0.9,
                 "timestamp": datetime.now().isoformat(),
             }
@@ -812,7 +840,7 @@ class TestDetectionBuffering:
 
             # Add detection to buffer
             test_detection = {
-                "species": "Robin",
+                "species_tensor": "Robin",
                 "confidence": 0.9,
                 "timestamp": datetime.now().isoformat(),
             }
@@ -889,7 +917,7 @@ class TestDetectionBufferingIntegration:
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 buffered = next(iter(audio_analysis_service.detection_buffer))
-                assert buffered["species"] == "Robin"
+                assert buffered["species_tensor"] == "Robin"
                 assert buffered["confidence"] == 0.85
 
             assert "Buffered detection event for Robin" in caplog.text
@@ -960,7 +988,7 @@ class TestDetectionBufferingIntegration:
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 buffered = next(iter(audio_analysis_service.detection_buffer))
-                assert buffered["species"] == "Crow"
+                assert buffered["species_tensor"] == "Crow"
 
             # Verify successful sends were logged
             assert "Detection event sent: Robin" in caplog.text

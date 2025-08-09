@@ -11,7 +11,7 @@ class DetectionEvent(BaseModel):
     id: UUID | None = None
 
     # Species identification (parsed from tensor output)
-    species_tensor: str  # Raw tensor output: "Scientific_name_Common Name"
+    species_tensor: str  # Raw tensor output: "Scientific name_Common Name"
     scientific_name: str  # Parsed: "Genus species" (IOC primary key)
     common_name: str  # Standardized common name from tensor
 

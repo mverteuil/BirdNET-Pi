@@ -33,7 +33,8 @@ def app_with_overview_services(app_with_temp_data):
 
     # Override services with mocks or test instances
     if hasattr(app, "container"):
-        # The app already has a DatabaseService with temp directory, use the existing detection manager
+        # The app already has a DatabaseService with temp directory,
+        # use the existing detection manager
         # (no need to override since it's already using temp paths)
 
         # Mock hardware monitor service
