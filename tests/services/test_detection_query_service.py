@@ -244,61 +244,6 @@ class TestDetectionWithLocalization:
         assert data.confidence == 0.85
         assert data.timestamp == timestamp
 
-    def test_get_best_common_name_prefer_translation(self):
-        """Should prefer translated name when requested."""
-        detection = Detection(
-            id=uuid4(),
-            scientific_name="Turdus migratorius",
-            common_name="American Robin",
-            confidence=0.85,
-            timestamp=datetime.now(),
-        )
-
-        data = DetectionWithLocalization(
-            detection=detection,
-            ioc_english_name="American Robin IOC",
-            translated_name="Petirrojo Americano",
-        )
-
-        # Prefer translation
-        result = data.get_best_common_name(prefer_translation=True)
-        assert result == "Petirrojo Americano"
-
-    def test_get_best_common_name_fallback_order(self):
-        """Should fall back through name options correctly."""
-        detection = Detection(
-            id=uuid4(),
-            scientific_name="Turdus migratorius",
-            common_name="American Robin",
-            confidence=0.85,
-            timestamp=datetime.now(),
-        )
-
-        # Test IOC English name fallback
-        data = DetectionWithLocalization(
-            detection=detection,
-            ioc_english_name="American Robin IOC",
-        )
-        result = data.get_best_common_name()
-        assert result == "American Robin IOC"
-
-        # Test tensor common name fallback
-        data = DetectionWithLocalization(detection=detection)
-        result = data.get_best_common_name()
-        assert result == "American Robin"
-
-        # Test scientific name fallback - create new detection without common names
-        fallback_detection = Detection(
-            id=uuid4(),
-            scientific_name="Turdus migratorius",
-            common_name=None,
-            confidence=0.85,
-            timestamp=datetime.now(),
-        )
-        data = DetectionWithLocalization(detection=fallback_detection)
-        result = data.get_best_common_name()
-        assert result == "Turdus migratorius"
-
 
 class TestDetectionQueryServiceInitialization:
     """Test service initialization."""
@@ -372,9 +317,8 @@ class TestGetDetectionsWithIOCData:
         if results:  # If we have matching results
             robin_result = results[0]
             assert robin_result.translated_name == "Petirrojo Americano"
-            assert (
-                robin_result.get_best_common_name(prefer_translation=True) == "Petirrojo Americano"
-            )
+            # Test that translated name is properly available in the object
+            assert robin_result.translated_name == "Petirrojo Americano"
 
     def test_get_detections_with_ioc_data_pagination(
         self, query_service, populated_ioc_db, sample_detections

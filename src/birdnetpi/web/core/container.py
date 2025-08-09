@@ -117,10 +117,17 @@ class Container(containers.DeclarativeContainer):
         file_resolver=file_resolver,
     )
 
+    # Species display service - singleton
+    species_display_service = providers.Singleton(
+        SpeciesDisplayService,
+        config=config,
+    )
+
     detection_manager = providers.Singleton(
         DetectionManager,
         bnp_database_service=bnp_database_service,
         detection_query_service=detection_query_service,
+        species_display_service=species_display_service,
     )
 
     location_service = providers.Singleton(
@@ -202,12 +209,6 @@ class Container(containers.DeclarativeContainer):
         webhook_service=webhook_service,
     )
 
-    # Species display service - singleton
-    species_display_service = providers.Singleton(
-        SpeciesDisplayService,
-        config=config,
-    )
-
     # Request-scoped managers (factories - new instance per request)
     reporting_manager = providers.Factory(
         ReportingManager,
@@ -217,4 +218,5 @@ class Container(containers.DeclarativeContainer):
         plotting_manager=plotting_manager,
         data_preparation_manager=data_preparation_manager,
         location_service=location_service,
+        species_display_service=species_display_service,
     )

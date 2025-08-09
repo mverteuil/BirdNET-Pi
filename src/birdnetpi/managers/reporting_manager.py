@@ -1,13 +1,17 @@
 import datetime
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
+
+if TYPE_CHECKING:
+    from birdnetpi.services.detection_query_service import DetectionWithLocalization
 
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.location_service import LocationService
+from birdnetpi.services.species_display_service import SpeciesDisplayService
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
@@ -22,6 +26,7 @@ class ReportingManager:
         plotting_manager: PlottingManager,
         data_preparation_manager: DataPreparationManager,
         location_service: LocationService,
+        species_display_service: SpeciesDisplayService | None = None,
     ) -> None:
         self.detection_manager = detection_manager
         self.file_path_resolver = file_path_resolver
@@ -29,6 +34,28 @@ class ReportingManager:
         self.plotting_manager = plotting_manager
         self.data_preparation_manager = data_preparation_manager
         self.location_service = location_service
+        self.species_display_service = species_display_service
+
+    def _get_formatted_species_name(
+        self, detection: "DetectionWithLocalization", prefer_translation: bool = False
+    ) -> str:
+        """Get formatted species name using SpeciesDisplayService if available, else fallback."""
+        if self.species_display_service:
+            return self.species_display_service.format_species_display(
+                detection, prefer_translation
+            )
+        # Fallback implementation if SpeciesDisplayService not available
+        if prefer_translation:
+            if detection.translated_name:
+                return detection.translated_name
+            if detection.ioc_english_name:
+                return detection.ioc_english_name
+        else:
+            if detection.ioc_english_name:
+                return detection.ioc_english_name
+            if detection.translated_name:
+                return detection.translated_name
+        return detection.common_name or detection.scientific_name
 
     def get_data(self, use_ioc_data: bool = True, language_code: str = "en") -> pd.DataFrame:
         """Retrieve all detection data from the database and format it into a DataFrame.
@@ -50,7 +77,7 @@ class ReportingManager:
                 )
                 data = [
                     {
-                        "common_name": d.get_best_common_name(prefer_translation=True),
+                        "common_name": self._get_formatted_species_name(d, prefer_translation=True),
                         "datetime": d.timestamp,
                         "date": d.timestamp.strftime("%Y-%m-%d"),
                         "time": d.timestamp.strftime("%H:%M:%S"),
@@ -354,7 +381,7 @@ class ReportingManager:
                         "date": d.timestamp.strftime("%Y-%m-%d"),
                         "time": d.timestamp.strftime("%H:%M:%S"),
                         "scientific_name": d.scientific_name or "",
-                        "common_name": d.get_best_common_name(prefer_translation=True),
+                        "common_name": self._get_formatted_species_name(d, prefer_translation=True),
                         "confidence": d.confidence or 0,
                         "latitude": d.detection.latitude or "",
                         "longitude": d.detection.longitude or "",

@@ -19,7 +19,6 @@ from sqlalchemy.orm import Session
 from birdnetpi.models.database_models import Detection
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.ioc_database_service import IOCDatabaseService
-from birdnetpi.utils.species_parser import SpeciesDisplayOptions
 
 
 class DetectionWithLocalization:
@@ -65,38 +64,6 @@ class DetectionWithLocalization:
     def timestamp(self) -> datetime:
         """Get detection timestamp."""
         return self.detection.timestamp  # type: ignore[return-value]
-
-    def get_best_common_name(
-        self, prefer_translation: bool = False, display_options: SpeciesDisplayOptions | None = None
-    ) -> str:
-        """Get the best available common name for display.
-
-        Args:
-            prefer_translation: Whether to prefer translated name over IOC English name
-            display_options: Display configuration options (if provided, overrides other params)
-
-        Returns:
-            Best available common name or scientific name based on display mode
-        """
-        # If display options specify scientific name only, return scientific name
-        if (
-            display_options
-            and not display_options.show_common_name
-            and display_options.show_scientific_name
-        ):
-            return self.scientific_name
-
-        if prefer_translation:
-            if self.translated_name:
-                return self.translated_name
-            if self.ioc_english_name:
-                return self.ioc_english_name
-        else:
-            if self.ioc_english_name:
-                return self.ioc_english_name
-            if self.translated_name:
-                return self.translated_name
-        return self.common_name or self.scientific_name
 
 
 class DetectionQueryService:

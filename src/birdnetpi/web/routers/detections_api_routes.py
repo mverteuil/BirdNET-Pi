@@ -193,8 +193,8 @@ async def get_detection(
                     detection_data = {
                         "id": detection_with_ioc.id,
                         "scientific_name": detection_with_ioc.scientific_name,
-                        "common_name": detection_with_ioc.get_best_common_name(
-                            prefer_translation=True
+                        "common_name": detection_manager._get_formatted_species_name(
+                            detection_with_ioc, prefer_translation=True
                         ),
                         "confidence": detection_with_ioc.confidence,
                         "timestamp": detection_with_ioc.timestamp.isoformat(),

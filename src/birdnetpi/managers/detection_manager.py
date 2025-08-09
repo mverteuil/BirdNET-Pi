@@ -12,6 +12,7 @@ from birdnetpi.services.detection_query_service import (
     DetectionQueryService,
     DetectionWithLocalization,
 )
+from birdnetpi.services.species_display_service import SpeciesDisplayService
 from birdnetpi.utils.signals import detection_signal
 
 
@@ -22,9 +23,32 @@ class DetectionManager:
         self,
         bnp_database_service: DatabaseService,
         detection_query_service: DetectionQueryService | None = None,
+        species_display_service: SpeciesDisplayService | None = None,
     ) -> None:
         self.bnp_database_service = bnp_database_service
         self.detection_query_service = detection_query_service
+        self.species_display_service = species_display_service
+
+    def _get_formatted_species_name(
+        self, detection: DetectionWithLocalization, prefer_translation: bool = False
+    ) -> str:
+        """Get formatted species name using SpeciesDisplayService if available, else fallback."""
+        if self.species_display_service:
+            return self.species_display_service.format_species_display(
+                detection, prefer_translation
+            )
+        # Fallback implementation if SpeciesDisplayService not available
+        if prefer_translation:
+            if detection.translated_name:
+                return detection.translated_name
+            if detection.ioc_english_name:
+                return detection.ioc_english_name
+        else:
+            if detection.ioc_english_name:
+                return detection.ioc_english_name
+            if detection.translated_name:
+                return detection.translated_name
+        return detection.common_name or detection.scientific_name
 
     def create_detection(self, detection_event: DetectionEvent) -> Detection:
         """Create a new detection record and associated audio file record in the database."""
@@ -453,7 +477,7 @@ class DetectionManager:
                     "date": d.timestamp.strftime("%Y-%m-%d"),
                     "time": d.timestamp.strftime("%H:%M:%S"),
                     "scientific_name": d.scientific_name or "",
-                    "common_name": d.get_best_common_name(prefer_translation=True),
+                    "common_name": self._get_formatted_species_name(d, prefer_translation=True),
                     "confidence": d.confidence,
                     "latitude": d.detection.latitude,
                     "longitude": d.detection.longitude,
