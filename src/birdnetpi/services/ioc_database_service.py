@@ -444,7 +444,7 @@ class IOCDatabaseService:
                     WHERE d.timestamp > :since
                 '''), {'lang': 'es', 'since': '2024-01-01'})
         """
-        attach_sql = text(f"ATTACH DATABASE '{self.db_path}' AS {alias}")
+        attach_sql = text(f"ATTACH DATABASE '{self.db_path!s}' AS {alias}")
         session.execute(attach_sql)
 
     def detach_from_session(self, session: Session, alias: str = "ioc") -> None:
@@ -459,7 +459,7 @@ class IOCDatabaseService:
 
 
 def create_ioc_database_from_files(
-    xml_file: Path, xlsx_file: Path, db_path: str
+    xml_file: Path, xlsx_file: Path, db_path: str | Path
 ) -> IOCDatabaseService:
     """Create IOC reference database from IOC XML and XLSX files.
 

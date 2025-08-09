@@ -1,6 +1,6 @@
 import contextlib
-import os
 from collections.abc import Generator
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import create_engine, event, text
@@ -13,9 +13,9 @@ from birdnetpi.models.database_models import Base
 class DatabaseService:
     """Provides an interface for database operations, including initialization."""
 
-    def __init__(self, db_path: str):
-        self.db_path = db_path
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    def __init__(self, db_path: str | Path):
+        self.db_path = Path(db_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Configure SQLite engine with SD card optimizations
         self.engine = create_engine(
@@ -137,14 +137,14 @@ class DatabaseService:
         stats = {}
 
         # Get file sizes
-        if os.path.exists(self.db_path):
-            stats["main_db_size"] = os.path.getsize(self.db_path)
+        if self.db_path.exists():
+            stats["main_db_size"] = self.db_path.stat().st_size
 
-            wal_path = f"{self.db_path}-wal"
-            stats["wal_size"] = os.path.getsize(wal_path) if os.path.exists(wal_path) else 0
+            wal_path = Path(f"{self.db_path}-wal")
+            stats["wal_size"] = wal_path.stat().st_size if wal_path.exists() else 0
 
-            shm_path = f"{self.db_path}-shm"
-            stats["shm_size"] = os.path.getsize(shm_path) if os.path.exists(shm_path) else 0
+            shm_path = Path(f"{self.db_path}-shm")
+            stats["shm_size"] = shm_path.stat().st_size if shm_path.exists() else 0
 
             stats["total_size"] = stats["main_db_size"] + stats["wal_size"] + stats["shm_size"]
 
