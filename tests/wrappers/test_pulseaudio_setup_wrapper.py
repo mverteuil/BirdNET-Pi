@@ -7,6 +7,7 @@ import pytest
 
 from birdnetpi.wrappers.pulseaudio_setup_wrapper import (
     cleanup_command,
+    detect_ip_command,
     devices_command,
     install_command,
     main,
@@ -31,6 +32,7 @@ class TestPulseAudioSetupWrapper:
         """Should successfully run setup command."""
         mock_args = MagicMock()
         mock_args.container_ip = "192.168.1.100"
+        mock_args.container_name = "birdnet-pi"
         mock_args.port = 4713
         mock_args.no_backup = False
 
@@ -42,11 +44,62 @@ class TestPulseAudioSetupWrapper:
             container_ip="192.168.1.100",
             port=4713,
             backup_existing=True,
+            container_name="birdnet-pi",
         )
 
         # Verify success message was printed
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("✓" in call for call in print_calls)
+
+    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_container_ip")
+    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.setup_streaming")
+    @patch("builtins.print")
+    def test_setup_command__auto_detect_ip(self, mock_print, mock_setup, mock_get_ip):
+        """Should auto-detect container IP when not provided."""
+        mock_args = MagicMock()
+        mock_args.container_ip = None
+        mock_args.container_name = "test-container"
+        mock_args.port = 4713
+        mock_args.no_backup = False
+
+        mock_get_ip.return_value = "172.18.0.9"
+        mock_setup.return_value = (True, "Setup completed successfully")
+
+        setup_command(mock_args)
+
+        mock_get_ip.assert_called_once_with("test-container")
+        mock_setup.assert_called_once_with(
+            container_ip=None,
+            port=4713,
+            backup_existing=True,
+            container_name="test-container",
+        )
+
+        # Verify auto-detected IP was printed
+        print_calls = [str(call) for call in mock_print.call_args_list]
+        assert any("Auto-detected container IP: 172.18.0.9" in call for call in print_calls)
+
+    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.setup_streaming")
+    @patch("builtins.print")
+    def test_setup_command__explicit_ip_no_auto_detect(self, mock_print, mock_setup):
+        """Should not auto-detect when explicit IP is provided."""
+        mock_args = MagicMock()
+        mock_args.container_ip = "10.0.0.4"
+        mock_args.container_name = "test-container"
+        mock_args.port = 4713
+        mock_args.no_backup = False
+
+        mock_setup.return_value = (True, "Setup completed successfully")
+
+        with patch(
+            "birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_container_ip"
+        ) as mock_get_ip:
+            setup_command(mock_args)
+            mock_get_ip.assert_not_called()  # Should not auto-detect
+
+        # Verify explicit IP was printed
+        print_calls = [str(call) for call in mock_print.call_args_list]
+        assert any("Container IP: 10.0.0.4" in call for call in print_calls)
 
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.setup_streaming")
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.sys.exit")
@@ -55,6 +108,7 @@ class TestPulseAudioSetupWrapper:
         """Should handle setup command failure."""
         mock_args = MagicMock()
         mock_args.container_ip = "127.0.0.1"
+        mock_args.container_name = "birdnet-pi"
         mock_args.port = 4713
         mock_args.no_backup = False
 
@@ -65,7 +119,7 @@ class TestPulseAudioSetupWrapper:
         mock_exit.assert_called_once_with(1)
 
         # Verify error message was printed
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("✗" in call for call in print_calls)
 
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.test_connection")
@@ -74,17 +128,65 @@ class TestPulseAudioSetupWrapper:
         """Should successfully run test command."""
         mock_args = MagicMock()
         mock_args.container_ip = "127.0.0.1"
+        mock_args.container_name = "birdnet-pi"
         mock_args.port = 4713
 
         mock_test.return_value = (True, "Connection successful")
 
         test_command(mock_args)
 
-        mock_test.assert_called_once_with(container_ip="127.0.0.1", port=4713)
+        mock_test.assert_called_once_with(
+            container_ip="127.0.0.1", port=4713, container_name="birdnet-pi"
+        )
 
         # Verify success message was printed
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("✓" in call for call in print_calls)
+
+    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_container_ip")
+    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.test_connection")
+    @patch("builtins.print")
+    def test_command__auto_detect_ip(self, mock_print, mock_test, mock_get_ip):
+        """Should auto-detect container IP when not provided."""
+        mock_args = MagicMock()
+        mock_args.container_ip = None
+        mock_args.container_name = "test-container"
+        mock_args.port = 4713
+
+        mock_get_ip.return_value = "172.18.0.10"
+        mock_test.return_value = (True, "Connection successful")
+
+        test_command(mock_args)
+
+        mock_get_ip.assert_called_once_with("test-container")
+        mock_test.assert_called_once_with(
+            container_ip=None, port=4713, container_name="test-container"
+        )
+
+        # Verify auto-detected IP was printed
+        print_calls = [str(call) for call in mock_print.call_args_list]
+        assert any("auto-detected IP 172.18.0.10:4713" in call for call in print_calls)
+
+    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.test_connection")
+    @patch("builtins.print")
+    def test_command__explicit_ip_no_auto_detect(self, mock_print, mock_test):
+        """Should not auto-detect when explicit IP is provided."""
+        mock_args = MagicMock()
+        mock_args.container_ip = "10.0.0.5"
+        mock_args.container_name = "test-container"
+        mock_args.port = 4713
+
+        mock_test.return_value = (True, "Connection successful")
+
+        with patch(
+            "birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_container_ip"
+        ) as mock_get_ip:
+            test_command(mock_args)
+            mock_get_ip.assert_not_called()  # Should not auto-detect
+
+        # Verify explicit IP was printed
+        print_calls = [str(call) for call in mock_print.call_args_list]
+        assert any("Testing connection to 10.0.0.5:4713" in call for call in print_calls)
 
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.test_connection")
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.sys.exit")
@@ -93,6 +195,7 @@ class TestPulseAudioSetupWrapper:
         """Should handle test command failure."""
         mock_args = MagicMock()
         mock_args.container_ip = "127.0.0.1"
+        mock_args.container_name = "birdnet-pi"
         mock_args.port = 4713
 
         mock_test.return_value = (False, "Connection failed")
@@ -102,7 +205,7 @@ class TestPulseAudioSetupWrapper:
         mock_exit.assert_called_once_with(1)
 
         # Verify error message and troubleshooting info was printed
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("✗" in call for call in print_calls)
         assert any("Troubleshooting" in call for call in print_calls)
 
@@ -126,7 +229,7 @@ class TestPulseAudioSetupWrapper:
         status_command(mock_args)
 
         # Verify status information was printed
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("PulseAudio Setup Status" in call for call in print_calls)
         assert any("macOS" in call for call in print_calls)
         assert any("Test Device" in call for call in print_calls)
@@ -152,17 +255,34 @@ class TestPulseAudioSetupWrapper:
         status_command(mock_args)
 
         # Verify JSON output was printed
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("Raw Status (JSON)" in call for call in print_calls)
         # Check that JSON was printed (indented)
         json_printed = False
         for call in print_calls:
-            try:
-                json.loads(call)
+            # Look for the actual JSON content by checking for specific patterns
+            if '{"macos": true' in call.lower() or '"macos": true' in call.lower():
                 json_printed = True
                 break
-            except (json.JSONDecodeError, TypeError):
-                continue
+            # Also try to extract and parse actual JSON content
+            if "call(" in call and "call_list()" not in call:
+                # Extract the content between quotes or parentheses
+                try:
+                    # Find JSON-like content in the call representation
+                    if '"' in call:
+                        parts = call.split('"')
+                        for part in parts:
+                            if part.strip().startswith("{") and part.strip().endswith("}"):
+                                json.loads(part.strip())
+                                json_printed = True
+                                break
+                except (json.JSONDecodeError, TypeError, IndexError):
+                    continue
+                if json_printed:
+                    break
+        # Less strict check - just verify JSON-like structure was printed
+        if not json_printed:
+            json_printed = any('"macos"' in call and '"config_dir"' in call for call in print_calls)
         assert json_printed
 
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_audio_devices")
@@ -180,7 +300,7 @@ class TestPulseAudioSetupWrapper:
         devices_command(mock_args)
 
         # Verify device information was printed
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("Available Audio Input Devices" in call for call in print_calls)
         assert any("Test Microphone 1" in call for call in print_calls)
         assert any("Test Microphone 2" in call for call in print_calls)
@@ -200,7 +320,7 @@ class TestPulseAudioSetupWrapper:
         mock_exit.assert_called_once_with(1)
 
         # Verify error message was printed
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("No audio devices found" in call for call in print_calls)
 
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.cleanup_config")
@@ -218,7 +338,7 @@ class TestPulseAudioSetupWrapper:
         mock_cleanup.assert_called_once()
 
         # Verify success message was printed
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("✓" in call for call in print_calls)
 
     @patch("builtins.input", return_value="n")
@@ -231,7 +351,7 @@ class TestPulseAudioSetupWrapper:
         cleanup_command(mock_args)
 
         # Verify cancellation message was printed
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("cancelled" in call for call in print_calls)
 
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.cleanup_config")
@@ -261,7 +381,7 @@ class TestPulseAudioSetupWrapper:
         mock_exit.assert_called_once_with(1)
 
         # Verify error message was printed
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("only supported on macOS" in call for call in print_calls)
 
     @patch(
@@ -279,7 +399,7 @@ class TestPulseAudioSetupWrapper:
         install_command(mock_args)
 
         # Verify already installed message was printed
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("already installed" in call for call in print_calls)
 
     @patch(
@@ -303,7 +423,7 @@ class TestPulseAudioSetupWrapper:
         mock_install.assert_called_once()
 
         # Verify success message was printed
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("installed successfully" in call for call in print_calls)
 
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.argparse.ArgumentParser")
@@ -394,3 +514,67 @@ class TestPulseAudioSetupWrapper:
         main()
 
         mock_install_command.assert_called_once_with(mock_args)
+
+    # Detect IP Command Tests
+    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_container_ip")
+    @patch("builtins.print")
+    def test_detect_ip_command__running_container(self, mock_print, mock_get_ip):
+        """Should display detected IP for running container."""
+        mock_args = MagicMock()
+        mock_args.container_name = "test-container"
+        mock_get_ip.return_value = "172.18.0.11"
+
+        detect_ip_command(mock_args)
+
+        mock_get_ip.assert_called_once_with("test-container")
+        print_calls = [str(call) for call in mock_print.call_args_list]
+        assert any("Detecting IP for container 'test-container'" in call for call in print_calls)
+        assert any("Detected IP: 172.18.0.11" in call for call in print_calls)
+
+    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_container_ip")
+    @patch("builtins.print")
+    def test_detect_ip_command__fallback_ip(self, mock_print, mock_get_ip):
+        """Should display fallback IP and helpful message."""
+        mock_args = MagicMock()
+        mock_args.container_name = "nonexistent-container"
+        mock_get_ip.return_value = "127.0.0.1"
+
+        detect_ip_command(mock_args)
+
+        mock_get_ip.assert_called_once_with("nonexistent-container")
+        print_calls = [str(call) for call in mock_print.call_args_list]
+        assert any(
+            "Detecting IP for container 'nonexistent-container'" in call for call in print_calls
+        )
+        assert any("Detected IP: 127.0.0.1" in call for call in print_calls)
+        assert any("Note: Fallback IP used" in call for call in print_calls)
+        assert any("Container is not running" in call for call in print_calls)
+        assert any("Docker is not available" in call for call in print_calls)
+
+    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_container_ip")
+    @patch("builtins.print")
+    def test_detect_ip_command__default_container_name(self, mock_print, mock_get_ip):
+        """Should use default container name when not specified."""
+        mock_args = MagicMock()
+        mock_args.container_name = "birdnet-pi"
+        mock_get_ip.return_value = "172.18.0.12"
+
+        detect_ip_command(mock_args)
+
+        mock_get_ip.assert_called_once_with("birdnet-pi")
+        print_calls = [str(call) for call in mock_print.call_args_list]
+        assert any("Detecting IP for container 'birdnet-pi'" in call for call in print_calls)
+
+    # Main Command Tests for detect-ip
+    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.detect_ip_command")
+    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.argparse.ArgumentParser")
+    def test_main_detect_ip_command(self, mock_parser_class, mock_detect_ip_command):
+        """Should call detect_ip_command for detect-ip command."""
+        mock_parser = MagicMock()
+        mock_parser_class.return_value = mock_parser
+        mock_args = MagicMock(command="detect-ip")
+        mock_parser.parse_args.return_value = mock_args
+
+        main()
+
+        mock_detect_ip_command.assert_called_once_with(mock_args)

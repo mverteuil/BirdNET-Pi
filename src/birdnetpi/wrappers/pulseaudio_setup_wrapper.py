@@ -14,7 +14,11 @@ from birdnetpi.utils.pulseaudio_setup import PulseAudioSetup
 def setup_command(args: argparse.Namespace) -> None:
     """Set up PulseAudio for container streaming."""
     print("Setting up PulseAudio for container streaming...")
-    print(f"Container IP: {args.container_ip}")
+    if args.container_ip:
+        print(f"Container IP: {args.container_ip}")
+    else:
+        detected_ip = PulseAudioSetup.get_container_ip(args.container_name)
+        print(f"Auto-detected container IP: {detected_ip}")
     print(f"Port: {args.port}")
     print()
 
@@ -22,6 +26,7 @@ def setup_command(args: argparse.Namespace) -> None:
         container_ip=args.container_ip,
         port=args.port,
         backup_existing=not args.no_backup,
+        container_name=args.container_name,
     )
 
     if success:
@@ -38,11 +43,16 @@ def setup_command(args: argparse.Namespace) -> None:
 
 def test_command(args: argparse.Namespace) -> None:
     """Test connection to container PulseAudio service."""
-    print(f"Testing connection to {args.container_ip}:{args.port}...")
+    if args.container_ip:
+        print(f"Testing connection to {args.container_ip}:{args.port}...")
+    else:
+        detected_ip = PulseAudioSetup.get_container_ip(args.container_name)
+        print(f"Testing connection to auto-detected IP {detected_ip}:{args.port}...")
 
     success, message = PulseAudioSetup.test_connection(
         container_ip=args.container_ip,
         port=args.port,
+        container_name=args.container_name,
     )
 
     if success:
@@ -130,6 +140,20 @@ def cleanup_command(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def detect_ip_command(args: argparse.Namespace) -> None:
+    """Detect and display container IP address."""
+    print(f"Detecting IP for container '{args.container_name}'...")
+    container_ip = PulseAudioSetup.get_container_ip(args.container_name)
+    print(f"Detected IP: {container_ip}")
+
+    if container_ip == "127.0.0.1":
+        print("\nNote: Fallback IP used. This may indicate:")
+        print("- Container is not running")
+        print("- Docker is not available")
+        print("- Container name is incorrect")
+        print("- Container is using host networking")
+
+
 def install_command(args: argparse.Namespace) -> None:
     """Install PulseAudio via Homebrew."""
     if not PulseAudioSetup.is_macos():
@@ -164,11 +188,17 @@ Examples:
   # Install PulseAudio (macOS only)
   pulseaudio-setup install
 
-  # Setup streaming to container on localhost
+  # Setup streaming to container (auto-detects IP)
   pulseaudio-setup setup
 
   # Setup streaming to specific container IP
   pulseaudio-setup setup --container-ip 192.168.1.100
+
+  # Setup streaming to different container
+  pulseaudio-setup setup --container-name my-container
+
+  # Auto-detect container IP
+  pulseaudio-setup detect-ip
 
   # Test connection to container
   pulseaudio-setup test
@@ -193,8 +223,12 @@ Examples:
     setup_parser = subparsers.add_parser("setup", help="Configure PulseAudio streaming")
     setup_parser.add_argument(
         "--container-ip",
-        default="127.0.0.1",
-        help="IP address of the container (default: 127.0.0.1)",
+        help="IP address of the container (auto-detected if not specified)",
+    )
+    setup_parser.add_argument(
+        "--container-name",
+        default="birdnet-pi",
+        help="Docker container name for auto-detection (default: birdnet-pi)",
     )
     setup_parser.add_argument(
         "--port",
@@ -212,8 +246,12 @@ Examples:
     test_parser = subparsers.add_parser("test", help="Test connection to container PulseAudio")
     test_parser.add_argument(
         "--container-ip",
-        default="127.0.0.1",
-        help="IP address of the container (default: 127.0.0.1)",
+        help="IP address of the container (auto-detected if not specified)",
+    )
+    test_parser.add_argument(
+        "--container-name",
+        default="birdnet-pi",
+        help="Docker container name for auto-detection (default: birdnet-pi)",
     )
     test_parser.add_argument(
         "--port",
@@ -246,6 +284,14 @@ Examples:
         help="Skip confirmation prompt",
     )
 
+    # Detect IP command
+    detect_parser = subparsers.add_parser("detect-ip", help="Show auto-detected container IP")
+    detect_parser.add_argument(
+        "--container-name",
+        default="birdnet-pi",
+        help="Docker container name to detect IP for (default: birdnet-pi)",
+    )
+
     args = parser.parse_args()
 
     if args.command == "install":
@@ -260,6 +306,8 @@ Examples:
         devices_command(args)
     elif args.command == "cleanup":
         cleanup_command(args)
+    elif args.command == "detect-ip":
+        detect_ip_command(args)
     else:
         parser.print_help()
 

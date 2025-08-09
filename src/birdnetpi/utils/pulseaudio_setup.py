@@ -4,6 +4,7 @@ This utility handles the configuration needed to stream audio from a macOS
 host to a PulseAudio service running in a Docker container.
 """
 
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -17,6 +18,98 @@ class PulseAudioSetup:
     def is_macos() -> bool:
         """Check if running on macOS."""
         return os.uname().sysname == "Darwin"
+
+    @staticmethod
+    def _get_container_ip_direct(container_name: str) -> str | None:
+        """Try to get container IP using docker inspect."""
+        try:
+            result = subprocess.run(
+                [
+                    "docker",
+                    "inspect",
+                    "-f",
+                    "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
+                    container_name,
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            ip = result.stdout.strip()
+            if ip and ip != "":
+                return ip
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
+        return None
+
+    @staticmethod
+    def _get_container_ip_from_network(container_name: str) -> str | None:
+        """Try to get container IP using docker network inspect."""
+        try:
+            result = subprocess.run(
+                ["docker", "network", "ls", "--format", "json"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            # Find the network associated with the container
+            for line in result.stdout.strip().split("\n"):
+                if line.strip():
+                    network = json.loads(line)
+                    if container_name.replace("-", "") in network.get("Name", "").replace("-", ""):
+                        ip = PulseAudioSetup._inspect_network_for_container_ip(
+                            network["Name"], container_name
+                        )
+                        if ip:
+                            return ip
+        except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError, KeyError):
+            pass
+        return None
+
+    @staticmethod
+    def _inspect_network_for_container_ip(network_name: str, container_name: str) -> str | None:
+        """Inspect a specific network for container IP."""
+        try:
+            network_result = subprocess.run(
+                ["docker", "inspect", network_name],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            network_data = json.loads(network_result.stdout)[0]
+            containers = network_data.get("Containers", {})
+            for container_data in containers.values():
+                if container_name in container_data.get("Name", ""):
+                    ip = container_data.get("IPv4Address", "").split("/")[0]
+                    if ip:
+                        return ip
+        except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError, IndexError):
+            pass
+        return None
+
+    @staticmethod
+    def get_container_ip(container_name: str = "birdnet-pi") -> str:
+        """Get the IP address of a Docker container automatically.
+
+        Args:
+            container_name: Name of the Docker container
+
+        Returns:
+            Container IP address, or "127.0.0.1" as fallback
+        """
+        # Try docker inspect first (most reliable for running containers)
+        ip = PulseAudioSetup._get_container_ip_direct(container_name)
+        if ip:
+            return ip
+
+        # Fallback: use docker network inspect
+        ip = PulseAudioSetup._get_container_ip_from_network(container_name)
+        if ip:
+            return ip
+
+        # Container not found or Docker not available - return fallback for local development
+        return "127.0.0.1"
 
     @staticmethod
     def is_pulseaudio_installed() -> bool:
@@ -72,11 +165,16 @@ class PulseAudioSetup:
 
     @staticmethod
     def create_server_config(
-        container_ip: str = "127.0.0.1",
+        container_ip: str | None = None,
         port: int = 4713,
         enable_network: bool = True,
+        container_name: str = "birdnet-pi",
     ) -> Path:
         """Create PulseAudio server configuration for network streaming."""
+        # Auto-detect container IP if not provided
+        if container_ip is None:
+            container_ip = PulseAudioSetup.get_container_ip(container_name)
+
         config_dir = PulseAudioSetup.get_pulseaudio_config_dir()
 
         # Create default.pa configuration
@@ -184,8 +282,14 @@ realtime-priority = 5
             return False, "PulseAudio not found in PATH"
 
     @staticmethod
-    def test_connection(container_ip: str = "127.0.0.1", port: int = 4713) -> tuple[bool, str]:
+    def test_connection(
+        container_ip: str | None = None, port: int = 4713, container_name: str = "birdnet-pi"
+    ) -> tuple[bool, str]:
         """Test connection to PulseAudio server in container."""
+        # Auto-detect container IP if not provided
+        if container_ip is None:
+            container_ip = PulseAudioSetup.get_container_ip(container_name)
+
         try:
             # Use pactl to test connection
             env = os.environ.copy()
@@ -239,11 +343,16 @@ realtime-priority = 5
 
     @staticmethod
     def setup_streaming(
-        container_ip: str = "127.0.0.1",
+        container_ip: str | None = None,
         port: int = 4713,
         backup_existing: bool = True,
+        container_name: str = "birdnet-pi",
     ) -> tuple[bool, str]:
         """Complete setup for PulseAudio streaming to container."""
+        # Auto-detect container IP if not provided
+        if container_ip is None:
+            container_ip = PulseAudioSetup.get_container_ip(container_name)
+
         if not PulseAudioSetup.is_macos():
             return False, "This utility only supports macOS"
 
@@ -256,7 +365,9 @@ realtime-priority = 5
                 PulseAudioSetup.backup_existing_config()
 
             # Create server configuration
-            config_dir = PulseAudioSetup.create_server_config(container_ip, port)
+            config_dir = PulseAudioSetup.create_server_config(
+                container_ip, port, container_name=container_name
+            )
 
             # Create authentication cookie
             PulseAudioSetup.create_auth_cookie()
@@ -269,7 +380,10 @@ realtime-priority = 5
             if not success:
                 return False, f"Failed to start server: {message}"
 
-            return True, f"PulseAudio setup complete. Config in: {config_dir}"
+            return (
+                True,
+                f"PulseAudio setup complete. Config in: {config_dir}\nContainer IP: {container_ip}",
+            )
 
         except Exception as e:
             return False, f"Setup failed: {e!s}"

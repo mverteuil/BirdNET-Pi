@@ -39,7 +39,9 @@ def app_with_admin_view_routes(tmp_path):
         """Mock SQLAdmin setup that does nothing."""
         return Mock()
 
-    with patch("birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin", side_effect=mock_setup_sqladmin):
+    with patch(
+        "birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin", side_effect=mock_setup_sqladmin
+    ):
         # Create the app using the factory
         app = create_app()
 
