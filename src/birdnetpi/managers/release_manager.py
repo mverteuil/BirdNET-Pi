@@ -135,6 +135,32 @@ class ReleaseManager:
             print(f"Pushing tag: {tag_name}")
             self._run_git_command(["push", "origin", tag_name])
 
+            # Create GitHub release for the asset tag
+            print(f"Creating GitHub release for {tag_name}")
+            release_notes = self._generate_release_notes(config)
+            try:
+                subprocess.run(
+                    [
+                        "gh",
+                        "release",
+                        "create",
+                        tag_name,
+                        "--title",
+                        f"Assets Release {config.version}",
+                        "--notes",
+                        release_notes,
+                        "--target",
+                        commit_sha,
+                    ],
+                    check=True,
+                )
+                print(f"GitHub release created: {tag_name}")
+            except subprocess.CalledProcessError as e:
+                print(f"Warning: Failed to create GitHub release: {e}")
+                print(
+                    "The tag was created successfully, but you may need to create the release manually"
+                )
+
             return commit_sha
 
     def _copy_assets_to_branch(self, assets: list[ReleaseAsset]) -> None:
@@ -191,6 +217,34 @@ class ReleaseManager:
                 except subprocess.CalledProcessError as e:
                     print(f"Warning: Could not return to original branch {original_branch}: {e}")
                     print("You may need to manually checkout the correct branch")
+
+    def _generate_release_notes(self, config: ReleaseConfig) -> str:
+        """Generate release notes for the asset release."""
+        notes = [f"BirdNET-Pi assets release {config.version}\n"]
+        notes.append("## Included Assets\n")
+
+        for asset in config.assets:
+            notes.append(f"- **{asset.target_name}**: {asset.description}")
+
+        notes.append("\n## Installation\n")
+        notes.append("```bash")
+        notes.append("export BIRDNETPI_DATA=./data")
+
+        # Build command based on included assets
+        cmd_parts = ["uv run asset-installer install", config.version]
+        if any("models" in asset.target_name for asset in config.assets):
+            cmd_parts.append("--include-models")
+        if any("ioc_reference.db" in asset.target_name for asset in config.assets):
+            cmd_parts.append("--include-ioc-db")
+        if any("avibase_database.db" in asset.target_name for asset in config.assets):
+            cmd_parts.append("--include-avibase-db")
+        if any("patlevin_database.db" in asset.target_name for asset in config.assets):
+            cmd_parts.append("--include-patlevin-db")
+
+        notes.append(" ".join(cmd_parts))
+        notes.append("```")
+
+        return "\n".join(notes)
 
     def _build_release_info(self, config: ReleaseConfig, commit_sha: str) -> dict[str, Any]:
         """Build the release information dictionary."""
