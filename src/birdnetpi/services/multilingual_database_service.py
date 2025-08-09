@@ -86,25 +86,35 @@ class MultilingualDatabaseService:
         Returns:
             Dictionary with common_name, source, and metadata
         """
-        # Build COALESCE query based on available databases
+        select_parts, join_parts = self._build_query_parts(language_code)
+
+        if not select_parts:
+            return {"common_name": None, "source": None}
+
+        query = self._build_coalesce_query(select_parts, join_parts, language_code)
+
+        result = session.execute(
+            text(query), {"sci_name": scientific_name, "lang": language_code}
+        ).fetchone()
+
+        if result:
+            return {"common_name": result[0], "source": result[1]}
+        return {"common_name": None, "source": None}
+
+    def _build_query_parts(self, language_code: str) -> tuple[list[str], list[str]]:
+        """Build query parts for common name lookup based on available databases.
+
+        Args:
+            language_code: Language code for translation
+
+        Returns:
+            Tuple of (select_parts, join_parts) for the query
+        """
         select_parts = []
         join_parts = []
 
         if "ioc" in self.databases_available:
-            # IOC only has English names in the species table
-            if language_code == "en":
-                select_parts.append("ioc_species.english_name")
-                join_parts.append(
-                    """LEFT JOIN ioc.species ioc_species
-                       ON LOWER(ioc_species.scientific_name) = LOWER(:sci_name)"""
-                )
-            # IOC translations in separate table
-            select_parts.append("ioc_trans.common_name")
-            join_parts.append(
-                """LEFT JOIN ioc.translations ioc_trans
-                   ON LOWER(ioc_trans.scientific_name) = LOWER(:sci_name)
-                   AND ioc_trans.language_code = :lang"""
-            )
+            self._add_ioc_query_parts(select_parts, join_parts, language_code)
 
         if "patlevin" in self.databases_available:
             select_parts.append("patlevin.common_name")
@@ -122,26 +132,50 @@ class MultilingualDatabaseService:
                    AND avibase.language_code = :lang"""
             )
 
-        if not select_parts:
-            return {"common_name": None, "source": None}
+        return select_parts, join_parts
 
-        # Build the query
+    def _add_ioc_query_parts(
+        self, select_parts: list[str], join_parts: list[str], language_code: str
+    ) -> None:
+        """Add IOC database query parts to select and join lists.
+
+        Args:
+            select_parts: List to append select expressions to
+            join_parts: List to append join expressions to
+            language_code: Language code for translation
+        """
+        # IOC only has English names in the species table
+        if language_code == "en":
+            select_parts.append("ioc_species.english_name")
+            join_parts.append(
+                """LEFT JOIN ioc.species ioc_species
+                   ON LOWER(ioc_species.scientific_name) = LOWER(:sci_name)"""
+            )
+        # IOC translations in separate table
+        select_parts.append("ioc_trans.common_name")
+        join_parts.append(
+            """LEFT JOIN ioc.translations ioc_trans
+               ON LOWER(ioc_trans.scientific_name) = LOWER(:sci_name)
+               AND ioc_trans.language_code = :lang"""
+        )
+
+    def _build_coalesce_query(
+        self, select_parts: list[str], join_parts: list[str], language_code: str
+    ) -> str:
+        """Build the final COALESCE query with source detection.
+
+        Args:
+            select_parts: List of select expressions
+            join_parts: List of join expressions
+            language_code: Language code for source detection
+
+        Returns:
+            Complete SQL query string
+        """
         coalesce_expr = f"COALESCE({', '.join(select_parts)})"
+        source_expr = self._build_source_expression(language_code)
 
-        # Determine source
-        source_cases = []
-        if "ioc" in self.databases_available:
-            if language_code == "en":
-                source_cases.append("WHEN ioc_species.english_name IS NOT NULL THEN 'IOC'")
-            source_cases.append("WHEN ioc_trans.common_name IS NOT NULL THEN 'IOC'")
-        if "patlevin" in self.databases_available:
-            source_cases.append("WHEN patlevin.common_name IS NOT NULL THEN 'PatLevin'")
-        if "avibase" in self.databases_available:
-            source_cases.append("WHEN avibase.common_name IS NOT NULL THEN 'Avibase'")
-
-        source_expr = f"CASE {' '.join(source_cases)} ELSE NULL END"
-
-        query = f"""
+        return f"""
             SELECT
                 {coalesce_expr} as common_name,
                 {source_expr} as source
@@ -149,13 +183,29 @@ class MultilingualDatabaseService:
             {" ".join(join_parts)}
         """
 
-        result = session.execute(
-            text(query), {"sci_name": scientific_name, "lang": language_code}
-        ).fetchone()
+    def _build_source_expression(self, language_code: str) -> str:
+        """Build CASE expression for source detection.
 
-        if result:
-            return {"common_name": result[0], "source": result[1]}
-        return {"common_name": None, "source": None}
+        Args:
+            language_code: Language code for IOC English name detection
+
+        Returns:
+            SQL CASE expression string
+        """
+        source_cases = []
+
+        if "ioc" in self.databases_available:
+            if language_code == "en":
+                source_cases.append("WHEN ioc_species.english_name IS NOT NULL THEN 'IOC'")
+            source_cases.append("WHEN ioc_trans.common_name IS NOT NULL THEN 'IOC'")
+
+        if "patlevin" in self.databases_available:
+            source_cases.append("WHEN patlevin.common_name IS NOT NULL THEN 'PatLevin'")
+
+        if "avibase" in self.databases_available:
+            source_cases.append("WHEN avibase.common_name IS NOT NULL THEN 'Avibase'")
+
+        return f"CASE {' '.join(source_cases)} ELSE NULL END"
 
     def get_all_translations(
         self, session: Session, scientific_name: str
