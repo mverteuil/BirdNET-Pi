@@ -113,7 +113,7 @@ class Container(containers.DeclarativeContainer):
     # Core business services - singletons
     file_manager = providers.Singleton(
         FileManager,
-        base_path=file_resolver.provided.data_dir,
+        file_resolver=file_resolver,
     )
 
     detection_manager = providers.Singleton(
