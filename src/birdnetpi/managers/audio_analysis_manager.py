@@ -18,8 +18,8 @@ from birdnetpi.utils.file_path_resolver import FilePathResolver
 logger = logging.getLogger(__name__)
 
 
-class AudioAnalysisService:
-    """Service for processing audio data for analysis."""
+class AudioAnalysisManager:
+    """Manager for orchestrating audio data analysis workflows."""
 
     def __init__(
         self,
@@ -29,7 +29,7 @@ class AudioAnalysisService:
         detection_buffer_max_size: int = 1000,
         buffer_flush_interval: float = 5.0,
     ) -> None:
-        logger.info("AudioAnalysisService initialized.")
+        logger.info("AudioAnalysisManager initialized.")
         self.file_manager = file_manager
         self.file_path_resolver = file_path_resolver
         self.config = config

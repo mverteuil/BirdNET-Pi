@@ -1,21 +1,21 @@
-"""Tests for the HardwareMonitorService."""
+"""Tests for the HardwareMonitorManager."""
 
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from birdnetpi.services.hardware_monitor_service import (
+from birdnetpi.managers.hardware_monitor_manager import (
     ComponentStatus,
-    HardwareMonitorService,
+    HardwareMonitorManager,
     HealthStatus,
 )
 
 
 @pytest.fixture
 def hardware_monitor():
-    """Create a HardwareMonitorService instance for testing."""
-    return HardwareMonitorService(
+    """Create a HardwareMonitorManager instance for testing."""
+    return HardwareMonitorManager(
         check_interval=0.1,  # Fast interval for testing
         audio_device_check=True,
         system_resource_check=True,
@@ -23,11 +23,11 @@ def hardware_monitor():
     )
 
 
-class TestHardwareMonitorService:
-    """Test the HardwareMonitorService class."""
+class TestHardwareMonitorManager:
+    """Test the HardwareMonitorManager class."""
 
     def test_initialization(self, hardware_monitor):
-        """Test that HardwareMonitorService initializes correctly."""
+        """Test that HardwareMonitorManager initializes correctly."""
         service = hardware_monitor
 
         assert service.check_interval == 0.1

@@ -1,1 +1,0 @@
-"""Tests for BirdNET-Pi data models."""

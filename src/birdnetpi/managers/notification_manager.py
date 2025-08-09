@@ -13,8 +13,8 @@ from birdnetpi.utils.signals import detection_signal
 logger = logging.getLogger(__name__)
 
 
-class NotificationService:
-    """Handles sending notifications for detection events."""
+class NotificationManager:
+    """Orchestrates sending notifications for detection events across multiple channels."""
 
     def __init__(
         self,
@@ -31,7 +31,7 @@ class NotificationService:
     def register_listeners(self) -> None:
         """Register Blinker signal listeners."""
         detection_signal.connect(self._handle_detection_event)
-        logger.info("NotificationService listeners registered.")
+        logger.info("NotificationManager listeners registered.")
 
     def add_websocket(self, websocket: WebSocket) -> None:
         """Add a WebSocket to the active connections set."""
@@ -47,7 +47,7 @@ class NotificationService:
 
     def _handle_detection_event(self, sender: object, detection: Detection) -> None:
         """Handle a new detection event by sending notifications."""
-        logger.info(f"NotificationService received detection: {detection.get_display_name()}")
+        logger.info(f"NotificationManager received detection: {detection.get_display_name()}")
 
         # Send WebSocket notifications to connected clients
         if self.active_websockets:

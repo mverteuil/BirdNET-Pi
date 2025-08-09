@@ -1,6 +1,6 @@
-"""Hardware monitoring service for field deployments.
+"""Hardware monitoring manager for field deployments.
 
-This service monitors hardware components like microphones, GPS devices,
+This manager orchestrates monitoring of hardware components like microphones, GPS devices,
 and system resources to provide real-time status and alert on failures.
 """
 
@@ -35,8 +35,8 @@ class ComponentStatus(NamedTuple):
     details: dict[str, Any] | None = None
 
 
-class HardwareMonitorService:
-    """Monitors hardware components and system resources."""
+class HardwareMonitorManager:
+    """Orchestrates monitoring of hardware components and system resources."""
 
     def __init__(
         self,
@@ -45,7 +45,7 @@ class HardwareMonitorService:
         system_resource_check: bool = True,
         gps_check: bool = False,
     ) -> None:
-        """Initialize hardware monitoring service.
+        """Initialize hardware monitoring manager.
 
         Args:
             check_interval: Time between hardware checks in seconds

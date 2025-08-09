@@ -11,7 +11,7 @@ import pytest
 
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.models.config import BirdNETConfig
-from birdnetpi.services.audio_analysis_service import AudioAnalysisService
+from birdnetpi.managers.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
@@ -90,12 +90,12 @@ def mock_config(test_config_data):
 def audio_analysis_service(
     mock_analysis_client_class, mock_file_manager, mock_file_path_resolver, mock_config
 ):
-    """Return an AudioAnalysisService instance with mocked dependencies."""
+    """Return an AudioAnalysisManager instance with mocked dependencies."""
     # Mock the BirdDetectionService constructor to avoid model loading
     mock_analysis_client = MagicMock()
     mock_analysis_client_class.return_value = mock_analysis_client
 
-    service = AudioAnalysisService(
+    service = AudioAnalysisManager(
         mock_file_manager,
         mock_file_path_resolver,
         mock_config,
@@ -147,8 +147,8 @@ def caplog_for_audio_analysis_service(caplog):
     yield
 
 
-class TestAudioAnalysisService:
-    """Test the AudioAnalysisService class."""
+class TestAudioAnalysisManager:
+    """Test the AudioAnalysisManager class."""
 
     async def test_init(
         self, audio_analysis_service, mock_file_manager, mock_file_path_resolver, mock_config
@@ -175,7 +175,7 @@ class TestAudioAnalysisService:
 
     @pytest.mark.asyncio
     @patch(
-        "birdnetpi.services.audio_analysis_service.AudioAnalysisService._analyze_audio_chunk",
+        "birdnetpi.services.audio_analysis_service.AudioAnalysisManager._analyze_audio_chunk",
         new_callable=AsyncMock,
     )
     async def test_process_audio_chunk_calls_analyze__buffer_full(
@@ -200,7 +200,7 @@ class TestAudioAnalysisService:
 
     @pytest.mark.asyncio
     @patch(
-        "birdnetpi.services.audio_analysis_service.AudioAnalysisService._send_detection_event",
+        "birdnetpi.services.audio_analysis_service.AudioAnalysisManager._send_detection_event",
         new_callable=AsyncMock,
     )
     async def test_analyze_audio_chunk__detections(
@@ -688,7 +688,7 @@ class TestDetectionBuffering:
 
         # Set a small max size for testing
         max_size = 5
-        service = AudioAnalysisService(
+        service = AudioAnalysisManager(
             audio_analysis_service.file_manager,
             audio_analysis_service.file_path_resolver,
             audio_analysis_service.config,

@@ -5,7 +5,7 @@ import pytest
 
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.models.database_models import Detection
-from birdnetpi.services.notification_service import NotificationService
+from birdnetpi.managers.notification_manager import NotificationManager
 
 
 @pytest.fixture
@@ -24,8 +24,8 @@ def mock_active_websockets():
 
 @pytest.fixture
 def notification_service(mock_active_websockets, mock_config):
-    """Provide a NotificationService instance for testing."""
-    service = NotificationService(active_websockets=mock_active_websockets, config=mock_config)
+    """Provide a NotificationManager instance for testing."""
+    service = NotificationManager(active_websockets=mock_active_websockets, config=mock_config)
     service.register_listeners()  # Listeners
     return service
 
@@ -42,7 +42,7 @@ def test_handle_detection_event_basic(notification_service, caplog):
         notification_service.active_websockets.add(Mock())  # Add a mock websocket
         notification_service._handle_detection_event(None, detection)
         assert (
-            f"NotificationService received detection: {detection.get_display_name()}" in caplog.text
+            f"NotificationManager received detection: {detection.get_display_name()}" in caplog.text
         )
 
 
@@ -59,5 +59,5 @@ def test_handle_detection_event__apprise_enabled(mock_config, notification_servi
         notification_service.active_websockets.add(Mock())  # Add a mock websocket
         notification_service._handle_detection_event(None, detection)
         assert (
-            f"NotificationService received detection: {detection.get_display_name()}" in caplog.text
+            f"NotificationManager received detection: {detection.get_display_name()}" in caplog.text
         )
