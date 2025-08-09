@@ -98,7 +98,6 @@ class DockerSupervisordStrategy(ServiceManagementStrategy):
 
     def _run_supervisorctl_command(self, action: str, service_name: str) -> None:
         try:
-            # Assuming supervisorctl is available in the PATH within the Docker container
             subprocess.run(["supervisorctl", action, service_name], check=True)
             print(f"Service {service_name} {action}ed successfully via supervisorctl.")
         except subprocess.CalledProcessError as e:

@@ -21,10 +21,17 @@ def main() -> None:
 
     # Check if database already has data
     if os.path.exists(db_path) and os.path.getsize(db_path) > 0:
-        bnp_database_service = DatabaseService(db_path)
-        detection_manager = DetectionManager(bnp_database_service)
-        if detection_manager.get_all_detections():
-            print("Database already contains data. Skipping dummy data generation.")
+        print(f"Database file exists and is {os.path.getsize(db_path)} bytes.")
+        try:
+            bnp_database_service = DatabaseService(db_path)
+            detection_manager = DetectionManager(bnp_database_service)
+            if detection_manager.get_all_detections():
+                print("Database already contains data. Skipping dummy data generation.")
+                return
+        except Exception as e:
+            print(f"Warning: Could not check existing data due to database lock: {e}")
+            print("Database appears to be in use. Cannot generate dummy data while services are running.")
+            print("Please ensure all BirdNET-Pi services are stopped before running dummy data generation.")
             return
 
     # Check if FastAPI is running

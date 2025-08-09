@@ -83,7 +83,7 @@ generate-dummy-data = "birdnetpi.wrappers.generate_dummy_data:main"
 pulseaudio-setup = "birdnetpi.wrappers.pulseaudio_setup_wrapper:main"
 release-manager = "birdnetpi.wrappers.release_wrapper:main"
 reporting-manager = "birdnetpi.wrappers.reporting_manager_wrapper:main"
-spectrogram-websocket-daemon = "birdnetpi.wrappers.spectrogram_websocket_daemon"
+spectrogram-websocket-daemon = "birdnetpi.wrappers.spectrogram_websocket_daemon:main"
 
 [tool.coverage.run]
 omit = ["tests/*", "*/dependency_injector/*"]
