@@ -64,7 +64,9 @@ class SpeciesParser:
         """Get IOC canonical common name if database service is available."""
         if self.ioc_database:
             species = self.ioc_database.get_species_by_scientific_name(scientific_name)
-            return species.english_name if species and hasattr(species, 'english_name') else None
+            if species:
+                english_name = getattr(species, "english_name", None)
+                return english_name if isinstance(english_name, str) else None
         return None
 
     @staticmethod

@@ -4,7 +4,12 @@ This service handles all species name display formatting based on user configura
 providing a clean separation between data objects and presentation logic.
 """
 
+from typing import TYPE_CHECKING
+
 from birdnetpi.models.config import BirdNETConfig
+
+if TYPE_CHECKING:
+    from birdnetpi.services.detection_query_service import DetectionWithLocalization
 
 
 class SpeciesDisplayService:

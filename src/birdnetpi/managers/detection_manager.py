@@ -8,7 +8,10 @@ from sqlalchemy.sql import func
 from birdnetpi.models.database_models import AudioFile, Detection
 from birdnetpi.models.detection_event import DetectionEvent
 from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.services.detection_query_service import DetectionQueryService, DetectionWithLocalization
+from birdnetpi.services.detection_query_service import (
+    DetectionQueryService,
+    DetectionWithLocalization,
+)
 from birdnetpi.utils.signals import detection_signal
 
 
@@ -401,7 +404,7 @@ class DetectionManager:
         since: datetime.datetime | None = None,
         scientific_name_filter: str | None = None,
         family_filter: str | None = None,
-    ) -> list[DetectionWithIOCData]:
+    ) -> list[DetectionWithLocalization]:
         """Get detections with IOC species and translation data.
 
         This method uses the DetectionQueryService to join detection data with IOC
@@ -417,7 +420,7 @@ class DetectionManager:
             family_filter: Filter by taxonomic family
 
         Returns:
-            List of DetectionWithIOCData objects
+            List of DetectionWithLocalization objects
         """
         if not self.detection_query_service:
             raise RuntimeError(

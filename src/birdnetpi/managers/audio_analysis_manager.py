@@ -176,7 +176,8 @@ class AudioAnalysisManager:
                     audio_bytes = (audio_chunk * 32767).astype(np.int16).tobytes()
                     await self._send_detection_event(species_components, confidence, audio_bytes)
                     logger.info(
-                        f"Bird detected: {species_components.scientific_name} (confidence: {confidence:.3f})"
+                        f"Bird detected: {species_components.scientific_name} "
+                        f"(confidence: {confidence:.3f})"
                     )
 
         except Exception as e:
@@ -257,5 +258,6 @@ class AudioAnalysisManager:
             buffer_size = len(self.detection_buffer)
 
         logger.info(
-            f"Buffered detection event for {species_components.scientific_name} (buffer size: {buffer_size})"
+            f"Buffered detection event for {species_components.scientific_name} "
+            f"(buffer size: {buffer_size})"
         )
