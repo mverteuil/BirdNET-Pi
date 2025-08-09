@@ -143,7 +143,7 @@ class TestProcessIOCFiles:
         process_ioc_files(xml_file, xlsx_file, output_file, compress=False, db_file=db_file)
 
         # Verify database service was called
-        mock_db_class.assert_called_once_with(str(db_file))
+        mock_db_class.assert_called_once_with(db_file)
         mock_ioc_database_service.populate_from_ioc_service.assert_called_once_with(
             mock_ioc_reference_service
         )

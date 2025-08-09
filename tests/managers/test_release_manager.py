@@ -38,10 +38,10 @@ def sample_assets(tmp_path):
 
     return [
         ReleaseAsset(
-            source_path=str(models_dir), target_name="data/models", description="BirdNET models"
+            source_path=models_dir, target_name="data/models", description="BirdNET models"
         ),
         ReleaseAsset(
-            source_path=str(db_file),
+            source_path=db_file,
             target_name="data/database/ioc_reference.db",
             description="IOC database",
         ),
@@ -66,12 +66,12 @@ class TestReleaseAsset:
     def test_release_asset_creation(self):
         """Should create ReleaseAsset with all fields."""
         asset = ReleaseAsset(
-            source_path="/path/to/source",
-            target_name="target_name",
+            source_path=Path("/path/to/source"),
+            target_name=Path("target_name"),
             description="Asset description",
         )
-        assert asset.source_path == "/path/to/source"
-        assert asset.target_name == "target_name"
+        assert asset.source_path == Path("/path/to/source")
+        assert asset.target_name == Path("target_name")
         assert asset.description == "Asset description"
 
 
@@ -80,7 +80,7 @@ class TestReleaseConfig:
 
     def test_release_config_creation(self):
         """Should create ReleaseConfig with all fields."""
-        assets = [ReleaseAsset("/source", "target", "desc")]
+        assets = [ReleaseAsset(Path("/source"), Path("target"), "desc")]
         config = ReleaseConfig(
             version="1.0.0",
             asset_branch_name="assets-v1.0.0",
@@ -96,7 +96,7 @@ class TestReleaseConfig:
 
     def test_release_config_optional_tag_name(self):
         """Should create ReleaseConfig with optional tag_name."""
-        assets = [ReleaseAsset("/source", "target", "desc")]
+        assets = [ReleaseAsset(Path("/source"), Path("target"), "desc")]
         config = ReleaseConfig(
             version="1.0.0",
             asset_branch_name="assets-v1.0.0",
@@ -129,7 +129,7 @@ class TestReleaseManager:
 
     def test_validate_assets_exist__missing_asset(self, release_manager):
         """Should raise FileNotFoundError for missing assets."""
-        missing_assets = [ReleaseAsset("/nonexistent/path", "target", "description")]
+        missing_assets = [ReleaseAsset(Path("/nonexistent/path"), Path("target"), "description")]
         with pytest.raises(FileNotFoundError, match="Missing assets"):
             release_manager._validate_assets_exist(missing_assets)
 
@@ -191,19 +191,19 @@ class TestReleaseManager:
         assert len(assets) == 4
 
         models_asset = assets[0]
-        assert models_asset.target_name == "data/models"
+        assert models_asset.target_name == Path("data/models")
         assert "BirdNET TensorFlow Lite models" in models_asset.description
 
         ioc_db_asset = assets[1]
-        assert ioc_db_asset.target_name == "data/database/ioc_reference.db"
+        assert ioc_db_asset.target_name == Path("data/database/ioc_reference.db")
         assert "IOC World Bird Names" in ioc_db_asset.description
 
         avibase_asset = assets[2]
-        assert avibase_asset.target_name == "data/database/avibase_database.db"
+        assert avibase_asset.target_name == Path("data/database/avibase_database.db")
         assert "Avibase multilingual" in avibase_asset.description
 
         patlevin_asset = assets[3]
-        assert patlevin_asset.target_name == "data/database/patlevin_database.db"
+        assert patlevin_asset.target_name == Path("data/database/patlevin_database.db")
         assert "Patrick Levin" in patlevin_asset.description
 
     def test_get_asset_path_dev_exists(self, release_manager, tmp_path):
@@ -213,12 +213,12 @@ class TestReleaseManager:
         dev_full_path.mkdir(parents=True)
 
         result = release_manager._get_asset_path(dev_path, "/prod/path")
-        assert result == str(dev_full_path)
+        assert result == dev_full_path
 
     def test_get_asset_path_dev_not_exists(self, release_manager):
         """Should use production path when dev path doesn't exist."""
         result = release_manager._get_asset_path("nonexistent/path", "/prod/path")
-        assert result == "/prod/path"
+        assert result == Path("/prod/path")
 
     @patch("subprocess.run")
     def test_run_command(self, mock_run, release_manager):
@@ -261,7 +261,7 @@ class TestReleaseManager:
         source_file = tmp_path / "source.txt"
         source_file.write_text("content")
 
-        assets = [ReleaseAsset(str(source_file), "target.txt", "description")]
+        assets = [ReleaseAsset(source_file, Path("target.txt"), "description")]
         release_manager._copy_assets_to_branch(assets)
 
         mock_copy2.assert_called_once()
@@ -276,7 +276,7 @@ class TestReleaseManager:
         source_dir = tmp_path / "source_dir"
         source_dir.mkdir()
 
-        assets = [ReleaseAsset(str(source_dir), "target_dir", "description")]
+        assets = [ReleaseAsset(source_dir, Path("target_dir"), "description")]
         release_manager._copy_assets_to_branch(assets)
 
         mock_copytree.assert_called_once()

@@ -16,14 +16,14 @@ from birdnetpi.services.database_service import DatabaseService
 def temp_db():
     """Create a temporary database for testing."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as temp_file:
-        db_path = temp_file.name
+        db_path = Path(temp_file.name)
 
     # Initialize the database
     DatabaseService(db_path)
     yield db_path
 
     # Cleanup
-    Path(db_path).unlink(missing_ok=True)
+    db_path.unlink(missing_ok=True)
 
 
 @pytest.fixture

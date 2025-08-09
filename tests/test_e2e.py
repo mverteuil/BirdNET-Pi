@@ -1,4 +1,5 @@
 import subprocess
+import time
 from collections.abc import Generator
 from typing import Any
 
@@ -33,6 +34,19 @@ def test_sqladmin_detection_list_e2e(docker_compose_up_down: Any) -> None:
     subprocess.run(
         ["docker", "exec", "birdnet-pi", "/opt/birdnetpi/.venv/bin/generate-dummy-data"], check=True
     )
+
+    # Wait for the FastAPI service to be fully ready after restart
+    # Retry the basic endpoint first to ensure the service is up
+    for attempt in range(10):
+        try:
+            health_check = httpx.get("http://localhost:8000/", timeout=3)
+            if health_check.status_code == 200:
+                break
+        except Exception:
+            pass
+        time.sleep(2)
+    else:
+        pytest.fail("FastAPI service did not become ready after dummy data generation")
 
     response = httpx.get("http://localhost:8000/admin/database/detection/list")
     assert response.status_code == 200

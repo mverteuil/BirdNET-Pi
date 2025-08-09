@@ -104,7 +104,7 @@ class TestIOCDatabaseServiceInitialization:
         """Should initialize service and create database schema."""
         service = IOCDatabaseService(temp_db_path)
 
-        assert service.db_path == temp_db_path
+        assert str(service.db_path) == temp_db_path
         assert os.path.exists(temp_db_path)
         assert service.engine is not None
         assert service.session_local is not None
@@ -116,7 +116,7 @@ class TestIOCDatabaseServiceInitialization:
         service = IOCDatabaseService(db_path)
 
         assert os.path.exists(os.path.dirname(db_path))
-        assert service.db_path == db_path
+        assert str(service.db_path) == db_path
 
 
 class TestPopulateFromIOCService:
@@ -551,7 +551,7 @@ class TestCreateIOCDatabaseFromFiles:
 
         # Verify returned service
         assert isinstance(result, IOCDatabaseService)
-        assert result.db_path == db_path
+        assert str(result.db_path) == db_path
 
 
 class TestLanguageNameMapping:

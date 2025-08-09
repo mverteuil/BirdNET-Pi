@@ -90,7 +90,7 @@ class BirdDetectionService:
         # case
         if model_path is None:
             raise ValueError(f"Model path not found for model: {self.model_name}")
-        self.interpreter = tflite.Interpreter(model_path=model_path, num_threads=2)  # type: ignore[attr-defined]
+        self.interpreter = tflite.Interpreter(model_path=str(model_path), num_threads=2)  # type: ignore[attr-defined]
         self.interpreter.allocate_tensors()  # type: ignore[union-attr]
 
         if self.interpreter is None:
@@ -136,7 +136,7 @@ class BirdDetectionService:
                 f"Model path not found for metadata model: {self.config.metadata_model}"
             )
 
-        self.metadata_interpreter = tflite.Interpreter(model_path=model_path)  # type: ignore[attr-defined]
+        self.metadata_interpreter = tflite.Interpreter(model_path=str(model_path))  # type: ignore[attr-defined]
         self.metadata_interpreter.allocate_tensors()  # type: ignore[union-attr]
 
         if self.metadata_interpreter is None:

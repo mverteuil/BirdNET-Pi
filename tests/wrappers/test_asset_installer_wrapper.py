@@ -136,13 +136,23 @@ class TestInstallAssets:
             data = json.load(f)
         assert data == test_download_result["partial"]
 
+    @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
     @patch("birdnetpi.wrappers.asset_installer_wrapper.sys.exit")
-    def test_install_assets___no_types_specified(self, mock_exit, test_install_args):
+    def test_install_assets___no_types_specified(
+        self, mock_exit, mock_update_manager_class, test_install_args
+    ):
         """Should exit with error when no asset types specified."""
+        # Setup mock manager to ensure it's not called for downloads
+        mock_manager = MagicMock()
+        mock_update_manager_class.return_value = mock_manager
+
         install_assets(test_install_args["none"])
 
         # Should exit with status 1 for no asset types
         mock_exit.assert_called_with(1)
+        # UpdateManager should be instantiated but not call download_release_assets
+        mock_update_manager_class.assert_called_once()
+        mock_manager.download_release_assets.assert_not_called()
 
     @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
     @patch("birdnetpi.wrappers.asset_installer_wrapper.sys.exit")

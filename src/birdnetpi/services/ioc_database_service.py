@@ -28,13 +28,13 @@ from birdnetpi.services.ioc_reference_service import IOCReferenceService
 class IOCDatabaseService:
     """Service for IOC reference database operations."""
 
-    def __init__(self, db_path: Path):
+    def __init__(self, db_path: Path | str):
         """Initialize IOC database service.
 
         Args:
             db_path: Path to IOC reference SQLite database
         """
-        self.db_path = db_path
+        self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.engine = create_engine(f"sqlite:///{self.db_path}")
         IOCBase.metadata.create_all(self.engine)
@@ -476,7 +476,7 @@ def create_ioc_database_from_files(
     ioc_service.load_ioc_data(xml_file=xml_file, xlsx_file=xlsx_file)
 
     # Create and populate database
-    db_service = IOCDatabaseService(db_path)
+    db_service = IOCDatabaseService(Path(db_path))
     db_service.populate_from_ioc_service(ioc_service)
 
     return db_service

@@ -2,6 +2,7 @@
 
 import tempfile
 from datetime import datetime, timedelta
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -22,14 +23,14 @@ from birdnetpi.services.ioc_database_service import IOCDatabaseService
 def temp_main_db():
     """Create temporary main database."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-        yield tmp.name
+        yield Path(tmp.name)
 
 
 @pytest.fixture
 def temp_ioc_db():
     """Create temporary IOC database."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-        yield tmp.name
+        yield Path(tmp.name)
 
 
 @pytest.fixture

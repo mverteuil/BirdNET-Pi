@@ -33,6 +33,7 @@ def install_assets(args: argparse.Namespace) -> None:
             "Error: Must specify at least one asset type (--include-models, --include-ioc-db, --include-avibase-db, or --include-patlevin-db)"
         )
         sys.exit(1)
+        return  # Early return after exit call for test compatibility
 
     try:
         result = update_manager.download_release_assets(

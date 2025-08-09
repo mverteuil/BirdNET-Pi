@@ -26,34 +26,37 @@ class TestWebSocketRouter:
         (temp_data_dir / "models").mkdir()
         (temp_data_dir / "config").mkdir()
 
+        # Create the database file to prevent errors
+        (temp_data_dir / "database" / "birdnetpi.db").touch()
+
         # Mock FilePathResolver to use temp dirs for dynamic data but real dirs for static assets
-        with patch("birdnetpi.utils.file_path_resolver.FilePathResolver") as mock_resolver_class:
-            mock_resolver = Mock()
-            # Static assets from real directories
-            mock_resolver.app_dir = real_app_dir
-            mock_resolver.data_dir = real_app_dir  # For tests, use same dir
-            mock_resolver.get_config_template_path.return_value = str(
-                real_app_dir / "config_templates" / "birdnetpi.yaml"
-            )
-            mock_resolver.get_ioc_database_path.return_value = str(
-                real_app_dir / "data" / "database" / "ioc_reference.db"
-            )
-            # Dynamic data to temp directories
-            mock_resolver.data_dir = temp_data_dir
-            mock_resolver.get_database_path.return_value = str(
-                temp_data_dir / "database" / "birdnetpi.db"
-            )
-            mock_resolver.get_recordings_dir.return_value = str(temp_data_dir / "recordings")
-            mock_resolver.get_models_dir.return_value = str(temp_data_dir / "models")
-            mock_resolver.get_birdnetpi_config_path.return_value = str(
-                real_app_dir / "config_templates" / "birdnetpi.yaml"
-            )
-            mock_resolver_class.return_value = mock_resolver
+        self.mock_resolver_patch = patch("birdnetpi.utils.file_path_resolver.FilePathResolver")
+        mock_resolver_class = self.mock_resolver_patch.start()
 
-            # Now import the app with mocked paths
-            from birdnetpi.web.main import app
+        mock_resolver = Mock()
+        # Static assets from real directories
+        mock_resolver.app_dir = real_app_dir
+        mock_resolver.data_dir = real_app_dir  # For tests, use same dir
+        mock_resolver.get_config_template_path.return_value = (
+            real_app_dir / "config_templates" / "birdnetpi.yaml"
+        )
+        mock_resolver.get_ioc_database_path.return_value = (
+            real_app_dir / "data" / "database" / "ioc_reference.db"
+        )
+        # Dynamic data to temp directories - return Path objects
+        mock_resolver.data_dir = temp_data_dir
+        mock_resolver.get_database_path.return_value = temp_data_dir / "database" / "birdnetpi.db"
+        mock_resolver.get_recordings_dir.return_value = temp_data_dir / "recordings"
+        mock_resolver.get_models_dir.return_value = temp_data_dir / "models"
+        mock_resolver.get_birdnetpi_config_path.return_value = (
+            real_app_dir / "config_templates" / "birdnetpi.yaml"
+        )
+        mock_resolver_class.return_value = mock_resolver
 
-            self.app = app
+        # Now import the app with mocked paths
+        from birdnetpi.web.main import app
+
+        self.app = app
 
         # Add mock config object
         app.state.config = BirdNETConfig(site_name="Test BirdNET-Pi")
@@ -68,6 +71,11 @@ class TestWebSocketRouter:
         app.state.spectrogram_service.disconnect_websocket = AsyncMock()
 
         self.client = TestClient(app)
+
+    def teardown_method(self):
+        """Clean up after each test."""
+        if hasattr(self, "mock_resolver_patch"):
+            self.mock_resolver_patch.stop()
 
     def test_websocket_routes_endpoints_exist(self):
         """Test that WebSocket router endpoints are registered."""
