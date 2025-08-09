@@ -13,7 +13,10 @@ Architecture:
 """
 
 from dataclasses import dataclass
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
+
+if TYPE_CHECKING:
+    from birdnetpi.services.ioc_database_service import IOCDatabaseService
 
 
 class SpeciesComponents(NamedTuple):
@@ -38,13 +41,31 @@ class SpeciesDisplayOptions:
 class SpeciesParser:
     """Parser for species names from BirdNET tensor model output with IOC normalization."""
 
-    def __init__(self, ioc_reference_service: "IOCReferenceService | None" = None):
-        """Initialize parser with optional IOC reference service.
+    # Class-level instance for global access
+    _instance: "SpeciesParser | None" = None
+
+    def __init__(self, ioc_database_service: "IOCDatabaseService | None" = None):
+        """Initialize parser with optional IOC database service.
 
         Args:
-            ioc_reference_service: Service for IOC species lookup and translation
+            ioc_database_service: Service for IOC species lookup and translation
         """
-        self.ioc_reference = ioc_reference_service
+        self.ioc_database = ioc_database_service
+        # Set as global instance if none exists
+        if SpeciesParser._instance is None:
+            SpeciesParser._instance = self
+
+    @classmethod
+    def _get_parser_instance(cls) -> "SpeciesParser | None":
+        """Get the global parser instance for IOC lookups."""
+        return cls._instance
+
+    def get_ioc_common_name(self, scientific_name: str) -> str | None:
+        """Get IOC canonical common name if database service is available."""
+        if self.ioc_database:
+            species = self.ioc_database.get_species_by_scientific_name(scientific_name)
+            return species.english_name if species and hasattr(species, 'english_name') else None
+        return None
 
     @staticmethod
     def parse_tensor_species(tensor_output: str) -> SpeciesComponents:
@@ -84,15 +105,20 @@ class SpeciesParser:
         if not scientific_name or not common_name:
             raise ValueError(f"Invalid species components in: '{tensor_output}'")
 
-        # Use standardized common name from tensor model
-        # TODO: Future enhancement could add IOC lookup service for canonical names
+        # Use IOC canonical name if available, otherwise fallback to tensor common name
+        ioc_common_name = None
+        if parser_instance := SpeciesParser._get_parser_instance():
+            ioc_common_name = parser_instance.get_ioc_common_name(scientific_name)
 
-        # Construct the full species name using IOC common name
-        full_species = f"{common_name} ({scientific_name})"
+        # Use IOC canonical name if available, otherwise use tensor common name
+        final_common_name = ioc_common_name or common_name
+
+        # Construct the full species name using the best available common name
+        full_species = f"{final_common_name} ({scientific_name})"
 
         return SpeciesComponents(
             scientific_name=scientific_name,
-            common_name=common_name,
+            common_name=final_common_name,
             full_species=full_species,
         )
 
@@ -217,49 +243,3 @@ def create_display_options_from_config(config) -> SpeciesDisplayOptions:  # noqa
             language_code=language_code,
             format_template="{common_name} ({scientific_name})",
         )
-
-
-class IOCReferenceService:
-    """Service for IOC World Bird Names lookup and translation.
-
-    This service will be implemented to provide:
-    - IOC canonical English common names lookup by scientific name
-    - Multilingual translations from IOC spreadsheet data
-    - Version tracking for IOC data updates
-    - Fallback strategies for missing data
-    """
-
-    def __init__(self):
-        """Initialize IOC reference service.
-
-        TODO: Implement IOC data loading and caching
-        """
-        # Placeholder for IOC data structures
-        self._ioc_reference = {}
-        self._ioc_translations = {}
-        self._ioc_version = "unknown"
-
-    def get_ioc_common_name(self, scientific_name: str) -> str | None:
-        """Get IOC canonical English common name for scientific name.
-
-        Args:
-            scientific_name: Scientific name to lookup
-
-        Returns:
-            IOC English common name or None if not found
-        """
-        # TODO: Implement IOC lookup
-        return None
-
-    def get_translated_common_name(self, scientific_name: str, language_code: str) -> str | None:
-        """Get translated common name for scientific name and language.
-
-        Args:
-            scientific_name: Scientific name to lookup
-            language_code: ISO language code (e.g., 'es', 'fr', 'de')
-
-        Returns:
-            Translated common name or None if not found
-        """
-        # TODO: Implement IOC translation lookup
-        return None

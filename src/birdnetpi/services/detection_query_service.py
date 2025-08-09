@@ -1,8 +1,9 @@
-"""Service for detection queries requiring IOC database joins.
+"""Service for detection queries with multilingual localization support.
 
-This service handles all queries that need to join Detection records with IOC species
-and translation data. It uses SQLite's ATTACH DATABASE functionality to efficiently
-join across databases while minimizing write operations to protect SD card longevity.
+This service handles all queries that need to join Detection records with species
+and translation data from multiple databases (IOC, Avibase, PatLevin). It uses SQLite's
+ATTACH DATABASE functionality to efficiently join across databases while minimizing
+write operations to protect SD card longevity.
 """
 
 import hashlib
@@ -18,10 +19,11 @@ from sqlalchemy.orm import Session
 from birdnetpi.models.database_models import Detection
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.ioc_database_service import IOCDatabaseService
+from birdnetpi.utils.species_parser import SpeciesDisplayOptions
 
 
-class DetectionWithIOCData:
-    """Data class for detection with IOC information."""
+class DetectionWithLocalization:
+    """Data class for detection with localization information."""
 
     def __init__(
         self,
@@ -64,26 +66,41 @@ class DetectionWithIOCData:
         """Get detection timestamp."""
         return self.detection.timestamp  # type: ignore[return-value]
 
-    def get_best_common_name(self, prefer_translation: bool = False) -> str:
+    def get_best_common_name(
+        self, prefer_translation: bool = False, display_options: SpeciesDisplayOptions | None = None
+    ) -> str:
         """Get the best available common name for display.
 
         Args:
             prefer_translation: Whether to prefer translated name over IOC English name
+            display_options: Display configuration options (if provided, overrides other params)
 
         Returns:
-            Best available common name
+            Best available common name or scientific name based on display mode
         """
-        if prefer_translation and self.translated_name:
-            return self.translated_name
-        if self.ioc_english_name:
-            return self.ioc_english_name
-        if self.translated_name:
-            return self.translated_name
+        # If display options specify scientific name only, return scientific name
+        if (
+            display_options
+            and not display_options.show_common_name
+            and display_options.show_scientific_name
+        ):
+            return self.scientific_name
+
+        if prefer_translation:
+            if self.translated_name:
+                return self.translated_name
+            if self.ioc_english_name:
+                return self.ioc_english_name
+        else:
+            if self.ioc_english_name:
+                return self.ioc_english_name
+            if self.translated_name:
+                return self.translated_name
         return self.common_name or self.scientific_name
 
 
 class DetectionQueryService:
-    """Service for Detection queries requiring IOC database joins."""
+    """Service for Detection queries with multilingual localization support."""
 
     def __init__(
         self,
@@ -95,7 +112,7 @@ class DetectionQueryService:
 
         Args:
             bnp_database_service: Main database service for detections
-            ioc_database_service: IOC reference database service
+            ioc_database_service: Reference database service (IOC/multilingual)
             cache_ttl: Cache time-to-live in seconds (default: 5 minutes)
         """
         self.bnp_database_service = bnp_database_service
@@ -130,7 +147,7 @@ class DetectionQueryService:
 
     def _get_from_cache(
         self, cache_key: str
-    ) -> DetectionWithIOCData | list[DetectionWithIOCData] | list[dict[str, Any]] | None:
+    ) -> DetectionWithLocalization | list[DetectionWithLocalization] | list[dict[str, Any]] | None:
         """Get data from cache if available and not expired.
 
         Args:
@@ -155,7 +172,7 @@ class DetectionQueryService:
     def _set_cache(
         self,
         cache_key: str,
-        data: (DetectionWithIOCData | list[DetectionWithIOCData] | list[dict[str, Any]]),
+        data: (DetectionWithLocalization | list[DetectionWithLocalization] | list[dict[str, Any]]),
     ) -> None:
         """Store data in cache with TTL expiry.
 
@@ -204,7 +221,7 @@ class DetectionQueryService:
         since: datetime | None = None,
         scientific_name_filter: str | None = None,
         family_filter: str | None = None,
-    ) -> list[DetectionWithIOCData]:
+    ) -> list[DetectionWithLocalization]:
         """Get detections with IOC species and translation data.
 
         Args:
@@ -216,7 +233,7 @@ class DetectionQueryService:
             family_filter: Filter by taxonomic family
 
         Returns:
-            List of DetectionWithIOCData objects
+            List of DetectionWithLocalization objects
         """
         with self.bnp_database_service.get_db() as session:
             self.ioc_database_service.attach_to_session(session)
@@ -235,7 +252,7 @@ class DetectionQueryService:
 
     def get_detection_with_ioc_data(
         self, detection_id: UUID, language_code: str = "en"
-    ) -> DetectionWithIOCData | None:
+    ) -> DetectionWithLocalization | None:
         """Get single detection with IOC data by ID.
 
         Args:
@@ -243,7 +260,7 @@ class DetectionQueryService:
             language_code: Language for translations
 
         Returns:
-            DetectionWithIOCData object or None if not found
+            DetectionWithLocalization object or None if not found
         """
         # Generate cache key for single detection
         cache_key = self._generate_cache_key(
@@ -254,7 +271,7 @@ class DetectionQueryService:
 
         # Try to get from cache first
         cached_result = self._get_from_cache(cache_key)
-        if cached_result is not None and isinstance(cached_result, DetectionWithIOCData):
+        if cached_result is not None and isinstance(cached_result, DetectionWithLocalization):
             return cached_result
 
         with self.bnp_database_service.get_db() as session:
@@ -311,7 +328,7 @@ class DetectionQueryService:
                     overlap=result.overlap,  # type: ignore[attr-defined]
                 )
 
-                detection_with_ioc = DetectionWithIOCData(
+                detection_with_ioc = DetectionWithLocalization(
                     detection=detection,
                     ioc_english_name=result.ioc_english_name,  # type: ignore[attr-defined]
                     translated_name=result.translated_name,  # type: ignore[attr-defined]
@@ -497,7 +514,7 @@ class DetectionQueryService:
         since: datetime | None = None,
         scientific_name_filter: str | None = None,
         family_filter: str | None = None,
-    ) -> list[DetectionWithIOCData]:
+    ) -> list[DetectionWithLocalization]:
         """Execute the main JOIN query with filters."""
         where_clause = "WHERE 1=1"
         params: dict[str, Any] = {"language_code": language_code, "limit": limit, "offset": offset}
@@ -565,7 +582,7 @@ class DetectionQueryService:
             )
 
             detection_data_list.append(
-                DetectionWithIOCData(
+                DetectionWithLocalization(
                     detection=detection,
                     ioc_english_name=result.ioc_english_name,  # type: ignore[attr-defined]
                     translated_name=result.translated_name,  # type: ignore[attr-defined]

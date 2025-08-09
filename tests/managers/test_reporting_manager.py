@@ -185,7 +185,7 @@ def test_get_weekly_report_data(reporting_manager, detection_manager):
 
 def test_get_daily_detection_data_for_plotting(reporting_manager, detection_manager):
     """Should prepare daily detection data for plotting."""
-    # Mock DetectionWithIOCData objects for the IOC service
+    # Mock DetectionWithLocalization objects for the IOC service
     from unittest.mock import MagicMock
 
     mock_detection_with_ioc_1 = MagicMock()
@@ -239,7 +239,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
     mock_detection_with_ioc_3.genus = "Cardinalis"
     mock_detection_with_ioc_3.order_name = "Passeriformes"
 
-    # Mock the IOC service method to return our mock DetectionWithIOCData objects
+    # Mock the IOC service method to return our mock DetectionWithLocalization objects
     detection_manager.detection_query_service.get_detections_with_ioc_data.return_value = [
         mock_detection_with_ioc_1,
         mock_detection_with_ioc_2,

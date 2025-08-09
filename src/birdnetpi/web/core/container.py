@@ -20,6 +20,7 @@ from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.services.location_service import LocationService
 from birdnetpi.services.mqtt_service import MQTTService
 from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
+from birdnetpi.services.species_display_service import SpeciesDisplayService
 from birdnetpi.services.spectrogram_service import SpectrogramService
 from birdnetpi.services.system_control_service import SystemControlService
 from birdnetpi.services.webhook_service import WebhookService
@@ -199,6 +200,12 @@ class Container(containers.DeclarativeContainer):
         config=config,
         mqtt_service=mqtt_service,
         webhook_service=webhook_service,
+    )
+
+    # Species display service - singleton
+    species_display_service = providers.Singleton(
+        SpeciesDisplayService,
+        config=config,
     )
 
     # Request-scoped managers (factories - new instance per request)

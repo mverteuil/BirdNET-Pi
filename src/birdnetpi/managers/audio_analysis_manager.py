@@ -13,7 +13,9 @@ import numpy as np
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.bird_detection_service import BirdDetectionService
+from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.species_parser import SpeciesComponents, SpeciesParser
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +30,16 @@ class AudioAnalysisManager:
         config: BirdNETConfig,
         detection_buffer_max_size: int = 1000,
         buffer_flush_interval: float = 5.0,
+        ioc_database_service: IOCDatabaseService | None = None,
     ) -> None:
         logger.info("AudioAnalysisManager initialized.")
         self.file_manager = file_manager
         self.file_path_resolver = file_path_resolver
         self.config = config
         self.analysis_client = BirdDetectionService(config)
+
+        # Initialize SpeciesParser with IOC database service for canonical name lookups
+        self.species_parser = SpeciesParser(ioc_database_service)
 
         # Buffer for accumulating audio chunks for analysis
         self.audio_buffer = np.array([], dtype=np.int16)
@@ -160,28 +166,29 @@ class AudioAnalysisManager:
             # Process results and send detection events for confident detections
             for species_tensor, confidence in results:
                 if confidence >= self.config.species_confidence_threshold:
-                    # Extract scientific name (before underscore if present)
-                    scientific_name = (
-                        species_tensor.split("_")[0] if "_" in species_tensor else species_tensor
-                    )
+                    # Parse species tensor using SpeciesParser
+                    try:
+                        species_components = SpeciesParser.parse_tensor_species(species_tensor)
+                    except ValueError as e:
+                        logger.error(f"Invalid species tensor format '{species_tensor}': {e}")
+                        continue  # Skip this detection if tensor format is invalid
                     # Convert audio chunk back to bytes for saving
                     audio_bytes = (audio_chunk * 32767).astype(np.int16).tobytes()
-                    await self._send_detection_event(
-                        species_tensor, scientific_name, confidence, audio_bytes
+                    await self._send_detection_event(species_components, confidence, audio_bytes)
+                    logger.info(
+                        f"Bird detected: {species_components.scientific_name} (confidence: {confidence:.3f})"
                     )
-                    logger.info(f"Bird detected: {species_tensor} (confidence: {confidence:.3f})")
 
         except Exception as e:
             logger.error(f"Error during BirdNET analysis: {e}", exc_info=True)
 
     async def _send_detection_event(
-        self, species_tensor: str, scientific_name: str, confidence: float, raw_audio_bytes: bytes
+        self, species_components: SpeciesComponents, confidence: float, raw_audio_bytes: bytes
     ) -> None:
         """Send a detection event to the FastAPI application.
 
         Args:
-            species_tensor: Raw tensor output from BirdNET (Scientific_name_Common Name format)
-            scientific_name: The scientific name of the detected bird
+            species_components: Parsed species components from SpeciesParser
             confidence: Detection confidence score
             raw_audio_bytes: Raw audio data bytes
         """
@@ -189,7 +196,7 @@ class AudioAnalysisManager:
         timestamp = datetime.datetime.now(UTC)
         current_week = timestamp.isocalendar()[1]
         audio_file_path = self.file_path_resolver.get_detection_audio_path(
-            scientific_name, timestamp
+            species_components.scientific_name, timestamp
         )
 
         # Save raw audio to disk using FileManager
@@ -207,13 +214,12 @@ class AudioAnalysisManager:
             logger.error(f"Failed to save detection audio: {e}", exc_info=True)
             return  # Don't send detection if audio save fails
 
-        # Parse common name from species_tensor if present
-        common_name = species_tensor.split("_")[1] if "_" in species_tensor else ""
-
         detection_data = {
-            "species_tensor": species_tensor,
-            "scientific_name": scientific_name,
-            "common_name": common_name,
+            "species_tensor": species_components.scientific_name
+            + "_"
+            + species_components.common_name,
+            "scientific_name": species_components.scientific_name,
+            "common_name": species_components.common_name,
             "confidence": confidence,
             "timestamp": timestamp.isoformat(),  # Use the same timestamp for consistency
             "audio_file_path": str(
@@ -238,7 +244,7 @@ class AudioAnalysisManager:
                     "http://fastapi:8888/api/detections", json=detection_data
                 )
                 response.raise_for_status()  # Raise an exception for bad status codes
-                logger.info(f"Detection event sent: {species_tensor}")
+                logger.info(f"Detection event sent: {species_components.scientific_name}")
                 return  # Success - no need to buffer
         except (httpx.RequestError, httpx.HTTPStatusError) as e:
             logger.warning(f"FastAPI unavailable, buffering detection: {e}")
@@ -250,4 +256,6 @@ class AudioAnalysisManager:
             self.detection_buffer.append(detection_data)
             buffer_size = len(self.detection_buffer)
 
-        logger.info(f"Buffered detection event for {species_tensor} (buffer size: {buffer_size})")
+        logger.info(
+            f"Buffered detection event for {species_components.scientific_name} (buffer size: {buffer_size})"
+        )

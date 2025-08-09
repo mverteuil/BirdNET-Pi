@@ -8,7 +8,7 @@ from sqlalchemy.sql import func
 from birdnetpi.models.database_models import AudioFile, Detection
 from birdnetpi.models.detection_event import DetectionEvent
 from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.services.detection_query_service import DetectionQueryService, DetectionWithIOCData
+from birdnetpi.services.detection_query_service import DetectionQueryService, DetectionWithLocalization
 from birdnetpi.utils.signals import detection_signal
 
 

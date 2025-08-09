@@ -14,7 +14,7 @@ from birdnetpi.models.ioc_database_models import IOCSpecies, IOCTranslation
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.detection_query_service import (
     DetectionQueryService,
-    DetectionWithIOCData,
+    DetectionWithLocalization,
 )
 from birdnetpi.services.ioc_database_service import IOCDatabaseService
 
@@ -195,8 +195,8 @@ def sample_detections(bnp_database_service):
     return detections
 
 
-class TestDetectionWithIOCData:
-    """Test DetectionWithIOCData data class."""
+class TestDetectionWithLocalization:
+    """Test DetectionWithLocalization data class."""
 
     def test_detection_with_ioc_data_initialization(self):
         """Should initialize with all parameters correctly."""
@@ -208,7 +208,7 @@ class TestDetectionWithIOCData:
             timestamp=datetime.now(),
         )
 
-        data = DetectionWithIOCData(
+        data = DetectionWithLocalization(
             detection=detection,
             ioc_english_name="American Robin IOC",
             translated_name="Petirrojo Americano",
@@ -236,7 +236,7 @@ class TestDetectionWithIOCData:
             timestamp=timestamp,
         )
 
-        data = DetectionWithIOCData(detection=detection)
+        data = DetectionWithLocalization(detection=detection)
 
         assert data.id == detection_id
         assert data.scientific_name == "Turdus migratorius"
@@ -254,7 +254,7 @@ class TestDetectionWithIOCData:
             timestamp=datetime.now(),
         )
 
-        data = DetectionWithIOCData(
+        data = DetectionWithLocalization(
             detection=detection,
             ioc_english_name="American Robin IOC",
             translated_name="Petirrojo Americano",
@@ -275,7 +275,7 @@ class TestDetectionWithIOCData:
         )
 
         # Test IOC English name fallback
-        data = DetectionWithIOCData(
+        data = DetectionWithLocalization(
             detection=detection,
             ioc_english_name="American Robin IOC",
         )
@@ -283,7 +283,7 @@ class TestDetectionWithIOCData:
         assert result == "American Robin IOC"
 
         # Test tensor common name fallback
-        data = DetectionWithIOCData(detection=detection)
+        data = DetectionWithLocalization(detection=detection)
         result = data.get_best_common_name()
         assert result == "American Robin"
 
@@ -295,7 +295,7 @@ class TestDetectionWithIOCData:
             confidence=0.85,
             timestamp=datetime.now(),
         )
-        data = DetectionWithIOCData(detection=fallback_detection)
+        data = DetectionWithLocalization(detection=fallback_detection)
         result = data.get_best_common_name()
         assert result == "Turdus migratorius"
 
@@ -324,9 +324,9 @@ class TestGetDetectionsWithIOCData:
         assert isinstance(results, list)
         assert len(results) <= 10
 
-        # Check that each result is DetectionWithIOCData
+        # Check that each result is DetectionWithLocalization
         for result in results:
-            assert isinstance(result, DetectionWithIOCData)
+            assert isinstance(result, DetectionWithLocalization)
             assert hasattr(result, "detection")
 
     def test_get_detections_with_ioc_data_with_filters(
@@ -432,7 +432,7 @@ class TestGetDetectionsWithIOCData:
                     mock_detach.assert_called_once()
 
 
-class TestGetDetectionWithIOCData:
+class TestGetDetectionWithLocalization:
     """Test getting single detection with IOC data."""
 
     def test_get_detection_with_ioc_data_found(
@@ -444,7 +444,7 @@ class TestGetDetectionWithIOCData:
         result = query_service.get_detection_with_ioc_data(detection_id)
 
         if result:  # May be None if JOIN doesn't match
-            assert isinstance(result, DetectionWithIOCData)
+            assert isinstance(result, DetectionWithLocalization)
             assert result.id == detection_id
 
     def test_get_detection_with_ioc_data_not_found(self, query_service, populated_ioc_db):
@@ -691,7 +691,7 @@ class TestErrorHandling:
 
         # Should still return detections, but without IOC data
         for result in results:
-            assert isinstance(result, DetectionWithIOCData)
+            assert isinstance(result, DetectionWithLocalization)
             # IOC fields should be None
             assert result.ioc_english_name is None
             assert result.family is None
