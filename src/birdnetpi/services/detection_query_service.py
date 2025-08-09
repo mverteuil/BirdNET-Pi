@@ -67,7 +67,14 @@ class DetectionWithLocalization:
 
 
 class DetectionQueryService:
-    """Service for Detection queries with multilingual localization support."""
+    """Service for Detection queries with multilingual localization support.
+
+    This service provides enriched detection data by joining BirdNET-Pi detection records
+    with IOC (International Ornithological Committee) taxonomic data and multilingual
+    translations from Avibase and PatLevin databases. It supports dynamic language switching
+    and provides comprehensive species information including family, genus, order, and
+    localized common names.
+    """
 
     def __init__(
         self,
