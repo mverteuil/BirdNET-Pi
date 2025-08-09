@@ -43,6 +43,7 @@ dependencies = [
   "altair<5",
   "apprise==1.2.1",
   "astral",
+  "babel>=2.14.0",
   "colorama==0.4.4",
   "dependency-injector==4.48.1",
   "fastapi",
@@ -70,7 +71,7 @@ dependencies = [
   "tzlocal",
   "uvicorn",
   "websockets>=15.0.1",
-  "wtforms>=3.1.2"
+  "wtforms>=3.1.2",
 ]
 
 [project.scripts]
