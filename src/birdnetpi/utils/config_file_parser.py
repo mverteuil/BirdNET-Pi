@@ -12,7 +12,7 @@ class ConfigFileParser:
     Supports environment variable configuration and automatic fallback to templates.
     """
 
-    def __init__(self, config_path: str | None = None) -> None:
+    def __init__(self, config_path: str | Path | None = None) -> None:
         """Initialize ConfigFileParser.
 
         Args:
@@ -22,10 +22,10 @@ class ConfigFileParser:
         if config_path is None:
             # Use FilePathResolver for env var support and default paths
             file_resolver = FilePathResolver()
-            self.config_path = file_resolver.get_birdnetpi_config_path()
-            self.template_path = file_resolver.get_config_template_path()
+            self.config_path = str(file_resolver.get_birdnetpi_config_path())
+            self.template_path = str(file_resolver.get_config_template_path())
         else:
-            self.config_path = config_path
+            self.config_path = str(config_path)
             # Assume template is in same directory structure if explicit path given
             config_dir = Path(config_path).parent.parent
             self.template_path = str(config_dir / "config_templates" / "birdnetpi.yaml")

@@ -17,8 +17,8 @@ from birdnetpi.utils.file_path_resolver import FilePathResolver
 class ReleaseAsset:
     """Represents a release asset to be included in orphaned commit."""
 
-    source_path: str
-    target_name: str
+    source_path: Path
+    target_name: Path
     description: str
 
 
@@ -72,7 +72,7 @@ class ReleaseManager:
         """Validate that all assets exist before creating release."""
         missing_assets = []
         for asset in assets:
-            if not Path(asset.source_path).exists():
+            if not asset.source_path.exists():
                 missing_assets.append(asset.source_path)
 
         if missing_assets:
@@ -90,7 +90,7 @@ class ReleaseManager:
             print("Preserving assets in temporary location...")
             preserved_assets = []
             for asset in config.assets:
-                source = Path(asset.source_path)
+                source = asset.source_path
                 if source.exists():
                     temp_target = temp_path / asset.target_name
                     temp_target.parent.mkdir(parents=True, exist_ok=True)
@@ -101,7 +101,7 @@ class ReleaseManager:
                         shutil.copytree(source, temp_target, dirs_exist_ok=True)
 
                     preserved_assets.append(
-                        ReleaseAsset(str(temp_target), asset.target_name, asset.description)
+                        ReleaseAsset(temp_target, asset.target_name, asset.description)
                     )
                     print(f"  Preserved {asset.target_name}")
 
@@ -167,7 +167,7 @@ class ReleaseManager:
         """Copy assets to the orphaned branch."""
         print("Copying assets...")
         for asset in assets:
-            source = Path(asset.source_path)
+            source = asset.source_path
             target = self.repo_path / asset.target_name
 
             if source.is_file():
@@ -184,7 +184,7 @@ class ReleaseManager:
     def _commit_assets(self, config: ReleaseConfig) -> None:
         """Add and commit only the assets to the orphaned branch."""
         for asset in config.assets:
-            self._run_git_command(["add", asset.target_name])
+            self._run_git_command(["add", str(asset.target_name)])
         self._run_git_command(["add", "README.md"])
         self._run_git_command(["add", ".gitignore"])
         self._run_git_command(["commit", "-m", config.commit_message, "--no-verify"])
@@ -227,9 +227,9 @@ class ReleaseManager:
             "commit_sha": commit_sha,
             "assets": [
                 {
-                    "name": asset.target_name,
+                    "name": str(asset.target_name),
                     "description": asset.description,
-                    "source": asset.source_path,
+                    "source": str(asset.source_path),
                 }
                 for asset in config.assets
             ],
@@ -280,41 +280,42 @@ class ReleaseManager:
             List of default release assets
         """
         # In development, prefer local data/ directory over production paths
-        models_path = self._get_asset_path("data/models", self.file_resolver.get_models_dir())
+        models_path = self._get_asset_path("data/models", str(self.file_resolver.get_models_dir()))
         database_path = self._get_asset_path(
-            "data/database/ioc_reference.db", self.file_resolver.get_ioc_database_path()
+            "data/database/ioc_reference.db", str(self.file_resolver.get_ioc_database_path())
         )
         avibase_path = self._get_asset_path(
-            "data/database/avibase_database.db", self.file_resolver.get_avibase_database_path()
+            "data/database/avibase_database.db", str(self.file_resolver.get_avibase_database_path())
         )
         patlevin_path = self._get_asset_path(
-            "data/database/patlevin_database.db", self.file_resolver.get_patlevin_database_path()
+            "data/database/patlevin_database.db",
+            str(self.file_resolver.get_patlevin_database_path()),
         )
 
         return [
             ReleaseAsset(
                 source_path=models_path,
-                target_name="data/models",
+                target_name=Path("data/models"),
                 description="BirdNET TensorFlow Lite models for bird identification",
             ),
             ReleaseAsset(
                 source_path=database_path,
-                target_name="data/database/ioc_reference.db",
+                target_name=Path("data/database/ioc_reference.db"),
                 description="IOC World Bird Names reference database",
             ),
             ReleaseAsset(
                 source_path=avibase_path,
-                target_name="data/database/avibase_database.db",
+                target_name=Path("data/database/avibase_database.db"),
                 description="Avibase multilingual bird names database (Lepage 2018, CC-BY-4.0)",
             ),
             ReleaseAsset(
                 source_path=patlevin_path,
-                target_name="data/database/patlevin_database.db",
+                target_name=Path("data/database/patlevin_database.db"),
                 description="BirdNET label translations compiled by Patrick Levin",
             ),
         ]
 
-    def _get_asset_path(self, dev_path: str, prod_path: str) -> str:
+    def _get_asset_path(self, dev_path: str, prod_path: str) -> Path:
         """Get asset path, preferring development path over production path.
 
         Args:
@@ -326,8 +327,8 @@ class ReleaseManager:
         """
         dev_full_path = self.repo_path / dev_path
         if dev_full_path.exists():
-            return str(dev_full_path)
-        return prod_path
+            return dev_full_path
+        return Path(prod_path)
 
     def _create_asset_gitignore(self) -> None:
         """Create a minimal .gitignore file for the asset branch.

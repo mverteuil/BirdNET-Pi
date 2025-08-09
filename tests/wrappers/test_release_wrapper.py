@@ -3,6 +3,7 @@
 import argparse
 import json
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -23,8 +24,8 @@ def mock_release_manager():
     """Create a mock ReleaseManager."""
     mock_manager = MagicMock()
     mock_manager.get_default_assets.return_value = [
-        ReleaseAsset("/test/models", "data/models", "BirdNET models"),
-        ReleaseAsset("/test/ioc.db", "data/database/ioc_reference.db", "IOC database"),
+        ReleaseAsset(Path("/test/models"), "data/models", "BirdNET models"),
+        ReleaseAsset(Path("/test/ioc.db"), "data/database/ioc_reference.db", "IOC database"),
     ]
     return mock_manager
 
@@ -47,8 +48,10 @@ class TestBuildAssetList:
 
         # Update mock to use real path
         mock_release_manager.get_default_assets.return_value = [
-            ReleaseAsset(str(models_dir), "data/models", "BirdNET models"),
-            ReleaseAsset("/nonexistent/ioc.db", "data/database/ioc_reference.db", "IOC database"),
+            ReleaseAsset(models_dir, "data/models", "BirdNET models"),
+            ReleaseAsset(
+                Path("/nonexistent/ioc.db"), "data/database/ioc_reference.db", "IOC database"
+            ),
         ]
 
         args = argparse.Namespace(
@@ -73,8 +76,8 @@ class TestBuildAssetList:
 
         # Update mock to use real path
         mock_release_manager.get_default_assets.return_value = [
-            ReleaseAsset("/nonexistent/models", "data/models", "BirdNET models"),
-            ReleaseAsset(str(ioc_db), "data/database/ioc_reference.db", "IOC database"),
+            ReleaseAsset(Path("/nonexistent/models"), "data/models", "BirdNET models"),
+            ReleaseAsset(ioc_db, "data/database/ioc_reference.db", "IOC database"),
         ]
 
         args = argparse.Namespace(
@@ -283,7 +286,7 @@ class TestCreateRelease:
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
 
-        mock_assets = [ReleaseAsset("/test/models", "data/models", "Models")]
+        mock_assets = [ReleaseAsset(Path("/test/models"), "data/models", "Models")]
         mock_build_assets.return_value = mock_assets
 
         mock_asset_result = {
@@ -333,7 +336,7 @@ class TestCreateRelease:
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
 
-        mock_assets = [ReleaseAsset("/test/models", "data/models", "Models")]
+        mock_assets = [ReleaseAsset(Path("/test/models"), "data/models", "Models")]
         mock_build_assets.return_value = mock_assets
 
         mock_asset_result = {
@@ -383,7 +386,7 @@ class TestCreateRelease:
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
 
-        mock_assets = [ReleaseAsset("/test/models", "data/models", "Models")]
+        mock_assets = [ReleaseAsset(Path("/test/models"), "data/models", "Models")]
         mock_build_assets.return_value = mock_assets
 
         mock_asset_result = {
@@ -434,7 +437,7 @@ class TestCreateRelease:
         mock_manager_class.return_value = mock_manager
         mock_manager.create_asset_release.side_effect = Exception("Release failed")
 
-        mock_assets = [ReleaseAsset("/test/models", "data/models", "Models")]
+        mock_assets = [ReleaseAsset(Path("/test/models"), "data/models", "Models")]
         mock_build_assets.return_value = mock_assets
 
         args = argparse.Namespace(
@@ -473,9 +476,9 @@ class TestListAssets:
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
         mock_manager.get_default_assets.return_value = [
-            ReleaseAsset(str(models_dir), "data/models", "BirdNET models"),
-            ReleaseAsset(str(ioc_db), "data/database/ioc_reference.db", "IOC database"),
-            ReleaseAsset("/nonexistent/file", "missing/asset", "Missing asset"),
+            ReleaseAsset(models_dir, "data/models", "BirdNET models"),
+            ReleaseAsset(ioc_db, "data/database/ioc_reference.db", "IOC database"),
+            ReleaseAsset(Path("/nonexistent/file"), "missing/asset", "Missing asset"),
         ]
 
         args = argparse.Namespace()
@@ -507,7 +510,7 @@ class TestListAssets:
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
         mock_manager.get_default_assets.return_value = [
-            ReleaseAsset(str(test_file), "test/file", "Test file")
+            ReleaseAsset(test_file, "test/file", "Test file")
         ]
 
         args = argparse.Namespace()
@@ -619,7 +622,7 @@ class TestIntegration:
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
         mock_manager.get_default_assets.return_value = [
-            ReleaseAsset(str(models_dir), "data/models", "BirdNET models")
+            ReleaseAsset(models_dir, "data/models", "BirdNET models")
         ]
 
         mock_asset_result = {

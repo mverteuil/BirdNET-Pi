@@ -5,7 +5,6 @@ import threading
 import time
 from collections import deque
 from datetime import UTC
-from pathlib import Path
 from typing import Any
 
 import httpx
@@ -191,7 +190,7 @@ class AudioAnalysisService:
                 self.config.sample_rate,  # Get from config
                 self.config.audio_channels,  # Get from config
             )
-            logger.info(f"Saved detection audio to {str(audio_file_instance.file_path)}")
+            logger.info(f"Saved detection audio to {audio_file_instance.file_path!s}")
         except Exception as e:
             logger.error(f"Failed to save detection audio: {e}", exc_info=True)
             return  # Don't send detection if audio save fails

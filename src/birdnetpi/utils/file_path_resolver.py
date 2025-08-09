@@ -16,36 +16,57 @@ class FilePathResolver:
         self.app_dir = Path(os.getenv("BIRDNETPI_APP", "/opt/birdnetpi"))
         self.data_dir = Path(os.getenv("BIRDNETPI_DATA", "/var/lib/birdnetpi"))
 
-    def get_birdnetpi_config_path(self) -> str:
+    def get_birdnetpi_config_path(self) -> Path:
         """Get the path to the main configuration file.
 
         Checks BIRDNETPI_CONFIG environment variable first, then falls back to default.
         """
         config_path = os.getenv("BIRDNETPI_CONFIG")
         if config_path:
-            return config_path
+            return Path(config_path)
 
         # Default: runtime config in data directory
-        return str(self.data_dir / "config" / "birdnetpi.yaml")
+        config_path = self.data_dir / "config" / "birdnetpi.yaml"
+        return config_path
 
-    def get_config_template_path(self) -> str:
+    def get_config_template_path(self) -> Path:
         """Get the path to the configuration template."""
-        return str(self.app_dir / "config_templates" / "birdnetpi.yaml")
+        template_path = self.app_dir / "config_templates" / "birdnetpi.yaml"
+        return template_path
 
-    def get_models_dir(self) -> str:
+    def get_template_file_path(self, template_name: str) -> Path:
+        """Get the path to a template file in config_templates directory.
+
+        Args:
+            template_name: Name of the template file (e.g., 'Caddyfile.j2', 'pulseaudio_default.pa.j2')
+
+        Returns:
+            Path to the template file
+        """
+        return self.app_dir / "config_templates" / template_name
+
+    def get_repo_path(self) -> Path:
+        """Get the path to the BirdNET-Pi repository root."""
+        # The repository root is the app_dir
+        return self.app_dir
+
+    def get_models_dir(self) -> Path:
         """Get the directory containing BirdNET tensor models."""
-        return str(self.data_dir / "models")
+        models_dir = self.data_dir / "models"
+        return models_dir
 
-    def get_model_path(self, model_filename: str) -> str:
+    def get_model_path(self, model_filename: str) -> Path:
         """Get the full path to a specific model file."""
         # Add .tflite extension if not present
         if not model_filename.endswith(".tflite"):
             model_filename = f"{model_filename}.tflite"
-        return str(self.data_dir / "models" / model_filename)
+        model_path = self.data_dir / "models" / model_filename
+        return model_path
 
-    def get_recordings_dir(self) -> str:
+    def get_recordings_dir(self) -> Path:
         """Get the directory for audio recordings."""
-        return str(self.data_dir / "recordings")
+        recordings_dir = self.data_dir / "recordings"
+        return recordings_dir
 
     def get_detection_audio_path(self, species: str, timestamp: datetime.datetime | float) -> str:
         """Get the relative path for saving detection audio files.
@@ -74,69 +95,66 @@ class FilePathResolver:
         # Return relative path within recordings directory
         return f"detections/{dt.strftime('%Y/%m/%d')}/{filename}"
 
-    def get_database_dir(self) -> str:
+    def get_database_dir(self) -> Path:
         """Get the directory for database files."""
-        return str(self.data_dir / "database")
+        database_dir = self.data_dir / "database"
+        return database_dir
 
-    def get_database_path(self) -> str:
+    def get_database_path(self) -> Path:
         """Get the path to the main SQLite database."""
-        return str(self.data_dir / "database" / "birdnetpi.db")
+        database_path = self.data_dir / "database" / "birdnetpi.db"
+        return database_path
 
-    def get_ioc_database_path(self) -> str:
+    def get_ioc_database_path(self) -> Path:
         """Get the path to the IOC reference database."""
-        return str(self.data_dir / "database" / "ioc_reference.db")
+        ioc_db_path = self.data_dir / "database" / "ioc_reference.db"
+        return ioc_db_path
 
-    def get_avibase_database_path(self) -> str:
+    def get_avibase_database_path(self) -> Path:
         """Get the path to the Avibase multilingual names database."""
-        return str(self.data_dir / "database" / "avibase_database.db")
+        avibase_db_path = self.data_dir / "database" / "avibase_database.db"
+        return avibase_db_path
 
-    def get_patlevin_database_path(self) -> str:
+    def get_patlevin_database_path(self) -> Path:
         """Get the path to the PatLevin BirdNET labels database."""
-        return str(self.data_dir / "database" / "patlevin_database.db")
+        patlevin_db_path = self.data_dir / "database" / "patlevin_database.db"
+        return patlevin_db_path
 
-    def get_log_dir(self) -> str:
-        """Get the directory for log files (default fallback)."""
-        return "/var/log/birdnetpi"
-
-    def get_log_file_path(self, config_log_path: str | None = None) -> str:
-        """Get the path to the main log file.
-
-        Args:
-            config_log_path: Optional log file path from configuration
-        """
-        if config_log_path:
-            return str(Path(config_log_path).expanduser())
-        return "/var/log/birdnetpi/birdnetpi.log"
-
-    def get_temp_dir(self) -> str:
+    def get_temp_dir(self) -> Path:
         """Get the temporary directory for cache files."""
-        return "/tmp/birdnetpi"
+        return Path("/tmp/birdnetpi")
 
     # Web application paths (in app directory)
-    def get_static_dir(self) -> str:
+    def get_static_dir(self) -> Path:
         """Get the directory for static web assets."""
-        return str(self.app_dir / "src" / "birdnetpi" / "web" / "static")
+        static_dir = self.app_dir / "src" / "birdnetpi" / "web" / "static"
+        return static_dir
 
-    def get_templates_dir(self) -> str:
+    def get_templates_dir(self) -> Path:
         """Get the directory for HTML templates."""
-        return str(self.app_dir / "src" / "birdnetpi" / "web" / "templates")
+        templates_dir = self.app_dir / "src" / "birdnetpi" / "web" / "templates"
+        return templates_dir
 
-    def get_locales_dir(self) -> str:
+    def get_locales_dir(self) -> Path:
         """Get the directory for i18n locale files (.po/.mo)."""
-        return str(self.app_dir / "locales")
+        locales_dir = self.app_dir / "locales"
+        return locales_dir
 
-    def get_babel_config_path(self) -> str:
+    def get_babel_config_path(self) -> Path:
         """Get the path to the Babel configuration file."""
-        return str(self.app_dir / "babel.cfg")
+        babel_config_path = self.app_dir / "babel.cfg"
+        return babel_config_path
 
-    def get_messages_pot_path(self) -> str:
+    def get_messages_pot_path(self) -> Path:
         """Get the path to the messages.pot template file."""
-        return str(self.app_dir / "locales" / "messages.pot")
+        messages_pot_path = self.app_dir / "locales" / "messages.pot"
+        return messages_pot_path
 
-    def get_src_dir(self) -> str:
+    def get_src_dir(self) -> Path:
         """Get the source code directory."""
-        return str(self.app_dir / "src")
+        src_dir = self.app_dir / "src"
+        return src_dir
 
-    def get_fifo_base_path(self) -> str:
+    def get_fifo_base_path(self) -> Path:
         """Get the base path for FIFO files (temporary)."""
         return self.get_temp_dir()

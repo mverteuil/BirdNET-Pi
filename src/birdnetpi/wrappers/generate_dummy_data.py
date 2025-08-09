@@ -20,8 +20,8 @@ def main() -> None:
     fastapi_service_name = _get_fastapi_service_name()
 
     # Check if database already has data
-    if os.path.exists(db_path) and os.path.getsize(db_path) > 0:
-        print(f"Database file exists and is {os.path.getsize(db_path)} bytes.")
+    if db_path.exists() and db_path.stat().st_size > 0:
+        print(f"Database file exists and is {db_path.stat().st_size} bytes.")
         try:
             bnp_database_service = DatabaseService(db_path)
             detection_manager = DetectionManager(bnp_database_service)

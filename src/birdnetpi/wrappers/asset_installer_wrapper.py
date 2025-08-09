@@ -16,7 +16,8 @@ from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 def install_assets(args: argparse.Namespace) -> None:
     """Install assets from a release."""
-    update_manager = UpdateManager()
+    file_resolver = FilePathResolver()
+    update_manager = UpdateManager(file_resolver)
 
     print(f"Installing assets for version: {args.version}")
 
@@ -94,7 +95,8 @@ def install_assets(args: argparse.Namespace) -> None:
 
 def list_available_assets(args: argparse.Namespace) -> None:
     """List available asset versions."""
-    update_manager = UpdateManager()
+    file_resolver = FilePathResolver()
+    update_manager = UpdateManager(file_resolver)
 
     try:
         versions = update_manager.list_available_versions(github_repo="mverteuil/BirdNET-Pi")

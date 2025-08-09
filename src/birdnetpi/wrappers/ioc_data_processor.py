@@ -10,6 +10,7 @@ Usage:
         --output ioc_data_v15.1.json
     python -m birdnetpi.wrappers.ioc_data_processor info --json-file ioc_data_v15.1.json
 """
+
 import argparse
 import sys
 from pathlib import Path
@@ -65,7 +66,7 @@ def process_ioc_files(
         db_size = 0
         if db_file:
             print("Creating SQLite database...")
-            db_service = IOCDatabaseService(str(db_file))
+            db_service = IOCDatabaseService(db_file)
             db_service.populate_from_ioc_service(service)
             db_size = db_service.get_database_size()
 

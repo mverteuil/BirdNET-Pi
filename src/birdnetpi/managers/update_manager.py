@@ -1,4 +1,3 @@
-import os
 import re
 import shutil
 import subprocess
@@ -16,18 +15,21 @@ from birdnetpi.utils.file_path_resolver import FilePathResolver
 class UpdateManager:
     """Manages updates and Git operations for the BirdNET-Pi repository."""
 
-    def __init__(self) -> None:
-        self.repo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    def __init__(self, file_resolver: FilePathResolver) -> None:
+        self.file_resolver = file_resolver
+        self.app_dir = file_resolver.app_dir
 
     def get_commits_behind(self) -> int:
         """Check how many commits the local repository is behind the remote."""
         try:
             # Git fetch to update remote tracking branches
-            subprocess.run(["git", "-C", self.repo_path, "fetch"], check=True, capture_output=True)
+            subprocess.run(
+                ["git", "-C", str(self.app_dir), "fetch"], check=True, capture_output=True
+            )
 
             # Git status to get the status of the repository
             result = subprocess.run(
-                ["git", "-C", self.repo_path, "status"],
+                ["git", "-C", str(self.app_dir), "status"],
                 check=True,
                 capture_output=True,
                 text=True,
@@ -57,7 +59,7 @@ class UpdateManager:
         try:
             # Get current HEAD hash
             current_commit_hash = subprocess.run(
-                ["git", "-C", self.repo_path, "rev-parse", "HEAD"],
+                ["git", "-C", str(self.app_dir), "rev-parse", "HEAD"],
                 check=True,
                 capture_output=True,
                 text=True,
@@ -65,14 +67,14 @@ class UpdateManager:
 
             # Reset current HEAD to remove any local changes
             subprocess.run(
-                ["git", "-C", self.repo_path, "reset", "--hard"],
+                ["git", "-C", str(self.app_dir), "reset", "--hard"],
                 check=True,
                 capture_output=True,
             )
 
             # Fetches latest changes
             subprocess.run(
-                ["git", "-C", self.repo_path, "fetch", config.git_remote, config.git_branch],
+                ["git", "-C", str(self.app_dir), "fetch", config.git_remote, config.git_branch],
                 check=True,
                 capture_output=True,
             )
@@ -82,7 +84,7 @@ class UpdateManager:
                 [
                     "git",
                     "-C",
-                    self.repo_path,
+                    str(self.app_dir),
                     "switch",
                     "-C",
                     config.git_branch,
@@ -98,7 +100,7 @@ class UpdateManager:
                 [
                     "git",
                     "-C",
-                    self.repo_path,
+                    str(self.app_dir),
                     "diff",
                     "--stat",
                     current_commit_hash,
@@ -115,19 +117,20 @@ class UpdateManager:
             subprocess.run(["sudo", "systemctl", "daemon-reload"], check=True)
 
             # Symlink scripts
-            script_dir = os.path.join(self.repo_path, "scripts")
-            for script in os.listdir(script_dir):
-                if os.path.isfile(os.path.join(script_dir, script)):
-                    subprocess.run(
-                        [
-                            "sudo",
-                            "ln",
-                            "-sf",
-                            os.path.join(script_dir, script),
-                            "/usr/local/bin/",
-                        ],
-                        check=True,
-                    )
+            script_dir = self.app_dir / "scripts"
+            if script_dir.exists():
+                for script_path in script_dir.iterdir():
+                    if script_path.is_file():
+                        subprocess.run(
+                            [
+                                "sudo",
+                                "ln",
+                                "-sf",
+                                str(script_path),
+                                "/usr/local/bin/",
+                            ],
+                            check=True,
+                        )
 
         except subprocess.CalledProcessError as e:
             print(f"Error during BirdNET-Pi update: {e.stderr}")
@@ -258,7 +261,6 @@ class UpdateManager:
         Returns:
             Dictionary with download results and metadata
         """
-        file_resolver = FilePathResolver()
         # For asset releases, we need to resolve to the latest asset version, not code version
         if version == "latest":
             version = self._resolve_latest_asset_version(github_repo)
@@ -273,7 +275,7 @@ class UpdateManager:
             if include_models:
                 models_source = asset_source_dir / "data" / "models"
                 if models_source.exists():
-                    models_target = Path(file_resolver.get_models_dir())
+                    models_target = self.file_resolver.get_models_dir()
                     models_target.mkdir(parents=True, exist_ok=True)
 
                     # Copy all model files
@@ -290,7 +292,7 @@ class UpdateManager:
             if include_ioc_db:
                 ioc_source = asset_source_dir / "data" / "database" / "ioc_reference.db"
                 if ioc_source.exists():
-                    ioc_target = Path(file_resolver.get_ioc_database_path())
+                    ioc_target = self.file_resolver.get_ioc_database_path()
                     ioc_target.parent.mkdir(parents=True, exist_ok=True)
 
                     shutil.copy2(ioc_source, ioc_target)
@@ -304,7 +306,7 @@ class UpdateManager:
             if include_avibase_db:
                 avibase_source = asset_source_dir / "data" / "database" / "avibase_database.db"
                 if avibase_source.exists():
-                    avibase_target = Path(file_resolver.get_avibase_database_path())
+                    avibase_target = self.file_resolver.get_avibase_database_path()
                     avibase_target.parent.mkdir(parents=True, exist_ok=True)
 
                     shutil.copy2(avibase_source, avibase_target)
@@ -318,7 +320,7 @@ class UpdateManager:
             if include_patlevin_db:
                 patlevin_source = asset_source_dir / "data" / "database" / "patlevin_database.db"
                 if patlevin_source.exists():
-                    patlevin_target = Path(file_resolver.get_patlevin_database_path())
+                    patlevin_target = self.file_resolver.get_patlevin_database_path()
                     patlevin_target.parent.mkdir(parents=True, exist_ok=True)
 
                     shutil.copy2(patlevin_source, patlevin_target)
@@ -392,47 +394,3 @@ class UpdateManager:
         except Exception as e:
             print(f"Failed to list asset versions: {e}")
             return []
-
-    def update_caddyfile(self, birdnetpi_url: str) -> None:
-        """Update the Caddyfile with new configuration and reload Caddy."""
-        try:
-            # Ensure /etc/caddy exists
-            subprocess.run(["sudo", "mkdir", "-p", "/etc/caddy"], check=True)
-
-            caddyfile_path = "/etc/caddy/Caddyfile"
-
-            # Backup existing Caddyfile if it exists
-            if os.path.exists(caddyfile_path):
-                subprocess.run(
-                    ["sudo", "cp", caddyfile_path, f"{caddyfile_path}.original"],
-                    check=True,
-                )
-
-            caddyfile_content = (
-                f"http:// {birdnetpi_url} {{\n"
-                "  reverse_proxy localhost:8000\n"
-                "  reverse_proxy /log* localhost:8080\n"
-                "  reverse_proxy /stats* localhost:8501\n"
-                "  reverse_proxy /terminal* localhost:8888\n"
-                "}\n"
-            )
-
-            # Write the Caddyfile content
-            # Using a temporary file and then moving it with sudo to handle permissions
-            temp_caddyfile_path = "/tmp/Caddyfile_temp"
-            with open(temp_caddyfile_path, "w") as f:
-                f.write(caddyfile_content)
-            subprocess.run(["sudo", "mv", temp_caddyfile_path, caddyfile_path], check=True)
-
-            # Format and reload Caddy
-            subprocess.run(["sudo", "caddy", "fmt", "--overwrite", caddyfile_path], check=True)
-            subprocess.run(["sudo", "systemctl", "reload", "caddy"], check=True)
-
-            print("Caddyfile updated and Caddy reloaded successfully.")
-
-        except subprocess.CalledProcessError as e:
-            print(f"Error updating Caddyfile: {e.stderr}")
-            raise
-        except Exception as e:
-            print(f"An unexpected error occurred during Caddyfile update: {e}")
-            raise

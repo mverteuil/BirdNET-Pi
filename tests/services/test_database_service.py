@@ -10,7 +10,7 @@ from birdnetpi.services.database_service import DatabaseService
 def bnp_database_service(tmp_path) -> DatabaseService:
     """Provide a DatabaseService instance for testing."""
     db_path = tmp_path / "test.db"
-    return DatabaseService(str(db_path))
+    return DatabaseService(db_path)
 
 
 def test_clear_database(bnp_database_service):
@@ -76,7 +76,7 @@ def test_get_database_stats(bnp_database_service, tmp_path):
     shm_path.write_text("fake shm")
 
     # Mock the database path and session queries
-    bnp_database_service.db_path = str(db_path)
+    bnp_database_service.db_path = db_path
 
     with patch.object(bnp_database_service, "get_db") as mock_get_db:
         mock_session = MagicMock()

@@ -13,8 +13,8 @@ from birdnetpi.models.database_models import Base
 class DatabaseService:
     """Provides an interface for database operations, including initialization."""
 
-    def __init__(self, db_path: str | Path):
-        self.db_path = Path(db_path)
+    def __init__(self, db_path: Path):
+        self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Configure SQLite engine with SD card optimizations

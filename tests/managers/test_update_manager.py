@@ -1,4 +1,3 @@
-import subprocess
 from unittest.mock import MagicMock, mock_open, patch
 
 import httpx
@@ -6,13 +5,15 @@ import pytest
 
 from birdnetpi.managers.update_manager import UpdateManager
 from birdnetpi.models.config import BirdNETConfig
+from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
 @pytest.fixture
 def update_manager(tmp_path):
     """Provide an UpdateManager instance for testing."""
-    manager = UpdateManager()
-    manager.repo_path = str(tmp_path)
+    file_resolver = FilePathResolver()
+    manager = UpdateManager(file_resolver)
+    manager.app_dir = tmp_path
     scripts_dir = tmp_path / "scripts"
     scripts_dir.mkdir()
     # Create dummy script files for testing the symlink loop
@@ -27,13 +28,6 @@ def test_update_birdnet(mock_run, update_manager):
     config = BirdNETConfig()
     update_manager.update_birdnet(config)
     assert mock_run.call_count == 12
-
-
-@patch("birdnetpi.managers.update_manager.subprocess.run")
-def test_update_caddyfile(mock_run, update_manager):
-    """Should update the Caddyfile successfully."""
-    update_manager.update_caddyfile("test_url")
-    assert mock_run.call_count == 4
 
 
 @patch("birdnetpi.managers.update_manager.subprocess.run")
@@ -472,38 +466,3 @@ class TestListVersions:
         result = update_manager.list_available_asset_versions("owner/repo")
 
         assert result == []
-
-
-class TestCaddyfileUpdate:
-    """Test Caddyfile update functionality with additional coverage."""
-
-    @patch("os.path.exists")
-    @patch("builtins.open", new_callable=mock_open)
-    @patch("birdnetpi.managers.update_manager.subprocess.run")
-    def test_update_caddyfile__backup(self, mock_run, mock_file, mock_exists, update_manager):
-        """Should backup existing Caddyfile before updating."""
-        mock_exists.return_value = True
-        update_manager.update_caddyfile("example.com")
-
-        # Should have more calls including backup
-        assert mock_run.call_count >= 4
-
-        # Check that backup command was called
-        calls = [str(call) for call in mock_run.call_args_list]
-        backup_call_found = any("cp" in call and "original" in call for call in calls)
-        assert backup_call_found
-
-    @patch("birdnetpi.managers.update_manager.subprocess.run")
-    def test_update_caddyfile_subprocess_error(self, mock_run, update_manager):
-        """Should handle subprocess errors during Caddyfile update."""
-        mock_run.side_effect = subprocess.CalledProcessError(1, "sudo", stderr="Permission denied")
-        with pytest.raises(subprocess.CalledProcessError):
-            update_manager.update_caddyfile("example.com")
-
-    @patch("birdnetpi.managers.update_manager.subprocess.run")
-    def test_update_caddyfile_unexpected_error(self, mock_run, update_manager):
-        """Should handle unexpected errors during Caddyfile update."""
-        mock_run.side_effect = Exception("Unexpected error")
-
-        with pytest.raises(Exception, match="Unexpected error"):
-            update_manager.update_caddyfile("example.com")

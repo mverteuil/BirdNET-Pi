@@ -398,7 +398,7 @@ class TestDetectionBufferingWithAdminOperations:
             with (
                 patch(
                     "birdnetpi.wrappers.generate_dummy_data.FilePathResolver"
-                ) as _mock_file_path_resolver,
+                ) as mock_file_path_resolver,
                 patch(
                     "birdnetpi.wrappers.generate_dummy_data.DatabaseService"
                 ) as _mock_database_service,
@@ -415,6 +415,13 @@ class TestDetectionBufferingWithAdminOperations:
                 patch("birdnetpi.wrappers.generate_dummy_data.os") as mock_os,
             ):
                 # Configure mocks for generate_dummy_data
+                from pathlib import Path
+
+                mock_db_path = MagicMock(spec=Path)
+                mock_db_path.exists.return_value = False
+                mock_db_path.stat.return_value.st_size = 0
+                mock_file_path_resolver.return_value.get_database_path.return_value = mock_db_path
+
                 mock_os.path.exists.return_value = False
                 mock_os.getenv.return_value = "false"  # SBC environment
                 mock_system_control_service.return_value.get_service_status.return_value = "active"

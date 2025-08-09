@@ -1,4 +1,5 @@
 import io
+from pathlib import Path
 
 import matplotlib
 
@@ -41,9 +42,9 @@ class PlottingManager:
         )
         return fig
 
-    def generate_spectrogram(self, audio_path: str) -> io.BytesIO:
+    def generate_spectrogram(self, audio_path: Path) -> io.BytesIO:
         """Generate a spectrogram for a given audio file and return it as a BytesIO buffer."""
-        y, sr = librosa.load(audio_path)
+        y, sr = librosa.load(str(audio_path))
 
         # Compute spectrogram
         d = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)

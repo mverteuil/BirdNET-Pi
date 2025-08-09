@@ -1,4 +1,5 @@
 import uuid
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, Integer, String
@@ -37,12 +38,46 @@ class GUID(TypeDecorator):
         return value
 
 
+class PathType(TypeDecorator):
+    """Type decorator for Path objects.
+
+    Stores paths as strings in the database but provides Path objects in Python.
+    Validates that paths are not empty or blank.
+    """
+
+    impl = String
+    cache_ok = True
+
+    def process_bind_param(self, value: Any, dialect: Dialect) -> Any:  # noqa: ANN401
+        """Convert Path to string for database storage."""
+        if value is None:
+            raise ValueError("Path cannot be None")
+
+        if isinstance(value, Path):
+            path_str = str(value)
+        else:
+            path_str = str(value)
+
+        # Validate non-empty
+        if not path_str or not path_str.strip():
+            raise ValueError("Path cannot be empty or blank")
+
+        return path_str
+
+    def process_result_value(self, value: Any, dialect: Dialect) -> Any:  # noqa: ANN401
+        """Convert string back to Path from database."""
+        if value is None:
+            # This shouldn't happen with nullable=False, but handle gracefully
+            raise ValueError("Path value from database cannot be None")
+        return Path(value)
+
+
 class Detection(Base):
     """Represents a bird detection record in the database."""
 
     __tablename__ = "detections"
 
-    id = Column(GUID(), primary_key=True, default=uuid.uuid4, index=True)
+    id = Column(GUID, primary_key=True, default=uuid.uuid4, index=True)
 
     # Species identification (parsed from tensor output)
     species_tensor = Column(String, index=True)  # Raw tensor output: "Scientific_name_Common Name"
@@ -52,7 +87,7 @@ class Detection(Base):
     # Detection metadata
     confidence = Column(Float)
     timestamp = Column(DateTime(timezone=True), server_default=func.utcnow(), index=True)
-    audio_file_id = Column(GUID(), ForeignKey("audio_files.id"), unique=True)
+    audio_file_id = Column(GUID, ForeignKey("audio_files.id"), unique=True)
     audio_file = relationship("AudioFile", backref=backref("detection", uselist=False))
 
     # Location and analysis parameters
@@ -85,8 +120,7 @@ class AudioFile(Base):
 
     __tablename__ = "audio_files"
 
-    id = Column(GUID(), primary_key=True, default=uuid.uuid4, index=True)
-    file_path = Column(String, unique=True, index=True)
+    id = Column(GUID, primary_key=True, default=uuid.uuid4, index=True)
+    file_path = Column(PathType, unique=True, index=True, nullable=False)
     duration = Column(Float)
     size_bytes = Column(Integer)
-    # Add more fields as needed

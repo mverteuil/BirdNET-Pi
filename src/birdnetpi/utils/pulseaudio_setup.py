@@ -9,7 +9,9 @@ import os
 import subprocess
 from pathlib import Path
 from typing import Any
+
 from jinja2 import Template
+
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
@@ -183,7 +185,7 @@ class PulseAudioSetup:
         resolver = FilePathResolver()
 
         # Create default.pa configuration
-        default_pa_template_path = resolver.config_templates_dir / "pulseaudio_default.pa.j2"
+        default_pa_template_path = resolver.get_template_file_path("pulseaudio_default.pa.j2")
         default_pa_template = Template(default_pa_template_path.read_text())
         default_pa_content = default_pa_template.render(
             container_ip=container_ip, port=port, enable_network=enable_network
@@ -193,7 +195,7 @@ class PulseAudioSetup:
         default_pa_path.write_text(default_pa_content)
 
         # Create daemon.conf
-        daemon_conf_template_path = resolver.config_templates_dir / "pulseaudio_daemon.conf.j2"
+        daemon_conf_template_path = resolver.get_template_file_path("pulseaudio_daemon.conf.j2")
         daemon_conf_template = Template(daemon_conf_template_path.read_text())
         daemon_conf_content = daemon_conf_template.render()
 

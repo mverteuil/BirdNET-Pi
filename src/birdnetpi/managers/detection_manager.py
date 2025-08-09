@@ -1,5 +1,6 @@
 import datetime
 from datetime import date
+from pathlib import Path
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import func
@@ -73,7 +74,7 @@ class DetectionManager:
                 print(f"Error retrieving detections: {e}")
                 raise
 
-    def get_audio_file_by_path(self, file_path: str) -> AudioFile | None:
+    def get_audio_file_by_path(self, file_path: Path) -> AudioFile | None:
         """Retrieve an AudioFile record by its file path."""
         with self.bnp_database_service.get_db() as db:
             try:

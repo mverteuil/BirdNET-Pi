@@ -55,37 +55,30 @@ def file_path_resolver(tmp_path: Path) -> FilePathResolver:
     temp_database_dir.mkdir(parents=True)
     temp_config_dir = tmp_path / "config"
     temp_config_dir.mkdir(parents=True)
-    temp_logs_dir = tmp_path / "logs"
-    temp_logs_dir.mkdir(parents=True)
     temp_exports_dir = tmp_path / "exports"
     temp_exports_dir.mkdir(parents=True)
 
     # Override WRITABLE paths to use temp directory
-    resolver.get_database_path = lambda: str(temp_database_dir / "birdnetpi.db")
-    resolver.get_birdnetpi_config_path = lambda: str(temp_config_dir / "birdnetpi.yaml")
-    resolver.get_logs_dir = lambda: str(temp_logs_dir)
-    resolver.get_exports_dir = lambda: str(temp_exports_dir)
+    resolver.get_database_path = lambda: temp_database_dir / "birdnetpi.db"
+    resolver.get_birdnetpi_config_path = lambda: temp_config_dir / "birdnetpi.yaml"
+    resolver.get_exports_dir = lambda: temp_exports_dir
 
     # Keep READ-ONLY paths pointing to real repo locations
     # These are already correct from the base FilePathResolver, but let's be explicit:
-    resolver.get_ioc_database_path = lambda: str(real_data_dir / "database" / "ioc_reference.db")
-    resolver.get_avibase_database_path = lambda: str(
-        real_data_dir / "database" / "avibase_database.db"
+    resolver.get_ioc_database_path = lambda: real_data_dir / "database" / "ioc_reference.db"
+    resolver.get_avibase_database_path = lambda: real_data_dir / "database" / "avibase_database.db"
+    resolver.get_patlevin_database_path = (
+        lambda: real_data_dir / "database" / "patlevin_database.db"
     )
-    resolver.get_patlevin_database_path = lambda: str(
-        real_data_dir / "database" / "patlevin_database.db"
-    )
-    resolver.get_models_dir = lambda: str(real_data_dir / "models")
-    resolver.get_model_path = lambda model_filename: str(
+    resolver.get_models_dir = lambda: real_data_dir / "models"
+    resolver.get_model_path = lambda model_filename: (
         real_data_dir
         / "models"
         / (model_filename if model_filename.endswith(".tflite") else f"{model_filename}.tflite")
     )
-    resolver.get_config_template_path = lambda: str(
-        real_app_dir / "config" / "birdnetpi.yaml.template"
-    )
-    resolver.get_static_dir = lambda: str(real_app_dir / "static")
-    resolver.get_templates_dir = lambda: str(real_app_dir / "templates")
+    resolver.get_config_template_path = lambda: real_app_dir / "config" / "birdnetpi.yaml.template"
+    resolver.get_static_dir = lambda: real_app_dir / "static"
+    resolver.get_templates_dir = lambda: real_app_dir / "templates"
 
     # For config tests, copy template to temp config location
     template_path = Path(resolver.get_config_template_path())
