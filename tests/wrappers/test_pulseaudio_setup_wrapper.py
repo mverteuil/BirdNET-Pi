@@ -7,13 +7,13 @@ import pytest
 
 from birdnetpi.wrappers.pulseaudio_setup_wrapper import (
     cleanup_command,
+    command_test,
     detect_ip_command,
     devices_command,
     install_command,
     main,
     setup_command,
     status_command,
-    test_command,
 )
 
 
@@ -124,7 +124,7 @@ class TestPulseAudioSetupWrapper:
 
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.test_connection")
     @patch("builtins.print")
-    def test_command(self, mock_print, mock_test):
+    def test_command_test(self, mock_print, mock_test):
         """Should successfully run test command."""
         mock_args = MagicMock()
         mock_args.container_ip = "127.0.0.1"
@@ -133,7 +133,7 @@ class TestPulseAudioSetupWrapper:
 
         mock_test.return_value = (True, "Connection successful")
 
-        test_command(mock_args)
+        command_test(mock_args)
 
         mock_test.assert_called_once_with(
             container_ip="127.0.0.1", port=4713, container_name="birdnet-pi"
@@ -146,7 +146,7 @@ class TestPulseAudioSetupWrapper:
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_container_ip")
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.test_connection")
     @patch("builtins.print")
-    def test_command__auto_detect_ip(self, mock_print, mock_test, mock_get_ip):
+    def test_command_test__auto_detect_ip(self, mock_print, mock_test, mock_get_ip):
         """Should auto-detect container IP when not provided."""
         mock_args = MagicMock()
         mock_args.container_ip = None
@@ -156,7 +156,7 @@ class TestPulseAudioSetupWrapper:
         mock_get_ip.return_value = "172.18.0.10"
         mock_test.return_value = (True, "Connection successful")
 
-        test_command(mock_args)
+        command_test(mock_args)
 
         mock_get_ip.assert_called_once_with("test-container")
         mock_test.assert_called_once_with(
@@ -169,7 +169,7 @@ class TestPulseAudioSetupWrapper:
 
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.test_connection")
     @patch("builtins.print")
-    def test_command__explicit_ip_no_auto_detect(self, mock_print, mock_test):
+    def test_command_test__explicit_ip_no_auto_detect(self, mock_print, mock_test):
         """Should not auto-detect when explicit IP is provided."""
         mock_args = MagicMock()
         mock_args.container_ip = "10.0.0.5"
@@ -181,7 +181,7 @@ class TestPulseAudioSetupWrapper:
         with patch(
             "birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_container_ip"
         ) as mock_get_ip:
-            test_command(mock_args)
+            command_test(mock_args)
             mock_get_ip.assert_not_called()  # Should not auto-detect
 
         # Verify explicit IP was printed
@@ -191,7 +191,7 @@ class TestPulseAudioSetupWrapper:
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.test_connection")
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.sys.exit")
     @patch("builtins.print")
-    def test_command_failure(self, mock_print, mock_exit, mock_test):
+    def test_command_test_failure(self, mock_print, mock_exit, mock_test):
         """Should handle test command failure."""
         mock_args = MagicMock()
         mock_args.container_ip = "127.0.0.1"
@@ -200,7 +200,7 @@ class TestPulseAudioSetupWrapper:
 
         mock_test.return_value = (False, "Connection failed")
 
-        test_command(mock_args)
+        command_test(mock_args)
 
         mock_exit.assert_called_once_with(1)
 
@@ -450,10 +450,10 @@ class TestPulseAudioSetupWrapper:
 
         mock_setup_command.assert_called_once_with(mock_args)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.test_command")
+    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.command_test")
     @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.argparse.ArgumentParser")
     def test_main_command(self, mock_parser_class, mock_test_command):
-        """Should call test_command for test command."""
+        """Should call command_test for test command."""
         mock_parser = MagicMock()
         mock_parser_class.return_value = mock_parser
         mock_args = MagicMock(command="test")

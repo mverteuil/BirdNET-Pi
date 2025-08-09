@@ -41,7 +41,7 @@ def setup_command(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
-def test_command(args: argparse.Namespace) -> None:
+def command_test(args: argparse.Namespace) -> None:
     """Test connection to container PulseAudio service."""
     if args.container_ip:
         print(f"Testing connection to {args.container_ip}:{args.port}...")
@@ -299,7 +299,7 @@ Examples:
     elif args.command == "setup":
         setup_command(args)
     elif args.command == "test":
-        test_command(args)
+        command_test(args)
     elif args.command == "status":
         status_command(args)
     elif args.command == "devices":
