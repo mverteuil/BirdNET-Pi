@@ -9,15 +9,19 @@ import httpx
 from tqdm import tqdm
 
 from birdnetpi.models.config import BirdNETConfig
+from birdnetpi.services.system_control_service import SystemControlService
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
 class UpdateManager:
     """Manages updates and Git operations for the BirdNET-Pi repository."""
 
-    def __init__(self, file_resolver: FilePathResolver) -> None:
+    def __init__(
+        self, file_resolver: FilePathResolver, system_control: SystemControlService | None = None
+    ) -> None:
         self.file_resolver = file_resolver
         self.app_dir = file_resolver.app_dir
+        self.system_control = system_control or SystemControlService()
 
     def get_commits_behind(self) -> int:
         """Check how many commits the local repository is behind the remote."""
@@ -113,8 +117,8 @@ class UpdateManager:
 
             print(diff_output)
 
-            # Reload systemd daemon
-            subprocess.run(["sudo", "systemctl", "daemon-reload"], check=True)
+            # Reload system daemon configuration (systemd or supervisord)
+            self.system_control.daemon_reload()
 
             # Symlink scripts
             script_dir = self.app_dir / "scripts"

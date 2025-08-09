@@ -12,7 +12,8 @@ from birdnetpi.utils.file_path_resolver import FilePathResolver
 def update_manager(tmp_path):
     """Provide an UpdateManager instance for testing."""
     file_resolver = FilePathResolver()
-    manager = UpdateManager(file_resolver)
+    mock_system_control = MagicMock()
+    manager = UpdateManager(file_resolver, mock_system_control)
     manager.app_dir = tmp_path
     scripts_dir = tmp_path / "scripts"
     scripts_dir.mkdir()
@@ -27,7 +28,10 @@ def test_update_birdnet(mock_run, update_manager):
     """Should update BirdNET successfully."""
     config = BirdNETConfig()
     update_manager.update_birdnet(config)
-    assert mock_run.call_count == 12
+    # 11 subprocess calls (removed systemctl daemon-reload)
+    assert mock_run.call_count == 11
+    # Verify daemon_reload was called on system_control service
+    update_manager.system_control.daemon_reload.assert_called_once()
 
 
 @patch("birdnetpi.managers.update_manager.subprocess.run")
@@ -277,12 +281,10 @@ class TestDownloadReleaseAssets:
     @patch.object(UpdateManager, "_download_and_extract_assets")
     @patch.object(UpdateManager, "_validate_asset_release")
     @patch.object(UpdateManager, "_resolve_latest_asset_version")
-    @patch("birdnetpi.managers.update_manager.FilePathResolver")
     @patch("shutil.copy2")
     def test_download_release_assets(
         self,
         mock_copy,
-        mock_file_resolver_class,
         mock_resolve_latest,
         mock_validate,
         mock_download_extract,
@@ -290,11 +292,11 @@ class TestDownloadReleaseAssets:
         tmp_path,
     ):
         """Should download release assets successfully."""
-        # Setup mocks
-        mock_file_resolver = MagicMock()
-        mock_file_resolver.get_models_dir.return_value = str(tmp_path / "models")
-        mock_file_resolver.get_ioc_database_path.return_value = str(tmp_path / "ioc.db")
-        mock_file_resolver_class.return_value = mock_file_resolver
+        # Setup mocks - use the update_manager's file_resolver
+        update_manager.file_resolver.get_models_dir = MagicMock(return_value=tmp_path / "models")
+        update_manager.file_resolver.get_ioc_database_path = MagicMock(
+            return_value=tmp_path / "ioc.db"
+        )
 
         mock_resolve_latest.return_value = "v1.0.0"
         mock_validate.return_value = "assets-v1.0.0"
@@ -329,19 +331,16 @@ class TestDownloadReleaseAssets:
 
     @patch.object(UpdateManager, "_download_and_extract_assets")
     @patch.object(UpdateManager, "_validate_asset_release")
-    @patch("birdnetpi.managers.update_manager.FilePathResolver")
     def test_download_release_assets_models_only(
         self,
-        mock_file_resolver_class,
         mock_validate,
         mock_download_extract,
         update_manager,
         tmp_path,
     ):
         """Should download only models when specified."""
-        mock_file_resolver = MagicMock()
-        mock_file_resolver.get_models_dir.return_value = str(tmp_path / "models")
-        mock_file_resolver_class.return_value = mock_file_resolver
+        # Setup mocks - use the update_manager's file_resolver
+        update_manager.file_resolver.get_models_dir = MagicMock(return_value=tmp_path / "models")
 
         mock_validate.return_value = "assets-v1.0.0"
 
@@ -362,19 +361,16 @@ class TestDownloadReleaseAssets:
 
     @patch.object(UpdateManager, "_download_and_extract_assets")
     @patch.object(UpdateManager, "_validate_asset_release")
-    @patch("birdnetpi.managers.update_manager.FilePathResolver")
     def test_download_release_assets__missing_models(
         self,
-        mock_file_resolver_class,
         mock_validate,
         mock_download_extract,
         update_manager,
         tmp_path,
     ):
         """Should handle missing models directory gracefully."""
-        mock_file_resolver = MagicMock()
-        mock_file_resolver.get_models_dir.return_value = str(tmp_path / "models")
-        mock_file_resolver_class.return_value = mock_file_resolver
+        # Setup mocks - use the update_manager's file_resolver
+        update_manager.file_resolver.get_models_dir = MagicMock(return_value=tmp_path / "models")
 
         mock_validate.return_value = "assets-v1.0.0"
 

@@ -40,16 +40,31 @@ class ServiceManagementStrategy(abc.ABC):
         """Return the status of a specified system service."""
         pass
 
+    @abc.abstractmethod
+    def daemon_reload(self) -> None:
+        """Reload daemon configuration (if applicable)."""
+        pass
+
 
 class EmbeddedSystemdStrategy(ServiceManagementStrategy):
     """Service management strategy for systems using systemd (e.g., Raspberry Pi OS)."""
 
-    def _run_systemctl_command(self, action: str, service_name: str) -> None:
+    def _run_systemctl_command(self, action: str, service_name: str = "") -> None:
+        """Run a systemctl command with optional service name."""
         try:
-            subprocess.run(["sudo", "systemctl", action, service_name], check=True)
-            print(f"Service {service_name} {action}ed successfully.")
+            cmd = ["sudo", "systemctl", action]
+            if service_name:
+                cmd.append(service_name)
+            subprocess.run(cmd, check=True)
+            if service_name:
+                print(f"Service {service_name} {action}ed successfully.")
+            else:
+                print(f"Systemctl {action} completed successfully.")
         except subprocess.CalledProcessError as e:
-            print(f"Error {action}ing service {service_name}: {e}")
+            if service_name:
+                print(f"Error {action}ing service {service_name}: {e}")
+            else:
+                print(f"Error running systemctl {action}: {e}")
         except FileNotFoundError:
             print("Error: systemctl command not found. Is systemd installed?")
 
@@ -92,16 +107,30 @@ class EmbeddedSystemdStrategy(ServiceManagementStrategy):
             print("Error: systemctl command not found. Is systemd installed?")
             return "error"
 
+    def daemon_reload(self) -> None:
+        """Reload systemd daemon configuration."""
+        self._run_systemctl_command("daemon-reload")
+
 
 class DockerSupervisordStrategy(ServiceManagementStrategy):
     """Service management strategy for Docker containers using Supervisord."""
 
-    def _run_supervisorctl_command(self, action: str, service_name: str) -> None:
+    def _run_supervisorctl_command(self, action: str, service_name: str = "") -> None:
+        """Run a supervisorctl command with optional service name."""
         try:
-            subprocess.run(["supervisorctl", action, service_name], check=True)
-            print(f"Service {service_name} {action}ed successfully via supervisorctl.")
+            cmd = ["supervisorctl", action]
+            if service_name:
+                cmd.append(service_name)
+            subprocess.run(cmd, check=True)
+            if service_name:
+                print(f"Service {service_name} {action}ed successfully via supervisorctl.")
+            else:
+                print(f"Supervisorctl {action} completed successfully.")
         except subprocess.CalledProcessError as e:
-            print(f"Error {action}ing service {service_name} via supervisorctl: {e}")
+            if service_name:
+                print(f"Error {action}ing service {service_name} via supervisorctl: {e}")
+            else:
+                print(f"Error running supervisorctl {action}: {e}")
         except FileNotFoundError:
             print(
                 "Error: supervisorctl command not found. Is Supervisord installed and configured?"
@@ -156,6 +185,13 @@ class DockerSupervisordStrategy(ServiceManagementStrategy):
         except FileNotFoundError:
             print("Error: supervisorctl command not found. Is Supervisor installed?")
             return "error"
+
+    def daemon_reload(self) -> None:
+        """Reload supervisord configuration (reread and update)."""
+        # Reread the configuration files
+        self._run_supervisorctl_command("reread", "")
+        # Update to apply any changes
+        self._run_supervisorctl_command("update", "")
 
 
 class ServiceStrategySelector:

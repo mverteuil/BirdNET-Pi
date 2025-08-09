@@ -35,3 +35,7 @@ class SystemControlService:
         """Restarts a list of specified system services."""
         for service in services:
             self.restart_service(service)
+
+    def daemon_reload(self) -> None:
+        """Reload systemd daemon configuration (only applicable for systemd)."""
+        self.strategy.daemon_reload()
