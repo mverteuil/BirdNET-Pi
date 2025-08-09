@@ -7,7 +7,6 @@ from fastapi.testclient import TestClient
 
 from birdnetpi.services.mqtt_service import MQTTService
 from birdnetpi.services.webhook_service import WebhookService
-from birdnetpi.web.core.factory import create_app
 
 
 @pytest.fixture

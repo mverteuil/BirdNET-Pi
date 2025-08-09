@@ -1,7 +1,5 @@
 """Common fixtures for web application tests."""
 
-import os
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -21,10 +19,10 @@ def app_with_temp_data(file_path_resolver) -> Any:
     /var/lib/birdnetpi path and cause a PermissionError.
     """
     from dependency_injector import providers
-    from birdnetpi.web.core.container import Container
+
     from birdnetpi.services.database_service import DatabaseService
-    from birdnetpi.models.config import BirdNETConfig
     from birdnetpi.utils.config_file_parser import ConfigFileParser
+    from birdnetpi.web.core.container import Container
 
     # Override the Container's providers at the class level BEFORE app creation
     # This ensures that when sqladmin calls container.bnp_database_service(),

@@ -42,7 +42,6 @@ def file_path_resolver(tmp_path: Path) -> FilePathResolver:
     it affects ALL paths uniformly, when we need selective path overriding.
     """
     from pathlib import Path
-    from unittest.mock import patch
 
     project_root = Path(__file__).parent.parent
     real_data_dir = project_root / "data"

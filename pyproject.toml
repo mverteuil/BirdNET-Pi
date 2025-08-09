@@ -71,7 +71,7 @@ dependencies = [
   "tzlocal",
   "uvicorn",
   "websockets>=15.0.1",
-  "wtforms>=3.1.2",
+  "wtforms>=3.1.2"
 ]
 
 [project.scripts]
@@ -81,6 +81,7 @@ audio-capture-daemon = "birdnetpi.wrappers.audio_capture_daemon:main"
 audio-websocket-daemon = "birdnetpi.wrappers.audio_websocket_daemon:main"
 data-manager = "birdnetpi.wrappers.data_manager_wrapper:main"
 generate-dummy-data = "birdnetpi.wrappers.generate_dummy_data:main"
+manage-translations = "birdnetpi.wrappers.manage_translations:main"
 pulseaudio-setup = "birdnetpi.wrappers.pulseaudio_setup_wrapper:main"
 release-manager = "birdnetpi.wrappers.release_wrapper:main"
 reporting-manager = "birdnetpi.wrappers.reporting_manager_wrapper:main"

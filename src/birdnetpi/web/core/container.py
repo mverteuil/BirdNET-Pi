@@ -17,8 +17,8 @@ from birdnetpi.services.gps_service import GPSService
 from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
 from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.services.location_service import LocationService
-from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.services.mqtt_service import MQTTService
+from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.services.notification_service import NotificationService
 from birdnetpi.services.spectrogram_service import SpectrogramService
 from birdnetpi.services.system_control_service import SystemControlService

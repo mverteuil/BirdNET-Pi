@@ -118,6 +118,7 @@ respective licenses.
 Name                           Version            License
 ------------------------------ ------------------ --------------------------------------------------
 APScheduler                    3.11.0             MIT License
+Babel                          2.17.0             BSD License
 GitPython                      3.1.44             BSD License
 Jinja2                         3.1.6              BSD License
 Markdown                       3.8.2              BSD 3-Clause License
@@ -161,8 +162,8 @@ gast                           0.6.0              BSD License
 gitdb                          4.0.12             BSD License
 google-pasta                   0.2.0              Apache Software License
 grpcio                         1.73.1             Apache Software License
-h11                            0.16.0             MIT License
 h5py                           3.14.0             BSD-3-Clause License
+h11                            0.16.0             MIT License
 httpcore                       1.0.9              BSD License
 httpx                          0.28.1             BSD License
 idna                           3.10               BSD License

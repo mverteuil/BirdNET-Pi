@@ -7,11 +7,9 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
-from birdnetpi.web.core.factory import create_app
 
 
 @pytest.fixture

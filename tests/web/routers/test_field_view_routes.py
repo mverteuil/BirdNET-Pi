@@ -7,8 +7,6 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.testclient import TestClient
 
-from birdnetpi.web.core.factory import create_app
-
 
 @pytest.fixture
 def app_with_field_view_routes(app_with_temp_data):

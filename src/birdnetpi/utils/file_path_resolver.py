@@ -125,6 +125,18 @@ class FilePathResolver:
         """Get the directory for i18n locale files (.po/.mo)."""
         return str(self.app_dir / "locales")
 
+    def get_babel_config_path(self) -> str:
+        """Get the path to the Babel configuration file."""
+        return str(self.app_dir / "babel.cfg")
+
+    def get_messages_pot_path(self) -> str:
+        """Get the path to the messages.pot template file."""
+        return str(self.app_dir / "locales" / "messages.pot")
+
+    def get_src_dir(self) -> str:
+        """Get the source code directory."""
+        return str(self.app_dir / "src")
+
     def get_fifo_base_path(self) -> str:
         """Get the base path for FIFO files (temporary)."""
         return self.get_temp_dir()

@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
-"""Translation management script for BirdNET-Pi i18n workflow.
-
-This script provides convenient commands for managing translations:
-- extract: Extract translatable strings from source code
-- update: Update existing translation files with new strings
-- compile: Compile .po files to .mo files for production use
-- init: Initialize a new language
-"""
+"""Translation management wrapper for BirdNET-Pi i18n workflow."""
 
 import argparse
 import subprocess
 import sys
-from pathlib import Path
+
+from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
 def run_command(cmd: list[str], description: str) -> bool:
@@ -31,37 +25,70 @@ def run_command(cmd: list[str], description: str) -> bool:
         return False
 
 
-def extract_strings() -> bool:
+def extract_strings(resolver: FilePathResolver) -> bool:
     """Extract translatable strings from source code."""
     cmd = [
+        "uv",
+        "run",
         "pybabel",
         "extract",
         "-F",
-        "babel.cfg",
+        resolver.get_babel_config_path(),
         "-k",
         "lazy_gettext",
+        "--project=BirdNET-Pi",
+        "--version=2.0.0",
+        "--msgid-bugs-address=https://github.com/mverteuil/BirdNET-Pi/issues",
+        "--copyright-holder=BirdNET-Pi Contributors",
         "-o",
-        "locales/messages.pot",
-        "src/",
+        resolver.get_messages_pot_path(),
+        resolver.get_src_dir(),
     ]
     return run_command(cmd, "Extracting translatable strings")
 
 
-def update_translations() -> bool:
+def update_translations(resolver: FilePathResolver) -> bool:
     """Update existing translation files with new strings."""
-    cmd = ["pybabel", "update", "-i", "locales/messages.pot", "-d", "locales"]
+    cmd = [
+        "uv",
+        "run",
+        "pybabel",
+        "update",
+        "-i",
+        resolver.get_messages_pot_path(),
+        "-d",
+        resolver.get_locales_dir(),
+    ]
     return run_command(cmd, "Updating translation files")
 
 
-def compile_translations() -> bool:
+def compile_translations(resolver: FilePathResolver) -> bool:
     """Compile .po files to .mo files."""
-    cmd = ["pybabel", "compile", "-d", "locales"]
+    cmd = [
+        "uv",
+        "run",
+        "pybabel",
+        "compile",
+        "-d",
+        resolver.get_locales_dir(),
+    ]
     return run_command(cmd, "Compiling translation files")
 
 
-def init_language(language: str) -> bool:
+def init_language(resolver: FilePathResolver, language: str) -> bool:
     """Initialize a new language."""
-    cmd = ["pybabel", "init", "-i", "locales/messages.pot", "-d", "locales", "-l", language]
+    cmd = [
+        "uv",
+        "run",
+        "pybabel",
+        "init",
+        "-i",
+        resolver.get_messages_pot_path(),
+        "-d",
+        resolver.get_locales_dir(),
+        "-l",
+        language,
+    ]
     return run_command(cmd, f"Initializing language: {language}")
 
 
@@ -79,29 +106,34 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # Change to project root directory
-    script_dir = Path(__file__).parent
-    project_root = script_dir.parent
-    print(f"Working directory: {project_root}")
+    # Set BIRDNETPI_APP to the current working directory
     import os
+    from pathlib import Path
 
-    os.chdir(project_root)
+    os.environ["BIRDNETPI_APP"] = str(Path.cwd())
+
+    # Initialize the file path resolver
+    resolver = FilePathResolver()
 
     success = True
 
     if args.command == "extract":
-        success = extract_strings()
+        success = extract_strings(resolver)
     elif args.command == "update":
-        success = update_translations()
+        success = update_translations(resolver)
     elif args.command == "compile":
-        success = compile_translations()
+        success = compile_translations(resolver)
     elif args.command == "init":
         if not args.language:
             print("Error: --language is required for 'init' command")
             sys.exit(1)
-        success = init_language(args.language)
+        success = init_language(resolver, args.language)
     elif args.command == "all":
-        success = extract_strings() and update_translations() and compile_translations()
+        success = (
+            extract_strings(resolver)
+            and update_translations(resolver)
+            and compile_translations(resolver)
+        )
 
     if success:
         print("✓ Translation operation completed successfully")

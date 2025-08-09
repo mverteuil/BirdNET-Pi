@@ -6,7 +6,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from birdnetpi.services.hardware_monitor_service import HardwareMonitorService
-from birdnetpi.web.core.factory import create_app
 
 
 @pytest.fixture

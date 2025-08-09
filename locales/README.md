@@ -6,7 +6,7 @@ This directory contains translation files for the BirdNET-Pi web interface using
 
 ```
 locales/
-├── babel.cfg          # Babel extraction configuration (in project root)
+├── messages.pot       # Translation template (auto-generated)
 ├── en/                # English (base language)
 │   └── LC_MESSAGES/
 │       ├── messages.po    # Translation source file
@@ -25,6 +25,8 @@ locales/
         └── messages.mo
 ```
 
+Note: The `babel.cfg` configuration file is located in the project root.
+
 ## Supported Languages
 
 - **en**: English (base language)
@@ -34,51 +36,76 @@ locales/
 
 ## Translation Workflow
 
-### 1. Extract Translatable Strings
+BirdNET-Pi provides a `manage-translations` command to handle all translation operations.
+
+### Quick Start
+
+```bash
+# Extract, update, and compile all translations at once
+uv run manage-translations all
+```
+
+### Individual Operations
+
+#### 1. Extract Translatable Strings
 
 Extract all translatable strings from Python source files and Jinja2 templates:
 
 ```bash
-# From project root
-pybabel extract -F babel.cfg -k lazy_gettext -o locales/messages.pot src/
+uv run manage-translations extract
 ```
 
-### 2. Initialize New Language
+This creates/updates the `messages.pot` template file with all translatable strings found in the codebase.
+
+#### 2. Initialize New Language
 
 To add support for a new language (e.g., Italian 'it'):
 
 ```bash
-pybabel init -i locales/messages.pot -d locales -l it
+uv run manage-translations init --language it
 ```
 
-### 3. Update Existing Translations
+This creates a new language directory with the appropriate `.po` file.
+
+#### 3. Update Existing Translations
 
 When new translatable strings are added to the code:
 
 ```bash
-# Update .pot template
-pybabel extract -F babel.cfg -k lazy_gettext -o locales/messages.pot src/
-
-# Update all existing .po files
-pybabel update -i locales/messages.pot -d locales
+# Update all existing .po files with new strings from the template
+uv run manage-translations update
 ```
 
-### 4. Translate Strings
+This synchronizes all language `.po` files with the latest `messages.pot` template.
+
+#### 4. Translate Strings
 
 Edit the `.po` files in each language directory to provide translations:
 
 ```po
-# Example entry in messages.po
+# Example entry in locales/es/LC_MESSAGES/messages.po
 msgid "Hello World"
 msgstr "Hola Mundo"  # Spanish translation
 ```
 
-### 5. Compile Translations
+#### 5. Compile Translations
 
 Compile `.po` files to binary `.mo` files for use by the application:
 
 ```bash
-pybabel compile -d locales
+uv run manage-translations compile
+```
+
+### Complete Workflow Example
+
+```bash
+# 1. Make code changes with new translatable strings
+# 2. Extract new strings and update all languages
+uv run manage-translations all
+
+# 3. Edit .po files to add translations
+# 4. Compile the translations
+uv run manage-translations compile
 ```
 
 ## Code Integration
@@ -121,9 +148,16 @@ Use the `_()` function in templates:
 - **`.po`**: Translation source files (human-readable, editable)
 - **`.mo`**: Compiled binary translation files (generated from `.po` files)
 
+## Project Metadata
+
+Translation files are automatically generated with the following metadata:
+- **Project**: BirdNET-Pi 2.0.0
+- **Copyright**: BirdNET-Pi Contributors
+- **Bug Reports**: https://github.com/mverteuil/BirdNET-Pi/issues
+
 ## Dependencies
 
-- **Babel**: Python internationalization library for extraction and compilation
+- **Babel**: Python internationalization library for extraction and compilation (babel>=2.14.0)
 - **gettext**: Standard GNU translation system used by Python
 
 ## Notes
@@ -132,3 +166,4 @@ Use the `_()` function in templates:
 - The translation system is integrated with FastAPI middleware for automatic language detection
 - Languages are detected from the browser's `Accept-Language` header
 - Fallback to English occurs when requested language is not available
+- The `manage-translations` command automatically sets the correct paths using FilePathResolver

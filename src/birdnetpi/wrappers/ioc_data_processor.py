@@ -10,7 +10,6 @@ Usage:
         --output ioc_data_v15.1.json
     python -m birdnetpi.wrappers.ioc_data_processor info --json-file ioc_data_v15.1.json
 """
-
 import argparse
 import sys
 from pathlib import Path
