@@ -1,3 +1,4 @@
+import os
 import subprocess
 import time
 from collections.abc import Generator
@@ -10,13 +11,17 @@ import pytest
 @pytest.fixture(scope="module")
 def docker_compose_up_down() -> Generator[None, None, None]:
     """Bring up and tear down Docker Compose services for e2e tests."""
+    # Set environment variable to use test volume
+    env = os.environ.copy()
+    env["BIRDNET_DATA_VOLUME"] = "birdnet-test-data"
+
     # Bring up Docker Compose and wait for services to be healthy
-    subprocess.run(["docker", "compose", "up", "-d", "--build", "--wait"], check=True)
+    subprocess.run(["docker", "compose", "up", "-d", "--build", "--wait"], check=True, env=env)
     subprocess.run(["docker", "ps"], check=True)
     subprocess.run(["docker", "logs", "birdnet-pi"], check=True)
     yield
-    # Bring down Docker Compose
-    subprocess.run(["docker", "compose", "down"], check=True)
+    # Bring down Docker Compose and remove test volume
+    subprocess.run(["docker", "compose", "down", "-v"], check=True, env=env)
 
 
 @pytest.mark.expensive
@@ -37,7 +42,7 @@ def test_sqladmin_detection_list_e2e(docker_compose_up_down: Any) -> None:
 
     # Wait for the FastAPI service to be fully ready after restart
     # Retry the basic endpoint first to ensure the service is up
-    for attempt in range(10):
+    for _attempt in range(10):
         try:
             health_check = httpx.get("http://localhost:8000/", timeout=3)
             if health_check.status_code == 200:
