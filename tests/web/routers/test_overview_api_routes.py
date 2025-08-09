@@ -29,16 +29,14 @@ def temp_db():
 
 
 @pytest.fixture
-def app_with_overview_services(file_path_resolver, temp_db):
+def app_with_overview_services(app_with_temp_data):
     """Create FastAPI app with overview router dependencies."""
-    # Create app using factory
-    app = create_app()
+    app = app_with_temp_data
 
     # Override services with mocks or test instances
     if hasattr(app, "container"):
-        # Use real detection manager with temp database
-        detection_manager = DetectionManager(DatabaseService(temp_db))
-        app.container.detection_manager.override(detection_manager)  # type: ignore[attr-defined]
+        # The app already has a DatabaseService with temp directory, use the existing detection manager
+        # (no need to override since it's already using temp paths)
 
         # Mock hardware monitor service
         mock_hardware_monitor = MagicMock(spec=HardwareMonitorService)
@@ -51,7 +49,7 @@ def app_with_overview_services(file_path_resolver, temp_db):
 
         # Mock reporting manager that uses the detection manager
         mock_reporting_manager = MagicMock(spec=ReportingManager)
-        mock_reporting_manager.detection_manager = detection_manager
+        mock_reporting_manager.detection_manager = app.container.detection_manager()
         app.container.reporting_manager.override(mock_reporting_manager)  # type: ignore[attr-defined]
 
     return app

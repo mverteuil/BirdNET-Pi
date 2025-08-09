@@ -43,13 +43,28 @@ def test_install_args():
     """Provide test installation arguments."""
     return {
         "basic": argparse.Namespace(
-            version="v2.1.0", include_models=True, include_ioc_db=True, output_json=None
+            version="v2.1.0",
+            include_models=True,
+            include_ioc_db=True,
+            include_avibase_db=False,
+            include_patlevin_db=False,
+            output_json=None,
         ),
         "models_only": argparse.Namespace(
-            version="v2.1.0", include_models=True, include_ioc_db=False, output_json=None
+            version="v2.1.0",
+            include_models=True,
+            include_ioc_db=False,
+            include_avibase_db=False,
+            include_patlevin_db=False,
+            output_json=None,
         ),
         "none": argparse.Namespace(
-            version="v2.1.0", include_models=False, include_ioc_db=False, output_json=None
+            version="v2.1.0",
+            include_models=False,
+            include_ioc_db=False,
+            include_avibase_db=False,
+            include_patlevin_db=False,
+            output_json=None,
         ),
     }
 
@@ -88,6 +103,8 @@ class TestInstallAssets:
             version=test_install_args["basic"].version,
             include_models=test_install_args["basic"].include_models,
             include_ioc_db=test_install_args["basic"].include_ioc_db,
+            include_avibase_db=test_install_args["basic"].include_avibase_db,
+            include_patlevin_db=test_install_args["basic"].include_patlevin_db,
             github_repo="mverteuil/BirdNET-Pi",
         )
 
@@ -106,6 +123,8 @@ class TestInstallAssets:
             version="v2.1.0",
             include_models=True,
             include_ioc_db=False,
+            include_avibase_db=False,
+            include_patlevin_db=False,
             output_json=str(output_file),
         )
 
@@ -182,7 +201,12 @@ class TestInstallAssets:
         )
 
         args = argparse.Namespace(
-            version="v2.1.0", include_models=True, include_ioc_db=True, output_json=None
+            version="v2.1.0",
+            include_models=True,
+            include_ioc_db=True,
+            include_avibase_db=False,
+            include_patlevin_db=False,
+            output_json=None,
         )
 
         install_assets(args)
@@ -451,7 +475,12 @@ class TestIntegration:
 
         # Test install command
         args = argparse.Namespace(
-            version="v2.1.0", include_models=True, include_ioc_db=True, output_json=None
+            version="v2.1.0",
+            include_models=True,
+            include_ioc_db=True,
+            include_avibase_db=False,
+            include_patlevin_db=False,
+            output_json=None,
         )
 
         install_assets(args)
@@ -461,6 +490,8 @@ class TestIntegration:
             version="v2.1.0",
             include_models=True,
             include_ioc_db=True,
+            include_avibase_db=False,
+            include_patlevin_db=False,
             github_repo="mverteuil/BirdNET-Pi",
         )
 
@@ -481,7 +512,12 @@ class TestIntegration:
             mock_manager.download_release_assets.side_effect = error
 
             args = argparse.Namespace(
-                version="v2.1.0", include_models=True, include_ioc_db=False, output_json=None
+                version="v2.1.0",
+                include_models=True,
+                include_ioc_db=False,
+                include_avibase_db=False,
+                include_patlevin_db=False,
+                output_json=None,
             )
 
             with patch("birdnetpi.wrappers.asset_installer_wrapper.sys.exit") as mock_exit:

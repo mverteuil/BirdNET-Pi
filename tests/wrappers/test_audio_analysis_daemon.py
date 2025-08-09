@@ -357,8 +357,7 @@ class TestAudioAnalysisDaemon:
 
         # Should handle the audio processing exception
         assert any(
-            "An error occurred in the audio analysis wrapper" in r.message
-            and r.levelno == logging.ERROR
+            "Error reading from FIFO" in r.message and r.levelno == logging.ERROR
             for r in caplog.records
         )
 

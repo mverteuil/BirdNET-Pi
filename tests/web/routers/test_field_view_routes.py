@@ -11,17 +11,14 @@ from birdnetpi.web.core.factory import create_app
 
 
 @pytest.fixture
-def app_with_field_view_routes(file_path_resolver):
+def app_with_field_view_routes(app_with_temp_data):
     """Create FastAPI app with field view router and dependencies."""
-    app = create_app()
+    app = app_with_temp_data
 
     if hasattr(app, "container"):
         # Mock templates
         mock_templates = MagicMock(spec=Jinja2Templates)
         app.container.templates.override(mock_templates)  # type: ignore[attr-defined]
-
-        # Override file resolver
-        app.container.file_resolver.override(file_path_resolver)  # type: ignore[attr-defined]
 
     return app
 

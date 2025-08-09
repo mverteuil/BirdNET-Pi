@@ -51,7 +51,13 @@ class TestBuildAssetList:
             ReleaseAsset("/nonexistent/ioc.db", "data/database/ioc_reference.db", "IOC database"),
         ]
 
-        args = argparse.Namespace(include_models=True, include_ioc_db=False, custom_assets=None)
+        args = argparse.Namespace(
+            include_models=True,
+            include_ioc_db=False,
+            include_avibase_db=False,
+            include_patlevin_db=False,
+            custom_assets=None,
+        )
 
         assets = _build_asset_list(args, mock_release_manager)
 
@@ -71,7 +77,13 @@ class TestBuildAssetList:
             ReleaseAsset(str(ioc_db), "data/database/ioc_reference.db", "IOC database"),
         ]
 
-        args = argparse.Namespace(include_models=False, include_ioc_db=True, custom_assets=None)
+        args = argparse.Namespace(
+            include_models=False,
+            include_ioc_db=True,
+            include_avibase_db=False,
+            include_patlevin_db=False,
+            custom_assets=None,
+        )
 
         assets = _build_asset_list(args, mock_release_manager)
 
@@ -88,6 +100,8 @@ class TestBuildAssetList:
         args = argparse.Namespace(
             include_models=False,
             include_ioc_db=False,
+            include_avibase_db=False,
+            include_patlevin_db=False,
             custom_assets=[f"{custom_file}:custom/path:Custom asset description"],
         )
 
@@ -104,7 +118,13 @@ class TestBuildAssetList:
     ):
         """Should warn when models are requested but missing."""
         mock_exit.side_effect = SystemExit(1)
-        args = argparse.Namespace(include_models=True, include_ioc_db=False, custom_assets=None)
+        args = argparse.Namespace(
+            include_models=True,
+            include_ioc_db=False,
+            include_avibase_db=False,
+            include_patlevin_db=False,
+            custom_assets=None,
+        )
 
         with pytest.raises(SystemExit):
             _build_asset_list(args, mock_release_manager)
@@ -117,7 +137,13 @@ class TestBuildAssetList:
     def test_build_asset_list__no_assets(self, mock_exit, mock_release_manager):
         """Should exit when no assets are specified."""
         mock_exit.side_effect = SystemExit(1)
-        args = argparse.Namespace(include_models=False, include_ioc_db=False, custom_assets=None)
+        args = argparse.Namespace(
+            include_models=False,
+            include_ioc_db=False,
+            include_avibase_db=False,
+            include_patlevin_db=False,
+            custom_assets=None,
+        )
 
         with pytest.raises(SystemExit):
             _build_asset_list(args, mock_release_manager)
@@ -608,6 +634,8 @@ class TestIntegration:
             version="v2.1.0",
             include_models=True,
             include_ioc_db=False,
+            include_avibase_db=False,
+            include_patlevin_db=False,
             custom_assets=None,
             asset_branch=None,
             commit_message=None,
@@ -632,7 +660,13 @@ class TestIntegration:
     def test_edge_case_handling(self, tmp_path):
         """Should handle various edge cases properly."""
         # Test with empty custom assets list
-        args = argparse.Namespace(include_models=False, include_ioc_db=False, custom_assets=[])
+        args = argparse.Namespace(
+            include_models=False,
+            include_ioc_db=False,
+            include_avibase_db=False,
+            include_patlevin_db=False,
+            custom_assets=[],
+        )
 
         mock_manager = MagicMock()
         mock_manager.get_default_assets.return_value = []

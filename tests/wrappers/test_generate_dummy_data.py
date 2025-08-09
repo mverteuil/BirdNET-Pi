@@ -178,10 +178,13 @@ class TestGenerateDummyData:
         gdd.main()
 
         captured = capsys.readouterr()
-        assert "FastAPI service (fastapi) is running. Stopping it temporarily..." in captured.out
+        assert (
+            "FastAPI service (birdnetpi-fastapi) is running. Stopping it temporarily..."
+            in captured.out
+        )
         assert "Database is empty or does not exist. Generating dummy data..." in captured.out
         assert "Dummy data generation complete." in captured.out
-        assert "Restarting FastAPI service (fastapi)..." in captured.out
+        assert "Restarting FastAPI service (birdnetpi-fastapi)..." in captured.out
         assert "Warning: Could not restart FastAPI service: Restart failed" in captured.out
         assert "You may need to manually restart the service." in captured.out
 

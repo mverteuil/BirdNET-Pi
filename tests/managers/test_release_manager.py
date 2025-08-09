@@ -188,15 +188,23 @@ class TestReleaseManager:
     def test_get_default_assets(self, release_manager, mock_file_resolver):
         """Should return default assets with proper paths."""
         assets = release_manager.get_default_assets()
-        assert len(assets) == 2
+        assert len(assets) == 4
 
         models_asset = assets[0]
         assert models_asset.target_name == "data/models"
         assert "BirdNET TensorFlow Lite models" in models_asset.description
 
-        db_asset = assets[1]
-        assert db_asset.target_name == "data/database/ioc_reference.db"
-        assert "IOC World Bird Names" in db_asset.description
+        ioc_db_asset = assets[1]
+        assert ioc_db_asset.target_name == "data/database/ioc_reference.db"
+        assert "IOC World Bird Names" in ioc_db_asset.description
+
+        avibase_asset = assets[2]
+        assert avibase_asset.target_name == "data/database/avibase_database.db"
+        assert "Avibase multilingual" in avibase_asset.description
+
+        patlevin_asset = assets[3]
+        assert patlevin_asset.target_name == "data/database/patlevin_database.db"
+        assert "Patrick Levin" in patlevin_asset.description
 
     def test_get_asset_path_dev_exists(self, release_manager, tmp_path):
         """Should prefer dev path when it exists."""

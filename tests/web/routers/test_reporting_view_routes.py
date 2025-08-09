@@ -5,13 +5,12 @@ from fastapi.testclient import TestClient
 
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.reporting_manager import ReportingManager
-from birdnetpi.web.core.factory import create_app
 
 
 @pytest.fixture
-def app_with_mocks(file_path_resolver):
+def app_with_mocks(app_with_temp_data):
     """Create FastAPI app with mocked services."""
-    app = create_app()
+    app = app_with_temp_data
 
     if hasattr(app, "container"):
         # Mock detection manager
@@ -24,9 +23,6 @@ def app_with_mocks(file_path_resolver):
         mock_reporting_manager = MagicMock(spec=ReportingManager)
         mock_reporting_manager.detection_manager = mock_detection_manager
         app.container.reporting_manager.override(mock_reporting_manager)  # type: ignore[attr-defined]
-
-        # Override file resolver
-        app.container.file_resolver.override(file_path_resolver)  # type: ignore[attr-defined]
 
     return app
 

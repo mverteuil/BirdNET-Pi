@@ -19,10 +19,22 @@ def file_path_resolver(tmp_path: Path) -> FilePathResolver:
     All data paths go to temp by default (robust against new path methods).
     Explicitly override paths that should use real repo locations.
     """
-    resolver = FilePathResolver()
+    import os
 
-    # Override the core data_dir to point to temp - this makes ALL data paths go to temp by default
-    resolver.data_dir = tmp_path
+    # Store original environment variable
+    original_data_env = os.environ.get("BIRDNETPI_DATA")
+
+    # Set environment variable to temp path BEFORE creating FilePathResolver
+    os.environ["BIRDNETPI_DATA"] = str(tmp_path)
+
+    try:
+        resolver = FilePathResolver()
+    finally:
+        # Restore original environment variable
+        if original_data_env is not None:
+            os.environ["BIRDNETPI_DATA"] = original_data_env
+        else:
+            os.environ.pop("BIRDNETPI_DATA", None)
 
     # Point config to the template file
     resolver.get_birdnetpi_config_path = lambda: resolver.get_config_template_path()
@@ -90,11 +102,28 @@ def setup_test_environment():
 @pytest.fixture(scope="session", autouse=True)
 def check_required_assets():
     """Check that required assets are available for testing."""
+    import os
     from pathlib import Path
 
     from birdnetpi.utils.file_path_resolver import FilePathResolver
 
-    file_resolver = FilePathResolver()
+    # Get project root directory
+    project_root = Path(__file__).parent.parent
+
+    # Store original environment variable
+    original_data_env = os.environ.get("BIRDNETPI_DATA")
+
+    # Set environment variable to point to real repo data directory
+    os.environ["BIRDNETPI_DATA"] = str(project_root / "data")
+
+    try:
+        file_resolver = FilePathResolver()
+    finally:
+        # Restore original environment variable
+        if original_data_env is not None:
+            os.environ["BIRDNETPI_DATA"] = original_data_env
+        else:
+            os.environ.pop("BIRDNETPI_DATA", None)
     missing_assets = []
 
     # Check for model files

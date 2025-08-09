@@ -11,9 +11,9 @@ from birdnetpi.web.core.factory import create_app
 
 
 @pytest.fixture
-def app_with_iot_router():
+def app_with_iot_router(app_with_temp_data):
     """Create FastAPI app with IoT router and DI container."""
-    app = create_app()
+    app = app_with_temp_data
 
     if hasattr(app, "container"):
         # Mock MQTT service

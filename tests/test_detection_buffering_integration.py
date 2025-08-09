@@ -173,39 +173,38 @@ class TestDetectionBufferingEndToEnd:
         def simulate_admin_operation():
             """Simulate admin operation that affects FastAPI."""
             time.sleep(0.1)  # Let some detections start
-
-            # Simulate FastAPI going down
-            with patch("httpx.AsyncClient") as mock_client:
-                mock_client.return_value.__aenter__.return_value.post.side_effect = (
-                    httpx.RequestError("Connection failed", request=MagicMock())
-                )
-                time.sleep(0.2)  # Admin operation in progress
-
+            time.sleep(0.5)  # Admin operation in progress
             admin_operation_complete["value"] = True
 
         # Clear buffer
         with service.buffer_lock:
             service.detection_buffer.clear()
 
-        # Start concurrent operations
-        admin_thread = threading.Thread(target=simulate_admin_operation)
-        admin_thread.start()
+        # Patch HTTP client for the entire test duration to simulate FastAPI being down
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
+                "Connection failed", request=MagicMock()
+            )
 
-        # Run detections concurrently
-        await simulate_continuous_detections()
+            # Start concurrent operations
+            admin_thread = threading.Thread(target=simulate_admin_operation)
+            admin_thread.start()
 
-        # Wait for admin operation to complete
-        admin_thread.join(timeout=1.0)
-        assert admin_operation_complete["value"], "Admin operation should complete"
+            # Run detections concurrently
+            await simulate_continuous_detections()
 
-        # Verify some detections were processed
-        assert detection_results["detections_processed"] == 5
+            # Wait for admin operation to complete
+            admin_thread.join(timeout=1.0)
+            assert admin_operation_complete["value"], "Admin operation should complete"
 
-        # Verify some detections were buffered during outage
-        with service.buffer_lock:
-            buffer_size = len(service.detection_buffer)
+            # Verify some detections were processed
+            assert detection_results["detections_processed"] == 5
 
-        assert buffer_size > 0, "Some detections should be buffered during admin operation"
+            # Verify some detections were buffered during outage
+            with service.buffer_lock:
+                buffer_size = len(service.detection_buffer)
+
+            assert buffer_size > 0, "Some detections should be buffered during admin operation"
         assert "Buffered detection event for Robin" in caplog.text
 
     @patch("birdnetpi.services.audio_analysis_service.BirdDetectionService")
