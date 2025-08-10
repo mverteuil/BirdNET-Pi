@@ -87,7 +87,7 @@ def test_get_todays_detections(client):
 
     # Assert the response
     assert response.status_code == 200
-    assert "Today's Detections" in response.text
+    assert "Today&#39;s Detections" in response.text
     assert "Mourning Dove" in response.text
 
     # Assert that get_todays_detections was called

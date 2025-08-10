@@ -106,8 +106,8 @@ class TestDetectionBufferingEndToEnd:
 
         # Mock analysis to return detections
         service.analysis_client.get_analysis_results.return_value = [
-            ("Robin", 0.85),
-            ("Crow", 0.75),
+            ("Turdus migratorius_American Robin", 0.85),
+            ("Corvus brachyrhynchos_American Crow", 0.75),
         ]
 
         # Phase 1: FastAPI unavailable - detections should be buffered
@@ -128,11 +128,11 @@ class TestDetectionBufferingEndToEnd:
             with service.buffer_lock:
                 assert len(service.detection_buffer) == 2
                 species_list = [d["species_tensor"] for d in service.detection_buffer]
-                assert "Robin" in species_list
-                assert "Crow" in species_list
+                assert "Turdus migratorius_American Robin" in species_list
+                assert "Corvus brachyrhynchos_American Crow" in species_list
 
-            assert "Buffered detection event for Robin" in caplog.text
-            assert "Buffered detection event for Crow" in caplog.text
+            assert "Buffered detection event for Turdus migratorius" in caplog.text
+            assert "Buffered detection event for Corvus brachyrhynchos" in caplog.text
 
         # Phase 2: FastAPI becomes available - buffered detections should flush
         with patch("httpx.AsyncClient") as mock_client:
@@ -158,7 +158,7 @@ class TestDetectionBufferingEndToEnd:
 
         # Mock analysis to return detections
         service.analysis_client.get_analysis_results.return_value = [
-            ("Robin", 0.85),
+            ("Turdus migratorius_American Robin", 0.85),
         ]
 
         detection_results = {"detections_processed": 0, "detections_buffered": 0}
@@ -211,7 +211,7 @@ class TestDetectionBufferingEndToEnd:
                 buffer_size = len(service.detection_buffer)
 
             assert buffer_size > 0, "Some detections should be buffered during admin operation"
-        assert "Buffered detection event for Robin" in caplog.text
+        assert "Buffered detection event for Turdus migratorius" in caplog.text
 
     @patch("birdnetpi.managers.audio_analysis_manager.BirdDetectionService")
     async def test_buffer_overflow_handling_during_extended_outage(
@@ -233,7 +233,9 @@ class TestDetectionBufferingEndToEnd:
 
         # Mock analysis
         service.analysis_client = MagicMock()
-        service.analysis_client.get_analysis_results.return_value = [("Robin", 0.85)]
+        service.analysis_client.get_analysis_results.return_value = [
+            ("Turdus migratorius_American Robin", 0.85)
+        ]
 
         try:
             with patch("httpx.AsyncClient") as mock_client:
@@ -256,7 +258,7 @@ class TestDetectionBufferingEndToEnd:
                     assert len(service.detection_buffer) == 3  # Max buffer size
 
                 # Verify logging indicates buffering is happening
-                assert "Buffered detection event for Robin" in caplog.text
+                assert "Buffered detection event for Turdus migratorius" in caplog.text
 
         finally:
             service.stop_buffer_flush_task()
@@ -268,7 +270,9 @@ class TestDetectionBufferingEndToEnd:
         service = audio_analysis_service_integration
 
         # Mock analysis
-        service.analysis_client.get_analysis_results.return_value = [("Robin", 0.85)]
+        service.analysis_client.get_analysis_results.return_value = [
+            ("Turdus migratorius_American Robin", 0.85)
+        ]
 
         # Phase 1: Service unavailable, buffer detections
         with patch("httpx.AsyncClient") as mock_client:
@@ -314,10 +318,10 @@ class TestDetectionBufferingEndToEnd:
 
         # Mock analysis to return multiple detections
         service.analysis_client.get_analysis_results.return_value = [
-            ("Robin", 0.85),
-            ("Crow", 0.75),
-            ("Sparrow", 0.80),
-            ("Cardinal", 0.90),
+            ("Turdus migratorius_American Robin", 0.85),
+            ("Corvus brachyrhynchos_American Crow", 0.75),
+            ("Passer domesticus_House Sparrow", 0.80),
+            ("Cardinalis cardinalis_Northern Cardinal", 0.90),
         ]
 
         with patch("httpx.AsyncClient") as mock_client:
@@ -355,16 +359,16 @@ class TestDetectionBufferingEndToEnd:
 
             # Should have 2 failed detections buffered (Crow and Cardinal)
             assert buffer_size == 2
-            assert "Crow" in buffered_species
-            assert "Cardinal" in buffered_species
+            assert "Corvus brachyrhynchos_American Crow" in buffered_species
+            assert "Cardinalis cardinalis_Northern Cardinal" in buffered_species
 
             # Verify successful sends were logged
-            assert "Detection event sent: Robin" in caplog.text
-            assert "Detection event sent: Sparrow" in caplog.text
+            assert "Detection event sent: Turdus migratorius" in caplog.text
+            assert "Detection event sent: Passer domesticus" in caplog.text
 
             # Verify failed detections were buffered
-            assert "Buffered detection event for Crow" in caplog.text
-            assert "Buffered detection event for Cardinal" in caplog.text
+            assert "Buffered detection event for Corvus brachyrhynchos" in caplog.text
+            assert "Buffered detection event for Cardinalis cardinalis" in caplog.text
 
 
 class TestDetectionBufferingWithAdminOperations:
@@ -377,7 +381,9 @@ class TestDetectionBufferingWithAdminOperations:
         service = audio_analysis_service_integration
 
         # Mock analysis
-        service.analysis_client.get_analysis_results.return_value = [("Robin", 0.85)]
+        service.analysis_client.get_analysis_results.return_value = [
+            ("Turdus migratorius_American Robin", 0.85)
+        ]
 
         try:
             # Start with working FastAPI
@@ -398,7 +404,7 @@ class TestDetectionBufferingWithAdminOperations:
                 with service.buffer_lock:
                     initial_buffer_size = len(service.detection_buffer)
                 assert initial_buffer_size == 0
-                assert "Detection event sent: Robin" in caplog.text
+                assert "Detection event sent: Turdus migratorius" in caplog.text
 
             # Simulate admin operation affecting FastAPI
             with (
@@ -446,7 +452,7 @@ class TestDetectionBufferingWithAdminOperations:
                     with service.buffer_lock:
                         admin_buffer_size = len(service.detection_buffer)
                     assert admin_buffer_size == 1
-                    assert "Buffered detection event for Robin" in caplog.text
+                    assert "Buffered detection event for Turdus migratorius" in caplog.text
 
                     # Run the admin operation
                     gdd.main()
@@ -476,7 +482,9 @@ class TestDetectionBufferingWithAdminOperations:
         service = audio_analysis_service_integration
 
         # Mock analysis
-        service.analysis_client.get_analysis_results.return_value = [("Robin", 0.85)]
+        service.analysis_client.get_analysis_results.return_value = [
+            ("Turdus migratorius_American Robin", 0.85)
+        ]
 
         try:
             # Clear buffer

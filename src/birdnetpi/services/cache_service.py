@@ -123,7 +123,7 @@ class MemcachedBackend(CacheBackend):
         if not MEMCACHED_AVAILABLE:
             raise RuntimeError("pymemcache is required for MemcachedBackend")
 
-        self.client = MemcacheClient(
+        self.client = MemcacheClient(  # type: ignore[misc]
             (host, port),
             timeout=timeout,
             connect_timeout=timeout,
@@ -150,7 +150,8 @@ class MemcachedBackend(CacheBackend):
     def set(self, key: str, value: Any, ttl: int) -> bool:  # noqa: ANN401
         """Set value in memcached with TTL."""
         try:
-            return self.client.set(key, value, expire=ttl)
+            result = self.client.set(key, value, expire=ttl)
+            return bool(result)
         except Exception as e:
             logger.warning("Memcached set failed", key=key, ttl=ttl, error=str(e))
             return False

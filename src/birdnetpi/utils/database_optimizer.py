@@ -375,10 +375,13 @@ class DatabaseOptimizer:
                     """)
                 ).fetchone()
                 if date_range:
+                    earliest, latest, days_span_raw = date_range
                     stats["date_range"] = {
-                        "earliest": date_range[0],
-                        "latest": date_range[1],
-                        "days_span": round(float(date_range[2]), 1) if date_range[2] else 0,
+                        "earliest": earliest,
+                        "latest": latest,
+                        "days_span": round(float(days_span_raw), 1)
+                        if days_span_raw is not None
+                        else 0,
                     }
 
                 # Confidence distribution
@@ -393,11 +396,12 @@ class DatabaseOptimizer:
                     """)
                 ).fetchone()
                 if conf_dist:
+                    min_conf, max_conf, avg_conf, high_conf_count = conf_dist
                     stats["confidence_distribution"] = {
-                        "min": round(float(conf_dist[0]), 3) if conf_dist[0] else 0,
-                        "max": round(float(conf_dist[1]), 3) if conf_dist[1] else 0,
-                        "average": round(float(conf_dist[2]), 3) if conf_dist[2] else 0,
-                        "high_confidence_count": conf_dist[3] or 0,
+                        "min": round(float(min_conf), 3) if min_conf is not None else 0,
+                        "max": round(float(max_conf), 3) if max_conf is not None else 0,
+                        "average": round(float(avg_conf), 3) if avg_conf is not None else 0,
+                        "high_confidence_count": high_conf_count or 0,
                     }
 
             except Exception as e:

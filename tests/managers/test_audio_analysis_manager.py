@@ -114,12 +114,16 @@ def audio_analysis_service(
 def test_species_data():
     """Provide test species detection data."""
     return {
-        "confident": [("Robin", 0.85), ("Crow", 0.75), ("Sparrow", 0.80)],
-        "low_confidence": [("Human", 0.65), ("Unknown", 0.45)],
+        "confident": [
+            ("Turdus migratorius_American Robin", 0.85),
+            ("Corvus brachyrhynchos_American Crow", 0.75),
+            ("Passer domesticus_House Sparrow", 0.80),
+        ],
+        "low_confidence": [("Homo sapiens_Human", 0.65), ("Unknown species_Unknown", 0.45)],
         "mixed": [
-            ("Robin", 0.85),
-            ("Human", 0.65),  # Below threshold
-            ("Crow", 0.72),
+            ("Turdus migratorius_American Robin", 0.85),
+            ("Homo sapiens_Human", 0.65),  # Below threshold
+            ("Corvus brachyrhynchos_American Crow", 0.72),
         ],
     }
 
@@ -228,14 +232,13 @@ class TestAudioAnalysisManager:
         # Check the calls using test data
         calls = mock_send_detection_event.call_args_list
         expected_species = [call for call in test_species_data["mixed"] if call[1] >= 0.7]
-        # First call arguments: (species_tensor, scientific_name, confidence, audio_bytes)
-        assert calls[0][0][0] == expected_species[0][0]  # Robin (species_tensor)
-        assert calls[0][0][1] == expected_species[0][0]  # Robin (scientific_name)
-        assert calls[0][0][2] == expected_species[0][1]  # 0.85 (confidence)
-        # Second call arguments
-        assert calls[1][0][0] == expected_species[1][0]  # Crow (species_tensor)
-        assert calls[1][0][1] == expected_species[1][0]  # Crow (scientific_name)
-        assert calls[1][0][2] == expected_species[1][1]  # 0.72 (confidence)
+        # First call arguments: (species_components, confidence, audio_bytes)
+        # species_components should have scientific_name = "Turdus migratorius"
+        assert calls[0][0][0].scientific_name == "Turdus migratorius"  # Robin scientific name
+        assert calls[0][0][1] == expected_species[0][1]  # 0.85 (confidence)
+        # Second call arguments - Crow
+        assert calls[1][0][0].scientific_name == "Corvus brachyrhynchos"  # Crow scientific name
+        assert calls[1][0][1] == expected_species[1][1]  # 0.72 (confidence)
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient")
@@ -252,12 +255,17 @@ class TestAudioAnalysisManager:
         mock_post = AsyncMock(return_value=MagicMock(status_code=201))
         mock_async_client.return_value.__aenter__.return_value.post = mock_post
 
-        # Use test data for species information
-        species, confidence = test_species_data["confident"][0]  # Robin, 0.85
+        # Use test data for species information - import SpeciesParser here
+        from birdnetpi.utils.species_parser import SpeciesParser
+
+        species_tensor, confidence = test_species_data["confident"][
+            0
+        ]  # Turdus migratorius_American Robin, 0.85
+        species_components = SpeciesParser.parse_tensor_species(species_tensor)
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
         await audio_analysis_service._send_detection_event(
-            f"{species}_Common Name", species, confidence, raw_audio_bytes
+            species_components, confidence, raw_audio_bytes
         )
 
         mock_file_path_resolver.get_detection_audio_path.assert_called_once()
@@ -283,8 +291,12 @@ class TestAudioAnalysisManager:
         species, confidence = test_species_data["confident"][1]  # Crow, 0.75
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
+        # Parse species tensor to get proper components
+        from birdnetpi.utils.species_parser import SpeciesParser
+
+        species_components = SpeciesParser.parse_tensor_species(species)
         await audio_analysis_service._send_detection_event(
-            f"{species}_Common Name", species, confidence, raw_audio_bytes
+            species_components, confidence, raw_audio_bytes
         )
 
         mock_async_client.assert_not_called()
@@ -307,12 +319,18 @@ class TestAudioAnalysisManager:
         species, confidence = test_species_data["confident"][2]  # Sparrow, 0.80
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
+        # Parse species tensor to get proper components
+        from birdnetpi.utils.species_parser import SpeciesParser
+
+        species_components = SpeciesParser.parse_tensor_species(species)
         await audio_analysis_service._send_detection_event(
-            f"{species}_Common Name", species, confidence, raw_audio_bytes
+            species_components, confidence, raw_audio_bytes
         )
 
         assert "FastAPI unavailable, buffering detection: Network error" in caplog.text
-        assert f"Buffered detection event for {species}" in caplog.text
+        # Extract scientific name from tensor format for log assertion
+        scientific_name = species.split("_")[0]
+        assert f"Buffered detection event for {scientific_name}" in caplog.text
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient")
@@ -329,12 +347,18 @@ class TestAudioAnalysisManager:
         species, confidence = test_species_data["confident"][0]  # Robin, 0.85
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
+        # Parse species tensor to get proper components
+        from birdnetpi.utils.species_parser import SpeciesParser
+
+        species_components = SpeciesParser.parse_tensor_species(species)
         await audio_analysis_service._send_detection_event(
-            f"{species}_Common Name", species, confidence, raw_audio_bytes
+            species_components, confidence, raw_audio_bytes
         )
 
         assert "FastAPI unavailable, buffering detection: Not Found" in caplog.text
-        assert f"Buffered detection event for {species}" in caplog.text
+        # Extract scientific name from tensor format for log assertion
+        scientific_name = species.split("_")[0]
+        assert f"Buffered detection event for {scientific_name}" in caplog.text
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient")
@@ -350,12 +374,18 @@ class TestAudioAnalysisManager:
         species, confidence = test_species_data["confident"][1]  # Crow, 0.75
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
+        # Parse species tensor to get proper components
+        from birdnetpi.utils.species_parser import SpeciesParser
+
+        species_components = SpeciesParser.parse_tensor_species(species)
         await audio_analysis_service._send_detection_event(
-            f"{species}_Common Name", species, confidence, raw_audio_bytes
+            species_components, confidence, raw_audio_bytes
         )
 
         assert "Unexpected error sending detection, buffering: Unexpected error" in caplog.text
-        assert f"Buffered detection event for {species}" in caplog.text
+        # Extract scientific name from tensor format for log assertion
+        scientific_name = species.split("_")[0]
+        assert f"Buffered detection event for {scientific_name}" in caplog.text
 
     @pytest.mark.asyncio
     async def test_analyze_audio_chunk_handles_analysis_client_exception(
@@ -477,23 +507,28 @@ class TestDetectionBuffering:
             with audio_analysis_service.buffer_lock:
                 audio_analysis_service.detection_buffer.clear()
 
-            species = "Test Species"
             confidence = 0.8
             raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
+            # Create mock SpeciesComponents for test species
+            from birdnetpi.utils.species_parser import SpeciesComponents
+
+            species_components = SpeciesComponents(
+                "Test species", "Test Species", "Test Species (Test species)"
+            )
             await audio_analysis_service._send_detection_event(
-                species, species, confidence, raw_audio_bytes
+                species_components, confidence, raw_audio_bytes
             )
 
             # Verify detection was buffered
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 buffered = next(iter(audio_analysis_service.detection_buffer))
-                assert buffered["species_tensor"] == species
+                assert buffered["species_tensor"] == "Test species_Test Species"
                 assert buffered["confidence"] == confidence
 
             assert "FastAPI unavailable, buffering detection" in caplog.text
-            assert "Buffered detection event for Test Species (buffer size: 1)" in caplog.text
+            assert "Buffered detection event for Test species (buffer size: 1)" in caplog.text
 
     async def test_send_detection_event_buffers_on_http_status_error(
         self, audio_analysis_service, caplog
@@ -510,12 +545,17 @@ class TestDetectionBuffering:
             with audio_analysis_service.buffer_lock:
                 audio_analysis_service.detection_buffer.clear()
 
-            species = "Test Species"
             confidence = 0.8
             raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
+            # Create mock SpeciesComponents for test species
+            from birdnetpi.utils.species_parser import SpeciesComponents
+
+            species_components = SpeciesComponents(
+                "Test species", "Test Species", "Test Species (Test species)"
+            )
             await audio_analysis_service._send_detection_event(
-                species, species, confidence, raw_audio_bytes
+                species_components, confidence, raw_audio_bytes
             )
 
             # Verify detection was buffered
@@ -538,12 +578,17 @@ class TestDetectionBuffering:
             with audio_analysis_service.buffer_lock:
                 audio_analysis_service.detection_buffer.clear()
 
-            species = "Test Species"
             confidence = 0.8
             raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
+            # Create mock SpeciesComponents for test species
+            from birdnetpi.utils.species_parser import SpeciesComponents
+
+            species_components = SpeciesComponents(
+                "Test species", "Test Species", "Test Species (Test species)"
+            )
             await audio_analysis_service._send_detection_event(
-                species, species, confidence, raw_audio_bytes
+                species_components, confidence, raw_audio_bytes
             )
 
             # Verify detection was buffered
@@ -567,7 +612,7 @@ class TestDetectionBuffering:
         """Should successfully flush buffered detections."""
         # Add test detection to buffer
         test_detection = {
-            "species_tensor": "Robin",
+            "species_tensor": "Turdus migratorius_American Robin",
             "confidence": 0.9,
             "timestamp": datetime.now().isoformat(),
         }
@@ -597,10 +642,18 @@ class TestDetectionBuffering:
         """Should re-buffer failed detections and flush successful ones."""
         # Add multiple test detections to buffer
         test_detections = [
-            {"species_tensor": "Robin", "confidence": 0.9, "timestamp": datetime.now().isoformat()},
-            {"species_tensor": "Crow", "confidence": 0.8, "timestamp": datetime.now().isoformat()},
             {
-                "species_tensor": "Sparrow",
+                "species_tensor": "Turdus migratorius_American Robin",
+                "confidence": 0.9,
+                "timestamp": datetime.now().isoformat(),
+            },
+            {
+                "species_tensor": "Corvus brachyrhynchos_American Crow",
+                "confidence": 0.8,
+                "timestamp": datetime.now().isoformat(),
+            },
+            {
+                "species_tensor": "Passer domesticus_House Sparrow",
                 "confidence": 0.7,
                 "timestamp": datetime.now().isoformat(),
             },
@@ -637,7 +690,9 @@ class TestDetectionBuffering:
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 rebuffered = next(iter(audio_analysis_service.detection_buffer))
-                assert rebuffered["species_tensor"] == "Crow"  # The middle one that failed
+                assert (
+                    rebuffered["species_tensor"] == "Corvus brachyrhynchos_American Crow"
+                )  # The middle one that failed
 
             assert "Attempting to flush 3 buffered detections" in caplog.text
             assert "Successfully flushed 2 buffered detections" in caplog.text
@@ -647,7 +702,7 @@ class TestDetectionBuffering:
         """Should re-buffer all detections when all flush attempts fail."""
         # Add test detection to buffer
         test_detection = {
-            "species_tensor": "Robin",
+            "species_tensor": "Turdus migratorius_American Robin",
             "confidence": 0.9,
             "timestamp": datetime.now().isoformat(),
         }
@@ -668,7 +723,7 @@ class TestDetectionBuffering:
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 rebuffered = next(iter(audio_analysis_service.detection_buffer))
-                assert rebuffered["species_tensor"] == "Robin"
+                assert rebuffered["species_tensor"] == "Turdus migratorius_American Robin"
 
             assert "Attempting to flush 1 buffered detections" in caplog.text
             assert "Re-buffered 1 failed detections" in caplog.text
@@ -680,7 +735,7 @@ class TestDetectionBuffering:
         """Should handle unexpected errors during flush and re-buffer detections."""
         # Add test detection to buffer
         test_detection = {
-            "species_tensor": "Robin",
+            "species_tensor": "Turdus migratorius",
             "confidence": 0.9,
             "timestamp": datetime.now().isoformat(),
         }
@@ -808,7 +863,7 @@ class TestDetectionBuffering:
 
             # Add detection to buffer
             test_detection = {
-                "species_tensor": "Robin",
+                "species_tensor": "Turdus migratorius",
                 "confidence": 0.9,
                 "timestamp": datetime.now().isoformat(),
             }
@@ -840,7 +895,7 @@ class TestDetectionBuffering:
 
             # Add detection to buffer
             test_detection = {
-                "species_tensor": "Robin",
+                "species_tensor": "Turdus migratorius",
                 "confidence": 0.9,
                 "timestamp": datetime.now().isoformat(),
             }
@@ -889,7 +944,7 @@ class TestDetectionBufferingIntegration:
         """Should buffer detections during HTTP failures and flush when service recovers."""
         # Mock analysis to return confident detection
         audio_analysis_service.analysis_client.get_analysis_results.return_value = [
-            ("Robin", 0.85),
+            ("Turdus migratorius_American Robin", 0.85),
         ]
 
         # Mock file manager
@@ -917,10 +972,10 @@ class TestDetectionBufferingIntegration:
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 buffered = next(iter(audio_analysis_service.detection_buffer))
-                assert buffered["species_tensor"] == "Robin"
+                assert buffered["species_tensor"] == "Turdus migratorius_American Robin"
                 assert buffered["confidence"] == 0.85
 
-            assert "Buffered detection event for Robin" in caplog.text
+            assert "Buffered detection event for Turdus migratorius" in caplog.text
 
             # Now simulate FastAPI becomes available
             mock_response = MagicMock()
@@ -943,9 +998,9 @@ class TestDetectionBufferingIntegration:
         """Should handle mixed scenarios where some detections succeed and others buffer."""
         # Mock analysis to return multiple detections
         audio_analysis_service.analysis_client.get_analysis_results.return_value = [
-            ("Robin", 0.85),
-            ("Crow", 0.75),
-            ("Sparrow", 0.80),
+            ("Turdus migratorius_American Robin", 0.85),
+            ("Corvus brachyrhynchos_American Crow", 0.75),
+            ("Passer domesticus_House Sparrow", 0.80),
         ]
 
         # Mock file manager
@@ -988,10 +1043,10 @@ class TestDetectionBufferingIntegration:
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 buffered = next(iter(audio_analysis_service.detection_buffer))
-                assert buffered["species_tensor"] == "Crow"
+                assert buffered["species_tensor"] == "Corvus brachyrhynchos_American Crow"
 
             # Verify successful sends were logged
-            assert "Detection event sent: Robin" in caplog.text
-            assert "Detection event sent: Sparrow" in caplog.text
+            assert "Detection event sent: Turdus migratorius" in caplog.text
+            assert "Detection event sent: Passer domesticus" in caplog.text
             # Verify failed detection was buffered
-            assert "Buffered detection event for Crow" in caplog.text
+            assert "Buffered detection event for Corvus brachyrhynchos" in caplog.text

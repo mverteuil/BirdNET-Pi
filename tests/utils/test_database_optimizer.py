@@ -79,7 +79,7 @@ def temp_db():
 @pytest.fixture
 def database_service(temp_db):
     """Create a DatabaseService instance with test database."""
-    return DatabaseService(temp_db)
+    return DatabaseService(Path(temp_db))
 
 
 @pytest.fixture

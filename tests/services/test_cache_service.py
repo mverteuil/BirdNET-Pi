@@ -124,7 +124,7 @@ class TestMemcachedBackend:
 
     def test_init_success(self):
         """Test successful memcached backend initialization."""
-        with patch("pymemcache.client.base.Client") as mock_client:
+        with patch("birdnetpi.services.cache_service.MemcacheClient") as mock_client:
             mock_instance = Mock()
             mock_instance.version.return_value = "1.6.0"
             mock_client.return_value = mock_instance
@@ -135,7 +135,7 @@ class TestMemcachedBackend:
 
     def test_init_failure(self):
         """Test memcached backend initialization failure."""
-        with patch("pymemcache.client.base.Client") as mock_client:
+        with patch("birdnetpi.services.cache_service.MemcacheClient") as mock_client:
             mock_instance = Mock()
             mock_instance.version.side_effect = Exception("Connection failed")
             mock_client.return_value = mock_instance
@@ -145,7 +145,7 @@ class TestMemcachedBackend:
 
     def test_operations_with_mock(self):
         """Test memcached operations with mocked client."""
-        with patch("pymemcache.client.base.Client") as mock_client:
+        with patch("birdnetpi.services.cache_service.MemcacheClient") as mock_client:
             mock_instance = Mock()
             mock_instance.version.return_value = "1.6.0"
             mock_instance.get.return_value = "test_value"
@@ -165,7 +165,7 @@ class TestMemcachedBackend:
 
     def test_error_handling_with_mock(self):
         """Test memcached error handling with mocked client."""
-        with patch("pymemcache.client.base.Client") as mock_client:
+        with patch("birdnetpi.services.cache_service.MemcacheClient") as mock_client:
             mock_instance = Mock()
             mock_instance.version.return_value = "1.6.0"
             mock_instance.get.side_effect = Exception("Get error")
@@ -197,7 +197,7 @@ class TestCacheService:
     @pytest.mark.skipif(not MEMCACHED_AVAILABLE, reason="pymemcache not available")
     def test_init_memcached_backend_success(self):
         """Test initialization with successful memcached backend."""
-        with patch("pymemcache.client.base.Client") as mock_client:
+        with patch("birdnetpi.services.cache_service.MemcacheClient") as mock_client:
             mock_instance = Mock()
             mock_instance.version.return_value = "1.6.0"
             mock_client.return_value = mock_instance
@@ -209,7 +209,7 @@ class TestCacheService:
     @pytest.mark.skipif(not MEMCACHED_AVAILABLE, reason="pymemcache not available")
     def test_init_memcached_fallback(self):
         """Test fallback to memory when memcached fails."""
-        with patch("pymemcache.client.base.Client") as mock_client:
+        with patch("birdnetpi.services.cache_service.MemcacheClient") as mock_client:
             mock_instance = Mock()
             mock_instance.version.side_effect = Exception("Connection failed")
             mock_client.return_value = mock_instance
