@@ -4,6 +4,7 @@
 import argparse
 import subprocess
 import sys
+from pathlib import Path
 
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
@@ -27,13 +28,18 @@ def run_command(cmd: list[str], description: str) -> bool:
 
 def extract_strings(resolver: FilePathResolver) -> bool:
     """Extract translatable strings from source code."""
+    # Get paths relative to src directory
+    src_dir = Path(resolver.get_src_dir())
+    babel_cfg = Path(resolver.get_babel_config_path()).relative_to(src_dir.parent)
+    messages_pot = Path(resolver.get_messages_pot_path()).relative_to(src_dir.parent)
+
     cmd = [
         "uv",
         "run",
         "pybabel",
         "extract",
         "-F",
-        resolver.get_babel_config_path(),
+        str(babel_cfg),
         "-k",
         "lazy_gettext",
         "--project=BirdNET-Pi",
@@ -41,51 +47,65 @@ def extract_strings(resolver: FilePathResolver) -> bool:
         "--msgid-bugs-address=https://github.com/mverteuil/BirdNET-Pi/issues",
         "--copyright-holder=BirdNET-Pi Contributors",
         "-o",
-        resolver.get_messages_pot_path(),
-        resolver.get_src_dir(),
+        str(messages_pot),
+        "src",
     ]
     return run_command(cmd, "Extracting translatable strings")
 
 
 def update_translations(resolver: FilePathResolver) -> bool:
     """Update existing translation files with new strings."""
+    # Get paths relative to src directory parent (repo root)
+    src_dir = Path(resolver.get_src_dir())
+    messages_pot = Path(resolver.get_messages_pot_path()).relative_to(src_dir.parent)
+    locales_dir = Path(resolver.get_locales_dir()).relative_to(src_dir.parent)
+
     cmd = [
         "uv",
         "run",
         "pybabel",
         "update",
         "-i",
-        resolver.get_messages_pot_path(),
+        str(messages_pot),
         "-d",
-        resolver.get_locales_dir(),
+        str(locales_dir),
     ]
     return run_command(cmd, "Updating translation files")
 
 
 def compile_translations(resolver: FilePathResolver) -> bool:
     """Compile .po files to .mo files."""
+    # Get paths relative to src directory parent (repo root)
+    src_dir = Path(resolver.get_src_dir())
+    locales_dir = Path(resolver.get_locales_dir()).relative_to(src_dir.parent)
+
     cmd = [
         "uv",
         "run",
         "pybabel",
         "compile",
         "-d",
-        resolver.get_locales_dir(),
+        str(locales_dir),
     ]
     return run_command(cmd, "Compiling translation files")
 
 
 def init_language(resolver: FilePathResolver, language: str) -> bool:
     """Initialize a new language."""
+    # Get paths relative to src directory parent (repo root)
+    src_dir = Path(resolver.get_src_dir())
+    messages_pot = Path(resolver.get_messages_pot_path()).relative_to(src_dir.parent)
+    locales_dir = Path(resolver.get_locales_dir()).relative_to(src_dir.parent)
+
     cmd = [
         "uv",
         "run",
         "pybabel",
         "init",
         "-i",
-        resolver.get_messages_pot_path(),
+        str(messages_pot),
         "-d",
-        resolver.get_locales_dir(),
+        str(locales_dir),
         "-l",
         language,
     ]
