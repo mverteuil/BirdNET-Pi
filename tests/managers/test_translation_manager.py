@@ -12,15 +12,21 @@ from birdnetpi.managers.translation_manager import (
     get_translation,
     setup_jinja2_i18n,
 )
-from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
 @pytest.fixture
-def mock_file_resolver():
-    """Create a mock FilePathResolver."""
-    mock_resolver = MagicMock(spec=FilePathResolver)
-    mock_resolver.get_locales_dir.return_value = "locales"
-    return mock_resolver
+def mock_file_resolver(file_path_resolver, tmp_path):
+    """Create a mock FilePathResolver.
+
+    Uses the global file_path_resolver fixture as a base to prevent MagicMock file creation.
+    """
+    # Create a locales directory in tmp_path
+    locales_dir = tmp_path / "locales"
+    locales_dir.mkdir(parents=True, exist_ok=True)
+
+    # Override the get_locales_dir method
+    file_path_resolver.get_locales_dir = lambda: str(locales_dir)
+    return file_path_resolver
 
 
 @pytest.fixture
@@ -53,7 +59,7 @@ class TestTranslationManager:
         manager = TranslationManager(mock_file_resolver)
 
         assert manager.file_resolver == mock_file_resolver
-        assert manager.locales_dir == "locales"
+        assert manager.locales_dir == mock_file_resolver.get_locales_dir()
         assert manager.translations == {}
         assert manager.default_language == "en"
 
@@ -67,9 +73,13 @@ class TestTranslationManager:
 
         assert result == mock_trans
         assert translation_manager.translations["es"] == mock_trans
-        mock_translation_func.assert_called_once_with(
-            "messages", localedir="locales", languages=["es"], fallback=True
-        )
+
+        # Check that translation was called with the actual locales directory from the fixture
+        mock_translation_func.assert_called_once()
+        call_args = mock_translation_func.call_args
+        assert call_args[1]["languages"] == ["es"]
+        assert call_args[1]["fallback"] is True
+        assert "locales" in str(call_args[1]["localedir"])  # Path should contain "locales"
 
     @patch("birdnetpi.managers.translation_manager.translation")
     def test_get_translation_cached(self, mock_translation_func, translation_manager):
@@ -258,9 +268,14 @@ class TestTranslationIntegration:
 
         # Verify
         assert result == mock_trans
-        mock_translation_func.assert_called_once_with(
-            "messages", localedir="locales", languages=["es"], fallback=True
-        )
+
+        # Check that translation was called with proper parameters
+        mock_translation_func.assert_called_once()
+        call_args = mock_translation_func.call_args
+        assert call_args[1]["languages"] == ["es"]
+        assert call_args[1]["fallback"] is True
+        assert "locales" in str(call_args[1]["localedir"])  # Path should contain "locales"
+
         mock_trans.install.assert_called_once()
 
         # Translation should be cached

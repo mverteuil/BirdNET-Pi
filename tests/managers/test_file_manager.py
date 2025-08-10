@@ -1,19 +1,21 @@
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.models.database_models import AudioFile
-from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
 @pytest.fixture
-def file_manager(tmp_path):
-    """Provide a FileManager instance for testing."""
-    mock_resolver = MagicMock(spec=FilePathResolver)
-    mock_resolver.data_dir = tmp_path
-    return FileManager(file_resolver=mock_resolver)
+def file_manager(file_path_resolver, tmp_path):
+    """Provide a FileManager instance for testing.
+
+    Uses the global file_path_resolver fixture as a base to prevent MagicMock file creation.
+    """
+    # Override the data_dir to use tmp_path
+    file_path_resolver.data_dir = tmp_path
+    return FileManager(file_resolver=file_path_resolver)
 
 
 def test_create_directory(file_manager):

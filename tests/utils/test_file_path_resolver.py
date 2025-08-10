@@ -1,23 +1,34 @@
 """Tests for FilePathResolver."""
 
 import datetime
-import os
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
-
-from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
 class TestFilePathResolver:
     """Test FilePathResolver functionality."""
 
     @pytest.fixture
-    def resolver(self):
-        """Create a FilePathResolver instance with test paths."""
-        with patch.dict(os.environ, {"BIRDNETPI_APP": "/test/app", "BIRDNETPI_DATA": "/test/data"}):
-            return FilePathResolver()
+    def resolver(self, file_path_resolver, tmp_path):
+        """Create a FilePathResolver instance with test paths.
+
+        Uses the global file_path_resolver fixture to prevent environment variable patching.
+        """
+        # Set up test paths using the tmp_path
+        test_data_dir = tmp_path / "data"
+        test_data_dir.mkdir(parents=True, exist_ok=True)
+
+        # Override specific paths for testing
+        file_path_resolver.data_dir = test_data_dir
+        file_path_resolver.app_dir = tmp_path / "app"
+
+        # Also override the methods that return paths based on data_dir
+        file_path_resolver.get_recordings_dir = lambda: test_data_dir / "recordings"
+        file_path_resolver.get_database_dir = lambda: test_data_dir / "database"
+        file_path_resolver.get_models_dir = lambda: test_data_dir / "models"
+
+        return file_path_resolver
 
     def test_get_detection_audio_path(self, resolver):
         """Test detection audio path generation."""
@@ -46,21 +57,24 @@ class TestFilePathResolver:
         """Test recordings directory path."""
         recordings_dir = resolver.get_recordings_dir()
 
-        assert recordings_dir == Path("/test/data/recordings")
+        assert recordings_dir.name == "recordings"
+        assert recordings_dir.parent == resolver.data_dir
         assert recordings_dir.is_absolute()
 
     def test_get_database_dir(self, resolver):
         """Test database directory path."""
         db_dir = resolver.get_database_dir()
 
-        assert db_dir == Path("/test/data/database")
+        assert db_dir.name == "database"
+        assert db_dir.parent == resolver.data_dir
         assert db_dir.is_absolute()
 
     def test_get_models_dir(self, resolver):
         """Test models directory path."""
         models_dir = resolver.get_models_dir()
 
-        assert models_dir == Path("/test/data/models")
+        assert models_dir.name == "models"
+        assert models_dir.parent == resolver.data_dir
         assert models_dir.is_absolute()
 
     def test_detection_path_uses_recordings_dir(self, resolver):

@@ -2,21 +2,31 @@
 
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from birdnetpi.managers.release_manager import ReleaseAsset, ReleaseConfig, ReleaseManager
-from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
 @pytest.fixture
-def mock_file_resolver():
-    """Create a mock FilePathResolver."""
-    mock_resolver = MagicMock(spec=FilePathResolver)
-    mock_resolver.get_models_dir.return_value = "/test/models"
-    mock_resolver.get_ioc_database_path.return_value = "/test/ioc_reference.db"
-    return mock_resolver
+def mock_file_resolver(file_path_resolver, tmp_path):
+    """Create a mock FilePathResolver.
+
+    Uses the global file_path_resolver fixture as a base to prevent MagicMock file creation.
+    """
+    # Create test directories
+    models_dir = tmp_path / "models"
+    models_dir.mkdir(parents=True, exist_ok=True)
+
+    ioc_db_path = tmp_path / "database" / "ioc_reference.db"
+    ioc_db_path.parent.mkdir(parents=True, exist_ok=True)
+    ioc_db_path.touch()
+
+    # Override the methods
+    file_path_resolver.get_models_dir = lambda: models_dir
+    file_path_resolver.get_ioc_database_path = lambda: ioc_db_path
+    return file_path_resolver
 
 
 @pytest.fixture
@@ -29,7 +39,7 @@ def release_manager(mock_file_resolver, tmp_path):
 def sample_assets(tmp_path):
     """Create sample assets for testing."""
     models_dir = tmp_path / "models"
-    models_dir.mkdir()
+    models_dir.mkdir(exist_ok=True)
     (models_dir / "model1.tflite").write_text("model1 content")
     (models_dir / "model2.tflite").write_text("model2 content")
 

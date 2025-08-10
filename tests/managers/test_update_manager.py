@@ -8,6 +8,27 @@ from birdnetpi.models.config import BirdNETConfig
 
 
 @pytest.fixture
+def mock_file_path_resolver(file_path_resolver, tmp_path):
+    """Provide a properly mocked FilePathResolver for UpdateManager tests.
+
+    Uses the global file_path_resolver fixture as a base to prevent MagicMock file creation.
+    """
+    # Create test database files in temp directory
+    ioc_db_path = tmp_path / "database" / "ioc_reference.db"
+    ioc_db_path.parent.mkdir(parents=True, exist_ok=True)
+    ioc_db_path.touch()
+
+    models_dir = tmp_path / "models"
+    models_dir.mkdir(parents=True, exist_ok=True)
+
+    # Override the database path methods
+    file_path_resolver.get_ioc_database_path = lambda: ioc_db_path
+    file_path_resolver.get_models_dir = lambda: models_dir
+
+    return file_path_resolver
+
+
+@pytest.fixture
 def update_manager(mock_file_path_resolver, tmp_path):
     """Provide an UpdateManager instance for testing."""
     mock_system_control = MagicMock()

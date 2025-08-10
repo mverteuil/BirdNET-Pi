@@ -51,12 +51,12 @@ def mock_file_manager():
 
 
 @pytest.fixture
-def mock_file_path_resolver():
+def mock_file_path_resolver(tmp_path):
     """Return a mock FilePathResolver instance for integration tests."""
-    from pathlib import Path
-
     mock = MagicMock(spec=FilePathResolver)
-    mock.get_detection_audio_path.return_value = Path("recordings/Test_bird/20240101_120000.wav")
+    mock.get_detection_audio_path.return_value = (
+        tmp_path / "recordings/Test_bird/20240101_120000.wav"
+    )
     return mock
 
 

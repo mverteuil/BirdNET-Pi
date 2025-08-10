@@ -76,11 +76,13 @@ def mock_update_manager():
 
 
 @pytest.fixture
-def mock_file_resolver():
+def mock_file_resolver(tmp_path):
     """Create a mock FilePathResolver."""
+    from pathlib import Path
+
     mock_resolver = MagicMock()
-    mock_resolver.get_models_dir.return_value = "/test/models"
-    mock_resolver.get_ioc_database_path.return_value = "/test/ioc_reference.db"
+    mock_resolver.get_models_dir.return_value = Path(tmp_path / "models")
+    mock_resolver.get_ioc_database_path.return_value = Path(tmp_path / "ioc_reference.db")
     return mock_resolver
 
 
@@ -296,8 +298,8 @@ class TestCheckLocalAssets:
         (models_dir / "model1.tflite").write_bytes(b"model data 1" * 100)  # 1200 bytes
         (models_dir / "model2.tflite").write_bytes(b"model data 2" * 200)  # 2400 bytes
 
-        mock_resolver.get_models_dir.return_value = str(models_dir)
-        mock_resolver.get_ioc_database_path.return_value = str(tmp_path / "ioc.db")
+        mock_resolver.get_models_dir.return_value = models_dir
+        mock_resolver.get_ioc_database_path.return_value = tmp_path / "ioc.db"
         mock_file_resolver_class.return_value = mock_resolver
 
         args = argparse.Namespace(verbose=False)
@@ -317,8 +319,8 @@ class TestCheckLocalAssets:
         models_dir.mkdir()
         (models_dir / "model1.tflite").write_bytes(b"model data" * 1024)  # ~10KB
 
-        mock_resolver.get_models_dir.return_value = str(models_dir)
-        mock_resolver.get_ioc_database_path.return_value = str(tmp_path / "ioc.db")
+        mock_resolver.get_models_dir.return_value = models_dir
+        mock_resolver.get_ioc_database_path.return_value = tmp_path / "ioc.db"
         mock_file_resolver_class.return_value = mock_resolver
 
         args = argparse.Namespace(verbose=True)
@@ -338,8 +340,8 @@ class TestCheckLocalAssets:
         ioc_db = tmp_path / "ioc_reference.db"
         ioc_db.write_bytes(b"database content" * 1000)  # ~16KB
 
-        mock_resolver.get_models_dir.return_value = str(tmp_path / "models")
-        mock_resolver.get_ioc_database_path.return_value = str(ioc_db)
+        mock_resolver.get_models_dir.return_value = tmp_path / "models"
+        mock_resolver.get_ioc_database_path.return_value = ioc_db
         mock_file_resolver_class.return_value = mock_resolver
 
         args = argparse.Namespace(verbose=False)
@@ -355,8 +357,8 @@ class TestCheckLocalAssets:
         """Should show missing status for non-existent files."""
         # Setup mock resolver
         mock_resolver = MagicMock()
-        mock_resolver.get_models_dir.return_value = str(tmp_path / "models")
-        mock_resolver.get_ioc_database_path.return_value = str(tmp_path / "ioc.db")
+        mock_resolver.get_models_dir.return_value = tmp_path / "models"
+        mock_resolver.get_ioc_database_path.return_value = tmp_path / "ioc.db"
         mock_file_resolver_class.return_value = mock_resolver
 
         args = argparse.Namespace(verbose=False)
@@ -470,8 +472,8 @@ class TestIntegration:
         """Should complete full install workflow."""
         # Setup mocks
         mock_resolver = MagicMock()
-        mock_resolver.get_models_dir.return_value = str(tmp_path / "models")
-        mock_resolver.get_ioc_database_path.return_value = str(tmp_path / "ioc.db")
+        mock_resolver.get_models_dir.return_value = tmp_path / "models"
+        mock_resolver.get_ioc_database_path.return_value = tmp_path / "ioc.db"
         mock_file_resolver_class.return_value = mock_resolver
 
         mock_manager = MagicMock()

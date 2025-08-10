@@ -12,7 +12,7 @@ from birdnetpi.web.routers.admin_api_routes import router
 
 
 @pytest.fixture
-def client():
+def client(tmp_path):
     """Create test client with admin API routes and mocked dependencies."""
     # Create the app
     app = FastAPI()
@@ -22,6 +22,11 @@ def client():
 
     # Override the file_resolver with a mock
     mock_file_resolver = MagicMock(spec=FilePathResolver)
+    # Set return values to prevent MagicMock folder creation using tmp_path (as Path objects)
+    mock_file_resolver.get_ioc_database_path.return_value = tmp_path / "ioc_reference.db"
+    mock_file_resolver.get_models_dir.return_value = tmp_path / "models"
+    mock_file_resolver.get_avibase_database_path.return_value = tmp_path / "avibase.db"
+    mock_file_resolver.get_patlevin_database_path.return_value = tmp_path / "patlevin.db"
     container.file_resolver.override(mock_file_resolver)
 
     # Wire the container
@@ -49,8 +54,8 @@ class TestAdminAPIRoutes:
         config_file = tmp_path / "config.yaml"
         config_file.write_text("site_name: Test Site\nlatitude: 40.0\nlongitude: -74.0")
 
-        # Mock the file resolver method
-        client.mock_file_resolver.get_birdnetpi_config_path.return_value = str(config_file)
+        # Mock the file resolver method (returns Path object)
+        client.mock_file_resolver.get_birdnetpi_config_path.return_value = config_file
 
         valid_yaml = """
 site_name: "Test BirdNET-Pi"
@@ -72,8 +77,8 @@ species_confidence_threshold: 0.03
         config_file = tmp_path / "config.yaml"
         config_file.write_text("site_name: Test Site")
 
-        # Mock the file resolver method
-        client.mock_file_resolver.get_birdnetpi_config_path.return_value = str(config_file)
+        # Mock the file resolver method (returns Path object)
+        client.mock_file_resolver.get_birdnetpi_config_path.return_value = config_file
 
         invalid_yaml = """
 site_name: "Test BirdNET-Pi"
@@ -93,8 +98,8 @@ invalid_yaml: [unclosed bracket
         config_file = tmp_path / "config.yaml"
         config_file.write_text("site_name: Old Site")
 
-        # Mock the file resolver method
-        client.mock_file_resolver.get_birdnetpi_config_path.return_value = str(config_file)
+        # Mock the file resolver method (returns Path object)
+        client.mock_file_resolver.get_birdnetpi_config_path.return_value = config_file
 
         new_yaml = """
 site_name: "New Test Site"
@@ -116,8 +121,8 @@ species_confidence_threshold: 0.05
         config_file = tmp_path / "config.yaml"
         config_file.write_text("site_name: Test Site")
 
-        # Mock the file resolver method
-        client.mock_file_resolver.get_birdnetpi_config_path.return_value = str(config_file)
+        # Mock the file resolver method (returns Path object)
+        client.mock_file_resolver.get_birdnetpi_config_path.return_value = config_file
 
         invalid_yaml = """
 site_name: "Test BirdNET-Pi"

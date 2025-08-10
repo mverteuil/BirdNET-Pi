@@ -12,7 +12,6 @@ import pytest
 from birdnetpi.managers.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.models.config import BirdNETConfig
-from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
 @pytest.fixture
@@ -73,11 +72,17 @@ def mock_file_manager(test_detection_result):
 
 
 @pytest.fixture
-def mock_file_path_resolver(test_detection_result):
-    """Return a mock FilePathResolver instance with test data."""
-    mock = MagicMock(spec=FilePathResolver)
-    mock.get_detection_audio_path.return_value = test_detection_result["audio_path"]
-    return mock
+def mock_file_path_resolver(file_path_resolver, test_detection_result):
+    """Return a mock FilePathResolver instance with test data.
+
+    Uses the global file_path_resolver fixture as a base to prevent MagicMock file creation.
+    """
+    # Create a Mock that returns the test path but doesn't create files
+    from unittest.mock import MagicMock
+
+    mock_method = MagicMock(return_value=test_detection_result["audio_path"])
+    file_path_resolver.get_detection_audio_path = mock_method
+    return file_path_resolver
 
 
 @pytest.fixture

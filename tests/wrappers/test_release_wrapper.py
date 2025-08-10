@@ -279,8 +279,10 @@ class TestCreateRelease:
         capsys,
     ):
         """Should create release successfully."""
-        # Setup mocks
+        # Setup mocks with proper paths to prevent MagicMock folder creation
         mock_resolver = MagicMock()
+        mock_resolver.get_ioc_database_path.return_value = tmp_path / "ioc_reference.db"
+        mock_resolver.get_models_dir.return_value = tmp_path / "models"
         mock_resolver_class.return_value = mock_resolver
 
         mock_manager = MagicMock()
@@ -329,8 +331,12 @@ class TestCreateRelease:
         self, mock_build_assets, mock_manager_class, mock_resolver_class
     ):
         """Should create release with custom branch and commit message."""
-        # Setup mocks
+        # Setup mocks with proper paths to prevent MagicMock folder creation
+        from pathlib import Path
+
         mock_resolver = MagicMock()
+        mock_resolver.get_ioc_database_path.return_value = Path("/tmp/test/ioc_reference.db")
+        mock_resolver.get_models_dir.return_value = Path("/tmp/test/models")
         mock_resolver_class.return_value = mock_resolver
 
         mock_manager = MagicMock()
@@ -379,8 +385,10 @@ class TestCreateRelease:
         tmp_path,
     ):
         """Should create release and write JSON output."""
-        # Setup mocks
+        # Setup mocks with proper paths to prevent MagicMock folder creation
         mock_resolver = MagicMock()
+        mock_resolver.get_ioc_database_path.return_value = tmp_path / "ioc_reference.db"
+        mock_resolver.get_models_dir.return_value = tmp_path / "models"
         mock_resolver_class.return_value = mock_resolver
 
         mock_manager = MagicMock()
@@ -429,8 +437,12 @@ class TestCreateRelease:
         self, mock_exit, mock_build_assets, mock_manager_class, mock_resolver_class
     ):
         """Should handle release creation errors."""
-        # Setup mocks
+        # Setup mocks with proper paths to prevent MagicMock folder creation
+        from pathlib import Path
+
         mock_resolver = MagicMock()
+        mock_resolver.get_ioc_database_path.return_value = Path("/tmp/test/ioc_reference.db")
+        mock_resolver.get_models_dir.return_value = Path("/tmp/test/models")
         mock_resolver_class.return_value = mock_resolver
 
         mock_manager = MagicMock()
@@ -469,8 +481,10 @@ class TestListAssets:
         ioc_db = tmp_path / "ioc.db"
         ioc_db.write_bytes(b"db data" * 2048)  # 16KB
 
-        # Setup mocks
+        # Setup mocks with proper paths to prevent MagicMock folder creation
         mock_resolver = MagicMock()
+        mock_resolver.get_ioc_database_path.return_value = tmp_path / "ioc_reference.db"
+        mock_resolver.get_models_dir.return_value = tmp_path / "models"
         mock_resolver_class.return_value = mock_resolver
 
         mock_manager = MagicMock()
@@ -503,8 +517,10 @@ class TestListAssets:
         test_file = tmp_path / "test.txt"
         test_file.write_bytes(b"x" * (5 * 1024 * 1024))  # 5MB
 
-        # Setup mocks
+        # Setup mocks with proper paths to prevent MagicMock folder creation
         mock_resolver = MagicMock()
+        mock_resolver.get_ioc_database_path.return_value = tmp_path / "ioc_reference.db"
+        mock_resolver.get_models_dir.return_value = tmp_path / "models"
         mock_resolver_class.return_value = mock_resolver
 
         mock_manager = MagicMock()
@@ -615,8 +631,10 @@ class TestIntegration:
         models_dir.mkdir()
         (models_dir / "model1.tflite").touch()
 
-        # Setup mocks
+        # Setup mocks with proper paths to prevent MagicMock folder creation
         mock_resolver = MagicMock()
+        mock_resolver.get_ioc_database_path.return_value = tmp_path / "ioc_reference.db"
+        mock_resolver.get_models_dir.return_value = tmp_path / "models"
         mock_resolver_class.return_value = mock_resolver
 
         mock_manager = MagicMock()

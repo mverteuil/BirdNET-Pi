@@ -24,27 +24,38 @@ def test_simple_startup():
 
 def test_admin_view_routes_endpoints():
     """Test that admin router endpoints are accessible."""
-    # Create a minimal app with just the admin router
+    import tempfile
+    from pathlib import Path
+
     from fastapi import FastAPI
 
     from birdnetpi.web.routers import admin_view_routes
 
-    app = FastAPI()
-    app.include_router(admin_view_routes.router)
+    # Use temporary directory for mock paths to prevent MagicMock folder creation
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
 
-    # Mock dependencies
-    app.state.templates = MagicMock()
-    app.state.file_resolver = MagicMock()
+        app = FastAPI()
+        app.include_router(admin_view_routes.router)
 
-    # Mock config
-    mock_config = MagicMock()
-    mock_config.site_name = "Test Site"
+        # Mock dependencies
+        app.state.templates = MagicMock()
+        mock_file_resolver = MagicMock()
+        mock_file_resolver.get_ioc_database_path.return_value = tmp_path / "ioc_reference.db"
+        mock_file_resolver.get_models_dir.return_value = tmp_path / "models"
+        mock_file_resolver.get_avibase_database_path.return_value = tmp_path / "avibase.db"
+        mock_file_resolver.get_patlevin_database_path.return_value = tmp_path / "patlevin.db"
+        app.state.file_resolver = mock_file_resolver
 
-    with patch("birdnetpi.web.routers.admin_view_routes.ConfigFileParser") as mock_parser:
-        mock_parser.return_value.load_config.return_value = mock_config
+        # Mock config
+        mock_config = MagicMock()
+        mock_config.site_name = "Test Site"
 
-        with TestClient(app) as client:
-            # Test that the admin endpoint exists
-            response = client.get("/")
-            assert response.status_code == 200
-            assert response.json() == {"message": "Admin router is working!"}
+        with patch("birdnetpi.web.routers.admin_view_routes.ConfigFileParser") as mock_parser:
+            mock_parser.return_value.load_config.return_value = mock_config
+
+            with TestClient(app) as client:
+                # Test that the admin endpoint exists
+                response = client.get("/")
+                assert response.status_code == 200
+                assert response.json() == {"message": "Admin router is working!"}
