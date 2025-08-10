@@ -19,33 +19,33 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Install runtime dependencies (excluding uv, as it's in the base image)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
-    sqlite3 \
-    icecast2 \
-    lsof \
-    net-tools \
     alsa-utils \
-    pulseaudio \
-    avahi-utils \
-    sox \
-    libsox-fmt-mp3 \
-    bc \
-    libjpeg-dev \
-    zlib1g-dev \
-    debian-keyring \
-    debian-archive-keyring \
     apt-transport-https \
-    gnupg \
-    curl \
+    avahi-utils \
+    bc \
     ca-certificates \
-    python3-venv \
-    supervisor \
     caddy \
+    curl \
+    debian-archive-keyring \
+    debian-keyring \
+    gnupg \
+    icecast2 \
     iproute2 \
+    libjpeg-dev \
     libportaudio2 \
-    portaudio19-dev \
-    systemd-journal-remote \
-    python3-systemd \
+    libsox-fmt-mp3 \
+    lsof \
     memcached \
+    net-tools \
+    portaudio19-dev \
+    pulseaudio \
+    python3-systemd \
+    python3-venv \
+    sox \
+    sqlite3 \
+    supervisor \
+    systemd-journal-remote \
+    zlib1g-dev \
     && \
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg && \
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list && \
