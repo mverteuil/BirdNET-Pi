@@ -28,33 +28,33 @@ msgstr ""
 #: src/birdnetpi/web/templates/index.html:102
 #: src/birdnetpi/web/templates/livestream.html:291
 msgid "Field Mode"
-msgstr ""
+msgstr "Mode Terrain"
 
 #: src/birdnetpi/web/templates/field_mode.html:266
 msgid "Audio"
-msgstr ""
+msgstr "Audio"
 
 #: src/birdnetpi/web/templates/field_mode.html:267
 #: src/birdnetpi/web/templates/field_mode.html:271
 #: src/birdnetpi/web/templates/field_mode.html:275
 msgid "Checking..."
-msgstr ""
+msgstr "Vérification..."
 
 #: src/birdnetpi/web/templates/field_mode.html:270
 msgid "GPS"
-msgstr ""
+msgstr "GPS"
 
 #: src/birdnetpi/web/templates/field_mode.html:274
 msgid "System"
-msgstr ""
+msgstr "Système"
 
 #: src/birdnetpi/web/templates/field_mode.html:278
 msgid "Detection"
-msgstr ""
+msgstr "Détection"
 
 #: src/birdnetpi/web/templates/field_mode.html:279
 msgid "Active"
-msgstr ""
+msgstr "Actif"
 
 #: src/birdnetpi/web/templates/field_mode.html:285
 msgid "Location"
@@ -78,16 +78,16 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/field_mode.html:303
 msgid "CPU"
-msgstr ""
+msgstr "Processeur"
 
 #: src/birdnetpi/web/templates/field_mode.html:307
 #: src/birdnetpi/web/templates/index.html:135
 msgid "Memory"
-msgstr ""
+msgstr "Mémoire"
 
 #: src/birdnetpi/web/templates/field_mode.html:311
 msgid "Disk"
-msgstr ""
+msgstr "Disque"
 
 #: src/birdnetpi/web/templates/field_mode.html:319
 msgid "Live Audio"
@@ -99,20 +99,20 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/field_mode.html:325
 msgid "Refresh"
-msgstr ""
+msgstr "Actualiser"
 
 #: src/birdnetpi/web/templates/field_mode.html:327
 msgid "Home"
-msgstr ""
+msgstr "Accueil"
 
 #: src/birdnetpi/web/templates/field_mode.html:332
 #: src/birdnetpi/web/templates/index.html:166
 msgid "Recent Detections"
-msgstr ""
+msgstr "Détections Récentes"
 
 #: src/birdnetpi/web/templates/field_mode.html:333
 msgid "Loading detections..."
-msgstr ""
+msgstr "Chargement des détections..."
 
 #: src/birdnetpi/web/templates/field_mode.html:338
 msgid "Total Today:"
@@ -142,13 +142,13 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/index.html:46
 msgid "Species Detected"
-msgstr ""
+msgstr "Espèces Détectées"
 
 #: src/birdnetpi/web/templates/index.html:50
 #: src/birdnetpi/web/templates/reports/index.html:43
 #: src/birdnetpi/web/templates/reports/todays_detections.html:14
 msgid "Today's Detections"
-msgstr ""
+msgstr "Détections d'Aujourd'hui"
 
 #: src/birdnetpi/web/templates/index.html:54
 msgid "Hours Recorded"
@@ -166,7 +166,7 @@ msgstr ""
 #: src/birdnetpi/web/templates/reports/all_detections.html:14
 #: src/birdnetpi/web/templates/reports/index.html:57
 msgid "All Detections"
-msgstr ""
+msgstr "Toutes les Détections"
 
 #: src/birdnetpi/web/templates/index.html:76
 #: src/birdnetpi/web/templates/reports/index.html:59
@@ -177,7 +177,7 @@ msgstr ""
 #: src/birdnetpi/web/templates/reports/best_recordings.html:14
 #: src/birdnetpi/web/templates/reports/index.html:36
 msgid "Best Recordings"
-msgstr ""
+msgstr "Meilleurs Enregistrements"
 
 #: src/birdnetpi/web/templates/index.html:83
 #: src/birdnetpi/web/templates/reports/index.html:38
@@ -188,7 +188,7 @@ msgstr ""
 #: src/birdnetpi/web/templates/livestream.html:6
 #: src/birdnetpi/web/templates/livestream.html:282
 msgid "Live Stream"
-msgstr ""
+msgstr "Flux en Direct"
 
 #: src/birdnetpi/web/templates/index.html:90
 msgid "Audio stream and spectrogram"
@@ -197,7 +197,7 @@ msgstr ""
 #: src/birdnetpi/web/templates/index.html:95
 #: src/birdnetpi/web/templates/reports/index.html:14
 msgid "Reports"
-msgstr ""
+msgstr "Rapports"
 
 #: src/birdnetpi/web/templates/index.html:97
 msgid "Analyze detection patterns"
@@ -210,7 +210,7 @@ msgstr ""
 #: src/birdnetpi/web/templates/admin/settings.html:14
 #: src/birdnetpi/web/templates/index.html:107
 msgid "Settings"
-msgstr ""
+msgstr "Paramètres"
 
 #: src/birdnetpi/web/templates/index.html:108
 msgid "Configure your system"
@@ -218,27 +218,27 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/index.html:116
 msgid "System Status"
-msgstr ""
+msgstr "État du Système"
 
 #: src/birdnetpi/web/templates/index.html:119
 msgid "Online"
-msgstr ""
+msgstr "En Ligne"
 
 #: src/birdnetpi/web/templates/index.html:124
 msgid "CPU Usage"
-msgstr ""
+msgstr "Utilisation du Processeur"
 
 #: src/birdnetpi/web/templates/index.html:146
 msgid "Disk Space"
-msgstr ""
+msgstr "Espace Disque"
 
 #: src/birdnetpi/web/templates/index.html:157
 msgid "Temperature"
-msgstr ""
+msgstr "Température"
 
 #: src/birdnetpi/web/templates/index.html:168
 msgid "today"
-msgstr ""
+msgstr "aujourd'hui"
 
 #: src/birdnetpi/web/templates/index.html:190
 msgid "Audio Stream"
@@ -246,7 +246,7 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/index.html:193
 msgid "Connecting..."
-msgstr ""
+msgstr "Connexion..."
 
 #: src/birdnetpi/web/templates/index.html:202
 msgid "Live Audio Analysis"
@@ -260,7 +260,7 @@ msgstr ""
 #: src/birdnetpi/web/templates/livestream.html:288
 #: src/birdnetpi/web/templates/reports/index.html:20
 msgid "Back to Dashboard"
-msgstr ""
+msgstr "Retour au Tableau de Bord"
 
 #: src/birdnetpi/web/templates/livestream.html:299
 msgid "Connection Status"
@@ -284,11 +284,11 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/livestream.html:327
 msgid "Connect Audio"
-msgstr ""
+msgstr "Connecter l'Audio"
 
 #: src/birdnetpi/web/templates/livestream.html:336
 msgid "Connect Spectrogram"
-msgstr ""
+msgstr "Connecter le Spectrogramme"
 
 #: src/birdnetpi/web/templates/livestream.html:353
 msgid "Audio On"
@@ -346,41 +346,41 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/admin/settings.html:23
 msgid "Advanced Settings"
-msgstr ""
+msgstr "Paramètres Avancés"
 
 #: src/birdnetpi/web/templates/admin/settings.html:33
 #: src/birdnetpi/web/templates/admin/yaml_editor.html:145
 #: src/birdnetpi/web/templates/admin/yaml_editor.html:163
 msgid "Basic Settings"
-msgstr ""
+msgstr "Paramètres de Base"
 
 #: src/birdnetpi/web/templates/admin/settings.html:36
 msgid "Site Name"
-msgstr ""
+msgstr "Nom du Site"
 
 #: src/birdnetpi/web/templates/admin/settings.html:47
 msgid "Latitude"
-msgstr ""
+msgstr "Latitude"
 
 #: src/birdnetpi/web/templates/admin/settings.html:59
 msgid "Longitude"
-msgstr ""
+msgstr "Longitude"
 
 #: src/birdnetpi/web/templates/admin/settings.html:72
 msgid "AI Model"
-msgstr ""
+msgstr "Modèle IA"
 
 #: src/birdnetpi/web/templates/admin/settings.html:83
 msgid "Species Confidence Threshold"
-msgstr ""
+msgstr "Seuil de Confiance des Espèces"
 
 #: src/birdnetpi/web/templates/admin/settings.html:99
 msgid "BirdWeather Integration"
-msgstr ""
+msgstr "Intégration BirdWeather"
 
 #: src/birdnetpi/web/templates/admin/settings.html:102
 msgid "BirdWeather ID"
-msgstr ""
+msgstr "ID BirdWeather"
 
 #: src/birdnetpi/web/templates/admin/settings.html:109
 msgid "Your BirdWeather Station ID"
@@ -389,7 +389,7 @@ msgstr ""
 #: src/birdnetpi/web/templates/admin/settings.html:117
 #: src/birdnetpi/web/templates/admin/yaml_editor.html:178
 msgid "Notifications"
-msgstr ""
+msgstr "Notifications"
 
 #: src/birdnetpi/web/templates/admin/settings.html:121
 msgid "Apprise Configuration"
@@ -432,7 +432,7 @@ msgstr ""
 #: src/birdnetpi/web/templates/reports/index.html:29
 #: src/birdnetpi/web/templates/reports/weekly_report.html:14
 msgid "Weekly Report"
-msgstr ""
+msgstr "Rapport Hebdomadaire"
 
 #: src/birdnetpi/web/templates/admin/settings.html:231
 msgid "Minimum Time Limit (seconds)"
@@ -468,19 +468,19 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/admin/settings.html:291
 msgid "Localization"
-msgstr ""
+msgstr "Localisation"
 
 #: src/birdnetpi/web/templates/admin/settings.html:295
 msgid "Language"
-msgstr ""
+msgstr "Langue"
 
 #: src/birdnetpi/web/templates/admin/settings.html:306
 msgid "Timezone"
-msgstr ""
+msgstr "Fuseau Horaire"
 
 #: src/birdnetpi/web/templates/admin/settings.html:323
 msgid "Save Settings"
-msgstr ""
+msgstr "Enregistrer les Paramètres"
 
 #: src/birdnetpi/web/templates/admin/test_detection_modal.html:4
 #: src/birdnetpi/web/templates/admin/test_detection_modal.html:54
@@ -525,7 +525,7 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/admin/yaml_editor.html:154
 msgid "Save"
-msgstr ""
+msgstr "Enregistrer"
 
 #: src/birdnetpi/web/templates/admin/yaml_editor.html:160
 msgid "Quick Navigation:"
@@ -573,7 +573,7 @@ msgstr ""
 #: src/birdnetpi/web/templates/reports/todays_detections.html:24
 #: src/birdnetpi/web/templates/reports/weekly_report.html:31
 msgid "Back to Reports"
-msgstr ""
+msgstr "Retour aux Rapports"
 
 #: src/birdnetpi/web/templates/reports/all_detections.html:27
 #: src/birdnetpi/web/templates/reports/best_recordings.html:27
@@ -581,24 +581,24 @@ msgstr ""
 #: src/birdnetpi/web/templates/reports/todays_detections.html:27
 #: src/birdnetpi/web/templates/reports/weekly_report.html:33
 msgid "Dashboard"
-msgstr ""
+msgstr "Tableau de Bord"
 
 #: src/birdnetpi/web/templates/reports/all_detections.html:37
 #: src/birdnetpi/web/templates/reports/todays_detections.html:37
 #: src/birdnetpi/web/templates/reports/weekly_report.html:44
 msgid "Total Detections"
-msgstr ""
+msgstr "Total des Détections"
 
 #: src/birdnetpi/web/templates/reports/all_detections.html:44
 #: src/birdnetpi/web/templates/reports/todays_detections.html:45
 #: src/birdnetpi/web/templates/reports/weekly_report.html:58
 msgid "Unique Species"
-msgstr ""
+msgstr "Espèces Uniques"
 
 #: src/birdnetpi/web/templates/reports/all_detections.html:51
 #: src/birdnetpi/web/templates/reports/todays_detections.html:52
 msgid "Avg Confidence"
-msgstr ""
+msgstr "Confiance Moyenne"
 
 #: src/birdnetpi/web/templates/reports/all_detections.html:58
 msgid "Filter & Search"
@@ -626,11 +626,11 @@ msgstr ""
 #: src/birdnetpi/web/templates/reports/weekly_report.html:89
 #: src/birdnetpi/web/templates/reports/weekly_report.html:122
 msgid "detections"
-msgstr ""
+msgstr "détections"
 
 #: src/birdnetpi/web/templates/reports/all_detections.html:131
 msgid "No Detections Found"
-msgstr ""
+msgstr "Aucune Détection Trouvée"
 
 #: src/birdnetpi/web/templates/reports/all_detections.html:134
 #: src/birdnetpi/web/templates/reports/best_recordings.html:106
@@ -663,7 +663,7 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/reports/best_recordings.html:51
 msgid "at"
-msgstr ""
+msgstr "à"
 
 #: src/birdnetpi/web/templates/reports/best_recordings.html:56
 msgid "Location:"
@@ -672,7 +672,7 @@ msgstr ""
 #: src/birdnetpi/web/templates/reports/best_recordings.html:63
 #: src/birdnetpi/web/templates/reports/weekly_report.html:17
 msgid "Week"
-msgstr ""
+msgstr "Semaine"
 
 #: src/birdnetpi/web/templates/reports/best_recordings.html:70
 msgid "Sensitivity"
@@ -766,7 +766,7 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/reports/todays_detections.html:96
 msgid "No Detections Today"
-msgstr ""
+msgstr "Aucune Détection Aujourd'hui"
 
 #: src/birdnetpi/web/templates/reports/todays_detections.html:99
 msgid ""
@@ -784,7 +784,7 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/reports/weekly_report.html:70
 msgid "New Species"
-msgstr ""
+msgstr "Nouvelles Espèces"
 
 #: src/birdnetpi/web/templates/reports/weekly_report.html:79
 msgid "Top Species This Week"
@@ -792,7 +792,7 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/reports/weekly_report.html:81
 msgid "species"
-msgstr ""
+msgstr "espèces"
 
 #: src/birdnetpi/web/templates/reports/weekly_report.html:112
 msgid "New Species Discovered"
