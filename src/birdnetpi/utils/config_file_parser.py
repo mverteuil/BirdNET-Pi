@@ -74,9 +74,7 @@ class ConfigFileParser:
             minimum_time_limit=int(config_data.get("minimum_time_limit", 0)),
             flickr_api_key=config_data.get("flickr_api_key", ""),
             flickr_filter_email=config_data.get("flickr_filter_email", ""),
-            language=config_data.get(
-                "language", config_data.get("language_code", config_data.get("database_lang", "en"))
-            ),
+            language=config_data.get("language", "en"),
             species_display_mode=config_data.get("species_display_mode", "full"),
             timezone=config_data.get("timezone", "UTC"),
             apprise_only_notify_species_names=config_data.get(

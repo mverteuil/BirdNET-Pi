@@ -60,7 +60,7 @@ class BirdNETConfig:
     flickr_filter_email: str = ""
 
     # Localization and Species Display
-    language: str = "en"  # Language code for database and species name translation
+    language: str = "en"  # Language code for UI and species name translation
     species_display_mode: str = "full"  # Options: "full", "common_name", "scientific_name"
     timezone: str = "UTC"  # Default from SystemUtils
 

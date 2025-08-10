@@ -66,7 +66,7 @@ def mock_config():
     mock.minimum_time_limit = 0
     mock.flickr_api_key = "test_key"
     mock.flickr_filter_email = "test_email"
-    mock.database_lang = "en"
+    mock.language = "en"
     mock.timezone = "UTC"
     mock.apprise_only_notify_species_names = ""
     mock.database = MagicMock(path="/tmp/test.db")  # Mock database path

@@ -33,7 +33,7 @@ def config_file(tmp_path):
         "minimum_time_limit": 1,
         "flickr_api_key": "test_key",
         "flickr_filter_email": "test_email",
-        "database_lang": "fr",
+        "language": "fr",
         "timezone": "Europe/Paris",
         "apprise_only_notify_species_names": "test_species",
     }

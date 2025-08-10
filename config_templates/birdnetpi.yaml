@@ -41,7 +41,7 @@ flickr_api_key: ""
 flickr_filter_email: ""
 
 # Localization and Species Display
-language: en  # Language code for database and species name translation
+language: en  # Language code for UI and species name translation
 species_display_mode: full  # Options: "full" (Common Name (Scientific Name)), "common_name", "scientific_name"
 timezone: UTC
 
