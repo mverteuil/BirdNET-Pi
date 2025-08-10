@@ -55,21 +55,21 @@
       <!-- Search and Filter Controls -->
       <div class="dashboard-card" style="margin-bottom: 2rem">
         <div class="card-header">
-          <h3 class="card-title">Filter & Search</h3>
+          <h3 class="card-title">{{ _('Filter & Search') }}</h3>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label for="species-filter">Species Filter</label>
+            <label for="species-filter">{{ _('Species Filter') }}</label>
             <input
               type="text"
               id="species-filter"
               class="form-control"
-              placeholder="Type to filter species..."
+              placeholder="{{ _('Type to filter species...') }}"
               onkeyup="filterDetections()"
             />
           </div>
           <div class="form-group">
-            <label for="date-filter">Date Filter</label>
+            <label for="date-filter">{{ _('Date Filter') }}</label>
             <input
               type="date"
               id="date-filter"
@@ -83,9 +83,9 @@
       <!-- Detection List -->
       <div class="dashboard-card">
         <div class="card-header">
-          <h3 class="card-title">Detection History</h3>
+          <h3 class="card-title">{{ _('Detection History') }}</h3>
           <span class="card-badge badge-success" id="visible-count"
-            >{{ all_detections|length }} detections</span
+            >{{ all_detections|length }} {{ _('detections') }}</span
           >
         </div>
         <div
@@ -128,15 +128,15 @@
             🔍
           </div>
           <h3 style="color: var(--text-secondary); margin-bottom: 1rem">
-            No Detections Found
+            {{ _('No Detections Found') }}
           </h3>
           <p style="color: var(--text-secondary)">
-            No bird detections have been recorded yet. Check back after the
-            system has been running for some time.
+            {{ _('No bird detections have been recorded yet. Check back after
+            the system has been running for some time.') }}
           </p>
           <div style="margin-top: 2rem">
             <a href="/field" class="btn btn-primary">
-              <span>🎤</span> Try Field Mode
+              <span>🎤</span> {{ _('Try Field Mode') }}
             </a>
           </div>
         </div>
@@ -170,7 +170,7 @@
         });
 
         document.getElementById("visible-count").textContent =
-          `${visibleCount} detections`;
+          `${visibleCount} {{ _('detections') }}`;
       }
     </script>
   </body>

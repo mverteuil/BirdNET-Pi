@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: BirdNET-Pi 2.0.0\n"
 "Report-Msgid-Bugs-To: https://github.com/mverteuil/BirdNET-Pi/issues\n"
-"POT-Creation-Date: 2025-08-09 20:22-0400\n"
+"POT-Creation-Date: 2025-08-09 20:34-0400\n"
 "PO-Revision-Date: 2025-08-09 13:42-0400\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: es\n"
@@ -569,26 +569,80 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/reports/all_detections.html:24
 #: src/birdnetpi/web/templates/reports/best_recordings.html:24
+#: src/birdnetpi/web/templates/reports/charts.html:25
 #: src/birdnetpi/web/templates/reports/todays_detections.html:24
+#: src/birdnetpi/web/templates/reports/weekly_report.html:31
 msgid "Back to Reports"
 msgstr ""
 
 #: src/birdnetpi/web/templates/reports/all_detections.html:27
 #: src/birdnetpi/web/templates/reports/best_recordings.html:27
+#: src/birdnetpi/web/templates/reports/charts.html:27
 #: src/birdnetpi/web/templates/reports/todays_detections.html:27
+#: src/birdnetpi/web/templates/reports/weekly_report.html:33
 msgid "Dashboard"
 msgstr ""
 
 #: src/birdnetpi/web/templates/reports/all_detections.html:37
+#: src/birdnetpi/web/templates/reports/todays_detections.html:37
+#: src/birdnetpi/web/templates/reports/weekly_report.html:44
 msgid "Total Detections"
 msgstr ""
 
 #: src/birdnetpi/web/templates/reports/all_detections.html:44
+#: src/birdnetpi/web/templates/reports/todays_detections.html:45
+#: src/birdnetpi/web/templates/reports/weekly_report.html:58
 msgid "Unique Species"
 msgstr ""
 
 #: src/birdnetpi/web/templates/reports/all_detections.html:51
+#: src/birdnetpi/web/templates/reports/todays_detections.html:52
 msgid "Avg Confidence"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/all_detections.html:58
+msgid "Filter & Search"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/all_detections.html:62
+msgid "Species Filter"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/all_detections.html:67
+msgid "Type to filter species..."
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/all_detections.html:72
+msgid "Date Filter"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/all_detections.html:86
+msgid "Detection History"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/all_detections.html:88
+#: src/birdnetpi/web/templates/reports/all_detections.html:172
+#: src/birdnetpi/web/templates/reports/todays_detections.html:61
+#: src/birdnetpi/web/templates/reports/weekly_report.html:89
+#: src/birdnetpi/web/templates/reports/weekly_report.html:122
+msgid "detections"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/all_detections.html:131
+msgid "No Detections Found"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/all_detections.html:134
+#: src/birdnetpi/web/templates/reports/best_recordings.html:106
+msgid ""
+"No bird detections have been recorded yet. Check back after the system "
+"has been running for some time."
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/all_detections.html:138
+#: src/birdnetpi/web/templates/reports/todays_detections.html:103
+#: src/birdnetpi/web/templates/reports/weekly_report.html:176
+msgid "Try Field Mode"
 msgstr ""
 
 #: src/birdnetpi/web/templates/reports/best_recordings.html:6
@@ -597,6 +651,43 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/reports/best_recordings.html:16
 msgid "Highest confidence detections for each species"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/best_recordings.html:47
+msgid "Scientific Name:"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/best_recordings.html:51
+msgid "Detected:"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/best_recordings.html:51
+msgid "at"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/best_recordings.html:56
+msgid "Location:"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/best_recordings.html:63
+#: src/birdnetpi/web/templates/reports/weekly_report.html:17
+msgid "Week"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/best_recordings.html:70
+msgid "Sensitivity"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/best_recordings.html:77
+msgid "Species Confidence"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/best_recordings.html:84
+msgid "Overlap"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/best_recordings.html:103
+msgid "No Recordings Found"
 msgstr ""
 
 #: src/birdnetpi/web/templates/reports/charts.html:6
@@ -609,6 +700,32 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/reports/charts.html:17
 msgid "Visual analysis of bird detection patterns"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/charts.html:34
+msgid "Multi-Day Species Analysis"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/charts.html:35
+msgid "Hourly View"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/charts.html:44
+msgid "Daily Detection Patterns"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/charts.html:45
+msgid "15-Minute Intervals"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/charts.html:62
+#: src/birdnetpi/web/templates/reports/charts.html:65
+msgid "No data available for multi-day chart"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/charts.html:74
+#: src/birdnetpi/web/templates/reports/charts.html:77
+msgid "No data available for daily chart"
 msgstr ""
 
 #: src/birdnetpi/web/templates/reports/index.html:6
@@ -643,10 +760,74 @@ msgstr ""
 msgid "All bird detections from today"
 msgstr ""
 
+#: src/birdnetpi/web/templates/reports/todays_detections.html:59
+msgid "Detection Timeline"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/todays_detections.html:96
+msgid "No Detections Today"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/todays_detections.html:99
+msgid ""
+"No bird detections have been recorded today. Birds may be more active "
+"during dawn and dusk hours."
+msgstr ""
+
 #: src/birdnetpi/web/templates/reports/weekly_report.html:6
 msgid "Weekly Report - BirdNET-Pi Reports"
 msgstr ""
 
 #: src/birdnetpi/web/templates/reports/weekly_report.html:22
 msgid "Weekly detection summary and insights"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/weekly_report.html:70
+msgid "New Species"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/weekly_report.html:79
+msgid "Top Species This Week"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/weekly_report.html:81
+msgid "species"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/weekly_report.html:112
+msgid "New Species Discovered"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/weekly_report.html:114
+msgid "new"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/weekly_report.html:126
+msgid "New!"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/weekly_report.html:139
+msgid "Previous Week Comparison"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/weekly_report.html:140
+msgid "Week-over-Week"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/weekly_report.html:145
+msgid "Previous Detections"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/weekly_report.html:151
+msgid "Previous Species"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/weekly_report.html:169
+msgid "No Weekly Data Available"
+msgstr ""
+
+#: src/birdnetpi/web/templates/reports/weekly_report.html:172
+msgid ""
+"No bird detections have been recorded this week. Check back after the "
+"system has been running for some time."
 msgstr ""

@@ -14,8 +14,8 @@
         <h1 class="section-title">{{ _('Weekly Report') }}</h1>
         {% if weekly_data.week_number > 0 %}
         <p class="section-subtitle">
-          Week {{ weekly_data.week_number }} ({{ weekly_data.start_date }} - {{
-          weekly_data.end_date }})
+          {{ _('Week') }} {{ weekly_data.week_number }} ({{
+          weekly_data.start_date }} - {{ weekly_data.end_date }})
         </p>
         {% else %}
         <p class="section-subtitle">
@@ -28,9 +28,11 @@
             class="btn btn-secondary"
             style="margin-right: 1rem"
           >
-            <span>📊</span> Back to Reports
+            <span>📊</span> {{ _('Back to Reports') }}
           </a>
-          <a href="/" class="btn btn-secondary"> <span>🏠</span> Dashboard </a>
+          <a href="/" class="btn btn-secondary">
+            <span>🏠</span> {{ _('Dashboard') }}
+          </a>
         </div>
       </div>
 
@@ -41,7 +43,7 @@
           <span class="stat-value"
             >{{ weekly_data.total_detections_current }}</span
           >
-          <span class="stat-label">Total Detections</span>
+          <span class="stat-label">{{ _('Total Detections') }}</span>
           {% if weekly_data.percentage_diff_total != 0 %}
           <span
             class="stat-change {% if weekly_data.percentage_diff_total > 0 %}positive{% else %}negative{% endif %}"
@@ -55,7 +57,7 @@
           <span class="stat-value"
             >{{ weekly_data.unique_species_current }}</span
           >
-          <span class="stat-label">Unique Species</span>
+          <span class="stat-label">{{ _('Unique Species') }}</span>
           {% if weekly_data.percentage_diff_unique_species != 0 %}
           <span
             class="stat-change {% if weekly_data.percentage_diff_unique_species > 0 %}positive{% else %}negative{% endif %}"
@@ -67,7 +69,7 @@
         </div>
         <div class="stat-item">
           <span class="stat-value">{{ weekly_data.new_species|length }}</span>
-          <span class="stat-label">New Species</span>
+          <span class="stat-label">{{ _('New Species') }}</span>
         </div>
       </div>
 
@@ -76,9 +78,9 @@
         {% if weekly_data.top_10_species %}
         <div class="dashboard-card">
           <div class="card-header">
-            <h3 class="card-title">Top Species This Week</h3>
+            <h3 class="card-title">{{ _('Top Species This Week') }}</h3>
             <span class="card-badge badge-info"
-              >{{ weekly_data.top_10_species|length }} species</span
+              >{{ weekly_data.top_10_species|length }} {{ _('species') }}</span
             >
           </div>
           <div class="card-content">
@@ -86,7 +88,9 @@
             <div class="detection-item" style="margin-bottom: 0.5rem">
               <div class="detection-info">
                 <div class="detection-species">{{ species.common_name }}</div>
-                <div class="detection-time">{{ species.count }} detections</div>
+                <div class="detection-time">
+                  {{ species.count }} {{ _('detections') }}
+                </div>
               </div>
               <div class="detection-confidence">
                 {% if species.percentage_diff != 0 %}
@@ -109,9 +113,9 @@
         {% if weekly_data.new_species %}
         <div class="dashboard-card">
           <div class="card-header">
-            <h3 class="card-title">New Species Discovered</h3>
+            <h3 class="card-title">{{ _('New Species Discovered') }}</h3>
             <span class="card-badge badge-success"
-              >{{ weekly_data.new_species|length }} new</span
+              >{{ weekly_data.new_species|length }} {{ _('new') }}</span
             >
           </div>
           <div class="card-content">
@@ -119,11 +123,13 @@
             <div class="detection-item" style="margin-bottom: 0.5rem">
               <div class="detection-info">
                 <div class="detection-species">{{ species.common_name }}</div>
-                <div class="detection-time">{{ species.count }} detections</div>
+                <div class="detection-time">
+                  {{ species.count }} {{ _('detections') }}
+                </div>
               </div>
               <div class="detection-confidence">
                 <span class="badge-success" style="font-size: 0.8rem"
-                  >New!</span
+                  >{{ _('New!') }}</span
                 >
               </div>
             </div>
@@ -136,19 +142,21 @@
         {% if weekly_data.total_detections_prior > 0 %}
         <div class="dashboard-card">
           <div class="card-header">
-            <h3 class="card-title">Previous Week Comparison</h3>
-            <span class="card-badge badge-secondary">Week-over-Week</span>
+            <h3 class="card-title">{{ _('Previous Week Comparison') }}</h3>
+            <span class="card-badge badge-secondary"
+              >{{ _('Week-over-Week') }}</span
+            >
           </div>
           <div class="card-content">
             <div class="system-grid">
               <div class="system-metric">
-                <div class="metric-label">Previous Detections</div>
+                <div class="metric-label">{{ _('Previous Detections') }}</div>
                 <div class="metric-value" style="font-size: 1.2rem">
                   {{ weekly_data.total_detections_prior }}
                 </div>
               </div>
               <div class="system-metric">
-                <div class="metric-label">Previous Species</div>
+                <div class="metric-label">{{ _('Previous Species') }}</div>
                 <div class="metric-value" style="font-size: 1.2rem">
                   {{ weekly_data.unique_species_prior }}
                 </div>
@@ -166,15 +174,15 @@
             📊
           </div>
           <h3 style="color: var(--text-secondary); margin-bottom: 1rem">
-            No Weekly Data Available
+            {{ _('No Weekly Data Available') }}
           </h3>
           <p style="color: var(--text-secondary)">
-            No bird detections have been recorded this week. Check back after
-            the system has been running for some time.
+            {{ _('No bird detections have been recorded this week. Check back
+            after the system has been running for some time.') }}
           </p>
           <div style="margin-top: 2rem">
             <a href="/field" class="btn btn-primary">
-              <span>🎤</span> Try Field Mode
+              <span>🎤</span> {{ _('Try Field Mode') }}
             </a>
           </div>
         </div>

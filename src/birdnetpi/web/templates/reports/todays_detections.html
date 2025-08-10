@@ -34,7 +34,7 @@
       <div class="hero-stats" style="margin-bottom: 3rem">
         <div class="stat-item">
           <span class="stat-value">{{ todays_detections|length }}</span>
-          <span class="stat-label">Total Detections</span>
+          <span class="stat-label">{{ _('Total Detections') }}</span>
         </div>
         <div class="stat-item">
           <span class="stat-value"
@@ -42,23 +42,23 @@
             todays_detections|map(attribute='common_name')|unique|list|length
             }}</span
           >
-          <span class="stat-label">Unique Species</span>
+          <span class="stat-label">{{ _('Unique Species') }}</span>
         </div>
         <div class="stat-item">
           <span class="stat-value"
             >{{ "%.1f"|format((todays_detections|map(attribute='confidence')|sum
             / todays_detections|length * 100)) }}%</span
           >
-          <span class="stat-label">Avg Confidence</span>
+          <span class="stat-label">{{ _('Avg Confidence') }}</span>
         </div>
       </div>
 
       <!-- Detection List -->
       <div class="dashboard-card">
         <div class="card-header">
-          <h3 class="card-title">Detection Timeline</h3>
+          <h3 class="card-title">{{ _('Detection Timeline') }}</h3>
           <span class="card-badge badge-success"
-            >{{ todays_detections|length }} detections</span
+            >{{ todays_detections|length }} {{ _('detections') }}</span
           >
         </div>
         <div class="detection-feed" style="max-height: none">
@@ -93,15 +93,15 @@
             🦅
           </div>
           <h3 style="color: var(--text-secondary); margin-bottom: 1rem">
-            No Detections Today
+            {{ _('No Detections Today') }}
           </h3>
           <p style="color: var(--text-secondary)">
-            No bird detections have been recorded today. Birds may be more
-            active during dawn and dusk hours.
+            {{ _('No bird detections have been recorded today. Birds may be more
+            active during dawn and dusk hours.') }}
           </p>
           <div style="margin-top: 2rem">
             <a href="/field" class="btn btn-primary">
-              <span>🎤</span> Try Field Mode
+              <span>🎤</span> {{ _('Try Field Mode') }}
             </a>
           </div>
         </div>
