@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Today's Detections - BirdNET-Pi Reports</title>
+    <title>{{ _("Today's Detections - BirdNET-Pi Reports") }}</title>
     <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg" />
     <link rel="stylesheet" href="/static/style.css" />
   </head>
@@ -11,17 +11,21 @@
     <!-- Navigation -->
     <div class="dashboard" style="padding-top: 2rem">
       <div class="section-header">
-        <h1 class="section-title">Today's Detections</h1>
-        <p class="section-subtitle">All bird detections from today</p>
+        <h1 class="section-title">{{ _("Today's Detections") }}</h1>
+        <p class="section-subtitle">
+          {{ _('All bird detections from today') }}
+        </p>
         <div style="margin-top: 1rem">
           <a
             href="/reports"
             class="btn btn-secondary"
             style="margin-right: 1rem"
           >
-            <span>📊</span> Back to Reports
+            <span>📊</span> {{ _('Back to Reports') }}
           </a>
-          <a href="/" class="btn btn-secondary"> <span>🏠</span> Dashboard </a>
+          <a href="/" class="btn btn-secondary">
+            <span>🏠</span> {{ _('Dashboard') }}
+          </a>
         </div>
       </div>
 

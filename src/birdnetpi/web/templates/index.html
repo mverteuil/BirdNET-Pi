@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BirdNET-Pi - AI-Powered Bird Detection System</title>
+    <title>{{ _('BirdNET-Pi - AI-Powered Bird Detection System') }}</title>
     <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg" />
     <link rel="stylesheet" href="/static/style.css" />
   </head>
@@ -19,39 +19,39 @@
         <div class="hero-content">
           <h1 class="hero-title">BirdNET-Pi</h1>
           <p class="hero-subtitle">
-            AI-powered bird detection and monitoring system running 24/7 on your
-            Raspberry Pi
+            {{ _('AI-powered bird detection and monitoring system running 24/7
+            on your Raspberry Pi') }}
           </p>
           <div class="hero-cta">
             <button
               class="btn btn-primary"
               onclick="scrollToSection('dashboard')"
             >
-              <span>🎯</span> View Dashboard
+              <span>🎯</span> {{ _('View Dashboard') }}
             </button>
             <a href="/reports/detections" class="btn btn-secondary">
-              <span>📊</span> Browse Detections
+              <span>📊</span> {{ _('Browse Detections') }}
             </a>
             <button
               class="btn btn-secondary"
               onclick="toastManager.showAllIconsTest()"
               style="font-size: 0.9rem"
             >
-              🧪 Test Icons
+              🧪 {{ _('Test Icons') }}
             </button>
           </div>
           <div class="hero-stats">
             <div class="stat-item">
               <span class="stat-value" id="total-species">0</span>
-              <span class="stat-label">Species Detected</span>
+              <span class="stat-label">{{ _('Species Detected') }}</span>
             </div>
             <div class="stat-item">
               <span class="stat-value" id="today-detections">0</span>
-              <span class="stat-label">Today's Detections</span>
+              <span class="stat-label">{{ _("Today's Detections") }}</span>
             </div>
             <div class="stat-item">
               <span class="stat-value" id="recording-hours">0</span>
-              <span class="stat-label">Hours Recorded</span>
+              <span class="stat-label">{{ _('Hours Recorded') }}</span>
             </div>
           </div>
         </div>
@@ -61,9 +61,9 @@
     <!-- Dashboard Section -->
     <section class="dashboard" id="dashboard">
       <div class="section-header">
-        <h2 class="section-title">Live Dashboard</h2>
+        <h2 class="section-title">{{ _('Live Dashboard') }}</h2>
         <p class="section-subtitle">
-          Real-time bird detection and system monitoring
+          {{ _('Real-time bird detection and system monitoring') }}
         </p>
       </div>
 
@@ -71,37 +71,41 @@
       <div class="actions-grid">
         <a href="/reports/detections" class="action-card">
           <div class="action-icon">🔍</div>
-          <div class="action-title">All Detections</div>
+          <div class="action-title">{{ _('All Detections') }}</div>
           <div class="action-description">
-            Browse complete detection history
+            {{ _('Browse complete detection history') }}
           </div>
         </a>
         <a href="/reports/best" class="action-card">
           <div class="action-icon">⭐</div>
-          <div class="action-title">Best Recordings</div>
+          <div class="action-title">{{ _('Best Recordings') }}</div>
           <div class="action-description">
-            Listen to high-confidence detections
+            {{ _('Listen to high-confidence detections') }}
           </div>
         </a>
         <a href="/livestream" class="action-card">
           <div class="action-icon">📊</div>
-          <div class="action-title">Live Stream</div>
-          <div class="action-description">Audio stream and spectrogram</div>
+          <div class="action-title">{{ _('Live Stream') }}</div>
+          <div class="action-description">
+            {{ _('Audio stream and spectrogram') }}
+          </div>
         </a>
         <a href="/reports" class="action-card">
           <div class="action-icon">📈</div>
-          <div class="action-title">Reports</div>
-          <div class="action-description">Analyze detection patterns</div>
+          <div class="action-title">{{ _('Reports') }}</div>
+          <div class="action-description">
+            {{ _('Analyze detection patterns') }}
+          </div>
         </a>
         <a href="/field" class="action-card">
           <div class="action-icon">🎤</div>
-          <div class="action-title">Field Mode</div>
-          <div class="action-description">Manual recording mode</div>
+          <div class="action-title">{{ _('Field Mode') }}</div>
+          <div class="action-description">{{ _('Manual recording mode') }}</div>
         </a>
         <a href="/admin/settings" class="action-card">
           <div class="action-icon">⚙️</div>
-          <div class="action-title">Settings</div>
-          <div class="action-description">Configure your system</div>
+          <div class="action-title">{{ _('Settings') }}</div>
+          <div class="action-description">{{ _('Configure your system') }}</div>
         </a>
       </div>
 
@@ -109,15 +113,15 @@
         <!-- System Status Card -->
         <div class="dashboard-card">
           <div class="card-header">
-            <h3 class="card-title">System Status</h3>
+            <h3 class="card-title">{{ _('System Status') }}</h3>
             <span class="status-indicator status-online" id="system-status">
               <span class="pulse-dot"></span>
-              <span>Online</span>
+              <span>{{ _('Online') }}</span>
             </span>
           </div>
           <div class="system-grid">
             <div class="system-metric">
-              <div class="metric-label">CPU Usage</div>
+              <div class="metric-label">{{ _('CPU Usage') }}</div>
               <div class="metric-value" id="cpu-usage">0%</div>
               <div class="progress-bar">
                 <div
@@ -128,7 +132,7 @@
               </div>
             </div>
             <div class="system-metric">
-              <div class="metric-label">Memory</div>
+              <div class="metric-label">{{ _('Memory') }}</div>
               <div class="metric-value" id="memory-usage">0%</div>
               <div class="progress-bar">
                 <div
@@ -139,7 +143,7 @@
               </div>
             </div>
             <div class="system-metric">
-              <div class="metric-label">Disk Space</div>
+              <div class="metric-label">{{ _('Disk Space') }}</div>
               <div class="metric-value" id="disk-usage">0%</div>
               <div class="progress-bar">
                 <div
@@ -150,7 +154,7 @@
               </div>
             </div>
             <div class="system-metric">
-              <div class="metric-label">Temperature</div>
+              <div class="metric-label">{{ _('Temperature') }}</div>
               <div class="metric-value" id="cpu-temp">0°C</div>
             </div>
           </div>
@@ -159,9 +163,9 @@
         <!-- Recent Detections Card -->
         <div class="dashboard-card">
           <div class="card-header">
-            <h3 class="card-title">Recent Detections</h3>
+            <h3 class="card-title">{{ _('Recent Detections') }}</h3>
             <span class="card-badge badge-success" id="detection-count"
-              >0 today</span
+              >0 {{ _('today') }}</span
             >
           </div>
           <div class="detection-feed" id="detection-feed">
@@ -183,10 +187,10 @@
         <!-- Audio Stream Card -->
         <div class="dashboard-card">
           <div class="card-header">
-            <h3 class="card-title">Audio Stream</h3>
+            <h3 class="card-title">{{ _('Audio Stream') }}</h3>
             <span class="status-indicator status-offline" id="audio-status">
               <span class="pulse-dot"></span>
-              <span>Connecting...</span>
+              <span>{{ _('Connecting...') }}</span>
             </span>
           </div>
           <div class="audio-visualizer-container">
@@ -195,7 +199,7 @@
             </div>
             <div style="text-align: center; margin-top: 1rem">
               <span style="color: var(--text-secondary); font-size: 0.9rem"
-                >Live Audio Analysis</span
+                >{{ _('Live Audio Analysis') }}</span
               >
             </div>
           </div>

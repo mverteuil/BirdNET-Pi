@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
   <head>
-    <title>Test Detection Options</title>
+    <title>{{ _('Test Detection Options') }}</title>
     <link rel="stylesheet" href="/static/style.css" />
     <style>
       body {
@@ -51,13 +51,13 @@
   </head>
   <body>
     <div class="modal-content">
-      <h2>Test Detection Options</h2>
+      <h2>{{ _('Test Detection Options') }}</h2>
       <div class="form-group">
-        <label for="species">Species:</label>
-        <input type="text" id="species" value="Test Bird" />
+        <label for="species">{{ _('Species:') }}</label>
+        <input type="text" id="species" value="{{ _('Test Bird') }}" />
       </div>
       <div class="form-group">
-        <label for="confidence">Confidence (0.0-1.0):</label>
+        <label for="confidence">{{ _('Confidence (0.0-1.0):') }}</label>
         <input
           type="number"
           id="confidence"
@@ -68,10 +68,12 @@
         />
       </div>
       <div class="form-group">
-        <label for="timestamp">Timestamp:</label>
+        <label for="timestamp">{{ _('Timestamp:') }}</label>
         <input type="datetime-local" id="timestamp" />
       </div>
-      <button onclick="sendTestDetection()">Send Test Detection</button>
+      <button onclick="sendTestDetection()">
+        {{ _('Send Test Detection') }}
+      </button>
     </div>
 
     <script>

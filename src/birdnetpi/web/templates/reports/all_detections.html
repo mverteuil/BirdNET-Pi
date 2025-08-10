@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>All Detections - BirdNET-Pi Reports</title>
+    <title>{{ _('All Detections - BirdNET-Pi Reports') }}</title>
     <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg" />
     <link rel="stylesheet" href="/static/style.css" />
   </head>
@@ -11,17 +11,21 @@
     <!-- Navigation -->
     <div class="dashboard" style="padding-top: 2rem">
       <div class="section-header">
-        <h1 class="section-title">All Detections</h1>
-        <p class="section-subtitle">Complete history of bird detections</p>
+        <h1 class="section-title">{{ _('All Detections') }}</h1>
+        <p class="section-subtitle">
+          {{ _('Complete history of bird detections') }}
+        </p>
         <div style="margin-top: 1rem">
           <a
             href="/reports"
             class="btn btn-secondary"
             style="margin-right: 1rem"
           >
-            <span>📊</span> Back to Reports
+            <span>📊</span> {{ _('Back to Reports') }}
           </a>
-          <a href="/" class="btn btn-secondary"> <span>🏠</span> Dashboard </a>
+          <a href="/" class="btn btn-secondary">
+            <span>🏠</span> {{ _('Dashboard') }}
+          </a>
         </div>
       </div>
 
@@ -30,21 +34,21 @@
       <div class="hero-stats" style="margin-bottom: 3rem">
         <div class="stat-item">
           <span class="stat-value">{{ all_detections|length }}</span>
-          <span class="stat-label">Total Detections</span>
+          <span class="stat-label">{{ _('Total Detections') }}</span>
         </div>
         <div class="stat-item">
           <span class="stat-value"
             >{{ all_detections|map(attribute='common_name')|unique|list|length
             }}</span
           >
-          <span class="stat-label">Unique Species</span>
+          <span class="stat-label">{{ _('Unique Species') }}</span>
         </div>
         <div class="stat-item">
           <span class="stat-value"
             >{{ "%.1f"|format((all_detections|map(attribute='confidence')|sum /
             all_detections|length * 100)) }}%</span
           >
-          <span class="stat-label">Avg Confidence</span>
+          <span class="stat-label">{{ _('Avg Confidence') }}</span>
         </div>
       </div>
 

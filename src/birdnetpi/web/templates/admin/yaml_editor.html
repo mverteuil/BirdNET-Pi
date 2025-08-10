@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BirdNET-Pi YAML Configuration Editor</title>
+    <title>{{ _('BirdNET-Pi YAML Configuration Editor') }}</title>
     <link rel="stylesheet" href="/static/style.css" />
     <!-- CodeMirror CSS -->
     <link
@@ -139,63 +139,65 @@
   <body>
     <div class="yaml-editor-container">
       <div class="editor-header">
-        <h1>Advanced Settings - YAML Editor</h1>
+        <h1>{{ _('Advanced Settings - YAML Editor') }}</h1>
         <div class="editor-actions">
           <button class="btn btn-secondary" onclick="switchToBasicSettings()">
-            Basic Settings
+            {{ _('Basic Settings') }}
           </button>
           <button class="btn btn-secondary" onclick="reloadConfig()">
-            Reload
+            {{ _('Reload') }}
           </button>
           <button class="btn btn-primary" onclick="validateConfig()">
-            Validate
+            {{ _('Validate') }}
           </button>
-          <button class="btn btn-success" onclick="saveConfig()">Save</button>
+          <button class="btn btn-success" onclick="saveConfig()">
+            {{ _('Save') }}
+          </button>
         </div>
       </div>
 
       <div class="config-sections">
-        <h4>Quick Navigation:</h4>
+        <h4>{{ _('Quick Navigation:') }}</h4>
         <div class="section-buttons">
           <button class="section-button" onclick="jumpToSection('site_name')">
-            Basic Settings
+            {{ _('Basic Settings') }}
           </button>
           <button class="section-button" onclick="jumpToSection('model')">
-            Model Settings
+            {{ _('Model Settings') }}
           </button>
           <button
             class="section-button"
             onclick="jumpToSection('birdweather_id')"
           >
-            BirdWeather
+            {{ _('BirdWeather') }}
           </button>
           <button
             class="section-button"
             onclick="jumpToSection('apprise_input')"
           >
-            Notifications
+            {{ _('Notifications') }}
           </button>
           <button class="section-button" onclick="jumpToSection('enable_gps')">
-            GPS & Field Mode
+            {{ _('GPS & Field Mode') }}
           </button>
           <button class="section-button" onclick="jumpToSection('enable_mqtt')">
-            MQTT
+            {{ _('MQTT') }}
           </button>
           <button
             class="section-button"
             onclick="jumpToSection('enable_webhooks')"
           >
-            Webhooks
+            {{ _('Webhooks') }}
           </button>
           <button class="section-button" onclick="jumpToSection('logging')">
-            Logging
+            {{ _('Logging') }}
           </button>
         </div>
       </div>
 
       <div class="editor-wrapper">
         <div class="editor-panel">
-          <h3>Configuration Editor</h3>
+          <h3>{{ _('Configuration Editor') }}</h3>
           <textarea id="yaml-editor">{{ config_yaml }}</textarea>
           <div id="validation-status" class="validation-status"></div>
         </div>

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{ site_name }} - Live Stream</title>
+    <title>{{ site_name }} - {{ _('Live Stream') }}</title>
     <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg" />
     <link rel="stylesheet" href="/static/style.css" />
     <style>
@@ -279,16 +279,16 @@
     <!-- Navigation -->
     <div class="dashboard" style="padding-top: 2rem">
       <div class="section-header">
-        <h1 class="section-title">Live Stream</h1>
+        <h1 class="section-title">{{ _('Live Stream') }}</h1>
         <p class="section-subtitle">
-          Real-time audio stream and visual spectrogram analysis
+          {{ _('Real-time audio stream and visual spectrogram analysis') }}
         </p>
         <div style="margin-top: 1rem">
           <a href="/" class="btn btn-secondary" style="margin-right: 1rem">
-            <span>🏠</span> Back to Dashboard
+            <span>🏠</span> {{ _('Back to Dashboard') }}
           </a>
           <a href="/field" class="btn btn-secondary">
-            <span>📱</span> Field Mode
+            <span>📱</span> {{ _('Field Mode') }}
           </a>
         </div>
       </div>
@@ -296,24 +296,24 @@
       <!-- Connection Status -->
       <div class="dashboard-card" style="margin-bottom: 2rem">
         <div class="card-header">
-          <h3 class="card-title">Connection Status</h3>
+          <h3 class="card-title">{{ _('Connection Status') }}</h3>
         </div>
         <div class="card-content">
           <div class="status-grid">
             <div id="audioStatus" class="status-indicator status-disconnected">
-              Audio: Disconnected
+              {{ _('Audio: Disconnected') }}
             </div>
             <div
               id="spectrogramStatus"
               class="status-indicator status-disconnected"
             >
-              Spectrogram: Disconnected
+              {{ _('Spectrogram: Disconnected') }}
             </div>
             <div id="updateRate" class="status-indicator status-info">
-              Updates: 0 Hz
+              {{ _('Updates: 0 Hz') }}
             </div>
             <div id="latency" class="status-indicator status-info">
-              Latency: -- ms
+              {{ _('Latency: -- ms') }}
             </div>
           </div>
 
@@ -324,7 +324,7 @@
               onclick="toggleAudioConnection()"
             >
               <span id="audioToggleIcon">🎵</span>
-              <span id="audioToggleText">Connect Audio</span>
+              <span id="audioToggleText">{{ _('Connect Audio') }}</span>
             </button>
             <button
               id="spectrogramToggleBtn"
@@ -332,7 +332,9 @@
               onclick="toggleSpectrogramConnection()"
             >
               <span id="spectrogramToggleIcon">📊</span>
-              <span id="spectrogramToggleText">Connect Spectrogram</span>
+              <span id="spectrogramToggleText"
+                >{{ _('Connect Spectrogram') }}</span
+              >
             </button>
 
             <!-- Audio Controls -->
@@ -348,10 +350,10 @@
                 disabled
               >
                 <span id="audioPlayIcon">🔊</span>
-                <span id="audioPlayText">Audio On</span>
+                <span id="audioPlayText">{{ _('Audio On') }}</span>
               </button>
               <div class="audio-volume-control">
-                <label for="audioVolume">Volume:</label>
+                <label for="audioVolume">{{ _('Volume:') }}</label>
                 <input
                   type="range"
                   id="audioVolume"
@@ -372,13 +374,13 @@
         <!-- Spectrogram Card -->
         <div class="dashboard-card spectrogram-card">
           <div class="card-header">
-            <h3 class="card-title">Live Spectrogram</h3>
-            <span class="card-badge badge-info">Real-time</span>
+            <h3 class="card-title">{{ _('Live Spectrogram') }}</h3>
+            <span class="card-badge badge-info">{{ _('Real-time') }}</span>
           </div>
           <div class="card-content">
             <div class="controls-row">
               <div class="control-group">
-                <label for="colorScale">Color Scale</label>
+                <label for="colorScale">{{ _('Color Scale') }}</label>
                 <input
                   type="range"
                   id="colorScale"
@@ -389,7 +391,7 @@
                 />
               </div>
               <div class="control-group">
-                <label for="maxFreq">Max Freq (Hz)</label>
+                <label for="maxFreq">{{ _('Max Freq (Hz)') }}</label>
                 <input
                   type="number"
                   id="maxFreq"
@@ -401,7 +403,7 @@
                 />
               </div>
               <div class="control-group">
-                <label for="timeWindow">Time Window (s)</label>
+                <label for="timeWindow">{{ _('Time Window (s)') }}</label>
                 <input
                   type="number"
                   id="timeWindow"
@@ -428,16 +430,16 @@
         <!-- Live Detections Card -->
         <div class="dashboard-card detections-card">
           <div class="card-header">
-            <h3 class="card-title">Live Detections</h3>
+            <h3 class="card-title">{{ _('Live Detections') }}</h3>
             <span class="card-badge badge-info" id="detectionCount"
-              >0 detected</span
+              >{{ _('0 detected') }}</span
             >
           </div>
           <div class="card-content">
             <div id="liveDetections" class="detections-container">
               <p class="no-detections">
-                No detections yet. Start streaming to see bird detections in
-                real-time.
+                {{ _('No detections yet. Start streaming to see bird detections
+                in real-time.') }}
               </p>
             </div>
           </div>
@@ -447,7 +449,7 @@
       <!-- Connection Log Card -->
       <div class="dashboard-card" style="margin-bottom: 2rem">
         <div class="card-header">
-          <h3 class="card-title">Connection Log</h3>
+          <h3 class="card-title">{{ _('Connection Log') }}</h3>
         </div>
         <div class="card-content">
           <div id="messages" class="messages-container"></div>

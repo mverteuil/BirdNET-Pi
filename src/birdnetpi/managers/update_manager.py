@@ -240,6 +240,43 @@ class UpdateManager:
 
         return extracted_dirs[0]
 
+    def _download_models(self, asset_source_dir: Path, results: dict[str, Any]) -> None:
+        """Download model files from asset source."""
+        models_source = asset_source_dir / "data" / "models"
+        if not models_source.exists():
+            results["errors"].append("Models directory not found in release")
+            return
+
+        models_target = self.file_resolver.get_models_dir()
+        models_target.mkdir(parents=True, exist_ok=True)
+
+        # Copy all model files
+        for model_file in models_source.glob("*.tflite"):
+            target_file = models_target / model_file.name
+            shutil.copy2(model_file, target_file)
+            results["downloaded_assets"].append(f"Model: {model_file.name}")
+
+        print(f"Downloaded models to {models_target}")
+
+    def _download_database(
+        self,
+        asset_source_dir: Path,
+        db_filename: str,
+        target_path: Path,
+        display_name: str,
+        results: dict[str, Any],
+    ) -> None:
+        """Download a database file from asset source."""
+        db_source = asset_source_dir / "data" / "database" / db_filename
+        if not db_source.exists():
+            results["errors"].append(f"{display_name} not found in release")
+            return
+
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(db_source, target_path)
+        results["downloaded_assets"].append(display_name)
+        print(f"Downloaded {display_name} to {target_path}")
+
     def download_release_assets(
         self,
         version: str = "latest",
@@ -275,64 +312,37 @@ class UpdateManager:
             asset_tag = self._validate_asset_release(version, github_repo)
             asset_source_dir = self._download_and_extract_assets(asset_tag, github_repo)
 
-            # Download models if requested
+            # Download requested assets
             if include_models:
-                models_source = asset_source_dir / "data" / "models"
-                if models_source.exists():
-                    models_target = self.file_resolver.get_models_dir()
-                    models_target.mkdir(parents=True, exist_ok=True)
+                self._download_models(asset_source_dir, results)
 
-                    # Copy all model files
-                    for model_file in models_source.glob("*.tflite"):
-                        target_file = models_target / model_file.name
-                        shutil.copy2(model_file, target_file)
-                        results["downloaded_assets"].append(f"Model: {model_file.name}")
+            # Define database configurations
+            database_configs = [
+                (
+                    include_ioc_db,
+                    "ioc_reference.db",
+                    self.file_resolver.get_ioc_database_path(),
+                    "IOC reference database",
+                ),
+                (
+                    include_avibase_db,
+                    "avibase_database.db",
+                    self.file_resolver.get_avibase_database_path(),
+                    "Avibase multilingual database",
+                ),
+                (
+                    include_patlevin_db,
+                    "patlevin_database.db",
+                    self.file_resolver.get_patlevin_database_path(),
+                    "PatLevin translations database",
+                ),
+            ]
 
-                    print(f"Downloaded models to {models_target}")
-                else:
-                    results["errors"].append("Models directory not found in release")
-
-            # Download IOC database if requested
-            if include_ioc_db:
-                ioc_source = asset_source_dir / "data" / "database" / "ioc_reference.db"
-                if ioc_source.exists():
-                    ioc_target = self.file_resolver.get_ioc_database_path()
-                    ioc_target.parent.mkdir(parents=True, exist_ok=True)
-
-                    shutil.copy2(ioc_source, ioc_target)
-                    results["downloaded_assets"].append("IOC reference database")
-
-                    print(f"Downloaded IOC database to {ioc_target}")
-                else:
-                    results["errors"].append("IOC database not found in release")
-
-            # Download Avibase database if requested
-            if include_avibase_db:
-                avibase_source = asset_source_dir / "data" / "database" / "avibase_database.db"
-                if avibase_source.exists():
-                    avibase_target = self.file_resolver.get_avibase_database_path()
-                    avibase_target.parent.mkdir(parents=True, exist_ok=True)
-
-                    shutil.copy2(avibase_source, avibase_target)
-                    results["downloaded_assets"].append("Avibase multilingual database")
-
-                    print(f"Downloaded Avibase database to {avibase_target}")
-                else:
-                    results["errors"].append("Avibase database not found in release")
-
-            # Download PatLevin database if requested
-            if include_patlevin_db:
-                patlevin_source = asset_source_dir / "data" / "database" / "patlevin_database.db"
-                if patlevin_source.exists():
-                    patlevin_target = self.file_resolver.get_patlevin_database_path()
-                    patlevin_target.parent.mkdir(parents=True, exist_ok=True)
-
-                    shutil.copy2(patlevin_source, patlevin_target)
-                    results["downloaded_assets"].append("PatLevin translations database")
-
-                    print(f"Downloaded PatLevin database to {patlevin_target}")
-                else:
-                    results["errors"].append("PatLevin database not found in release")
+            for should_download, filename, target_path, display_name in database_configs:
+                if should_download:
+                    self._download_database(
+                        asset_source_dir, filename, target_path, display_name, results
+                    )
 
             print(f"Asset download completed for version {version}")
             return results

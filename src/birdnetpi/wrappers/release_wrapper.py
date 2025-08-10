@@ -13,6 +13,25 @@ from birdnetpi.managers.release_manager import ReleaseAsset, ReleaseConfig, Rele
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
+def _add_asset_if_requested(
+    args: argparse.Namespace,
+    attr_name: str,
+    filename_pattern: str,
+    warning_msg: str,
+    default_assets: list[ReleaseAsset],
+    assets: list[ReleaseAsset],
+) -> None:
+    """Add asset if requested and found."""
+    if not getattr(args, attr_name, False):
+        return
+
+    asset = next((a for a in default_assets if filename_pattern in str(a.target_name)), None)
+    if asset and Path(asset.source_path).exists():
+        assets.append(asset)
+    else:
+        print(f"Warning: {warning_msg}")
+
+
 def _build_asset_list(
     args: argparse.Namespace, release_manager: ReleaseManager
 ) -> list[ReleaseAsset]:
@@ -20,39 +39,24 @@ def _build_asset_list(
     assets = []
     default_assets = release_manager.get_default_assets()
 
-    if args.include_models:
-        models_asset = next((a for a in default_assets if "models" in str(a.target_name)), None)
-        if models_asset and Path(models_asset.source_path).exists():
-            assets.append(models_asset)
-        else:
-            print("Warning: Models not found at expected locations")
+    # Map of arguments to their corresponding asset patterns and warnings
+    asset_configs = [
+        ("include_models", "models", "Models not found at expected locations"),
+        ("include_ioc_db", "ioc_reference.db", "IOC database not found at expected locations"),
+        (
+            "include_avibase_db",
+            "avibase_database.db",
+            "Avibase database not found at expected locations",
+        ),
+        (
+            "include_patlevin_db",
+            "patlevin_database.db",
+            "PatLevin database not found at expected locations",
+        ),
+    ]
 
-    if args.include_ioc_db:
-        db_asset = next(
-            (a for a in default_assets if "ioc_reference.db" in str(a.target_name)), None
-        )
-        if db_asset and Path(db_asset.source_path).exists():
-            assets.append(db_asset)
-        else:
-            print("Warning: IOC database not found at expected locations")
-
-    if args.include_avibase_db:
-        avibase_asset = next(
-            (a for a in default_assets if "avibase_database.db" in str(a.target_name)), None
-        )
-        if avibase_asset and Path(avibase_asset.source_path).exists():
-            assets.append(avibase_asset)
-        else:
-            print("Warning: Avibase database not found at expected locations")
-
-    if args.include_patlevin_db:
-        patlevin_asset = next(
-            (a for a in default_assets if "patlevin_database.db" in str(a.target_name)), None
-        )
-        if patlevin_asset and Path(patlevin_asset.source_path).exists():
-            assets.append(patlevin_asset)
-        else:
-            print("Warning: PatLevin database not found at expected locations")
+    for attr_name, pattern, warning in asset_configs:
+        _add_asset_if_requested(args, attr_name, pattern, warning, default_assets, assets)
 
     # Add custom assets
     if args.custom_assets:

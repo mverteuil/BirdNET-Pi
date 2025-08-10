@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{ site_name }} - Field Mode</title>
+    <title>{{ site_name }} - {{ _('Field Mode') }}</title>
     <link rel="stylesheet" href="/static/style.css" />
     <style>
       /* High contrast, mobile-first field mode styles */
@@ -255,7 +255,7 @@
   <body>
     <div class="field-container">
       <h1>{{ site_name }}</h1>
-      <h2>Field Mode</h2>
+      <h2>{{ _('Field Mode') }}</h2>
 
       <!-- Alert Banner -->
       <div id="alertBanner" class="alert-banner" style="display: none"></div>
@@ -263,66 +263,80 @@
       <!-- System Status -->
       <div class="status-grid">
         <div id="audioStatus" class="status-card">
-          <div>Audio</div>
-          <div id="audioStatusText">Checking...</div>
+          <div>{{ _('Audio') }}</div>
+          <div id="audioStatusText">{{ _('Checking...') }}</div>
         </div>
         <div id="gpsStatus" class="status-card">
-          <div>GPS</div>
-          <div id="gpsStatusText">Checking...</div>
+          <div>{{ _('GPS') }}</div>
+          <div id="gpsStatusText">{{ _('Checking...') }}</div>
         </div>
         <div id="systemStatus" class="status-card">
-          <div>System</div>
-          <div id="systemStatusText">Checking...</div>
+          <div>{{ _('System') }}</div>
+          <div id="systemStatusText">{{ _('Checking...') }}</div>
         </div>
         <div id="detectionStatus" class="status-card">
-          <div>Detection</div>
-          <div id="detectionStatusText">Active</div>
+          <div>{{ _('Detection') }}</div>
+          <div id="detectionStatusText">{{ _('Active') }}</div>
         </div>
       </div>
 
       <!-- GPS Information -->
       <div class="gps-info">
-        <h3>Location</h3>
-        <div id="gpsCoordinates" class="coordinates">GPS: Not available</div>
-        <div id="gpsAccuracy" class="coordinates">Accuracy: Unknown</div>
-        <div id="gpsSatellites" class="coordinates">Satellites: --</div>
-        <div id="gpsLastUpdate" class="coordinates">Last update: Never</div>
+        <h3>{{ _('Location') }}</h3>
+        <div id="gpsCoordinates" class="coordinates">
+          {{ _('GPS: Not available') }}
+        </div>
+        <div id="gpsAccuracy" class="coordinates">
+          {{ _('Accuracy: Unknown') }}
+        </div>
+        <div id="gpsSatellites" class="coordinates">
+          {{ _('Satellites: --') }}
+        </div>
+        <div id="gpsLastUpdate" class="coordinates">
+          {{ _('Last update: Never') }}
+        </div>
       </div>
 
       <!-- System Statistics -->
       <div class="system-stats">
         <div class="stat-item">
-          <div>CPU</div>
+          <div>{{ _('CPU') }}</div>
           <div id="cpuUsage">--%</div>
         </div>
         <div class="stat-item">
-          <div>Memory</div>
+          <div>{{ _('Memory') }}</div>
           <div id="memoryUsage">--%</div>
         </div>
         <div class="stat-item">
-          <div>Disk</div>
+          <div>{{ _('Disk') }}</div>
           <div id="diskUsage">--%</div>
         </div>
       </div>
 
       <!-- Control Buttons -->
       <div class="control-buttons">
-        <a href="/livestream" class="field-button primary"> 🔊 Live Audio </a>
-        <a href="/spectrogram" class="field-button primary"> 📊 Spectrogram </a>
+        <a href="/livestream" class="field-button primary">
+          🔊 {{ _('Live Audio') }}
+        </a>
+        <a href="/spectrogram" class="field-button primary">
+          📊 {{ _('Spectrogram') }}
+        </a>
         <button id="refreshBtn" class="field-button" onclick="refreshStatus()">
-          🔄 Refresh
+          🔄 {{ _('Refresh') }}
         </button>
-        <a href="/" class="field-button">🏠 Home</a>
+        <a href="/" class="field-button">🏠 {{ _('Home') }}</a>
       </div>
 
       <!-- Recent Detections -->
       <div class="recent-detections">
-        <h3>Recent Detections</h3>
-        <div id="detectionsList">Loading detections...</div>
+        <h3>{{ _('Recent Detections') }}</h3>
+        <div id="detectionsList">{{ _('Loading detections...') }}</div>
       </div>
 
       <!-- Detection Count -->
-      <div class="large-text">Total Today: <span id="todayCount">--</span></div>
+      <div class="large-text">
+        {{ _('Total Today:') }} <span id="todayCount">--</span>
+      </div>
     </div>
 
     <script>

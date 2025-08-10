@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Best Recordings - BirdNET-Pi Reports</title>
+    <title>{{ _('Best Recordings - BirdNET-Pi Reports') }}</title>
     <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg" />
     <link rel="stylesheet" href="/static/style.css" />
   </head>
@@ -11,9 +11,9 @@
     <!-- Navigation -->
     <div class="dashboard" style="padding-top: 2rem">
       <div class="section-header">
-        <h1 class="section-title">Best Recordings</h1>
+        <h1 class="section-title">{{ _('Best Recordings') }}</h1>
         <p class="section-subtitle">
-          Highest confidence detections for each species
+          {{ _('Highest confidence detections for each species') }}
         </p>
         <div style="margin-top: 1rem">
           <a
@@ -21,9 +21,11 @@
             class="btn btn-secondary"
             style="margin-right: 1rem"
           >
-            <span>📊</span> Back to Reports
+            <span>📊</span> {{ _('Back to Reports') }}
           </a>
-          <a href="/" class="btn btn-secondary"> <span>🏠</span> Dashboard </a>
+          <a href="/" class="btn btn-secondary">
+            <span>🏠</span> {{ _('Dashboard') }}
+          </a>
         </div>
       </div>
 

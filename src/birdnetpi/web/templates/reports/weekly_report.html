@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Weekly Report - BirdNET-Pi Reports</title>
+    <title>{{ _('Weekly Report - BirdNET-Pi Reports') }}</title>
     <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg" />
     <link rel="stylesheet" href="/static/style.css" />
   </head>
@@ -11,14 +11,16 @@
     <!-- Navigation -->
     <div class="dashboard" style="padding-top: 2rem">
       <div class="section-header">
-        <h1 class="section-title">Weekly Report</h1>
+        <h1 class="section-title">{{ _('Weekly Report') }}</h1>
         {% if weekly_data.week_number > 0 %}
         <p class="section-subtitle">
           Week {{ weekly_data.week_number }} ({{ weekly_data.start_date }} - {{
           weekly_data.end_date }})
         </p>
         {% else %}
-        <p class="section-subtitle">Weekly detection summary and insights</p>
+        <p class="section-subtitle">
+          {{ _('Weekly detection summary and insights') }}
+        </p>
         {% endif %}
         <div style="margin-top: 1rem">
           <a
