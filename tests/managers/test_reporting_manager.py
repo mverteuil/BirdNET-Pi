@@ -428,3 +428,396 @@ def test_date_filter(reporting_manager):
     filtered_single = reporting_manager.date_filter(df, "2025-07-15", "2025-07-15")
     assert isinstance(filtered_single, pd.DataFrame)
     assert len(filtered_single) == 2  # 07-15 and 07-16 due to +1 day
+
+
+# COMPREHENSIVE WEEKLY REPORT TESTS
+
+
+def test_get_weekly_report_data__no_detections(reporting_manager, detection_manager):
+    """Should handle scenario with no detections at all."""
+    today = datetime.date(2025, 7, 12)  # Saturday
+    with patch(
+        "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+    ) as mock_date:
+        mock_date.today.return_value = today
+
+        # Mock empty detections
+        detection_manager.get_all_detections.return_value = []
+        detection_manager.get_detection_counts_by_date_range.return_value = None
+        detection_manager.get_top_species_with_prior_counts.return_value = []
+        detection_manager.get_new_species_data.return_value = []
+
+        report_data = reporting_manager.get_weekly_report_data()
+
+        assert report_data["total_detections_current"] == 0
+        assert report_data["unique_species_current"] == 0
+        assert report_data["total_detections_prior"] == 0
+        assert report_data["unique_species_prior"] == 0
+        assert report_data["percentage_diff_total"] == 0
+        assert report_data["percentage_diff_unique_species"] == 0
+        assert report_data["top_10_species"] == []
+        assert report_data["new_species"] == []
+
+
+def test_get_weekly_report_data__with_data_latest_date_calculation(
+    reporting_manager, detection_manager
+):
+    """Should calculate date ranges based on latest available data."""
+    today = datetime.date(2025, 8, 15)  # Friday
+
+    # Create mock detections with latest date being 2025-08-10 (Sunday)
+    mock_detection = MagicMock()
+    mock_detection.timestamp = datetime.datetime(2025, 8, 10, 14, 30, 0)
+    detection_manager.get_all_detections.return_value = [mock_detection]
+
+    detection_manager.get_detection_counts_by_date_range.side_effect = [
+        {"total_count": 50, "unique_species": 8},  # Current week
+        {"total_count": 30, "unique_species": 5},  # Prior week
+    ]
+    detection_manager.get_top_species_with_prior_counts.return_value = []
+    detection_manager.get_new_species_data.return_value = []
+
+    with patch(
+        "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+    ) as mock_date:
+        mock_date.today.return_value = today
+
+        report_data = reporting_manager.get_weekly_report_data()
+
+        # Should use Aug 4-10 as the week (Sunday = Aug 10)
+        assert report_data["start_date"] == "2025-08-04"
+        assert report_data["end_date"] == "2025-08-10"
+        assert report_data["week_number"] == 32
+
+
+def test_get_weekly_report_data__latest_date_is_sunday(reporting_manager, detection_manager):
+    """Should handle when latest detection date is already a Sunday."""
+    today = datetime.date(2025, 8, 15)  # Friday
+
+    # Create mock detections with latest date being Sunday
+    mock_detection = MagicMock()
+    mock_detection.timestamp = datetime.datetime(2025, 8, 11, 10, 0, 0)  # Sunday
+    detection_manager.get_all_detections.return_value = [mock_detection]
+
+    detection_manager.get_detection_counts_by_date_range.side_effect = [
+        {"total_count": 25, "unique_species": 6},  # Current week
+        {"total_count": 20, "unique_species": 4},  # Prior week
+    ]
+    detection_manager.get_top_species_with_prior_counts.return_value = []
+    detection_manager.get_new_species_data.return_value = []
+
+    with patch(
+        "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+    ) as mock_date:
+        mock_date.today.return_value = today
+
+        report_data = reporting_manager.get_weekly_report_data()
+
+        # Should use Aug 5-11 as the week (Sunday = Aug 11)
+        assert report_data["start_date"] == "2025-08-05"
+        assert report_data["end_date"] == "2025-08-11"
+        assert report_data["week_number"] == 32
+
+
+def test_get_weekly_report_data__invalid_timestamps(reporting_manager, detection_manager):
+    """Should handle detections with invalid or None timestamps."""
+    today = datetime.date(2025, 7, 12)  # Saturday
+
+    # Create mock detections with invalid timestamps
+    mock_detection_valid = MagicMock()
+    mock_detection_valid.timestamp = datetime.datetime(2025, 7, 10, 12, 0, 0)
+
+    mock_detection_none = MagicMock()
+    mock_detection_none.timestamp = None
+
+    mock_detection_string = MagicMock()
+    mock_detection_string.timestamp = "invalid"
+
+    detection_manager.get_all_detections.return_value = [
+        mock_detection_valid,
+        mock_detection_none,
+        mock_detection_string,
+    ]
+
+    detection_manager.get_detection_counts_by_date_range.side_effect = [
+        {"total_count": 10, "unique_species": 3},
+        {"total_count": 5, "unique_species": 2},
+    ]
+    detection_manager.get_top_species_with_prior_counts.return_value = []
+    detection_manager.get_new_species_data.return_value = []
+
+    with patch(
+        "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+    ) as mock_date:
+        mock_date.today.return_value = today
+
+        # Should not raise an exception and use the valid timestamp
+        report_data = reporting_manager.get_weekly_report_data()
+
+        assert report_data["start_date"] == "2025-07-01"  # Based on July 10 detection
+        assert report_data["end_date"] == "2025-07-07"  # Monday of week containing July 10
+
+
+def test_calculate_percentage_differences__zero_prior(reporting_manager):
+    """Should handle zero prior values in percentage calculations."""
+    result_total, result_unique = reporting_manager._calculate_percentage_differences(10, 5, 0, 0)
+
+    assert result_total == 0  # Should be 0 when prior is 0
+    assert result_unique == 0  # Should be 0 when prior is 0
+
+
+def test_calculate_percentage_differences__normal_calculation(reporting_manager):
+    """Should calculate percentage differences correctly for normal values."""
+    result_total, result_unique = reporting_manager._calculate_percentage_differences(
+        120, 15, 100, 10
+    )
+
+    assert result_total == 20  # (120-100)/100 * 100 = 20%
+    assert result_unique == 50  # (15-10)/10 * 100 = 50%
+
+
+def test_calculate_percentage_differences__negative_change(reporting_manager):
+    """Should calculate negative percentage differences correctly."""
+    result_total, result_unique = reporting_manager._calculate_percentage_differences(
+        80, 6, 100, 10
+    )
+
+    assert result_total == -20  # (80-100)/100 * 100 = -20%
+    assert result_unique == -40  # (6-10)/10 * 100 = -40%
+
+
+def test_calculate_percentage_differences__fractional_rounding(reporting_manager):
+    """Should round percentage differences to nearest integer."""
+    result_total, result_unique = reporting_manager._calculate_percentage_differences(
+        103, 11, 100, 10
+    )
+
+    assert result_total == 3  # 3% exact
+    assert result_unique == 10  # 10% exact
+
+    # Test rounding behavior
+    result_total_rounded, _ = reporting_manager._calculate_percentage_differences(101, 10, 100, 10)
+
+    assert result_total_rounded == 1  # 1% exact
+
+
+def test_get_top_species_data__no_data(reporting_manager, detection_manager):
+    """Should handle empty top species data."""
+    detection_manager.get_top_species_with_prior_counts.return_value = []
+
+    result = reporting_manager._get_top_species_data(
+        datetime.date(2025, 7, 7),
+        datetime.date(2025, 7, 13),
+        datetime.date(2025, 6, 30),
+        datetime.date(2025, 7, 6),
+    )
+
+    assert result == []
+
+
+def test_get_top_species_data__with_zero_prior_counts(reporting_manager, detection_manager):
+    """Should handle top species with zero prior counts (new species in top 10)."""
+    detection_manager.get_top_species_with_prior_counts.return_value = [
+        {
+            "scientific_name": "Turdus migratorius",
+            "common_name": "American Robin",
+            "current_count": 25,
+            "prior_count": 0,  # New in top 10
+        },
+        {
+            "scientific_name": "Cardinalis cardinalis",
+            "common_name": "Northern Cardinal",
+            "current_count": 20,
+            "prior_count": 15,
+        },
+    ]
+
+    result = reporting_manager._get_top_species_data(
+        datetime.date(2025, 7, 7),
+        datetime.date(2025, 7, 13),
+        datetime.date(2025, 6, 30),
+        datetime.date(2025, 7, 6),
+    )
+
+    assert len(result) == 2
+    assert result[0]["common_name"] == "American Robin"
+    assert result[0]["count"] == 25
+    assert result[0]["percentage_diff"] == 0  # Should be 0 when prior_count is 0
+
+    assert result[1]["common_name"] == "Northern Cardinal"
+    assert result[1]["count"] == 20
+    assert result[1]["percentage_diff"] == 33  # (20-15)/15 * 100 = 33.33 -> 33
+
+
+def test_get_new_species_data__no_data(reporting_manager, detection_manager):
+    """Should handle empty new species data."""
+    detection_manager.get_new_species_data.return_value = []
+
+    result = reporting_manager._get_new_species_data(
+        datetime.date(2025, 7, 7),
+        datetime.date(2025, 7, 13),
+    )
+
+    assert result == []
+
+
+def test_get_new_species_data__with_data(reporting_manager, detection_manager):
+    """Should format new species data correctly."""
+    detection_manager.get_new_species_data.return_value = [
+        {"species": "Blue Jay", "count": 8},
+        {"species": "House Sparrow", "count": 12},
+    ]
+
+    result = reporting_manager._get_new_species_data(
+        datetime.date(2025, 7, 7),
+        datetime.date(2025, 7, 13),
+    )
+
+    assert len(result) == 2
+    assert result[0]["common_name"] == "Blue Jay"
+    assert result[0]["count"] == 8
+    assert result[1]["common_name"] == "House Sparrow"
+    assert result[1]["count"] == 12
+
+
+def test_get_weekly_stats__none_results(reporting_manager, detection_manager):
+    """Should handle None results from detection counts."""
+    detection_manager.get_detection_counts_by_date_range.side_effect = [None, None]
+
+    current_stats, prior_stats = reporting_manager._get_weekly_stats(
+        datetime.date(2025, 7, 7),
+        datetime.date(2025, 7, 13),
+        datetime.date(2025, 6, 30),
+        datetime.date(2025, 7, 6),
+    )
+
+    assert current_stats is None
+    assert prior_stats is None
+
+
+def test_get_weekly_report_data__week_boundary_edge_cases(reporting_manager, detection_manager):
+    """Should handle various week boundary scenarios correctly."""
+    # Test different weekdays as latest date
+    test_cases = [
+        (datetime.date(2025, 7, 7), "2025-07-01", "2025-07-07"),  # Monday -> week ending Monday
+        (datetime.date(2025, 7, 12), "2025-07-01", "2025-07-07"),  # Saturday -> week ending Monday
+        (datetime.date(2025, 7, 13), "2025-07-07", "2025-07-13"),  # Sunday -> week ending Sunday
+    ]
+
+    for latest_date, expected_start, expected_end in test_cases:
+        mock_detection = MagicMock()
+        mock_detection.timestamp = datetime.datetime.combine(latest_date, datetime.time(12, 0, 0))
+        detection_manager.get_all_detections.return_value = [mock_detection]
+
+        detection_manager.get_detection_counts_by_date_range.side_effect = [
+            {"total_count": 10, "unique_species": 5},
+            {"total_count": 8, "unique_species": 4},
+        ]
+        detection_manager.get_top_species_with_prior_counts.return_value = []
+        detection_manager.get_new_species_data.return_value = []
+
+        with patch(
+            "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+        ) as mock_date:
+            mock_date.today.return_value = datetime.date(2025, 7, 15)
+
+            report_data = reporting_manager.get_weekly_report_data()
+
+            assert report_data["start_date"] == expected_start, f"Failed for {latest_date}"
+            assert report_data["end_date"] == expected_end, f"Failed for {latest_date}"
+
+
+def test_get_weekly_report_data__large_numbers(reporting_manager, detection_manager):
+    """Should handle large detection counts without overflow."""
+    today = datetime.date(2025, 7, 12)
+    with patch(
+        "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+    ) as mock_date:
+        mock_date.today.return_value = today
+
+        detection_manager.get_all_detections.return_value = []
+        detection_manager.get_detection_counts_by_date_range.side_effect = [
+            {"total_count": 50000, "unique_species": 500},  # Large current week
+            {"total_count": 25000, "unique_species": 250},  # Large prior week
+        ]
+        detection_manager.get_top_species_with_prior_counts.return_value = []
+        detection_manager.get_new_species_data.return_value = []
+
+        report_data = reporting_manager.get_weekly_report_data()
+
+        assert report_data["total_detections_current"] == 50000
+        assert report_data["unique_species_current"] == 500
+        assert report_data["percentage_diff_total"] == 100  # 100% increase
+        assert report_data["percentage_diff_unique_species"] == 100  # 100% increase
+
+
+def test_get_weekly_report_data__comprehensive_integration(reporting_manager, detection_manager):
+    """Should integrate all components for a comprehensive weekly report."""
+    today = datetime.date(2025, 7, 12)  # Saturday
+    with patch(
+        "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+    ) as mock_date:
+        mock_date.today.return_value = today
+
+        # Mock detection data with realistic timestamps
+        mock_detection = MagicMock()
+        mock_detection.timestamp = datetime.datetime(2025, 7, 10, 14, 30, 0)
+        detection_manager.get_all_detections.return_value = [mock_detection]
+
+        detection_manager.get_detection_counts_by_date_range.side_effect = [
+            {"total_count": 156, "unique_species": 23},  # Current week stats
+            {"total_count": 134, "unique_species": 19},  # Prior week stats
+        ]
+
+        detection_manager.get_top_species_with_prior_counts.return_value = [
+            {
+                "scientific_name": "Turdus migratorius",
+                "common_name": "American Robin",
+                "current_count": 35,
+                "prior_count": 28,
+            },
+            {
+                "scientific_name": "Cardinalis cardinalis",
+                "common_name": "Northern Cardinal",
+                "current_count": 22,
+                "prior_count": 18,
+            },
+            {
+                "scientific_name": "Cyanocitta cristata",
+                "common_name": "Blue Jay",
+                "current_count": 18,
+                "prior_count": 0,
+            },  # New in top 10
+        ]
+
+        detection_manager.get_new_species_data.return_value = [
+            {"species": "House Finch", "count": 7},
+            {"species": "White-breasted Nuthatch", "count": 4},
+        ]
+
+        report_data = reporting_manager.get_weekly_report_data()
+
+        # Verify all components are correctly integrated
+        assert report_data["start_date"] == "2025-07-01"  # Week containing July 10
+        assert report_data["end_date"] == "2025-07-07"  # Monday of week containing July 10
+        assert report_data["week_number"] == 27
+        assert report_data["total_detections_current"] == 156
+        assert report_data["unique_species_current"] == 23
+        assert report_data["total_detections_prior"] == 134
+        assert report_data["unique_species_prior"] == 19
+        assert report_data["percentage_diff_total"] == 16  # (156-134)/134 * 100
+        assert report_data["percentage_diff_unique_species"] == 21  # (23-19)/19 * 100
+
+        # Verify top species data
+        assert len(report_data["top_10_species"]) == 3
+        assert report_data["top_10_species"][0]["common_name"] == "American Robin"
+        assert report_data["top_10_species"][0]["count"] == 35
+        assert report_data["top_10_species"][0]["percentage_diff"] == 25  # (35-28)/28 * 100
+
+        assert report_data["top_10_species"][2]["common_name"] == "Blue Jay"
+        assert report_data["top_10_species"][2]["percentage_diff"] == 0  # New species
+
+        # Verify new species data
+        assert len(report_data["new_species"]) == 2
+        assert report_data["new_species"][0]["common_name"] == "House Finch"
+        assert report_data["new_species"][0]["count"] == 7

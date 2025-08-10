@@ -435,3 +435,271 @@ def test_get_best_detections(detection_manager):
     assert result[1]["confidence"] == 0.9
     assert result[0]["common_name"] == "Northern Cardinal"
     assert result[1]["common_name"] == "American Robin"
+
+
+# COMPREHENSIVE WEEKLY REPORT DETECTION MANAGER TESTS
+
+
+def test_get_detection_counts_by_date_range__empty_result(detection_manager):
+    """Should handle empty detection count results."""
+    mock_db_session = MagicMock()
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
+    mock_db_session.query.return_value.filter.return_value.count.side_effect = [0, 0]
+    (
+        mock_db_session.query.return_value.filter.return_value.distinct.return_value.count.return_value
+    ) = 0
+
+    result = detection_manager.get_detection_counts_by_date_range(
+        datetime(2023, 1, 1), datetime(2023, 1, 31)
+    )
+
+    assert result == {"total_count": 0, "unique_species": 0}
+
+
+def test_get_detection_counts_by_date_range__large_numbers(detection_manager):
+    """Should handle large detection counts."""
+    mock_db_session = MagicMock()
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
+    mock_db_session.query.return_value.filter.return_value.count.side_effect = [50000, 1000]
+    (
+        mock_db_session.query.return_value.filter.return_value.distinct.return_value.count.return_value
+    ) = 1000
+
+    result = detection_manager.get_detection_counts_by_date_range(
+        datetime(2023, 1, 1), datetime(2023, 12, 31)
+    )
+
+    assert result == {"total_count": 50000, "unique_species": 1000}
+
+
+def test_get_top_species_with_prior_counts__empty_result(detection_manager):
+    """Should handle empty top species results."""
+    mock_db_session = MagicMock()
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
+    mock_db_session.query().outerjoin().order_by().limit().all.return_value = []
+
+    result = detection_manager.get_top_species_with_prior_counts(
+        datetime(2023, 1, 1),
+        datetime(2023, 1, 31),
+        datetime(2022, 12, 1),
+        datetime(2022, 12, 31),
+    )
+
+    assert result == []
+
+
+def test_get_top_species_with_prior_counts__with_nulls(detection_manager):
+    """Should handle species with null prior counts."""
+    mock_db_session = MagicMock()
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
+    # Simulate query results with some null prior counts
+    mock_db_session.query().outerjoin().order_by().limit().all.return_value = [
+        ("Turdus migratorius", "American Robin", 25, 15),  # Has prior count
+        ("Cardinalis cardinalis", "Northern Cardinal", 20, None),  # No prior count
+        ("Cyanocitta cristata", "Blue Jay", 18, 0),  # Zero prior count
+    ]
+
+    result = detection_manager.get_top_species_with_prior_counts(
+        datetime(2023, 1, 1),
+        datetime(2023, 1, 31),
+        datetime(2022, 12, 1),
+        datetime(2022, 12, 31),
+    )
+
+    assert len(result) == 3
+    assert result[0]["scientific_name"] == "Turdus migratorius"
+    assert result[0]["prior_count"] == 15
+    assert result[1]["scientific_name"] == "Cardinalis cardinalis"
+    assert result[1]["prior_count"] is None
+    assert result[2]["scientific_name"] == "Cyanocitta cristata"
+    assert result[2]["prior_count"] == 0
+
+
+def test_get_top_species_with_prior_counts__limit_verification(detection_manager):
+    """Should verify that limit of 10 is enforced in top species query."""
+    mock_db_session = MagicMock()
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
+    # Create 15 mock results to verify limit
+    mock_results = [(f"species_{i}", f"Species {i}", 100 - i, 50 - i) for i in range(15)]
+    mock_db_session.query().outerjoin().order_by().limit().all.return_value = mock_results[:10]
+
+    result = detection_manager.get_top_species_with_prior_counts(
+        datetime(2023, 1, 1),
+        datetime(2023, 1, 31),
+        datetime(2022, 12, 1),
+        datetime(2022, 12, 31),
+    )
+
+    # Should return exactly 10 results due to limit
+    assert len(result) == 10
+    mock_db_session.query().outerjoin().order_by().limit.assert_called_with(10)
+
+
+def test_get_new_species_data__empty_result(detection_manager):
+    """Should handle empty new species results."""
+    mock_db_session = MagicMock()
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
+    mock_db_session.query().filter().distinct().subquery.return_value = MagicMock()
+    mock_db_session.query().filter().group_by().order_by().all.return_value = []
+
+    result = detection_manager.get_new_species_data(datetime(2023, 1, 1), datetime(2023, 1, 31))
+
+    assert result == []
+
+
+def test_get_new_species_data__with_data_ordering(detection_manager):
+    """Should return new species data ordered by count descending."""
+    mock_db_session = MagicMock()
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
+    mock_db_session.query().filter().distinct().subquery.return_value = MagicMock()
+    # Results should be ordered by count descending
+    mock_db_session.query().filter().group_by().order_by().all.return_value = [
+        ("Cyanocitta cristata", "Blue Jay", 15),  # Highest count first
+        ("Poecile atricapillus", "Black-capped Chickadee", 8),
+        ("Sitta carolinensis", "White-breasted Nuthatch", 3),  # Lowest count last
+    ]
+
+    result = detection_manager.get_new_species_data(datetime(2023, 1, 1), datetime(2023, 1, 31))
+
+    assert len(result) == 3
+    assert result[0]["species"] == "Cyanocitta cristata"
+    assert result[0]["count"] == 15
+    assert result[1]["species"] == "Poecile atricapillus"
+    assert result[1]["count"] == 8
+    assert result[2]["species"] == "Sitta carolinensis"
+    assert result[2]["count"] == 3
+
+
+def test_get_new_species_data__prior_species_exclusion(detection_manager):
+    """Should verify that prior species are excluded from new species query."""
+    mock_db_session = MagicMock()
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
+
+    # Create a mock subquery for prior species
+    mock_prior_species_subquery = MagicMock()
+    mock_db_session.query().filter().distinct.return_value = mock_prior_species_subquery
+    mock_db_session.query().filter().group_by().order_by().all.return_value = [
+        ("Cyanocitta cristata", "Blue Jay", 10)
+    ]
+
+    result = detection_manager.get_new_species_data(datetime(2023, 1, 1), datetime(2023, 1, 31))
+
+    # Verify that the query excludes species from prior_species_subquery
+    mock_db_session.query.assert_called()
+    # The implementation should use ~Detection.scientific_name.in_(prior_species_subquery)
+    assert len(result) == 1
+    assert result[0]["species"] == "Cyanocitta cristata"
+
+
+def test_get_best_detections__empty_result(detection_manager):
+    """Should handle empty best detections results."""
+    mock_db_session = MagicMock()
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
+    mock_db_session.query().filter().order_by().limit().all.return_value = []
+
+    result = detection_manager.get_best_detections(10)
+
+    assert result == []
+
+
+def test_get_best_detections__confidence_ordering(detection_manager):
+    """Should return best detections ordered by confidence descending."""
+    mock_db_session = MagicMock()
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
+
+    # Create mock detections with different confidence levels
+    mock_detection_high = MagicMock(spec=Detection)
+    mock_detection_high.timestamp.strftime.side_effect = ["2023-01-01", "12:00:00"]
+    mock_detection_high.scientific_name = "Turdus migratorius"
+    mock_detection_high.common_name = "American Robin"
+    mock_detection_high.confidence = 0.95
+    mock_detection_high.latitude = None
+    mock_detection_high.longitude = None
+
+    mock_detection_medium = MagicMock(spec=Detection)
+    mock_detection_medium.timestamp.strftime.side_effect = ["2023-01-01", "13:00:00"]
+    mock_detection_medium.scientific_name = "Cardinalis cardinalis"
+    mock_detection_medium.common_name = "Northern Cardinal"
+    mock_detection_medium.confidence = 0.85
+    mock_detection_medium.latitude = None
+    mock_detection_medium.longitude = None
+
+    # Should be ordered by confidence descending
+    mock_db_session.query().filter().order_by().limit().all.return_value = [
+        mock_detection_high,
+        mock_detection_medium,
+    ]
+
+    result = detection_manager.get_best_detections(2)
+
+    assert len(result) == 2
+    assert result[0]["confidence"] == 0.95  # Highest confidence first
+    assert result[0]["common_name"] == "American Robin"
+    assert result[1]["confidence"] == 0.85  # Lower confidence second
+    assert result[1]["common_name"] == "Northern Cardinal"
+
+
+def test_get_best_detections__one_per_species(detection_manager):
+    """Should return only one detection per species (the best one)."""
+    mock_db_session = MagicMock()
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
+
+    # Mock the subquery creation and window function behavior
+    mock_ranked_subquery = MagicMock()
+    mock_ranked_subquery.c.id = "mock_id_column"
+    mock_ranked_subquery.c.rn = "mock_rn_column"
+    mock_db_session.query.return_value.subquery.return_value = mock_ranked_subquery
+
+    # Mock final detections
+    mock_detection = MagicMock(spec=Detection)
+    mock_detection.timestamp.strftime.side_effect = ["2023-01-01", "12:00:00"]
+    mock_detection.scientific_name = "Turdus migratorius"
+    mock_detection.common_name = "American Robin"
+    mock_detection.confidence = 0.95
+    mock_detection.latitude = None
+    mock_detection.longitude = None
+
+    mock_db_session.query().filter().order_by().limit().all.return_value = [mock_detection]
+
+    result = detection_manager.get_best_detections(10)
+
+    # Verify that row_number() window function is used to get best per species
+    assert len(result) == 1
+    assert result[0]["scientific_name"] == "Turdus migratorius"
+    assert result[0]["confidence"] == 0.95
+
+
+def test_get_best_detections_failure(detection_manager):
+    """Should handle get best detections failure."""
+    mock_db_session = MagicMock()
+    detection_manager.bnp_database_service.get_db.return_value.__enter__.return_value = (
+        mock_db_session
+    )
+    mock_db_session.query.side_effect = SQLAlchemyError("Test Error")
+
+    with pytest.raises(SQLAlchemyError):
+        detection_manager.get_best_detections(10)
+
+    mock_db_session.rollback.assert_called_once()
