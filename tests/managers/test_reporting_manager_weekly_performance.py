@@ -13,6 +13,26 @@ from birdnetpi.managers.reporting_manager import ReportingManager
 
 
 @pytest.fixture
+def detection_manager():
+    """Provide a mock DetectionManager instance for performance testing."""
+    mock = MagicMock()
+    mock.detection_query_service = MagicMock()
+    return mock
+
+
+@pytest.fixture
+def mock_config():
+    """Provide a mock BirdNETConfig instance."""
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_location_service():
+    """Provide a mock LocationService instance."""
+    return MagicMock()
+
+
+@pytest.fixture
 def performance_reporting_manager(
     detection_manager, file_path_resolver, mock_config, mock_location_service
 ):
@@ -178,8 +198,8 @@ class TestWeeklyReportPerformance:
         """Should handle extreme precision and edge cases in percentage calculations."""
         test_cases = [
             # (current, unique_current, prior, unique_prior, expected_total, expected_unique)
-            (1, 1, 999999999, 999999, -99, -99),  # Extreme decrease
-            (999999999, 999999, 1, 1, 99999999900, 99999900),  # Extreme increase
+            (1, 1, 999999999, 999999, -100, -100),  # Extreme decrease
+            (999999999, 999999, 1, 1, 99999999800, 99999800),  # Extreme increase
             (3, 3, 7, 7, -57, -57),  # Precision test
             (1000000000, 1000000000, 999999999, 999999999, 0, 0),  # Large numbers rounding
             (1, 1, 3, 3, -67, -67),  # One third reduction
