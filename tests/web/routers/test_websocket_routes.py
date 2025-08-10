@@ -1,7 +1,8 @@
 """Test suite for websocket router."""
 
+import os
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -29,53 +30,46 @@ class TestWebSocketRouter:
         # Create the database file to prevent errors
         (temp_data_dir / "database" / "birdnetpi.db").touch()
 
-        # Mock FilePathResolver to use temp dirs for dynamic data but real dirs for static assets
-        self.mock_resolver_patch = patch("birdnetpi.utils.file_path_resolver.FilePathResolver")
-        mock_resolver_class = self.mock_resolver_patch.start()
+        # Set environment variables BEFORE importing anything that uses FilePathResolver
+        # This ensures FilePathResolver uses temp paths
+        self.original_app_env = os.environ.get("BIRDNETPI_APP")
+        self.original_data_env = os.environ.get("BIRDNETPI_DATA")
+        os.environ["BIRDNETPI_APP"] = str(real_app_dir)
+        os.environ["BIRDNETPI_DATA"] = str(temp_data_dir)
 
-        mock_resolver = Mock()
-        # Static assets from real directories
-        mock_resolver.app_dir = real_app_dir
-        mock_resolver.data_dir = real_app_dir  # For tests, use same dir
-        mock_resolver.get_config_template_path.return_value = (
-            real_app_dir / "config_templates" / "birdnetpi.yaml"
-        )
-        mock_resolver.get_ioc_database_path.return_value = (
-            real_app_dir / "data" / "database" / "ioc_reference.db"
-        )
-        # Dynamic data to temp directories - return Path objects
-        mock_resolver.data_dir = temp_data_dir
-        mock_resolver.get_database_path.return_value = temp_data_dir / "database" / "birdnetpi.db"
-        mock_resolver.get_recordings_dir.return_value = temp_data_dir / "recordings"
-        mock_resolver.get_models_dir.return_value = temp_data_dir / "models"
-        mock_resolver.get_birdnetpi_config_path.return_value = (
-            real_app_dir / "config_templates" / "birdnetpi.yaml"
-        )
-        mock_resolver_class.return_value = mock_resolver
+        # Now import and create the app with environment-based paths
+        from birdnetpi.web.core.factory import create_app
 
-        # Now import the app with mocked paths
-        from birdnetpi.web.main import app
-
-        self.app = app
+        self.app = create_app()
 
         # Add mock config object
-        app.state.config = BirdNETConfig(site_name="Test BirdNET-Pi")
+        self.app.state.config = BirdNETConfig(site_name="Test BirdNET-Pi")
 
         # Mock WebSocket services
-        app.state.active_websockets = set()
-        app.state.audio_websocket_service = Mock()
-        app.state.audio_websocket_service.connect_websocket = AsyncMock()
-        app.state.audio_websocket_service.disconnect_websocket = AsyncMock()
-        app.state.spectrogram_service = Mock()
-        app.state.spectrogram_service.connect_websocket = AsyncMock()
-        app.state.spectrogram_service.disconnect_websocket = AsyncMock()
+        self.app.state.active_websockets = set()
+        self.app.state.audio_websocket_service = Mock()
+        self.app.state.audio_websocket_service.connect_websocket = AsyncMock()
+        self.app.state.audio_websocket_service.disconnect_websocket = AsyncMock()
+        self.app.state.spectrogram_service = Mock()
+        self.app.state.spectrogram_service.connect_websocket = AsyncMock()
+        self.app.state.spectrogram_service.disconnect_websocket = AsyncMock()
 
-        self.client = TestClient(app)
+        self.client = TestClient(self.app)
 
     def teardown_method(self):
         """Clean up after each test."""
-        if hasattr(self, "mock_resolver_patch"):
-            self.mock_resolver_patch.stop()
+        # Restore original environment variables
+        if hasattr(self, "original_app_env"):
+            if self.original_app_env is not None:
+                os.environ["BIRDNETPI_APP"] = self.original_app_env
+            else:
+                os.environ.pop("BIRDNETPI_APP", None)
+
+        if hasattr(self, "original_data_env"):
+            if self.original_data_env is not None:
+                os.environ["BIRDNETPI_DATA"] = self.original_data_env
+            else:
+                os.environ.pop("BIRDNETPI_DATA", None)
 
     def test_websocket_routes_endpoints_exist(self):
         """Test that WebSocket router endpoints are registered."""
