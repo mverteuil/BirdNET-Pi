@@ -142,9 +142,6 @@ class TestAudioWebSocketService:
             patch("birdnetpi.services.audio_websocket_service.serve") as mock_serve,
             patch("birdnetpi.services.audio_websocket_service.signal"),
             patch("birdnetpi.services.audio_websocket_service.atexit"),
-            patch(
-                "birdnetpi.services.audio_websocket_service.asyncio.create_task"
-            ) as mock_create_task,
         ):
             mock_config_parser.return_value.load_config.return_value = mock_config
             mock_server = MagicMock()  # Regular mock, not AsyncMock
@@ -154,9 +151,6 @@ class TestAudioWebSocketService:
                 return mock_server
 
             mock_serve.side_effect = mock_serve_func
-
-            mock_task = AsyncMock()
-            mock_create_task.return_value = mock_task
 
             await audio_websocket_service.start()
 
@@ -177,8 +171,8 @@ class TestAudioWebSocketService:
                 logger=mock_serve.call_args[1]["logger"],
             )
 
-            # Verify task was created
-            mock_create_task.assert_called_once()
+            # Verify FIFO task was created (it's stored as an attribute)
+            assert audio_websocket_service._fifo_task is not None
 
     @pytest.mark.asyncio
     async def test_start_fifo_not_found(self, audio_websocket_service, mock_config):

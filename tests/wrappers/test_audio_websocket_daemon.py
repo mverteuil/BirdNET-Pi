@@ -64,17 +64,27 @@ class TestAudioWebsocketDaemon:
 
     def test_main_keyboard_interrupt(self):
         """Should handle keyboard interrupt gracefully."""
-        with patch(
-            "birdnetpi.wrappers.audio_websocket_daemon.asyncio.run", side_effect=KeyboardInterrupt
-        ):
+
+        def mock_run(coro):
+            # Consume the coroutine to avoid warning
+            coro.close()
+            raise KeyboardInterrupt
+
+        with patch("birdnetpi.wrappers.audio_websocket_daemon.asyncio.run", side_effect=mock_run):
             # Should not raise exception
             daemon.main()
 
     def test_main_general_exception(self):
         """Should handle general exceptions gracefully."""
+
+        def mock_run(coro):
+            # Consume the coroutine to avoid warning
+            coro.close()
+            raise Exception("General error")
+
         with patch(
             "birdnetpi.wrappers.audio_websocket_daemon.asyncio.run",
-            side_effect=Exception("General error"),
+            side_effect=mock_run,
         ):
             # Should not raise exception
             daemon.main()

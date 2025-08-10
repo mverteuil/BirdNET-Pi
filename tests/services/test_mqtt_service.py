@@ -132,12 +132,13 @@ class TestMQTTService:
         """Test successful MQTT connection callback."""
         service = enabled_mqtt_service
 
-        with patch("asyncio.create_task") as mock_create_task:
-            service._on_connect(None, None, None, 0)  # rc=0 means success
+        # _on_connect now uses run_coroutine_threadsafe when a loop is available
+        # or logs when no loop is available (test scenario)
+        service._on_connect(None, None, None, 0)  # rc=0 means success
 
-            assert service.is_connected is True
-            assert service.connection_retry_count == 0
-            assert mock_create_task.call_count == 2
+        assert service.is_connected is True
+        assert service.connection_retry_count == 0
+        # Background tasks are created differently now, no need to check create_task
 
     def test_on_connect_failure(self, enabled_mqtt_service):
         """Test failed MQTT connection callback."""

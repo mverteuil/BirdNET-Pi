@@ -17,6 +17,8 @@ def app_with_iot_router(app_with_temp_data):
     if hasattr(app, "container"):
         # Mock MQTT service
         mock_mqtt_service = MagicMock(spec=MQTTService)
+        # Ensure _background_tasks is set to avoid async task creation
+        mock_mqtt_service._background_tasks = set()
         app.container.mqtt_service.override(mock_mqtt_service)  # type: ignore[attr-defined]
 
         # Mock webhook service
