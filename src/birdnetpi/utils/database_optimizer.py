@@ -478,7 +478,6 @@ class DatabaseOptimizer:
                     )
 
         # Check query performance
-        before = results.get("query_performance_before", [])
         after = results.get("query_performance_after", [])
 
         slow_queries = []

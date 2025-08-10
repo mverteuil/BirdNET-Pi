@@ -5,6 +5,7 @@ from pathlib import Path
 from dependency_injector import containers, providers
 from fastapi.templating import Jinja2Templates
 
+from birdnetpi.managers.cached_reporting_manager import CachedReportingManager
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.file_manager import FileManager
@@ -14,6 +15,7 @@ from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.managers.translation_manager import TranslationManager
 from birdnetpi.services.audio_websocket_service import AudioWebSocketService
+from birdnetpi.services.cache_service import CacheService
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.detection_query_service import DetectionQueryService
 from birdnetpi.services.gps_service import GPSService
@@ -116,6 +118,22 @@ class Container(containers.DeclarativeContainer):
         _create_detection_query_service,
         bnp_service=bnp_database_service,
         ioc_service=ioc_database_service,
+    )
+
+    # Cache service - singleton for analytics performance
+    cache_service = providers.Singleton(
+        CacheService,
+        # Use default settings optimized for SBC deployments
+        memcached_host=config.provided.cache_host
+        if hasattr(config.provided, "cache_host")
+        else "localhost",
+        memcached_port=config.provided.cache_port
+        if hasattr(config.provided, "cache_port")
+        else 11211,
+        default_ttl=config.provided.cache_ttl if hasattr(config.provided, "cache_ttl") else 300,
+        enable_cache_warming=config.provided.enable_cache_warming
+        if hasattr(config.provided, "enable_cache_warming")
+        else True,
     )
 
     # Core business services - singletons
@@ -226,4 +244,14 @@ class Container(containers.DeclarativeContainer):
         data_preparation_manager=data_preparation_manager,
         location_service=location_service,
         species_display_service=species_display_service,
+    )
+
+    # Cached reporting manager - provides caching layer over reporting manager
+    cached_reporting_manager = providers.Factory(
+        CachedReportingManager,
+        reporting_manager=reporting_manager,
+        cache_service=cache_service,
+        enable_caching=config.provided.enable_analytics_caching
+        if hasattr(config.provided, "enable_analytics_caching")
+        else True,
     )
