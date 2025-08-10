@@ -210,6 +210,7 @@ pydantic                       2.11.7             MIT License
 pydantic_core                  2.33.2             MIT License
 pydeck                         0.9.1              Apache License 2.0
 pydub                          0.25.1             MIT License
+pmemcache                      4.0.0             Apache License 2.0
 pyleak                         0.1.14             Apache-2.0 License
 pyparsing                      3.2.3              MIT License
 pyright                        1.1.403            MIT License
