@@ -163,6 +163,7 @@ dependencies = [
     { name = "plotly" },
     { name = "psutil" },
     { name = "pydub" },
+    { name = "pymemcache" },
     { name = "python-multipart" },
     { name = "pytz" },
     { name = "seaborn" },
@@ -227,6 +228,7 @@ requires-dist = [
     { name = "plotly" },
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "pydub", specifier = ">=0.25.1" },
+    { name = "pymemcache", specifier = ">=4.0.0" },
     { name = "python-multipart" },
     { name = "pytz" },
     { name = "seaborn" },
@@ -1343,6 +1345,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/98/fd/49af96e55001fe611abd891b7c482cf1324fb6997e3430c87a7ec0f7c887/pyleak-0.1.14.tar.gz", hash = "sha256:51be2741542fdaa6024c31a1b8212e59485e2a91e7fdc34c151d488e9a6fb3c4", size = 105644, upload-time = "2025-07-03T09:28:54.965Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/67/75/55c968828bf81a73d9c484f7be4e6f7d04d07da3d1d78cc5705461802b24/pyleak-0.1.14-py3-none-any.whl", hash = "sha256:98d6cf19f3eeed172effef42415bf9f01a3d46cbde59780b85924f9dcd57003a", size = 24813, upload-time = "2025-07-03T09:28:53.79Z" },
+]
+
+[[package]]
+name = "pymemcache"
+version = "4.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d9/b6/4541b664aeaad025dfb8e851dcddf8e25ab22607e674dd2b562ea3e3586f/pymemcache-4.0.0.tar.gz", hash = "sha256:27bf9bd1bbc1e20f83633208620d56de50f14185055e49504f4f5e94e94aff94", size = 70176, upload-time = "2022-10-17T16:53:07.726Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/41/ba/2f7b22d8135b51c4fefb041461f8431e1908778e6539ff5af6eeaaee367a/pymemcache-4.0.0-py2.py3-none-any.whl", hash = "sha256:f507bc20e0dc8d562f8df9d872107a278df049fa496805c1431b926f3ddd0eab", size = 60772, upload-time = "2022-10-17T16:53:04.388Z" },
 ]
 
 [[package]]
