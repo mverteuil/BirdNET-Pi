@@ -92,3 +92,94 @@ def test_get_todays_detections(client):
 
     # Assert that get_todays_detections was called
     mock_reporting_manager.get_todays_detections.assert_called_once()
+
+
+def test_get_weekly_report(client):
+    """Should retrieve weekly report data successfully."""
+    # Configure the mock reporting manager to return test data
+    mock_weekly_data = {
+        "start_date": "2025-07-21",
+        "end_date": "2025-07-27",
+        "week_number": 30,
+        "total_detections_current": 45,
+        "unique_species_current": 12,
+        "total_detections_prior": 32,
+        "unique_species_prior": 8,
+        "percentage_diff_total": 40,
+        "percentage_diff_unique_species": 50,
+        "top_10_species": [
+            {"common_name": "Northern Cardinal", "count": 8, "percentage_diff": 100},
+            {"common_name": "Mourning Dove", "count": 6, "percentage_diff": 20},
+        ],
+        "new_species": [{"common_name": "American Robin", "count": 3}],
+    }
+
+    # Mock get_weekly_report_data since that's what the route calls
+    mock_reporting_manager = client.app.container.reporting_manager()  # type: ignore[attr-defined]
+    mock_reporting_manager.get_weekly_report_data.return_value = mock_weekly_data
+
+    response = client.get("/reports/weekly")
+
+    # Assert the response
+    assert response.status_code == 200
+    assert "Weekly Report" in response.text
+    assert "Week 30" in response.text
+    assert "Northern Cardinal" in response.text
+    assert "American Robin" in response.text
+    assert "45" in response.text  # total_detections_current
+    assert "12" in response.text  # unique_species_current
+    assert "+40%" in response.text  # percentage_diff_total
+    assert "+50%" in response.text  # percentage_diff_unique_species
+
+    # Assert that get_weekly_report_data was called
+    mock_reporting_manager.get_weekly_report_data.assert_called_once()
+
+
+def test_get_weekly_report_no_data(client):
+    """Should handle empty weekly report data gracefully."""
+    # Configure the mock reporting manager to return empty data
+    mock_weekly_data = {
+        "start_date": "",
+        "end_date": "",
+        "week_number": 0,
+        "total_detections_current": 0,
+        "unique_species_current": 0,
+        "total_detections_prior": 0,
+        "unique_species_prior": 0,
+        "percentage_diff_total": 0,
+        "percentage_diff_unique_species": 0,
+        "top_10_species": [],
+        "new_species": [],
+    }
+
+    # Mock get_weekly_report_data since that's what the route calls
+    mock_reporting_manager = client.app.container.reporting_manager()  # type: ignore[attr-defined]
+    mock_reporting_manager.get_weekly_report_data.return_value = mock_weekly_data
+
+    response = client.get("/reports/weekly")
+
+    # Assert the response
+    assert response.status_code == 200
+    assert "Weekly Report" in response.text
+    assert "No Weekly Data Available" in response.text
+    assert "No bird detections have been recorded" in response.text
+
+    # Assert that get_weekly_report_data was called
+    mock_reporting_manager.get_weekly_report_data.assert_called_once()
+
+
+def test_get_weekly_report_exception_handling(client):
+    """Should handle exceptions gracefully and show empty state."""
+    # Mock get_weekly_report_data to raise an exception
+    mock_reporting_manager = client.app.container.reporting_manager()  # type: ignore[attr-defined]
+    mock_reporting_manager.get_weekly_report_data.side_effect = Exception("Database error")
+
+    response = client.get("/reports/weekly")
+
+    # Assert the response shows empty state when there's an exception
+    assert response.status_code == 200
+    assert "Weekly Report" in response.text
+    assert "No Weekly Data Available" in response.text
+
+    # Assert that get_weekly_report_data was called
+    mock_reporting_manager.get_weekly_report_data.assert_called_once()
