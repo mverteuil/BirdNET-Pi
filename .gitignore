@@ -50,6 +50,7 @@ GEMINI.md
 IdentifiedSoFar.txt
 IdentifiedSoFar.txt.bak
 include_species_list.txt
+MagicMock
 model/*
 node_modules
 scripts/*.txt
