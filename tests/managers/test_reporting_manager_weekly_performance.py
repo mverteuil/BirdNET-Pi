@@ -169,10 +169,11 @@ class TestWeeklyReportPerformance:
         mock_detection.timestamp = datetime.datetime(2025, 7, 10, 14, 30, 0)
         detection_manager.get_all_detections.return_value = [mock_detection]
 
+        # Each iteration requires 2 calls (current + prior week), so 10 iterations need 20 values
         detection_manager.get_detection_counts_by_date_range.side_effect = [
             {"total_count": 50000, "unique_species": 500},
             {"total_count": 45000, "unique_species": 450},
-        ]
+        ] * 10
 
         detection_manager.get_top_species_with_prior_counts.return_value = []
         detection_manager.get_new_species_data.return_value = []
@@ -228,35 +229,36 @@ class TestWeeklyReportPerformance:
         """Should handle comprehensive date edge cases and boundary conditions."""
         edge_case_dates = [
             # (today, latest_detection_date, expected_start, expected_end)
+            # Find Monday at/before detection (or keep Sunday), end = that, start = end-6days
             (
                 datetime.date(2025, 1, 1),
-                datetime.date(2024, 12, 30),
-                "2024-12-30",
-                "2025-01-05",
+                datetime.date(2024, 12, 30),  # Monday (weekday 0)
+                "2024-12-24",  # Tuesday (Monday 2024-12-30 - 6 days)
+                "2024-12-30",  # Monday (the detection date itself)
             ),  # Year boundary
             (
                 datetime.date(2025, 12, 31),
-                datetime.date(2025, 12, 29),
-                "2025-12-23",
-                "2025-12-29",
+                datetime.date(2025, 12, 29),  # Sunday (weekday 6)
+                "2025-12-23",  # Monday (Sunday 2025-12-29 - 6 days)
+                "2025-12-29",  # Sunday (the latest detection date itself)
             ),  # End of year
             (
                 datetime.date(2025, 2, 28),
-                datetime.date(2025, 2, 23),
-                "2025-02-17",
-                "2025-02-23",
+                datetime.date(2025, 2, 23),  # Sunday (weekday 6)
+                "2025-02-17",  # Monday (Sunday 2025-02-23 - 6 days)
+                "2025-02-23",  # Sunday (the latest detection date itself)
             ),  # February
             (
                 datetime.date(2024, 2, 29),
-                datetime.date(2024, 2, 25),
-                "2024-02-19",
-                "2024-02-25",
+                datetime.date(2024, 2, 25),  # Sunday (weekday 6)
+                "2024-02-19",  # Monday (Sunday 2024-02-25 - 6 days)
+                "2024-02-25",  # Sunday (the latest detection date itself)
             ),  # Leap year
             (
                 datetime.date(2025, 3, 1),
-                datetime.date(2025, 2, 23),
-                "2025-02-17",
-                "2025-02-23",
+                datetime.date(2025, 2, 23),  # Sunday (weekday 6)
+                "2025-02-17",  # Monday (Sunday 2025-02-23 - 6 days)
+                "2025-02-23",  # Sunday (the latest detection date itself)
             ),  # Month boundary
         ]
 
@@ -462,9 +464,9 @@ class TestWeeklyReportIntegration:
             # Comprehensive integration verification
             assert (
                 report_data["start_date"] == "2025-07-01"
-            )  # Week containing latest detection (July 11 Friday)
+            )  # Week containing latest detection (July 11 Friday -> Monday July 7 -> Week July 1-7)
             assert report_data["end_date"] == "2025-07-07"  # Monday of same week
-            assert report_data["week_number"] == 27  # Correct ISO week number
+            assert report_data["week_number"] == 27  # Correct ISO week number for July 1, 2025
 
             # Statistical verification
             assert report_data["total_detections_current"] == 156
@@ -540,24 +542,24 @@ class TestWeeklyReportIntegration:
             calls = detection_manager.get_detection_counts_by_date_range.call_args_list
             assert len(calls) == 2
 
-            # Current week call
+            # Current week call (based on detection date July 10 -> Monday July 7 -> Week July 1-7)
             current_start, current_end = calls[0][0]
-            assert current_start == datetime.datetime(2025, 7, 7, 0, 0, 0)
-            assert current_end == datetime.datetime(2025, 7, 13, 23, 59, 59, 999999)
+            assert current_start == datetime.datetime(2025, 7, 1, 0, 0, 0)
+            assert current_end == datetime.datetime(2025, 7, 7, 23, 59, 59, 999999)
 
             # Prior week call
             prior_start, prior_end = calls[1][0]
-            assert prior_start == datetime.datetime(2025, 6, 30, 0, 0, 0)
-            assert prior_end == datetime.datetime(2025, 7, 6, 23, 59, 59, 999999)
+            assert prior_start == datetime.datetime(2025, 6, 24, 0, 0, 0)
+            assert prior_end == datetime.datetime(2025, 6, 30, 23, 59, 59, 999999)
 
             # Verify top species call
             top_species_call = detection_manager.get_top_species_with_prior_counts.call_args
-            assert top_species_call[0][0] == datetime.datetime(2025, 7, 7, 0, 0, 0)
-            assert top_species_call[0][1] == datetime.datetime(2025, 7, 13, 23, 59, 59, 999999)
-            assert top_species_call[0][2] == datetime.datetime(2025, 6, 30, 0, 0, 0)
-            assert top_species_call[0][3] == datetime.datetime(2025, 7, 6, 23, 59, 59, 999999)
+            assert top_species_call[0][0] == datetime.datetime(2025, 7, 1, 0, 0, 0)
+            assert top_species_call[0][1] == datetime.datetime(2025, 7, 7, 23, 59, 59, 999999)
+            assert top_species_call[0][2] == datetime.datetime(2025, 6, 24, 0, 0, 0)
+            assert top_species_call[0][3] == datetime.datetime(2025, 6, 30, 23, 59, 59, 999999)
 
             # Verify new species call
             new_species_call = detection_manager.get_new_species_data.call_args
-            assert new_species_call[0][0] == datetime.datetime(2025, 7, 7, 0, 0, 0)
-            assert new_species_call[0][1] == datetime.datetime(2025, 7, 13, 23, 59, 59, 999999)
+            assert new_species_call[0][0] == datetime.datetime(2025, 7, 1, 0, 0, 0)
+            assert new_species_call[0][1] == datetime.datetime(2025, 7, 7, 23, 59, 59, 999999)
