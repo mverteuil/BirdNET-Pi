@@ -3,8 +3,10 @@ from unittest.mock import DEFAULT, MagicMock, patch
 import pytest
 
 import birdnetpi.cli.generate_dummy_data as gdd
-from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
+from birdnetpi.services.species_display_service import SpeciesDisplayService
 from birdnetpi.services.system_control_service import SystemControlService
 
 
@@ -14,8 +16,11 @@ def mock_dependencies(mocker):
     with patch.multiple(
         "birdnetpi.cli.generate_dummy_data",
         PathResolver=DEFAULT,
+        ConfigFileParser=DEFAULT,
         DatabaseService=DEFAULT,
-        DetectionManager=DEFAULT,
+        DataManager=DEFAULT,
+        MultilingualDatabaseService=DEFAULT,
+        SpeciesDisplayService=DEFAULT,
         SystemControlService=DEFAULT,
         generate_dummy_detections=DEFAULT,
         time=DEFAULT,
@@ -28,8 +33,14 @@ def mock_dependencies(mocker):
         mock_stat.st_size = 0
         mock_db_path.stat.return_value = mock_stat
         mocks["PathResolver"].return_value.get_database_path.return_value = mock_db_path
+        mocks["PathResolver"].return_value.get_birdnetpi_config_path.return_value = "/config/path"
+        mocks["ConfigFileParser"].return_value.load_config.return_value = MagicMock()
         mocks["DatabaseService"].return_value = MagicMock(spec=DatabaseService)
-        mocks["DetectionManager"].return_value = MagicMock(spec=DetectionManager)
+        mocks["DataManager"].return_value = MagicMock(spec=DataManager)
+        mocks["MultilingualDatabaseService"].return_value = MagicMock(
+            spec=MultilingualDatabaseService
+        )
+        mocks["SpeciesDisplayService"].return_value = MagicMock(spec=SpeciesDisplayService)
         mocks["SystemControlService"].return_value = MagicMock(spec=SystemControlService)
         mocks["generate_dummy_detections"].return_value = None
         mocks["time"].sleep = MagicMock()
@@ -52,7 +63,7 @@ class TestGenerateDummyData:
         mock_stat.st_size = 100  # Simulate non-empty file
         mock_db_path.stat.return_value = mock_stat
 
-        mock_dependencies["DetectionManager"].return_value.get_all_detections.return_value = [
+        mock_dependencies["DataManager"].return_value.get_all_detections.return_value = [
             "detection1"
         ]
 
@@ -77,7 +88,7 @@ class TestGenerateDummyData:
         mock_stat.st_size = 0  # Empty file
         mock_db_path.stat.return_value = mock_stat
 
-        mock_dependencies["DetectionManager"].return_value.get_all_detections.return_value = []
+        mock_dependencies["DataManager"].return_value.get_all_detections.return_value = []
         mock_dependencies[
             "SystemControlService"
         ].return_value.get_service_status.return_value = "inactive"
@@ -104,7 +115,7 @@ class TestGenerateDummyData:
         mock_stat.st_size = 0  # Empty file
         mock_db_path.stat.return_value = mock_stat
 
-        mock_dependencies["DetectionManager"].return_value.get_all_detections.return_value = []
+        mock_dependencies["DataManager"].return_value.get_all_detections.return_value = []
         mock_dependencies[
             "SystemControlService"
         ].return_value.get_service_status.return_value = "active"

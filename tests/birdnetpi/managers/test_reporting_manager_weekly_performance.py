@@ -56,7 +56,7 @@ class TestWeeklyReportPerformance:
     """Test performance characteristics of weekly report functionality."""
 
     def test_get_weekly_report_data__large_dataset_performance(
-        self, performance_reporting_manager, detection_manager
+        self, performance_reporting_manager, data_manager
     ):
         """Should handle large datasets efficiently without timeouts."""
         import time
@@ -66,10 +66,10 @@ class TestWeeklyReportPerformance:
         # Simulate large dataset scenario
         mock_detection = MagicMock()
         mock_detection.timestamp = datetime.datetime(2025, 7, 10, 14, 30, 0)
-        detection_manager.get_all_detections.return_value = [mock_detection]
+        data_manager.get_all_detections.return_value = [mock_detection]
 
         # Mock large numbers that might be seen in production
-        detection_manager.get_detection_counts_by_date_range.side_effect = [
+        data_manager.get_detection_counts_by_date_range.side_effect = [
             {"total_count": 100000, "unique_species": 1500},  # Current week
             {"total_count": 85000, "unique_species": 1200},  # Prior week
         ]
@@ -84,11 +84,11 @@ class TestWeeklyReportPerformance:
             }
             for i in range(10)
         ]
-        detection_manager.get_top_species_with_prior_counts.return_value = large_top_species
+        data_manager.get_top_species_with_prior_counts.return_value = large_top_species
 
         # Large new species list
         large_new_species = [{"species": f"New_Species_{i}", "count": 100 - i} for i in range(20)]
-        detection_manager.get_new_species_data.return_value = large_new_species
+        data_manager.get_new_species_data.return_value = large_new_species
 
         with patch(
             "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
@@ -108,7 +108,7 @@ class TestWeeklyReportPerformance:
             assert len(report_data["new_species"]) == 20
 
     def test_get_weekly_report_data__concurrent_execution_safety(
-        self, performance_reporting_manager, detection_manager
+        self, performance_reporting_manager, data_manager
     ):
         """Should be thread-safe for concurrent execution."""
         import concurrent.futures
@@ -118,15 +118,15 @@ class TestWeeklyReportPerformance:
         # Setup consistent mock data
         mock_detection = MagicMock()
         mock_detection.timestamp = datetime.datetime(2025, 7, 10, 14, 30, 0)
-        detection_manager.get_all_detections.return_value = [mock_detection]
+        data_manager.get_all_detections.return_value = [mock_detection]
 
-        detection_manager.get_detection_counts_by_date_range.side_effect = [
+        data_manager.get_detection_counts_by_date_range.side_effect = [
             {"total_count": 1000, "unique_species": 50},
             {"total_count": 800, "unique_species": 40},
         ] * 10  # Enough for multiple concurrent calls
 
-        detection_manager.get_top_species_with_prior_counts.return_value = []
-        detection_manager.get_new_species_data.return_value = []
+        data_manager.get_top_species_with_prior_counts.return_value = []
+        data_manager.get_new_species_data.return_value = []
 
         def execute_weekly_report():
             """Execute weekly report data retrieval."""
@@ -148,7 +148,7 @@ class TestWeeklyReportPerformance:
             assert result["unique_species_current"] == 50
 
     def test_get_weekly_report_data__memory_efficiency(
-        self, performance_reporting_manager, detection_manager
+        self, performance_reporting_manager, data_manager
     ):
         """Should not accumulate excessive memory during execution."""
         import gc
@@ -165,16 +165,16 @@ class TestWeeklyReportPerformance:
         # Setup mock data
         mock_detection = MagicMock()
         mock_detection.timestamp = datetime.datetime(2025, 7, 10, 14, 30, 0)
-        detection_manager.get_all_detections.return_value = [mock_detection]
+        data_manager.get_all_detections.return_value = [mock_detection]
 
         # Each iteration requires 2 calls (current + prior week), so 10 iterations need 20 values
-        detection_manager.get_detection_counts_by_date_range.side_effect = [
+        data_manager.get_detection_counts_by_date_range.side_effect = [
             {"total_count": 50000, "unique_species": 500},
             {"total_count": 45000, "unique_species": 450},
         ] * 10
 
-        detection_manager.get_top_species_with_prior_counts.return_value = []
-        detection_manager.get_new_species_data.return_value = []
+        data_manager.get_top_species_with_prior_counts.return_value = []
+        data_manager.get_new_species_data.return_value = []
 
         with patch(
             "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
@@ -222,7 +222,7 @@ class TestWeeklyReportPerformance:
             assert result_unique == expected_unique, f"Unique: {result_unique} != {expected_unique}"
 
     def test_get_weekly_report_data__date_edge_cases_comprehensive(
-        self, performance_reporting_manager, detection_manager
+        self, performance_reporting_manager, data_manager
     ):
         """Should handle comprehensive date edge cases and boundary conditions."""
         edge_case_dates = [
@@ -266,14 +266,14 @@ class TestWeeklyReportPerformance:
             mock_detection.timestamp = datetime.datetime.combine(
                 latest_detection_date, datetime.time(12, 0, 0)
             )
-            detection_manager.get_all_detections.return_value = [mock_detection]
+            data_manager.get_all_detections.return_value = [mock_detection]
 
-            detection_manager.get_detection_counts_by_date_range.side_effect = [
+            data_manager.get_detection_counts_by_date_range.side_effect = [
                 {"total_count": 10, "unique_species": 5},
                 {"total_count": 8, "unique_species": 4},
             ]
-            detection_manager.get_top_species_with_prior_counts.return_value = []
-            detection_manager.get_new_species_data.return_value = []
+            data_manager.get_top_species_with_prior_counts.return_value = []
+            data_manager.get_new_species_data.return_value = []
 
             with patch(
                 "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
@@ -291,7 +291,7 @@ class TestWeeklyReportPerformance:
                 )
 
     def test_get_weekly_report_data__stress_test_multiple_scenarios(
-        self, performance_reporting_manager, detection_manager
+        self, performance_reporting_manager, data_manager
     ):
         """Should handle stress testing with multiple rapid scenario changes."""
         import time
@@ -323,12 +323,12 @@ class TestWeeklyReportPerformance:
         today = datetime.date(2025, 7, 12)
         mock_detection = MagicMock()
         mock_detection.timestamp = datetime.datetime(2025, 7, 10, 14, 30, 0)
-        detection_manager.get_all_detections.return_value = [mock_detection]
+        data_manager.get_all_detections.return_value = [mock_detection]
 
         execution_times = []
 
         for scenario in scenarios:
-            detection_manager.get_detection_counts_by_date_range.side_effect = [
+            data_manager.get_detection_counts_by_date_range.side_effect = [
                 scenario["current"],
                 scenario["prior"],
             ]
@@ -343,14 +343,14 @@ class TestWeeklyReportPerformance:
                 }
                 for i in range(scenario["top_species_count"])
             ]
-            detection_manager.get_top_species_with_prior_counts.return_value = top_species
+            data_manager.get_top_species_with_prior_counts.return_value = top_species
 
             # Mock new species
             new_species = [
                 {"species": f"New_Species_{i}", "count": 20 - i}
                 for i in range(scenario["new_species_count"])
             ]
-            detection_manager.get_new_species_data.return_value = new_species
+            data_manager.get_new_species_data.return_value = new_species
 
             with patch(
                 "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
@@ -382,7 +382,7 @@ class TestWeeklyReportIntegration:
     """Integration tests that verify interaction between components."""
 
     def test_weekly_report_end_to_end_integration(
-        self, performance_reporting_manager, detection_manager
+        self, performance_reporting_manager, data_manager
     ):
         """Should integrate all weekly report components correctly in realistic scenario."""
         today = datetime.date(2025, 7, 12)  # Saturday
@@ -402,10 +402,10 @@ class TestWeeklyReportIntegration:
             mock_detection.timestamp = ts
             mock_detections.append(mock_detection)
 
-        detection_manager.get_all_detections.return_value = mock_detections
+        data_manager.get_all_detections.return_value = mock_detections
 
         # Realistic detection counts
-        detection_manager.get_detection_counts_by_date_range.side_effect = [
+        data_manager.get_detection_counts_by_date_range.side_effect = [
             {"total_count": 156, "unique_species": 23},  # Current week
             {"total_count": 134, "unique_species": 19},  # Prior week
         ]
@@ -443,14 +443,14 @@ class TestWeeklyReportIntegration:
                 "prior_count": 12,
             },  # Same
         ]
-        detection_manager.get_top_species_with_prior_counts.return_value = realistic_top_species
+        data_manager.get_top_species_with_prior_counts.return_value = realistic_top_species
 
         # Realistic new species
         realistic_new_species = [
             {"species": "Regulus calendula", "count": 7},  # Ruby-crowned Kinglet
             {"species": "Dendroica petechia", "count": 4},  # Yellow Warbler
         ]
-        detection_manager.get_new_species_data.return_value = realistic_new_species
+        data_manager.get_new_species_data.return_value = realistic_new_species
 
         with patch(
             "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
@@ -499,21 +499,21 @@ class TestWeeklyReportIntegration:
             assert new_species[1]["count"] == 4
 
     def test_weekly_report_database_interaction_patterns(
-        self, performance_reporting_manager, detection_manager
+        self, performance_reporting_manager, data_manager
     ):
         """Should verify correct database interaction patterns and call sequences."""
         today = datetime.date(2025, 7, 12)
 
         mock_detection = MagicMock()
         mock_detection.timestamp = datetime.datetime(2025, 7, 10, 14, 30, 0)
-        detection_manager.get_all_detections.return_value = [mock_detection]
+        data_manager.get_all_detections.return_value = [mock_detection]
 
-        detection_manager.get_detection_counts_by_date_range.side_effect = [
+        data_manager.get_detection_counts_by_date_range.side_effect = [
             {"total_count": 100, "unique_species": 15},
             {"total_count": 80, "unique_species": 12},
         ]
 
-        detection_manager.get_top_species_with_prior_counts.return_value = [
+        data_manager.get_top_species_with_prior_counts.return_value = [
             {
                 "scientific_name": "Test species",
                 "common_name": "Test Species",
@@ -522,7 +522,7 @@ class TestWeeklyReportIntegration:
             }
         ]
 
-        detection_manager.get_new_species_data.return_value = [
+        data_manager.get_new_species_data.return_value = [
             {"species": "New test species", "count": 5}
         ]
 
@@ -534,10 +534,10 @@ class TestWeeklyReportIntegration:
             performance_reporting_manager.get_weekly_report_data()
 
             # Verify correct call sequence and parameters
-            detection_manager.get_all_detections.assert_called_once()
+            data_manager.get_all_detections.assert_called_once()
 
             # Verify date range calls with correct parameters
-            calls = detection_manager.get_detection_counts_by_date_range.call_args_list
+            calls = data_manager.get_detection_counts_by_date_range.call_args_list
             assert len(calls) == 2
 
             # Current week call (based on detection date July 10 -> Monday July 7 -> Week July 1-7)
@@ -551,13 +551,13 @@ class TestWeeklyReportIntegration:
             assert prior_end == datetime.datetime(2025, 6, 30, 23, 59, 59, 999999)
 
             # Verify top species call
-            top_species_call = detection_manager.get_top_species_with_prior_counts.call_args
+            top_species_call = data_manager.get_top_species_with_prior_counts.call_args
             assert top_species_call[0][0] == datetime.datetime(2025, 7, 1, 0, 0, 0)
             assert top_species_call[0][1] == datetime.datetime(2025, 7, 7, 23, 59, 59, 999999)
             assert top_species_call[0][2] == datetime.datetime(2025, 6, 24, 0, 0, 0)
             assert top_species_call[0][3] == datetime.datetime(2025, 6, 30, 23, 59, 59, 999999)
 
             # Verify new species call
-            new_species_call = detection_manager.get_new_species_data.call_args
+            new_species_call = data_manager.get_new_species_data.call_args
             assert new_species_call[0][0] == datetime.datetime(2025, 7, 1, 0, 0, 0)
             assert new_species_call[0][1] == datetime.datetime(2025, 7, 7, 23, 59, 59, 999999)

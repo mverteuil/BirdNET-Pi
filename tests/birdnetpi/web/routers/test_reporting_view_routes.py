@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 
 
@@ -13,15 +13,15 @@ def app_with_mocks(app_with_temp_data):
     app = app_with_temp_data
 
     if hasattr(app, "container"):
-        # Mock detection manager
-        mock_detection_manager = MagicMock(spec=DetectionManager)
-        mock_detection_manager.get_best_detections.return_value = []
-        mock_detection_manager.get_all_detections.return_value = []
-        app.container.detection_manager.override(mock_detection_manager)  # type: ignore[attr-defined]
+        # Mock data manager
+        mock_data_manager = MagicMock(spec=DataManager)
+        mock_data_manager.get_best_detections.return_value = []
+        mock_data_manager.get_all_detections.return_value = []
+        app.container.data_manager.override(mock_data_manager)  # type: ignore[attr-defined]
 
         # Mock reporting manager
         mock_reporting_manager = MagicMock(spec=ReportingManager)
-        mock_reporting_manager.detection_manager = mock_detection_manager
+        mock_reporting_manager.data_manager = mock_data_manager
         app.container.reporting_manager.override(mock_reporting_manager)  # type: ignore[attr-defined]
 
     return app

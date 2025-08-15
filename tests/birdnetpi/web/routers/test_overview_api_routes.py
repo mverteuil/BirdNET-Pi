@@ -8,7 +8,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
-from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.services.database_service import DatabaseService
 
 
@@ -33,10 +32,6 @@ def app_with_overview_services(app_with_temp_data):
 
     # Override services with mocks or test instances
     if hasattr(app, "container"):
-        # The app already has a DatabaseService with temp directory,
-        # use the existing detection manager
-        # (no need to override since it's already using temp paths)
-
         # Mock hardware monitor service
         mock_hardware_monitor = MagicMock(spec=HardwareMonitorManager)
         mock_hardware_monitor.get_all_status.return_value = {
@@ -46,10 +41,12 @@ def app_with_overview_services(app_with_temp_data):
         }
         app.container.hardware_monitor_manager.override(mock_hardware_monitor)  # type: ignore[attr-defined]
 
-        # Mock reporting manager that uses the detection manager
-        mock_reporting_manager = MagicMock(spec=ReportingManager)
-        mock_reporting_manager.detection_manager = app.container.detection_manager()
-        app.container.reporting_manager.override(mock_reporting_manager)  # type: ignore[attr-defined]
+        # Mock data_manager to return detection count
+        from birdnetpi.managers.data_manager import DataManager
+
+        mock_data_manager = MagicMock(spec=DataManager)
+        mock_data_manager.count_detections.return_value = 0
+        app.container.data_manager.override(mock_data_manager)  # type: ignore[attr-defined]
 
     return app
 
@@ -124,7 +121,7 @@ class TestOverviewRouterIntegration:
         assert "system_status" in data
         assert "total_detections" in data
 
-    def test_overview_uses_real_detection_manager(self, client, temp_db):
+    def test_overview_uses_real_data_manager(self, client, temp_db):
         """Should use real DetectionManager with actual database."""
         response = client.get("/api/overview")
 

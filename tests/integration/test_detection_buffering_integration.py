@@ -423,9 +423,7 @@ class TestDetectionBufferingWithAdminOperations:
                 patch(
                     "birdnetpi.cli.generate_dummy_data.DatabaseService"
                 ) as _mock_database_service,
-                patch(
-                    "birdnetpi.cli.generate_dummy_data.DetectionManager"
-                ) as mock_detection_manager,
+                patch("birdnetpi.cli.generate_dummy_data.DataManager") as mock_data_manager,
                 patch(
                     "birdnetpi.cli.generate_dummy_data.SystemControlService"
                 ) as mock_system_control_service,
@@ -446,7 +444,7 @@ class TestDetectionBufferingWithAdminOperations:
                 mock_os.path.exists.return_value = False
                 mock_os.getenv.return_value = "false"  # SBC environment
                 mock_system_control_service.return_value.get_service_status.return_value = "active"
-                mock_detection_manager.return_value.get_all_detections.return_value = []
+                mock_data_manager.return_value.get_all_detections.return_value = []
 
                 # During admin operation, simulate FastAPI being down
                 with patch("httpx.AsyncClient") as mock_client:

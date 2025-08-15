@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.web.core.factory import create_app
 
 
@@ -30,9 +30,9 @@ def app_with_admin_view_routes(tmp_path):
     mock_resolver.data_dir = tmp_path
     mock_resolver.get_database_path.return_value = str(tmp_path / f"test_db_{id(tmp_path)}.sqlite")
 
-    # Mock detection manager for test_detection endpoint
-    mock_detection_manager = MagicMock(spec=DetectionManager)
-    mock_detection_manager.create_detection.return_value = None
+    # Mock data manager for test_detection endpoint
+    mock_data_manager = MagicMock(spec=DataManager)
+    mock_data_manager.create_detection.return_value = None
 
     # Patch the SQLAdmin setup to avoid database issues entirely
     def mock_setup_sqladmin(app):
@@ -48,14 +48,14 @@ def app_with_admin_view_routes(tmp_path):
     # Override additional dependencies to use mocks
     if hasattr(app, "container"):
         app.container.path_resolver.override(mock_resolver)  # type: ignore[attr-defined]
-        app.container.detection_manager.override(mock_detection_manager)  # type: ignore[attr-defined]
+        app.container.data_manager.override(mock_data_manager)  # type: ignore[attr-defined]
 
     yield app
 
     # Clean up: reset overrides after each test
     if hasattr(app, "container"):
         app.container.path_resolver.reset_override()  # type: ignore[attr-defined]
-        app.container.detection_manager.reset_override()  # type: ignore[attr-defined]
+        app.container.data_manager.reset_override()  # type: ignore[attr-defined]
 
 
 @pytest.fixture

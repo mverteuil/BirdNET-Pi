@@ -5,7 +5,6 @@ from pathlib import Path
 from dependency_injector import containers, providers
 from fastapi.templating import Jinja2Templates
 
-from birdnetpi.managers.cached_reporting_manager import CachedReportingManager
 from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.file_manager import FileManager
@@ -246,14 +245,4 @@ class Container(containers.DeclarativeContainer):
         data_preparation_manager=data_preparation_manager,
         location_service=location_service,
         species_display_service=species_display_service,
-    )
-
-    # Cached reporting manager - provides caching layer over reporting manager
-    cached_reporting_manager = providers.Factory(
-        CachedReportingManager,
-        reporting_manager=reporting_manager,
-        cache_service=cache_service,
-        enable_caching=config.provided.enable_analytics_caching
-        if hasattr(config.provided, "enable_analytics_caching")
-        else True,
     )

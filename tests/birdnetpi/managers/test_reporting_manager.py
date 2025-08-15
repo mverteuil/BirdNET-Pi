@@ -89,6 +89,10 @@ def reporting_manager(
     mock_location_service,  # Added mock_location_service
 ):
     """Provide a ReportingManager instance with mocked dependencies."""
+    from birdnetpi.services.species_display_service import SpeciesDisplayService
+
+    mock_species_display_service = Mock(spec=SpeciesDisplayService)
+
     manager = ReportingManager(
         data_manager=data_manager,
         path_resolver=path_resolver,
@@ -96,27 +100,40 @@ def reporting_manager(
         plotting_manager=mock_plotting_manager,
         data_preparation_manager=mock_data_preparation_manager,
         location_service=mock_location_service,
+        species_display_service=mock_species_display_service,
     )
     return manager
 
 
 def test_get_most_recent_detections(reporting_manager, data_manager):
     """Should return a list of recent detections."""
-    data_manager.query_detections.return_value = [
-        MagicMock(
-            timestamp=datetime.datetime(2025, 7, 12, 10, 0, 0),
-            scientific_name="Turdus migratorius",
-            common_name="American Robin",
-            confidence=0.95,
-            detection=MagicMock(latitude=45.5, longitude=-73.5),
-        ),
-        MagicMock(
-            timestamp=datetime.datetime(2025, 7, 12, 9, 59, 0),
-            scientific_name="Cardinalis cardinalis",
-            common_name="Northern Cardinal",
-            confidence=0.90,
-            detection=MagicMock(latitude=45.5, longitude=-73.5),
-        ),
+    # Create mock detections with proper attributes
+    mock_detection1 = MagicMock()
+    mock_detection1.timestamp = datetime.datetime(2025, 7, 12, 10, 0, 0)
+    mock_detection1.scientific_name = "Turdus migratorius"
+    mock_detection1.common_name = "American Robin"
+    mock_detection1.confidence = 0.95
+    mock_detection1.detection.latitude = 45.5
+    mock_detection1.detection.longitude = -73.5
+    mock_detection1.translated_name = None
+    mock_detection1.ioc_english_name = None
+
+    mock_detection2 = MagicMock()
+    mock_detection2.timestamp = datetime.datetime(2025, 7, 12, 9, 59, 0)
+    mock_detection2.scientific_name = "Cardinalis cardinalis"
+    mock_detection2.common_name = "Northern Cardinal"
+    mock_detection2.confidence = 0.90
+    mock_detection2.detection.latitude = 45.5
+    mock_detection2.detection.longitude = -73.5
+    mock_detection2.translated_name = None
+    mock_detection2.ioc_english_name = None
+
+    data_manager.query_detections.return_value = [mock_detection1, mock_detection2]
+
+    # Mock the species display service to return the common name
+    reporting_manager.species_display_service.format_species_display.side_effect = [
+        "American Robin",
+        "Northern Cardinal",
     ]
 
     recent_detections = reporting_manager.get_most_recent_detections(limit=2)
@@ -252,7 +269,9 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, data_manager):
     mock_detection_with_l10n_3.order_name = "Passeriformes"
 
     # Mock the localization service method to return our mock DetectionWithLocalization objects
-    data_manager.detection_query_service.get_detections_with_localization.return_value = [
+    # Also set up query_service attribute
+    data_manager.query_service = MagicMock()
+    data_manager.query_service.get_detections_with_localization.return_value = [
         mock_detection_with_l10n_1,
         mock_detection_with_l10n_2,
         mock_detection_with_l10n_3,
@@ -289,6 +308,13 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, data_manager):
         ),
     ]
     data_manager.get_all_detections.return_value = mock_detections
+
+    # Mock the species display service to return the correct common names
+    reporting_manager.species_display_service.format_species_display.side_effect = [
+        "American Robin",  # For first detection
+        "American Robin",  # For second detection
+        "Northern Cardinal",  # For third detection
+    ]
 
     # Call get_data to get the DataFrame
     df = reporting_manager.get_data()

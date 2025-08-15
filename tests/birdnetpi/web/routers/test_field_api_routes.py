@@ -6,7 +6,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
 from birdnetpi.services.gps_service import GPSService
 from birdnetpi.services.mqtt_service import MQTTService
@@ -25,13 +25,13 @@ def client():
     container = Container()
 
     # Override services with mocks
-    mock_detection_manager = MagicMock(spec=DetectionManager)
+    mock_data_manager = MagicMock(spec=DataManager)
     mock_gps_service = MagicMock(spec=GPSService)
     mock_hardware_monitor_manager = MagicMock(spec=HardwareMonitorManager)
     mock_mqtt_service = MagicMock(spec=MQTTService)
     mock_webhook_service = MagicMock(spec=WebhookService)
 
-    container.detection_manager.override(mock_detection_manager)
+    container.data_manager.override(mock_data_manager)
     container.gps_service.override(mock_gps_service)
     container.hardware_monitor_manager.override(mock_hardware_monitor_manager)
     container.mqtt_service.override(mock_mqtt_service)
@@ -48,7 +48,7 @@ def client():
     client = TestClient(app)
 
     # Store the mocks for access in tests
-    client.mock_detection_manager = mock_detection_manager  # type: ignore[attr-defined]
+    client.mock_data_manager = mock_data_manager  # type: ignore[attr-defined]
     client.mock_gps_service = mock_gps_service  # type: ignore[attr-defined]
     client.mock_hardware_monitor_manager = mock_hardware_monitor_manager  # type: ignore[attr-defined]
     client.mock_mqtt_service = mock_mqtt_service  # type: ignore[attr-defined]
@@ -134,12 +134,12 @@ class TestFieldModeEndpoints:
         hardware_monitor = client.mock_hardware_monitor_manager
         hardware_monitor.get_health_summary.return_value = {"overall_status": "healthy"}
 
-        # Setup detection manager
-        detection_manager = client.mock_detection_manager
-        detection_manager.get_detections_count_by_date.return_value = 5
-
         # Create mock detection objects with required attributes
         from datetime import UTC, datetime
+
+        # Setup data manager
+        data_manager = client.mock_data_manager
+        data_manager.count_by_date.return_value = {datetime.now(UTC).date(): 5}
         from unittest.mock import Mock
 
         mock_detection = Mock()
@@ -147,7 +147,7 @@ class TestFieldModeEndpoints:
         mock_detection.confidence = 0.95
         mock_detection.timestamp = datetime.now(UTC)
 
-        detection_manager.get_recent_detections.return_value = [mock_detection]
+        data_manager.get_recent_detections.return_value = [mock_detection]
 
         response = client.get("/api/field/summary")
 
