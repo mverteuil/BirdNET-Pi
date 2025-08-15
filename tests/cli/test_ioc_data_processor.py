@@ -1,4 +1,4 @@
-"""Tests for IOC data processor CLI."""
+"""Tests for IOC database builder CLI."""
 
 from unittest.mock import MagicMock, patch
 
@@ -14,162 +14,146 @@ def runner():
     return CliRunner()
 
 
-@pytest.fixture
-def mock_ioc_reference_service():
-    """Create a mock IOCDatabaseBuilder."""
-    mock_service = MagicMock()
-    mock_service.get_ioc_version.return_value = "15.1"
-    mock_service.get_species_count.return_value = 10832
-    mock_service.get_available_languages.return_value = {"en", "es", "fr", "de"}
-    mock_service._species_data = {
-        "Turdus migratorius": MagicMock(
-            scientific_name="Turdus migratorius",
-            english_name="American Robin",
-            order="Passeriformes",
-            family="Turdidae",
-            authority="Linnaeus, 1766",
-        )
-    }
-    mock_service._translations = {
-        "Turdus migratorius": {
-            "es": "Mirlo primavera",
-            "fr": "Merle d'Amérique",
-            "de": "Wanderdrossel",
-        }
-    }
-    return mock_service
-
-
 class TestIOCDataProcessor:
-    """Test IOC data processor commands."""
+    """Test IOC database builder commands."""
 
     @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseBuilder")
-    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseBuilder")
-    def test_process_command(
-        self, mock_reference_service_class, mock_database_service_class, runner, tmp_path
-    ):
-        """Should process IOC files into JSON format."""
+    def test_build_command_with_xml_only(self, mock_builder_class, runner, tmp_path):
+        """Should build database from XML file only."""
         # Setup mocks
-        mock_service = MagicMock()
-        mock_service.get_species_count.return_value = 10832
-        mock_service.get_available_languages.return_value = {"en", "es", "fr"}
-        mock_reference_service_class.return_value = mock_service
+        mock_builder = MagicMock()
+        mock_builder_class.return_value = mock_builder
+
+        # Create test files
+        xml_file = tmp_path / "test.xml"
+        xml_file.write_text("<xml>test</xml>")
+        db_file = tmp_path / "output.db"
+
+        result = runner.invoke(
+            cli,
+            [
+                "build",
+                "--xml-file",
+                str(xml_file),
+                "--db-file",
+                str(db_file),
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert "Building IOC database..." in result.output
+        assert f"XML file: {xml_file}" in result.output
+        assert f"Database: {db_file}" in result.output
+        assert "✓ Database built successfully" in result.output
+
+        mock_builder_class.assert_called_once_with(db_path=db_file)
+        mock_builder.populate_from_files.assert_called_once_with(xml_file, None)
+
+    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseBuilder")
+    def test_build_command_with_xml_and_xlsx(self, mock_builder_class, runner, tmp_path):
+        """Should build database from XML and XLSX files."""
+        # Setup mocks
+        mock_builder = MagicMock()
+        mock_builder_class.return_value = mock_builder
 
         # Create test files
         xml_file = tmp_path / "test.xml"
         xml_file.write_text("<xml>test</xml>")
         xlsx_file = tmp_path / "test.xlsx"
         xlsx_file.write_bytes(b"test")
-        output_file = tmp_path / "output.json"
+        db_file = tmp_path / "output.db"
 
         result = runner.invoke(
             cli,
             [
-                "process",
+                "build",
                 "--xml-file",
                 str(xml_file),
                 "--xlsx-file",
                 str(xlsx_file),
-                "--output",
-                str(output_file),
+                "--db-file",
+                str(db_file),
             ],
         )
 
         assert result.exit_code == 0
-        assert "Processing IOC data files" in result.output
-        assert "✓ JSON data saved successfully" in result.output
-        assert "Species count: 10832" in result.output
+        assert "Building IOC database..." in result.output
+        assert f"XML file: {xml_file}" in result.output
+        assert f"XLSX file: {xlsx_file}" in result.output
+        assert f"Database: {db_file}" in result.output
+        assert "✓ Database built successfully" in result.output
 
-        mock_service.load_ioc_data.assert_called_once_with(xml_file, xlsx_file)
-        mock_service.export_json.assert_called_once()
-
-    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseBuilder")
-    def test_info_command(
-        self, mock_reference_service_class, mock_ioc_reference_service, runner, tmp_path
-    ):
-        """Should show information about IOC JSON file."""
-        mock_reference_service_class.return_value = mock_ioc_reference_service
-
-        # Create test JSON file
-        json_file = tmp_path / "test.json"
-        json_file.write_text('{"test": "data"}')
-
-        result = runner.invoke(cli, ["info", "--json-file", str(json_file)])
-
-        assert result.exit_code == 0
-        assert "IOC Data Information:" in result.output
-        assert "IOC Version: 15.1" in result.output
-        assert "Species count: 10832" in result.output
-        assert "Available languages: 4" in result.output
+        mock_builder_class.assert_called_once_with(db_path=db_file)
+        mock_builder.populate_from_files.assert_called_once_with(xml_file, xlsx_file)
 
     @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseBuilder")
-    def test_lookup_command_found(
-        self, mock_reference_service_class, mock_ioc_reference_service, runner, tmp_path
-    ):
-        """Should lookup species successfully."""
-        mock_reference_service_class.return_value = mock_ioc_reference_service
+    def test_build_command_file_not_found(self, mock_builder_class, runner, tmp_path):
+        """Should handle file not found error gracefully."""
+        # Setup mocks
+        mock_builder = MagicMock()
+        mock_builder.populate_from_files.side_effect = FileNotFoundError("XML file not found")
+        mock_builder_class.return_value = mock_builder
 
-        # Setup mock to return species info
-        species_info = MagicMock(
-            scientific_name="Turdus migratorius",
-            english_name="American Robin",
-            order="Passeriformes",
-            family="Turdidae",
-            authority="Linnaeus, 1766",
-        )
-        mock_ioc_reference_service.get_species_info.return_value = species_info
-        mock_ioc_reference_service.get_translated_common_name.return_value = "Mirlo primavera"
-
-        # Create test JSON file
-        json_file = tmp_path / "test.json"
-        json_file.write_text('{"test": "data"}')
+        # Create test XML file (to pass Click's validation)
+        xml_file = tmp_path / "test.xml"
+        xml_file.write_text("<xml>test</xml>")
+        db_file = tmp_path / "output.db"
 
         result = runner.invoke(
             cli,
             [
-                "lookup",
-                "--json-file",
-                str(json_file),
-                "--species",
-                "Turdus migratorius",
-                "--language",
-                "es",
+                "build",
+                "--xml-file",
+                str(xml_file),
+                "--db-file",
+                str(db_file),
             ],
         )
 
-        assert result.exit_code == 0
-        assert "Species found:" in result.output
-        assert "Scientific name: Turdus migratorius" in result.output
-        assert "English name: American Robin" in result.output
-        assert "ES name: Mirlo primavera" in result.output
+        assert result.exit_code == 1
+        assert "✗ File not found: XML file not found" in result.output
 
     @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseBuilder")
-    def test_lookup_command_not_found(
-        self, mock_reference_service_class, mock_ioc_reference_service, runner, tmp_path
-    ):
-        """Should handle species not found."""
-        mock_reference_service_class.return_value = mock_ioc_reference_service
-        mock_ioc_reference_service.get_species_info.return_value = None
+    def test_build_command_general_error(self, mock_builder_class, runner, tmp_path):
+        """Should handle general errors gracefully."""
+        # Setup mocks
+        mock_builder = MagicMock()
+        mock_builder.populate_from_files.side_effect = Exception("Database error")
+        mock_builder_class.return_value = mock_builder
 
-        # Create test JSON file
-        json_file = tmp_path / "test.json"
-        json_file.write_text('{"test": "data"}')
+        # Create test files
+        xml_file = tmp_path / "test.xml"
+        xml_file.write_text("<xml>test</xml>")
+        db_file = tmp_path / "output.db"
 
         result = runner.invoke(
             cli,
-            ["lookup", "--json-file", str(json_file), "--species", "Unknown species"],
+            [
+                "build",
+                "--xml-file",
+                str(xml_file),
+                "--db-file",
+                str(db_file),
+            ],
         )
 
-        assert result.exit_code == 0
-        assert "Species not found: Unknown species" in result.output
-        assert "Searching for similar names" in result.output
+        assert result.exit_code == 1
+        assert "✗ Error building database: Database error" in result.output
 
     def test_main_help(self, runner):
         """Should show help text."""
         result = runner.invoke(cli, ["--help"])
 
         assert result.exit_code == 0
-        assert "IOC World Bird Names data processor" in result.output
-        assert "process" in result.output
-        assert "info" in result.output
-        assert "lookup" in result.output
+        assert "IOC World Bird Names database builder" in result.output
+        assert "build" in result.output
+
+    def test_build_help(self, runner):
+        """Should show build command help."""
+        result = runner.invoke(cli, ["build", "--help"])
+
+        assert result.exit_code == 0
+        assert "Build IOC database from XML and optionally XLSX files" in result.output
+        assert "--xml-file" in result.output
+        assert "--xlsx-file" in result.output
+        assert "--db-file" in result.output

@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
-    from birdnetpi.utils.ioc_database_builder import IOCDatabaseBuilder
+    from birdnetpi.services.ioc_database_service import IOCDatabaseService
 
 
 class SpeciesComponents(NamedTuple):
@@ -44,12 +44,18 @@ class SpeciesParser:
     # Class-level instance for global access
     _instance: "SpeciesParser | None" = None
 
-    def __init__(self, ioc_database_service: "IOCDatabaseBuilder | None" = None):
-        """Initialize parser with optional IOC database service.
+    def __init__(self, ioc_database_service: "IOCDatabaseService"):
+        """Initialize parser with required IOC database service.
 
         Args:
-            ioc_database_service: Service for IOC species lookup and translation
+            ioc_database_service: Service for IOC species lookup and translation (required)
+
+        Raises:
+            TypeError: If ioc_database_service is None
         """
+        if ioc_database_service is None:
+            raise TypeError("IOCDatabaseService is required for SpeciesParser")
+
         self.ioc_database = ioc_database_service
         # Set as global instance if none exists
         if SpeciesParser._instance is None:
@@ -61,16 +67,21 @@ class SpeciesParser:
         return cls._instance
 
     def get_ioc_common_name(self, scientific_name: str) -> str | None:
-        """Get IOC canonical common name if database service is available.
+        """Get IOC canonical common name from database service.
 
         Uses the lightweight get_species_core method that returns only essential fields,
         reducing memory usage and improving query performance.
+
+        Args:
+            scientific_name: Scientific name to look up
+
+        Returns:
+            IOC English common name or None if species not found
         """
-        if self.ioc_database:
-            # Use lightweight query that returns minimal model
-            species = self.ioc_database.get_species_core(scientific_name)
-            if species:
-                return species.english_name
+        # Use lightweight query that returns minimal model
+        species = self.ioc_database.get_species_core(scientific_name)
+        if species:
+            return species.english_name
         return None
 
     @staticmethod

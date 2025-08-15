@@ -13,7 +13,7 @@ import numpy as np
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.bird_detection_service import BirdDetectionService
-from birdnetpi.utils.ioc_database_builder import IOCDatabaseBuilder
+from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.utils.path_resolver import PathResolver
 from birdnetpi.utils.species_parser import SpeciesComponents, SpeciesParser
 
@@ -28,9 +28,9 @@ class AudioAnalysisManager:
         file_manager: FileManager,
         path_resolver: PathResolver,
         config: BirdNETConfig,
+        ioc_database_service: IOCDatabaseService,
         detection_buffer_max_size: int = 1000,
         buffer_flush_interval: float = 5.0,
-        ioc_database_service: IOCDatabaseBuilder | None = None,
     ) -> None:
         logger.info("AudioAnalysisManager initialized.")
         self.file_manager = file_manager

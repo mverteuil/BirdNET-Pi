@@ -10,6 +10,16 @@ from birdnetpi.utils.species_parser import (
 )
 
 
+@pytest.fixture(autouse=True)
+def reset_species_parser_instance():
+    """Reset the global SpeciesParser instance before and after each test."""
+    # Clear before test
+    SpeciesParser._instance = None
+    yield
+    # Clear after test
+    SpeciesParser._instance = None
+
+
 class TestSpeciesParser:
     """Test cases for SpeciesParser functionality."""
 
@@ -214,15 +224,15 @@ class TestSpeciesParserWithIOC:
     def test_species_parser_initialization__ioc_service(self):
         """Test SpeciesParser initialization with IOC service."""
         # Create a temporary database service for testing
-        import tempfile
+        from unittest.mock import MagicMock
 
-        from birdnetpi.utils.ioc_database_builder import IOCDatabaseBuilder
+        from birdnetpi.services.ioc_database_service import IOCDatabaseService
 
-        with tempfile.NamedTemporaryFile(suffix=".db") as tmp_file:
-            ioc_service = IOCDatabaseBuilder(db_path=tmp_file.name)
-            parser = SpeciesParser(ioc_service)
+        # Mock IOCDatabaseService since SpeciesParser now requires it
+        mock_ioc_service = MagicMock(spec=IOCDatabaseService)
+        parser = SpeciesParser(mock_ioc_service)
 
-            assert parser.ioc_database is ioc_service
+        assert parser.ioc_database is mock_ioc_service
 
     def test_format_species_display_fallback_to_common_name(self):
         """Test format_species_for_display fallback when both display options are disabled."""

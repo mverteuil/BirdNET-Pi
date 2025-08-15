@@ -104,10 +104,14 @@ def audio_analysis_service(
     mock_analysis_client = MagicMock()
     mock_analysis_client_class.return_value = mock_analysis_client
 
+    # Mock IOCDatabaseService
+    mock_ioc_database_service = MagicMock()
+
     service = AudioAnalysisManager(
         mock_file_manager,
         mock_path_resolver,
         mock_config,
+        mock_ioc_database_service,
         detection_buffer_max_size=100,  # Smaller buffer for testing
         buffer_flush_interval=0.1,  # Faster interval for testing
     )
@@ -615,9 +619,11 @@ class TestDetectionBuffering:
 
     async def test_flush_detection_buffer_successful_flush(self, audio_analysis_service, caplog):
         """Should successfully flush buffered detections."""
-        # Add test detection to buffer
+        # Add test detection to buffer (in new format)
         test_detection = {
             "species_tensor": "Turdus migratorius_American Robin",
+            "scientific_name": "Turdus migratorius",
+            "common_name": "American Robin",
             "confidence": 0.9,
             "timestamp": datetime.now().isoformat(),
         }
@@ -645,20 +651,26 @@ class TestDetectionBuffering:
 
     async def test_flush_detection_buffer_partial_failure(self, audio_analysis_service, caplog):
         """Should re-buffer failed detections and flush successful ones."""
-        # Add multiple test detections to buffer
+        # Add multiple test detections to buffer (in new format)
         test_detections = [
             {
                 "species_tensor": "Turdus migratorius_American Robin",
+                "scientific_name": "Turdus migratorius",
+                "common_name": "American Robin",
                 "confidence": 0.9,
                 "timestamp": datetime.now().isoformat(),
             },
             {
                 "species_tensor": "Corvus brachyrhynchos_American Crow",
+                "scientific_name": "Corvus brachyrhynchos",
+                "common_name": "American Crow",
                 "confidence": 0.8,
                 "timestamp": datetime.now().isoformat(),
             },
             {
                 "species_tensor": "Passer domesticus_House Sparrow",
+                "scientific_name": "Passer domesticus",
+                "common_name": "House Sparrow",
                 "confidence": 0.7,
                 "timestamp": datetime.now().isoformat(),
             },
@@ -696,7 +708,7 @@ class TestDetectionBuffering:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 rebuffered = next(iter(audio_analysis_service.detection_buffer))
                 assert (
-                    rebuffered["species_tensor"] == "Corvus brachyrhynchos_American Crow"
+                    rebuffered["scientific_name"] == "Corvus brachyrhynchos"
                 )  # The middle one that failed
 
             assert "Attempting to flush 3 buffered detections" in caplog.text
@@ -705,9 +717,11 @@ class TestDetectionBuffering:
 
     async def test_flush_detection_buffer_all_failures(self, audio_analysis_service, caplog):
         """Should re-buffer all detections when all flush attempts fail."""
-        # Add test detection to buffer
+        # Add test detection to buffer (in new format)
         test_detection = {
             "species_tensor": "Turdus migratorius_American Robin",
+            "scientific_name": "Turdus migratorius",
+            "common_name": "American Robin",
             "confidence": 0.9,
             "timestamp": datetime.now().isoformat(),
         }
@@ -728,7 +742,7 @@ class TestDetectionBuffering:
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 rebuffered = next(iter(audio_analysis_service.detection_buffer))
-                assert rebuffered["species_tensor"] == "Turdus migratorius_American Robin"
+                assert rebuffered["scientific_name"] == "Turdus migratorius"
 
             assert "Attempting to flush 1 buffered detections" in caplog.text
             assert "Re-buffered 1 failed detections" in caplog.text
@@ -738,9 +752,11 @@ class TestDetectionBuffering:
         self, audio_analysis_service, caplog
     ):
         """Should handle unexpected errors during flush and re-buffer detections."""
-        # Add test detection to buffer
+        # Add test detection to buffer (in new format)
         test_detection = {
-            "species_tensor": "Turdus migratorius",
+            "species_tensor": "Turdus migratorius_American Robin",
+            "scientific_name": "Turdus migratorius",
+            "common_name": "American Robin",
             "confidence": 0.9,
             "timestamp": datetime.now().isoformat(),
         }
@@ -774,12 +790,16 @@ class TestDetectionBuffering:
         mock_analysis_client = MagicMock()
         mock_analysis_client_class.return_value = mock_analysis_client
 
+        # Mock IOCDatabaseService
+        mock_ioc_database_service = MagicMock()
+
         # Set a small max size for testing
         max_size = 5
         service = AudioAnalysisManager(
             audio_analysis_service.file_manager,
             audio_analysis_service.path_resolver,
             audio_analysis_service.config,
+            mock_ioc_database_service,
             detection_buffer_max_size=max_size,
             buffer_flush_interval=1.0,
         )
@@ -977,7 +997,7 @@ class TestDetectionBufferingIntegration:
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 buffered = next(iter(audio_analysis_service.detection_buffer))
-                assert buffered["species_tensor"] == "Turdus migratorius_American Robin"
+                assert buffered["scientific_name"] == "Turdus migratorius"
                 assert buffered["confidence"] == 0.85
 
             assert "Buffered detection event for Turdus migratorius" in caplog.text
@@ -1048,7 +1068,7 @@ class TestDetectionBufferingIntegration:
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
                 buffered = next(iter(audio_analysis_service.detection_buffer))
-                assert buffered["species_tensor"] == "Corvus brachyrhynchos_American Crow"
+                assert buffered["scientific_name"] == "Corvus brachyrhynchos"
 
             # Verify successful sends were logged
             assert "Detection event sent: Turdus migratorius" in caplog.text

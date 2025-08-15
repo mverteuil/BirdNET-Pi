@@ -8,8 +8,8 @@ from types import FrameType
 
 from birdnetpi.managers.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.managers.file_manager import FileManager
+from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
-from birdnetpi.utils.ioc_database_builder import IOCDatabaseBuilder
 from birdnetpi.utils.path_resolver import PathResolver
 
 # Configure logging for this script
@@ -55,16 +55,12 @@ def main() -> None:
     config_parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
     config = config_parser.load_config()
 
-    # Create IOC database service with graceful error handling
-    ioc_database_builder = None
-    try:
-        ioc_database_builder = IOCDatabaseBuilder(db_path=path_resolver.get_ioc_database_path())
-        logger.info("IOC database builder initialized")
-    except Exception as e:
-        logger.warning("IOC database service not available: %s", e)
+    # Create IOC database service (required for species normalization)
+    ioc_database_service = IOCDatabaseService(db_path=path_resolver.get_ioc_database_path())
+    logger.info("IOC database service initialized")
 
     audio_analysis_service = AudioAnalysisManager(
-        file_manager, path_resolver, config, ioc_database_service=ioc_database_builder
+        file_manager, path_resolver, config, ioc_database_service
     )
 
     try:
