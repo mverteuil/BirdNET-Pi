@@ -4,11 +4,11 @@ This script processes IOC World Bird Names XML and multilingual XLSX files
 to create cached JSON data for use by the BirdNET-Pi application.
 
 Usage:
-    python -m birdnetpi.wrappers.ioc_data_processor process \\
+    python -m birdnetpi.cli.ioc_data_processor process \\
         --xml-file ioc_names_v15.1.xml \\
         --xlsx-file ioc_multilingual_v15.1.xlsx \\
         --output ioc_data_v15.1.json
-    python -m birdnetpi.wrappers.ioc_data_processor info --json-file ioc_data_v15.1.json
+    python -m birdnetpi.cli.ioc_data_processor info --json-file ioc_data_v15.1.json
 """
 
 import argparse

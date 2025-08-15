@@ -8,8 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from birdnetpi.managers.release_manager import ReleaseAsset
-from birdnetpi.wrappers.release_wrapper import (
+from birdnetpi.cli.release import (
     _add_custom_assets,
     _build_asset_list,
     _handle_github_release,
@@ -17,6 +16,7 @@ from birdnetpi.wrappers.release_wrapper import (
     list_assets,
     main,
 )
+from birdnetpi.managers.release_manager import ReleaseAsset
 
 
 @pytest.fixture
@@ -115,7 +115,7 @@ class TestBuildAssetList:
         assert assets[0].target_name == Path("custom/path")
         assert assets[0].description == "Custom asset description"
 
-    @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
+    @patch("birdnetpi.cli.release.sys.exit")
     def test_build_asset_list__missing_models_warning(
         self, mock_exit, mock_release_manager, capsys
     ):
@@ -136,7 +136,7 @@ class TestBuildAssetList:
         assert "Warning: Models not found at expected locations" in captured.out
         mock_exit.assert_called_with(1)
 
-    @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
+    @patch("birdnetpi.cli.release.sys.exit")
     def test_build_asset_list__no_assets(self, mock_exit, mock_release_manager):
         """Should exit when no assets are specified."""
         mock_exit.side_effect = SystemExit(1)
@@ -178,7 +178,7 @@ class TestAddCustomAssets:
         assert assets[1].target_name == Path("target2")
         assert assets[1].description == "Description 2"
 
-    @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
+    @patch("birdnetpi.cli.release.sys.exit")
     def test_add_custom_assets__invalid_format(self, mock_exit):
         """Should exit when custom asset format is invalid."""
         mock_exit.side_effect = SystemExit(1)
@@ -190,7 +190,7 @@ class TestAddCustomAssets:
 
         mock_exit.assert_called_once_with(1)
 
-    @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
+    @patch("birdnetpi.cli.release.sys.exit")
     def test_add_custom_assets__missing_file(self, mock_exit):
         """Should exit when custom asset file doesn't exist."""
         mock_exit.side_effect = SystemExit(1)
@@ -265,10 +265,10 @@ class TestHandleGithubRelease:
 class TestCreateRelease:
     """Test create_release function."""
 
-    @patch("birdnetpi.wrappers.release_wrapper.FilePathResolver")
-    @patch("birdnetpi.wrappers.release_wrapper.ReleaseManager")
-    @patch("birdnetpi.wrappers.release_wrapper._build_asset_list")
-    @patch("birdnetpi.wrappers.release_wrapper._handle_github_release")
+    @patch("birdnetpi.cli.release.FilePathResolver")
+    @patch("birdnetpi.cli.release.ReleaseManager")
+    @patch("birdnetpi.cli.release._build_asset_list")
+    @patch("birdnetpi.cli.release._handle_github_release")
     def test_create_release(
         self,
         mock_handle_github,
@@ -324,9 +324,9 @@ class TestCreateRelease:
         assert "Asset release created successfully!" in captured.out
         assert "Version: v2.1.0" in captured.out
 
-    @patch("birdnetpi.wrappers.release_wrapper.FilePathResolver")
-    @patch("birdnetpi.wrappers.release_wrapper.ReleaseManager")
-    @patch("birdnetpi.wrappers.release_wrapper._build_asset_list")
+    @patch("birdnetpi.cli.release.FilePathResolver")
+    @patch("birdnetpi.cli.release.ReleaseManager")
+    @patch("birdnetpi.cli.release._build_asset_list")
     def test_create_release__custom_options(
         self, mock_build_assets, mock_manager_class, mock_resolver_class
     ):
@@ -372,10 +372,10 @@ class TestCreateRelease:
         assert config_call.commit_message == "Custom commit message"
         assert config_call.tag_name == "custom-tag"
 
-    @patch("birdnetpi.wrappers.release_wrapper.FilePathResolver")
-    @patch("birdnetpi.wrappers.release_wrapper.ReleaseManager")
-    @patch("birdnetpi.wrappers.release_wrapper._build_asset_list")
-    @patch("birdnetpi.wrappers.release_wrapper._handle_github_release")
+    @patch("birdnetpi.cli.release.FilePathResolver")
+    @patch("birdnetpi.cli.release.ReleaseManager")
+    @patch("birdnetpi.cli.release._build_asset_list")
+    @patch("birdnetpi.cli.release._handle_github_release")
     def test_create_release__json_output(
         self,
         mock_handle_github,
@@ -429,10 +429,10 @@ class TestCreateRelease:
         assert data["asset_release"] == mock_asset_result
         assert data["github_release"] == mock_github_result
 
-    @patch("birdnetpi.wrappers.release_wrapper.FilePathResolver")
-    @patch("birdnetpi.wrappers.release_wrapper.ReleaseManager")
-    @patch("birdnetpi.wrappers.release_wrapper._build_asset_list")
-    @patch("birdnetpi.wrappers.release_wrapper.sys.exit")
+    @patch("birdnetpi.cli.release.FilePathResolver")
+    @patch("birdnetpi.cli.release.ReleaseManager")
+    @patch("birdnetpi.cli.release._build_asset_list")
+    @patch("birdnetpi.cli.release.sys.exit")
     def test_create_release__error_handling(
         self, mock_exit, mock_build_assets, mock_manager_class, mock_resolver_class
     ):
@@ -469,8 +469,8 @@ class TestCreateRelease:
 class TestListAssets:
     """Test list_assets function."""
 
-    @patch("birdnetpi.wrappers.release_wrapper.FilePathResolver")
-    @patch("birdnetpi.wrappers.release_wrapper.ReleaseManager")
+    @patch("birdnetpi.cli.release.FilePathResolver")
+    @patch("birdnetpi.cli.release.ReleaseManager")
     def test_list_assets(self, mock_manager_class, mock_resolver_class, tmp_path, capsys):
         """Should list available assets."""
         # Create test assets
@@ -507,8 +507,8 @@ class TestListAssets:
         assert "BirdNET models" in captured.out
         assert "IOC database" in captured.out
 
-    @patch("birdnetpi.wrappers.release_wrapper.FilePathResolver")
-    @patch("birdnetpi.wrappers.release_wrapper.ReleaseManager")
+    @patch("birdnetpi.cli.release.FilePathResolver")
+    @patch("birdnetpi.cli.release.ReleaseManager")
     def test_list_assets__file_sizes(
         self, mock_manager_class, mock_resolver_class, tmp_path, capsys
     ):
@@ -540,7 +540,7 @@ class TestListAssets:
 class TestMain:
     """Test main function and argument parsing."""
 
-    @patch("birdnetpi.wrappers.release_wrapper.create_release")
+    @patch("birdnetpi.cli.release.create_release")
     def test_main_create_command(self, mock_create):
         """Should parse create command correctly."""
         test_args = [
@@ -578,7 +578,7 @@ class TestMain:
         assert args.create_github_release is True
         assert args.output_json == "release.json"
 
-    @patch("birdnetpi.wrappers.release_wrapper.list_assets")
+    @patch("birdnetpi.cli.release.list_assets")
     def test_main_list_assets_command(self, mock_list):
         """Should parse list-assets command correctly."""
         test_args = ["release-manager", "list-assets"]
@@ -609,8 +609,8 @@ class TestMain:
 
         for args in test_cases:
             with (
-                patch("birdnetpi.wrappers.release_wrapper.create_release"),
-                patch("birdnetpi.wrappers.release_wrapper.list_assets"),
+                patch("birdnetpi.cli.release.create_release"),
+                patch("birdnetpi.cli.release.list_assets"),
             ):
                 with patch.object(sys, "argv", ["release-manager", *args]):
                     try:
@@ -622,8 +622,8 @@ class TestMain:
 class TestIntegration:
     """Integration tests for release wrapper."""
 
-    @patch("birdnetpi.wrappers.release_wrapper.FilePathResolver")
-    @patch("birdnetpi.wrappers.release_wrapper.ReleaseManager")
+    @patch("birdnetpi.cli.release.FilePathResolver")
+    @patch("birdnetpi.cli.release.ReleaseManager")
     def test_complete_create_workflow(self, mock_manager_class, mock_resolver_class, tmp_path):
         """Should complete full create workflow."""
         # Create test assets
@@ -692,6 +692,6 @@ class TestIntegration:
         mock_manager = MagicMock()
         mock_manager.get_default_assets.return_value = []
 
-        with patch("birdnetpi.wrappers.release_wrapper.sys.exit") as mock_exit:
+        with patch("birdnetpi.cli.release.sys.exit") as mock_exit:
             _build_asset_list(args, mock_manager)
             mock_exit.assert_called_once_with(1)

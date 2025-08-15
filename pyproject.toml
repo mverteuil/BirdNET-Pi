@@ -76,16 +76,16 @@ dependencies = [
 ]
 
 [project.scripts]
-asset-installer = "birdnetpi.wrappers.asset_installer_wrapper:main"
+asset-installer = "birdnetpi.cli.asset_installer:main"
 audio-analysis-daemon = "birdnetpi.daemons.audio_analysis_daemon:main"
 audio-capture-daemon = "birdnetpi.daemons.audio_capture_daemon:main"
 audio-websocket-daemon = "birdnetpi.daemons.audio_websocket_daemon:main"
-data-manager = "birdnetpi.wrappers.data_manager_wrapper:main"
-generate-dummy-data = "birdnetpi.wrappers.generate_dummy_data:main"
-manage-translations = "birdnetpi.wrappers.manage_translations:main"
-pulseaudio-setup = "birdnetpi.wrappers.pulseaudio_setup_wrapper:main"
-release-manager = "birdnetpi.wrappers.release_wrapper:main"
-reporting-manager = "birdnetpi.wrappers.reporting_manager_wrapper:main"
+# data-manager = "birdnetpi.cli.data_manager:main"  # File doesn't exist
+generate-dummy-data = "birdnetpi.cli.generate_dummy_data:main"
+manage-translations = "birdnetpi.cli.manage_translations:main"
+pulseaudio-setup = "birdnetpi.cli.pulseaudio_setup:main"
+release-manager = "birdnetpi.cli.release:main"
+# reporting-manager = "birdnetpi.cli.reporting_manager:main"  # File doesn't exist
 spectrogram-websocket-daemon = "birdnetpi.daemons.spectrogram_websocket_daemon:main"
 
 [tool.coverage.run]

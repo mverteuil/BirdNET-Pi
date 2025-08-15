@@ -351,7 +351,7 @@ class TestAudioCaptureDaemon:
             Path(__file__).parent.parent.parent
             / "src"
             / "birdnetpi"
-            / "wrappers"
+            / "daemons"
             / "audio_capture_daemon.py"
         )
 

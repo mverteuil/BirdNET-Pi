@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from birdnetpi.wrappers.ioc_data_processor import (
+from birdnetpi.cli.ioc_data_processor import (
     lookup_species,
     main,
     process_ioc_files,
@@ -46,9 +46,9 @@ def mock_ioc_database_service():
 class TestProcessIOCFiles:
     """Test process_ioc_files function."""
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCDatabaseService")
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    @patch("birdnetpi.wrappers.ioc_data_processor.sys.exit")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseService")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.sys.exit")
     def test_process_ioc_files__missing_xml(
         self, mock_exit, mock_service_class, mock_db_class, tmp_path
     ):
@@ -62,9 +62,9 @@ class TestProcessIOCFiles:
 
         mock_exit.assert_called_with(1)
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCDatabaseService")
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    @patch("birdnetpi.wrappers.ioc_data_processor.sys.exit")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseService")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.sys.exit")
     def test_process_ioc_files__missing_xlsx(
         self, mock_exit, mock_service_class, mock_db_class, tmp_path
     ):
@@ -78,8 +78,8 @@ class TestProcessIOCFiles:
 
         mock_exit.assert_called_with(1)
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCDatabaseService")
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseService")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
     def test_process_ioc_files(
         self, mock_service_class, mock_db_class, mock_ioc_reference_service, tmp_path, capsys
     ):
@@ -113,8 +113,8 @@ class TestProcessIOCFiles:
         assert "IOC Version: 15.1" in captured.out
         assert "Species count: 10832" in captured.out
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCDatabaseService")
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseService")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
     def test_process_ioc_files__database(
         self,
         mock_service_class,
@@ -153,8 +153,8 @@ class TestProcessIOCFiles:
         assert "Creating SQLite database..." in captured.out
         assert "SQLite output:" in captured.out
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    @patch("birdnetpi.wrappers.ioc_data_processor.sys.exit")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.sys.exit")
     def test_process_ioc_files_service_error(self, mock_exit, mock_service_class, tmp_path):
         """Should handle service errors gracefully."""
         # Setup files
@@ -173,7 +173,7 @@ class TestProcessIOCFiles:
 
         mock_exit.assert_called_with(1)
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
     def test_process_ioc_files__compression(
         self, mock_service_class, mock_ioc_reference_service, tmp_path
     ):
@@ -199,8 +199,8 @@ class TestProcessIOCFiles:
 class TestShowIOCInfo:
     """Test show_ioc_info function."""
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    @patch("birdnetpi.wrappers.ioc_data_processor.sys.exit")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.sys.exit")
     def test_show_ioc_info__missing_file(self, mock_exit, mock_service_class, tmp_path):
         """Should exit when JSON file is missing."""
         json_file = tmp_path / "missing.json"
@@ -209,7 +209,7 @@ class TestShowIOCInfo:
 
         mock_exit.assert_called_with(1)
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
     def test_show_ioc_info(self, mock_service_class, mock_ioc_reference_service, tmp_path, capsys):
         """Should show IOC info successfully."""
         # Setup file
@@ -233,8 +233,8 @@ class TestShowIOCInfo:
         assert "Available language codes:" in captured.out
         assert "Sample species (first 5):" in captured.out
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    @patch("birdnetpi.wrappers.ioc_data_processor.sys.exit")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.sys.exit")
     def test_show_ioc_info_service_error(self, mock_exit, mock_service_class, tmp_path):
         """Should handle service errors gracefully."""
         # Setup file
@@ -254,8 +254,8 @@ class TestShowIOCInfo:
 class TestLookupSpecies:
     """Test lookup_species function."""
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    @patch("birdnetpi.wrappers.ioc_data_processor.sys.exit")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.sys.exit")
     def test_lookup__missing_file(self, mock_exit, mock_service_class, tmp_path):
         """Should exit when JSON file is missing."""
         json_file = tmp_path / "missing.json"
@@ -264,7 +264,7 @@ class TestLookupSpecies:
 
         mock_exit.assert_called_with(1)
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
     def test_lookup_species_found(
         self, mock_service_class, mock_ioc_reference_service, tmp_path, capsys
     ):
@@ -302,7 +302,7 @@ class TestLookupSpecies:
         assert "English name: American Robin" in captured.out
         assert "ES name: Petirrojo Americano" in captured.out
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
     def test_lookup_species_not_found(
         self, mock_service_class, mock_ioc_reference_service, tmp_path, capsys
     ):
@@ -326,7 +326,7 @@ class TestLookupSpecies:
         assert "Species not found: Nonexistent species" in captured.out
         assert "Searching for similar names..." in captured.out
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
     def test_lookup_english_language(
         self, mock_service_class, mock_ioc_reference_service, tmp_path
     ):
@@ -348,8 +348,8 @@ class TestLookupSpecies:
         # Should not call translation method for English
         mock_ioc_reference_service.get_translated_common_name.assert_not_called()
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
-    @patch("birdnetpi.wrappers.ioc_data_processor.sys.exit")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.sys.exit")
     def test_lookup_service_error(self, mock_exit, mock_service_class, tmp_path):
         """Should handle service errors gracefully."""
         # Setup file
@@ -369,7 +369,7 @@ class TestLookupSpecies:
 class TestMain:
     """Test main function and argument parsing."""
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.process_ioc_files")
+    @patch("birdnetpi.cli.ioc_data_processor.process_ioc_files")
     def test_main_process_command(self, mock_process):
         """Should parse process command correctly."""
         test_args = [
@@ -397,7 +397,7 @@ class TestMain:
         assert args[3] is True  # compress
         assert str(args[4]) == "test.db"  # db_file
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.show_ioc_info")
+    @patch("birdnetpi.cli.ioc_data_processor.show_ioc_info")
     def test_main_info_command(self, mock_info):
         """Should parse info command correctly."""
         test_args = ["ioc-processor", "info", "--json-file", "test.json"]
@@ -409,7 +409,7 @@ class TestMain:
         args = mock_info.call_args[0]
         assert str(args[0]) == "test.json"
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.lookup_species")
+    @patch("birdnetpi.cli.ioc_data_processor.lookup_species")
     def test_main_lookup_command(self, mock_lookup):
         """Should parse lookup command correctly."""
         test_args = [
@@ -432,7 +432,7 @@ class TestMain:
         assert args[1] == "Turdus migratorius"
         assert args[2] == "es"
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.sys.exit")
+    @patch("birdnetpi.cli.ioc_data_processor.sys.exit")
     def test_main__no_command(self, mock_exit, capsys):
         """Should exit when no command provided."""
         test_args = ["ioc-processor"]
@@ -479,9 +479,9 @@ class TestMain:
 
         for args in test_cases:
             with (
-                patch("birdnetpi.wrappers.ioc_data_processor.process_ioc_files"),
-                patch("birdnetpi.wrappers.ioc_data_processor.show_ioc_info"),
-                patch("birdnetpi.wrappers.ioc_data_processor.lookup_species"),
+                patch("birdnetpi.cli.ioc_data_processor.process_ioc_files"),
+                patch("birdnetpi.cli.ioc_data_processor.show_ioc_info"),
+                patch("birdnetpi.cli.ioc_data_processor.lookup_species"),
             ):
                 with patch.object(sys, "argv", ["ioc-processor", *args]):
                     try:
@@ -493,7 +493,7 @@ class TestMain:
 class TestIntegration:
     """Integration tests for IOC data processor."""
 
-    @patch("birdnetpi.wrappers.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
     def test_complete_processing_workflow(
         self, mock_service_class, mock_ioc_reference_service, tmp_path
     ):
@@ -529,6 +529,6 @@ class TestIntegration:
 
         # Test invalid command
         with patch.object(sys, "argv", ["ioc-processor", "invalid-command"]):
-            with patch("birdnetpi.wrappers.ioc_data_processor.sys.exit") as mock_exit:
+            with patch("birdnetpi.cli.ioc_data_processor.sys.exit") as mock_exit:
                 main()
                 mock_exit.assert_called_with(1)

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from birdnetpi.wrappers.pulseaudio_setup_wrapper import (
+from birdnetpi.cli.pulseaudio_setup import (
     cleanup_command,
     command_test,
     detect_ip_command,
@@ -26,7 +26,7 @@ def mock_args():
 class TestPulseAudioSetupWrapper:
     """Test PulseAudio setup wrapper commands."""
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.setup_streaming")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.setup_streaming")
     @patch("builtins.print")
     def test_setup_command(self, mock_print, mock_setup):
         """Should successfully run setup command."""
@@ -51,8 +51,8 @@ class TestPulseAudioSetupWrapper:
         print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("✓" in call for call in print_calls)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_container_ip")
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.setup_streaming")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.get_container_ip")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.setup_streaming")
     @patch("builtins.print")
     def test_setup_command__auto_detect_ip(self, mock_print, mock_setup, mock_get_ip):
         """Should auto-detect container IP when not provided."""
@@ -79,7 +79,7 @@ class TestPulseAudioSetupWrapper:
         print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("Auto-detected container IP: 172.18.0.9" in call for call in print_calls)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.setup_streaming")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.setup_streaming")
     @patch("builtins.print")
     def test_setup_command__explicit_ip_no_auto_detect(self, mock_print, mock_setup):
         """Should not auto-detect when explicit IP is provided."""
@@ -92,7 +92,7 @@ class TestPulseAudioSetupWrapper:
         mock_setup.return_value = (True, "Setup completed successfully")
 
         with patch(
-            "birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_container_ip"
+            "birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.get_container_ip"
         ) as mock_get_ip:
             setup_command(mock_args)
             mock_get_ip.assert_not_called()  # Should not auto-detect
@@ -101,8 +101,8 @@ class TestPulseAudioSetupWrapper:
         print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("Container IP: 10.0.0.4" in call for call in print_calls)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.setup_streaming")
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.sys.exit")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.setup_streaming")
+    @patch("birdnetpi.cli.pulseaudio_setup.sys.exit")
     @patch("builtins.print")
     def test_setup_command_failure(self, mock_print, mock_exit, mock_setup):
         """Should handle setup command failure."""
@@ -122,7 +122,7 @@ class TestPulseAudioSetupWrapper:
         print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("✗" in call for call in print_calls)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.test_connection")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.test_connection")
     @patch("builtins.print")
     def test_command_test(self, mock_print, mock_test):
         """Should successfully run test command."""
@@ -143,8 +143,8 @@ class TestPulseAudioSetupWrapper:
         print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("✓" in call for call in print_calls)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_container_ip")
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.test_connection")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.get_container_ip")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.test_connection")
     @patch("builtins.print")
     def test_command_test__auto_detect_ip(self, mock_print, mock_test, mock_get_ip):
         """Should auto-detect container IP when not provided."""
@@ -167,7 +167,7 @@ class TestPulseAudioSetupWrapper:
         print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("auto-detected IP 172.18.0.10:4713" in call for call in print_calls)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.test_connection")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.test_connection")
     @patch("builtins.print")
     def test_command_test__explicit_ip_no_auto_detect(self, mock_print, mock_test):
         """Should not auto-detect when explicit IP is provided."""
@@ -179,7 +179,7 @@ class TestPulseAudioSetupWrapper:
         mock_test.return_value = (True, "Connection successful")
 
         with patch(
-            "birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_container_ip"
+            "birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.get_container_ip"
         ) as mock_get_ip:
             command_test(mock_args)
             mock_get_ip.assert_not_called()  # Should not auto-detect
@@ -188,8 +188,8 @@ class TestPulseAudioSetupWrapper:
         print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("Testing connection to 10.0.0.5:4713" in call for call in print_calls)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.test_connection")
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.sys.exit")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.test_connection")
+    @patch("birdnetpi.cli.pulseaudio_setup.sys.exit")
     @patch("builtins.print")
     def test_command_test_failure(self, mock_print, mock_exit, mock_test):
         """Should handle test command failure."""
@@ -209,7 +209,7 @@ class TestPulseAudioSetupWrapper:
         assert any("✗" in call for call in print_calls)
         assert any("Troubleshooting" in call for call in print_calls)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_status")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.get_status")
     @patch("builtins.print")
     def test_status_command_basic(self, mock_print, mock_status):
         """Should display status information."""
@@ -234,7 +234,7 @@ class TestPulseAudioSetupWrapper:
         assert any("macOS" in call for call in print_calls)
         assert any("Test Device" in call for call in print_calls)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_status")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.get_status")
     @patch("builtins.print")
     def test_status_command__json(self, mock_print, mock_status):
         """Should display status with JSON output."""
@@ -285,7 +285,7 @@ class TestPulseAudioSetupWrapper:
             json_printed = any('"macos"' in call and '"config_dir"' in call for call in print_calls)
         assert json_printed
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_audio_devices")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.get_audio_devices")
     @patch("builtins.print")
     def test_devices_command(self, mock_print, mock_devices):
         """Should list available audio devices."""
@@ -305,8 +305,8 @@ class TestPulseAudioSetupWrapper:
         assert any("Test Microphone 1" in call for call in print_calls)
         assert any("Test Microphone 2" in call for call in print_calls)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_audio_devices")
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.sys.exit")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.get_audio_devices")
+    @patch("birdnetpi.cli.pulseaudio_setup.sys.exit")
     @patch("builtins.print")
     def test_devices_command__no_devices(self, mock_print, mock_exit, mock_devices):
         """Should handle no devices found."""
@@ -323,7 +323,7 @@ class TestPulseAudioSetupWrapper:
         print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("No audio devices found" in call for call in print_calls)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.cleanup_config")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.cleanup_config")
     @patch("builtins.input", return_value="y")
     @patch("builtins.print")
     def test_cleanup_command_confirmed(self, mock_print, mock_input, mock_cleanup):
@@ -354,7 +354,7 @@ class TestPulseAudioSetupWrapper:
         print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("cancelled" in call for call in print_calls)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.cleanup_config")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.cleanup_config")
     @patch("builtins.print")
     def test_cleanup_command_forced(self, mock_print, mock_cleanup):
         """Should clean up configuration when forced."""
@@ -367,10 +367,8 @@ class TestPulseAudioSetupWrapper:
 
         mock_cleanup.assert_called_once()
 
-    @patch(
-        "birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.is_macos", return_value=False
-    )
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.sys.exit")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.is_macos", return_value=False)
+    @patch("birdnetpi.cli.pulseaudio_setup.sys.exit")
     @patch("builtins.print")
     def test_install_command_not_macos(self, mock_print, mock_exit, mock_is_macos):
         """Should fail install command on non-macOS."""
@@ -384,11 +382,9 @@ class TestPulseAudioSetupWrapper:
         print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("only supported on macOS" in call for call in print_calls)
 
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.is_macos", return_value=True)
     @patch(
-        "birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.is_macos", return_value=True
-    )
-    @patch(
-        "birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.is_pulseaudio_installed",
+        "birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.is_pulseaudio_installed",
         return_value=True,
     )
     @patch("builtins.print")
@@ -402,15 +398,13 @@ class TestPulseAudioSetupWrapper:
         print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("already installed" in call for call in print_calls)
 
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.is_macos", return_value=True)
     @patch(
-        "birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.is_macos", return_value=True
-    )
-    @patch(
-        "birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.is_pulseaudio_installed",
+        "birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.is_pulseaudio_installed",
         return_value=False,
     )
     @patch(
-        "birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.install_pulseaudio",
+        "birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.install_pulseaudio",
         return_value=True,
     )
     @patch("builtins.print")
@@ -426,7 +420,7 @@ class TestPulseAudioSetupWrapper:
         print_calls = [str(call) for call in mock_print.call_args_list]
         assert any("installed successfully" in call for call in print_calls)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.argparse.ArgumentParser")
+    @patch("birdnetpi.cli.pulseaudio_setup.argparse.ArgumentParser")
     def test_main__no_command(self, mock_parser_class):
         """Should print help when no command provided."""
         mock_parser = MagicMock()
@@ -437,8 +431,8 @@ class TestPulseAudioSetupWrapper:
 
         mock_parser.print_help.assert_called_once()
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.setup_command")
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.argparse.ArgumentParser")
+    @patch("birdnetpi.cli.pulseaudio_setup.setup_command")
+    @patch("birdnetpi.cli.pulseaudio_setup.argparse.ArgumentParser")
     def test_main_setup_command(self, mock_parser_class, mock_setup_command):
         """Should call setup_command for setup command."""
         mock_parser = MagicMock()
@@ -450,8 +444,8 @@ class TestPulseAudioSetupWrapper:
 
         mock_setup_command.assert_called_once_with(mock_args)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.command_test")
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.argparse.ArgumentParser")
+    @patch("birdnetpi.cli.pulseaudio_setup.command_test")
+    @patch("birdnetpi.cli.pulseaudio_setup.argparse.ArgumentParser")
     def test_main_command(self, mock_parser_class, mock_test_command):
         """Should call command_test for test command."""
         mock_parser = MagicMock()
@@ -463,8 +457,8 @@ class TestPulseAudioSetupWrapper:
 
         mock_test_command.assert_called_once_with(mock_args)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.status_command")
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.argparse.ArgumentParser")
+    @patch("birdnetpi.cli.pulseaudio_setup.status_command")
+    @patch("birdnetpi.cli.pulseaudio_setup.argparse.ArgumentParser")
     def test_main_status_command(self, mock_parser_class, mock_status_command):
         """Should call status_command for status command."""
         mock_parser = MagicMock()
@@ -476,8 +470,8 @@ class TestPulseAudioSetupWrapper:
 
         mock_status_command.assert_called_once_with(mock_args)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.devices_command")
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.argparse.ArgumentParser")
+    @patch("birdnetpi.cli.pulseaudio_setup.devices_command")
+    @patch("birdnetpi.cli.pulseaudio_setup.argparse.ArgumentParser")
     def test_main_devices_command(self, mock_parser_class, mock_devices_command):
         """Should call devices_command for devices command."""
         mock_parser = MagicMock()
@@ -489,8 +483,8 @@ class TestPulseAudioSetupWrapper:
 
         mock_devices_command.assert_called_once_with(mock_args)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.cleanup_command")
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.argparse.ArgumentParser")
+    @patch("birdnetpi.cli.pulseaudio_setup.cleanup_command")
+    @patch("birdnetpi.cli.pulseaudio_setup.argparse.ArgumentParser")
     def test_main_cleanup_command(self, mock_parser_class, mock_cleanup_command):
         """Should call cleanup_command for cleanup command."""
         mock_parser = MagicMock()
@@ -502,8 +496,8 @@ class TestPulseAudioSetupWrapper:
 
         mock_cleanup_command.assert_called_once_with(mock_args)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.install_command")
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.argparse.ArgumentParser")
+    @patch("birdnetpi.cli.pulseaudio_setup.install_command")
+    @patch("birdnetpi.cli.pulseaudio_setup.argparse.ArgumentParser")
     def test_main_install_command(self, mock_parser_class, mock_install_command):
         """Should call install_command for install command."""
         mock_parser = MagicMock()
@@ -516,7 +510,7 @@ class TestPulseAudioSetupWrapper:
         mock_install_command.assert_called_once_with(mock_args)
 
     # Detect IP Command Tests
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_container_ip")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.get_container_ip")
     @patch("builtins.print")
     def test_detect_ip_command__running_container(self, mock_print, mock_get_ip):
         """Should display detected IP for running container."""
@@ -531,7 +525,7 @@ class TestPulseAudioSetupWrapper:
         assert any("Detecting IP for container 'test-container'" in call for call in print_calls)
         assert any("Detected IP: 172.18.0.11" in call for call in print_calls)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_container_ip")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.get_container_ip")
     @patch("builtins.print")
     def test_detect_ip_command__fallback_ip(self, mock_print, mock_get_ip):
         """Should display fallback IP and helpful message."""
@@ -551,7 +545,7 @@ class TestPulseAudioSetupWrapper:
         assert any("Container is not running" in call for call in print_calls)
         assert any("Docker is not available" in call for call in print_calls)
 
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.PulseAudioSetup.get_container_ip")
+    @patch("birdnetpi.cli.pulseaudio_setup.PulseAudioSetup.get_container_ip")
     @patch("builtins.print")
     def test_detect_ip_command__default_container_name(self, mock_print, mock_get_ip):
         """Should use default container name when not specified."""
@@ -566,8 +560,8 @@ class TestPulseAudioSetupWrapper:
         assert any("Detecting IP for container 'birdnet-pi'" in call for call in print_calls)
 
     # Main Command Tests for detect-ip
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.detect_ip_command")
-    @patch("birdnetpi.wrappers.pulseaudio_setup_wrapper.argparse.ArgumentParser")
+    @patch("birdnetpi.cli.pulseaudio_setup.detect_ip_command")
+    @patch("birdnetpi.cli.pulseaudio_setup.argparse.ArgumentParser")
     def test_main_detect_ip_command(self, mock_parser_class, mock_detect_ip_command):
         """Should call detect_ip_command for detect-ip command."""
         mock_parser = MagicMock()

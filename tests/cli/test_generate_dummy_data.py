@@ -2,7 +2,7 @@ from unittest.mock import DEFAULT, MagicMock, patch
 
 import pytest
 
-import birdnetpi.wrappers.generate_dummy_data as gdd
+import birdnetpi.cli.generate_dummy_data as gdd
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.system_control_service import SystemControlService
@@ -12,7 +12,7 @@ from birdnetpi.services.system_control_service import SystemControlService
 def mock_dependencies(mocker):
     """Mock external dependencies for generate_dummy_data.py."""
     with patch.multiple(
-        "birdnetpi.wrappers.generate_dummy_data",
+        "birdnetpi.cli.generate_dummy_data",
         FilePathResolver=DEFAULT,
         DatabaseService=DEFAULT,
         DetectionManager=DEFAULT,
@@ -246,7 +246,7 @@ class TestGenerateDummyData:
             Path(__file__).parent.parent.parent
             / "src"
             / "birdnetpi"
-            / "wrappers"
+            / "cli"
             / "generate_dummy_data.py"
         )
 
@@ -273,8 +273,8 @@ class TestGetFastAPIServiceName:
 
     def test_get_fastapi_service_name__docker_env_variable(self, mocker):
         """Should return 'fastapi' when DOCKER_CONTAINER env var is set to true."""
-        mock_getenv = mocker.patch("birdnetpi.wrappers.generate_dummy_data.os.getenv")
-        mock_exists = mocker.patch("birdnetpi.wrappers.generate_dummy_data.os.path.exists")
+        mock_getenv = mocker.patch("birdnetpi.cli.generate_dummy_data.os.getenv")
+        mock_exists = mocker.patch("birdnetpi.cli.generate_dummy_data.os.path.exists")
 
         mock_getenv.return_value = "true"
         mock_exists.return_value = False
@@ -286,8 +286,8 @@ class TestGetFastAPIServiceName:
 
     def test_get_fastapi_service_name__docker_env_variable_uppercase(self, mocker):
         """Should return 'fastapi' when DOCKER_CONTAINER env var is set to TRUE."""
-        mock_getenv = mocker.patch("birdnetpi.wrappers.generate_dummy_data.os.getenv")
-        mock_exists = mocker.patch("birdnetpi.wrappers.generate_dummy_data.os.path.exists")
+        mock_getenv = mocker.patch("birdnetpi.cli.generate_dummy_data.os.getenv")
+        mock_exists = mocker.patch("birdnetpi.cli.generate_dummy_data.os.path.exists")
 
         mock_getenv.return_value = "TRUE"
         mock_exists.return_value = False
@@ -298,8 +298,8 @@ class TestGetFastAPIServiceName:
 
     def test_get_fastapi_service_name__dockerenv_file_exists(self, mocker):
         """Should return 'fastapi' when /.dockerenv file exists."""
-        mock_getenv = mocker.patch("birdnetpi.wrappers.generate_dummy_data.os.getenv")
-        mock_exists = mocker.patch("birdnetpi.wrappers.generate_dummy_data.os.path.exists")
+        mock_getenv = mocker.patch("birdnetpi.cli.generate_dummy_data.os.getenv")
+        mock_exists = mocker.patch("birdnetpi.cli.generate_dummy_data.os.path.exists")
 
         mock_getenv.return_value = "false"
         mock_exists.return_value = True
@@ -311,8 +311,8 @@ class TestGetFastAPIServiceName:
 
     def test_get_fastapi_service_name__sbc_environment(self, mocker):
         """Should return 'birdnetpi-fastapi' for SBC/systemd environment."""
-        mock_getenv = mocker.patch("birdnetpi.wrappers.generate_dummy_data.os.getenv")
-        mock_exists = mocker.patch("birdnetpi.wrappers.generate_dummy_data.os.path.exists")
+        mock_getenv = mocker.patch("birdnetpi.cli.generate_dummy_data.os.getenv")
+        mock_exists = mocker.patch("birdnetpi.cli.generate_dummy_data.os.path.exists")
 
         mock_getenv.return_value = "false"
         mock_exists.return_value = False
@@ -323,8 +323,8 @@ class TestGetFastAPIServiceName:
 
     def test_get_fastapi_service_name__docker_env_variable_false(self, mocker):
         """Should return 'birdnetpi-fastapi' when DOCKER_CONTAINER is explicitly false."""
-        mock_getenv = mocker.patch("birdnetpi.wrappers.generate_dummy_data.os.getenv")
-        mock_exists = mocker.patch("birdnetpi.wrappers.generate_dummy_data.os.path.exists")
+        mock_getenv = mocker.patch("birdnetpi.cli.generate_dummy_data.os.getenv")
+        mock_exists = mocker.patch("birdnetpi.cli.generate_dummy_data.os.path.exists")
 
         mock_getenv.return_value = "false"
         mock_exists.return_value = False
@@ -335,7 +335,7 @@ class TestGetFastAPIServiceName:
 
     def test_main_uses_correct_service_name__docker(self, mocker, mock_dependencies, capsys):
         """Should use Docker service name in Docker environment."""
-        mock_os = mocker.patch("birdnetpi.wrappers.generate_dummy_data.os")
+        mock_os = mocker.patch("birdnetpi.cli.generate_dummy_data.os")
         mock_os.path.exists.return_value = False
         mock_os.getenv.return_value = "true"  # Docker environment
 
@@ -361,7 +361,7 @@ class TestGetFastAPIServiceName:
 
     def test_main_uses_correct_service_name__sbc(self, mocker, mock_dependencies, capsys):
         """Should use SBC service name in SBC environment."""
-        mock_os = mocker.patch("birdnetpi.wrappers.generate_dummy_data.os")
+        mock_os = mocker.patch("birdnetpi.cli.generate_dummy_data.os")
         mock_os.path.exists.return_value = False
         mock_os.getenv.return_value = "false"  # SBC environment
 

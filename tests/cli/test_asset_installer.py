@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from birdnetpi.wrappers.asset_installer_wrapper import (
+from birdnetpi.cli.asset_installer import (
     check_local_assets,
     install_assets,
     list_available_assets,
@@ -89,7 +89,7 @@ def mock_file_resolver(tmp_path):
 class TestInstallAssets:
     """Test install_assets function."""
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
+    @patch("birdnetpi.cli.asset_installer.UpdateManager")
     def test_install_assets(
         self, mock_update_manager_class, test_download_result, test_install_args
     ):
@@ -110,7 +110,7 @@ class TestInstallAssets:
             github_repo="mverteuil/BirdNET-Pi",
         )
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
+    @patch("birdnetpi.cli.asset_installer.UpdateManager")
     def test_install_assets___json_output(
         self, mock_update_manager_class, tmp_path, test_download_result
     ):
@@ -138,8 +138,8 @@ class TestInstallAssets:
             data = json.load(f)
         assert data == test_download_result["partial"]
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.sys.exit")
+    @patch("birdnetpi.cli.asset_installer.UpdateManager")
+    @patch("birdnetpi.cli.asset_installer.sys.exit")
     def test_install_assets___no_types_specified(
         self, mock_exit, mock_update_manager_class, test_install_args
     ):
@@ -156,8 +156,8 @@ class TestInstallAssets:
         mock_update_manager_class.assert_called_once()
         mock_manager.download_release_assets.assert_not_called()
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.sys.exit")
+    @patch("birdnetpi.cli.asset_installer.UpdateManager")
+    @patch("birdnetpi.cli.asset_installer.sys.exit")
     def test_install_assets__download_error(
         self, mock_exit, mock_update_manager_class, test_install_args
     ):
@@ -171,8 +171,8 @@ class TestInstallAssets:
 
         mock_exit.assert_called_once_with(1)
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.sys.exit")
+    @patch("birdnetpi.cli.asset_installer.UpdateManager")
+    @patch("birdnetpi.cli.asset_installer.sys.exit")
     def test_install_assets__network_error(
         self, mock_exit, mock_update_manager_class, test_install_args
     ):
@@ -185,8 +185,8 @@ class TestInstallAssets:
 
         mock_exit.assert_called_once_with(1)
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.sys.exit")
+    @patch("birdnetpi.cli.asset_installer.UpdateManager")
+    @patch("birdnetpi.cli.asset_installer.sys.exit")
     def test_install_assets__file_not_found(
         self, mock_exit, mock_update_manager_class, test_install_args
     ):
@@ -199,8 +199,8 @@ class TestInstallAssets:
 
         mock_exit.assert_called_once_with(1)
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.sys.exit")
+    @patch("birdnetpi.cli.asset_installer.UpdateManager")
+    @patch("birdnetpi.cli.asset_installer.sys.exit")
     def test_install_assets__permission__error_help(
         self, mock_exit, mock_update_manager_class, capsys
     ):
@@ -234,7 +234,7 @@ class TestInstallAssets:
 class TestListAvailableAssets:
     """Test list_available_assets function."""
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
+    @patch("birdnetpi.cli.asset_installer.UpdateManager")
     def test_list_available_assets(self, mock_update_manager_class, test_version_data, capsys):
         """Should list available asset versions."""
         # Setup mock
@@ -252,7 +252,7 @@ class TestListAvailableAssets:
         for version in test_version_data["versions"]:
             assert version in captured.out
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
+    @patch("birdnetpi.cli.asset_installer.UpdateManager")
     def test_list_available_assets__empty(
         self, mock_update_manager_class, test_version_data, capsys
     ):
@@ -269,8 +269,8 @@ class TestListAvailableAssets:
         captured = capsys.readouterr()
         assert "No asset versions found." in captured.out
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.sys.exit")
+    @patch("birdnetpi.cli.asset_installer.UpdateManager")
+    @patch("birdnetpi.cli.asset_installer.sys.exit")
     def test_list_available_assets__error(self, mock_exit, mock_update_manager_class):
         """Should handle list errors gracefully."""
         # Setup mock to raise exception
@@ -288,7 +288,7 @@ class TestListAvailableAssets:
 class TestCheckLocalAssets:
     """Test check_local_assets function."""
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.FilePathResolver")
+    @patch("birdnetpi.cli.asset_installer.FilePathResolver")
     def test_check_local_assets_models_exist(self, mock_file_resolver_class, tmp_path, capsys):
         """Should show status of existing models."""
         # Setup mock resolver
@@ -310,7 +310,7 @@ class TestCheckLocalAssets:
         assert "✓ Models: 2 model files" in captured.out
         assert str(models_dir) in captured.out
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.FilePathResolver")
+    @patch("birdnetpi.cli.asset_installer.FilePathResolver")
     def test_check_local_assets_verbose_mode(self, mock_file_resolver_class, tmp_path, capsys):
         """Should show detailed file information in verbose mode."""
         # Setup mock resolver
@@ -330,7 +330,7 @@ class TestCheckLocalAssets:
         captured = capsys.readouterr()
         assert "model1.tflite (" in captured.out  # Should show individual file sizes
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.FilePathResolver")
+    @patch("birdnetpi.cli.asset_installer.FilePathResolver")
     def test_check_local_assets_ioc_database_exists(
         self, mock_file_resolver_class, tmp_path, capsys
     ):
@@ -352,7 +352,7 @@ class TestCheckLocalAssets:
         assert "✓ IOC Database:" in captured.out
         assert str(ioc_db) in captured.out
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.FilePathResolver")
+    @patch("birdnetpi.cli.asset_installer.FilePathResolver")
     def test_check_local_assets__missing_files(self, mock_file_resolver_class, tmp_path, capsys):
         """Should show missing status for non-existent files."""
         # Setup mock resolver
@@ -373,7 +373,7 @@ class TestCheckLocalAssets:
 class TestMain:
     """Test main function and argument parsing."""
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.install_assets")
+    @patch("birdnetpi.cli.asset_installer.install_assets")
     def test_main_install_command(self, mock_install_assets):
         """Should parse install command correctly."""
         test_args = [
@@ -396,7 +396,7 @@ class TestMain:
         assert args.include_ioc_db is True
         assert args.output_json == "result.json"
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.list_available_assets")
+    @patch("birdnetpi.cli.asset_installer.list_available_assets")
     def test_main_list_versions_command(self, mock_list_assets):
         """Should parse list-versions command correctly."""
         test_args = ["asset-installer", "list-versions"]
@@ -406,7 +406,7 @@ class TestMain:
 
         mock_list_assets.assert_called_once()
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.check_local_assets")
+    @patch("birdnetpi.cli.asset_installer.check_local_assets")
     def test_main_check_local_command(self, mock_check_assets):
         """Should parse check-local command correctly."""
         test_args = ["asset-installer", "check-local", "--verbose"]
@@ -450,9 +450,9 @@ class TestMain:
         for args in test_cases:
             # This would fail if argument structure is wrong
             with (
-                patch("birdnetpi.wrappers.asset_installer_wrapper.install_assets"),
-                patch("birdnetpi.wrappers.asset_installer_wrapper.list_available_assets"),
-                patch("birdnetpi.wrappers.asset_installer_wrapper.check_local_assets"),
+                patch("birdnetpi.cli.asset_installer.install_assets"),
+                patch("birdnetpi.cli.asset_installer.list_available_assets"),
+                patch("birdnetpi.cli.asset_installer.check_local_assets"),
             ):
                 with patch.object(sys, "argv", ["asset-installer", *args]):
                     try:
@@ -464,8 +464,8 @@ class TestMain:
 class TestIntegration:
     """Integration tests for the asset installer wrapper."""
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.FilePathResolver")
+    @patch("birdnetpi.cli.asset_installer.UpdateManager")
+    @patch("birdnetpi.cli.asset_installer.FilePathResolver")
     def test_complete_install_workflow(
         self, mock_file_resolver_class, mock_update_manager_class, tmp_path
     ):
@@ -507,7 +507,7 @@ class TestIntegration:
             github_repo="mverteuil/BirdNET-Pi",
         )
 
-    @patch("birdnetpi.wrappers.asset_installer_wrapper.UpdateManager")
+    @patch("birdnetpi.cli.asset_installer.UpdateManager")
     def test_error_handling_consistency(self, mock_update_manager_class):
         """Should handle different types of errors consistently."""
         mock_manager = MagicMock()
@@ -532,7 +532,7 @@ class TestIntegration:
                 output_json=None,
             )
 
-            with patch("birdnetpi.wrappers.asset_installer_wrapper.sys.exit") as mock_exit:
+            with patch("birdnetpi.cli.asset_installer.sys.exit") as mock_exit:
                 install_assets(args)
                 mock_exit.assert_called_once_with(1)
                 mock_exit.reset_mock()

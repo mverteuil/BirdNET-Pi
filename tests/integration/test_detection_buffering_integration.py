@@ -14,7 +14,7 @@ import httpx
 import numpy as np
 import pytest
 
-import birdnetpi.wrappers.generate_dummy_data as gdd
+import birdnetpi.cli.generate_dummy_data as gdd
 from birdnetpi.managers.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.models.config import BirdNETConfig
@@ -85,7 +85,7 @@ def audio_analysis_service_integration(
 def caplog_integration(caplog):
     """Fixture to capture logs for integration tests."""
     caplog.set_level(logging.INFO, logger="birdnetpi.managers.audio_analysis_manager")
-    caplog.set_level(logging.INFO, logger="birdnetpi.wrappers.generate_dummy_data")
+    caplog.set_level(logging.INFO, logger="birdnetpi.cli.generate_dummy_data")
     yield
 
 
@@ -409,22 +409,22 @@ class TestDetectionBufferingWithAdminOperations:
             # Simulate admin operation affecting FastAPI
             with (
                 patch(
-                    "birdnetpi.wrappers.generate_dummy_data.FilePathResolver"
+                    "birdnetpi.cli.generate_dummy_data.FilePathResolver"
                 ) as mock_file_path_resolver,
                 patch(
-                    "birdnetpi.wrappers.generate_dummy_data.DatabaseService"
+                    "birdnetpi.cli.generate_dummy_data.DatabaseService"
                 ) as _mock_database_service,
                 patch(
-                    "birdnetpi.wrappers.generate_dummy_data.DetectionManager"
+                    "birdnetpi.cli.generate_dummy_data.DetectionManager"
                 ) as mock_detection_manager,
                 patch(
-                    "birdnetpi.wrappers.generate_dummy_data.SystemControlService"
+                    "birdnetpi.cli.generate_dummy_data.SystemControlService"
                 ) as mock_system_control_service,
                 patch(
-                    "birdnetpi.wrappers.generate_dummy_data.generate_dummy_detections"
+                    "birdnetpi.cli.generate_dummy_data.generate_dummy_detections"
                 ) as _mock_generate_dummy_detections,
-                patch("birdnetpi.wrappers.generate_dummy_data.time") as _mock_time,
-                patch("birdnetpi.wrappers.generate_dummy_data.os") as mock_os,
+                patch("birdnetpi.cli.generate_dummy_data.time") as _mock_time,
+                patch("birdnetpi.cli.generate_dummy_data.os") as mock_os,
             ):
                 # Configure mocks for generate_dummy_data
                 from pathlib import Path
