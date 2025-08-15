@@ -13,10 +13,10 @@ from birdnetpi.managers.reporting_manager import ReportingManager
 
 
 @pytest.fixture
-def detection_manager():
-    """Provide a mock DetectionManager instance for performance testing."""
+def data_manager():
+    """Provide a mock DataManager instance for performance testing."""
     mock = MagicMock()
-    mock.detection_query_service = MagicMock()
+    mock.query_service = MagicMock()
     return mock
 
 
@@ -33,9 +33,7 @@ def mock_location_service():
 
 
 @pytest.fixture
-def performance_reporting_manager(
-    detection_manager, path_resolver, mock_config, mock_location_service
-):
+def performance_reporting_manager(data_manager, path_resolver, mock_config, mock_location_service):
     """Provide a ReportingManager instance configured for performance testing."""
     from birdnetpi.managers.data_preparation_manager import DataPreparationManager
     from birdnetpi.managers.plotting_manager import PlottingManager
@@ -44,7 +42,7 @@ def performance_reporting_manager(
     mock_data_preparation_manager = MagicMock(spec=DataPreparationManager)
 
     manager = ReportingManager(
-        detection_manager=detection_manager,
+        data_manager=data_manager,
         path_resolver=path_resolver,
         config=mock_config,
         plotting_manager=mock_plotting_manager,

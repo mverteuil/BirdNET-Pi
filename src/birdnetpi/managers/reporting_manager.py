@@ -6,8 +6,8 @@ import pandas as pd
 if TYPE_CHECKING:
     from birdnetpi.services.detection_query_service import DetectionWithLocalization
 
+from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
-from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.location_service import LocationService
@@ -20,7 +20,7 @@ class ReportingManager:
 
     def __init__(
         self,
-        detection_manager: DetectionManager,
+        data_manager: DataManager,
         path_resolver: PathResolver,
         config: BirdNETConfig,
         plotting_manager: PlottingManager,
@@ -28,7 +28,7 @@ class ReportingManager:
         location_service: LocationService,
         species_display_service: SpeciesDisplayService | None = None,
     ) -> None:
-        self.detection_manager = detection_manager
+        self.data_manager = data_manager
         self.path_resolver = path_resolver
         self.config = config
         self.plotting_manager = plotting_manager
@@ -66,11 +66,11 @@ class ReportingManager:
         """
         data = []  # Initialize data to avoid unbound variable error
 
-        if use_l10n_data and self.detection_manager.detection_query_service:
+        if use_l10n_data and self.data_manager.query_service:
             try:
                 # Get detections with localization data (all detections, no limit)
                 detections_with_l10n = (
-                    self.detection_manager.detection_query_service.get_detections_with_localization(
+                    self.data_manager.query_service.get_detections_with_localization(
                         limit=10000,  # Large limit to get all data
                         language_code=language_code,
                     )
@@ -106,7 +106,7 @@ class ReportingManager:
 
         if not use_l10n_data:
             # Original implementation without IOC data
-            detections = self.detection_manager.get_all_detections()
+            detections = self.data_manager.get_all_detections()
             data = [
                 {
                     "common_name": d.common_name or "",
@@ -158,11 +158,11 @@ class ReportingManager:
         prior_end_date: datetime.date,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Get total detection counts and unique species counts for the current and prior weeks."""
-        current_week_stats = self.detection_manager.get_detection_counts_by_date_range(
+        current_week_stats = self.data_manager.get_detection_counts_by_date_range(
             datetime.datetime.combine(start_date, datetime.time.min),
             datetime.datetime.combine(end_date, datetime.time.max),
         )
-        prior_week_stats = self.detection_manager.get_detection_counts_by_date_range(
+        prior_week_stats = self.data_manager.get_detection_counts_by_date_range(
             datetime.datetime.combine(prior_start_date, datetime.time.min),
             datetime.datetime.combine(prior_end_date, datetime.time.max),
         )
@@ -176,7 +176,7 @@ class ReportingManager:
         prior_end_date: datetime.date,
     ) -> list[dict[str, Any]]:
         """Fetch the top 10 species for the current week and their counts from the prior week."""
-        top_10_species_rows = self.detection_manager.get_top_species_with_prior_counts(
+        top_10_species_rows = self.data_manager.get_top_species_with_prior_counts(
             datetime.datetime.combine(start_date, datetime.time.min),
             datetime.datetime.combine(end_date, datetime.time.max),
             datetime.datetime.combine(prior_start_date, datetime.time.min),
@@ -205,7 +205,7 @@ class ReportingManager:
         self, start_date: datetime.date, end_date: datetime.date
     ) -> list[dict[str, Any]]:
         """Fetch new species detected in the current week that were not present in prior data."""
-        new_species_rows = self.detection_manager.get_new_species_data(
+        new_species_rows = self.data_manager.get_new_species_data(
             datetime.datetime.combine(start_date, datetime.time.min),
             datetime.datetime.combine(end_date, datetime.time.max),
         )
@@ -242,7 +242,7 @@ class ReportingManager:
         today = datetime.date.today()
 
         # Check if we have data for the current period
-        all_detections = self.detection_manager.get_all_detections()
+        all_detections = self.data_manager.get_all_detections()
 
         if all_detections:
             # Get the date range of available data
@@ -324,17 +324,46 @@ class ReportingManager:
             language_code: Language for translations
             use_l10n_data: Whether to include translation data
         """
-        if use_l10n_data and self.detection_manager.detection_query_service:
+        if use_l10n_data and self.data_manager.query_service:
             try:
-                return self.detection_manager.get_most_recent_detections_with_localization(
-                    limit, language_code
+                # Get detections with localization using query_detections
+                detections_with_l10n = self.data_manager.query_detections(
+                    limit=limit,
+                    order_by="timestamp",
+                    order_desc=True,
+                    include_localization=True,
+                    language_code=language_code,
                 )
+                # Convert DetectionWithLocalization objects to dictionaries
+                return [
+                    {
+                        "date": d.timestamp.strftime("%Y-%m-%d"),
+                        "time": d.timestamp.strftime("%H:%M:%S"),
+                        "scientific_name": d.scientific_name or "",
+                        "common_name": self._get_formatted_species_name(d, prefer_translation=True),
+                        "confidence": d.confidence or 0,
+                        "latitude": d.detection.latitude if hasattr(d, "detection") else "",
+                        "longitude": d.detection.longitude if hasattr(d, "detection") else "",
+                    }
+                    for d in detections_with_l10n
+                ]
             except Exception as e:
                 print(f"Error getting recent detections with localization data, falling back: {e}")
 
-        # Fallback to original method
-        recent_detections = self.detection_manager.get_most_recent_detections(limit)
-        return recent_detections
+        # Fallback to original method - convert Detection objects to dicts
+        recent_detections = self.data_manager.get_recent_detections(limit)
+        return [
+            {
+                "date": d.timestamp.strftime("%Y-%m-%d") if d.timestamp else "",
+                "time": d.timestamp.strftime("%H:%M:%S") if d.timestamp else "",
+                "scientific_name": d.scientific_name or "",
+                "common_name": d.common_name or "",
+                "confidence": d.confidence or 0,
+                "latitude": d.latitude or "",
+                "longitude": d.longitude or "",
+            }
+            for d in recent_detections
+        ]
 
     def get_todays_detections(
         self, language_code: str = "en", use_l10n_data: bool = True
@@ -350,10 +379,10 @@ class ReportingManager:
         end_datetime = datetime.datetime.combine(today, datetime.time.max)
 
         # Try to use IOC-enhanced data if available
-        if use_l10n_data and self.detection_manager.detection_query_service:
+        if use_l10n_data and self.data_manager.query_service:
             try:
                 detections_with_l10n = (
-                    self.detection_manager.detection_query_service.get_detections_with_localization(
+                    self.data_manager.query_service.get_detections_with_localization(
                         limit=1000, since=start_datetime, language_code=language_code
                     )
                 )
@@ -401,7 +430,7 @@ class ReportingManager:
                 use_l10n_data = False
 
         # Fallback to original implementation
-        all_detections = self.detection_manager.get_all_detections()
+        all_detections = self.data_manager.get_all_detections()
         todays_detections = [
             d
             for d in all_detections
@@ -463,5 +492,17 @@ class ReportingManager:
 
     def get_best_detections(self, limit: int = 20) -> list[dict]:
         """Retrieve the best detections from the database."""
-        best_detections = self.detection_manager.get_best_detections(limit)
-        return best_detections
+        best_detections = self.data_manager.get_best_detections(limit)
+        # Convert Detection objects to dictionaries
+        return [
+            {
+                "id": d.id,
+                "scientific_name": d.scientific_name,
+                "common_name": d.common_name,
+                "confidence": d.confidence,
+                "timestamp": d.timestamp.isoformat() if d.timestamp else None,
+                "latitude": d.latitude,
+                "longitude": d.longitude,
+            }
+            for d in best_detections
+        ]

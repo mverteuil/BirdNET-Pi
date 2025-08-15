@@ -28,20 +28,20 @@ def mock_data_preparation_manager():
 
 
 @pytest.fixture
-def detection_manager():
-    """Provide a mock DatabaseManager instance."""
+def data_manager():
+    """Provide a mock DataManager instance."""
     mock = MagicMock()
-    # Set up detection_query_service to make reporting manager use IOC methods
-    mock.detection_query_service = MagicMock()
+    # Set up query_service to make reporting manager use IOC methods
+    mock.query_service = MagicMock()
     return mock
 
 
 @pytest.fixture
-def detection_manager_no_ioc():
-    """Provide a mock DatabaseManager instance without IOC service."""
+def data_manager_no_ioc():
+    """Provide a mock DataManager instance without IOC service."""
     mock = MagicMock()
     # Disable IOC methods to test fallback path
-    mock.detection_query_service = None
+    mock.query_service = None
     return mock
 
 
@@ -81,7 +81,7 @@ def mock_location_service():
 
 @pytest.fixture
 def reporting_manager(
-    detection_manager,
+    data_manager,
     path_resolver,
     mock_plotting_manager,
     mock_data_preparation_manager,
@@ -90,7 +90,7 @@ def reporting_manager(
 ):
     """Provide a ReportingManager instance with mocked dependencies."""
     manager = ReportingManager(
-        detection_manager=detection_manager,
+        data_manager=data_manager,
         path_resolver=path_resolver,
         config=mock_config,
         plotting_manager=mock_plotting_manager,
@@ -100,21 +100,33 @@ def reporting_manager(
     return manager
 
 
-def test_get_most_recent_detections(reporting_manager, detection_manager):
+def test_get_most_recent_detections(reporting_manager, data_manager):
     """Should return a list of recent detections."""
-    detection_manager.get_most_recent_detections_with_localization.return_value = [
-        {"common_name": "American Robin", "date": "2025-07-12", "time": "10:00:00"},
-        {"common_name": "Northern Cardinal", "date": "2025-07-12", "time": "09:59:00"},
+    data_manager.query_detections.return_value = [
+        MagicMock(
+            timestamp=datetime.datetime(2025, 7, 12, 10, 0, 0),
+            scientific_name="Turdus migratorius",
+            common_name="American Robin",
+            confidence=0.95,
+            detection=MagicMock(latitude=45.5, longitude=-73.5),
+        ),
+        MagicMock(
+            timestamp=datetime.datetime(2025, 7, 12, 9, 59, 0),
+            scientific_name="Cardinalis cardinalis",
+            common_name="Northern Cardinal",
+            confidence=0.90,
+            detection=MagicMock(latitude=45.5, longitude=-73.5),
+        ),
     ]
 
     recent_detections = reporting_manager.get_most_recent_detections(limit=2)
 
     assert len(recent_detections) == 2
     assert recent_detections[0]["common_name"] == "American Robin"
-    detection_manager.get_most_recent_detections_with_localization.assert_called_once_with(2, "en")
+    data_manager.query_detections.assert_called_once()
 
 
-def test_get_weekly_report_data(reporting_manager, detection_manager):
+def test_get_weekly_report_data(reporting_manager, data_manager):
     """Should return a dictionary of weekly report data."""
     today = datetime.date(2025, 7, 12)  # Saturday
     with patch(
@@ -122,12 +134,12 @@ def test_get_weekly_report_data(reporting_manager, detection_manager):
     ) as mock_date:
         mock_date.today.return_value = today
 
-        detection_manager.get_detection_counts_by_date_range.side_effect = [
+        data_manager.get_detection_counts_by_date_range.side_effect = [
             {"total_count": 100, "unique_species": 10},  # Current week stats
             {"total_count": 80, "unique_species": 8},  # Prior week stats
         ]
 
-        detection_manager.get_top_species_with_prior_counts.return_value = [
+        data_manager.get_top_species_with_prior_counts.return_value = [
             {
                 "scientific_name": "Turdus migratorius",
                 "common_name": "American Robin",
@@ -142,7 +154,7 @@ def test_get_weekly_report_data(reporting_manager, detection_manager):
             },
         ]
 
-        detection_manager.get_new_species_data.return_value = [{"species": "Blue Jay", "count": 5}]
+        data_manager.get_new_species_data.return_value = [{"species": "Blue Jay", "count": 5}]
 
         report_data = reporting_manager.get_weekly_report_data()
 
@@ -161,7 +173,7 @@ def test_get_weekly_report_data(reporting_manager, detection_manager):
 
         # Assertions for detection_manager method calls
         # Extract the actual calls made to get_detection_counts_by_date_range
-        calls = detection_manager.get_detection_counts_by_date_range.call_args_list
+        calls = data_manager.get_detection_counts_by_date_range.call_args_list
 
         # Assert the first call (expects datetime objects, not date objects)
         assert calls[0].args[0] == datetime.datetime(2025, 6, 30, 0, 0, 0)
@@ -171,19 +183,19 @@ def test_get_weekly_report_data(reporting_manager, detection_manager):
         assert calls[1].args[0] == datetime.datetime(2025, 6, 23, 0, 0, 0)
         assert calls[1].args[1] == datetime.datetime(2025, 6, 29, 23, 59, 59, 999999)
 
-        detection_manager.get_top_species_with_prior_counts.assert_called_once_with(
+        data_manager.get_top_species_with_prior_counts.assert_called_once_with(
             datetime.datetime(2025, 6, 30, 0, 0, 0),
             datetime.datetime(2025, 7, 6, 23, 59, 59, 999999),
             datetime.datetime(2025, 6, 23, 0, 0, 0),
             datetime.datetime(2025, 6, 29, 23, 59, 59, 999999),
         )
-        detection_manager.get_new_species_data.assert_called_once_with(
+        data_manager.get_new_species_data.assert_called_once_with(
             datetime.datetime(2025, 6, 30, 0, 0, 0),
             datetime.datetime(2025, 7, 6, 23, 59, 59, 999999),
         )
 
 
-def test_get_daily_detection_data_for_plotting(reporting_manager, detection_manager):
+def test_get_daily_detection_data_for_plotting(reporting_manager, data_manager):
     """Should prepare daily detection data for plotting."""
     # Mock DetectionWithLocalization objects for the IOC service
     from unittest.mock import MagicMock
@@ -240,7 +252,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
     mock_detection_with_l10n_3.order_name = "Passeriformes"
 
     # Mock the localization service method to return our mock DetectionWithLocalization objects
-    detection_manager.detection_query_service.get_detections_with_localization.return_value = [
+    data_manager.detection_query_service.get_detections_with_localization.return_value = [
         mock_detection_with_l10n_1,
         mock_detection_with_l10n_2,
         mock_detection_with_l10n_3,
@@ -276,7 +288,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
             audio_file_id=103,  # Assign a mock audio_file_id
         ),
     ]
-    detection_manager.get_all_detections.return_value = mock_detections
+    data_manager.get_all_detections.return_value = mock_detections
 
     # Call get_data to get the DataFrame
     df = reporting_manager.get_data()
@@ -302,25 +314,41 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, detection_mana
     assert "Northern Cardinal" in df["common_name"].unique()
 
 
-def test_get_best_detections(reporting_manager, detection_manager):
+def test_get_best_detections(reporting_manager, data_manager):
     """Should return a list of best detections sorted by confidence."""
-    detection_manager.get_best_detections.return_value = [
-        {"common_name": "Northern Cardinal", "confidence": 0.95},
-        {"common_name": "American Robin", "confidence": 0.9},
-    ]
+    # Mock Detection objects that will be returned by data_manager
+    mock_detection_1 = MagicMock()
+    mock_detection_1.id = 1
+    mock_detection_1.scientific_name = "Cardinalis cardinalis"
+    mock_detection_1.common_name = "Northern Cardinal"
+    mock_detection_1.confidence = 0.95
+    mock_detection_1.timestamp = datetime.datetime(2025, 7, 15, 10, 0, 0)
+    mock_detection_1.latitude = 45.5
+    mock_detection_1.longitude = -73.5
+
+    mock_detection_2 = MagicMock()
+    mock_detection_2.id = 2
+    mock_detection_2.scientific_name = "Turdus migratorius"
+    mock_detection_2.common_name = "American Robin"
+    mock_detection_2.confidence = 0.9
+    mock_detection_2.timestamp = datetime.datetime(2025, 7, 15, 9, 0, 0)
+    mock_detection_2.latitude = 45.5
+    mock_detection_2.longitude = -73.5
+
+    data_manager.get_best_detections.return_value = [mock_detection_1, mock_detection_2]
 
     best_detections = reporting_manager.get_best_detections(limit=2)
 
     assert len(best_detections) == 2
     assert best_detections[0]["common_name"] == "Northern Cardinal"
     assert best_detections[0]["confidence"] == 0.95
-    detection_manager.get_best_detections.assert_called_once_with(2)
+    data_manager.get_best_detections.assert_called_once_with(2)
 
 
-def test_get_data__empty_detections(reporting_manager, detection_manager):
+def test_get_data__empty_detections(reporting_manager, data_manager):
     """Should handle empty detections and return empty DataFrame with correct columns."""
     # Mock empty detections
-    detection_manager.get_all_detections.return_value = []
+    data_manager.get_all_detections.return_value = []
 
     # Call get_data
     df = reporting_manager.get_data()
@@ -433,7 +461,7 @@ def test_date_filter(reporting_manager):
 # COMPREHENSIVE WEEKLY REPORT TESTS
 
 
-def test_get_weekly_report_data__no_detections(reporting_manager, detection_manager):
+def test_get_weekly_report_data__no_detections(reporting_manager, data_manager):
     """Should handle scenario with no detections at all."""
     today = datetime.date(2025, 7, 12)  # Saturday
     with patch(
@@ -442,10 +470,10 @@ def test_get_weekly_report_data__no_detections(reporting_manager, detection_mana
         mock_date.today.return_value = today
 
         # Mock empty detections
-        detection_manager.get_all_detections.return_value = []
-        detection_manager.get_detection_counts_by_date_range.return_value = None
-        detection_manager.get_top_species_with_prior_counts.return_value = []
-        detection_manager.get_new_species_data.return_value = []
+        data_manager.get_all_detections.return_value = []
+        data_manager.get_detection_counts_by_date_range.return_value = None
+        data_manager.get_top_species_with_prior_counts.return_value = []
+        data_manager.get_new_species_data.return_value = []
 
         report_data = reporting_manager.get_weekly_report_data()
 
@@ -459,23 +487,21 @@ def test_get_weekly_report_data__no_detections(reporting_manager, detection_mana
         assert report_data["new_species"] == []
 
 
-def test_get_weekly_report_data__with_data_latest_date_calculation(
-    reporting_manager, detection_manager
-):
+def test_get_weekly_report_data__with_data_latest_date_calculation(reporting_manager, data_manager):
     """Should calculate date ranges based on latest available data."""
     today = datetime.date(2025, 8, 15)  # Friday
 
     # Create mock detections with latest date being 2025-08-10 (Sunday)
     mock_detection = MagicMock()
     mock_detection.timestamp = datetime.datetime(2025, 8, 10, 14, 30, 0)
-    detection_manager.get_all_detections.return_value = [mock_detection]
+    data_manager.get_all_detections.return_value = [mock_detection]
 
-    detection_manager.get_detection_counts_by_date_range.side_effect = [
+    data_manager.get_detection_counts_by_date_range.side_effect = [
         {"total_count": 50, "unique_species": 8},  # Current week
         {"total_count": 30, "unique_species": 5},  # Prior week
     ]
-    detection_manager.get_top_species_with_prior_counts.return_value = []
-    detection_manager.get_new_species_data.return_value = []
+    data_manager.get_top_species_with_prior_counts.return_value = []
+    data_manager.get_new_species_data.return_value = []
 
     with patch(
         "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
@@ -490,21 +516,21 @@ def test_get_weekly_report_data__with_data_latest_date_calculation(
         assert report_data["week_number"] == 32
 
 
-def test_get_weekly_report_data__latest_date_is_sunday(reporting_manager, detection_manager):
+def test_get_weekly_report_data__latest_date_is_sunday(reporting_manager, data_manager):
     """Should handle when latest detection date is already a Sunday."""
     today = datetime.date(2025, 8, 15)  # Friday
 
     # Create mock detections with latest date being Sunday
     mock_detection = MagicMock()
     mock_detection.timestamp = datetime.datetime(2025, 8, 11, 10, 0, 0)  # Sunday
-    detection_manager.get_all_detections.return_value = [mock_detection]
+    data_manager.get_all_detections.return_value = [mock_detection]
 
-    detection_manager.get_detection_counts_by_date_range.side_effect = [
+    data_manager.get_detection_counts_by_date_range.side_effect = [
         {"total_count": 25, "unique_species": 6},  # Current week
         {"total_count": 20, "unique_species": 4},  # Prior week
     ]
-    detection_manager.get_top_species_with_prior_counts.return_value = []
-    detection_manager.get_new_species_data.return_value = []
+    data_manager.get_top_species_with_prior_counts.return_value = []
+    data_manager.get_new_species_data.return_value = []
 
     with patch(
         "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
@@ -519,7 +545,7 @@ def test_get_weekly_report_data__latest_date_is_sunday(reporting_manager, detect
         assert report_data["week_number"] == 32
 
 
-def test_get_weekly_report_data__invalid_timestamps(reporting_manager, detection_manager):
+def test_get_weekly_report_data__invalid_timestamps(reporting_manager, data_manager):
     """Should handle detections with invalid or None timestamps."""
     today = datetime.date(2025, 7, 12)  # Saturday
 
@@ -533,18 +559,18 @@ def test_get_weekly_report_data__invalid_timestamps(reporting_manager, detection
     mock_detection_string = MagicMock()
     mock_detection_string.timestamp = "invalid"
 
-    detection_manager.get_all_detections.return_value = [
+    data_manager.get_all_detections.return_value = [
         mock_detection_valid,
         mock_detection_none,
         mock_detection_string,
     ]
 
-    detection_manager.get_detection_counts_by_date_range.side_effect = [
+    data_manager.get_detection_counts_by_date_range.side_effect = [
         {"total_count": 10, "unique_species": 3},
         {"total_count": 5, "unique_species": 2},
     ]
-    detection_manager.get_top_species_with_prior_counts.return_value = []
-    detection_manager.get_new_species_data.return_value = []
+    data_manager.get_top_species_with_prior_counts.return_value = []
+    data_manager.get_new_species_data.return_value = []
 
     with patch(
         "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
@@ -601,9 +627,9 @@ def test_calculate_percentage_differences__fractional_rounding(reporting_manager
     assert result_total_rounded == 1  # 1% exact
 
 
-def test_get_top_species_data__no_data(reporting_manager, detection_manager):
+def test_get_top_species_data__no_data(reporting_manager, data_manager):
     """Should handle empty top species data."""
-    detection_manager.get_top_species_with_prior_counts.return_value = []
+    data_manager.get_top_species_with_prior_counts.return_value = []
 
     result = reporting_manager._get_top_species_data(
         datetime.date(2025, 7, 7),
@@ -615,9 +641,9 @@ def test_get_top_species_data__no_data(reporting_manager, detection_manager):
     assert result == []
 
 
-def test_get_top_species_data__with_zero_prior_counts(reporting_manager, detection_manager):
+def test_get_top_species_data__with_zero_prior_counts(reporting_manager, data_manager):
     """Should handle top species with zero prior counts (new species in top 10)."""
-    detection_manager.get_top_species_with_prior_counts.return_value = [
+    data_manager.get_top_species_with_prior_counts.return_value = [
         {
             "scientific_name": "Turdus migratorius",
             "common_name": "American Robin",
@@ -649,9 +675,9 @@ def test_get_top_species_data__with_zero_prior_counts(reporting_manager, detecti
     assert result[1]["percentage_diff"] == 33  # (20-15)/15 * 100 = 33.33 -> 33
 
 
-def test_get_new_species_data__no_data(reporting_manager, detection_manager):
+def test_get_new_species_data__no_data(reporting_manager, data_manager):
     """Should handle empty new species data."""
-    detection_manager.get_new_species_data.return_value = []
+    data_manager.get_new_species_data.return_value = []
 
     result = reporting_manager._get_new_species_data(
         datetime.date(2025, 7, 7),
@@ -661,9 +687,9 @@ def test_get_new_species_data__no_data(reporting_manager, detection_manager):
     assert result == []
 
 
-def test_get_new_species_data__with_data(reporting_manager, detection_manager):
+def test_get_new_species_data__with_data(reporting_manager, data_manager):
     """Should format new species data correctly."""
-    detection_manager.get_new_species_data.return_value = [
+    data_manager.get_new_species_data.return_value = [
         {"species": "Blue Jay", "count": 8},
         {"species": "House Sparrow", "count": 12},
     ]
@@ -680,9 +706,9 @@ def test_get_new_species_data__with_data(reporting_manager, detection_manager):
     assert result[1]["count"] == 12
 
 
-def test_get_weekly_stats__none_results(reporting_manager, detection_manager):
+def test_get_weekly_stats__none_results(reporting_manager, data_manager):
     """Should handle None results from detection counts."""
-    detection_manager.get_detection_counts_by_date_range.side_effect = [None, None]
+    data_manager.get_detection_counts_by_date_range.side_effect = [None, None]
 
     current_stats, prior_stats = reporting_manager._get_weekly_stats(
         datetime.date(2025, 7, 7),
@@ -695,7 +721,7 @@ def test_get_weekly_stats__none_results(reporting_manager, detection_manager):
     assert prior_stats is None
 
 
-def test_get_weekly_report_data__week_boundary_edge_cases(reporting_manager, detection_manager):
+def test_get_weekly_report_data__week_boundary_edge_cases(reporting_manager, data_manager):
     """Should handle various week boundary scenarios correctly."""
     # Test different weekdays as latest date
     test_cases = [
@@ -707,14 +733,14 @@ def test_get_weekly_report_data__week_boundary_edge_cases(reporting_manager, det
     for latest_date, expected_start, expected_end in test_cases:
         mock_detection = MagicMock()
         mock_detection.timestamp = datetime.datetime.combine(latest_date, datetime.time(12, 0, 0))
-        detection_manager.get_all_detections.return_value = [mock_detection]
+        data_manager.get_all_detections.return_value = [mock_detection]
 
-        detection_manager.get_detection_counts_by_date_range.side_effect = [
+        data_manager.get_detection_counts_by_date_range.side_effect = [
             {"total_count": 10, "unique_species": 5},
             {"total_count": 8, "unique_species": 4},
         ]
-        detection_manager.get_top_species_with_prior_counts.return_value = []
-        detection_manager.get_new_species_data.return_value = []
+        data_manager.get_top_species_with_prior_counts.return_value = []
+        data_manager.get_new_species_data.return_value = []
 
         with patch(
             "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
@@ -727,7 +753,7 @@ def test_get_weekly_report_data__week_boundary_edge_cases(reporting_manager, det
             assert report_data["end_date"] == expected_end, f"Failed for {latest_date}"
 
 
-def test_get_weekly_report_data__large_numbers(reporting_manager, detection_manager):
+def test_get_weekly_report_data__large_numbers(reporting_manager, data_manager):
     """Should handle large detection counts without overflow."""
     today = datetime.date(2025, 7, 12)
     with patch(
@@ -735,13 +761,13 @@ def test_get_weekly_report_data__large_numbers(reporting_manager, detection_mana
     ) as mock_date:
         mock_date.today.return_value = today
 
-        detection_manager.get_all_detections.return_value = []
-        detection_manager.get_detection_counts_by_date_range.side_effect = [
+        data_manager.get_all_detections.return_value = []
+        data_manager.get_detection_counts_by_date_range.side_effect = [
             {"total_count": 50000, "unique_species": 500},  # Large current week
             {"total_count": 25000, "unique_species": 250},  # Large prior week
         ]
-        detection_manager.get_top_species_with_prior_counts.return_value = []
-        detection_manager.get_new_species_data.return_value = []
+        data_manager.get_top_species_with_prior_counts.return_value = []
+        data_manager.get_new_species_data.return_value = []
 
         report_data = reporting_manager.get_weekly_report_data()
 
@@ -751,7 +777,7 @@ def test_get_weekly_report_data__large_numbers(reporting_manager, detection_mana
         assert report_data["percentage_diff_unique_species"] == 100  # 100% increase
 
 
-def test_get_weekly_report_data__comprehensive_integration(reporting_manager, detection_manager):
+def test_get_weekly_report_data__comprehensive_integration(reporting_manager, data_manager):
     """Should integrate all components for a comprehensive weekly report."""
     today = datetime.date(2025, 7, 12)  # Saturday
     with patch(
@@ -762,14 +788,14 @@ def test_get_weekly_report_data__comprehensive_integration(reporting_manager, de
         # Mock detection data with realistic timestamps
         mock_detection = MagicMock()
         mock_detection.timestamp = datetime.datetime(2025, 7, 10, 14, 30, 0)
-        detection_manager.get_all_detections.return_value = [mock_detection]
+        data_manager.get_all_detections.return_value = [mock_detection]
 
-        detection_manager.get_detection_counts_by_date_range.side_effect = [
+        data_manager.get_detection_counts_by_date_range.side_effect = [
             {"total_count": 156, "unique_species": 23},  # Current week stats
             {"total_count": 134, "unique_species": 19},  # Prior week stats
         ]
 
-        detection_manager.get_top_species_with_prior_counts.return_value = [
+        data_manager.get_top_species_with_prior_counts.return_value = [
             {
                 "scientific_name": "Turdus migratorius",
                 "common_name": "American Robin",
@@ -790,7 +816,7 @@ def test_get_weekly_report_data__comprehensive_integration(reporting_manager, de
             },  # New in top 10
         ]
 
-        detection_manager.get_new_species_data.return_value = [
+        data_manager.get_new_species_data.return_value = [
             {"species": "House Finch", "count": 7},
             {"species": "White-breasted Nuthatch", "count": 4},
         ]

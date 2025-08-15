@@ -6,6 +6,7 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.web.core.container import Container
@@ -20,6 +21,9 @@ router = APIRouter()
 @inject
 async def create_detection(
     detection_event: DetectionEvent,
+    data_manager: DataManager = Depends(  # noqa: B008
+        Provide[Container.data_manager]
+    ),
     detection_manager: DetectionManager = Depends(  # noqa: B008
         Provide[Container.detection_manager]
     ),
@@ -30,8 +34,11 @@ async def create_detection(
         f"with confidence {detection_event.confidence}"
     )
 
-    # Delegate to DetectionManager to create detection and audio file records
-    saved_detection = detection_manager.create_detection(detection_event)
+    # Create detection using DataManager for data persistence
+    saved_detection = data_manager.create_detection(detection_event)
+
+    # Use DetectionManager only for event emission
+    detection_manager.create_detection(detection_event)
 
     return {"message": "Detection received and dispatched", "detection_id": saved_detection.id}
 
@@ -43,39 +50,58 @@ async def get_recent_detections(
     offset: int = 0,  # Added for compatibility with old endpoint
     language_code: str = "en",
     include_l10n: bool = True,
-    detection_manager: DetectionManager = Depends(  # noqa: B008
-        Provide[Container.detection_manager]
+    data_manager: DataManager = Depends(  # noqa: B008
+        Provide[Container.data_manager]
     ),
 ) -> JSONResponse:
     """Get recent bird detections with optional translation data."""
     try:
-        if include_l10n and detection_manager.detection_query_service:
-            # Use localization-enhanced data
-            detections_dict = detection_manager.get_most_recent_detections_with_localization(
-                limit, language_code
+        if include_l10n:
+            # Use DataManager for localization-enhanced data
+            detections = data_manager.query_detections(
+                limit=limit,
+                offset=offset,
+                order_by="timestamp",
+                order_desc=True,
+                include_localization=True,
+                language_code=language_code,
             )
             detection_list = [
                 {
-                    "id": detection_data.get("id"),
-                    "scientific_name": detection_data.get("scientific_name", ""),
-                    "common_name": detection_data.get("common_name", ""),
-                    "confidence": detection_data.get("confidence", 0),
-                    "timestamp": detection_data.get("date", "")
-                    + "T"
-                    + detection_data.get("time", ""),
-                    "latitude": detection_data.get("latitude"),
-                    "longitude": detection_data.get("longitude"),
-                    "ioc_english_name": detection_data.get("ioc_english_name"),
-                    "translated_name": detection_data.get("translated_name"),
-                    "family": detection_data.get("family"),
-                    "genus": detection_data.get("genus"),
-                    "order_name": detection_data.get("order_name"),
+                    "id": detection.id if hasattr(detection, "id") else detection.detection.id,
+                    "scientific_name": detection.scientific_name,
+                    "common_name": (
+                        data_manager.get_species_display_name(detection, True, language_code)
+                        if hasattr(detection, "ioc_english_name")
+                        else detection.common_name
+                    ),
+                    "confidence": detection.confidence,
+                    "timestamp": detection.timestamp.isoformat(),
+                    "latitude": (
+                        detection.detection.latitude if hasattr(detection, "detection") else None
+                    ),
+                    "longitude": (
+                        detection.detection.longitude if hasattr(detection, "detection") else None
+                    ),
+                    "ioc_english_name": (
+                        detection.ioc_english_name
+                        if hasattr(detection, "ioc_english_name")
+                        else None
+                    ),
+                    "translated_name": (
+                        detection.translated_name if hasattr(detection, "translated_name") else None
+                    ),
+                    "family": detection.family if hasattr(detection, "family") else None,
+                    "genus": detection.genus if hasattr(detection, "genus") else None,
+                    "order_name": detection.order_name
+                    if hasattr(detection, "order_name")
+                    else None,
                 }
-                for detection_data in detections_dict
+                for detection in detections
             ]
         else:
             # Use regular detection data (fallback)
-            detections = detection_manager.get_recent_detections(limit)
+            detections = data_manager.get_recent_detections(limit)
             detection_list = [
                 {
                     "id": detection.id,
@@ -98,8 +124,8 @@ async def get_recent_detections(
 @inject
 async def get_detection_count(
     target_date: date | None = None,
-    detection_manager: DetectionManager = Depends(  # noqa: B008
-        Provide[Container.detection_manager]
+    data_manager: DataManager = Depends(  # noqa: B008
+        Provide[Container.data_manager]
     ),
 ) -> JSONResponse:
     """Get detection count for a specific date (defaults to today)."""
@@ -107,7 +133,10 @@ async def get_detection_count(
         if target_date is None:
             target_date = datetime.now(UTC).date()
 
-        count = detection_manager.get_detections_count_by_date(target_date)
+        # Use DataManager for counting
+        counts = data_manager.count_by_date()
+        count = counts.get(target_date, 0)
+
         return JSONResponse({"date": target_date.isoformat(), "count": count})
     except Exception as e:
         logger.error("Error getting detection count: %s", e)
@@ -119,23 +148,23 @@ async def get_detection_count(
 async def update_detection_location(
     detection_id: int,
     location: LocationUpdate,
-    detection_manager: DetectionManager = Depends(  # noqa: B008
-        Provide[Container.detection_manager]
+    data_manager: DataManager = Depends(  # noqa: B008
+        Provide[Container.data_manager]
     ),
 ) -> JSONResponse:
     """Update detection location with GPS coordinates."""
     try:
-        # Get the detection
-        detection = detection_manager.get_detection_by_id(detection_id)
+        # Get the detection using DataManager
+        detection = data_manager.get_detection_by_id(detection_id)
         if not detection:
             raise HTTPException(status_code=404, detail="Detection not found")
 
-        # Update the location
-        success = detection_manager.update_detection_location(
-            detection_id, location.latitude, location.longitude
+        # Update the location using DataManager
+        updated_detection = data_manager.update_detection(
+            detection_id, {"latitude": location.latitude, "longitude": location.longitude}
         )
 
-        if success:
+        if updated_detection:
             return JSONResponse(
                 {
                     "message": "Location updated successfully",
@@ -159,34 +188,29 @@ async def get_detection(
     detection_id: UUID | int,
     language_code: str = "en",
     include_l10n: bool = True,
-    detection_manager: DetectionManager = Depends(  # noqa: B008
-        Provide[Container.detection_manager]
+    data_manager: DataManager = Depends(  # noqa: B008
+        Provide[Container.data_manager]
     ),
 ) -> JSONResponse:
     """Get a specific detection by ID with optional translation data."""
     try:
+        # Convert UUID to int if needed
+        id_to_use = int(detection_id) if isinstance(detection_id, UUID) else detection_id
+
         # Try to get localization-enhanced data first
-        if include_l10n and detection_manager.detection_query_service:
+        if include_l10n:
             try:
-                # Convert int detection_id to UUID format if needed
-                if isinstance(detection_id, UUID):
-                    detection_uuid = detection_id
-                elif isinstance(detection_id, int):
-                    # Convert integer to UUID (assuming some conversion logic exists)
-                    detection_uuid = UUID(int=detection_id)
-                else:
-                    detection_uuid = UUID(str(detection_id))
-                detection_with_l10n = (
-                    detection_manager.detection_query_service.get_detection_with_localization(
-                        detection_uuid, language_code
-                    )
+                detection_with_l10n = data_manager.get_detection_with_localization(
+                    id_to_use, language_code
                 )
                 if detection_with_l10n:
                     detection_data = {
                         "id": detection_with_l10n.id,
                         "scientific_name": detection_with_l10n.scientific_name,
-                        "common_name": detection_manager._get_formatted_species_name(
-                            detection_with_l10n, prefer_translation=True
+                        "common_name": data_manager.get_species_display_name(
+                            detection_with_l10n,
+                            prefer_translation=True,
+                            language_code=language_code,
                         ),
                         "confidence": detection_with_l10n.confidence,
                         "timestamp": detection_with_l10n.timestamp.isoformat(),
@@ -211,9 +235,7 @@ async def get_detection(
                 )
 
         # Fallback to regular detection
-        # Convert UUID to int if needed for the detection manager
-        id_for_manager = int(detection_id) if isinstance(detection_id, UUID) else detection_id
-        detection = detection_manager.get_detection_by_id(id_for_manager)
+        detection = data_manager.get_detection_by_id(id_to_use)
         if not detection:
             raise HTTPException(status_code=404, detail="Detection not found")
 
@@ -242,15 +264,15 @@ async def get_detection(
 @inject
 async def get_detection_spectrogram(
     detection_id: int,
-    detection_manager: DetectionManager = Depends(  # noqa: B008
-        Provide[Container.detection_manager]
+    data_manager: DataManager = Depends(  # noqa: B008
+        Provide[Container.data_manager]
     ),
     plotting_manager: PlottingManager = Depends(Provide[Container.plotting_manager]),  # noqa: B008
 ) -> StreamingResponse:
     """Generate and return a spectrogram for a specific detection's audio file."""
     try:
         # Get the detection to find the associated audio file path
-        detection = detection_manager.get_detection_by_id(detection_id)
+        detection = data_manager.get_detection_by_id(detection_id)
         if not detection:
             raise HTTPException(status_code=404, detail="Detection not found")
 
@@ -275,23 +297,23 @@ async def get_species_summary(
     language_code: str = "en",
     since: datetime | None = None,
     family_filter: str | None = None,
-    detection_manager: DetectionManager = Depends(  # noqa: B008
-        Provide[Container.detection_manager]
+    data_manager: DataManager = Depends(  # noqa: B008
+        Provide[Container.data_manager]
     ),
 ) -> JSONResponse:
     """Get detection count summary by species with translation data."""
     try:
-        if not detection_manager.detection_query_service:
-            raise HTTPException(
-                status_code=503, detail="Localization database service not available"
-            )
-
-        species_summary = detection_manager.get_species_summary(
-            language_code=language_code, since=since, family_filter=family_filter
+        species_summary = data_manager.count_by_species(
+            start_date=since,
+            include_localized_names=True,
+            language_code=language_code,
         )
+
+        # Filter by family if requested
+        if family_filter and isinstance(species_summary, list):
+            species_summary = [s for s in species_summary if s.get("family") == family_filter]
+
         return JSONResponse({"species": species_summary, "count": len(species_summary)})
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error("Error getting species summary: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving species summary") from e
@@ -302,23 +324,35 @@ async def get_species_summary(
 async def get_family_summary(
     language_code: str = "en",
     since: datetime | None = None,
-    detection_manager: DetectionManager = Depends(  # noqa: B008
-        Provide[Container.detection_manager]
+    data_manager: DataManager = Depends(  # noqa: B008
+        Provide[Container.data_manager]
     ),
 ) -> JSONResponse:
     """Get detection count summary by taxonomic family with translation data."""
     try:
-        if not detection_manager.detection_query_service:
-            raise HTTPException(
-                status_code=503, detail="Localization database service not available"
-            )
-
-        family_summary = detection_manager.get_family_summary(
-            language_code=language_code, since=since
+        # Get species summary with family information
+        species_summary = data_manager.count_by_species(
+            start_date=since,
+            include_localized_names=True,
+            language_code=language_code,
         )
+
+        # Aggregate by family
+        family_counts: dict[str, int] = {}
+        if isinstance(species_summary, list):
+            for species in species_summary:
+                family = species.get("family", "Unknown")
+                if family in family_counts:
+                    family_counts[family] += species.get("count", 0)
+                else:
+                    family_counts[family] = species.get("count", 0)
+
+        family_summary = [
+            {"family": family, "count": count}
+            for family, count in sorted(family_counts.items(), key=lambda x: x[1], reverse=True)
+        ]
+
         return JSONResponse({"families": family_summary, "count": len(family_summary)})
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error("Error getting family summary: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving family summary") from e
