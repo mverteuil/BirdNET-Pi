@@ -372,10 +372,10 @@ def test_get_data__empty_detections(reporting_manager, data_manager):
     assert pd.api.types.is_datetime64_any_dtype(df.index)
 
 
-def test_get_todays_detections(reporting_manager, detection_manager_no_ioc):
+def test_get_todays_detections(reporting_manager, data_manager_no_ioc):
     """Should retrieve detections for the current day."""
-    # Replace the detection_manager in the reporting_manager with non-IOC version
-    reporting_manager.detection_manager = detection_manager_no_ioc
+    # Replace the data_manager in the reporting_manager with non-IOC version
+    reporting_manager.data_manager = data_manager_no_ioc
 
     today = datetime.date(2025, 7, 15)
 
@@ -420,7 +420,7 @@ def test_get_todays_detections(reporting_manager, detection_manager_no_ioc):
             ),
         ]
 
-        detection_manager_no_ioc.get_all_detections.return_value = mock_detections
+        data_manager_no_ioc.get_all_detections.return_value = mock_detections
 
         # Call the method
         todays_detections = reporting_manager.get_todays_detections()
@@ -433,8 +433,8 @@ def test_get_todays_detections(reporting_manager, detection_manager_no_ioc):
         assert todays_detections[0]["time"] == "10:00:00"
         assert todays_detections[0]["confidence"] == 0.9
 
-        # Verify the detection manager was called
-        detection_manager_no_ioc.get_all_detections.assert_called_once()
+        # Verify the data manager was called
+        data_manager_no_ioc.get_all_detections.assert_called_once()
 
 
 def test_date_filter(reporting_manager):

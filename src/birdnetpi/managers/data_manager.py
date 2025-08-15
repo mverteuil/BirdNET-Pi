@@ -7,8 +7,10 @@ patterns while preserving the underlying service architecture.
 """
 
 import datetime
+import functools
+from collections.abc import Callable
 from datetime import date
-from typing import Any
+from typing import Any, TypeVar
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import func
@@ -21,7 +23,39 @@ from birdnetpi.services.detection_query_service import (
 )
 from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.services.species_display_service import SpeciesDisplayService
+from birdnetpi.utils.signals import detection_signal
 from birdnetpi.web.models.detection import DetectionEvent
+
+# Type variable for decorator
+T = TypeVar("T")
+
+
+def emit_detection_event(func: Callable[..., Detection]) -> Callable[..., Detection]:
+    """Emit detection events after successful data operations.
+
+    This decorator automatically emits a Blinker signal when a Detection
+    is successfully created or modified. It replaces the need for a separate
+    DetectionManager by handling event emission at the point of data modification.
+
+    Args:
+        func: A method that returns a Detection object
+
+    Returns:
+        Wrapped function that emits events after successful execution
+    """
+
+    @functools.wraps(func)
+    def wrapper(self: "DataManager", *args: Any, **kwargs: Any) -> Detection:  # noqa: ANN401
+        # Execute the original function
+        detection = func(self, *args, **kwargs)
+
+        # Emit the detection event if we have a valid detection
+        if detection and isinstance(detection, Detection):
+            detection_signal.send(self, detection=detection)
+
+        return detection
+
+    return wrapper
 
 
 class DataManager:
@@ -81,11 +115,12 @@ class DataManager:
                 print(f"Error retrieving all detections: {e}")
                 raise
 
+    @emit_detection_event
     def create_detection(self, detection_event: DetectionEvent) -> Detection:
         """Create a new detection record from a DetectionEvent.
 
-        Note: This is data access only. Event emission should be handled
-        by DetectionManager or a separate event service.
+        This method creates a detection in the database and automatically
+        emits a detection event via the @emit_detection_event decorator.
         """
         with self.database_service.get_db() as session:
             try:
@@ -374,7 +409,7 @@ class DataManager:
         common = detection.common_name
         return str(scientific) if scientific else str(common) if common else "Unknown"
 
-    # ==================== Specialized Queries (Migrated from DetectionManager) ====================
+    # ==================== Specialized Queries ====================
 
     def get_recent_detections(self, limit: int = 10) -> list[Detection]:
         """Get the most recent detections."""

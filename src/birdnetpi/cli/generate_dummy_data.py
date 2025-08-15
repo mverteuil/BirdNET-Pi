@@ -1,9 +1,12 @@
 import os
 import time
 
-from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
+from birdnetpi.services.species_display_service import SpeciesDisplayService
 from birdnetpi.services.system_control_service import SystemControlService
+from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.dummy_data_generator import generate_dummy_detections
 from birdnetpi.utils.path_resolver import PathResolver
 
@@ -19,13 +22,21 @@ def main() -> None:
     # Determine the FastAPI service name based on environment
     fastapi_service_name = _get_fastapi_service_name()
 
+    # Load configuration for services
+    config_parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
+    config = config_parser.load_config()
+
     # Check if database already has data
     if db_path.exists() and db_path.stat().st_size > 0:
         print(f"Database file exists and is {db_path.stat().st_size} bytes.")
         try:
             bnp_database_service = DatabaseService(db_path)
-            detection_manager = DetectionManager(bnp_database_service)
-            if detection_manager.get_all_detections():
+            multilingual_service = MultilingualDatabaseService(path_resolver)
+            species_display_service = SpeciesDisplayService(config)
+            data_manager = DataManager(
+                bnp_database_service, multilingual_service, species_display_service
+            )
+            if data_manager.get_all_detections():
                 print("Database already contains data. Skipping dummy data generation.")
                 return
         except Exception as e:
@@ -53,8 +64,12 @@ def main() -> None:
         # Generate dummy data with exclusive database access
         print("Database is empty or does not exist. Generating dummy data...")
         bnp_database_service = DatabaseService(db_path)
-        detection_manager = DetectionManager(bnp_database_service)
-        generate_dummy_detections(detection_manager)
+        multilingual_service = MultilingualDatabaseService(path_resolver)
+        species_display_service = SpeciesDisplayService(config)
+        data_manager = DataManager(
+            bnp_database_service, multilingual_service, species_display_service
+        )
+        generate_dummy_detections(data_manager)
         print("Dummy data generation complete.")
 
     finally:

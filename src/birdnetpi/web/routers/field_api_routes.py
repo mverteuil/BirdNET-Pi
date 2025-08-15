@@ -7,7 +7,7 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
-from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
 from birdnetpi.services.gps_service import GPSService
 from birdnetpi.web.core.container import Container
@@ -166,8 +166,8 @@ async def get_component_status(
 @router.get("/summary")
 @inject
 async def get_field_summary(
-    detection_manager: DetectionManager = Depends(  # noqa: B008
-        Provide[Container.detection_manager]
+    data_manager: DataManager = Depends(  # noqa: B008
+        Provide[Container.data_manager]
     ),
     gps_service: GPSService = Depends(Provide[Container.gps_service]),  # noqa: B008
     hardware_monitor: HardwareMonitorManager = Depends(  # noqa: B008
@@ -178,10 +178,11 @@ async def get_field_summary(
     try:
         # Get today's detection count
         today = datetime.now(UTC).date()
-        today_count = detection_manager.get_detections_count_by_date(today)
+        counts_by_date = data_manager.count_by_date()
+        today_count = counts_by_date.get(today, 0)
 
         # Get recent detections
-        recent_detections = detection_manager.get_recent_detections(5)
+        recent_detections = data_manager.get_recent_detections(5)
 
         # Get GPS status
         gps_status = {"enabled": False}

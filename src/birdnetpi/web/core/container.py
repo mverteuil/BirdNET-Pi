@@ -8,7 +8,6 @@ from fastapi.templating import Jinja2Templates
 from birdnetpi.managers.cached_reporting_manager import CachedReportingManager
 from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
-from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
 from birdnetpi.managers.notification_manager import NotificationManager
@@ -149,18 +148,13 @@ class Container(containers.DeclarativeContainer):
         config=config,
     )
 
-    # Data Manager - single source of truth for detection data access
+    # Data Manager - single source of truth for detection data access and event emission
     data_manager = providers.Singleton(
         DataManager,
         database_service=bnp_database_service,
         multilingual_service=multilingual_database_service,
         species_display_service=species_display_service,
         detection_query_service=detection_query_service,
-    )
-
-    detection_manager = providers.Singleton(
-        DetectionManager,
-        bnp_database_service=bnp_database_service,
     )
 
     location_service = providers.Singleton(

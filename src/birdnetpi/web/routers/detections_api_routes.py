@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from birdnetpi.managers.data_manager import DataManager
-from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.detection import DetectionEvent, LocationUpdate
@@ -24,9 +23,6 @@ async def create_detection(
     data_manager: DataManager = Depends(  # noqa: B008
         Provide[Container.data_manager]
     ),
-    detection_manager: DetectionManager = Depends(  # noqa: B008
-        Provide[Container.detection_manager]
-    ),
 ) -> dict:
     """Receive a new detection event and dispatch it."""
     logger.info(
@@ -34,11 +30,8 @@ async def create_detection(
         f"with confidence {detection_event.confidence}"
     )
 
-    # Create detection using DataManager for data persistence
+    # Create detection - the @emit_detection_event decorator handles event emission
     saved_detection = data_manager.create_detection(detection_event)
-
-    # Use DetectionManager only for event emission
-    detection_manager.create_detection(detection_event)
 
     return {"message": "Detection received and dispatched", "detection_id": saved_detection.id}
 

@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.status import HTTP_303_SEE_OTHER
 
-from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.log_service import LogService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
@@ -200,8 +200,8 @@ async def test_detection_form(
 @router.get("/test_detection")
 @inject
 async def test_detection(
-    detection_manager: DetectionManager = Depends(  # noqa: B008
-        Provide[Container.detection_manager]
+    data_manager: DataManager = Depends(  # noqa: B008
+        Provide[Container.data_manager]
     ),
     species: str = "Test Bird",
     confidence: float = 0.99,
@@ -247,7 +247,7 @@ async def test_detection(
         sensitivity_setting=sensitivity_setting,
         overlap=overlap,
     )
-    detection_manager.create_detection(detection_event_data)
+    data_manager.create_detection(detection_event_data)
     return {"message": "Test detection published", "data": detection_event_data.model_dump_json()}
 
 

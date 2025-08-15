@@ -2,13 +2,11 @@ import datetime
 import random
 from datetime import UTC
 
-from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.web.models.detection import DetectionEvent
 
 
-def generate_dummy_detections(
-    detection_manager: DetectionManager, num_detections: int = 100
-) -> None:
+def generate_dummy_detections(data_manager: DataManager, num_detections: int = 100) -> None:
     """Generate and add dummy detection data to the database."""
     # Updated to use tensor format: "Scientific_name_Common Name"
     species_list = [
@@ -54,12 +52,14 @@ def generate_dummy_detections(
         }
         # Convert dict to DetectionEvent object
         detection_event = DetectionEvent(**detection_data)
-        detection_manager.create_detection(detection_event)
+        data_manager.create_detection(detection_event)
     print(f"Generated {num_detections} dummy detections.")
 
 
 if __name__ == "__main__":
     from birdnetpi.services.database_service import DatabaseService
+    from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
+    from birdnetpi.services.species_display_service import SpeciesDisplayService
     from birdnetpi.utils.config_file_parser import ConfigFileParser
     from birdnetpi.utils.path_resolver import PathResolver
 
@@ -67,6 +67,8 @@ if __name__ == "__main__":
     config_parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
     config = config_parser.load_config()
     bnp_database_service = DatabaseService(path_resolver.get_database_path())
-    detection_manager = DetectionManager(bnp_database_service)
+    multilingual_service = MultilingualDatabaseService(path_resolver)
+    species_display_service = SpeciesDisplayService(config)
+    data_manager = DataManager(bnp_database_service, multilingual_service, species_display_service)
 
-    generate_dummy_detections(detection_manager)
+    generate_dummy_detections(data_manager)

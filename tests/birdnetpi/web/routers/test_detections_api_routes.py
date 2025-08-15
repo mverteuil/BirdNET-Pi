@@ -7,7 +7,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from birdnetpi.managers.detection_manager import DetectionManager
+from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.routers.detections_api_routes import router
@@ -23,13 +23,13 @@ def client():
     container = Container()
 
     # Override services with mocks
-    mock_detection_manager = MagicMock(spec=DetectionManager)
+    mock_data_manager = MagicMock(spec=DataManager)
     mock_plotting_manager = MagicMock(spec=PlottingManager)
 
-    # Add detection_query_service attribute to the mock detection manager
-    mock_detection_manager.detection_query_service = None
+    # Add query_service attribute to the mock data manager
+    mock_data_manager.query_service = None
 
-    container.detection_manager.override(mock_detection_manager)
+    container.data_manager.override(mock_data_manager)
     container.plotting_manager.override(mock_plotting_manager)
 
     # Wire the container
@@ -43,7 +43,7 @@ def client():
     client = TestClient(app)
 
     # Store the mocks for access in tests
-    client.mock_detection_manager = mock_detection_manager  # type: ignore[attr-defined]
+    client.mock_data_manager = mock_data_manager  # type: ignore[attr-defined]
     client.mock_plotting_manager = mock_plotting_manager  # type: ignore[attr-defined]
 
     return client
@@ -56,7 +56,7 @@ class TestDetectionsAPIRoutes:
         """Should create detection successfully."""
         mock_detection = MagicMock()
         mock_detection.id = 123
-        client.mock_detection_manager.create_detection.return_value = mock_detection
+        client.mock_data_manager.create_detection.return_value = mock_detection
 
         detection_data = {
             "species_tensor": "Testus species_Test Bird",
@@ -105,7 +105,7 @@ class TestDetectionsAPIRoutes:
                 longitude=-74.1,
             ),
         ]
-        client.mock_detection_manager.get_recent_detections.return_value = mock_detections
+        client.mock_data_manager.get_recent_detections.return_value = mock_detections
 
         response = client.get("/api/detections/recent?limit=10&include_l10n=false")
 
@@ -117,7 +117,10 @@ class TestDetectionsAPIRoutes:
 
     def test_get_detection_count(self, client):
         """Should return detection count for date."""
-        client.mock_detection_manager.get_detections_count_by_date.return_value = 5
+        from datetime import UTC, datetime
+
+        today = datetime.now(UTC).date()
+        client.mock_data_manager.count_by_date.return_value = {today: 5}
 
         response = client.get("/api/detections/count")
 
@@ -140,7 +143,7 @@ class TestDetectionsAPIRoutes:
             sensitivity_setting=1.0,
             overlap=0.0,
         )
-        client.mock_detection_manager.get_detection_by_id.return_value = mock_detection
+        client.mock_data_manager.get_detection_by_id.return_value = mock_detection
 
         response = client.get("/api/detections/123?include_l10n=false")
 
@@ -151,7 +154,7 @@ class TestDetectionsAPIRoutes:
 
     def test_get_detection_by_id_not_found(self, client):
         """Should return 404 for non-existent detection."""
-        client.mock_detection_manager.get_detection_by_id.return_value = None
+        client.mock_data_manager.get_detection_by_id.return_value = None
 
         response = client.get("/api/detections/999?include_l10n=false")
 
@@ -160,8 +163,9 @@ class TestDetectionsAPIRoutes:
     def test_update_detection_location(self, client):
         """Should update detection location."""
         mock_detection = MagicMock(id=123)
-        client.mock_detection_manager.get_detection_by_id.return_value = mock_detection
-        client.mock_detection_manager.update_detection_location.return_value = True
+        client.mock_data_manager.get_detection_by_id.return_value = mock_detection
+        updated_detection = MagicMock(id=123, latitude=40.1, longitude=-74.1)
+        client.mock_data_manager.update_detection.return_value = updated_detection
 
         location_data = {"latitude": 41.0, "longitude": -75.0}
 
@@ -176,7 +180,7 @@ class TestDetectionsAPIRoutes:
         """Should generate and return spectrogram for detection."""
         mock_detection = MagicMock()
         mock_detection.audio_file_path = "/path/to/audio.wav"
-        client.mock_detection_manager.get_detection_by_id.return_value = mock_detection
+        client.mock_data_manager.get_detection_by_id.return_value = mock_detection
 
         mock_spectrogram_buffer = MagicMock()
         mock_spectrogram_buffer.read.return_value = b"fake_png_data"
@@ -192,7 +196,7 @@ class TestDetectionsAPIRoutes:
 
     def test_get_detection_spectrogram_not_found(self, client):
         """Should return 404 for non-existent detection."""
-        client.mock_detection_manager.get_detection_by_id.return_value = None
+        client.mock_data_manager.get_detection_by_id.return_value = None
 
         response = client.get("/api/detections/999/spectrogram")
 
@@ -203,7 +207,7 @@ class TestDetectionsAPIRoutes:
         """Should return 404 when detection has no audio file."""
         mock_detection = MagicMock()
         mock_detection.audio_file_path = None
-        client.mock_detection_manager.get_detection_by_id.return_value = mock_detection
+        client.mock_data_manager.get_detection_by_id.return_value = mock_detection
 
         response = client.get("/api/detections/123/spectrogram")
 
@@ -214,7 +218,7 @@ class TestDetectionsAPIRoutes:
         """Should handle plotting manager errors."""
         mock_detection = MagicMock()
         mock_detection.audio_file_path = "/path/to/audio.wav"
-        client.mock_detection_manager.get_detection_by_id.return_value = mock_detection
+        client.mock_data_manager.get_detection_by_id.return_value = mock_detection
 
         client.mock_plotting_manager.generate_spectrogram.side_effect = Exception("Plotting error")
 
