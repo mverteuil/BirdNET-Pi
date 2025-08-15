@@ -11,7 +11,6 @@ IOC → PatLevin → Avibase
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import text
@@ -35,29 +34,19 @@ class MultilingualDatabaseService:
         self.avibase_db_path = file_resolver.get_avibase_database_path()
         self.patlevin_db_path = file_resolver.get_patlevin_database_path()
 
-        # Track which databases are available
-        self.databases_available = []
-        if self.ioc_db_path and Path(self.ioc_db_path).exists():
-            self.databases_available.append("ioc")
-        if self.avibase_db_path and Path(self.avibase_db_path).exists():
-            self.databases_available.append("avibase")
-        if self.patlevin_db_path and Path(self.patlevin_db_path).exists():
-            self.databases_available.append("patlevin")
+        # All three databases are always present - the asset downloader ensures this
+        # No need for fallback support
 
     def attach_all_to_session(self, session: Session) -> None:
-        """Attach all available databases to session for cross-database queries.
+        """Attach all databases to session for cross-database queries.
 
         Args:
             session: SQLAlchemy session (typically from main detections database)
         """
-        if "ioc" in self.databases_available and self.ioc_db_path:
-            session.execute(text(f"ATTACH DATABASE '{self.ioc_db_path}' AS ioc"))
-
-        if "avibase" in self.databases_available and self.avibase_db_path:
-            session.execute(text(f"ATTACH DATABASE '{self.avibase_db_path}' AS avibase"))
-
-        if "patlevin" in self.databases_available and self.patlevin_db_path:
-            session.execute(text(f"ATTACH DATABASE '{self.patlevin_db_path}' AS patlevin"))
+        # Always attach all three databases - they're guaranteed to exist
+        session.execute(text(f"ATTACH DATABASE '{self.ioc_db_path}' AS ioc"))
+        session.execute(text(f"ATTACH DATABASE '{self.avibase_db_path}' AS avibase"))
+        session.execute(text(f"ATTACH DATABASE '{self.patlevin_db_path}' AS patlevin"))
 
     def detach_all_from_session(self, session: Session) -> None:
         """Detach all databases from session.
@@ -65,13 +54,13 @@ class MultilingualDatabaseService:
         Args:
             session: SQLAlchemy session
         """
+        # Detach all three databases
         for db_alias in ["ioc", "avibase", "patlevin"]:
-            if db_alias in self.databases_available:
-                try:
-                    session.execute(text(f"DETACH DATABASE {db_alias}"))
-                except Exception:
-                    # Ignore errors if database wasn't attached
-                    pass
+            try:
+                session.execute(text(f"DETACH DATABASE {db_alias}"))
+            except Exception:
+                # Ignore errors if database wasn't attached (shouldn't happen)
+                pass
 
     def get_best_common_name(
         self, session: Session, scientific_name: str, language_code: str = "en"
@@ -88,9 +77,7 @@ class MultilingualDatabaseService:
         """
         select_parts, join_parts = self._build_query_parts(language_code)
 
-        if not select_parts:
-            return {"common_name": None, "source": None}
-
+        # Build and execute query (select_parts always has entries now)
         query = self._build_coalesce_query(select_parts, join_parts, language_code)
 
         result = session.execute(
@@ -102,7 +89,7 @@ class MultilingualDatabaseService:
         return {"common_name": None, "source": None}
 
     def _build_query_parts(self, language_code: str) -> tuple[list[str], list[str]]:
-        """Build query parts for common name lookup based on available databases.
+        """Build query parts for common name lookup.
 
         Args:
             language_code: Language code for translation
@@ -113,24 +100,22 @@ class MultilingualDatabaseService:
         select_parts = []
         join_parts = []
 
-        if "ioc" in self.databases_available:
-            self._add_ioc_query_parts(select_parts, join_parts, language_code)
+        # Always include all three databases
+        self._add_ioc_query_parts(select_parts, join_parts, language_code)
 
-        if "patlevin" in self.databases_available:
-            select_parts.append("patlevin.common_name")
-            join_parts.append(
-                """LEFT JOIN patlevin.patlevin_labels patlevin
-                   ON LOWER(patlevin.scientific_name) = LOWER(:sci_name)
-                   AND patlevin.language_code = :lang"""
-            )
+        select_parts.append("patlevin.common_name")
+        join_parts.append(
+            """LEFT JOIN patlevin.patlevin_labels patlevin
+               ON LOWER(patlevin.scientific_name) = LOWER(:sci_name)
+               AND patlevin.language_code = :lang"""
+        )
 
-        if "avibase" in self.databases_available:
-            select_parts.append("avibase.common_name")
-            join_parts.append(
-                """LEFT JOIN avibase.avibase_names avibase
-                   ON LOWER(avibase.scientific_name) = LOWER(:sci_name)
-                   AND avibase.language_code = :lang"""
-            )
+        select_parts.append("avibase.common_name")
+        join_parts.append(
+            """LEFT JOIN avibase.avibase_names avibase
+               ON LOWER(avibase.scientific_name) = LOWER(:sci_name)
+               AND avibase.language_code = :lang"""
+        )
 
         return select_parts, join_parts
 
@@ -194,16 +179,12 @@ class MultilingualDatabaseService:
         """
         source_cases = []
 
-        if "ioc" in self.databases_available:
-            if language_code == "en":
-                source_cases.append("WHEN ioc_species.english_name IS NOT NULL THEN 'IOC'")
-            source_cases.append("WHEN ioc_trans.common_name IS NOT NULL THEN 'IOC'")
-
-        if "patlevin" in self.databases_available:
-            source_cases.append("WHEN patlevin.common_name IS NOT NULL THEN 'PatLevin'")
-
-        if "avibase" in self.databases_available:
-            source_cases.append("WHEN avibase.common_name IS NOT NULL THEN 'Avibase'")
+        # Always include all databases in source detection
+        if language_code == "en":
+            source_cases.append("WHEN ioc_species.english_name IS NOT NULL THEN 'IOC'")
+        source_cases.append("WHEN ioc_trans.common_name IS NOT NULL THEN 'IOC'")
+        source_cases.append("WHEN patlevin.common_name IS NOT NULL THEN 'PatLevin'")
+        source_cases.append("WHEN avibase.common_name IS NOT NULL THEN 'Avibase'")
 
         return f"CASE {' '.join(source_cases)} ELSE NULL END"
 
@@ -222,68 +203,63 @@ class MultilingualDatabaseService:
         translations = {}
 
         # Get from IOC
-        if "ioc" in self.databases_available:
-            # English from species table
-            query = """
-                SELECT 'en' as lang, english_name as name
-                FROM ioc.species
-                WHERE LOWER(scientific_name) = LOWER(:sci_name)
-            """
-            result = session.execute(text(query), {"sci_name": scientific_name}).fetchone()
-            if result:
-                translations.setdefault("en", []).append({"name": result[1], "source": "IOC"})
+        # English from species table
+        query = """
+            SELECT 'en' as lang, english_name as name
+            FROM ioc.species
+            WHERE LOWER(scientific_name) = LOWER(:sci_name)
+        """
+        result = session.execute(text(query), {"sci_name": scientific_name}).fetchone()
+        if result:
+            translations.setdefault("en", []).append({"name": result[1], "source": "IOC"})
 
-            # Other languages from translations table
-            query = """
-                SELECT language_code, common_name
-                FROM ioc.translations
-                WHERE LOWER(scientific_name) = LOWER(:sci_name)
-            """
-            for row in session.execute(text(query), {"sci_name": scientific_name}):
-                lang = row[0]
-                translations.setdefault(lang, []).append({"name": row[1], "source": "IOC"})
+        # Other languages from translations table
+        query = """
+            SELECT language_code, common_name
+            FROM ioc.translations
+            WHERE LOWER(scientific_name) = LOWER(:sci_name)
+        """
+        for row in session.execute(text(query), {"sci_name": scientific_name}):
+            lang = row[0]
+            translations.setdefault(lang, []).append({"name": row[1], "source": "IOC"})
 
         # Get from PatLevin
-        if "patlevin" in self.databases_available:
-            query = """
-                SELECT language_code, common_name
-                FROM patlevin.patlevin_labels
-                WHERE LOWER(scientific_name) = LOWER(:sci_name)
-            """
-            for row in session.execute(text(query), {"sci_name": scientific_name}):
-                lang = row[0]
-                # Check if not duplicate
-                existing_names = [t["name"] for t in translations.get(lang, [])]
-                if row[1] not in existing_names:
-                    translations.setdefault(lang, []).append({"name": row[1], "source": "PatLevin"})
+        query = """
+            SELECT language_code, common_name
+            FROM patlevin.patlevin_labels
+            WHERE LOWER(scientific_name) = LOWER(:sci_name)
+        """
+        for row in session.execute(text(query), {"sci_name": scientific_name}):
+            lang = row[0]
+            # Check if not duplicate
+            existing_names = [t["name"] for t in translations.get(lang, [])]
+            if row[1] not in existing_names:
+                translations.setdefault(lang, []).append({"name": row[1], "source": "PatLevin"})
 
         # Get from Avibase
-        if "avibase" in self.databases_available:
-            query = """
-                SELECT language_code, common_name
-                FROM avibase.avibase_names
-                WHERE LOWER(scientific_name) = LOWER(:sci_name)
-            """
-            for row in session.execute(text(query), {"sci_name": scientific_name}):
-                lang = row[0]
-                # Check if not duplicate
-                existing_names = [t["name"] for t in translations.get(lang, [])]
-                if row[1] not in existing_names:
-                    translations.setdefault(lang, []).append({"name": row[1], "source": "Avibase"})
+        query = """
+            SELECT language_code, common_name
+            FROM avibase.avibase_names
+            WHERE LOWER(scientific_name) = LOWER(:sci_name)
+        """
+        for row in session.execute(text(query), {"sci_name": scientific_name}):
+            lang = row[0]
+            # Check if not duplicate
+            existing_names = [t["name"] for t in translations.get(lang, [])]
+            if row[1] not in existing_names:
+                translations.setdefault(lang, []).append({"name": row[1], "source": "Avibase"})
 
         return translations
 
     def get_attribution(self) -> list[str]:
-        """Get attribution strings for all available databases.
+        """Get attribution strings for all databases.
 
         Returns:
             List of attribution strings
         """
-        attributions = []
-        if "ioc" in self.databases_available:
-            attributions.append("IOC World Bird List (www.worldbirdnames.org)")
-        if "patlevin" in self.databases_available:
-            attributions.append("Patrick Levin (patlevin) - BirdNET Label Translations")
-        if "avibase" in self.databases_available:
-            attributions.append("Avibase - Lepage, Denis (2018)")
-        return attributions
+        # Always return attributions for all three databases
+        return [
+            "IOC World Bird List (www.worldbirdnames.org)",
+            "Patrick Levin (patlevin) - BirdNET Label Translations",
+            "Avibase - Lepage, Denis (2018)",
+        ]

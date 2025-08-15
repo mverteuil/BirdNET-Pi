@@ -50,12 +50,13 @@ def ioc_database_service(temp_ioc_db):
 def multilingual_service(temp_ioc_db, file_path_resolver):
     """Create multilingual database service."""
     # Create empty tables for PatLevin and Avibase in the test database
+    # In production, all three databases are always present thanks to the asset downloader
     import sqlite3
 
     conn = sqlite3.connect(temp_ioc_db)
     cursor = conn.cursor()
 
-    # Create PatLevin table if it doesn't exist
+    # Create PatLevin table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS patlevin_labels (
             scientific_name TEXT,
@@ -64,7 +65,7 @@ def multilingual_service(temp_ioc_db, file_path_resolver):
         )
     """)
 
-    # Create Avibase table if it doesn't exist
+    # Create Avibase table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS avibase_names (
             scientific_name TEXT,

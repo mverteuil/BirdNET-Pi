@@ -316,7 +316,7 @@ class DetectionQueryService:
                     overlap=result.overlap,  # type: ignore[attr-defined]
                 )
 
-                detection_with_ioc = DetectionWithLocalization(
+                detection_with_l10n = DetectionWithLocalization(
                     detection=detection,
                     ioc_english_name=result.ioc_english_name,  # type: ignore[attr-defined]
                     translated_name=result.translated_name,  # type: ignore[attr-defined]
@@ -326,8 +326,8 @@ class DetectionQueryService:
                 )
 
                 # Cache the result before returning
-                self._set_cache(cache_key, detection_with_ioc)
-                return detection_with_ioc
+                self._set_cache(cache_key, detection_with_l10n)
+                return detection_with_l10n
 
             finally:
                 self.multilingual_service.detach_all_from_session(session)
