@@ -81,12 +81,10 @@ asset-installer = "birdnetpi.cli.asset_installer:main"
 audio-analysis-daemon = "birdnetpi.daemons.audio_analysis_daemon:main"
 audio-capture-daemon = "birdnetpi.daemons.audio_capture_daemon:main"
 audio-websocket-daemon = "birdnetpi.daemons.audio_websocket_daemon:main"
-# data-manager = "birdnetpi.cli.data_manager:main"  # File doesn't exist
 generate-dummy-data = "birdnetpi.cli.generate_dummy_data:main"
 manage-translations = "birdnetpi.cli.manage_translations:main"
-pulseaudio-setup = "birdnetpi.cli.pulseaudio_setup:main"
+pulseaudio-tool = "birdnetpi.cli.pulseaudio_tool:main"
 release-manager = "birdnetpi.cli.release:main"
-# reporting-manager = "birdnetpi.cli.reporting_manager:main"  # File doesn't exist
 spectrogram-websocket-daemon = "birdnetpi.daemons.spectrogram_websocket_daemon:main"
 
 [tool.coverage.run]

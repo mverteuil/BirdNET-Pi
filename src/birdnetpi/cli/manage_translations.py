@@ -1,33 +1,55 @@
 #!/usr/bin/env python3
-"""Translation management wrapper for BirdNET-Pi i18n workflow."""
+"""Translation management CLI for BirdNET-Pi i18n workflow."""
 
-import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
+
+import click
 
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
 def run_command(cmd: list[str], description: str) -> bool:
     """Run a command and handle errors."""
-    print(f"Running: {description}")
-    print(f"Command: {' '.join(cmd)}")
+    click.echo(f"Running: {description}")
+    click.echo(f"Command: {' '.join(cmd)}")
 
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         if result.stdout:
-            print(result.stdout)
+            click.echo(result.stdout)
         return True
     except subprocess.CalledProcessError as e:
-        print(f"Error: {e}")
+        click.echo(click.style(f"Error: {e}", fg="red"), err=True)
         if e.stderr:
-            print(f"stderr: {e.stderr}")
+            click.echo(f"stderr: {e.stderr}", err=True)
         return False
 
 
-def extract_strings(resolver: FilePathResolver) -> bool:
+@click.group()
+@click.pass_context
+def cli(ctx: click.Context) -> None:
+    """Manage BirdNET-Pi translations.
+
+    Tools for extracting, updating, and compiling translation files.
+    """
+    # Set BIRDNETPI_APP to the current working directory
+    os.environ["BIRDNETPI_APP"] = str(Path.cwd())
+
+    # Initialize the file path resolver
+    ctx.ensure_object(dict)
+    ctx.obj["resolver"] = FilePathResolver()
+
+
+@cli.command()
+@click.pass_obj
+def extract(obj: dict[str, Any]) -> None:
     """Extract translatable strings from source code."""
+    resolver = obj["resolver"]
+
     # Get paths relative to src directory
     src_dir = Path(resolver.get_src_dir())
     babel_cfg = Path(resolver.get_babel_config_path()).relative_to(src_dir.parent)
@@ -50,11 +72,21 @@ def extract_strings(resolver: FilePathResolver) -> bool:
         str(messages_pot),
         "src",
     ]
-    return run_command(cmd, "Extracting translatable strings")
+
+    success = run_command(cmd, "Extracting translatable strings")
+    if success:
+        click.echo(click.style("✓ String extraction completed successfully", fg="green"))
+    else:
+        click.echo(click.style("✗ String extraction failed", fg="red"), err=True)
+        sys.exit(1)
 
 
-def update_translations(resolver: FilePathResolver) -> bool:
+@cli.command()
+@click.pass_obj
+def update(obj: dict[str, Any]) -> None:
     """Update existing translation files with new strings."""
+    resolver = obj["resolver"]
+
     # Get paths relative to src directory parent (repo root)
     src_dir = Path(resolver.get_src_dir())
     messages_pot = Path(resolver.get_messages_pot_path()).relative_to(src_dir.parent)
@@ -70,11 +102,21 @@ def update_translations(resolver: FilePathResolver) -> bool:
         "-d",
         str(locales_dir),
     ]
-    return run_command(cmd, "Updating translation files")
+
+    success = run_command(cmd, "Updating translation files")
+    if success:
+        click.echo(click.style("✓ Translation update completed successfully", fg="green"))
+    else:
+        click.echo(click.style("✗ Translation update failed", fg="red"), err=True)
+        sys.exit(1)
 
 
-def compile_translations(resolver: FilePathResolver) -> bool:
+@cli.command("compile")
+@click.pass_obj
+def compile_translations(obj: dict[str, Any]) -> None:
     """Compile .po files to .mo files."""
+    resolver = obj["resolver"]
+
     # Get paths relative to src directory parent (repo root)
     src_dir = Path(resolver.get_src_dir())
     locales_dir = Path(resolver.get_locales_dir()).relative_to(src_dir.parent)
@@ -87,11 +129,25 @@ def compile_translations(resolver: FilePathResolver) -> bool:
         "-d",
         str(locales_dir),
     ]
-    return run_command(cmd, "Compiling translation files")
+
+    success = run_command(cmd, "Compiling translation files")
+    if success:
+        click.echo(click.style("✓ Translation compilation completed successfully", fg="green"))
+    else:
+        click.echo(click.style("✗ Translation compilation failed", fg="red"), err=True)
+        sys.exit(1)
 
 
-def init_language(resolver: FilePathResolver, language: str) -> bool:
-    """Initialize a new language."""
+@cli.command()
+@click.argument("language")
+@click.pass_obj
+def init(obj: dict[str, Any], language: str) -> None:
+    """Initialize a new language.
+
+    LANGUAGE: Language code (e.g., 'it', 'pt', 'zh')
+    """
+    resolver = obj["resolver"]
+
     # Get paths relative to src directory parent (repo root)
     src_dir = Path(resolver.get_src_dir())
     messages_pot = Path(resolver.get_messages_pot_path()).relative_to(src_dir.parent)
@@ -109,57 +165,45 @@ def init_language(resolver: FilePathResolver, language: str) -> bool:
         "-l",
         language,
     ]
-    return run_command(cmd, f"Initializing language: {language}")
+
+    success = run_command(cmd, f"Initializing language: {language}")
+    if success:
+        click.echo(click.style(f"✓ Language '{language}' initialized successfully", fg="green"))
+    else:
+        click.echo(click.style("✗ Language initialization failed", fg="red"), err=True)
+        sys.exit(1)
+
+
+@cli.command("all")
+@click.pass_context
+def run_all(ctx: click.Context) -> None:
+    """Run extract, update, and compile in sequence."""
+    click.echo(click.style("Running complete translation workflow...", bold=True))
+    click.echo()
+
+    # Run extract
+    click.echo(click.style("Step 1/3: Extracting strings", bold=True))
+    ctx.invoke(extract)
+    click.echo()
+
+    # Run update
+    click.echo(click.style("Step 2/3: Updating translations", bold=True))
+    ctx.invoke(update)
+    click.echo()
+
+    # Run compile
+    click.echo(click.style("Step 3/3: Compiling translations", bold=True))
+    ctx.invoke(compile_translations)
+    click.echo()
+
+    click.echo(
+        click.style("✓ Complete translation workflow finished successfully", fg="green", bold=True)
+    )
 
 
 def main() -> None:
-    """Execute the main script entry point."""
-    parser = argparse.ArgumentParser(description="Manage BirdNET-Pi translations")
-    parser.add_argument(
-        "command",
-        choices=["extract", "update", "compile", "init", "all"],
-        help="Translation command to run",
-    )
-    parser.add_argument(
-        "--language", help="Language code for 'init' command (e.g., 'it', 'pt', 'zh')"
-    )
-
-    args = parser.parse_args()
-
-    # Set BIRDNETPI_APP to the current working directory
-    import os
-    from pathlib import Path
-
-    os.environ["BIRDNETPI_APP"] = str(Path.cwd())
-
-    # Initialize the file path resolver
-    resolver = FilePathResolver()
-
-    success = True
-
-    if args.command == "extract":
-        success = extract_strings(resolver)
-    elif args.command == "update":
-        success = update_translations(resolver)
-    elif args.command == "compile":
-        success = compile_translations(resolver)
-    elif args.command == "init":
-        if not args.language:
-            print("Error: --language is required for 'init' command")
-            sys.exit(1)
-        success = init_language(resolver, args.language)
-    elif args.command == "all":
-        success = (
-            extract_strings(resolver)
-            and update_translations(resolver)
-            and compile_translations(resolver)
-        )
-
-    if success:
-        print("✓ Translation operation completed successfully")
-    else:
-        print("✗ Translation operation failed")
-        sys.exit(1)
+    """Entry point for the translation management CLI."""
+    cli(obj={})
 
 
 if __name__ == "__main__":

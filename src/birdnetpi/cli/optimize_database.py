@@ -8,11 +8,13 @@ This script provides database optimization capabilities including:
 - Monitoring database health
 """
 
-import argparse
 import json
 import logging
 import sys
 from pathlib import Path
+from typing import Any
+
+import click
 
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.utils.database_optimizer import DatabaseOptimizer
@@ -48,11 +50,11 @@ def print_section(title: str, content: str = "") -> None:
         title: Section title
         content: Optional content to print after header
     """
-    print(f"\n{'=' * 60}")
-    print(f" {title}")
-    print(f"{'=' * 60}")
+    click.echo(f"\n{'=' * 60}")
+    click.echo(f" {title}")
+    click.echo(f"{'=' * 60}")
     if content:
-        print(content)
+        click.echo(content)
 
 
 def print_query_performance(performance_data: list, title: str) -> None:
@@ -65,282 +67,205 @@ def print_query_performance(performance_data: list, title: str) -> None:
     print_section(title)
 
     if not performance_data:
-        print("No performance data available.")
+        click.echo("No performance data available.")
         return
 
     # Print table header
-    print(f"{'Query Name':<40} {'Time (ms)':<12} {'Rows':<8} {'Index':<8} {'Scan':<8}")
-    print("-" * 80)
+    click.echo(f"{'Query Name':<40} {'Time (ms)':<12} {'Rows':<8} {'Index':<8} {'Scan':<8}")
+    click.echo("-" * 80)
 
     # Print each query's performance
     for query in performance_data:
         if "error" in query:
-            print(f"{query['name']:<40} Error: {query['error']}")
+            click.echo(f"{query['name']:<40} Error: {query['error']}")
         else:
             name = query["name"][:39]
-            time_ms = f"{query.get('execution_time_ms', 'N/A'):<12}"
-            rows = f"{query.get('row_count', 'N/A'):<8}"
-            uses_index = "Yes" if query.get("uses_index") else "No"
-            full_scan = "Yes" if query.get("full_table_scan") else "No"
-
-            print(f"{name:<40} {time_ms} {rows} {uses_index:<8} {full_scan:<8}")
-
-
-def print_statistics(stats: dict) -> None:
-    """Print database statistics.
-
-    Args:
-        stats: Statistics dictionary
-    """
-    print_section("Database Statistics")
-
-    # Table information
-    tables = stats.get("tables", {})
-    for table_name, info in tables.items():
-        if "error" in info:
-            print(f"\n{table_name}: Error - {info['error']}")
-        else:
-            print(f"\n{table_name}:")
-            print(f"  Rows: {info.get('row_count', 'N/A'):,}")
-            print(f"  Columns: {info.get('columns', 'N/A')}")
-
-    # Date range
-    date_range = stats.get("date_range", {})
-    if date_range:
-        print("\nDate Range:")
-        print(f"  Earliest: {date_range.get('earliest', 'N/A')}")
-        print(f"  Latest: {date_range.get('latest', 'N/A')}")
-        print(f"  Span: {date_range.get('days_span', 'N/A')} days")
-
-    # Confidence distribution
-    conf_dist = stats.get("confidence_distribution", {})
-    if conf_dist:
-        print("\nConfidence Distribution:")
-        print(f"  Min: {conf_dist.get('min', 'N/A')}")
-        print(f"  Max: {conf_dist.get('max', 'N/A')}")
-        print(f"  Average: {conf_dist.get('average', 'N/A')}")
-        print(f"  High confidence (>0.8): {conf_dist.get('high_confidence_count', 'N/A'):,}")
-
-    # Top species
-    top_species = stats.get("top_species", [])
-    if top_species:
-        print("\nTop 10 Species by Detection Count:")
-        for i, species in enumerate(top_species[:10], 1):
-            print(f"  {i:2}. {species['species']:<40} {species['count']:,} detections")
+            time_ms = f"{query['time_ms']:.2f}"
+            rows = str(query.get("rows", "N/A"))
+            index_ops = str(query.get("index_ops", 0))
+            scan_ops = str(query.get("scan_ops", 0))
+            click.echo(f"{name:<40} {time_ms:<12} {rows:<8} {index_ops:<8} {scan_ops:<8}")
 
 
 def analyze_performance(optimizer: DatabaseOptimizer) -> None:
-    """Analyze current query performance.
+    """Analyze current database performance.
 
     Args:
-        optimizer: DatabaseOptimizer instance
+        optimizer: Database optimizer instance
     """
-    print_section("Analyzing Query Performance")
+    print_section("Analyzing Database Performance")
 
-    try:
-        # Get current indexes
-        indexes = optimizer.get_current_indexes()
-        print("\nCurrent Indexes:")
-        for table, idx_list in indexes.items():
-            print(f"\n{table}:")
-            if idx_list:
-                for idx in idx_list:
-                    print(f"  - {idx}")
-            else:
-                print("  No indexes found")
+    # Get current index status
+    click.echo("\n📊 Current Index Status:")
+    current_indexes = optimizer.get_current_indexes()
+    if current_indexes:
+        for table, indexes in current_indexes.items():
+            if indexes:
+                click.echo(f"  Table: {table}")
+                for idx in indexes:
+                    click.echo(f"    ✓ {idx}")
+    else:
+        click.echo("  No custom indexes found")
 
-        # Analyze query performance
-        print("\nAnalyzing common queries...")
-        performance = optimizer.monitor.analyze_common_queries()
-        print_query_performance(performance, "Current Query Performance")
+    # Analyze table statistics
+    click.echo("\n📈 Database Statistics:")
+    stats = optimizer.analyze_table_statistics()
+    if "detections" in stats:
+        det_stats = stats["detections"]
+        click.echo(f"  • Total detections: {det_stats.get('row_count', 0):,}")
+        if "date_range" in det_stats:
+            date_range = det_stats["date_range"]
+            if date_range.get("min_date") and date_range.get("max_date"):
+                click.echo(f"  • Date range: {date_range['min_date']} to {date_range['max_date']}")
 
-        # Get statistics
-        stats = optimizer.analyze_table_statistics()
-        print_statistics(stats)
+    # Show what optimizations are available
+    click.echo("\n💡 Available Optimizations:")
+    click.echo("  • Create optimized indexes for common query patterns")
+    click.echo("  • Analyze table statistics and update query planner")
+    click.echo("  • Vacuum database to reclaim space")
 
-    except Exception as e:
-        logger.error(f"Error during analysis: {e}")
-        print(f"\nError: {e}")
+
+def _display_created_indexes(created_indexes: list[str], dry_run: bool) -> None:
+    """Display information about created indexes.
+
+    Args:
+        created_indexes: List of CREATE INDEX statements
+        dry_run: Whether this is a dry run
+    """
+    if created_indexes:
+        click.echo(
+            f"  ✅ {'Would create' if dry_run else 'Created'} {len(created_indexes)} indexes:"
+        )
+        for idx in created_indexes[:5]:  # Show first 5
+            # Extract index name from CREATE INDEX statement
+            if "CREATE INDEX" in idx:
+                parts = idx.split()
+                if len(parts) >= 4:
+                    idx_name = parts[3]
+                    click.echo(f"     • {idx_name}")
+        if len(created_indexes) > 5:
+            click.echo(f"     ... and {len(created_indexes) - 5} more")
+    else:
+        click.echo("  ℹ️  No new indexes needed")  # noqa: RUF001
+
+
+def _display_optimization_summary(created_indexes: list[str], result: dict[str, Any]) -> None:
+    """Display optimization summary.
+
+    Args:
+        created_indexes: List of created indexes
+        result: Optimization result dictionary
+    """
+    click.echo("\n📊 Optimization Summary:")
+    if created_indexes:
+        click.echo(f"  ✅ Created {len(created_indexes)} optimized indexes")
+        click.echo("  🚀 Query performance should be significantly improved")
+    if result.get("vacuum_result"):
+        click.echo("  ✅ Database vacuumed successfully")
+    if result.get("analyze_result"):
+        click.echo("  ✅ Table statistics updated")
+
+    if not created_indexes and not result.get("vacuum_result"):
+        click.echo("  ℹ️  Database was already optimized")  # noqa: RUF001
 
 
 def optimize_database(optimizer: DatabaseOptimizer, dry_run: bool = False) -> None:
     """Run database optimization.
 
     Args:
-        optimizer: DatabaseOptimizer instance
-        dry_run: If True, only show what would be done
+        optimizer: Database optimizer instance
+        dry_run: If True, show what would be done without making changes
     """
     if dry_run:
         print_section("Optimization Plan (Dry Run)")
-
-        # Show indexes that would be created
-        sql_statements = optimizer.create_optimized_indexes(dry_run=True)
-        print("\nIndexes to be created:")
-        for sql in sql_statements:
-            # Extract index name from SQL
-            if "CREATE INDEX" in sql:
-                parts = sql.split()
-                idx_name = parts[parts.index("INDEX") + 3] if "INDEX" in parts else "unknown"
-                print(f"  - {idx_name}")
-
-        print("\nDatabase would be VACUUMed after index creation.")
-        print("\nRun without --dry-run to apply optimizations.")
+        click.echo("The following optimizations would be applied:")
     else:
         print_section("Running Database Optimization")
-        print("This may take several minutes depending on database size...")
 
-        try:
-            results = optimizer.optimize_database()
+    # Create optimized indexes
+    click.echo("\n🔧 Creating Optimized Indexes...")
+    created_indexes = optimizer.create_optimized_indexes(dry_run=dry_run)
+    _display_created_indexes(created_indexes, dry_run)
 
-            # Show created indexes
-            if results.get("created_indexes"):
-                print(f"\nCreated {len(results['created_indexes'])} indexes:")
-                for sql in results["created_indexes"]:
-                    if "CREATE INDEX" in sql:
-                        parts = sql.split()
-                        idx_name = (
-                            parts[parts.index("INDEX") + 3] if "INDEX" in parts else "unknown"
-                        )
-                        print(f"  ✓ {idx_name}")
-
-            # Show performance comparison
-            if results.get("query_performance_before") and results.get("query_performance_after"):
-                print_query_performance(
-                    results["query_performance_before"], "Query Performance BEFORE Optimization"
-                )
-                print_query_performance(
-                    results["query_performance_after"], "Query Performance AFTER Optimization"
-                )
-
-                # Calculate improvement
-                before_times = [
-                    q.get("execution_time_ms", 0)
-                    for q in results["query_performance_before"]
-                    if "execution_time_ms" in q
-                ]
-                after_times = [
-                    q.get("execution_time_ms", 0)
-                    for q in results["query_performance_after"]
-                    if "execution_time_ms" in q
-                ]
-
-                if before_times and after_times:
-                    avg_before = sum(before_times) / len(before_times)
-                    avg_after = sum(after_times) / len(after_times)
-                    improvement = ((avg_before - avg_after) / avg_before) * 100
-
-                    print(f"\nAverage query time improvement: {improvement:.1f}%")
-                    print(f"  Before: {avg_before:.2f}ms")
-                    print(f"  After: {avg_after:.2f}ms")
-
-            # Show recommendations
-            if results.get("recommendations"):
-                print_section("Optimization Recommendations")
-                for i, rec in enumerate(results["recommendations"], 1):
-                    print(f"{i}. {rec}")
-
-            print_section("Optimization Complete", "✅ Database has been optimized successfully!")
-
-        except Exception as e:
-            logger.error(f"Error during optimization: {e}")
-            print(f"\n❌ Optimization failed: {e}")
+    if not dry_run:
+        # Run full optimization
+        click.echo("\n⚙️  Running Full Optimization...")
+        result = optimizer.optimize_database()
+        _display_optimization_summary(created_indexes, result)
 
 
-def export_report(optimizer: DatabaseOptimizer, output_path: Path) -> None:
+def export_report(optimizer: DatabaseOptimizer, export_path: Path) -> None:
     """Export optimization report to JSON file.
 
     Args:
-        optimizer: DatabaseOptimizer instance
-        output_path: Path to output file
+        optimizer: Database optimizer instance
+        export_path: Path to export JSON file
     """
     print_section("Exporting Optimization Report")
 
     try:
-        # Run full optimization analysis
-        results = optimizer.optimize_database()
+        from datetime import datetime
 
-        # Write to file
-        with open(output_path, "w") as f:
-            json.dump(results, f, indent=2, default=str)
+        report = {
+            "timestamp": datetime.now().isoformat(),
+            "database_statistics": optimizer.analyze_table_statistics(),
+            "existing_indexes": optimizer.get_current_indexes(),
+            "optimization_available": {
+                "create_indexes": True,
+                "vacuum_database": True,
+                "analyze_tables": True,
+            },
+        }
 
-        print(f"✅ Report exported to: {output_path}")
+        export_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(export_path, "w") as f:
+            json.dump(report, f, indent=2, default=str)
 
-        # Show summary
-        if results.get("created_indexes"):
-            print(f"  - Created {len(results['created_indexes'])} indexes")
-        if results.get("recommendations"):
-            print(f"  - Generated {len(results['recommendations'])} recommendations")
+        click.echo(click.style(f"✅ Report exported to: {export_path}", fg="green"))
 
     except Exception as e:
         logger.error(f"Error exporting report: {e}")
-        print(f"❌ Export failed: {e}")
+        click.echo(click.style(f"❌ Export failed: {e}", fg="red"), err=True)
 
 
-def main() -> int:
-    """Main entry point for the optimization script.
+@click.command()
+@click.option("--analyze", is_flag=True, help="Analyze current database performance")
+@click.option("--optimize", is_flag=True, help="Run database optimization")
+@click.option("--dry-run", is_flag=True, help="Show what would be done without making changes")
+@click.option(
+    "--export", type=click.Path(path_type=Path), help="Export optimization report to JSON file"
+)
+@click.option("--verbose", is_flag=True, help="Enable verbose logging")
+def cli(
+    analyze: bool, optimize: bool, dry_run: bool, export: Path | None, verbose: bool
+) -> int | None:
+    """Optimize BirdNET-Pi database for analytics queries.
 
-    Returns:
-        Exit code (0 for success, 1 for error)
+    Examples:
+      # Analyze current performance
+      optimize-database --analyze
+
+      # Run optimization (dry run)
+      optimize-database --optimize --dry-run
+
+      # Run full optimization
+      optimize-database --optimize
+
+      # Export optimization report
+      optimize-database --export report.json
+
+      # Full analysis and optimization
+      optimize-database --analyze --optimize
     """
-    parser = argparse.ArgumentParser(
-        description="Optimize BirdNET-Pi database for analytics queries",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Analyze current performance
-  %(prog)s --analyze
-
-  # Run optimization (dry run)
-  %(prog)s --optimize --dry-run
-
-  # Run full optimization
-  %(prog)s --optimize
-
-  # Export optimization report
-  %(prog)s --export report.json
-
-  # Full analysis and optimization
-  %(prog)s --analyze --optimize
-        """,
-    )
-
-    parser.add_argument(
-        "--analyze",
-        action="store_true",
-        help="Analyze current database performance",
-    )
-    parser.add_argument(
-        "--optimize",
-        action="store_true",
-        help="Run database optimization",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show what would be done without making changes",
-    )
-    parser.add_argument(
-        "--export",
-        type=Path,
-        metavar="PATH",
-        help="Export optimization report to JSON file",
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose logging",
-    )
-
-    args = parser.parse_args()
-
     # Set logging level
-    if args.verbose:
+    if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
     # Require at least one action
-    if not any([args.analyze, args.optimize, args.export]):
-        parser.print_help()
-        return 1
+    if not any([analyze, optimize, export]):
+        ctx = click.get_current_context()
+        click.echo(ctx.get_help())
+        sys.exit(1)
 
     try:
         # Set up database service
@@ -350,25 +275,28 @@ Examples:
         print_section("BirdNET-Pi Database Optimizer", "Optimizing database for analytics queries")
 
         # Run requested actions
-        if args.analyze:
+        if analyze:
             analyze_performance(optimizer)
 
-        if args.optimize:
-            optimize_database(optimizer, dry_run=args.dry_run)
+        if optimize:
+            optimize_database(optimizer, dry_run=dry_run)
 
-        if args.export:
-            export_report(optimizer, args.export)
+        if export:
+            export_report(optimizer, export)
 
+        click.echo("\n✨ Done!")
         return 0
 
-    except KeyboardInterrupt:
-        print("\n\nOperation cancelled by user.")
-        return 1
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        print(f"\n❌ Error: {e}")
+        logger.error(f"Optimization failed: {e}")
+        click.echo(click.style(f"\n❌ Error: {e}", fg="red"), err=True)
         return 1
+
+
+def main() -> None:
+    """Entry point for the database optimizer CLI."""
+    sys.exit(cli())
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

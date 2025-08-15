@@ -17,7 +17,7 @@ from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 @click.group()
 @click.pass_context
-def cli(ctx):
+def cli(ctx: click.Context) -> None:
     """BirdNET-Pi Asset Installer.
 
     Download and manage BirdNET-Pi assets including models and databases.
@@ -32,7 +32,7 @@ def cli(ctx):
 @click.option("--output-json", help="Output installation data to JSON file")
 @click.option("--remote", default="origin", help="Git remote to fetch from")
 @click.pass_context
-def install(ctx, version, output_json, remote):
+def install(ctx: click.Context, version: str, output_json: str | None, remote: str) -> None:
     """Install complete asset release.
 
     VERSION: Release version to install (e.g., 'v2.0.0' or 'latest')
@@ -120,7 +120,7 @@ def install(ctx, version, output_json, remote):
 @cli.command("list-versions")
 @click.option("--remote", default="origin", help="Git remote to check")
 @click.pass_context
-def list_versions(ctx, remote):
+def list_versions(ctx: click.Context, remote: str) -> None:
     """List available asset versions."""
     update_manager = ctx.obj["update_manager"]
 
@@ -150,7 +150,7 @@ def list_versions(ctx, remote):
 @cli.command("check-local")
 @click.option("--verbose", is_flag=True, help="Show detailed file information")
 @click.pass_context
-def check_local(ctx, verbose):
+def check_local(ctx: click.Context, verbose: bool) -> None:
     """Check status of locally installed assets."""
     file_resolver = ctx.obj["file_resolver"]
 
@@ -214,7 +214,7 @@ def check_local(ctx, verbose):
     click.echo()
 
 
-def main():
+def main() -> None:
     """Entry point for the asset installer CLI."""
     cli(obj={})
 
