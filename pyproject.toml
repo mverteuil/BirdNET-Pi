@@ -72,7 +72,8 @@ dependencies = [
   "tzlocal",
   "uvicorn",
   "websockets>=15.0.1",
-  "wtforms>=3.1.2"
+  "wtforms>=3.1.2",
+  "click>=8.2.1"
 ]
 
 [project.scripts]

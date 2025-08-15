@@ -1,132 +1,161 @@
 """CLI wrapper for installing BirdNET-Pi assets from releases.
 
 This script provides command-line access to download and install
-models and IOC database from orphaned commit releases for local
+complete asset releases including models and databases for local
 development and CI environments.
 """
 
-import argparse
 import json
 import sys
 from pathlib import Path
+
+import click
 
 from birdnetpi.managers.update_manager import UpdateManager
 from birdnetpi.utils.file_path_resolver import FilePathResolver
 
 
-def install_assets(args: argparse.Namespace) -> None:
-    """Install assets from a release."""
-    file_resolver = FilePathResolver()
-    update_manager = UpdateManager(file_resolver)
+@click.group()
+@click.pass_context
+def cli(ctx):
+    """BirdNET-Pi Asset Installer.
 
-    print(f"Installing assets for version: {args.version}")
+    Download and manage BirdNET-Pi assets including models and databases.
+    """
+    ctx.ensure_object(dict)
+    ctx.obj["file_resolver"] = FilePathResolver()
+    ctx.obj["update_manager"] = UpdateManager(ctx.obj["file_resolver"])
 
-    if not any(
-        [
-            args.include_models,
-            args.include_ioc_db,
-            args.include_avibase_db,
-            args.include_patlevin_db,
-        ]
-    ):
-        print(
-            "Error: Must specify at least one asset type (--include-models, "
-            "--include-ioc-db, --include-avibase-db, or --include-patlevin-db)"
-        )
-        sys.exit(1)
-        return  # Early return after exit call for test compatibility
+
+@cli.command()
+@click.argument("version")
+@click.option("--output-json", help="Output installation data to JSON file")
+@click.option("--remote", default="origin", help="Git remote to fetch from")
+@click.pass_context
+def install(ctx, version, output_json, remote):
+    """Install complete asset release.
+
+    VERSION: Release version to install (e.g., 'v2.0.0' or 'latest')
+
+    Examples:
+      # Install latest release
+      asset-installer install latest
+
+      # Install specific version
+      asset-installer install v2.1.0
+
+      # Save installation info to JSON
+      asset-installer install latest --output-json install.json
+    """
+    update_manager = ctx.obj["update_manager"]
+
+    click.echo(f"Installing complete asset release: {version}")
 
     try:
+        # Always download all assets for consistency
         result = update_manager.download_release_assets(
-            version=args.version,
-            include_models=args.include_models,
-            include_ioc_db=args.include_ioc_db,
-            include_avibase_db=getattr(args, "include_avibase_db", False),
-            include_patlevin_db=getattr(args, "include_patlevin_db", False),
+            version=version,
+            include_models=True,
+            include_ioc_db=True,
+            include_avibase_db=True,
+            include_patlevin_db=True,
             github_repo="mverteuil/BirdNET-Pi",
         )
 
-        print("\nAsset installation completed successfully!")
-        print(f"  Version: {result['version']}")
-        print(f"  Downloaded assets: {len(result['downloaded_assets'])}")
+        click.echo()
+        click.echo(
+            click.style("✓ Asset installation completed successfully!", fg="green", bold=True)
+        )
+        click.echo(f"  Version: {result['version']}")
+        click.echo(f"  Downloaded assets: {len(result['downloaded_assets'])}")
 
         for asset in result["downloaded_assets"]:
-            print(f"    • {asset}")
+            click.echo(f"    • {asset}")
 
         # Output JSON if requested
-        if args.output_json:
-            Path(args.output_json).write_text(json.dumps(result, indent=2))
-            print(f"\nInstallation data written to: {args.output_json}")
+        if output_json:
+            Path(output_json).write_text(json.dumps(result, indent=2))
+            click.echo()
+            click.echo(f"Installation data written to: {output_json}")
 
     except Exception as e:
         error_msg = str(e)
-        print(f"Error installing assets: {error_msg}")
+        click.echo(
+            click.style(f"✗ Error installing assets: {error_msg}", fg="red", bold=True), err=True
+        )
 
         # Show helpful local development message for permission errors
         if "Permission denied" in error_msg and "/var/lib/birdnetpi" in error_msg:
-            print()
-            print("┌" + "─" * 78 + "┐")
-            print("│" + " " * 78 + "│")
-            print("│  🛠️  LOCAL DEVELOPMENT SETUP REQUIRED" + " " * 39 + "│")
-            print("│" + " " * 78 + "│")
-            print(
+            click.echo()
+            click.echo("┌" + "─" * 78 + "┐")
+            click.echo("│" + " " * 78 + "│")
+            click.echo("│  🛠️  LOCAL DEVELOPMENT SETUP REQUIRED" + " " * 39 + "│")
+            click.echo("│" + " " * 78 + "│")
+            click.echo(
                 "│  For local development, you need to set the BIRDNETPI_DATA environment"
                 + " " * 5
                 + "│"
             )
-            print(
+            click.echo(
                 "│  variable to a writable directory (e.g., ./data in your project root)."
                 + " " * 4
                 + "│"
             )
-            print("│" + " " * 78 + "│")
-            print("│  Run the asset installer with:" + " " * 44 + "│")
-            print("│    export BIRDNETPI_DATA=./data" + " " * 43 + "│")
-            print("│    uv run asset-installer install v2.1.0 --include-models --include-ioc-db│")
-            print("│" + " " * 78 + "│")
-            print(
+            click.echo("│" + " " * 78 + "│")
+            click.echo("│  Run the asset installer with:" + " " * 44 + "│")
+            click.echo("│    export BIRDNETPI_DATA=./data" + " " * 43 + "│")
+            click.echo("│    uv run asset-installer install v2.1.0" + " " * 34 + "│")
+            click.echo("│" + " " * 78 + "│")
+            click.echo(
                 "│  Or set it permanently in your shell profile (e.g., ~/.bashrc):" + " " * 12 + "│"
             )
-            print("│    echo 'export BIRDNETPI_DATA=./data' >> ~/.bashrc" + " " * 24 + "│")
-            print("│" + " " * 78 + "│")
-            print("└" + "─" * 78 + "┘")
-            print()
+            click.echo("│    echo 'export BIRDNETPI_DATA=./data' >> ~/.bashrc" + " " * 24 + "│")
+            click.echo("│" + " " * 78 + "│")
+            click.echo("└" + "─" * 78 + "┘")
+            click.echo()
 
         sys.exit(1)
 
 
-def list_available_assets(args: argparse.Namespace) -> None:
+@cli.command("list-versions")
+@click.option("--remote", default="origin", help="Git remote to check")
+@click.pass_context
+def list_versions(ctx, remote):
     """List available asset versions."""
-    file_resolver = FilePathResolver()
-    update_manager = UpdateManager(file_resolver)
+    update_manager = ctx.obj["update_manager"]
 
     try:
         versions = update_manager.list_available_versions(github_repo="mverteuil/BirdNET-Pi")
 
-        print("Available asset versions:")
-        print()
+        click.echo("Available asset versions:")
+        click.echo()
 
         if not versions:
-            print("  No asset versions found.")
+            click.echo("  No asset versions found.")
             return
 
-        print(f"Latest version: {versions[0] if versions else 'None'}")
-        print()
+        click.echo(click.style(f"Latest version: {versions[0] if versions else 'None'}", bold=True))
+        click.echo()
 
         for version in versions:
-            print(f"  • {version}")
+            click.echo(f"  • {version}")
 
     except Exception as e:
-        print(f"Error listing available assets: {e}")
+        click.echo(
+            click.style(f"✗ Error listing available assets: {e}", fg="red", bold=True), err=True
+        )
         sys.exit(1)
 
 
-def check_local_assets(args: argparse.Namespace) -> None:
+@cli.command("check-local")
+@click.option("--verbose", is_flag=True, help="Show detailed file information")
+@click.pass_context
+def check_local(ctx, verbose):
     """Check status of locally installed assets."""
-    file_resolver = FilePathResolver()
+    file_resolver = ctx.obj["file_resolver"]
 
-    print("Local asset status:")
-    print()
+    click.echo("Local asset status:")
+    click.echo()
 
     # Check models
     models_dir = Path(file_resolver.get_models_dir())
@@ -135,106 +164,59 @@ def check_local_assets(args: argparse.Namespace) -> None:
         total_size = sum(f.stat().st_size for f in models_dir.rglob("*") if f.is_file())
         size_mb = total_size / 1024 / 1024
 
-        print(f"  ✓ Models: {len(model_files)} model files ({size_mb:.1f} MB)")
-        print(f"    Location: {models_dir}")
+        click.echo(
+            click.style(
+                f"  ✓ Models: {len(model_files)} model files ({size_mb:.1f} MB)", fg="green"
+            )
+        )
+        click.echo(f"    Location: {models_dir}")
 
-        if args.verbose:
+        if verbose:
             for model_file in sorted(model_files):
                 file_size = model_file.stat().st_size / 1024 / 1024
-                print(f"      - {model_file.name} ({file_size:.1f} MB)")
+                click.echo(f"      - {model_file.name} ({file_size:.1f} MB)")
     else:
-        print("  ✗ Models: Not installed")
-        print(f"    Expected location: {models_dir}")
+        click.echo(click.style("  ✗ Models: Not installed", fg="red"))
+        click.echo(f"    Expected location: {models_dir}")
 
-    print()
+    click.echo()
 
     # Check IOC database
     ioc_db_path = Path(file_resolver.get_ioc_database_path())
     if ioc_db_path.exists():
         file_size = ioc_db_path.stat().st_size / 1024 / 1024
-        print(f"  ✓ IOC Database: {file_size:.1f} MB")
-        print(f"    Location: {ioc_db_path}")
+        click.echo(click.style(f"  ✓ IOC Database: {file_size:.1f} MB", fg="green"))
+        click.echo(f"    Location: {ioc_db_path}")
     else:
-        print("  ✗ IOC Database: Not installed")
-        print(f"    Expected location: {ioc_db_path}")
+        click.echo(click.style("  ✗ IOC Database: Not installed", fg="red"))
+        click.echo(f"    Expected location: {ioc_db_path}")
 
-    print()
-
-
-def main() -> None:
-    """Run the asset installer CLI."""
-    parser = argparse.ArgumentParser(
-        description="BirdNET-Pi Asset Installer",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Install latest models and all databases
-  asset-installer install latest --include-models --include-ioc-db \\
-      --include-avibase-db --include-patlevin-db
-
-  # Install only models for a specific version
-  asset-installer install v2.1.0 --include-models
-
-  # List available versions
-  asset-installer list-versions
-
-  # Check what's currently installed
-  asset-installer check-local
-        """,
-    )
-
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
-
-    # Install command
-    install_parser = subparsers.add_parser("install", help="Install assets from a release")
-    install_parser.add_argument(
-        "version", help="Release version to install (e.g., 'v2.0.0' or 'latest')"
-    )
-    install_parser.add_argument(
-        "--include-models", action="store_true", help="Include BirdNET TensorFlow Lite models"
-    )
-    install_parser.add_argument(
-        "--include-ioc-db",
-        action="store_true",
-        help="Include IOC World Bird Names reference database",
-    )
-    install_parser.add_argument(
-        "--include-avibase-db",
-        action="store_true",
-        help="Include Avibase multilingual bird names database",
-    )
-    install_parser.add_argument(
-        "--include-patlevin-db",
-        action="store_true",
-        help="Include PatLevin BirdNET label translations database",
-    )
-    install_parser.add_argument(
-        "--remote", default="origin", help="Git remote to fetch from (default: origin)"
-    )
-    install_parser.add_argument("--output-json", help="Output installation data to JSON file")
-
-    # List versions command
-    list_parser = subparsers.add_parser("list-versions", help="List available asset versions")
-    list_parser.add_argument(
-        "--remote", default="origin", help="Git remote to check (default: origin)"
-    )
-
-    # Check local command
-    check_parser = subparsers.add_parser("check-local", help="Check locally installed assets")
-    check_parser.add_argument(
-        "--verbose", action="store_true", help="Show detailed file information"
-    )
-
-    args = parser.parse_args()
-
-    if args.command == "install":
-        install_assets(args)
-    elif args.command == "list-versions":
-        list_available_assets(args)
-    elif args.command == "check-local":
-        check_local_assets(args)
+    # Check Avibase database
+    avibase_path = Path(file_resolver.get_data_dir()) / "avibase.db"
+    if avibase_path.exists():
+        file_size = avibase_path.stat().st_size / 1024 / 1024
+        click.echo(click.style(f"  ✓ Avibase Database: {file_size:.1f} MB", fg="green"))
+        click.echo(f"    Location: {avibase_path}")
     else:
-        parser.print_help()
+        click.echo(click.style("  ✗ Avibase Database: Not installed", fg="red"))
+        click.echo(f"    Expected location: {avibase_path}")
+
+    # Check PatLevin database
+    patlevin_path = Path(file_resolver.get_data_dir()) / "patlevin.db"
+    if patlevin_path.exists():
+        file_size = patlevin_path.stat().st_size / 1024 / 1024
+        click.echo(click.style(f"  ✓ PatLevin Database: {file_size:.1f} MB", fg="green"))
+        click.echo(f"    Location: {patlevin_path}")
+    else:
+        click.echo(click.style("  ✗ PatLevin Database: Not installed", fg="red"))
+        click.echo(f"    Expected location: {patlevin_path}")
+
+    click.echo()
+
+
+def main():
+    """Entry point for the asset installer CLI."""
+    cli(obj={})
 
 
 if __name__ == "__main__":
