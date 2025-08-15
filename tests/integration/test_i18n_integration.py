@@ -255,31 +255,69 @@ class TestSpeciesTranslation:
                 assert result == "Turdus migratorius"
                 assert "American Robin" not in result
 
-    def test_multilingual_species_names(self):
-        """Test that species names work in multiple languages."""
-        # This would require the actual multilingual databases
-        # For now, just test the service interface
-        from unittest.mock import Mock
+    def test_multilingual_species_names(self, file_path_resolver):
+        """Test that species names work in multiple languages using actual databases."""
+        from pathlib import Path
+
+        import pytest
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
 
         from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
 
-        mock_file_resolver = Mock()
-        mock_file_resolver.get_ioc_database_path.return_value = None
-        mock_file_resolver.get_avibase_database_path.return_value = None
-        mock_file_resolver.get_patlevin_database_path.return_value = None
+        # The file_path_resolver fixture already points to data/database/ for the databases
+        # Check if databases exist - skip test if not available
+        ioc_db = file_path_resolver.get_ioc_database_path()
+        avibase_db = file_path_resolver.get_avibase_database_path()
+        patlevin_db = file_path_resolver.get_patlevin_database_path()
 
-        service = MultilingualDatabaseService(mock_file_resolver)
+        if not Path(ioc_db).exists():
+            pytest.skip(
+                "IOC database not available - download with: uv run asset-installer install"
+            )
+        if not Path(avibase_db).exists():
+            pytest.skip(
+                "Avibase database not available - download with: uv run asset-installer install"
+            )
+        if not Path(patlevin_db).exists():
+            pytest.skip(
+                "PatLevin database not available - download with: uv run asset-installer install"
+            )
 
-        # Verify service initializes
-        assert service.file_resolver == mock_file_resolver
+        # Create service with real databases
+        service = MultilingualDatabaseService(file_path_resolver)
 
-        # Test get_best_common_name with no databases available
-        session = Mock()
-        result = service.get_best_common_name(session, "Turdus migratorius", "es")
+        # Create a real SQLite session
+        engine = create_engine("sqlite:///:memory:")
+        session_factory = sessionmaker(bind=engine)
+        session = session_factory()
 
-        # Should return empty result when no databases
-        assert result["common_name"] is None
-        assert result["source"] is None
+        # Attach the real databases
+        service.attach_all_to_session(session)
+
+        try:
+            # Test with a real species that should exist in the databases
+            result = service.get_best_common_name(session, "Turdus migratorius", "es")
+
+            # Should get a real Spanish name
+            assert result["common_name"] is not None
+            assert result["source"] in ["IOC", "PatLevin", "Avibase"]
+            # The actual Spanish name might vary but should contain "Zorzal" or "Petirrojo"
+
+            # Test English name
+            result_en = service.get_best_common_name(session, "Turdus migratorius", "en")
+            assert result_en["common_name"] == "American Robin"
+            assert result_en["source"] == "IOC"
+
+            # Test French name
+            result_fr = service.get_best_common_name(session, "Turdus migratorius", "fr")
+            assert result_fr["common_name"] is not None
+            assert "Merle" in result_fr["common_name"] or "merle" in result_fr["common_name"]
+
+        finally:
+            # Clean up
+            service.detach_all_from_session(session)
+            session.close()
 
 
 class TestEndToEndTranslation:

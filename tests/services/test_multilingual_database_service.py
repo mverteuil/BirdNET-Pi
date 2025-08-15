@@ -35,73 +35,10 @@ def mock_file_resolver(file_path_resolver, tmp_path):
 
 
 @pytest.fixture
-def mock_file_resolver__no_databases(file_path_resolver):
-    """Create mock file resolver with no database paths.
-
-    Uses the global file_path_resolver fixture as a base to prevent MagicMock file creation.
-    """
-    # Override to return None for all database paths
-    file_path_resolver.get_ioc_database_path = lambda: None
-    file_path_resolver.get_avibase_database_path = lambda: None
-    file_path_resolver.get_patlevin_database_path = lambda: None
-    return file_path_resolver
-
-
-@pytest.fixture
-def mock_file_resolver__partial_databases(file_path_resolver, tmp_path):
-    """Create mock file resolver with only some databases available.
-
-    Uses the global file_path_resolver fixture as a base to prevent MagicMock file creation.
-    """
-    # Create only some test database files
-    test_ioc_db = tmp_path / "database" / "ioc_reference.db"
-    test_patlevin_db = tmp_path / "database" / "patlevin_database.db"
-
-    test_ioc_db.parent.mkdir(parents=True, exist_ok=True)
-    test_ioc_db.touch()
-    test_patlevin_db.touch()
-
-    # Override the database path methods
-    file_path_resolver.get_ioc_database_path = lambda: test_ioc_db
-    file_path_resolver.get_avibase_database_path = lambda: None
-    file_path_resolver.get_patlevin_database_path = lambda: test_patlevin_db
-
-    return file_path_resolver
-
-
-@pytest.fixture
 def multilingual_service(mock_file_resolver):
     """Create multilingual database service with mocked paths."""
-    with patch("birdnetpi.services.multilingual_database_service.Path") as mock_path:
-        # Mock all paths as existing
-        mock_path.return_value.exists.return_value = True
-        service = MultilingualDatabaseService(mock_file_resolver)
-        return service
-
-
-@pytest.fixture
-def multilingual_service__no_databases(mock_file_resolver__no_databases):
-    """Create service with no databases available."""
-    service = MultilingualDatabaseService(mock_file_resolver__no_databases)
+    service = MultilingualDatabaseService(mock_file_resolver)
     return service
-
-
-@pytest.fixture
-def multilingual_service__partial_databases(mock_file_resolver__partial_databases):
-    """Create service with partial databases available."""
-    with patch("birdnetpi.services.multilingual_database_service.Path") as mock_path:
-        # Mock only some paths as existing
-        def mock_exists(path_str):
-            path_obj = MagicMock()
-            if "ioc_reference.db" in str(path_str) or "patlevin_database.db" in str(path_str):
-                path_obj.exists.return_value = True
-            else:
-                path_obj.exists.return_value = False
-            return path_obj
-
-        mock_path.side_effect = mock_exists
-        service = MultilingualDatabaseService(mock_file_resolver__partial_databases)
-        return service
 
 
 @pytest.fixture
@@ -138,62 +75,14 @@ class TestMultilingualDatabaseServiceInitialization:
     """Test multilingual database service initialization."""
 
     def test_service_initialization_all_databases_available(self, mock_file_resolver):
-        """Should initialize service with all databases available."""
-        with patch("birdnetpi.services.multilingual_database_service.Path") as mock_path:
-            mock_path.return_value.exists.return_value = True
+        """Should initialize service with all databases paths set."""
+        service = MultilingualDatabaseService(mock_file_resolver)
 
-            service = MultilingualDatabaseService(mock_file_resolver)
-
-            assert service.file_resolver == mock_file_resolver
-            # Check that paths match what the fixture provides
-            assert service.ioc_db_path == mock_file_resolver.get_ioc_database_path()
-            assert service.avibase_db_path == mock_file_resolver.get_avibase_database_path()
-            assert service.patlevin_db_path == mock_file_resolver.get_patlevin_database_path()
-            assert set(service.databases_available) == {"ioc", "avibase", "patlevin"}
-
-    def test_service_initialization_no_databases_available(self, mock_file_resolver):
-        """Should initialize service with no databases available."""
-        with patch("birdnetpi.services.multilingual_database_service.Path") as mock_path:
-            mock_path.return_value.exists.return_value = False
-
-            service = MultilingualDatabaseService(mock_file_resolver)
-
-            assert service.file_resolver == mock_file_resolver
-            assert service.databases_available == []
-
-    def test_service_initialization_partial_databases_available(self, mock_file_resolver):
-        """Should initialize service with only existing databases."""
-
-        def mock_path_factory(path_str):
-            path_obj = MagicMock()
-            # Only IOC and PatLevin exist
-            if "ioc_reference.db" in str(path_str) or "patlevin_database.db" in str(path_str):
-                path_obj.exists.return_value = True
-            else:
-                path_obj.exists.return_value = False
-            return path_obj
-
-        with patch(
-            "birdnetpi.services.multilingual_database_service.Path", side_effect=mock_path_factory
-        ):
-            service = MultilingualDatabaseService(mock_file_resolver)
-
-            assert set(service.databases_available) == {"ioc", "patlevin"}
-            assert "avibase" not in service.databases_available
-
-    def test_service_initialization__none_paths(self, file_path_resolver):
-        """Should handle None paths from file resolver."""
-        # Override the paths to return None
-        file_path_resolver.get_ioc_database_path = lambda: None
-        file_path_resolver.get_avibase_database_path = lambda: None
-        file_path_resolver.get_patlevin_database_path = lambda: None
-
-        service = MultilingualDatabaseService(file_path_resolver)
-
-        assert service.ioc_db_path is None
-        assert service.avibase_db_path is None
-        assert service.patlevin_db_path is None
-        assert service.databases_available == []
+        assert service.file_resolver == mock_file_resolver
+        # Check that paths match what the fixture provides
+        assert service.ioc_db_path == mock_file_resolver.get_ioc_database_path()
+        assert service.avibase_db_path == mock_file_resolver.get_avibase_database_path()
+        assert service.patlevin_db_path == mock_file_resolver.get_patlevin_database_path()
 
 
 class TestAttachDetachDatabases:
@@ -216,32 +105,6 @@ class TestAttachDetachDatabases:
         assert any("AS ioc" in cmd for cmd in attach_commands)
         assert any("AS avibase" in cmd for cmd in attach_commands)
         assert any("AS patlevin" in cmd for cmd in attach_commands)
-
-    def test_attach_all_to_session_partial_databases(
-        self, multilingual_service__partial_databases, mock_session
-    ):
-        """Should attach only available databases to session."""
-        multilingual_service__partial_databases.attach_all_to_session(mock_session)
-
-        # Only IOC and PatLevin should be attached
-        assert mock_session.execute.call_count == 2
-
-        calls = mock_session.execute.call_args_list
-        attach_commands = [str(call[0][0]) for call in calls]
-
-        # Check that IOC and PatLevin are attached, but not Avibase (paths will be dynamic)
-        assert any("AS ioc" in cmd for cmd in attach_commands)
-        assert any("AS patlevin" in cmd for cmd in attach_commands)
-        assert not any("avibase" in cmd for cmd in attach_commands)
-
-    def test_attach_all_to_session_no_databases(
-        self, multilingual_service__no_databases, mock_session
-    ):
-        """Should not attach any databases when none are available."""
-        multilingual_service__no_databases.attach_all_to_session(mock_session)
-
-        # No databases should be attached
-        assert mock_session.execute.call_count == 0
 
     def test_detach_all_from_session(self, multilingual_service, mock_session):
         """Should detach all available databases from session."""
@@ -270,14 +133,6 @@ class TestAttachDetachDatabases:
 
         # All three detach commands should still be attempted
         assert mock_session.execute.call_count == 3
-
-    def test_detach_all_from_session__no_databases(
-        self, multilingual_service__no_databases, mock_session
-    ):
-        """Should not attempt to detach when no databases are available."""
-        multilingual_service__no_databases.detach_all_from_session(mock_session)
-
-        assert mock_session.execute.call_count == 0
 
 
 class TestGetBestCommonName:
@@ -339,43 +194,6 @@ class TestGetBestCommonName:
 
         assert result["common_name"] == "Petirrojo Americano"
         assert result["source"] == "IOC"
-
-    def test_get_best_common_name_partial_databases(
-        self, multilingual_service__partial_databases, mock_session
-    ):
-        """Should build query with only available databases."""
-        mock_result = MagicMock()
-        mock_result.__getitem__.side_effect = lambda i: ["American Robin", "IOC"][i]
-        mock_session.execute.return_value.fetchone.return_value = mock_result
-
-        result = multilingual_service__partial_databases.get_best_common_name(
-            mock_session, "Turdus migratorius", "en"
-        )
-
-        call_args = mock_session.execute.call_args
-        query = str(call_args[0][0])
-
-        # Should include IOC and PatLevin, but not Avibase
-        assert "ioc_species.english_name" in query
-        assert "ioc_trans.common_name" in query
-        assert "patlevin.common_name" in query
-        assert "avibase.common_name" not in query
-        assert "LEFT JOIN avibase.avibase_names" not in query
-
-        assert result["common_name"] == "American Robin"
-
-    def test_get_best_common_name_no_databases(
-        self, multilingual_service__no_databases, mock_session
-    ):
-        """Should return empty result when no databases are available."""
-        result = multilingual_service__no_databases.get_best_common_name(
-            mock_session, "Turdus migratorius", "en"
-        )
-
-        assert result["common_name"] is None
-        assert result["source"] is None
-        # No query should be executed
-        mock_session.execute.assert_not_called()
 
     def test_get_best_common_name__no_result(self, multilingual_service, mock_session):
         """Should return empty result when no match is found."""
@@ -493,52 +311,6 @@ class TestGetAllTranslations:
         assert "it" in result
         assert result["it"][0]["source"] == "Avibase"
 
-    def test_get_all_translations_partial_databases(
-        self, multilingual_service__partial_databases, mock_session
-    ):
-        """Should retrieve translations only from available databases."""
-        # Create mock result objects with fetchone() and fetchall() methods
-        ioc_species_result = MagicMock()
-        ioc_species_result.fetchone.return_value = ("en", "American Robin")
-
-        ioc_translations_result = MagicMock()
-        ioc_translations_result.__iter__.return_value = iter([("es", "Petirrojo Americano")])
-
-        patlevin_result = MagicMock()
-        patlevin_result.__iter__.return_value = iter([("de", "Wanderdrossel")])
-
-        mock_session.execute.side_effect = [
-            ioc_species_result,
-            ioc_translations_result,
-            patlevin_result,
-        ]
-
-        result = multilingual_service__partial_databases.get_all_translations(
-            mock_session, "Turdus migratorius"
-        )
-
-        # Should execute 3 queries (no Avibase)
-        assert mock_session.execute.call_count == 3
-
-        # Should have results from IOC and PatLevin only
-        assert "en" in result
-        assert result["en"][0]["source"] == "IOC"
-        assert "es" in result
-        assert result["es"][0]["source"] == "IOC"
-        assert "de" in result
-        assert result["de"][0]["source"] == "PatLevin"
-
-    def test_get_all_translations_no_databases(
-        self, multilingual_service__no_databases, mock_session
-    ):
-        """Should return empty dict when no databases are available."""
-        result = multilingual_service__no_databases.get_all_translations(
-            mock_session, "Turdus migratorius"
-        )
-
-        assert result == {}
-        mock_session.execute.assert_not_called()
-
     def test_get_all_translations__deduplication(self, multilingual_service, mock_session):
         """Should deduplicate identical names from different sources."""
         # Create proper mock result objects with fetchone() method
@@ -622,20 +394,6 @@ class TestGetAttribution:
         assert "IOC World Bird List (www.worldbirdnames.org)" in attributions
         assert "Patrick Levin (patlevin) - BirdNET Label Translations" in attributions
         assert "Avibase - Lepage, Denis (2018)" in attributions
-
-    def test_get_attribution_partial_databases(self, multilingual_service__partial_databases):
-        """Should return attributions only for available databases."""
-        attributions = multilingual_service__partial_databases.get_attribution()
-
-        assert len(attributions) == 2
-        assert "IOC World Bird List (www.worldbirdnames.org)" in attributions
-        assert "Patrick Levin (patlevin) - BirdNET Label Translations" in attributions
-        assert not any("Avibase" in attr for attr in attributions)
-
-    def test_get_attribution_no_databases(self, multilingual_service__no_databases):
-        """Should return empty list when no databases are available."""
-        attributions = multilingual_service__no_databases.get_attribution()
-        assert attributions == []
 
 
 class TestErrorHandling:
@@ -812,18 +570,18 @@ class TestEdgeCases:
         assert "LOWER(" in query
         assert ":sci_name" in query  # Parameter should still be used
 
-    def test_databases_available_modification(self, multilingual_service):
-        """Should not allow external modification of databases_available list."""
-        original_databases = multilingual_service.databases_available.copy()
+    def test_database_paths_immutable(self, multilingual_service):
+        """Should not allow external modification of database paths."""
+        original_ioc = multilingual_service.ioc_db_path
+        original_avibase = multilingual_service.avibase_db_path
+        original_patlevin = multilingual_service.patlevin_db_path
 
-        # Try to modify the list
-        multilingual_service.databases_available.append("fake_db")
-
-        # The service should still work correctly with original databases
-        # (This tests that the service doesn't rely on external list modifications)
-        assert len(multilingual_service.databases_available) == len(original_databases) + 1
-
-        # But the actual database paths should be unchanged (dynamic paths from tmp_path)
+        # Database paths should be set at initialization
         assert multilingual_service.ioc_db_path is not None
         assert multilingual_service.avibase_db_path is not None
         assert multilingual_service.patlevin_db_path is not None
+
+        # Paths should remain unchanged
+        assert multilingual_service.ioc_db_path == original_ioc
+        assert multilingual_service.avibase_db_path == original_avibase
+        assert multilingual_service.patlevin_db_path == original_patlevin

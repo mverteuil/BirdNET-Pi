@@ -80,8 +80,8 @@ class TestIOCDataProcessor:
         assert "✓ JSON data saved successfully" in result.output
         assert "Species count: 10832" in result.output
 
-        mock_service.process_ioc_files.assert_called_once_with(str(xml_file), str(xlsx_file))
-        mock_service.save_to_json.assert_called_once()
+        mock_service.load_ioc_data.assert_called_once_with(xml_file, xlsx_file)
+        mock_service.export_json.assert_called_once()
 
     @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
     def test_info_command(
