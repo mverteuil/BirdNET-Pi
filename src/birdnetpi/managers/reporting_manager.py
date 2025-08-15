@@ -326,7 +326,7 @@ class ReportingManager:
         """
         if use_l10n_data and self.detection_manager.detection_query_service:
             try:
-                return self.detection_manager.get_most_recent_detections_with_ioc(
+                return self.detection_manager.get_most_recent_detections_with_localization(
                     limit, language_code
                 )
             except Exception as e:

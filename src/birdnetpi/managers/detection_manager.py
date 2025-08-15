@@ -460,7 +460,7 @@ class DetectionManager:
             family_filter=family_filter,
         )
 
-    def get_most_recent_detections_with_ioc(
+    def get_most_recent_detections_with_localization(
         self, limit: int = 10, language_code: str = "en"
     ) -> list[dict]:
         """Retrieve the most recent detection records with localization data from the database."""

@@ -59,7 +59,7 @@ async def get_recent_detections(
     try:
         if include_l10n and detection_manager.detection_query_service:
             # Use localization-enhanced data
-            detections_dict = detection_manager.get_most_recent_detections_with_ioc(
+            detections_dict = detection_manager.get_most_recent_detections_with_localization(
                 limit, language_code
             )
             detection_list = [
