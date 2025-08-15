@@ -1,4 +1,4 @@
-"""Tests for DetectionQueryService - JOIN-based queries with IOC database."""
+"""Tests for DetectionQueryService - JOIN-based queries with multilingual databases."""
 
 import tempfile
 from datetime import datetime, timedelta
@@ -17,6 +17,7 @@ from birdnetpi.services.detection_query_service import (
     DetectionWithLocalization,
 )
 from birdnetpi.services.ioc_database_service import IOCDatabaseService
+from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
 
 
 @pytest.fixture
@@ -46,9 +47,19 @@ def ioc_database_service(temp_ioc_db):
 
 
 @pytest.fixture
-def query_service(bnp_database_service, ioc_database_service):
-    """Create detection query service."""
-    return DetectionQueryService(bnp_database_service, ioc_database_service)
+def multilingual_service(temp_ioc_db, file_path_resolver):
+    """Create multilingual database service."""
+    # Mock the file path resolver to return test database paths
+    file_path_resolver.get_ioc_database_path = lambda: temp_ioc_db
+    file_path_resolver.get_avibase_database_path = lambda: temp_ioc_db  # Use same DB for testing
+    file_path_resolver.get_patlevin_database_path = lambda: temp_ioc_db  # Use same DB for testing
+    return MultilingualDatabaseService(file_path_resolver)
+
+
+@pytest.fixture
+def query_service(bnp_database_service, multilingual_service):
+    """Create detection query service with multilingual support."""
+    return DetectionQueryService(bnp_database_service, multilingual_service)
 
 
 @pytest.fixture
@@ -248,12 +259,12 @@ class TestDetectionWithLocalization:
 class TestDetectionQueryServiceInitialization:
     """Test service initialization."""
 
-    def test_service_initialization(self, bnp_database_service, ioc_database_service):
+    def test_service_initialization(self, bnp_database_service, multilingual_service):
         """Should initialize with required services."""
-        service = DetectionQueryService(bnp_database_service, ioc_database_service)
+        service = DetectionQueryService(bnp_database_service, multilingual_service)
 
         assert service.bnp_database_service == bnp_database_service
-        assert service.ioc_database_service == ioc_database_service
+        assert service.multilingual_service == multilingual_service
 
 
 class TestGetDetectionsWithIOCData:

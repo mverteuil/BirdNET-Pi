@@ -51,13 +51,13 @@ def _create_multilingual_service(resolver: FilePathResolver) -> MultilingualData
 
 
 def _create_detection_query_service(
-    bnp_service: DatabaseService, ioc_service: IOCDatabaseService | None
+    bnp_service: DatabaseService, multilingual_service: MultilingualDatabaseService | None
 ) -> DetectionQueryService | None:
     """Create detection query service with graceful error handling."""
     try:
-        if ioc_service is None:
+        if multilingual_service is None:
             return None
-        return DetectionQueryService(bnp_service, ioc_service)
+        return DetectionQueryService(bnp_service, multilingual_service)
     except Exception as e:
         print(f"Warning: Detection query service unavailable: {e}")
         return None
@@ -112,12 +112,12 @@ class Container(containers.DeclarativeContainer):
         resolver=file_resolver,
     )
 
-    # Detection query service factory with error handling
+    # Detection query service factory with error handling - now uses multilingual service
 
     detection_query_service = providers.Factory(
         _create_detection_query_service,
         bnp_service=bnp_database_service,
-        ioc_service=ioc_database_service,
+        multilingual_service=multilingual_database_service,
     )
 
     # Cache service - singleton for analytics performance

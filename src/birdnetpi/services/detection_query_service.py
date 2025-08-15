@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from birdnetpi.models.database_models import Detection
 from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.services.ioc_database_service import IOCDatabaseService
+from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
 
 
 class DetectionWithLocalization:
@@ -79,18 +79,18 @@ class DetectionQueryService:
     def __init__(
         self,
         bnp_database_service: DatabaseService,
-        ioc_database_service: IOCDatabaseService,
+        multilingual_service: MultilingualDatabaseService,
         cache_ttl: int = 300,
     ):
         """Initialize detection query service.
 
         Args:
             bnp_database_service: Main database service for detections
-            ioc_database_service: Reference database service (IOC/multilingual)
+            multilingual_service: Multilingual database service (IOC/Avibase/PatLevin)
             cache_ttl: Cache time-to-live in seconds (default: 5 minutes)
         """
         self.bnp_database_service = bnp_database_service
-        self.ioc_database_service = ioc_database_service
+        self.multilingual_service = multilingual_service
         self.cache_ttl = cache_ttl
 
         # In-memory cache: {cache_key: (data, expiry_timestamp)}
@@ -210,7 +210,7 @@ class DetectionQueryService:
             List of DetectionWithLocalization objects
         """
         with self.bnp_database_service.get_db() as session:
-            self.ioc_database_service.attach_to_session(session)
+            self.multilingual_service.attach_all_to_session(session)
             try:
                 return self._execute_join_query(
                     session=session,
@@ -222,7 +222,7 @@ class DetectionQueryService:
                     family_filter=family_filter,
                 )
             finally:
-                self.ioc_database_service.detach_from_session(session)
+                self.multilingual_service.detach_all_from_session(session)
 
     def get_detection_with_ioc_data(
         self, detection_id: UUID, language_code: str = "en"
@@ -249,8 +249,10 @@ class DetectionQueryService:
             return cached_result
 
         with self.bnp_database_service.get_db() as session:
-            self.ioc_database_service.attach_to_session(session)
+            self.multilingual_service.attach_all_to_session(session)
             try:
+                # Updated query to use COALESCE across all three databases
+                # Priority: IOC → PatLevin → Avibase
                 query_sql = text("""
                     SELECT
                         d.id,
@@ -266,8 +268,14 @@ class DetectionQueryService:
                         d.week,
                         d.sensitivity_setting,
                         d.overlap,
-                        s.english_name as ioc_english_name,
-                        COALESCE(t.common_name, s.english_name) as translated_name,
+                        COALESCE(s.english_name, d.common_name) as ioc_english_name,
+                        COALESCE(
+                            t.common_name,
+                            p.common_name,
+                            a.common_name,
+                            s.english_name,
+                            d.common_name
+                        ) as translated_name,
                         s.family,
                         s.genus,
                         s.order_name
@@ -275,6 +283,12 @@ class DetectionQueryService:
                     LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
                     LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
                         AND t.language_code = :language_code
+                    LEFT JOIN patlevin.patlevin_labels p
+                        ON LOWER(p.scientific_name) = LOWER(d.scientific_name)
+                        AND p.language_code = :language_code
+                    LEFT JOIN avibase.avibase_names a
+                        ON LOWER(a.scientific_name) = LOWER(d.scientific_name)
+                        AND a.language_code = :language_code
                     WHERE d.id = :detection_id
                 """)
 
@@ -316,7 +330,7 @@ class DetectionQueryService:
                 return detection_with_ioc
 
             finally:
-                self.ioc_database_service.detach_from_session(session)
+                self.multilingual_service.detach_all_from_session(session)
 
     def get_species_summary(
         self,
@@ -348,7 +362,7 @@ class DetectionQueryService:
             return cached_result  # type: ignore[return-value]
 
         with self.bnp_database_service.get_db() as session:
-            self.ioc_database_service.attach_to_session(session)
+            self.multilingual_service.attach_all_to_session(session)
             try:
                 where_clause = "WHERE 1=1"
                 params: dict[str, Any] = {"language_code": language_code}
@@ -361,6 +375,7 @@ class DetectionQueryService:
                     where_clause += " AND s.family = :family"
                     params["family"] = family_filter
 
+                # Updated query with COALESCE across all three databases
                 query_sql = text(f"""
                     SELECT
                         d.scientific_name,
@@ -368,7 +383,13 @@ class DetectionQueryService:
                         AVG(d.confidence) as avg_confidence,
                         MAX(d.timestamp) as latest_detection,
                         s.english_name as ioc_english_name,
-                        COALESCE(t.common_name, s.english_name) as translated_name,
+                        COALESCE(
+                            t.common_name,
+                            p.common_name,
+                            a.common_name,
+                            s.english_name,
+                            d.common_name
+                        ) as translated_name,
                         s.family,
                         s.genus,
                         s.order_name
@@ -376,8 +397,14 @@ class DetectionQueryService:
                     LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
                     LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
                         AND t.language_code = :language_code
+                    LEFT JOIN patlevin.patlevin_labels p
+                        ON LOWER(p.scientific_name) = LOWER(d.scientific_name)
+                        AND p.language_code = :language_code
+                    LEFT JOIN avibase.avibase_names a
+                        ON LOWER(a.scientific_name) = LOWER(d.scientific_name)
+                        AND a.language_code = :language_code
                     {where_clause}
-                    GROUP BY d.scientific_name, s.english_name, t.common_name, s.family, s.genus,
+                    GROUP BY d.scientific_name, s.english_name, translated_name, s.family, s.genus,
                              s.order_name
                     ORDER BY detection_count DESC
                 """)
@@ -407,7 +434,7 @@ class DetectionQueryService:
                 return species_summary
 
             finally:
-                self.ioc_database_service.detach_from_session(session)
+                self.multilingual_service.detach_all_from_session(session)
 
     def get_family_summary(
         self, language_code: str = "en", since: datetime | None = None
@@ -432,7 +459,7 @@ class DetectionQueryService:
             return cached_result  # type: ignore[return-value]
 
         with self.bnp_database_service.get_db() as session:
-            self.ioc_database_service.attach_to_session(session)
+            self.multilingual_service.attach_all_to_session(session)
             try:
                 where_clause = "WHERE s.family IS NOT NULL"
                 params: dict[str, Any] = {"language_code": language_code}
@@ -477,7 +504,7 @@ class DetectionQueryService:
                 return family_summary
 
             finally:
-                self.ioc_database_service.detach_from_session(session)
+                self.multilingual_service.detach_all_from_session(session)
 
     def _execute_join_query(
         self,
@@ -505,6 +532,8 @@ class DetectionQueryService:
             where_clause += " AND s.family = :family"
             params["family"] = family_filter
 
+        # Updated query with COALESCE across all three databases
+        # Priority: IOC → PatLevin → Avibase
         query_sql = text(f"""
             SELECT
                 d.id,
@@ -520,8 +549,14 @@ class DetectionQueryService:
                 d.week,
                 d.sensitivity_setting,
                 d.overlap,
-                s.english_name as ioc_english_name,
-                COALESCE(t.common_name, s.english_name) as translated_name,
+                COALESCE(s.english_name, d.common_name) as ioc_english_name,
+                COALESCE(
+                    t.common_name,
+                    p.common_name,
+                    a.common_name,
+                    s.english_name,
+                    d.common_name
+                ) as translated_name,
                 s.family,
                 s.genus,
                 s.order_name
@@ -529,6 +564,12 @@ class DetectionQueryService:
             LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
             LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
                 AND t.language_code = :language_code
+            LEFT JOIN patlevin.patlevin_labels p
+                ON LOWER(p.scientific_name) = LOWER(d.scientific_name)
+                AND p.language_code = :language_code
+            LEFT JOIN avibase.avibase_names a
+                ON LOWER(a.scientific_name) = LOWER(d.scientific_name)
+                AND a.language_code = :language_code
             {where_clause}
             ORDER BY d.timestamp DESC
             LIMIT :limit OFFSET :offset
