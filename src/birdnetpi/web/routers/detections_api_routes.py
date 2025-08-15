@@ -50,15 +50,15 @@ async def get_recent_detections(
     limit: int = 10,
     offset: int = 0,  # Added for compatibility with old endpoint
     language_code: str = "en",
-    include_ioc: bool = True,
+    include_l10n: bool = True,
     detection_manager: DetectionManager = Depends(  # noqa: B008
         Provide[Container.detection_manager]
     ),
 ) -> JSONResponse:
-    """Get recent bird detections with optional IOC taxonomic data."""
+    """Get recent bird detections with optional translation data."""
     try:
-        if include_ioc and detection_manager.detection_query_service:
-            # Use IOC-enhanced data
+        if include_l10n and detection_manager.detection_query_service:
+            # Use localization-enhanced data
             detections_dict = detection_manager.get_most_recent_detections_with_ioc(
                 limit, language_code
             )
@@ -166,15 +166,15 @@ async def update_detection_location(
 async def get_detection(
     detection_id: UUID | int,
     language_code: str = "en",
-    include_ioc: bool = True,
+    include_l10n: bool = True,
     detection_manager: DetectionManager = Depends(  # noqa: B008
         Provide[Container.detection_manager]
     ),
 ) -> JSONResponse:
-    """Get a specific detection by ID with optional IOC taxonomic data."""
+    """Get a specific detection by ID with optional translation data."""
     try:
-        # Try to get IOC-enhanced data first
-        if include_ioc and detection_manager.detection_query_service:
+        # Try to get localization-enhanced data first
+        if include_l10n and detection_manager.detection_query_service:
             try:
                 # Convert int detection_id to UUID format if needed
                 if isinstance(detection_id, UUID):
@@ -184,38 +184,38 @@ async def get_detection(
                     detection_uuid = UUID(int=detection_id)
                 else:
                     detection_uuid = UUID(str(detection_id))
-                detection_with_ioc = (
-                    detection_manager.detection_query_service.get_detection_with_ioc_data(
+                detection_with_l10n = (
+                    detection_manager.detection_query_service.get_detection_with_localization(
                         detection_uuid, language_code
                     )
                 )
-                if detection_with_ioc:
+                if detection_with_l10n:
                     detection_data = {
-                        "id": detection_with_ioc.id,
-                        "scientific_name": detection_with_ioc.scientific_name,
+                        "id": detection_with_l10n.id,
+                        "scientific_name": detection_with_l10n.scientific_name,
                         "common_name": detection_manager._get_formatted_species_name(
-                            detection_with_ioc, prefer_translation=True
+                            detection_with_l10n, prefer_translation=True
                         ),
-                        "confidence": detection_with_ioc.confidence,
-                        "timestamp": detection_with_ioc.timestamp.isoformat(),
-                        "latitude": detection_with_ioc.detection.latitude,
-                        "longitude": detection_with_ioc.detection.longitude,
+                        "confidence": detection_with_l10n.confidence,
+                        "timestamp": detection_with_l10n.timestamp.isoformat(),
+                        "latitude": detection_with_l10n.detection.latitude,
+                        "longitude": detection_with_l10n.detection.longitude,
                         "species_confidence_threshold": (
-                            detection_with_ioc.detection.species_confidence_threshold
+                            detection_with_l10n.detection.species_confidence_threshold
                         ),
-                        "week": detection_with_ioc.detection.week,
-                        "sensitivity_setting": detection_with_ioc.detection.sensitivity_setting,
-                        "overlap": detection_with_ioc.detection.overlap,
-                        "ioc_english_name": detection_with_ioc.ioc_english_name,
-                        "translated_name": detection_with_ioc.translated_name,
-                        "family": detection_with_ioc.family,
-                        "genus": detection_with_ioc.genus,
-                        "order_name": detection_with_ioc.order_name,
+                        "week": detection_with_l10n.detection.week,
+                        "sensitivity_setting": detection_with_l10n.detection.sensitivity_setting,
+                        "overlap": detection_with_l10n.detection.overlap,
+                        "ioc_english_name": detection_with_l10n.ioc_english_name,
+                        "translated_name": detection_with_l10n.translated_name,
+                        "family": detection_with_l10n.family,
+                        "genus": detection_with_l10n.genus,
+                        "order_name": detection_with_l10n.order_name,
                     }
                     return JSONResponse(detection_data)
             except Exception as ioc_error:
                 logger.warning(
-                    "Failed to get IOC data for detection %s: %s", detection_id, ioc_error
+                    "Failed to get localization data for detection %s: %s", detection_id, ioc_error
                 )
 
         # Fallback to regular detection
@@ -287,10 +287,12 @@ async def get_species_summary(
         Provide[Container.detection_manager]
     ),
 ) -> JSONResponse:
-    """Get detection count summary by species with IOC taxonomic data."""
+    """Get detection count summary by species with translation data."""
     try:
         if not detection_manager.detection_query_service:
-            raise HTTPException(status_code=503, detail="IOC database service not available")
+            raise HTTPException(
+                status_code=503, detail="Localization database service not available"
+            )
 
         species_summary = detection_manager.get_species_summary(
             language_code=language_code, since=since, family_filter=family_filter
@@ -312,10 +314,12 @@ async def get_family_summary(
         Provide[Container.detection_manager]
     ),
 ) -> JSONResponse:
-    """Get detection count summary by taxonomic family with IOC data."""
+    """Get detection count summary by taxonomic family with translation data."""
     try:
         if not detection_manager.detection_query_service:
-            raise HTTPException(status_code=503, detail="IOC database service not available")
+            raise HTTPException(
+                status_code=503, detail="Localization database service not available"
+            )
 
         family_summary = detection_manager.get_family_summary(
             language_code=language_code, since=since

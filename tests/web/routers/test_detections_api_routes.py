@@ -107,7 +107,7 @@ class TestDetectionsAPIRoutes:
         ]
         client.mock_detection_manager.get_recent_detections.return_value = mock_detections
 
-        response = client.get("/api/detections/recent?limit=10&include_ioc=false")
+        response = client.get("/api/detections/recent?limit=10&include_l10n=false")
 
         assert response.status_code == 200
         data = response.json()
@@ -142,7 +142,7 @@ class TestDetectionsAPIRoutes:
         )
         client.mock_detection_manager.get_detection_by_id.return_value = mock_detection
 
-        response = client.get("/api/detections/123?include_ioc=false")
+        response = client.get("/api/detections/123?include_l10n=false")
 
         assert response.status_code == 200
         data = response.json()
@@ -153,7 +153,7 @@ class TestDetectionsAPIRoutes:
         """Should return 404 for non-existent detection."""
         client.mock_detection_manager.get_detection_by_id.return_value = None
 
-        response = client.get("/api/detections/999?include_ioc=false")
+        response = client.get("/api/detections/999?include_l10n=false")
 
         assert response.status_code == 404
 

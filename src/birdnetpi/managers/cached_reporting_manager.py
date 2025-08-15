@@ -104,12 +104,12 @@ class CachedReportingManager:
             # Fallback to direct execution on cache errors
             return func(**kwargs)
 
-    def get_data(self, use_ioc_data: bool = True, language_code: str = "en") -> Any:  # noqa: ANN401
+    def get_data(self, use_l10n_data: bool = True, language_code: str = "en") -> Any:  # noqa: ANN401
         """Get all detection data with caching.
 
         Args:
-            use_ioc_data: Whether to use IOC taxonomic data
-            language_code: Language for IOC translations
+            use_l10n_data: Whether to use translation data
+            language_code: Language for translations
 
         Returns:
             Cached or fresh DataFrame with detection data
@@ -118,7 +118,7 @@ class CachedReportingManager:
             cache_namespace="all_detection_data",
             func=self.reporting_manager.get_data,
             cache_ttl=600,  # 10 minutes for comprehensive data
-            use_ioc_data=use_ioc_data,
+            use_l10n_data=use_l10n_data,
             language_code=language_code,
         )
 
@@ -139,14 +139,14 @@ class CachedReportingManager:
         self,
         limit: int = 10,
         language_code: str = "en",
-        use_ioc_data: bool = True,
+        use_l10n_data: bool = True,
     ) -> list[dict[str, Any]]:
         """Get most recent detections with caching.
 
         Args:
             limit: Maximum number of detections to return
-            language_code: Language for IOC translations
-            use_ioc_data: Whether to include IOC taxonomic data
+            language_code: Language for translations
+            use_l10n_data: Whether to include translation data
 
         Returns:
             Cached or fresh list of recent detections
@@ -157,19 +157,19 @@ class CachedReportingManager:
             cache_ttl=60,  # 1 minute - recent detections change frequently
             limit=limit,
             language_code=language_code,
-            use_ioc_data=use_ioc_data,
+            use_l10n_data=use_l10n_data,
         )
 
     def get_todays_detections(
         self,
         language_code: str = "en",
-        use_ioc_data: bool = True,
+        use_l10n_data: bool = True,
     ) -> list[dict[str, Any]]:
         """Get today's detections with caching.
 
         Args:
-            language_code: Language for IOC translations
-            use_ioc_data: Whether to include IOC taxonomic data
+            language_code: Language for translations
+            use_l10n_data: Whether to include translation data
 
         Returns:
             Cached or fresh list of today's detections
@@ -183,7 +183,7 @@ class CachedReportingManager:
             cache_ttl=300,  # 5 minutes - today's data changes regularly
             cache_key_params={"date": today_str},
             language_code=language_code,
-            use_ioc_data=use_ioc_data,
+            use_l10n_data=use_l10n_data,
         )
 
     def get_best_detections(self, limit: int = 20) -> list[dict]:
@@ -361,14 +361,14 @@ class CachedReportingManager:
             (
                 "recent_detections",
                 self.reporting_manager.get_most_recent_detections,
-                {"limit": 10, "language_code": "en", "use_ioc_data": True},
+                {"limit": 10, "language_code": "en", "use_l10n_data": True},
                 60,
             ),
             # Today's detections
             (
                 "todays_detections",
                 self.reporting_manager.get_todays_detections,
-                {"language_code": "en", "use_ioc_data": True},
+                {"language_code": "en", "use_l10n_data": True},
                 300,
             ),
             # Weekly report data

@@ -57,20 +57,20 @@ class ReportingManager:
                 return detection.translated_name
         return detection.common_name or detection.scientific_name
 
-    def get_data(self, use_ioc_data: bool = True, language_code: str = "en") -> pd.DataFrame:
+    def get_data(self, use_l10n_data: bool = True, language_code: str = "en") -> pd.DataFrame:
         """Retrieve all detection data from the database and format it into a DataFrame.
 
         Args:
-            use_ioc_data: Whether to use IOC taxonomic data for enriched information
-            language_code: Language for IOC translations
+            use_l10n_data: Whether to use translation data for enriched information
+            language_code: Language for translations
         """
         data = []  # Initialize data to avoid unbound variable error
 
-        if use_ioc_data and self.detection_manager.detection_query_service:
+        if use_l10n_data and self.detection_manager.detection_query_service:
             try:
-                # Get detections with IOC data (all detections, no limit)
-                detections_with_ioc = (
-                    self.detection_manager.detection_query_service.get_detections_with_ioc_data(
+                # Get detections with localization data (all detections, no limit)
+                detections_with_l10n = (
+                    self.detection_manager.detection_query_service.get_detections_with_localization(
                         limit=10000,  # Large limit to get all data
                         language_code=language_code,
                     )
@@ -95,14 +95,16 @@ class ReportingManager:
                         "genus": d.genus,
                         "order_name": d.order_name,
                     }
-                    for d in detections_with_ioc
+                    for d in detections_with_l10n
                 ]
             except Exception as e:
-                print(f"Error retrieving IOC data, falling back to regular detections: {e}")
+                print(
+                    f"Error retrieving localization data, falling back to regular detections: {e}"
+                )
                 # Fall back to regular detection data
-                use_ioc_data = False
+                use_l10n_data = False
 
-        if not use_ioc_data:
+        if not use_l10n_data:
             # Original implementation without IOC data
             detections = self.detection_manager.get_all_detections()
             data = [
@@ -313,69 +315,69 @@ class ReportingManager:
         }
 
     def get_most_recent_detections(
-        self, limit: int = 10, language_code: str = "en", use_ioc_data: bool = True
+        self, limit: int = 10, language_code: str = "en", use_l10n_data: bool = True
     ) -> list[dict[str, Any]]:
         """Retrieve the most recent detection records from the database.
 
         Args:
             limit: Maximum number of detections to return
-            language_code: Language for IOC translations
-            use_ioc_data: Whether to include IOC taxonomic data
+            language_code: Language for translations
+            use_l10n_data: Whether to include translation data
         """
-        if use_ioc_data and self.detection_manager.detection_query_service:
+        if use_l10n_data and self.detection_manager.detection_query_service:
             try:
                 return self.detection_manager.get_most_recent_detections_with_ioc(
                     limit, language_code
                 )
             except Exception as e:
-                print(f"Error getting recent detections with IOC data, falling back: {e}")
+                print(f"Error getting recent detections with localization data, falling back: {e}")
 
         # Fallback to original method
         recent_detections = self.detection_manager.get_most_recent_detections(limit)
         return recent_detections
 
     def get_todays_detections(
-        self, language_code: str = "en", use_ioc_data: bool = True
+        self, language_code: str = "en", use_l10n_data: bool = True
     ) -> list[dict[str, Any]]:
         """Retrieve all detection records from the database for the current day.
 
         Args:
-            language_code: Language for IOC translations
-            use_ioc_data: Whether to include IOC taxonomic data
+            language_code: Language for translations
+            use_l10n_data: Whether to include translation data
         """
         today = datetime.date.today()
         start_datetime = datetime.datetime.combine(today, datetime.time.min)
         end_datetime = datetime.datetime.combine(today, datetime.time.max)
 
         # Try to use IOC-enhanced data if available
-        if use_ioc_data and self.detection_manager.detection_query_service:
+        if use_l10n_data and self.detection_manager.detection_query_service:
             try:
-                detections_with_ioc = (
-                    self.detection_manager.detection_query_service.get_detections_with_ioc_data(
+                detections_with_l10n = (
+                    self.detection_manager.detection_query_service.get_detections_with_localization(
                         limit=1000, since=start_datetime, language_code=language_code
                     )
                 )
 
                 # Filter for today's detections
                 todays_detections = [
-                    d for d in detections_with_ioc if start_datetime <= d.timestamp <= end_datetime
+                    d for d in detections_with_l10n if start_datetime <= d.timestamp <= end_datetime
                 ]
 
                 # If no detections for today, get the most recent day's detections
-                if not todays_detections and detections_with_ioc:
+                if not todays_detections and detections_with_l10n:
                     # Find the most recent date with detections
-                    detection_dates = [d.timestamp.date() for d in detections_with_ioc]
+                    detection_dates = [d.timestamp.date() for d in detections_with_l10n]
                     if detection_dates:
                         latest_date = max(detection_dates)
                         start_datetime = datetime.datetime.combine(latest_date, datetime.time.min)
                         end_datetime = datetime.datetime.combine(latest_date, datetime.time.max)
                         todays_detections = [
                             d
-                            for d in detections_with_ioc
+                            for d in detections_with_l10n
                             if start_datetime <= d.timestamp <= end_datetime
                         ]
 
-                # Convert DetectionWithIOCData objects to dictionaries
+                # Convert DetectionWithLocalization objects to dictionaries
                 return [
                     {
                         "date": d.timestamp.strftime("%Y-%m-%d"),
@@ -394,9 +396,9 @@ class ReportingManager:
                     for d in todays_detections
                 ]
             except Exception as e:
-                print(f"Error getting today's detections with IOC data, falling back: {e}")
+                print(f"Error getting today's detections with localization data, falling back: {e}")
                 # Force fallback to regular detection method
-                use_ioc_data = False
+                use_l10n_data = False
 
         # Fallback to original implementation
         all_detections = self.detection_manager.get_all_detections()

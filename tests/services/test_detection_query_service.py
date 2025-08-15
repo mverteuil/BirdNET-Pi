@@ -49,6 +49,33 @@ def ioc_database_service(temp_ioc_db):
 @pytest.fixture
 def multilingual_service(temp_ioc_db, file_path_resolver):
     """Create multilingual database service."""
+    # Create empty tables for PatLevin and Avibase in the test database
+    import sqlite3
+
+    conn = sqlite3.connect(temp_ioc_db)
+    cursor = conn.cursor()
+
+    # Create PatLevin table if it doesn't exist
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS patlevin_labels (
+            scientific_name TEXT,
+            language_code TEXT,
+            common_name TEXT
+        )
+    """)
+
+    # Create Avibase table if it doesn't exist
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS avibase_names (
+            scientific_name TEXT,
+            language_code TEXT,
+            common_name TEXT
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
     # Mock the file path resolver to return test database paths
     file_path_resolver.get_ioc_database_path = lambda: temp_ioc_db
     file_path_resolver.get_avibase_database_path = lambda: temp_ioc_db  # Use same DB for testing
@@ -209,7 +236,7 @@ def sample_detections(bnp_database_service):
 class TestDetectionWithLocalization:
     """Test DetectionWithLocalization data class."""
 
-    def test_detection_with_ioc_data_initialization(self):
+    def test_detection_with_localization_initialization(self):
         """Should initialize with all parameters correctly."""
         detection = Detection(
             id=uuid4(),
@@ -256,6 +283,126 @@ class TestDetectionWithLocalization:
         assert data.timestamp == timestamp
 
 
+class TestGetDetectionsWithLocalization:
+    """Test getting detections with translation data."""
+
+    def test_get_detections_with_localization_basic(
+        self, query_service, populated_ioc_db, sample_detections
+    ):
+        """Should return detections with translation data."""
+        results = query_service.get_detections_with_localization(limit=10)
+
+        # Should return detections (exact count depends on JOIN matches)
+        assert isinstance(results, list)
+        assert len(results) <= 10
+
+        # Check that each result is DetectionWithLocalization
+        for result in results:
+            assert isinstance(result, DetectionWithLocalization)
+            assert hasattr(result, "detection")
+
+    def test_get_detections_with_localization_with_filters(
+        self, query_service, populated_ioc_db, sample_detections
+    ):
+        """Should apply filters correctly."""
+        # Test scientific name filter
+        results = query_service.get_detections_with_localization(
+            scientific_name_filter="Turdus migratorius"
+        )
+
+        for result in results:
+            assert result.detection.scientific_name == "Turdus migratorius"
+
+    def test_get_detections_with_localization_with_family_filter(
+        self, query_service, populated_ioc_db, sample_detections
+    ):
+        """Should filter by taxonomic family."""
+        results = query_service.get_detections_with_localization(family_filter="Turdidae")
+
+        for result in results:
+            assert result.family == "Turdidae"
+
+    def test_get_detections_with_localization_with_since_filter(
+        self, query_service, populated_ioc_db, sample_detections
+    ):
+        """Should filter by timestamp."""
+        cutoff_time = datetime.now() + timedelta(hours=1, minutes=30)
+
+        results = query_service.get_detections_with_localization(since=cutoff_time)
+
+        for result in results:
+            assert result.detection.timestamp >= cutoff_time
+
+    def test_get_detections_with_localization_with_translation(
+        self, query_service, populated_ioc_db, sample_detections
+    ):
+        """Should include translated names."""
+        results = query_service.get_detections_with_localization(
+            language_code="es", scientific_name_filter="Turdus migratorius"
+        )
+
+        if results:  # If we have matching results
+            robin_result = results[0]
+            assert robin_result.translated_name == "Petirrojo Americano"
+            # Test that translated name is properly available in the object
+            assert robin_result.translated_name == "Petirrojo Americano"
+
+    def test_get_detections_with_localization_pagination(
+        self, query_service, populated_ioc_db, sample_detections
+    ):
+        """Should handle pagination correctly."""
+        # Get first page
+        page1 = query_service.get_detections_with_localization(limit=2, offset=0)
+
+        # Get second page
+        page2 = query_service.get_detections_with_localization(limit=2, offset=2)
+
+        # Should not overlap
+        if page1 and page2:
+            page1_ids = {result.id for result in page1}
+            page2_ids = {result.id for result in page2}
+            assert page1_ids.isdisjoint(page2_ids)
+
+    def test_get_detections_with_localization_attach_detach(
+        self, query_service, populated_ioc_db, sample_detections
+    ):
+        """Should properly attach and detach IOC database."""
+        # Store original methods
+        original_attach = query_service.multilingual_service.attach_all_to_session
+        original_detach = query_service.multilingual_service.detach_all_from_session
+
+        with patch.object(
+            query_service.multilingual_service, "attach_all_to_session", side_effect=original_attach
+        ) as mock_attach:
+            with patch.object(
+                query_service.multilingual_service,
+                "detach_all_from_session",
+                side_effect=original_detach,
+            ) as mock_detach:
+                query_service.get_detections_with_localization()
+
+                # Should attach and detach once
+                assert mock_attach.call_count == 1
+                assert mock_detach.call_count == 1
+
+    def test_get_detections_with_localization_detach_on_exception(
+        self, query_service, populated_ioc_db
+    ):
+        """Should detach database even if query fails."""
+        with patch.object(
+            query_service, "_execute_join_query", side_effect=Exception("Query failed")
+        ):
+            with patch.object(query_service.multilingual_service, "attach_all_to_session"):
+                with patch.object(
+                    query_service.multilingual_service, "detach_all_from_session"
+                ) as mock_detach:
+                    with pytest.raises(Exception, match="Query failed"):
+                        query_service.get_detections_with_localization()
+
+                    # Should still detach
+                    mock_detach.assert_called_once()
+
+
 class TestDetectionQueryServiceInitialization:
     """Test service initialization."""
 
@@ -267,150 +414,30 @@ class TestDetectionQueryServiceInitialization:
         assert service.multilingual_service == multilingual_service
 
 
-class TestGetDetectionsWithIOCData:
-    """Test getting detections with IOC data."""
+class TestGetSingleDetectionWithLocalization:
+    """Test getting single detection with translation data."""
 
-    def test_get_detections_with_ioc_data_basic(
+    def test_get_detection_with_localization_found(
         self, query_service, populated_ioc_db, sample_detections
     ):
-        """Should return detections with IOC data."""
-        results = query_service.get_detections_with_ioc_data(limit=10)
-
-        # Should return detections (exact count depends on JOIN matches)
-        assert isinstance(results, list)
-        assert len(results) <= 10
-
-        # Check that each result is DetectionWithLocalization
-        for result in results:
-            assert isinstance(result, DetectionWithLocalization)
-            assert hasattr(result, "detection")
-
-    def test_get_detections_with_ioc_data_with_filters(
-        self, query_service, populated_ioc_db, sample_detections
-    ):
-        """Should apply filters correctly."""
-        # Test scientific name filter
-        results = query_service.get_detections_with_ioc_data(
-            scientific_name_filter="Turdus migratorius"
-        )
-
-        for result in results:
-            assert result.detection.scientific_name == "Turdus migratorius"
-
-    def test_get_detections_with_ioc_data_with_family_filter(
-        self, query_service, populated_ioc_db, sample_detections
-    ):
-        """Should filter by taxonomic family."""
-        results = query_service.get_detections_with_ioc_data(family_filter="Turdidae")
-
-        for result in results:
-            assert result.family == "Turdidae"
-
-    def test_get_detections_with_ioc_data_with_since_filter(
-        self, query_service, populated_ioc_db, sample_detections
-    ):
-        """Should filter by timestamp."""
-        cutoff_time = datetime.now() + timedelta(hours=1, minutes=30)
-
-        results = query_service.get_detections_with_ioc_data(since=cutoff_time)
-
-        for result in results:
-            assert result.detection.timestamp >= cutoff_time
-
-    def test_get_detections_with_ioc_data_with_translation(
-        self, query_service, populated_ioc_db, sample_detections
-    ):
-        """Should include translated names."""
-        results = query_service.get_detections_with_ioc_data(
-            language_code="es", scientific_name_filter="Turdus migratorius"
-        )
-
-        if results:  # If we have matching results
-            robin_result = results[0]
-            assert robin_result.translated_name == "Petirrojo Americano"
-            # Test that translated name is properly available in the object
-            assert robin_result.translated_name == "Petirrojo Americano"
-
-    def test_get_detections_with_ioc_data_pagination(
-        self, query_service, populated_ioc_db, sample_detections
-    ):
-        """Should handle pagination correctly."""
-        # Get first page
-        page1 = query_service.get_detections_with_ioc_data(limit=2, offset=0)
-
-        # Get second page
-        page2 = query_service.get_detections_with_ioc_data(limit=2, offset=2)
-
-        # Should not overlap
-        if page1 and page2:
-            page1_ids = {result.id for result in page1}
-            page2_ids = {result.id for result in page2}
-            assert page1_ids.isdisjoint(page2_ids)
-
-    def test_get_detections_with_ioc_data_attach_detach(
-        self, query_service, populated_ioc_db, sample_detections
-    ):
-        """Should properly attach and detach IOC database."""
-        # Store original methods
-        original_attach = query_service.ioc_database_service.attach_to_session
-        original_detach = query_service.ioc_database_service.detach_from_session
-
-        with patch.object(
-            query_service.ioc_database_service, "attach_to_session", side_effect=original_attach
-        ) as mock_attach:
-            with patch.object(
-                query_service.ioc_database_service,
-                "detach_from_session",
-                side_effect=original_detach,
-            ) as mock_detach:
-                query_service.get_detections_with_ioc_data()
-
-                # Should attach and detach once
-                assert mock_attach.call_count == 1
-                assert mock_detach.call_count == 1
-
-    def test_get_detections_with_ioc_data_detach_on_exception(
-        self, query_service, populated_ioc_db
-    ):
-        """Should detach database even if query fails."""
-        with patch.object(
-            query_service, "_execute_join_query", side_effect=Exception("Query failed")
-        ):
-            with patch.object(query_service.ioc_database_service, "attach_to_session"):
-                with patch.object(
-                    query_service.ioc_database_service, "detach_from_session"
-                ) as mock_detach:
-                    with pytest.raises(Exception, match="Query failed"):
-                        query_service.get_detections_with_ioc_data()
-
-                    # Should still detach
-                    mock_detach.assert_called_once()
-
-
-class TestGetDetectionWithLocalization:
-    """Test getting single detection with IOC data."""
-
-    def test_get_detection_with_ioc_data_found(
-        self, query_service, populated_ioc_db, sample_detections
-    ):
-        """Should return detection with IOC data when found."""
+        """Should return detection with localization data when found."""
         detection_id = sample_detections[0].id
 
-        result = query_service.get_detection_with_ioc_data(detection_id)
+        result = query_service.get_detection_with_localization(detection_id)
 
         if result:  # May be None if JOIN doesn't match
             assert isinstance(result, DetectionWithLocalization)
             assert result.id == detection_id
 
-    def test_get_detection_with_ioc_data_not_found(self, query_service, populated_ioc_db):
+    def test_get_detection_with_localization_not_found(self, query_service, populated_ioc_db):
         """Should return None when detection not found."""
         non_existent_id = uuid4()
 
-        result = query_service.get_detection_with_ioc_data(non_existent_id)
+        result = query_service.get_detection_with_localization(non_existent_id)
 
         assert result is None
 
-    def test_get_detection_with_ioc_data_with_translation(
+    def test_get_detection_with_localization_with_translation(
         self, query_service, populated_ioc_db, sample_detections
     ):
         """Should include translation when available."""
@@ -422,32 +449,32 @@ class TestGetDetectionWithLocalization:
                 break
 
         if robin_detection:
-            result = query_service.get_detection_with_ioc_data(
+            result = query_service.get_detection_with_localization(
                 robin_detection.id, language_code="es"
             )
 
             if result:
                 assert result.translated_name == "Petirrojo Americano"
 
-    def test_get_detection_with_ioc_data_attach_detach(
+    def test_get_detection_with_localization_attach_detach(
         self, query_service, populated_ioc_db, sample_detections
     ):
         """Should properly attach and detach IOC database."""
         detection_id = sample_detections[0].id
 
         # Store original methods
-        original_attach = query_service.ioc_database_service.attach_to_session
-        original_detach = query_service.ioc_database_service.detach_from_session
+        original_attach = query_service.multilingual_service.attach_all_to_session
+        original_detach = query_service.multilingual_service.detach_all_from_session
 
         with patch.object(
-            query_service.ioc_database_service, "attach_to_session", side_effect=original_attach
+            query_service.multilingual_service, "attach_all_to_session", side_effect=original_attach
         ) as mock_attach:
             with patch.object(
-                query_service.ioc_database_service,
-                "detach_from_session",
+                query_service.multilingual_service,
+                "detach_all_from_session",
                 side_effect=original_detach,
             ) as mock_detach:
-                query_service.get_detection_with_ioc_data(detection_id)
+                query_service.get_detection_with_localization(detection_id)
 
                 # Should attach and detach once
                 assert mock_attach.call_count == 1
@@ -593,10 +620,10 @@ class TestGetFamilySummary:
             for i in range(len(results) - 1):
                 assert results[i]["detection_count"] >= results[i + 1]["detection_count"]
 
-    def test_get_family_summary_only_families_with_ioc_data(
+    def test_get_family_summary_only_families_with_localization_data(
         self, query_service, populated_ioc_db, sample_detections
     ):
-        """Should only include families that have IOC data."""
+        """Should only include families that have translation data."""
         results = query_service.get_family_summary()
 
         for result in results:
@@ -610,12 +637,12 @@ class TestErrorHandling:
     def test_database_attachment_failure(self, query_service):
         """Should handle database attachment failures."""
         with patch.object(
-            query_service.ioc_database_service,
-            "attach_to_session",
+            query_service.multilingual_service,
+            "attach_all_to_session",
             side_effect=OperationalError("", "", ""),
         ):
             with pytest.raises(OperationalError):
-                query_service.get_detections_with_ioc_data()
+                query_service.get_detections_with_localization()
 
     def test_query_execution_failure(self, query_service, populated_ioc_db):
         """Should handle query execution failures."""
@@ -625,12 +652,12 @@ class TestErrorHandling:
             mock_get_db.return_value.__enter__.return_value = mock_session
 
             with pytest.raises(Exception, match="Query failed"):
-                query_service.get_detections_with_ioc_data()
+                query_service.get_detections_with_localization()
 
     def test_empty_database(self, query_service, populated_ioc_db):
         """Should handle empty detection database gracefully."""
         # Test with empty main database (no detections)
-        results = query_service.get_detections_with_ioc_data()
+        results = query_service.get_detections_with_localization()
         assert results == []
 
         results = query_service.get_species_summary()
@@ -639,18 +666,6 @@ class TestErrorHandling:
         results = query_service.get_family_summary()
         assert results == []
 
-    def test_missing_ioc_data(self, query_service, sample_detections):
-        """Should handle cases where IOC data is missing."""
-        # Use query service without populated IOC database
-        results = query_service.get_detections_with_ioc_data()
-
-        # Should still return detections, but without IOC data
-        for result in results:
-            assert isinstance(result, DetectionWithLocalization)
-            # IOC fields should be None
-            assert result.ioc_english_name is None
-            assert result.family is None
-
 
 class TestPerformance:
     """Test performance-related functionality."""
@@ -658,13 +673,13 @@ class TestPerformance:
     def test_limit_and_offset_respected(self, query_service, populated_ioc_db, sample_detections):
         """Should respect limit and offset parameters."""
         # Test limit
-        results = query_service.get_detections_with_ioc_data(limit=1)
+        results = query_service.get_detections_with_localization(limit=1)
         assert len(results) <= 1
 
         # Test offset
-        all_results = query_service.get_detections_with_ioc_data(limit=100)
+        all_results = query_service.get_detections_with_localization(limit=100)
         if len(all_results) > 1:
-            offset_results = query_service.get_detections_with_ioc_data(limit=100, offset=1)
+            offset_results = query_service.get_detections_with_localization(limit=100, offset=1)
             assert len(offset_results) == len(all_results) - 1
 
     def test_index_usage_pattern(self, query_service, populated_ioc_db, sample_detections):
@@ -673,7 +688,7 @@ class TestPerformance:
 
         # Test timestamp + scientific_name pattern
         since_time = datetime.now() - timedelta(days=1)
-        results = query_service.get_detections_with_ioc_data(
+        results = query_service.get_detections_with_localization(
             since=since_time, scientific_name_filter="Turdus migratorius"
         )
 
@@ -683,7 +698,7 @@ class TestPerformance:
     def test_large_dataset_performance(self, query_service, populated_ioc_db):
         """Should have reliable performance with larger dataset."""
         # Test that large limit values don't cause issues
-        results = query_service.get_detections_with_ioc_data(limit=1000)
+        results = query_service.get_detections_with_localization(limit=1000)
         assert isinstance(results, list)
 
         # Test species summary with no limit
@@ -697,12 +712,12 @@ class TestIntegration:
     def test_complete_workflow(self, query_service, populated_ioc_db, sample_detections):
         """Test complete workflow from detections to summaries."""
         # Test basic detection retrieval
-        detections = query_service.get_detections_with_ioc_data(limit=10)
+        detections = query_service.get_detections_with_localization(limit=10)
         assert len(detections) > 0
 
         # Test single detection retrieval
         if detections:
-            single_detection = query_service.get_detection_with_ioc_data(detections[0].id)
+            single_detection = query_service.get_detection_with_localization(detections[0].id)
             assert single_detection is not None
             assert single_detection.id == detections[0].id
 
@@ -725,7 +740,7 @@ class TestIntegration:
     def test_translation_consistency(self, query_service, populated_ioc_db, sample_detections):
         """Test translation consistency across different query methods."""
         # Get detection with Spanish translation
-        detections = query_service.get_detections_with_ioc_data(
+        detections = query_service.get_detections_with_localization(
             language_code="es", scientific_name_filter="Turdus migratorius"
         )
 
@@ -733,7 +748,7 @@ class TestIntegration:
             detection = detections[0]
 
             # Get same detection by ID with Spanish translation
-            single_detection = query_service.get_detection_with_ioc_data(
+            single_detection = query_service.get_detection_with_localization(
                 detection.id, language_code="es"
             )
 
@@ -754,7 +769,7 @@ class TestIntegration:
     def test_database_state_isolation(self, query_service, populated_ioc_db, sample_detections):
         """Test that queries don't affect database state."""
         # Get initial state
-        initial_detections = query_service.get_detections_with_ioc_data()
+        initial_detections = query_service.get_detections_with_localization()
         initial_count = len(initial_detections)
 
         # Perform various queries
@@ -762,10 +777,10 @@ class TestIntegration:
         query_service.get_family_summary()
 
         if initial_detections:
-            query_service.get_detection_with_ioc_data(initial_detections[0].id)
+            query_service.get_detection_with_localization(initial_detections[0].id)
 
         # State should be unchanged
-        final_detections = query_service.get_detections_with_ioc_data()
+        final_detections = query_service.get_detections_with_localization()
         assert len(final_detections) == initial_count
 
 
@@ -897,11 +912,11 @@ class TestCachingFunctionality:
             detection_id = sample_detections[0].id
 
             # First call - should query database
-            result1 = query_service.get_detection_with_ioc_data(detection_id)
+            result1 = query_service.get_detection_with_localization(detection_id)
 
             # Second call with same parameters - should use cache
             with patch.object(query_service.bnp_database_service, "get_db") as mock_get_db:
-                result2 = query_service.get_detection_with_ioc_data(detection_id)
+                result2 = query_service.get_detection_with_localization(detection_id)
 
                 # Database should not be called on second request
                 mock_get_db.assert_not_called()

@@ -1,4 +1,4 @@
-"""Service for detection queries with multilingual localization support.
+"""Service for detection queries with translation support.
 
 This service handles all queries that need to join Detection records with species
 and translation data from multiple databases (IOC, Avibase, PatLevin). It uses SQLite's
@@ -67,7 +67,7 @@ class DetectionWithLocalization:
 
 
 class DetectionQueryService:
-    """Service for Detection queries with multilingual localization support.
+    """Service for Detection queries with translation support.
 
     This service provides enriched detection data by joining BirdNET-Pi detection records
     with IOC (International Ornithological Committee) taxonomic data and multilingual
@@ -187,7 +187,7 @@ class DetectionQueryService:
             return date_parser.parse(timestamp_value)
         return datetime.fromisoformat(str(timestamp_value))
 
-    def get_detections_with_ioc_data(
+    def get_detections_with_localization(
         self,
         limit: int = 100,
         offset: int = 0,
@@ -196,7 +196,7 @@ class DetectionQueryService:
         scientific_name_filter: str | None = None,
         family_filter: str | None = None,
     ) -> list[DetectionWithLocalization]:
-        """Get detections with IOC species and translation data.
+        """Get detections with translation data.
 
         Args:
             limit: Maximum number of results
@@ -224,10 +224,10 @@ class DetectionQueryService:
             finally:
                 self.multilingual_service.detach_all_from_session(session)
 
-    def get_detection_with_ioc_data(
+    def get_detection_with_localization(
         self, detection_id: UUID, language_code: str = "en"
     ) -> DetectionWithLocalization | None:
-        """Get single detection with IOC data by ID.
+        """Get single detection with translation data by ID.
 
         Args:
             detection_id: Detection UUID
@@ -238,7 +238,7 @@ class DetectionQueryService:
         """
         # Generate cache key for single detection
         cache_key = self._generate_cache_key(
-            "get_detection_with_ioc_data",
+            "get_detection_with_localization",
             detection_id=str(detection_id),
             language_code=language_code,
         )
@@ -338,7 +338,7 @@ class DetectionQueryService:
         since: datetime | None = None,
         family_filter: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Get detection count summary by species with IOC data.
+        """Get detection count summary by species with translation data.
 
         Args:
             language_code: Language for translations

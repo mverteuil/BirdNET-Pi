@@ -178,11 +178,11 @@ class TestCachedReportingManager:
             cache_service=mock_cache_service,
         )
 
-        result = manager.get_data(use_ioc_data=True, language_code="en")
+        result = manager.get_data(use_l10n_data=True, language_code="en")
 
         assert result == {"test": "data"}
         mock_reporting_manager.get_data.assert_called_once_with(
-            use_ioc_data=True, language_code="en"
+            use_l10n_data=True, language_code="en"
         )
 
     def test_get_weekly_report_data_caching(self, mock_reporting_manager, mock_cache_service):
@@ -208,7 +208,7 @@ class TestCachedReportingManager:
 
         assert result == [{"detection": "1"}]
         mock_reporting_manager.get_most_recent_detections.assert_called_once_with(
-            limit=5, language_code="es", use_ioc_data=True
+            limit=5, language_code="es", use_l10n_data=True
         )
 
     def test_get_todays_detections_with_date_key(self, mock_reporting_manager, mock_cache_service):
@@ -229,12 +229,12 @@ class TestCachedReportingManager:
             assert result == [{"today": "detection"}]
             # Function should be called without date parameter
             mock_reporting_manager.get_todays_detections.assert_called_once_with(
-                language_code="fr", use_ioc_data=True
+                language_code="fr", use_l10n_data=True
             )
 
             # Cache should be called with date parameter for key generation
             mock_cache_service.get.assert_called_with(
-                "todays_detections", date="2025-01-15", language_code="fr", use_ioc_data=True
+                "todays_detections", date="2025-01-15", language_code="fr", use_l10n_data=True
             )
 
     def test_get_best_detections_caching(self, mock_reporting_manager, mock_cache_service):

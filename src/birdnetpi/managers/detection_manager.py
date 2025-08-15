@@ -420,7 +420,7 @@ class DetectionManager:
                 print(f"Error updating detection location: {e}")
                 raise
 
-    def get_detections_with_ioc_data(
+    def get_detections_with_localization(
         self,
         limit: int = 100,
         offset: int = 0,
@@ -429,11 +429,11 @@ class DetectionManager:
         scientific_name_filter: str | None = None,
         family_filter: str | None = None,
     ) -> list[DetectionWithLocalization]:
-        """Get detections with IOC species and translation data.
+        """Get detections with translation data.
 
-        This method uses the DetectionQueryService to join detection data with IOC
-        taxonomic information, providing enriched data including translated names,
-        family, genus, and order information.
+        This method uses the DetectionQueryService to join detection data with
+        multilingual taxonomic information from IOC, PatLevin, and Avibase databases,
+        providing enriched data including translated names, family, genus, and order information.
 
         Args:
             limit: Maximum number of results
@@ -451,7 +451,7 @@ class DetectionManager:
                 "DetectionQueryService not available - using fallback to regular detections"
             )
 
-        return self.detection_query_service.get_detections_with_ioc_data(
+        return self.detection_query_service.get_detections_with_localization(
             limit=limit,
             offset=offset,
             language_code=language_code,
@@ -463,13 +463,13 @@ class DetectionManager:
     def get_most_recent_detections_with_ioc(
         self, limit: int = 10, language_code: str = "en"
     ) -> list[dict]:
-        """Retrieve the most recent detection records with IOC data from the database."""
+        """Retrieve the most recent detection records with localization data from the database."""
         if not self.detection_query_service:
             # Fallback to existing method
             return self.get_most_recent_detections(limit)
 
         try:
-            detections_with_ioc = self.detection_query_service.get_detections_with_ioc_data(
+            detections_with_l10n = self.detection_query_service.get_detections_with_localization(
                 limit=limit, language_code=language_code
             )
             return [
@@ -491,10 +491,10 @@ class DetectionManager:
                     "genus": d.genus,
                     "order_name": d.order_name,
                 }
-                for d in detections_with_ioc
+                for d in detections_with_l10n
             ]
         except Exception as e:
-            print(f"Error getting most recent detections with IOC: {e}")
+            print(f"Error getting most recent detections with localization: {e}")
             # Fallback to existing method
             return self.get_most_recent_detections(limit)
 
@@ -504,7 +504,7 @@ class DetectionManager:
         since: datetime.datetime | None = None,
         family_filter: str | None = None,
     ) -> list[dict]:
-        """Get detection count summary by species with IOC data.
+        """Get detection count summary by species with localization data.
 
         Args:
             language_code: Language for translations
