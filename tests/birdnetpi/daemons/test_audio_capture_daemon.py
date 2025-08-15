@@ -340,20 +340,13 @@ class TestAudioCaptureDaemon:
         # Verify it attempted to close the first FD
         mock_os.close.assert_called_once_with(file_descriptors["analysis"])
 
-    def test_run_daemon_as_script(self, mocker):
+    def test_run_daemon_as_script(self, mocker, repo_root):
         """Should execute main when run as script."""
         import subprocess
         import sys
-        from pathlib import Path
 
         # Get the path to the module
-        module_path = (
-            Path(__file__).parent.parent.parent
-            / "src"
-            / "birdnetpi"
-            / "daemons"
-            / "audio_capture_daemon.py"
-        )
+        module_path = repo_root / "src" / "birdnetpi" / "daemons" / "audio_capture_daemon.py"
 
         # Mock environment to avoid real execution - use a small timeout
         # Try to run the module as script, but expect it to fail quickly due to missing dependencies

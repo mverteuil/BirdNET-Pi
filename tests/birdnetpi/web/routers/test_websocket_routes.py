@@ -1,7 +1,6 @@
 """Test suite for websocket router."""
 
 import os
-from pathlib import Path
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -14,10 +13,10 @@ class TestWebSocketRouter:
     """Test class for WebSocket router endpoints."""
 
     @pytest.fixture(autouse=True)
-    def setup_method(self, tmp_path):
+    def setup_method(self, tmp_path, repo_root):
         """Set up test fixtures with proper path mocking."""
         # Get the real app directory for static assets
-        real_app_dir = Path(__file__).parent.parent.parent.parent / "src" / "birdnetpi"
+        real_app_dir = repo_root / "src" / "birdnetpi"
 
         # Create temp directories for dynamic data
         temp_data_dir = tmp_path / "data"

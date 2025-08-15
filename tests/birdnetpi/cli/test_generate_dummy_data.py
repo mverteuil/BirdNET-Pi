@@ -221,20 +221,13 @@ class TestGenerateDummyData:
         mock_dependencies["SystemControlService"].return_value.stop_service.assert_called_once()
         mock_dependencies["SystemControlService"].return_value.start_service.assert_called_once()
 
-    def test_main_entry_point_via_subprocess(self):
+    def test_main_entry_point_via_subprocess(self, repo_root):
         """Test the __main__ block by running module as script."""
         import subprocess
         import sys
-        from pathlib import Path
 
         # Get the path to the module
-        module_path = (
-            Path(__file__).parent.parent.parent
-            / "src"
-            / "birdnetpi"
-            / "cli"
-            / "generate_dummy_data.py"
-        )
+        module_path = repo_root / "src" / "birdnetpi" / "cli" / "generate_dummy_data.py"
 
         # Try to run the module as script, expect success or failure
         # We just want to trigger the __main__ block for coverage

@@ -34,20 +34,13 @@ class TestDummyDataGenerator:
             assert isinstance(detection_event.duration, float)
             assert isinstance(detection_event.size_bytes, int)
 
-    def test_main_entry_point_via_subprocess(self):
+    def test_main_entry_point_via_subprocess(self, repo_root):
         """Test the __main__ block by running module as script."""
         import subprocess
         import sys
-        from pathlib import Path
 
         # Get the path to the module
-        module_path = (
-            Path(__file__).parent.parent.parent
-            / "src"
-            / "birdnetpi"
-            / "utils"
-            / "dummy_data_generator.py"
-        )
+        module_path = repo_root / "src" / "birdnetpi" / "utils" / "dummy_data_generator.py"
 
         # Try to run the module as script, but expect it to fail quickly due to missing dependencies
         # We just want to trigger the __main__ block for coverage

@@ -13,6 +13,16 @@ matplotlib.use("Agg")
 
 
 @pytest.fixture
+def repo_root() -> Path:
+    """Get the absolute path to the repository root.
+
+    This fixture provides a consistent way to access the repository root
+    regardless of where tests are located or how they're organized.
+    """
+    return Path(__file__).parent.parent.resolve()
+
+
+@pytest.fixture
 def path_resolver(tmp_path: Path) -> PathResolver:
     """Provide a PathResolver with proper separation of read-only and writable paths.
 

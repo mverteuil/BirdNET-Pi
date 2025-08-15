@@ -2,7 +2,6 @@
 
 import json
 import sys
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -242,13 +241,11 @@ class TestMainFunction:
 
         mock_cli.assert_called_once_with(obj={})
 
-    def test_script_entry_point(self):
+    def test_script_entry_point(self, repo_root):
         """Test module can be run as script."""
         import subprocess
 
-        module_path = (
-            Path(__file__).parent.parent.parent / "src" / "birdnetpi" / "cli" / "asset_installer.py"
-        )
+        module_path = repo_root / "src" / "birdnetpi" / "cli" / "asset_installer.py"
 
         # Try to run with --help to avoid actual execution
         result = subprocess.run(
