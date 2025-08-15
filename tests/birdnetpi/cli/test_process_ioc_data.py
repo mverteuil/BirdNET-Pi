@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from click.testing import CliRunner
 
-from birdnetpi.cli.ioc_data_processor import cli
+from birdnetpi.cli.process_ioc_data import cli
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def runner():
 class TestIOCDataProcessor:
     """Test IOC database builder commands."""
 
-    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseBuilder")
+    @patch("birdnetpi.cli.process_ioc_data.IOCDatabaseBuilder")
     def test_build_command_with_xml_only(self, mock_builder_class, runner, tmp_path):
         """Should build database from XML file only."""
         # Setup mocks
@@ -49,7 +49,7 @@ class TestIOCDataProcessor:
         mock_builder_class.assert_called_once_with(db_path=db_file)
         mock_builder.populate_from_files.assert_called_once_with(xml_file, None)
 
-    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseBuilder")
+    @patch("birdnetpi.cli.process_ioc_data.IOCDatabaseBuilder")
     def test_build_command_with_xml_and_xlsx(self, mock_builder_class, runner, tmp_path):
         """Should build database from XML and XLSX files."""
         # Setup mocks
@@ -86,7 +86,7 @@ class TestIOCDataProcessor:
         mock_builder_class.assert_called_once_with(db_path=db_file)
         mock_builder.populate_from_files.assert_called_once_with(xml_file, xlsx_file)
 
-    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseBuilder")
+    @patch("birdnetpi.cli.process_ioc_data.IOCDatabaseBuilder")
     def test_build_command_file_not_found(self, mock_builder_class, runner, tmp_path):
         """Should handle file not found error gracefully."""
         # Setup mocks
@@ -113,7 +113,7 @@ class TestIOCDataProcessor:
         assert result.exit_code == 1
         assert "✗ File not found: XML file not found" in result.output
 
-    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseBuilder")
+    @patch("birdnetpi.cli.process_ioc_data.IOCDatabaseBuilder")
     def test_build_command_general_error(self, mock_builder_class, runner, tmp_path):
         """Should handle general errors gracefully."""
         # Setup mocks

@@ -1,4 +1,4 @@
-"""Test the asset_installer CLI module."""
+"""Test the install_assets CLI module."""
 
 import json
 import sys
@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from click.testing import CliRunner
 
-from birdnetpi.cli.asset_installer import cli
+from birdnetpi.cli.install_assets import cli
 
 
 @pytest.fixture
@@ -39,7 +39,7 @@ def runner():
 class TestInstallAssets:
     """Test the install command."""
 
-    @patch("birdnetpi.cli.asset_installer.UpdateManager")
+    @patch("birdnetpi.cli.install_assets.UpdateManager")
     def test_install_assets(self, mock_update_manager_class, test_download_result, runner):
         """Should install complete asset release."""
         mock_manager = MagicMock()
@@ -64,7 +64,7 @@ class TestInstallAssets:
             github_repo="mverteuil/BirdNET-Pi",
         )
 
-    @patch("birdnetpi.cli.asset_installer.UpdateManager")
+    @patch("birdnetpi.cli.install_assets.UpdateManager")
     def test_install_assets_json_output(
         self, mock_update_manager_class, test_download_result, tmp_path, runner
     ):
@@ -85,7 +85,7 @@ class TestInstallAssets:
         json_data = json.loads(output_file.read_text())
         assert json_data == test_download_result
 
-    @patch("birdnetpi.cli.asset_installer.UpdateManager")
+    @patch("birdnetpi.cli.install_assets.UpdateManager")
     def test_install_assets_download_error(self, mock_update_manager_class, runner):
         """Should handle download errors gracefully."""
         mock_manager = MagicMock()
@@ -97,7 +97,7 @@ class TestInstallAssets:
         assert result.exit_code == 1
         assert "✗ Error installing assets: Download failed" in result.output
 
-    @patch("birdnetpi.cli.asset_installer.UpdateManager")
+    @patch("birdnetpi.cli.install_assets.UpdateManager")
     def test_install_assets_permission_error_help(self, mock_update_manager_class, runner):
         """Should show helpful message for permission errors."""
         mock_manager = MagicMock()
@@ -118,7 +118,7 @@ class TestInstallAssets:
 class TestListVersions:
     """Test the list-versions command."""
 
-    @patch("birdnetpi.cli.asset_installer.UpdateManager")
+    @patch("birdnetpi.cli.install_assets.UpdateManager")
     def test_list_versions(self, mock_update_manager_class, test_version_data, runner):
         """Should list available asset versions."""
         mock_manager = MagicMock()
@@ -134,7 +134,7 @@ class TestListVersions:
         assert "• v2.0.0" in result.output
         assert "• v1.9.0" in result.output
 
-    @patch("birdnetpi.cli.asset_installer.UpdateManager")
+    @patch("birdnetpi.cli.install_assets.UpdateManager")
     def test_list_versions_empty(self, mock_update_manager_class, runner):
         """Should handle empty version list."""
         mock_manager = MagicMock()
@@ -146,7 +146,7 @@ class TestListVersions:
         assert result.exit_code == 0
         assert "No asset versions found." in result.output
 
-    @patch("birdnetpi.cli.asset_installer.UpdateManager")
+    @patch("birdnetpi.cli.install_assets.UpdateManager")
     def test_list_versions_error(self, mock_update_manager_class, runner):
         """Should handle listing errors gracefully."""
         mock_manager = MagicMock()
@@ -162,7 +162,7 @@ class TestListVersions:
 class TestCheckLocal:
     """Test the check-local command."""
 
-    @patch("birdnetpi.cli.asset_installer.PathResolver")
+    @patch("birdnetpi.cli.install_assets.PathResolver")
     def test_check_local_assets_exist(self, mock_path_resolver_class, tmp_path, runner):
         """Should report existing assets."""
         mock_resolver = MagicMock()
@@ -191,7 +191,7 @@ class TestCheckLocal:
         assert "✓ Avibase Database:" in result.output
         assert "✓ PatLevin Database:" in result.output
 
-    @patch("birdnetpi.cli.asset_installer.PathResolver")
+    @patch("birdnetpi.cli.install_assets.PathResolver")
     def test_check_local_verbose_mode(self, mock_path_resolver_class, tmp_path, runner):
         """Should show detailed info in verbose mode."""
         mock_resolver = MagicMock()
@@ -210,7 +210,7 @@ class TestCheckLocal:
         assert result.exit_code == 0
         assert "- model1.tflite" in result.output
 
-    @patch("birdnetpi.cli.asset_installer.PathResolver")
+    @patch("birdnetpi.cli.install_assets.PathResolver")
     def test_check_local_missing_files(self, mock_path_resolver_class, tmp_path, runner):
         """Should report missing assets."""
         mock_resolver = MagicMock()
@@ -232,10 +232,10 @@ class TestCheckLocal:
 class TestMainFunction:
     """Test the main entry point."""
 
-    @patch("birdnetpi.cli.asset_installer.cli")
+    @patch("birdnetpi.cli.install_assets.cli")
     def test_main_function(self, mock_cli):
         """Should call CLI with proper arguments."""
-        from birdnetpi.cli.asset_installer import main
+        from birdnetpi.cli.install_assets import main
 
         main()
 
@@ -245,7 +245,7 @@ class TestMainFunction:
         """Test module can be run as script."""
         import subprocess
 
-        module_path = repo_root / "src" / "birdnetpi" / "cli" / "asset_installer.py"
+        module_path = repo_root / "src" / "birdnetpi" / "cli" / "install_assets.py"
 
         # Try to run with --help to avoid actual execution
         result = subprocess.run(

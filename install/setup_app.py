@@ -235,13 +235,13 @@ def main() -> None:
     )
 
     # Install assets
-    asset_installer_path = venv_dir / "bin" / "asset-installer"
+    install_assets_path = venv_dir / "bin" / "install-assets"
     subprocess.run(
         [
             "sudo",
             "-u",
             "birdnetpi",
-            str(asset_installer_path),
+            str(install_assets_path),
             "install",
             "v1.0.2",
             "--include-models",
