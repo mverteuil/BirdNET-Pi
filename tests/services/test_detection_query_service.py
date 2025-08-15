@@ -16,8 +16,8 @@ from birdnetpi.services.detection_query_service import (
     DetectionQueryService,
     DetectionWithLocalization,
 )
-from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
+from birdnetpi.utils.ioc_database_builder import IOCDatabaseBuilder
 
 
 @pytest.fixture
@@ -43,7 +43,7 @@ def bnp_database_service(temp_main_db):
 @pytest.fixture
 def ioc_database_service(temp_ioc_db):
     """Create IOC database service."""
-    return IOCDatabaseService(temp_ioc_db)
+    return IOCDatabaseBuilder(temp_ioc_db)
 
 
 @pytest.fixture

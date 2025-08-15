@@ -16,7 +16,7 @@ def runner():
 
 @pytest.fixture
 def mock_ioc_reference_service():
-    """Create a mock IOCReferenceService."""
+    """Create a mock IOCDatabaseBuilder."""
     mock_service = MagicMock()
     mock_service.get_ioc_version.return_value = "15.1"
     mock_service.get_species_count.return_value = 10832
@@ -43,8 +43,8 @@ def mock_ioc_reference_service():
 class TestIOCDataProcessor:
     """Test IOC data processor commands."""
 
-    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseService")
-    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseBuilder")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseBuilder")
     def test_process_command(
         self, mock_reference_service_class, mock_database_service_class, runner, tmp_path
     ):
@@ -83,7 +83,7 @@ class TestIOCDataProcessor:
         mock_service.load_ioc_data.assert_called_once_with(xml_file, xlsx_file)
         mock_service.export_json.assert_called_once()
 
-    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseBuilder")
     def test_info_command(
         self, mock_reference_service_class, mock_ioc_reference_service, runner, tmp_path
     ):
@@ -102,7 +102,7 @@ class TestIOCDataProcessor:
         assert "Species count: 10832" in result.output
         assert "Available languages: 4" in result.output
 
-    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseBuilder")
     def test_lookup_command_found(
         self, mock_reference_service_class, mock_ioc_reference_service, runner, tmp_path
     ):
@@ -143,7 +143,7 @@ class TestIOCDataProcessor:
         assert "English name: American Robin" in result.output
         assert "ES name: Mirlo primavera" in result.output
 
-    @patch("birdnetpi.cli.ioc_data_processor.IOCReferenceService")
+    @patch("birdnetpi.cli.ioc_data_processor.IOCDatabaseBuilder")
     def test_lookup_command_not_found(
         self, mock_reference_service_class, mock_ioc_reference_service, runner, tmp_path
     ):

@@ -216,10 +216,10 @@ class TestSpeciesParserWithIOC:
         # Create a temporary database service for testing
         import tempfile
 
-        from birdnetpi.services.ioc_database_service import IOCDatabaseService
+        from birdnetpi.utils.ioc_database_builder import IOCDatabaseBuilder
 
         with tempfile.NamedTemporaryFile(suffix=".db") as tmp_file:
-            ioc_service = IOCDatabaseService(tmp_file.name)
+            ioc_service = IOCDatabaseBuilder(db_path=tmp_file.name)
             parser = SpeciesParser(ioc_service)
 
             assert parser.ioc_database is ioc_service
@@ -262,4 +262,4 @@ class TestSpeciesParserWithIOC:
         assert result == "American Robin (Turdus migratorius)"
 
 
-# TestMockIOCReferenceService class removed - obsolete after refactoring to IOCDatabaseService
+# TestMockIOCDatabaseBuilder class removed - obsolete after refactoring to IOCDatabaseBuilder

@@ -16,8 +16,7 @@ from pathlib import Path
 
 import click
 
-from birdnetpi.services.ioc_database_service import IOCDatabaseService
-from birdnetpi.services.ioc_reference_service import IOCReferenceService
+from birdnetpi.utils.ioc_database_builder import IOCDatabaseBuilder
 
 
 @click.group()
@@ -80,7 +79,7 @@ def process(
 
     try:
         # Process using IOC reference service
-        service = IOCReferenceService()
+        service = IOCDatabaseBuilder()
         service.load_ioc_data(xml_file, xlsx_file)
         service.export_json(output, compress=compress)
 
@@ -92,8 +91,12 @@ def process(
         if db_file:
             click.echo()
             click.echo(f"Creating SQLite database: {db_file}")
-            db_service = IOCDatabaseService(db_file)
-            db_service.populate_from_ioc_service(service)
+            db_service = IOCDatabaseBuilder(db_path=db_file)
+            db_service._species_data = service._species_data
+            db_service._translations = service._translations
+            db_service._ioc_version = service._ioc_version
+            db_service._loaded = True
+            db_service.populate_database()
             click.echo(click.style("✓ SQLite database created successfully", fg="green"))
 
     except Exception as e:
@@ -111,7 +114,7 @@ def process(
 def info(json_file: Path) -> None:
     """Show information about processed IOC JSON file."""
     try:
-        service = IOCReferenceService()
+        service = IOCDatabaseBuilder()
         service.load_from_json(json_file)
 
         click.echo("IOC Data Information:")
@@ -166,7 +169,7 @@ def info(json_file: Path) -> None:
 def lookup(json_file: Path, species: str, language: str) -> None:
     """Test species lookup functionality."""
     try:
-        service = IOCReferenceService()
+        service = IOCDatabaseBuilder()
         service.load_from_json(json_file)
 
         click.echo(f"Testing lookup for: {species}")

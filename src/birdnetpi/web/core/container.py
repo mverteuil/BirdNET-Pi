@@ -19,7 +19,6 @@ from birdnetpi.services.cache_service import CacheService
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.detection_query_service import DetectionQueryService
 from birdnetpi.services.gps_service import GPSService
-from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.services.location_service import LocationService
 from birdnetpi.services.mqtt_service import MQTTService
 from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
@@ -27,15 +26,16 @@ from birdnetpi.services.species_display_service import SpeciesDisplayService
 from birdnetpi.services.spectrogram_service import SpectrogramService
 from birdnetpi.services.system_control_service import SystemControlService
 from birdnetpi.services.webhook_service import WebhookService
+from birdnetpi.utils.ioc_database_builder import IOCDatabaseBuilder
 from birdnetpi.utils.path_resolver import PathResolver
 from birdnetpi.web.core.config import get_config
 
 
 # Factory functions for services with error handling
-def _create_ioc_service(resolver: PathResolver) -> IOCDatabaseService | None:
-    """Create IOC database service with graceful error handling."""
+def _create_ioc_service(resolver: PathResolver) -> IOCDatabaseBuilder | None:
+    """Create IOC database builder with graceful error handling."""
     try:
-        return IOCDatabaseService(resolver.get_ioc_database_path())
+        return IOCDatabaseBuilder(db_path=resolver.get_ioc_database_path())
     except Exception as e:
         print(f"Warning: IOC database service unavailable: {e}")
         return None

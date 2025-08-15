@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
-    from birdnetpi.services.ioc_database_service import IOCDatabaseService
+    from birdnetpi.utils.ioc_database_builder import IOCDatabaseBuilder
 
 
 class SpeciesComponents(NamedTuple):
@@ -44,7 +44,7 @@ class SpeciesParser:
     # Class-level instance for global access
     _instance: "SpeciesParser | None" = None
 
-    def __init__(self, ioc_database_service: "IOCDatabaseService | None" = None):
+    def __init__(self, ioc_database_service: "IOCDatabaseBuilder | None" = None):
         """Initialize parser with optional IOC database service.
 
         Args:
@@ -61,12 +61,16 @@ class SpeciesParser:
         return cls._instance
 
     def get_ioc_common_name(self, scientific_name: str) -> str | None:
-        """Get IOC canonical common name if database service is available."""
+        """Get IOC canonical common name if database service is available.
+
+        Uses the lightweight get_species_core method that returns only essential fields,
+        reducing memory usage and improving query performance.
+        """
         if self.ioc_database:
-            species = self.ioc_database.get_species_by_scientific_name(scientific_name)
+            # Use lightweight query that returns minimal model
+            species = self.ioc_database.get_species_core(scientific_name)
             if species:
-                english_name = getattr(species, "english_name", None)
-                return english_name if isinstance(english_name, str) else None
+                return species.english_name
         return None
 
     @staticmethod
