@@ -77,16 +77,16 @@ dependencies = [
 
 [project.scripts]
 asset-installer = "birdnetpi.wrappers.asset_installer_wrapper:main"
-audio-analysis-daemon = "birdnetpi.wrappers.audio_analysis_daemon:main"
-audio-capture-daemon = "birdnetpi.wrappers.audio_capture_daemon:main"
-audio-websocket-daemon = "birdnetpi.wrappers.audio_websocket_daemon:main"
+audio-analysis-daemon = "birdnetpi.daemons.audio_analysis_daemon:main"
+audio-capture-daemon = "birdnetpi.daemons.audio_capture_daemon:main"
+audio-websocket-daemon = "birdnetpi.daemons.audio_websocket_daemon:main"
 data-manager = "birdnetpi.wrappers.data_manager_wrapper:main"
 generate-dummy-data = "birdnetpi.wrappers.generate_dummy_data:main"
 manage-translations = "birdnetpi.wrappers.manage_translations:main"
 pulseaudio-setup = "birdnetpi.wrappers.pulseaudio_setup_wrapper:main"
 release-manager = "birdnetpi.wrappers.release_wrapper:main"
 reporting-manager = "birdnetpi.wrappers.reporting_manager_wrapper:main"
-spectrogram-websocket-daemon = "birdnetpi.wrappers.spectrogram_websocket_daemon:main"
+spectrogram-websocket-daemon = "birdnetpi.daemons.spectrogram_websocket_daemon:main"
 
 [tool.coverage.run]
 omit = ["tests/*", "*/dependency_injector/*"]

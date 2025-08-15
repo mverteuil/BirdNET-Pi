@@ -5,7 +5,7 @@ from unittest.mock import DEFAULT, MagicMock, patch
 
 import pytest
 
-import birdnetpi.wrappers.audio_capture_daemon as daemon
+import birdnetpi.daemons.audio_capture_daemon as daemon
 from birdnetpi.services.audio_capture_service import AudioCaptureService
 
 
@@ -35,7 +35,7 @@ def file_descriptors():
 def mock_dependencies(mocker, test_config, fifo_paths):
     """Mock external dependencies for audio_capture_daemon.py."""
     with patch.multiple(
-        "birdnetpi.wrappers.audio_capture_daemon",
+        "birdnetpi.daemons.audio_capture_daemon",
         FilePathResolver=DEFAULT,
         ConfigFileParser=DEFAULT,
         AudioCaptureService=DEFAULT,
@@ -55,7 +55,7 @@ def mock_dependencies(mocker, test_config, fifo_paths):
 @pytest.fixture(autouse=True)
 def caplog_for_wrapper(caplog):
     """Fixture to capture logs from the wrapper script."""
-    caplog.set_level(logging.DEBUG, logger="birdnetpi.wrappers.audio_capture_daemon")
+    caplog.set_level(logging.DEBUG, logger="birdnetpi.daemons.audio_capture_daemon")
     yield
 
 
@@ -63,16 +63,16 @@ def caplog_for_wrapper(caplog):
 def mock_os_operations(mocker, fifo_paths, file_descriptors):
     """Mock common OS operations for FIFO handling."""
     mocks = {
-        "makedirs": mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.makedirs"),
-        "mkfifo": mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.mkfifo"),
+        "makedirs": mocker.patch("birdnetpi.daemons.audio_capture_daemon.os.makedirs"),
+        "mkfifo": mocker.patch("birdnetpi.daemons.audio_capture_daemon.os.mkfifo"),
         "open": mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon.os.open",
+            "birdnetpi.daemons.audio_capture_daemon.os.open",
             side_effect=[file_descriptors["analysis"], file_descriptors["livestream"]],
         ),
-        "close": mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.close"),
-        "path_exists": mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os.path.exists"),
+        "close": mocker.patch("birdnetpi.daemons.audio_capture_daemon.os.close"),
+        "path_exists": mocker.patch("birdnetpi.daemons.audio_capture_daemon.os.path.exists"),
         "path_join": mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon.os.path.join",
+            "birdnetpi.daemons.audio_capture_daemon.os.path.join",
             side_effect=lambda *args: "/".join(args),
         ),
     }
@@ -97,11 +97,11 @@ class TestAudioCaptureDaemon:
         mock_os_operations["path_exists"].side_effect = [False, False, True, True]
 
         # Setup daemon lifecycle mocks
-        mock_signal = mocker.patch("birdnetpi.wrappers.audio_capture_daemon.signal")
-        mock_atexit = mocker.patch("birdnetpi.wrappers.audio_capture_daemon.atexit")
-        mock_time = mocker.patch("birdnetpi.wrappers.audio_capture_daemon.time")
+        mock_signal = mocker.patch("birdnetpi.daemons.audio_capture_daemon.signal")
+        mock_atexit = mocker.patch("birdnetpi.daemons.audio_capture_daemon.atexit")
+        mock_time = mocker.patch("birdnetpi.daemons.audio_capture_daemon.time")
         mock_global_shutdown_flag = mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon._shutdown_flag", new_callable=MagicMock
+            "birdnetpi.daemons.audio_capture_daemon._shutdown_flag", new_callable=MagicMock
         )
         # Ensure the loop runs once and then exits
         mock_global_shutdown_flag.__bool__.side_effect = [False, True]
@@ -150,7 +150,7 @@ class TestAudioCaptureDaemon:
         mock_os_operations["path_exists"].side_effect = [True, True, True, True]
 
         mock_global_shutdown_flag = mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon._shutdown_flag", new_callable=MagicMock
+            "birdnetpi.daemons.audio_capture_daemon._shutdown_flag", new_callable=MagicMock
         )
         mock_global_shutdown_flag.__bool__.side_effect = [False, True]
 
@@ -223,8 +223,8 @@ class TestAudioCaptureDaemon:
 
     def test_handle_signal_shutdown(self, mocker):
         """Should set the shutdown flag when a signal is received."""
-        mocker.patch("birdnetpi.wrappers.audio_capture_daemon.logger")
-        mocker.patch("birdnetpi.wrappers.audio_capture_daemon._shutdown_flag", False)
+        mocker.patch("birdnetpi.daemons.audio_capture_daemon.logger")
+        mocker.patch("birdnetpi.daemons.audio_capture_daemon._shutdown_flag", False)
 
         daemon._signal_handler(signal.SIGTERM, MagicMock())
 
@@ -232,8 +232,8 @@ class TestAudioCaptureDaemon:
 
     def test_handle_signal_shutdown__sigint(self, mocker):
         """Should set the shutdown flag when SIGINT is received."""
-        mocker.patch("birdnetpi.wrappers.audio_capture_daemon.logger")
-        mocker.patch("birdnetpi.wrappers.audio_capture_daemon._shutdown_flag", False)
+        mocker.patch("birdnetpi.daemons.audio_capture_daemon.logger")
+        mocker.patch("birdnetpi.daemons.audio_capture_daemon._shutdown_flag", False)
 
         daemon._signal_handler(signal.SIGINT, MagicMock())
 
@@ -241,20 +241,20 @@ class TestAudioCaptureDaemon:
 
     def test_cleanup_fifos(self, mocker, fifo_paths, file_descriptors, caplog):
         """Should close both FIFO file descriptors if they exist."""
-        mock_os = mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os")
+        mock_os = mocker.patch("birdnetpi.daemons.audio_capture_daemon.os")
         mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon._fifo_analysis_fd",
+            "birdnetpi.daemons.audio_capture_daemon._fifo_analysis_fd",
             file_descriptors["analysis"],
         )
         mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon._fifo_livestream_fd",
+            "birdnetpi.daemons.audio_capture_daemon._fifo_livestream_fd",
             file_descriptors["livestream"],
         )
         mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon._fifo_analysis_path", fifo_paths["analysis"]
+            "birdnetpi.daemons.audio_capture_daemon._fifo_analysis_path", fifo_paths["analysis"]
         )
         mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon._fifo_livestream_path",
+            "birdnetpi.daemons.audio_capture_daemon._fifo_livestream_path",
             fifo_paths["livestream"],
         )
 
@@ -267,9 +267,9 @@ class TestAudioCaptureDaemon:
 
     def test_cleanup_fifos___no_fds(self, mocker, caplog):
         """Should not attempt to close FIFOs if file descriptors are None."""
-        mock_os = mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os")
-        mocker.patch("birdnetpi.wrappers.audio_capture_daemon._fifo_analysis_fd", None)
-        mocker.patch("birdnetpi.wrappers.audio_capture_daemon._fifo_livestream_fd", None)
+        mock_os = mocker.patch("birdnetpi.daemons.audio_capture_daemon.os")
+        mocker.patch("birdnetpi.daemons.audio_capture_daemon._fifo_analysis_fd", None)
+        mocker.patch("birdnetpi.daemons.audio_capture_daemon._fifo_livestream_fd", None)
 
         daemon._cleanup_fifos()
 
@@ -278,14 +278,14 @@ class TestAudioCaptureDaemon:
 
     def test_cleanup_fifos__analysis_only(self, mocker, fifo_paths, file_descriptors, caplog):
         """Should close only the analysis FIFO if livestream FD is None."""
-        mock_os = mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os")
+        mock_os = mocker.patch("birdnetpi.daemons.audio_capture_daemon.os")
         mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon._fifo_analysis_fd",
+            "birdnetpi.daemons.audio_capture_daemon._fifo_analysis_fd",
             file_descriptors["analysis"],
         )
-        mocker.patch("birdnetpi.wrappers.audio_capture_daemon._fifo_livestream_fd", None)
+        mocker.patch("birdnetpi.daemons.audio_capture_daemon._fifo_livestream_fd", None)
         mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon._fifo_analysis_path", fifo_paths["analysis"]
+            "birdnetpi.daemons.audio_capture_daemon._fifo_analysis_path", fifo_paths["analysis"]
         )
 
         daemon._cleanup_fifos()
@@ -296,14 +296,14 @@ class TestAudioCaptureDaemon:
 
     def test_cleanup_fifos__livestream_only(self, mocker, fifo_paths, file_descriptors, caplog):
         """Should close only the livestream FIFO if analysis FD is None."""
-        mock_os = mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os")
-        mocker.patch("birdnetpi.wrappers.audio_capture_daemon._fifo_analysis_fd", None)
+        mock_os = mocker.patch("birdnetpi.daemons.audio_capture_daemon.os")
+        mocker.patch("birdnetpi.daemons.audio_capture_daemon._fifo_analysis_fd", None)
         mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon._fifo_livestream_fd",
+            "birdnetpi.daemons.audio_capture_daemon._fifo_livestream_fd",
             file_descriptors["livestream"],
         )
         mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon._fifo_livestream_path",
+            "birdnetpi.daemons.audio_capture_daemon._fifo_livestream_path",
             fifo_paths["livestream"],
         )
 
@@ -315,21 +315,21 @@ class TestAudioCaptureDaemon:
 
     def test_cleanup_fifos__close_error(self, mocker, fifo_paths, file_descriptors, caplog):
         """Should propagate OS errors when closing FIFOs."""
-        mock_os = mocker.patch("birdnetpi.wrappers.audio_capture_daemon.os")
+        mock_os = mocker.patch("birdnetpi.daemons.audio_capture_daemon.os")
         mock_os.close.side_effect = OSError("File descriptor not valid")
         mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon._fifo_analysis_fd",
+            "birdnetpi.daemons.audio_capture_daemon._fifo_analysis_fd",
             file_descriptors["analysis"],
         )
         mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon._fifo_livestream_fd",
+            "birdnetpi.daemons.audio_capture_daemon._fifo_livestream_fd",
             file_descriptors["livestream"],
         )
         mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon._fifo_analysis_path", fifo_paths["analysis"]
+            "birdnetpi.daemons.audio_capture_daemon._fifo_analysis_path", fifo_paths["analysis"]
         )
         mocker.patch(
-            "birdnetpi.wrappers.audio_capture_daemon._fifo_livestream_path",
+            "birdnetpi.daemons.audio_capture_daemon._fifo_livestream_path",
             fifo_paths["livestream"],
         )
 

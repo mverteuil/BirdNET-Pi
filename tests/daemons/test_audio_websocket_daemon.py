@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-import birdnetpi.wrappers.audio_websocket_daemon as daemon
+import birdnetpi.daemons.audio_websocket_daemon as daemon
 
 
 class TestAudioWebsocketDaemon:
@@ -14,7 +14,7 @@ class TestAudioWebsocketDaemon:
         mock_service = AsyncMock()
 
         with patch(
-            "birdnetpi.wrappers.audio_websocket_daemon.AudioWebSocketService",
+            "birdnetpi.daemons.audio_websocket_daemon.AudioWebSocketService",
             return_value=mock_service,
         ) as mock_service_class:
             await daemon.main_async()
@@ -34,7 +34,7 @@ class TestAudioWebsocketDaemon:
         mock_service.start.side_effect = Exception("Start failed")
 
         with patch(
-            "birdnetpi.wrappers.audio_websocket_daemon.AudioWebSocketService",
+            "birdnetpi.daemons.audio_websocket_daemon.AudioWebSocketService",
             return_value=mock_service,
         ):
             await daemon.main_async()
@@ -52,7 +52,7 @@ class TestAudioWebsocketDaemon:
         mock_service.wait_for_shutdown.side_effect = Exception("Wait failed")
 
         with patch(
-            "birdnetpi.wrappers.audio_websocket_daemon.AudioWebSocketService",
+            "birdnetpi.daemons.audio_websocket_daemon.AudioWebSocketService",
             return_value=mock_service,
         ):
             await daemon.main_async()
@@ -70,7 +70,7 @@ class TestAudioWebsocketDaemon:
             coro.close()
             raise KeyboardInterrupt
 
-        with patch("birdnetpi.wrappers.audio_websocket_daemon.asyncio.run", side_effect=mock_run):
+        with patch("birdnetpi.daemons.audio_websocket_daemon.asyncio.run", side_effect=mock_run):
             # Should not raise exception
             daemon.main()
 
@@ -83,7 +83,7 @@ class TestAudioWebsocketDaemon:
             raise Exception("General error")
 
         with patch(
-            "birdnetpi.wrappers.audio_websocket_daemon.asyncio.run",
+            "birdnetpi.daemons.audio_websocket_daemon.asyncio.run",
             side_effect=mock_run,
         ):
             # Should not raise exception
