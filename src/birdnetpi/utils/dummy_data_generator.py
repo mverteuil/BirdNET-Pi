@@ -3,7 +3,7 @@ import random
 from datetime import UTC
 
 from birdnetpi.managers.detection_manager import DetectionManager
-from birdnetpi.models.detection_event import DetectionEvent
+from birdnetpi.web.models.detection import DetectionEvent
 
 
 def generate_dummy_detections(

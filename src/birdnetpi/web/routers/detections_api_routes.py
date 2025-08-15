@@ -5,23 +5,15 @@ from uuid import UUID
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel
 
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.managers.plotting_manager import PlottingManager
-from birdnetpi.models.detection_event import DetectionEvent
 from birdnetpi.web.core.container import Container
+from birdnetpi.web.models.detection import DetectionEvent, LocationUpdate
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-class LocationUpdate(BaseModel):
-    """Location update request model."""
-
-    latitude: float
-    longitude: float
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)

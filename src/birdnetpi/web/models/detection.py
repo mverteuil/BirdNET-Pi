@@ -1,3 +1,5 @@
+"""Detection-related API contract models."""
+
 from datetime import datetime
 from uuid import UUID
 
@@ -30,3 +32,10 @@ class DetectionEvent(BaseModel):
     week: int
     sensitivity_setting: float
     overlap: float
+
+
+class LocationUpdate(BaseModel):
+    """Request model for updating location settings."""
+
+    latitude: float
+    longitude: float

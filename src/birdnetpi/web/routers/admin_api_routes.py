@@ -3,20 +3,14 @@
 import yaml
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
 
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.path_resolver import PathResolver
 from birdnetpi.web.core.container import Container
+from birdnetpi.web.models.admin import YAMLConfigRequest
 
 router = APIRouter()
-
-
-class YAMLConfigRequest(BaseModel):
-    """Request model for YAML configuration operations."""
-
-    yaml_content: str
 
 
 @router.post("/validate")

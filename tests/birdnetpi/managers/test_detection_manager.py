@@ -6,8 +6,8 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.models.database_models import Detection
-from birdnetpi.models.detection_event import DetectionEvent
 from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.web.models.detection import DetectionEvent
 
 
 @pytest.fixture
