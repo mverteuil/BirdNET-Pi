@@ -216,7 +216,7 @@ def detach_all_from_session(self, session: Session) -> None:
 from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
 
 # Initialize service
-multilingual_service = MultilingualDatabaseService(file_resolver)
+multilingual_service = MultilingualDatabaseService(path_resolver)
 
 # Get best available translation
 with session as db_session:

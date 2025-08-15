@@ -30,8 +30,8 @@ class TestWebSocketRouter:
         # Create the database file to prevent errors
         (temp_data_dir / "database" / "birdnetpi.db").touch()
 
-        # Set environment variables BEFORE importing anything that uses FilePathResolver
-        # This ensures FilePathResolver uses temp paths
+        # Set environment variables BEFORE importing anything that uses PathResolver
+        # This ensures PathResolver uses temp paths
         self.original_app_env = os.environ.get("BIRDNETPI_APP")
         self.original_data_env = os.environ.get("BIRDNETPI_DATA")
         os.environ["BIRDNETPI_APP"] = str(real_app_dir)

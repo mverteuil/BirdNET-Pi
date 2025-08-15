@@ -7,7 +7,7 @@ import pytest
 
 from birdnetpi.managers.translation_manager import TranslationManager
 from birdnetpi.models.config import BirdNETConfig
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 
 @pytest.fixture
@@ -26,9 +26,9 @@ def config_with_language():
 
 
 @pytest.fixture
-def mock_file_resolver():
+def mock_path_resolver():
     """Create mock file resolver."""
-    resolver = Mock(spec=FilePathResolver)
+    resolver = Mock(spec=PathResolver)
     locales_dir = Path(__file__).parent.parent.parent / "locales"
     resolver.get_locales_dir.return_value = locales_dir
     resolver.get_birdnetpi_config_path.return_value = "config/birdnetpi.yaml"
@@ -42,11 +42,11 @@ def mock_file_resolver():
 class TestLanguageSwitching:
     """Test language switching in the web interface."""
 
-    def test_config_language_respected(self, config_with_language, mock_file_resolver):
+    def test_config_language_respected(self, config_with_language, mock_path_resolver):
         """Test that the configured language is used by default."""
         # Test with Spanish config
         config_with_language("es")  # Config created but not used directly
-        translation_manager = TranslationManager(mock_file_resolver)
+        translation_manager = TranslationManager(mock_path_resolver)
 
         # Mock request without Accept-Language header
         request = Mock()
@@ -56,11 +56,11 @@ class TestLanguageSwitching:
         trans = translation_manager.get_translation("es")
         assert trans is not None
 
-    def test_accept_language_header_override(self, config_with_language, mock_file_resolver):
+    def test_accept_language_header_override(self, config_with_language, mock_path_resolver):
         """Test that Accept-Language header can override config."""
         # Config set to English
         config_with_language("en")  # Config created but not used directly
-        translation_manager = TranslationManager(mock_file_resolver)
+        translation_manager = TranslationManager(mock_path_resolver)
 
         # Request with French Accept-Language
         request = Mock()
@@ -83,9 +83,9 @@ class TestLanguageSwitching:
             ("ja-JP,ja;q=0.9", "ja"),
         ],
     )
-    def test_multiple_language_support(self, mock_file_resolver, accept_header, expected_lang):
+    def test_multiple_language_support(self, mock_path_resolver, accept_header, expected_lang):
         """Test that various languages are properly extracted from headers."""
-        translation_manager = TranslationManager(mock_file_resolver)
+        translation_manager = TranslationManager(mock_path_resolver)
 
         request = Mock()
         request.headers = {"Accept-Language": accept_header}
@@ -98,9 +98,9 @@ class TestLanguageSwitching:
         trans = translation_manager.install_for_request(request)
         assert trans is not None
 
-    def test_fallback_to_english(self, mock_file_resolver):
+    def test_fallback_to_english(self, mock_path_resolver):
         """Test fallback to English for unsupported languages."""
-        translation_manager = TranslationManager(mock_file_resolver)
+        translation_manager = TranslationManager(mock_path_resolver)
 
         request = Mock()
         request.headers = {"Accept-Language": "xyz-XY"}  # Non-existent language
@@ -255,7 +255,7 @@ class TestSpeciesTranslation:
                 assert result == "Turdus migratorius"
                 assert "American Robin" not in result
 
-    def test_multilingual_species_names(self, file_path_resolver):
+    def test_multilingual_species_names(self, path_resolver):
         """Test that species names work in multiple languages using actual databases."""
         from pathlib import Path
 
@@ -265,11 +265,11 @@ class TestSpeciesTranslation:
 
         from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
 
-        # The file_path_resolver fixture already points to data/database/ for the databases
+        # The path_resolver fixture already points to data/database/ for the databases
         # Check if databases exist - skip test if not available
-        ioc_db = file_path_resolver.get_ioc_database_path()
-        avibase_db = file_path_resolver.get_avibase_database_path()
-        patlevin_db = file_path_resolver.get_patlevin_database_path()
+        ioc_db = path_resolver.get_ioc_database_path()
+        avibase_db = path_resolver.get_avibase_database_path()
+        patlevin_db = path_resolver.get_patlevin_database_path()
 
         if not Path(ioc_db).exists():
             pytest.skip(
@@ -285,7 +285,7 @@ class TestSpeciesTranslation:
             )
 
         # Create service with real databases
-        service = MultilingualDatabaseService(file_path_resolver)
+        service = MultilingualDatabaseService(path_resolver)
 
         # Create a real SQLite session
         engine = create_engine("sqlite:///:memory:")

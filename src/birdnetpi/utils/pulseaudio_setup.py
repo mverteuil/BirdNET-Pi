@@ -12,7 +12,7 @@ from typing import Any
 
 from jinja2 import Template
 
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 
 class PulseAudioSetup:
@@ -182,7 +182,7 @@ class PulseAudioSetup:
         config_dir = PulseAudioSetup.get_pulseaudio_config_dir()
 
         # Initialize file path resolver
-        resolver = FilePathResolver()
+        resolver = PathResolver()
 
         # Create default.pa configuration
         default_pa_template_path = resolver.get_template_file_path("pulseaudio_default.pa.j2")

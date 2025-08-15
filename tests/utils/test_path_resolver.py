@@ -1,4 +1,4 @@
-"""Tests for FilePathResolver."""
+"""Tests for PathResolver."""
 
 import datetime
 from pathlib import Path
@@ -6,29 +6,29 @@ from pathlib import Path
 import pytest
 
 
-class TestFilePathResolver:
-    """Test FilePathResolver functionality."""
+class TestPathResolver:
+    """Test PathResolver functionality."""
 
     @pytest.fixture
-    def resolver(self, file_path_resolver, tmp_path):
-        """Create a FilePathResolver instance with test paths.
+    def resolver(self, path_resolver, tmp_path):
+        """Create a PathResolver instance with test paths.
 
-        Uses the global file_path_resolver fixture to prevent environment variable patching.
+        Uses the global path_resolver fixture to prevent environment variable patching.
         """
         # Set up test paths using the tmp_path
         test_data_dir = tmp_path / "data"
         test_data_dir.mkdir(parents=True, exist_ok=True)
 
         # Override specific paths for testing
-        file_path_resolver.data_dir = test_data_dir
-        file_path_resolver.app_dir = tmp_path / "app"
+        path_resolver.data_dir = test_data_dir
+        path_resolver.app_dir = tmp_path / "app"
 
         # Also override the methods that return paths based on data_dir
-        file_path_resolver.get_recordings_dir = lambda: test_data_dir / "recordings"
-        file_path_resolver.get_database_dir = lambda: test_data_dir / "database"
-        file_path_resolver.get_models_dir = lambda: test_data_dir / "models"
+        path_resolver.get_recordings_dir = lambda: test_data_dir / "recordings"
+        path_resolver.get_database_dir = lambda: test_data_dir / "database"
+        path_resolver.get_models_dir = lambda: test_data_dir / "models"
 
-        return file_path_resolver
+        return path_resolver
 
     def test_get_detection_audio_path(self, resolver):
         """Test detection audio path generation."""

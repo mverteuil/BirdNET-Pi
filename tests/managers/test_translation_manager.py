@@ -15,24 +15,24 @@ from birdnetpi.managers.translation_manager import (
 
 
 @pytest.fixture
-def mock_file_resolver(file_path_resolver, tmp_path):
-    """Create a mock FilePathResolver.
+def mock_path_resolver(path_resolver, tmp_path):
+    """Create a mock PathResolver.
 
-    Uses the global file_path_resolver fixture as a base to prevent MagicMock file creation.
+    Uses the global path_resolver fixture as a base to prevent MagicMock file creation.
     """
     # Create a locales directory in tmp_path
     locales_dir = tmp_path / "locales"
     locales_dir.mkdir(parents=True, exist_ok=True)
 
     # Override the get_locales_dir method
-    file_path_resolver.get_locales_dir = lambda: str(locales_dir)
-    return file_path_resolver
+    path_resolver.get_locales_dir = lambda: str(locales_dir)
+    return path_resolver
 
 
 @pytest.fixture
-def translation_manager(mock_file_resolver):
+def translation_manager(mock_path_resolver):
     """Create a TranslationManager instance for testing."""
-    return TranslationManager(mock_file_resolver)
+    return TranslationManager(mock_path_resolver)
 
 
 @pytest.fixture
@@ -54,12 +54,12 @@ def mock_app_with_translation_manager(translation_manager):
 class TestTranslationManager:
     """Test TranslationManager functionality."""
 
-    def test_init(self, mock_file_resolver):
+    def test_init(self, mock_path_resolver):
         """Should initialize with file resolver and default settings."""
-        manager = TranslationManager(mock_file_resolver)
+        manager = TranslationManager(mock_path_resolver)
 
-        assert manager.file_resolver == mock_file_resolver
-        assert manager.locales_dir == mock_file_resolver.get_locales_dir()
+        assert manager.path_resolver == mock_path_resolver
+        assert manager.locales_dir == mock_path_resolver.get_locales_dir()
         assert manager.translations == {}
         assert manager.default_language == "en"
 
@@ -252,10 +252,10 @@ class TestTranslationIntegration:
     """Integration tests for translation functionality."""
 
     @patch("birdnetpi.managers.translation_manager.translation")
-    def test_end_to_end_translation_flow(self, mock_translation_func, mock_file_resolver):
+    def test_end_to_end_translation_flow(self, mock_translation_func, mock_path_resolver):
         """Should handle complete translation flow from request to installation."""
         # Setup
-        manager = TranslationManager(mock_file_resolver)
+        manager = TranslationManager(mock_path_resolver)
         mock_trans = MagicMock(spec=gettext.GNUTranslations)
         mock_translation_func.return_value = mock_trans
 

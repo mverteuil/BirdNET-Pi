@@ -5,13 +5,13 @@ from birdnetpi.managers.detection_manager import DetectionManager
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.system_control_service import SystemControlService
 from birdnetpi.utils.dummy_data_generator import generate_dummy_detections
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 
 def main() -> None:
     """Generate dummy data for the application."""
-    file_resolver = FilePathResolver()
-    db_path = file_resolver.get_database_path()
+    path_resolver = PathResolver()
+    db_path = path_resolver.get_database_path()
 
     # Initialize system control service
     system_control = SystemControlService()

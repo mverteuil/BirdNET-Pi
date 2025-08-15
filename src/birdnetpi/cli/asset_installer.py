@@ -12,7 +12,7 @@ from pathlib import Path
 import click
 
 from birdnetpi.managers.update_manager import UpdateManager
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 
 @click.group()
@@ -23,8 +23,8 @@ def cli(ctx: click.Context) -> None:
     Download and manage BirdNET-Pi assets including models and databases.
     """
     ctx.ensure_object(dict)
-    ctx.obj["file_resolver"] = FilePathResolver()
-    ctx.obj["update_manager"] = UpdateManager(ctx.obj["file_resolver"])
+    ctx.obj["path_resolver"] = PathResolver()
+    ctx.obj["update_manager"] = UpdateManager(ctx.obj["path_resolver"])
 
 
 @cli.command()
@@ -152,13 +152,13 @@ def list_versions(ctx: click.Context, remote: str) -> None:
 @click.pass_context
 def check_local(ctx: click.Context, verbose: bool) -> None:
     """Check status of locally installed assets."""
-    file_resolver = ctx.obj["file_resolver"]
+    path_resolver = ctx.obj["path_resolver"]
 
     click.echo("Local asset status:")
     click.echo()
 
     # Check models
-    models_dir = Path(file_resolver.get_models_dir())
+    models_dir = Path(path_resolver.get_models_dir())
     if models_dir.exists():
         model_files = list(models_dir.rglob("*.tflite"))
         total_size = sum(f.stat().st_size for f in models_dir.rglob("*") if f.is_file())
@@ -182,7 +182,7 @@ def check_local(ctx: click.Context, verbose: bool) -> None:
     click.echo()
 
     # Check IOC database
-    ioc_db_path = Path(file_resolver.get_ioc_database_path())
+    ioc_db_path = Path(path_resolver.get_ioc_database_path())
     if ioc_db_path.exists():
         file_size = ioc_db_path.stat().st_size / 1024 / 1024
         click.echo(click.style(f"  ✓ IOC Database: {file_size:.1f} MB", fg="green"))
@@ -192,7 +192,7 @@ def check_local(ctx: click.Context, verbose: bool) -> None:
         click.echo(f"    Expected location: {ioc_db_path}")
 
     # Check Avibase database
-    avibase_path = Path(file_resolver.get_data_dir()) / "avibase.db"
+    avibase_path = Path(path_resolver.get_data_dir()) / "avibase.db"
     if avibase_path.exists():
         file_size = avibase_path.stat().st_size / 1024 / 1024
         click.echo(click.style(f"  ✓ Avibase Database: {file_size:.1f} MB", fg="green"))
@@ -202,7 +202,7 @@ def check_local(ctx: click.Context, verbose: bool) -> None:
         click.echo(f"    Expected location: {avibase_path}")
 
     # Check PatLevin database
-    patlevin_path = Path(file_resolver.get_data_dir()) / "patlevin.db"
+    patlevin_path = Path(path_resolver.get_data_dir()) / "patlevin.db"
     if patlevin_path.exists():
         file_size = patlevin_path.stat().st_size / 1024 / 1024
         click.echo(click.style(f"  ✓ PatLevin Database: {file_size:.1f} MB", fg="green"))

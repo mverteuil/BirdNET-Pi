@@ -10,7 +10,7 @@ from birdnetpi.managers.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 # Configure logging for this script
 logging.basicConfig(
@@ -47,24 +47,24 @@ def main() -> None:
     signal.signal(signal.SIGINT, _signal_handler)
     atexit.register(_cleanup_fifo)
 
-    file_resolver = FilePathResolver()
-    fifo_base_path = file_resolver.get_fifo_base_path()
+    path_resolver = PathResolver()
+    fifo_base_path = path_resolver.get_fifo_base_path()
     _fifo_analysis_path = os.path.join(fifo_base_path, "birdnet_audio_analysis.fifo")
 
-    file_manager = FileManager(file_resolver)
-    config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())
+    file_manager = FileManager(path_resolver)
+    config_parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
     config = config_parser.load_config()
 
     # Create IOC database service with graceful error handling
     ioc_database_service = None
     try:
-        ioc_database_service = IOCDatabaseService(file_resolver.get_ioc_database_path())
+        ioc_database_service = IOCDatabaseService(path_resolver.get_ioc_database_path())
         logger.info("IOC database service initialized")
     except Exception as e:
         logger.warning("IOC database service not available: %s", e)
 
     audio_analysis_service = AudioAnalysisManager(
-        file_manager, file_resolver, config, ioc_database_service=ioc_database_service
+        file_manager, path_resolver, config, ioc_database_service=ioc_database_service
     )
 
     try:

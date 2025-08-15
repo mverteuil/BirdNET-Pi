@@ -3,7 +3,7 @@ from pathlib import Path
 import yaml
 
 from birdnetpi.models.config import BirdNETConfig, LoggingConfig
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 
 class ConfigFileParser:
@@ -17,13 +17,13 @@ class ConfigFileParser:
 
         Args:
             config_path: Optional explicit path to config file.
-                        If None, uses FilePathResolver with env var support.
+                        If None, uses PathResolver with env var support.
         """
         if config_path is None:
-            # Use FilePathResolver for env var support and default paths
-            file_resolver = FilePathResolver()
-            self.config_path = str(file_resolver.get_birdnetpi_config_path())
-            self.template_path = str(file_resolver.get_config_template_path())
+            # Use PathResolver for env var support and default paths
+            path_resolver = PathResolver()
+            self.config_path = str(path_resolver.get_birdnetpi_config_path())
+            self.template_path = str(path_resolver.get_config_template_path())
         else:
             self.config_path = str(config_path)
             # Assume template is in same directory structure if explicit path given
@@ -41,7 +41,7 @@ class ConfigFileParser:
         with open(self.config_path) as f:
             config_data = yaml.safe_load(f)
 
-        # Data section is no longer used - paths handled by FilePathResolver
+        # Data section is no longer used - paths handled by PathResolver
 
         # Load logging section if present
         logging_section = config_data.get("logging", {})
@@ -83,7 +83,7 @@ class ConfigFileParser:
             audio_device_index=int(config_data.get("audio_device_index", -1)),
             sample_rate=int(config_data.get("sample_rate", 48000)),
             audio_channels=int(config_data.get("audio_channels", 1)),
-            # Data paths now handled entirely by FilePathResolver based on environment variables
+            # Data paths now handled entirely by PathResolver based on environment variables
             # Additional config fields
             enable_gps=bool(config_data.get("enable_gps", False)),
             gps_update_interval=float(config_data.get("gps_update_interval", 5.0)),
@@ -164,7 +164,7 @@ class ConfigFileParser:
             "git_branch": config.git_branch,
         }
 
-        # Data paths are now managed by FilePathResolver via environment variables
+        # Data paths are now managed by PathResolver via environment variables
         # No need to save them to config file
 
         # Add logging section - use modern structlog format

@@ -10,17 +10,17 @@ from tqdm import tqdm
 
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.system_control_service import SystemControlService
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 
 class UpdateManager:
     """Manages updates and Git operations for the BirdNET-Pi repository."""
 
     def __init__(
-        self, file_resolver: FilePathResolver, system_control: SystemControlService | None = None
+        self, path_resolver: PathResolver, system_control: SystemControlService | None = None
     ) -> None:
-        self.file_resolver = file_resolver
-        self.app_dir = file_resolver.app_dir
+        self.path_resolver = path_resolver
+        self.app_dir = path_resolver.app_dir
         self.system_control = system_control or SystemControlService()
 
     def get_commits_behind(self) -> int:
@@ -247,7 +247,7 @@ class UpdateManager:
             results["errors"].append("Models directory not found in release")
             return
 
-        models_target = self.file_resolver.get_models_dir()
+        models_target = self.path_resolver.get_models_dir()
         models_target.mkdir(parents=True, exist_ok=True)
 
         # Copy all model files
@@ -321,19 +321,19 @@ class UpdateManager:
                 (
                     include_ioc_db,
                     "ioc_reference.db",
-                    self.file_resolver.get_ioc_database_path(),
+                    self.path_resolver.get_ioc_database_path(),
                     "IOC reference database",
                 ),
                 (
                     include_avibase_db,
                     "avibase_database.db",
-                    self.file_resolver.get_avibase_database_path(),
+                    self.path_resolver.get_avibase_database_path(),
                     "Avibase multilingual database",
                 ),
                 (
                     include_patlevin_db,
                     "patlevin_database.db",
-                    self.file_resolver.get_patlevin_database_path(),
+                    self.path_resolver.get_patlevin_database_path(),
                     "PatLevin translations database",
                 ),
             ]

@@ -36,14 +36,14 @@ def mock_dependencies(mocker, test_config, fifo_paths):
     """Mock external dependencies for audio_capture_daemon.py."""
     with patch.multiple(
         "birdnetpi.daemons.audio_capture_daemon",
-        FilePathResolver=DEFAULT,
+        PathResolver=DEFAULT,
         ConfigFileParser=DEFAULT,
         AudioCaptureService=DEFAULT,
     ) as mocks:
         # Configure mocks with test data
-        mocks["FilePathResolver"].return_value.get_fifo_base_path.return_value = fifo_paths["base"]
+        mocks["PathResolver"].return_value.get_fifo_base_path.return_value = fifo_paths["base"]
         mocks[
-            "FilePathResolver"
+            "PathResolver"
         ].return_value.get_birdnetpi_config_path.return_value = "/tmp/config.yaml"
         mocks["ConfigFileParser"].return_value.load_config.return_value = test_config
         mocks["AudioCaptureService"].return_value = MagicMock(spec=AudioCaptureService)

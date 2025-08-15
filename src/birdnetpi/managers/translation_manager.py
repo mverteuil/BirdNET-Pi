@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import Request
 
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 if TYPE_CHECKING:
     from starlette.templating import Jinja2Templates
@@ -18,10 +18,10 @@ if TYPE_CHECKING:
 class TranslationManager:
     """Manages translations for the application."""
 
-    def __init__(self, file_resolver: FilePathResolver):
-        self.file_resolver = file_resolver
+    def __init__(self, path_resolver: PathResolver):
+        self.path_resolver = path_resolver
         # Locale files (.po/.mo) are source files, stored in app directory
-        self.locales_dir = file_resolver.get_locales_dir()
+        self.locales_dir = path_resolver.get_locales_dir()
         self.translations: dict[str, GNUTranslations | NullTranslations] = {}
         self.default_language = "en"
 

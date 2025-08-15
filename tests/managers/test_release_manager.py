@@ -10,10 +10,10 @@ from birdnetpi.managers.release_manager import ReleaseAsset, ReleaseConfig, Rele
 
 
 @pytest.fixture
-def mock_file_resolver(file_path_resolver, tmp_path):
-    """Create a mock FilePathResolver.
+def mock_path_resolver(path_resolver, tmp_path):
+    """Create a mock PathResolver.
 
-    Uses the global file_path_resolver fixture as a base to prevent MagicMock file creation.
+    Uses the global path_resolver fixture as a base to prevent MagicMock file creation.
     """
     # Create test directories
     models_dir = tmp_path / "models"
@@ -24,15 +24,15 @@ def mock_file_resolver(file_path_resolver, tmp_path):
     ioc_db_path.touch()
 
     # Override the methods
-    file_path_resolver.get_models_dir = lambda: models_dir
-    file_path_resolver.get_ioc_database_path = lambda: ioc_db_path
-    return file_path_resolver
+    path_resolver.get_models_dir = lambda: models_dir
+    path_resolver.get_ioc_database_path = lambda: ioc_db_path
+    return path_resolver
 
 
 @pytest.fixture
-def release_manager(mock_file_resolver, tmp_path):
+def release_manager(mock_path_resolver, tmp_path):
     """Create a ReleaseManager instance for testing."""
-    return ReleaseManager(mock_file_resolver, tmp_path)
+    return ReleaseManager(mock_path_resolver, tmp_path)
 
 
 @pytest.fixture
@@ -119,17 +119,17 @@ class TestReleaseConfig:
 class TestReleaseManager:
     """Test ReleaseManager functionality."""
 
-    def test_init__repo_path(self, mock_file_resolver, tmp_path):
+    def test_init__repo_path(self, mock_path_resolver, tmp_path):
         """Should initialize with provided repo path."""
-        manager = ReleaseManager(mock_file_resolver, tmp_path)
-        assert manager.file_resolver == mock_file_resolver
+        manager = ReleaseManager(mock_path_resolver, tmp_path)
+        assert manager.path_resolver == mock_path_resolver
         assert manager.repo_path == tmp_path
 
-    def test_init_without_repo_path(self, mock_file_resolver):
+    def test_init_without_repo_path(self, mock_path_resolver):
         """Should initialize with current directory as repo path."""
         with patch("pathlib.Path.cwd") as mock_cwd:
             mock_cwd.return_value = Path("/current/dir")
-            manager = ReleaseManager(mock_file_resolver)
+            manager = ReleaseManager(mock_path_resolver)
             assert manager.repo_path == Path("/current/dir")
 
     def test_validate_assets_exist(self, release_manager, sample_assets):
@@ -195,7 +195,7 @@ class TestReleaseManager:
         assert len(info["assets"]) == 2
         assert info["assets"][0]["name"] == "data/models"
 
-    def test_get_default_assets(self, release_manager, mock_file_resolver):
+    def test_get_default_assets(self, release_manager, mock_path_resolver):
         """Should return default assets with proper paths."""
         assets = release_manager.get_default_assets()
         assert len(assets) == 4

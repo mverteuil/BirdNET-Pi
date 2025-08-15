@@ -61,12 +61,12 @@ def generate_dummy_detections(
 if __name__ == "__main__":
     from birdnetpi.services.database_service import DatabaseService
     from birdnetpi.utils.config_file_parser import ConfigFileParser
-    from birdnetpi.utils.file_path_resolver import FilePathResolver
+    from birdnetpi.utils.path_resolver import PathResolver
 
-    file_resolver = FilePathResolver()
-    config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())
+    path_resolver = PathResolver()
+    config_parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
     config = config_parser.load_config()
-    bnp_database_service = DatabaseService(file_resolver.get_database_path())
+    bnp_database_service = DatabaseService(path_resolver.get_database_path())
     detection_manager = DetectionManager(bnp_database_service)
 
     generate_dummy_detections(detection_manager)

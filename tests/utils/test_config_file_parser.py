@@ -66,9 +66,9 @@ def test_save_config(config_file):
 class TestConfigFileParserInitialization:
     """Test ConfigFileParser initialization with different path configurations."""
 
-    def test_init___no_config_path_uses_file_resolver(self, mocker):
-        """Should use FilePathResolver when no config_path provided."""
-        mock_resolver = mocker.patch("birdnetpi.utils.config_file_parser.FilePathResolver")
+    def test_init___no_config_path_uses_path_resolver(self, mocker):
+        """Should use PathResolver when no config_path provided."""
+        mock_resolver = mocker.patch("birdnetpi.utils.config_file_parser.PathResolver")
         mock_instance = MagicMock()
         mock_resolver.return_value = mock_instance
         mock_instance.get_birdnetpi_config_path.return_value = "/test/config.yaml"

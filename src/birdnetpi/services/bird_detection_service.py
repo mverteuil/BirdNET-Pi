@@ -82,11 +82,11 @@ class BirdDetectionService:
         """
         log.info("BirdDetectionService: LOADING TF LITE MODEL...")
 
-        # Use FilePathResolver to get model path (filename-only approach)
-        from birdnetpi.utils.file_path_resolver import FilePathResolver
+        # Use PathResolver to get model path (filename-only approach)
+        from birdnetpi.utils.path_resolver import PathResolver
 
-        file_resolver = FilePathResolver()
-        model_path = file_resolver.get_model_path(self.model_name or "")  # Handle None
+        path_resolver = PathResolver()
+        model_path = path_resolver.get_model_path(self.model_name or "")  # Handle None
         # case
         if model_path is None:
             raise ValueError(f"Model path not found for model: {self.model_name}")
@@ -126,11 +126,11 @@ class BirdDetectionService:
             ValueError: If the metadata model path is not found
             RuntimeError: If the metadata interpreter fails to initialize
         """
-        # Use FilePathResolver for data model path
-        from birdnetpi.utils.file_path_resolver import FilePathResolver
+        # Use PathResolver for data model path
+        from birdnetpi.utils.path_resolver import PathResolver
 
-        file_resolver = FilePathResolver()
-        model_path = file_resolver.get_model_path(self.config.metadata_model)
+        path_resolver = PathResolver()
+        model_path = path_resolver.get_model_path(self.config.metadata_model)
         if model_path is None:
             raise ValueError(
                 f"Model path not found for metadata model: {self.config.metadata_model}"

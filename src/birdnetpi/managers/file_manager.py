@@ -4,15 +4,15 @@ from pathlib import Path
 import soundfile as sf
 
 from birdnetpi.models.database_models import AudioFile
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 
 class FileManager:
-    """Manages file system operations using FilePathResolver."""
+    """Manages file system operations using PathResolver."""
 
-    def __init__(self, file_resolver: FilePathResolver) -> None:
-        self.file_resolver = file_resolver
-        self.base_path = file_resolver.data_dir
+    def __init__(self, path_resolver: PathResolver) -> None:
+        self.path_resolver = path_resolver
+        self.base_path = path_resolver.data_dir
 
     def create_directory(self, relative_path: Path, exist_ok: bool = True) -> None:
         """Create a directory within the base_path."""

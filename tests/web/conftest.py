@@ -6,10 +6,10 @@ import pytest
 
 
 @pytest.fixture
-def app_with_temp_data(file_path_resolver) -> Any:
+def app_with_temp_data(path_resolver) -> Any:
     """Create FastAPI app with properly isolated paths.
 
-    This fixture uses the file_path_resolver fixture from tests/conftest.py
+    This fixture uses the path_resolver fixture from tests/conftest.py
     which properly separates read-only assets (models, IOC db) from writable
     data (database, config, logs) to prevent test pollution.
 
@@ -27,18 +27,16 @@ def app_with_temp_data(file_path_resolver) -> Any:
     # Override the Container's providers at the class level BEFORE app creation
     # This ensures that when sqladmin calls container.bnp_database_service(),
     # it gets our test version with the temp path
-    Container.file_resolver.override(providers.Singleton(lambda: file_path_resolver))
-    Container.database_path.override(
-        providers.Factory(lambda: file_path_resolver.get_database_path())
-    )
+    Container.path_resolver.override(providers.Singleton(lambda: path_resolver))
+    Container.database_path.override(providers.Factory(lambda: path_resolver.get_database_path()))
 
-    # Create a test config using our file_path_resolver
-    parser = ConfigFileParser(file_path_resolver.get_birdnetpi_config_path())
+    # Create a test config using our path_resolver
+    parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
     test_config = parser.load_config()
     Container.config.override(providers.Singleton(lambda: test_config))
 
     # Create a test database service with the temp path
-    temp_db_service = DatabaseService(file_path_resolver.get_database_path())
+    temp_db_service = DatabaseService(path_resolver.get_database_path())
     Container.bnp_database_service.override(providers.Singleton(lambda: temp_db_service))
 
     # Now create the app with our overridden providers
@@ -53,7 +51,7 @@ def app_with_temp_data(file_path_resolver) -> Any:
     import weakref
 
     def cleanup():
-        Container.file_resolver.reset_override()
+        Container.path_resolver.reset_override()
         Container.database_path.reset_override()
         Container.config.reset_override()
         Container.bnp_database_service.reset_override()

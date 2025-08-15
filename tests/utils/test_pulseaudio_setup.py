@@ -370,13 +370,13 @@ class TestPulseAudioSetup:
         """Should create server configuration files."""
         mock_config_dir.mkdir(parents=True, exist_ok=True)
 
-        # Mock the FilePathResolver to use the correct template paths
+        # Mock the PathResolver to use the correct template paths
         with (
             patch(
                 "birdnetpi.utils.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
                 return_value=mock_config_dir,
             ),
-            patch("birdnetpi.utils.pulseaudio_setup.FilePathResolver") as mock_resolver_class,
+            patch("birdnetpi.utils.pulseaudio_setup.PathResolver") as mock_resolver_class,
         ):
             mock_resolver = mock_resolver_class.return_value
             # Set up the template paths to the actual project location
@@ -413,7 +413,7 @@ class TestPulseAudioSetup:
                 "birdnetpi.utils.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
                 return_value=mock_config_dir,
             ),
-            patch("birdnetpi.utils.pulseaudio_setup.FilePathResolver") as mock_resolver_class,
+            patch("birdnetpi.utils.pulseaudio_setup.PathResolver") as mock_resolver_class,
         ):
             mock_resolver = mock_resolver_class.return_value
             project_root = Path(__file__).parent.parent.parent
@@ -450,7 +450,7 @@ class TestPulseAudioSetup:
                 "birdnetpi.utils.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
                 return_value=mock_config_dir,
             ),
-            patch("birdnetpi.utils.pulseaudio_setup.FilePathResolver") as mock_resolver_class,
+            patch("birdnetpi.utils.pulseaudio_setup.PathResolver") as mock_resolver_class,
         ):
             mock_resolver = mock_resolver_class.return_value
             project_root = Path(__file__).parent.parent.parent
@@ -473,7 +473,7 @@ class TestPulseAudioSetup:
                 "birdnetpi.utils.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
                 return_value=mock_config_dir,
             ),
-            patch("birdnetpi.utils.pulseaudio_setup.FilePathResolver") as mock_resolver_class,
+            patch("birdnetpi.utils.pulseaudio_setup.PathResolver") as mock_resolver_class,
         ):
             mock_resolver = mock_resolver_class.return_value
             project_root = Path(__file__).parent.parent.parent

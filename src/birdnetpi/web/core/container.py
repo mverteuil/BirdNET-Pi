@@ -27,12 +27,12 @@ from birdnetpi.services.species_display_service import SpeciesDisplayService
 from birdnetpi.services.spectrogram_service import SpectrogramService
 from birdnetpi.services.system_control_service import SystemControlService
 from birdnetpi.services.webhook_service import WebhookService
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 from birdnetpi.web.core.config import get_config
 
 
 # Factory functions for services with error handling
-def _create_ioc_service(resolver: FilePathResolver) -> IOCDatabaseService | None:
+def _create_ioc_service(resolver: PathResolver) -> IOCDatabaseService | None:
     """Create IOC database service with graceful error handling."""
     try:
         return IOCDatabaseService(resolver.get_ioc_database_path())
@@ -41,7 +41,7 @@ def _create_ioc_service(resolver: FilePathResolver) -> IOCDatabaseService | None
         return None
 
 
-def _create_multilingual_service(resolver: FilePathResolver) -> MultilingualDatabaseService | None:
+def _create_multilingual_service(resolver: PathResolver) -> MultilingualDatabaseService | None:
     """Create multilingual database service with graceful error handling."""
     try:
         return MultilingualDatabaseService(resolver)
@@ -75,12 +75,12 @@ class Container(containers.DeclarativeContainer):
     config = providers.Singleton(get_config)
 
     # Core infrastructure services - singletons
-    file_resolver = providers.Singleton(FilePathResolver)
+    path_resolver = providers.Singleton(PathResolver)
 
     # Translation manager - singleton
     translation_manager = providers.Singleton(
         TranslationManager,
-        file_resolver=file_resolver,
+        path_resolver=path_resolver,
     )
 
     # Templates configuration - singleton
@@ -92,7 +92,7 @@ class Container(containers.DeclarativeContainer):
     # Database path provider
     database_path = providers.Factory(
         lambda resolver: resolver.get_database_path(),
-        resolver=file_resolver,
+        resolver=path_resolver,
     )
 
     bnp_database_service = providers.Singleton(
@@ -103,13 +103,13 @@ class Container(containers.DeclarativeContainer):
     # IOC database service factory with error handling
     ioc_database_service = providers.Singleton(
         _create_ioc_service,
-        resolver=file_resolver,
+        resolver=path_resolver,
     )
 
     # Multilingual database service with all three bird name databases
     multilingual_database_service = providers.Singleton(
         _create_multilingual_service,
-        resolver=file_resolver,
+        resolver=path_resolver,
     )
 
     # Detection query service factory with error handling - now uses multilingual service
@@ -139,7 +139,7 @@ class Container(containers.DeclarativeContainer):
     # Core business services - singletons
     file_manager = providers.Singleton(
         FileManager,
-        file_resolver=file_resolver,
+        path_resolver=path_resolver,
     )
 
     # Species display service - singleton
@@ -238,7 +238,7 @@ class Container(containers.DeclarativeContainer):
     reporting_manager = providers.Factory(
         ReportingManager,
         detection_manager=detection_manager,
-        file_path_resolver=file_resolver,
+        path_resolver=path_resolver,
         config=config,
         plotting_manager=plotting_manager,
         data_preparation_manager=data_preparation_manager,

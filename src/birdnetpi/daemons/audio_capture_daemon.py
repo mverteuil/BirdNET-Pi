@@ -6,7 +6,7 @@ import time
 
 from birdnetpi.services.audio_capture_service import AudioCaptureService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 # Configure logging for this script
 logging.basicConfig(
@@ -53,9 +53,9 @@ def main() -> None:
     signal.signal(signal.SIGINT, _signal_handler)
     atexit.register(_cleanup_fifos)
 
-    file_resolver = FilePathResolver()
-    config_path = file_resolver.get_birdnetpi_config_path()
-    fifo_base_path = file_resolver.get_fifo_base_path()
+    path_resolver = PathResolver()
+    config_path = path_resolver.get_birdnetpi_config_path()
+    fifo_base_path = path_resolver.get_fifo_base_path()
 
     _fifo_analysis_path = os.path.join(fifo_base_path, "birdnet_audio_analysis.fifo")
     _fifo_livestream_path = os.path.join(fifo_base_path, "birdnet_audio_livestream.fifo")

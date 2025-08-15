@@ -6,7 +6,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.routers.admin_api_routes import router
 
@@ -20,14 +20,14 @@ def client(tmp_path):
     # Create the real container
     container = Container()
 
-    # Override the file_resolver with a mock
-    mock_file_resolver = MagicMock(spec=FilePathResolver)
+    # Override the path_resolver with a mock
+    mock_path_resolver = MagicMock(spec=PathResolver)
     # Set return values to prevent MagicMock folder creation using tmp_path (as Path objects)
-    mock_file_resolver.get_ioc_database_path.return_value = tmp_path / "ioc_reference.db"
-    mock_file_resolver.get_models_dir.return_value = tmp_path / "models"
-    mock_file_resolver.get_avibase_database_path.return_value = tmp_path / "avibase.db"
-    mock_file_resolver.get_patlevin_database_path.return_value = tmp_path / "patlevin.db"
-    container.file_resolver.override(mock_file_resolver)
+    mock_path_resolver.get_ioc_database_path.return_value = tmp_path / "ioc_reference.db"
+    mock_path_resolver.get_models_dir.return_value = tmp_path / "models"
+    mock_path_resolver.get_avibase_database_path.return_value = tmp_path / "avibase.db"
+    mock_path_resolver.get_patlevin_database_path.return_value = tmp_path / "patlevin.db"
+    container.path_resolver.override(mock_path_resolver)
 
     # Wire the container
     container.wire(modules=["birdnetpi.web.routers.admin_api_routes"])
@@ -40,7 +40,7 @@ def client(tmp_path):
     client = TestClient(app)
 
     # Store the mock for access in tests
-    client.mock_file_resolver = mock_file_resolver  # type: ignore[attr-defined]
+    client.mock_path_resolver = mock_path_resolver  # type: ignore[attr-defined]
 
     return client
 
@@ -55,7 +55,7 @@ class TestAdminAPIRoutes:
         config_file.write_text("site_name: Test Site\nlatitude: 40.0\nlongitude: -74.0")
 
         # Mock the file resolver method (returns Path object)
-        client.mock_file_resolver.get_birdnetpi_config_path.return_value = config_file
+        client.mock_path_resolver.get_birdnetpi_config_path.return_value = config_file
 
         valid_yaml = """
 site_name: "Test BirdNET-Pi"
@@ -78,7 +78,7 @@ species_confidence_threshold: 0.03
         config_file.write_text("site_name: Test Site")
 
         # Mock the file resolver method (returns Path object)
-        client.mock_file_resolver.get_birdnetpi_config_path.return_value = config_file
+        client.mock_path_resolver.get_birdnetpi_config_path.return_value = config_file
 
         invalid_yaml = """
 site_name: "Test BirdNET-Pi"
@@ -99,7 +99,7 @@ invalid_yaml: [unclosed bracket
         config_file.write_text("site_name: Old Site")
 
         # Mock the file resolver method (returns Path object)
-        client.mock_file_resolver.get_birdnetpi_config_path.return_value = config_file
+        client.mock_path_resolver.get_birdnetpi_config_path.return_value = config_file
 
         new_yaml = """
 site_name: "New Test Site"
@@ -122,7 +122,7 @@ species_confidence_threshold: 0.05
         config_file.write_text("site_name: Test Site")
 
         # Mock the file resolver method (returns Path object)
-        client.mock_file_resolver.get_birdnetpi_config_path.return_value = config_file
+        client.mock_path_resolver.get_birdnetpi_config_path.return_value = config_file
 
         invalid_yaml = """
 site_name: "Test BirdNET-Pi"

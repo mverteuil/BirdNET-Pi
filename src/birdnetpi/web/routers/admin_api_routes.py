@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.utils.config_file_parser import ConfigFileParser
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 from birdnetpi.web.core.container import Container
 
 router = APIRouter()
@@ -23,8 +23,8 @@ class YAMLConfigRequest(BaseModel):
 @inject
 async def validate_yaml_config(
     config_request: YAMLConfigRequest,
-    file_resolver: FilePathResolver = Depends(  # noqa: B008
-        Provide[Container.file_resolver]
+    path_resolver: PathResolver = Depends(  # noqa: B008
+        Provide[Container.path_resolver]
     ),
 ) -> dict:
     """Validate YAML configuration content."""
@@ -33,7 +33,7 @@ async def validate_yaml_config(
         config_data = yaml.safe_load(config_request.yaml_content)
 
         # Create a temporary ConfigFileParser to validate
-        config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())
+        config_parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
 
         # Try to parse into BirdNETConfig model
         # This will validate all fields and types
@@ -107,8 +107,8 @@ async def validate_yaml_config(
 @inject
 async def save_yaml_config(
     config_request: YAMLConfigRequest,
-    file_resolver: FilePathResolver = Depends(  # noqa: B008
-        Provide[Container.file_resolver]
+    path_resolver: PathResolver = Depends(  # noqa: B008
+        Provide[Container.path_resolver]
     ),
 ) -> dict:
     """Save YAML configuration content."""
@@ -119,7 +119,7 @@ async def save_yaml_config(
             return {"success": False, "error": validation_result["error"]}
 
         # Get config file path
-        config_path = file_resolver.get_birdnetpi_config_path()
+        config_path = path_resolver.get_birdnetpi_config_path()
 
         # Write the raw YAML content
         with open(config_path, "w") as f:

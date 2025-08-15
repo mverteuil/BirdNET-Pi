@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 
-class FilePathResolver:
+class PathResolver:
     """Central authority for all file path resolution in BirdNET-Pi.
 
     Uses environment variables for configuration with sensible defaults.
@@ -11,7 +11,7 @@ class FilePathResolver:
     """
 
     def __init__(self) -> None:
-        """Initialize FilePathResolver with environment-based configuration."""
+        """Initialize PathResolver with environment-based configuration."""
         # Core directory paths from environment variables
         self.app_dir = Path(os.getenv("BIRDNETPI_APP", "/opt/birdnetpi"))
         self.data_dir = Path(os.getenv("BIRDNETPI_DATA", "/var/lib/birdnetpi"))

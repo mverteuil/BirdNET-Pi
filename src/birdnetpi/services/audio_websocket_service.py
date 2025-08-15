@@ -15,7 +15,7 @@ import websockets
 from websockets.asyncio.server import serve
 
 from birdnetpi.utils.config_file_parser import ConfigFileParser
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +32,9 @@ class AudioWebSocketService:
         self._processing_active = False
 
         # Initialize paths
-        file_resolver = FilePathResolver()
-        self._config_path = config_path or file_resolver.get_birdnetpi_config_path()
-        fifo_base = fifo_base_path or file_resolver.get_fifo_base_path()
+        path_resolver = PathResolver()
+        self._config_path = config_path or path_resolver.get_birdnetpi_config_path()
+        fifo_base = fifo_base_path or path_resolver.get_fifo_base_path()
         self._fifo_livestream_path = os.path.join(fifo_base, "birdnet_audio_livestream.fifo")
 
         logger.info("AudioWebSocketService initialized.")

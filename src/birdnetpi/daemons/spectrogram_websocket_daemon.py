@@ -25,7 +25,7 @@ from websockets.asyncio.server import serve
 
 from birdnetpi.services.spectrogram_service import SpectrogramService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 # Configure logging for this script
 logging.basicConfig(
@@ -136,13 +136,13 @@ async def _main_async() -> None:
     signal.signal(signal.SIGINT, _signal_handler)
     atexit.register(_cleanup_fifo_and_service)
 
-    file_resolver = FilePathResolver()
-    fifo_base_path = file_resolver.get_fifo_base_path()
+    path_resolver = PathResolver()
+    fifo_base_path = path_resolver.get_fifo_base_path()
     _fifo_livestream_path = os.path.join(fifo_base_path, "birdnet_audio_livestream.fifo")
 
     try:
         # Load configuration
-        config_path = file_resolver.get_birdnetpi_config_path()
+        config_path = path_resolver.get_birdnetpi_config_path()
         config_parser = ConfigFileParser(config_path)
         config = config_parser.load_config()
         logger.info("Configuration loaded successfully.")

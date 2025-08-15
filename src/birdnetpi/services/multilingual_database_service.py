@@ -17,22 +17,22 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
-    from birdnetpi.utils.file_path_resolver import FilePathResolver
+    from birdnetpi.utils.path_resolver import PathResolver
 
 
 class MultilingualDatabaseService:
     """Service for multilingual bird name lookups across three databases."""
 
-    def __init__(self, file_resolver: FilePathResolver):
+    def __init__(self, path_resolver: PathResolver):
         """Initialize multilingual database service.
 
         Args:
-            file_resolver: File path resolver for database locations
+            path_resolver: File path resolver for database locations
         """
-        self.file_resolver = file_resolver
-        self.ioc_db_path = file_resolver.get_ioc_database_path()
-        self.avibase_db_path = file_resolver.get_avibase_database_path()
-        self.patlevin_db_path = file_resolver.get_patlevin_database_path()
+        self.path_resolver = path_resolver
+        self.ioc_db_path = path_resolver.get_ioc_database_path()
+        self.avibase_db_path = path_resolver.get_avibase_database_path()
+        self.patlevin_db_path = path_resolver.get_patlevin_database_path()
 
         # All three databases are always present - the asset downloader ensures this
         # No need for fallback support

@@ -9,7 +9,7 @@ from typing import Any
 
 import click
 
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 
 def run_command(cmd: list[str], description: str) -> bool:
@@ -41,7 +41,7 @@ def cli(ctx: click.Context) -> None:
 
     # Initialize the file path resolver
     ctx.ensure_object(dict)
-    ctx.obj["resolver"] = FilePathResolver()
+    ctx.obj["resolver"] = PathResolver()
 
 
 @cli.command()

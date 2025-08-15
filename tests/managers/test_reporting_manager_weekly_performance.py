@@ -34,7 +34,7 @@ def mock_location_service():
 
 @pytest.fixture
 def performance_reporting_manager(
-    detection_manager, file_path_resolver, mock_config, mock_location_service
+    detection_manager, path_resolver, mock_config, mock_location_service
 ):
     """Provide a ReportingManager instance configured for performance testing."""
     from birdnetpi.managers.data_preparation_manager import DataPreparationManager
@@ -45,7 +45,7 @@ def performance_reporting_manager(
 
     manager = ReportingManager(
         detection_manager=detection_manager,
-        file_path_resolver=file_path_resolver,
+        path_resolver=path_resolver,
         config=mock_config,
         plotting_manager=mock_plotting_manager,
         data_preparation_manager=mock_data_preparation_manager,

@@ -14,7 +14,7 @@ from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.bird_detection_service import BirdDetectionService
 from birdnetpi.services.ioc_database_service import IOCDatabaseService
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 from birdnetpi.utils.species_parser import SpeciesComponents, SpeciesParser
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class AudioAnalysisManager:
     def __init__(
         self,
         file_manager: FileManager,
-        file_path_resolver: FilePathResolver,
+        path_resolver: PathResolver,
         config: BirdNETConfig,
         detection_buffer_max_size: int = 1000,
         buffer_flush_interval: float = 5.0,
@@ -34,7 +34,7 @@ class AudioAnalysisManager:
     ) -> None:
         logger.info("AudioAnalysisManager initialized.")
         self.file_manager = file_manager
-        self.file_path_resolver = file_path_resolver
+        self.path_resolver = path_resolver
         self.config = config
         self.analysis_client = BirdDetectionService(config)
 
@@ -196,7 +196,7 @@ class AudioAnalysisManager:
         # Get relative path for the audio file
         timestamp = datetime.datetime.now(UTC)
         current_week = timestamp.isocalendar()[1]
-        audio_file_path = self.file_path_resolver.get_detection_audio_path(
+        audio_file_path = self.path_resolver.get_detection_audio_path(
             species_components.scientific_name, timestamp
         )
 

@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.testclient import TestClient
 
 
-def test_read_main(file_path_resolver, tmp_path) -> None:
+def test_read_main(path_resolver, tmp_path) -> None:
     """Test the main endpoint of the web application with simplified mocking."""
     # Create a simple FastAPI app for testing
     app = FastAPI()

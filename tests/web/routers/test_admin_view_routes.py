@@ -47,14 +47,14 @@ def app_with_admin_view_routes(tmp_path):
 
     # Override additional dependencies to use mocks
     if hasattr(app, "container"):
-        app.container.file_resolver.override(mock_resolver)  # type: ignore[attr-defined]
+        app.container.path_resolver.override(mock_resolver)  # type: ignore[attr-defined]
         app.container.detection_manager.override(mock_detection_manager)  # type: ignore[attr-defined]
 
     yield app
 
     # Clean up: reset overrides after each test
     if hasattr(app, "container"):
-        app.container.file_resolver.reset_override()  # type: ignore[attr-defined]
+        app.container.path_resolver.reset_override()  # type: ignore[attr-defined]
         app.container.detection_manager.reset_override()  # type: ignore[attr-defined]
 
 

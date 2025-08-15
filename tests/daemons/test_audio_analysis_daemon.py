@@ -65,18 +65,18 @@ def mock_os_operations(mocker, test_fifo_data):
 
 
 @pytest.fixture(autouse=True)
-def mock_dependencies(mocker, file_path_resolver):
+def mock_dependencies(mocker, path_resolver):
     """Mock external dependencies for audio_analysis_daemon.py."""
     with patch.multiple(
         "birdnetpi.daemons.audio_analysis_daemon",
-        FilePathResolver=DEFAULT,
+        PathResolver=DEFAULT,
         FileManager=DEFAULT,
         ConfigFileParser=DEFAULT,
         AudioAnalysisManager=DEFAULT,
     ) as mocks:
-        # Use the global file_path_resolver fixture to prevent MagicMock folder creation
-        file_path_resolver.get_fifo_base_path = lambda: "/tmp/fifo"
-        mocks["FilePathResolver"].return_value = file_path_resolver
+        # Use the global path_resolver fixture to prevent MagicMock folder creation
+        path_resolver.get_fifo_base_path = lambda: "/tmp/fifo"
+        mocks["PathResolver"].return_value = path_resolver
 
         # Yield mocks for individual test configuration
         yield mocks

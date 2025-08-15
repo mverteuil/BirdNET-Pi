@@ -18,7 +18,7 @@ import birdnetpi.cli.generate_dummy_data as gdd
 from birdnetpi.managers.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.models.config import BirdNETConfig
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 
 @pytest.fixture
@@ -51,9 +51,9 @@ def mock_file_manager():
 
 
 @pytest.fixture
-def mock_file_path_resolver(tmp_path):
-    """Return a mock FilePathResolver instance for integration tests."""
-    mock = MagicMock(spec=FilePathResolver)
+def mock_path_resolver(tmp_path):
+    """Return a mock PathResolver instance for integration tests."""
+    mock = MagicMock(spec=PathResolver)
     mock.get_detection_audio_path.return_value = (
         tmp_path / "recordings/Test_bird/20240101_120000.wav"
     )
@@ -63,7 +63,7 @@ def mock_file_path_resolver(tmp_path):
 @pytest.fixture
 @patch("birdnetpi.managers.audio_analysis_manager.BirdDetectionService")
 def audio_analysis_service_integration(
-    mock_analysis_client_class, mock_file_manager, mock_file_path_resolver, mock_config
+    mock_analysis_client_class, mock_file_manager, mock_path_resolver, mock_config
 ):
     """Return an AudioAnalysisManager instance for integration testing."""
     # Mock the BirdDetectionService constructor
@@ -72,7 +72,7 @@ def audio_analysis_service_integration(
 
     service = AudioAnalysisManager(
         mock_file_manager,
-        mock_file_path_resolver,
+        mock_path_resolver,
         mock_config,
         detection_buffer_max_size=50,  # Reasonable size for integration tests
         buffer_flush_interval=0.1,  # Fast interval for testing
@@ -225,7 +225,7 @@ class TestDetectionBufferingEndToEnd:
         # Create service with small buffer for testing overflow
         service = AudioAnalysisManager(
             audio_analysis_service_integration.file_manager,
-            audio_analysis_service_integration.file_path_resolver,
+            audio_analysis_service_integration.path_resolver,
             audio_analysis_service_integration.config,
             detection_buffer_max_size=3,  # Small buffer to trigger overflow
             buffer_flush_interval=0.1,
@@ -408,9 +408,7 @@ class TestDetectionBufferingWithAdminOperations:
 
             # Simulate admin operation affecting FastAPI
             with (
-                patch(
-                    "birdnetpi.cli.generate_dummy_data.FilePathResolver"
-                ) as mock_file_path_resolver,
+                patch("birdnetpi.cli.generate_dummy_data.PathResolver") as mock_path_resolver,
                 patch(
                     "birdnetpi.cli.generate_dummy_data.DatabaseService"
                 ) as _mock_database_service,
@@ -432,7 +430,7 @@ class TestDetectionBufferingWithAdminOperations:
                 mock_db_path = MagicMock(spec=Path)
                 mock_db_path.exists.return_value = False
                 mock_db_path.stat.return_value.st_size = 0
-                mock_file_path_resolver.return_value.get_database_path.return_value = mock_db_path
+                mock_path_resolver.return_value.get_database_path.return_value = mock_db_path
 
                 mock_os.path.exists.return_value = False
                 mock_os.getenv.return_value = "false"  # SBC environment

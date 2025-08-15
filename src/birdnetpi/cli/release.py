@@ -12,7 +12,7 @@ from typing import Any
 import click
 
 from birdnetpi.managers.release_manager import ReleaseAsset, ReleaseConfig, ReleaseManager
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 
 def _add_asset_if_requested(
@@ -137,8 +137,8 @@ def cli(ctx: click.Context) -> None:
       release-manager list-assets
     """
     ctx.ensure_object(dict)
-    ctx.obj["file_resolver"] = FilePathResolver()
-    ctx.obj["release_manager"] = ReleaseManager(ctx.obj["file_resolver"])
+    ctx.obj["path_resolver"] = PathResolver()
+    ctx.obj["release_manager"] = ReleaseManager(ctx.obj["path_resolver"])
 
 
 @cli.command()

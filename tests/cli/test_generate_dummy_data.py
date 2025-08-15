@@ -13,7 +13,7 @@ def mock_dependencies(mocker):
     """Mock external dependencies for generate_dummy_data.py."""
     with patch.multiple(
         "birdnetpi.cli.generate_dummy_data",
-        FilePathResolver=DEFAULT,
+        PathResolver=DEFAULT,
         DatabaseService=DEFAULT,
         DetectionManager=DEFAULT,
         SystemControlService=DEFAULT,
@@ -27,7 +27,7 @@ def mock_dependencies(mocker):
         mock_stat = MagicMock()
         mock_stat.st_size = 0
         mock_db_path.stat.return_value = mock_stat
-        mocks["FilePathResolver"].return_value.get_database_path.return_value = mock_db_path
+        mocks["PathResolver"].return_value.get_database_path.return_value = mock_db_path
         mocks["DatabaseService"].return_value = MagicMock(spec=DatabaseService)
         mocks["DetectionManager"].return_value = MagicMock(spec=DetectionManager)
         mocks["SystemControlService"].return_value = MagicMock(spec=SystemControlService)
@@ -44,9 +44,7 @@ class TestGenerateDummyData:
     def test_main_database_exists__has_data(self, mock_dependencies, capsys):
         """Should skip dummy data generation if database exists and has data."""
         # Mock the Path object methods directly
-        mock_db_path = mock_dependencies[
-            "FilePathResolver"
-        ].return_value.get_database_path.return_value
+        mock_db_path = mock_dependencies["PathResolver"].return_value.get_database_path.return_value
         mock_db_path.exists.return_value = True
 
         # Mock the stat object
@@ -73,9 +71,7 @@ class TestGenerateDummyData:
     ):
         """Should generate dummy data if database exists but is empty and FastAPI is not running."""
         # Configure Path object to simulate existing but empty file
-        mock_db_path = mock_dependencies[
-            "FilePathResolver"
-        ].return_value.get_database_path.return_value
+        mock_db_path = mock_dependencies["PathResolver"].return_value.get_database_path.return_value
         mock_db_path.exists.return_value = True
         mock_stat = MagicMock()
         mock_stat.st_size = 0  # Empty file
@@ -102,9 +98,7 @@ class TestGenerateDummyData:
     def test_main_database_exists_but_is__empty__fastapi_running(self, mock_dependencies, capsys):
         """Should stop FastAPI, generate data, then restart FastAPI."""
         # Configure Path object to simulate existing but empty file
-        mock_db_path = mock_dependencies[
-            "FilePathResolver"
-        ].return_value.get_database_path.return_value
+        mock_db_path = mock_dependencies["PathResolver"].return_value.get_database_path.return_value
         mock_db_path.exists.return_value = True
         mock_stat = MagicMock()
         mock_stat.st_size = 0  # Empty file
@@ -142,9 +136,7 @@ class TestGenerateDummyData:
     def test_main_database_does_not_exist(self, mock_dependencies, capsys):
         """Should generate dummy data if database does not exist."""
         # Configure Path object to simulate non-existent file
-        mock_db_path = mock_dependencies[
-            "FilePathResolver"
-        ].return_value.get_database_path.return_value
+        mock_db_path = mock_dependencies["PathResolver"].return_value.get_database_path.return_value
         mock_db_path.exists.return_value = False
 
         mock_dependencies[
@@ -161,9 +153,7 @@ class TestGenerateDummyData:
     def test_main_service_status_check_failure(self, mock_dependencies, capsys):
         """Should handle service status check failures gracefully."""
         # Configure Path object to simulate non-existent file
-        mock_db_path = mock_dependencies[
-            "FilePathResolver"
-        ].return_value.get_database_path.return_value
+        mock_db_path = mock_dependencies["PathResolver"].return_value.get_database_path.return_value
         mock_db_path.exists.return_value = False
 
         mock_dependencies[
@@ -184,9 +174,7 @@ class TestGenerateDummyData:
     def test_main_service_stop_failure(self, mock_dependencies, capsys):
         """Should handle service stop failures gracefully."""
         # Configure Path object to simulate non-existent file
-        mock_db_path = mock_dependencies[
-            "FilePathResolver"
-        ].return_value.get_database_path.return_value
+        mock_db_path = mock_dependencies["PathResolver"].return_value.get_database_path.return_value
         mock_db_path.exists.return_value = False
 
         mock_dependencies[
@@ -206,9 +194,7 @@ class TestGenerateDummyData:
     def test_main_service_restart_failure(self, mock_dependencies, capsys):
         """Should handle service restart failures gracefully."""
         # Configure Path object to simulate non-existent file
-        mock_db_path = mock_dependencies[
-            "FilePathResolver"
-        ].return_value.get_database_path.return_value
+        mock_db_path = mock_dependencies["PathResolver"].return_value.get_database_path.return_value
         mock_db_path.exists.return_value = False
 
         mock_dependencies[

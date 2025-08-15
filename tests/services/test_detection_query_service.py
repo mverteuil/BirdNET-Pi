@@ -47,7 +47,7 @@ def ioc_database_service(temp_ioc_db):
 
 
 @pytest.fixture
-def multilingual_service(temp_ioc_db, file_path_resolver):
+def multilingual_service(temp_ioc_db, path_resolver):
     """Create multilingual database service."""
     # Create empty tables for PatLevin and Avibase in the test database
     # In production, all three databases are always present thanks to the asset downloader
@@ -78,10 +78,10 @@ def multilingual_service(temp_ioc_db, file_path_resolver):
     conn.close()
 
     # Mock the file path resolver to return test database paths
-    file_path_resolver.get_ioc_database_path = lambda: temp_ioc_db
-    file_path_resolver.get_avibase_database_path = lambda: temp_ioc_db  # Use same DB for testing
-    file_path_resolver.get_patlevin_database_path = lambda: temp_ioc_db  # Use same DB for testing
-    return MultilingualDatabaseService(file_path_resolver)
+    path_resolver.get_ioc_database_path = lambda: temp_ioc_db
+    path_resolver.get_avibase_database_path = lambda: temp_ioc_db  # Use same DB for testing
+    path_resolver.get_patlevin_database_path = lambda: temp_ioc_db  # Use same DB for testing
+    return MultilingualDatabaseService(path_resolver)
 
 
 @pytest.fixture

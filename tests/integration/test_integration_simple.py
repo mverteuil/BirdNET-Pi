@@ -40,12 +40,12 @@ def test_admin_view_routes_endpoints():
 
         # Mock dependencies
         app.state.templates = MagicMock()
-        mock_file_resolver = MagicMock()
-        mock_file_resolver.get_ioc_database_path.return_value = tmp_path / "ioc_reference.db"
-        mock_file_resolver.get_models_dir.return_value = tmp_path / "models"
-        mock_file_resolver.get_avibase_database_path.return_value = tmp_path / "avibase.db"
-        mock_file_resolver.get_patlevin_database_path.return_value = tmp_path / "patlevin.db"
-        app.state.file_resolver = mock_file_resolver
+        mock_path_resolver = MagicMock()
+        mock_path_resolver.get_ioc_database_path.return_value = tmp_path / "ioc_reference.db"
+        mock_path_resolver.get_models_dir.return_value = tmp_path / "models"
+        mock_path_resolver.get_avibase_database_path.return_value = tmp_path / "avibase.db"
+        mock_path_resolver.get_patlevin_database_path.return_value = tmp_path / "patlevin.db"
+        app.state.path_resolver = mock_path_resolver
 
         # Mock config
         mock_config = MagicMock()

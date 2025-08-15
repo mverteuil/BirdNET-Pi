@@ -82,7 +82,7 @@ def mock_location_service():
 @pytest.fixture
 def reporting_manager(
     detection_manager,
-    file_path_resolver,
+    path_resolver,
     mock_plotting_manager,
     mock_data_preparation_manager,
     mock_config,  # Added mock_config
@@ -91,7 +91,7 @@ def reporting_manager(
     """Provide a ReportingManager instance with mocked dependencies."""
     manager = ReportingManager(
         detection_manager=detection_manager,
-        file_path_resolver=file_path_resolver,
+        path_resolver=path_resolver,
         config=mock_config,
         plotting_manager=mock_plotting_manager,
         data_preparation_manager=mock_data_preparation_manager,

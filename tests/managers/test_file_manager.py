@@ -8,14 +8,14 @@ from birdnetpi.models.database_models import AudioFile
 
 
 @pytest.fixture
-def file_manager(file_path_resolver, tmp_path):
+def file_manager(path_resolver, tmp_path):
     """Provide a FileManager instance for testing.
 
-    Uses the global file_path_resolver fixture as a base to prevent MagicMock file creation.
+    Uses the global path_resolver fixture as a base to prevent MagicMock file creation.
     """
     # Override the data_dir to use tmp_path
-    file_path_resolver.data_dir = tmp_path
-    return FileManager(file_resolver=file_path_resolver)
+    path_resolver.data_dir = tmp_path
+    return FileManager(path_resolver=path_resolver)
 
 
 def test_create_directory(file_manager):

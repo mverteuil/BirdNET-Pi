@@ -8,10 +8,10 @@ from birdnetpi.models.config import BirdNETConfig
 
 
 @pytest.fixture
-def mock_file_path_resolver(file_path_resolver, tmp_path):
-    """Provide a properly mocked FilePathResolver for UpdateManager tests.
+def mock_path_resolver(path_resolver, tmp_path):
+    """Provide a properly mocked PathResolver for UpdateManager tests.
 
-    Uses the global file_path_resolver fixture as a base to prevent MagicMock file creation.
+    Uses the global path_resolver fixture as a base to prevent MagicMock file creation.
     """
     # Create test database files in temp directory
     ioc_db_path = tmp_path / "database" / "ioc_reference.db"
@@ -22,17 +22,17 @@ def mock_file_path_resolver(file_path_resolver, tmp_path):
     models_dir.mkdir(parents=True, exist_ok=True)
 
     # Override the database path methods
-    file_path_resolver.get_ioc_database_path = lambda: ioc_db_path
-    file_path_resolver.get_models_dir = lambda: models_dir
+    path_resolver.get_ioc_database_path = lambda: ioc_db_path
+    path_resolver.get_models_dir = lambda: models_dir
 
-    return file_path_resolver
+    return path_resolver
 
 
 @pytest.fixture
-def update_manager(mock_file_path_resolver, tmp_path):
+def update_manager(mock_path_resolver, tmp_path):
     """Provide an UpdateManager instance for testing."""
     mock_system_control = MagicMock()
-    manager = UpdateManager(mock_file_path_resolver, mock_system_control)
+    manager = UpdateManager(mock_path_resolver, mock_system_control)
     manager.app_dir = tmp_path
     scripts_dir = tmp_path / "scripts"
     scripts_dir.mkdir()
@@ -311,9 +311,9 @@ class TestDownloadReleaseAssets:
         tmp_path,
     ):
         """Should download release assets successfully."""
-        # Setup mocks - use the update_manager's file_resolver
-        update_manager.file_resolver.get_models_dir.return_value = tmp_path / "models"
-        update_manager.file_resolver.get_ioc_database_path.return_value = tmp_path / "ioc.db"
+        # Setup mocks - use the update_manager's path_resolver
+        update_manager.path_resolver.get_models_dir.return_value = tmp_path / "models"
+        update_manager.path_resolver.get_ioc_database_path.return_value = tmp_path / "ioc.db"
 
         mock_resolve_latest.return_value = "v1.0.0"
         mock_validate.return_value = "assets-v1.0.0"
@@ -356,8 +356,8 @@ class TestDownloadReleaseAssets:
         tmp_path,
     ):
         """Should download only models when specified."""
-        # Setup mocks - use the update_manager's file_resolver
-        update_manager.file_resolver.get_models_dir.return_value = tmp_path / "models"
+        # Setup mocks - use the update_manager's path_resolver
+        update_manager.path_resolver.get_models_dir.return_value = tmp_path / "models"
 
         mock_validate.return_value = "assets-v1.0.0"
 
@@ -386,8 +386,8 @@ class TestDownloadReleaseAssets:
         tmp_path,
     ):
         """Should handle missing models directory gracefully."""
-        # Setup mocks - use the update_manager's file_resolver
-        update_manager.file_resolver.get_models_dir.return_value = tmp_path / "models"
+        # Setup mocks - use the update_manager's path_resolver
+        update_manager.path_resolver.get_models_dir.return_value = tmp_path / "models"
 
         mock_validate.return_value = "assets-v1.0.0"
 

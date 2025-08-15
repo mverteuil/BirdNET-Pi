@@ -9,8 +9,8 @@ from birdnetpi.services.audio_websocket_service import AudioWebSocketService
 
 
 @pytest.fixture
-def mock_file_resolver():
-    """Mock FilePathResolver for testing."""
+def mock_path_resolver():
+    """Mock PathResolver for testing."""
     mock = MagicMock()
     mock.get_birdnetpi_config_path.return_value = "/mock/config.yaml"
     mock.get_fifo_base_path.return_value = "/mock/fifo"
@@ -27,11 +27,11 @@ def mock_config():
 
 
 @pytest.fixture
-def audio_websocket_service(mock_file_resolver, mock_config):
+def audio_websocket_service(mock_path_resolver, mock_config):
     """Create AudioWebSocketService instance for testing."""
     with patch(
-        "birdnetpi.services.audio_websocket_service.FilePathResolver",
-        return_value=mock_file_resolver,
+        "birdnetpi.services.audio_websocket_service.PathResolver",
+        return_value=mock_path_resolver,
     ):
         service = AudioWebSocketService("/mock/config.yaml", "/mock/fifo")
         return service
@@ -41,11 +41,11 @@ class TestAudioWebSocketService:
     """Test suite for AudioWebSocketService."""
 
     @pytest.mark.asyncio
-    async def test_initialization(self, mock_file_resolver):
+    async def test_initialization(self, mock_path_resolver):
         """Should initialize service with correct paths."""
         with patch(
-            "birdnetpi.services.audio_websocket_service.FilePathResolver",
-            return_value=mock_file_resolver,
+            "birdnetpi.services.audio_websocket_service.PathResolver",
+            return_value=mock_path_resolver,
         ):
             service = AudioWebSocketService()
 

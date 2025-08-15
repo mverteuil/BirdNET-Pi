@@ -38,15 +38,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     configure_structlog(config)
 
     # Initialize file resolver and mount static files
-    file_resolver = container.file_resolver()
+    path_resolver = container.path_resolver()
     app.mount(
         "/static",
-        StaticFiles(directory=file_resolver.get_static_dir()),
+        StaticFiles(directory=path_resolver.get_static_dir()),
         name="static",
     )
 
     # Initialize Jinja2Templates
-    templates = Jinja2Templates(directory=file_resolver.get_templates_dir())
+    templates = Jinja2Templates(directory=path_resolver.get_templates_dir())
 
     # Store essential components that routers might need
     # Note: We avoid using app.state and instead rely on dependency injection

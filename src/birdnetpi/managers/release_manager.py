@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 
 @dataclass
@@ -36,14 +36,14 @@ class ReleaseConfig:
 class ReleaseManager:
     """Manages creation of releases using orphaned commit strategy."""
 
-    def __init__(self, file_resolver: FilePathResolver, repo_path: Path | None = None):
+    def __init__(self, path_resolver: PathResolver, repo_path: Path | None = None):
         """Initialize release manager.
 
         Args:
-            file_resolver: File path resolver for asset locations
+            path_resolver: File path resolver for asset locations
             repo_path: Path to git repository (defaults to current directory)
         """
-        self.file_resolver = file_resolver
+        self.path_resolver = path_resolver
         self.repo_path = repo_path or Path.cwd()
 
     def create_asset_release(self, config: ReleaseConfig) -> dict[str, Any]:
@@ -281,16 +281,16 @@ class ReleaseManager:
             List of default release assets
         """
         # In development, prefer local data/ directory over production paths
-        models_path = self._get_asset_path("data/models", str(self.file_resolver.get_models_dir()))
+        models_path = self._get_asset_path("data/models", str(self.path_resolver.get_models_dir()))
         database_path = self._get_asset_path(
-            "data/database/ioc_reference.db", str(self.file_resolver.get_ioc_database_path())
+            "data/database/ioc_reference.db", str(self.path_resolver.get_ioc_database_path())
         )
         avibase_path = self._get_asset_path(
-            "data/database/avibase_database.db", str(self.file_resolver.get_avibase_database_path())
+            "data/database/avibase_database.db", str(self.path_resolver.get_avibase_database_path())
         )
         patlevin_path = self._get_asset_path(
             "data/database/patlevin_database.db",
-            str(self.file_resolver.get_patlevin_database_path()),
+            str(self.path_resolver.get_patlevin_database_path()),
         )
 
         return [

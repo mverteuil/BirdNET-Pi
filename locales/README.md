@@ -166,4 +166,4 @@ Translation files are automatically generated with the following metadata:
 - The translation system is integrated with FastAPI middleware for automatic language detection
 - Languages are detected from the browser's `Accept-Language` header
 - Fallback to English occurs when requested language is not available
-- The `manage-translations` command automatically sets the correct paths using FilePathResolver
+- The `manage-translations` command automatically sets the correct paths using PathResolver

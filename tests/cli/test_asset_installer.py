@@ -163,14 +163,14 @@ class TestListVersions:
 class TestCheckLocal:
     """Test the check-local command."""
 
-    @patch("birdnetpi.cli.asset_installer.FilePathResolver")
-    def test_check_local_assets_exist(self, mock_file_resolver_class, tmp_path, runner):
+    @patch("birdnetpi.cli.asset_installer.PathResolver")
+    def test_check_local_assets_exist(self, mock_path_resolver_class, tmp_path, runner):
         """Should report existing assets."""
         mock_resolver = MagicMock()
         mock_resolver.get_models_dir.return_value = str(tmp_path / "models")
         mock_resolver.get_ioc_database_path.return_value = str(tmp_path / "data" / "ioc_db.sqlite")
         mock_resolver.get_data_dir.return_value = str(tmp_path / "data")
-        mock_file_resolver_class.return_value = mock_resolver
+        mock_path_resolver_class.return_value = mock_resolver
 
         # Create test files
         models_dir = tmp_path / "models"
@@ -192,14 +192,14 @@ class TestCheckLocal:
         assert "✓ Avibase Database:" in result.output
         assert "✓ PatLevin Database:" in result.output
 
-    @patch("birdnetpi.cli.asset_installer.FilePathResolver")
-    def test_check_local_verbose_mode(self, mock_file_resolver_class, tmp_path, runner):
+    @patch("birdnetpi.cli.asset_installer.PathResolver")
+    def test_check_local_verbose_mode(self, mock_path_resolver_class, tmp_path, runner):
         """Should show detailed info in verbose mode."""
         mock_resolver = MagicMock()
         mock_resolver.get_models_dir.return_value = str(tmp_path / "models")
         mock_resolver.get_ioc_database_path.return_value = str(tmp_path / "data" / "ioc_db.sqlite")
         mock_resolver.get_data_dir.return_value = str(tmp_path / "data")
-        mock_file_resolver_class.return_value = mock_resolver
+        mock_path_resolver_class.return_value = mock_resolver
 
         # Create test files
         models_dir = tmp_path / "models"
@@ -211,14 +211,14 @@ class TestCheckLocal:
         assert result.exit_code == 0
         assert "- model1.tflite" in result.output
 
-    @patch("birdnetpi.cli.asset_installer.FilePathResolver")
-    def test_check_local_missing_files(self, mock_file_resolver_class, tmp_path, runner):
+    @patch("birdnetpi.cli.asset_installer.PathResolver")
+    def test_check_local_missing_files(self, mock_path_resolver_class, tmp_path, runner):
         """Should report missing assets."""
         mock_resolver = MagicMock()
         mock_resolver.get_models_dir.return_value = str(tmp_path / "models")
         mock_resolver.get_ioc_database_path.return_value = str(tmp_path / "data" / "ioc_db.sqlite")
         mock_resolver.get_data_dir.return_value = str(tmp_path / "data")
-        mock_file_resolver_class.return_value = mock_resolver
+        mock_path_resolver_class.return_value = mock_resolver
 
         result = runner.invoke(cli, ["check-local"])
 

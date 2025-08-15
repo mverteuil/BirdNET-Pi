@@ -10,14 +10,14 @@ from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from birdnetpi.managers.translation_manager import TranslationManager
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 from birdnetpi.web.middleware.i18n import LanguageMiddleware
 
 
 @pytest.fixture
-def mock_file_resolver():
+def mock_path_resolver():
     """Create mock file resolver with temporary locales directory."""
-    resolver = Mock(spec=FilePathResolver)
+    resolver = Mock(spec=PathResolver)
     with tempfile.TemporaryDirectory() as tmpdir:
         locales_dir = Path(tmpdir) / "locales"
         locales_dir.mkdir()
@@ -35,9 +35,9 @@ def mock_file_resolver():
 
 
 @pytest.fixture
-def translation_manager(mock_file_resolver):
+def translation_manager(mock_path_resolver):
     """Create a TranslationManager instance."""
-    return TranslationManager(mock_file_resolver)
+    return TranslationManager(mock_path_resolver)
 
 
 @pytest.fixture
@@ -130,10 +130,10 @@ class TestLanguageMiddleware:
 class TestTranslationManager:
     """Test TranslationManager functionality."""
 
-    def test_initialization(self, mock_file_resolver):
+    def test_initialization(self, mock_path_resolver):
         """Test TranslationManager initialization."""
-        manager = TranslationManager(mock_file_resolver)
-        assert manager.file_resolver == mock_file_resolver
+        manager = TranslationManager(mock_path_resolver)
+        assert manager.path_resolver == mock_path_resolver
         assert manager.default_language == "en"
         assert isinstance(manager.translations, dict)
 

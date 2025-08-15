@@ -15,7 +15,7 @@ from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.models.detection_event import DetectionEvent
 from birdnetpi.services.log_service import LogService
 from birdnetpi.utils.config_file_parser import ConfigFileParser
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)
@@ -33,13 +33,13 @@ async def read_admin() -> dict[str, str]:
 @inject
 async def get_settings(
     request: Request,
-    file_resolver: FilePathResolver = Depends(  # noqa: B008
-        Provide[Container.file_resolver]
+    path_resolver: PathResolver = Depends(  # noqa: B008
+        Provide[Container.path_resolver]
     ),
     templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
 ) -> Response:
     """Render the settings page with the current configuration."""
-    config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())
+    config_parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
     app_config: BirdNETConfig = config_parser.load_config()
     return templates.TemplateResponse(request, "admin/settings.html", {"config": app_config})
 
@@ -104,12 +104,12 @@ async def post_settings(
     enable_webhooks: bool = Form(False),
     webhook_urls: str = Form(""),  # Will be parsed as comma-separated list
     webhook_events: str = Form("detection,health,gps,system"),
-    file_resolver: FilePathResolver = Depends(  # noqa: B008
-        Provide[Container.file_resolver]
+    path_resolver: PathResolver = Depends(  # noqa: B008
+        Provide[Container.path_resolver]
     ),
 ) -> RedirectResponse:
     """Process the submitted settings form and save the updated configuration."""
-    config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())
+    config_parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
     # Parse webhook URLs from comma-separated string to list
     webhook_urls_list = (
         [url.strip() for url in webhook_urls.split(",") if url.strip()] if webhook_urls else []
@@ -256,13 +256,13 @@ async def test_detection(
 @inject
 async def get_advanced_settings(
     request: Request,
-    file_resolver: FilePathResolver = Depends(  # noqa: B008
-        Provide[Container.file_resolver]
+    path_resolver: PathResolver = Depends(  # noqa: B008
+        Provide[Container.path_resolver]
     ),
     templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
 ) -> Response:
     """Render the advanced YAML configuration editor."""
-    config_parser = ConfigFileParser(file_resolver.get_birdnetpi_config_path())
+    config_parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
     # Load raw YAML content for editor
     with open(config_parser.config_path) as f:
         config_yaml = f.read()

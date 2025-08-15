@@ -72,17 +72,17 @@ def mock_file_manager(test_detection_result):
 
 
 @pytest.fixture
-def mock_file_path_resolver(file_path_resolver, test_detection_result):
-    """Return a mock FilePathResolver instance with test data.
+def mock_path_resolver(path_resolver, test_detection_result):
+    """Return a mock PathResolver instance with test data.
 
-    Uses the global file_path_resolver fixture as a base to prevent MagicMock file creation.
+    Uses the global path_resolver fixture as a base to prevent MagicMock file creation.
     """
     # Create a Mock that returns the test path but doesn't create files
     from unittest.mock import MagicMock
 
     mock_method = MagicMock(return_value=test_detection_result["audio_path"])
-    file_path_resolver.get_detection_audio_path = mock_method
-    return file_path_resolver
+    path_resolver.get_detection_audio_path = mock_method
+    return path_resolver
 
 
 @pytest.fixture
@@ -97,7 +97,7 @@ def mock_config(test_config_data):
 @pytest.fixture
 @patch("birdnetpi.managers.audio_analysis_manager.BirdDetectionService")
 def audio_analysis_service(
-    mock_analysis_client_class, mock_file_manager, mock_file_path_resolver, mock_config
+    mock_analysis_client_class, mock_file_manager, mock_path_resolver, mock_config
 ):
     """Return an AudioAnalysisManager instance with mocked dependencies."""
     # Mock the BirdDetectionService constructor to avoid model loading
@@ -106,7 +106,7 @@ def audio_analysis_service(
 
     service = AudioAnalysisManager(
         mock_file_manager,
-        mock_file_path_resolver,
+        mock_path_resolver,
         mock_config,
         detection_buffer_max_size=100,  # Smaller buffer for testing
         buffer_flush_interval=0.1,  # Faster interval for testing
@@ -164,11 +164,11 @@ class TestAudioAnalysisManager:
     """Test the AudioAnalysisManager class."""
 
     async def test_init(
-        self, audio_analysis_service, mock_file_manager, mock_file_path_resolver, mock_config
+        self, audio_analysis_service, mock_file_manager, mock_path_resolver, mock_config
     ):
         """Should initialize with correct dependencies and attributes."""
         assert audio_analysis_service.file_manager == mock_file_manager
-        assert audio_analysis_service.file_path_resolver == mock_file_path_resolver
+        assert audio_analysis_service.path_resolver == mock_path_resolver
         assert audio_analysis_service.config == mock_config
         assert hasattr(audio_analysis_service, "analysis_client")
         assert hasattr(audio_analysis_service, "audio_buffer")
@@ -252,7 +252,7 @@ class TestAudioAnalysisManager:
         mock_async_client,
         audio_analysis_service,
         mock_file_manager,
-        mock_file_path_resolver,
+        mock_path_resolver,
         test_species_data,
         caplog,
     ):
@@ -273,7 +273,7 @@ class TestAudioAnalysisManager:
             species_components, confidence, raw_audio_bytes
         )
 
-        mock_file_path_resolver.get_detection_audio_path.assert_called_once()
+        mock_path_resolver.get_detection_audio_path.assert_called_once()
         mock_file_manager.save_detection_audio.assert_called_once()
         mock_async_client.assert_called_once()
         mock_post.assert_called_once()
@@ -778,7 +778,7 @@ class TestDetectionBuffering:
         max_size = 5
         service = AudioAnalysisManager(
             audio_analysis_service.file_manager,
-            audio_analysis_service.file_path_resolver,
+            audio_analysis_service.path_resolver,
             audio_analysis_service.config,
             detection_buffer_max_size=max_size,
             buffer_flush_interval=1.0,

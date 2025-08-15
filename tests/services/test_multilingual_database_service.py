@@ -11,10 +11,10 @@ from birdnetpi.services.multilingual_database_service import MultilingualDatabas
 
 
 @pytest.fixture
-def mock_file_resolver(file_path_resolver, tmp_path):
+def mock_path_resolver(path_resolver, tmp_path):
     """Create mock file path resolver with test database paths.
 
-    Uses the global file_path_resolver fixture as a base to prevent MagicMock file creation.
+    Uses the global path_resolver fixture as a base to prevent MagicMock file creation.
     """
     # Create test database files in temp directory
     test_ioc_db = tmp_path / "database" / "ioc_reference.db"
@@ -27,17 +27,17 @@ def mock_file_resolver(file_path_resolver, tmp_path):
     test_patlevin_db.touch()
 
     # Override the database path methods
-    file_path_resolver.get_ioc_database_path = lambda: test_ioc_db
-    file_path_resolver.get_avibase_database_path = lambda: test_avibase_db
-    file_path_resolver.get_patlevin_database_path = lambda: test_patlevin_db
+    path_resolver.get_ioc_database_path = lambda: test_ioc_db
+    path_resolver.get_avibase_database_path = lambda: test_avibase_db
+    path_resolver.get_patlevin_database_path = lambda: test_patlevin_db
 
-    return file_path_resolver
+    return path_resolver
 
 
 @pytest.fixture
-def multilingual_service(mock_file_resolver):
+def multilingual_service(mock_path_resolver):
     """Create multilingual database service with mocked paths."""
-    service = MultilingualDatabaseService(mock_file_resolver)
+    service = MultilingualDatabaseService(mock_path_resolver)
     return service
 
 
@@ -74,15 +74,15 @@ def in_memory_session():
 class TestMultilingualDatabaseServiceInitialization:
     """Test multilingual database service initialization."""
 
-    def test_service_initialization_all_databases_available(self, mock_file_resolver):
+    def test_service_initialization_all_databases_available(self, mock_path_resolver):
         """Should initialize service with all databases paths set."""
-        service = MultilingualDatabaseService(mock_file_resolver)
+        service = MultilingualDatabaseService(mock_path_resolver)
 
-        assert service.file_resolver == mock_file_resolver
+        assert service.path_resolver == mock_path_resolver
         # Check that paths match what the fixture provides
-        assert service.ioc_db_path == mock_file_resolver.get_ioc_database_path()
-        assert service.avibase_db_path == mock_file_resolver.get_avibase_database_path()
-        assert service.patlevin_db_path == mock_file_resolver.get_patlevin_database_path()
+        assert service.ioc_db_path == mock_path_resolver.get_ioc_database_path()
+        assert service.avibase_db_path == mock_path_resolver.get_avibase_database_path()
+        assert service.patlevin_db_path == mock_path_resolver.get_patlevin_database_path()
 
 
 class TestAttachDetachDatabases:
@@ -437,16 +437,16 @@ class TestErrorHandling:
         with pytest.raises(SQLAlchemyError):
             multilingual_service.get_all_translations(mock_session, "Turdus migratorius")
 
-    def test_file_resolver_error_handling(self, file_path_resolver):
+    def test_path_resolver_error_handling(self, path_resolver):
         """Should handle file resolver errors during initialization."""
         # Override to raise an exception
-        file_path_resolver.get_ioc_database_path = lambda: (_ for _ in ()).throw(
+        path_resolver.get_ioc_database_path = lambda: (_ for _ in ()).throw(
             Exception("File resolver error")
         )
 
         # Should re-raise the exception from file resolver
         with pytest.raises(Exception, match="File resolver error"):
-            MultilingualDatabaseService(file_path_resolver)
+            MultilingualDatabaseService(path_resolver)
 
 
 class TestIntegrationWithRealSession:

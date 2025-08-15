@@ -18,7 +18,7 @@ import click
 
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.utils.database_optimizer import DatabaseOptimizer
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 # Configure logging
 logging.basicConfig(
@@ -34,7 +34,7 @@ def setup_database_service() -> DatabaseService:
     Returns:
         Configured DatabaseService instance
     """
-    resolver = FilePathResolver()
+    resolver = PathResolver()
     db_path = resolver.get_database_path()
 
     # Ensure database directory exists

@@ -3,7 +3,7 @@ from pathlib import Path
 import matplotlib
 import pytest
 
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 # Configure matplotlib to use non-GUI backend for testing
 matplotlib.use("Agg")
@@ -13,8 +13,8 @@ matplotlib.use("Agg")
 
 
 @pytest.fixture
-def file_path_resolver(tmp_path: Path) -> FilePathResolver:
-    """Provide a FilePathResolver with proper separation of read-only and writable paths.
+def path_resolver(tmp_path: Path) -> PathResolver:
+    """Provide a PathResolver with proper separation of read-only and writable paths.
 
     IMPORTANT: This fixture properly isolates test data by:
     1. Using REAL repo paths for READ-ONLY assets that tests need to access:
@@ -35,7 +35,7 @@ def file_path_resolver(tmp_path: Path) -> FilePathResolver:
     This separation is critical because:
     - Tests need real assets (models, IOC db) to function properly
     - Tests must NOT write to the real data/ directory (would pollute the repo)
-    - FilePathResolver has individual methods for each path type specifically
+    - PathResolver has individual methods for each path type specifically
       to enable this kind of mocking/overriding
 
     DO NOT use environment variables to control paths - that approach fails because
@@ -48,7 +48,7 @@ def file_path_resolver(tmp_path: Path) -> FilePathResolver:
     real_app_dir = project_root
 
     # Create resolver with real paths
-    resolver = FilePathResolver()
+    resolver = PathResolver()
 
     # Create temp directories for writable data
     temp_database_dir = tmp_path / "database"
@@ -60,7 +60,7 @@ def file_path_resolver(tmp_path: Path) -> FilePathResolver:
     resolver.get_birdnetpi_config_path = lambda: temp_config_dir / "birdnetpi.yaml"
 
     # Keep READ-ONLY paths pointing to real repo locations
-    # These are already correct from the base FilePathResolver, but let's be explicit:
+    # These are already correct from the base PathResolver, but let's be explicit:
     resolver.get_ioc_database_path = lambda: real_data_dir / "database" / "ioc_reference.db"
     resolver.get_avibase_database_path = lambda: real_data_dir / "database" / "avibase_database.db"
     resolver.get_patlevin_database_path = (
@@ -86,11 +86,11 @@ def file_path_resolver(tmp_path: Path) -> FilePathResolver:
 
 
 @pytest.fixture
-def test_config(file_path_resolver: FilePathResolver):
+def test_config(path_resolver: PathResolver):
     """Load test configuration from the test config file."""
     from birdnetpi.utils.config_file_parser import ConfigFileParser
 
-    parser = ConfigFileParser(file_path_resolver.get_birdnetpi_config_path())
+    parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
     return parser.load_config()
 
 
@@ -98,8 +98,8 @@ def test_config(file_path_resolver: FilePathResolver):
 def setup_test_environment():
     """Set up test environment.
 
-    This fixture ensures that any test creating FilePathResolver without
-    using the file_path_resolver fixture will still work properly.
+    This fixture ensures that any test creating PathResolver without
+    using the path_resolver fixture will still work properly.
     """
     # Currently a no-op, but kept for potential future session-level setup
     yield

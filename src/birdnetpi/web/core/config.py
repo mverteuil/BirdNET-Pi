@@ -11,12 +11,12 @@ def get_config() -> BirdNETConfig:
     """Load BirdNET configuration with caching.
 
     Uses the existing ConfigFileParser which internally handles
-    environment variables and FilePathResolver integration.
+    environment variables and PathResolver integration.
     The @lru_cache decorator ensures the configuration is loaded
     only once and cached for subsequent calls.
 
     Returns:
         BirdNETConfig: The loaded and validated configuration.
     """
-    parser = ConfigFileParser()  # Uses existing FilePathResolver internally
+    parser = ConfigFileParser()  # Uses existing PathResolver internally
     return parser.load_config()

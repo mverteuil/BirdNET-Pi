@@ -13,13 +13,13 @@ from birdnetpi.services.multilingual_database_service import MultilingualDatabas
 ### Constructor
 
 ```python
-def __init__(self, file_resolver: FilePathResolver) -> None
+def __init__(self, path_resolver: PathResolver) -> None
 ```
 
 **Description**: Initializes the multilingual database service and detects available databases.
 
 **Parameters**:
-- `file_resolver` (`FilePathResolver`): File path resolver for locating database files
+- `path_resolver` (`PathResolver`): File path resolver for locating database files
 
 **Behavior**:
 - Automatically detects which translation databases are available
@@ -28,10 +28,10 @@ def __init__(self, file_resolver: FilePathResolver) -> None
 
 **Example**:
 ```python
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
-file_resolver = FilePathResolver()
-service = MultilingualDatabaseService(file_resolver)
+path_resolver = PathResolver()
+service = MultilingualDatabaseService(path_resolver)
 
 # Check which databases were detected
 print(f"Available databases: {service.databases_available}")
@@ -305,8 +305,8 @@ from sqlalchemy.orm import sessionmaker
 from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
 
 # Initialize service
-file_resolver = FilePathResolver()
-multilingual_service = MultilingualDatabaseService(file_resolver)
+path_resolver = PathResolver()
+multilingual_service = MultilingualDatabaseService(path_resolver)
 
 # Create database session
 session_factory = sessionmaker(bind=engine)
@@ -448,8 +448,8 @@ def get_species_name_with_fallback(scientific_name: str, language_code: str) -> 
 ```python
 def ensure_translation_databases() -> bool:
     """Check if translation databases are available."""
-    file_resolver = FilePathResolver()
-    service = MultilingualDatabaseService(file_resolver)
+    path_resolver = PathResolver()
+    service = MultilingualDatabaseService(path_resolver)
 
     if not service.databases_available:
         logger.warning("No translation databases available")
@@ -495,7 +495,7 @@ else:
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
-multilingual_service = MultilingualDatabaseService(file_resolver)
+multilingual_service = MultilingualDatabaseService(path_resolver)
 
 @app.route('/api/translate')
 def translate_species():

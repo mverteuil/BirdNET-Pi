@@ -12,7 +12,7 @@ from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.location_service import LocationService
 from birdnetpi.services.species_display_service import SpeciesDisplayService
-from birdnetpi.utils.file_path_resolver import FilePathResolver
+from birdnetpi.utils.path_resolver import PathResolver
 
 
 class ReportingManager:
@@ -21,7 +21,7 @@ class ReportingManager:
     def __init__(
         self,
         detection_manager: DetectionManager,
-        file_path_resolver: FilePathResolver,
+        path_resolver: PathResolver,
         config: BirdNETConfig,
         plotting_manager: PlottingManager,
         data_preparation_manager: DataPreparationManager,
@@ -29,7 +29,7 @@ class ReportingManager:
         species_display_service: SpeciesDisplayService | None = None,
     ) -> None:
         self.detection_manager = detection_manager
-        self.file_path_resolver = file_path_resolver
+        self.path_resolver = path_resolver
         self.config = config
         self.plotting_manager = plotting_manager
         self.data_preparation_manager = data_preparation_manager
