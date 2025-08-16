@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
+from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
 
 
@@ -17,6 +18,11 @@ def app_with_system_router(app_with_temp_data):
         # Mock hardware monitor service
         mock_hardware_monitor = MagicMock(spec=HardwareMonitorManager)
         app.container.hardware_monitor_manager.override(mock_hardware_monitor)  # type: ignore[attr-defined]
+
+        # Mock data manager for system overview endpoint
+        mock_data_manager = MagicMock(spec=DataManager)
+        mock_data_manager.count_detections.return_value = 0
+        app.container.data_manager.override(mock_data_manager)  # type: ignore[attr-defined]
 
     return app
 
@@ -63,22 +69,36 @@ class TestHardwareEndpoints:
         assert response.status_code == 404
         assert "Component 'unknown' not found" in response.json()["detail"]
 
-    def test_get_system_overview(self, client):
-        """Should return system overview data."""
-        mock_overview = {
-            "system": {"uptime": "2 days", "load": 0.5},
-            "hardware": {"cpu": "healthy", "memory": "normal"},
-            "services": {"active": 5, "failed": 0},
+    def test_get_system_overview(self, client, mocker):
+        """Should return system overview data including disk usage and total detections."""
+        # Mock SystemMonitorService (it's created directly in the route)
+        mock_system_monitor = mocker.patch(
+            "birdnetpi.web.routers.system_api_routes.SystemMonitorService"
+        )
+        mock_system_monitor.return_value.get_disk_usage.return_value = {
+            "total": 100000000,
+            "used": 50000000,
+            "free": 50000000,
+            "percent": 50.0,
         }
-        # Mock the overview endpoint if it exists in system_api_routes
-        # This is a placeholder - adjust based on actual implementation
+        mock_system_monitor.return_value.get_extra_info.return_value = {
+            "uptime": "2 days",
+            "load_average": [0.5, 0.6, 0.7],
+        }
 
-        # For now, just test that the hardware status endpoint works
-        client.app.container.hardware_monitor_manager().get_all_status.return_value = mock_overview[  # type: ignore[attr-defined]
-            "hardware"
-        ]
+        # Configure mock data manager
+        client.app.container.data_manager().count_detections.return_value = 1234  # type: ignore[attr-defined]
 
-        response = client.get("/api/system/hardware/status")
+        response = client.get("/api/system/overview")
 
         assert response.status_code == 200
-        assert response.json() == mock_overview["hardware"]
+        data = response.json()
+        assert "disk_usage" in data
+        assert data["disk_usage"]["percent"] == 50.0
+        assert "extra_info" in data
+        assert data["extra_info"]["uptime"] == "2 days"
+        assert "total_detections" in data
+        assert data["total_detections"] == 1234
+
+        # Verify the data manager method was called correctly
+        client.app.container.data_manager().count_detections.assert_called_once()  # type: ignore[attr-defined]

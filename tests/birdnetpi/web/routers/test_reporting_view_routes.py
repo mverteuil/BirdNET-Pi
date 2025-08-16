@@ -13,15 +13,14 @@ def app_with_mocks(app_with_temp_data):
     app = app_with_temp_data
 
     if hasattr(app, "container"):
-        # Mock data manager
+        # Mock data manager - properly configured with all needed methods
         mock_data_manager = MagicMock(spec=DataManager)
         mock_data_manager.get_best_detections.return_value = []
         mock_data_manager.get_all_detections.return_value = []
         app.container.data_manager.override(mock_data_manager)  # type: ignore[attr-defined]
 
-        # Mock reporting manager
+        # Mock reporting manager - no longer needs data_manager attribute
         mock_reporting_manager = MagicMock(spec=ReportingManager)
-        mock_reporting_manager.data_manager = mock_data_manager
         app.container.reporting_manager.override(mock_reporting_manager)  # type: ignore[attr-defined]
 
     return app
@@ -62,6 +61,36 @@ def test_get_best_recordings(client):
 
     # Assert that get_best_detections was called
     mock_reporting_manager.get_best_detections.assert_called_once()
+
+
+def test_get_all_detections(client):
+    """Should retrieve all detections successfully."""
+    from datetime import datetime
+
+    from birdnetpi.models.database_models import Detection
+
+    # Create mock detection objects
+    mock_detection = MagicMock(spec=Detection)
+    mock_detection.timestamp = datetime(2025, 7, 26, 10, 0, 0)
+    mock_detection.scientific_name = "Cardinalis cardinalis"
+    mock_detection.common_name = "Northern Cardinal"
+    mock_detection.confidence = 0.9
+    mock_detection.latitude = 38.8951
+    mock_detection.longitude = -77.0364
+
+    # Configure the mock data manager to return test data
+    mock_data_manager = client.app.container.data_manager()  # type: ignore[attr-defined]
+    mock_data_manager.get_all_detections.return_value = [mock_detection]
+
+    response = client.get("/reports/detections")
+
+    # Assert the response
+    assert response.status_code == 200
+    assert "All Detections" in response.text
+    assert "Northern Cardinal" in response.text
+
+    # Assert that get_all_detections was called
+    mock_data_manager.get_all_detections.assert_called_once()
 
 
 def test_get_todays_detections(client):
