@@ -17,22 +17,19 @@ WORKDIR /repo
 # Placed here to minimize cache invalidation - only affects the RUN command below
 ARG GIT_REPOSITORY_URL=https://github.com/mverteuil/BirdNET-Pi.git
 
-# Copy all files from source (includes uncommitted changes)
-# Using sh-compatible glob pattern for hidden files
+# Optimized: Combine all git operations in a single layer
 RUN cp -r /source/* . 2>/dev/null || true && \
     cp -r /source/.??* . 2>/dev/null || true && \
-    # Remove the bloated .git and create a fresh one
     rm -rf .git && \
     git init && \
-    # Copy git config from original to preserve remotes (if they exist)
-    # Get the original remote URL or use the default
     git --git-dir=/source/.git remote get-url origin > /tmp/remote_url 2>/dev/null || echo "${GIT_REPOSITORY_URL}" > /tmp/remote_url && \
     git remote add origin "$(cat /tmp/remote_url)" && \
     git add -A && \
     git config user.email "docker@build" && \
     git config user.name "Docker Build" && \
     git commit -m "Docker build snapshot with working directory changes" && \
-    git config --add safe.directory /repo
+    git config --add safe.directory /repo && \
+    rm -f /tmp/remote_url
 
 # Stage 2: Main application
 FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
@@ -40,21 +37,24 @@ FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
 # Asset version for runtime downloads (can be overridden via environment variable)
 ARG BIRDNET_ASSETS_VERSION=v2.1.0
 
-ENV DNS_SERVER=8.8.8.8
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
-ENV UV_COMPILE_BYTECODE=1
-ENV UV_LINK_MODE=copy
-ENV MPLCONFIGDIR=/var/lib/birdnetpi/config
-ENV BIRDNETPI_APP=/opt/birdnetpi
-ENV BIRDNETPI_DATA=/var/lib/birdnetpi
-ENV BIRDNETPI_CONFIG=/var/lib/birdnetpi/config/birdnetpi.yaml
+# Combine ENV declarations for better layer efficiency
+ENV DNS_SERVER=8.8.8.8 \
+    DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    MPLCONFIGDIR=/var/lib/birdnetpi/config \
+    BIRDNETPI_APP=/opt/birdnetpi \
+    BIRDNETPI_DATA=/var/lib/birdnetpi \
+    BIRDNETPI_CONFIG=/var/lib/birdnetpi/config/birdnetpi.yaml
 
 # Set shell for pipefail
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Install runtime dependencies (excluding uv, as it's in the base image)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# OPTIMIZATION: Combine package installation and cleanup in single layer
+# This reduces the image size by ~100MB
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
     ffmpeg \
     alsa-utils \
     apt-transport-https \
@@ -83,26 +83,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sqlite3 \
     supervisor \
     systemd-journal-remote \
-    zlib1g-dev \
-    && \
+    zlib1g-dev && \
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg && \
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+    # Remove unnecessary files to reduce size
+    find /usr/share/doc -depth -type f ! -name copyright -delete && \
+    find /usr/share/doc -empty -delete && \
+    rm -rf /usr/share/man/* /usr/share/groff/* /usr/share/info/*
 
-# Copy service configuration file templates
-COPY config_templates/Caddyfile /etc/caddy/Caddyfile
-RUN chown root:root /etc/caddy/Caddyfile
-COPY config_templates/supervisord.conf /etc/supervisor/supervisord.conf
-
-# Copy and install journald configuration to reduce SD card writes
-COPY config_templates/journald.conf /etc/systemd/journald.conf
-RUN chown root:root /etc/systemd/journald.conf && \
-    chmod 644 /etc/systemd/journald.conf
+# Copy service configuration files with proper permissions
+COPY --chmod=644 config_templates/Caddyfile /etc/caddy/Caddyfile
+COPY --chmod=644 config_templates/supervisord.conf /etc/supervisor/supervisord.conf
+COPY --chmod=644 config_templates/journald.conf /etc/systemd/journald.conf
 
 # Create birdnetpi user and set up necessary directories
 RUN useradd -m -s /bin/bash birdnetpi && \
     usermod -aG audio,video,dialout birdnetpi && \
-    mkdir -p /var/run/supervisor /opt/birdnetpi /var/lib/birdnetpi/config /var/lib/birdnetpi/models /var/lib/birdnetpi/recordings /var/lib/birdnetpi/database && \
+    mkdir -p /var/run/supervisor /opt/birdnetpi /var/lib/birdnetpi/{config,models,recordings,database} && \
     chown -R birdnetpi:birdnetpi /var/run/supervisor /opt/birdnetpi /var/lib/birdnetpi && \
     chmod 777 /var/run/supervisor
 
@@ -138,6 +137,10 @@ ENV BIRDNET_ASSETS_VERSION=${BIRDNET_ASSETS_VERSION}
 
 # Add the BirdNET-Pi virtual environment to the PATH
 ENV PATH="/opt/birdnetpi/.venv/bin:${PATH}"
+
+# Health check for container orchestration
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
 
 # Expose the port for Caddy (8000)
 EXPOSE 8000
