@@ -11,7 +11,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any
 
-from birdnetpi.services.cache_service import CacheService
+from birdnetpi.utils.cache.cache import Cache
 
 
 def cached(ttl: int = 300, key_prefix: str | None = None) -> Callable:
@@ -45,14 +45,14 @@ def cached(ttl: int = 300, key_prefix: str | None = None) -> Callable:
             cache_key = _generate_cache_key(func.__name__, args, kwargs, key_prefix)
 
             # Try to get from cache
-            cache_service = CacheService()
-            cached_value = cache_service._backend.get(cache_key)
+            cache = Cache()
+            cached_value = cache._backend.get(cache_key)
             if cached_value is not None:
                 return cached_value
 
             # Execute function and cache result
             result = func(self, *args, **kwargs)
-            cache_service._backend.set(cache_key, result, ttl)
+            cache._backend.set(cache_key, result, ttl)
             return result
 
         return wrapper
@@ -86,14 +86,14 @@ def cached_function(ttl: int = 300, key_prefix: str | None = None) -> Callable:
             cache_key = _generate_cache_key(func.__name__, args, kwargs, key_prefix)
 
             # Try to get from cache
-            cache_service = CacheService()
-            cached_value = cache_service._backend.get(cache_key)
+            cache = Cache()
+            cached_value = cache._backend.get(cache_key)
             if cached_value is not None:
                 return cached_value
 
             # Execute function and cache result
             result = func(*args, **kwargs)
-            cache_service._backend.set(cache_key, result, ttl)
+            cache._backend.set(cache_key, result, ttl)
             return result
 
         return wrapper
@@ -161,8 +161,8 @@ def invalidate_cache(namespace: str, **kwargs: Any) -> bool:  # noqa: ANN401
         # Invalidate all species summary cache entries
         invalidate_cache("species_summary", date="2024-01-01")
     """
-    cache_service = CacheService()
-    return cache_service.delete(namespace, **kwargs)
+    cache = Cache()
+    return cache.delete(namespace, **kwargs)
 
 
 def clear_all_cache() -> bool:
@@ -173,5 +173,5 @@ def clear_all_cache() -> bool:
     Returns:
         True if successful, False otherwise
     """
-    cache_service = CacheService()
-    return cache_service.clear()
+    cache = Cache()
+    return cache.clear()

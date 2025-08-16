@@ -14,7 +14,6 @@ from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.managers.translation_manager import TranslationManager
 from birdnetpi.services.audio_websocket_service import AudioWebSocketService
-from birdnetpi.services.cache_service import CacheService
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.detection_query_service import DetectionQueryService
 from birdnetpi.services.gps_service import GPSService
@@ -26,6 +25,7 @@ from birdnetpi.services.species_display_service import SpeciesDisplayService
 from birdnetpi.services.spectrogram_service import SpectrogramService
 from birdnetpi.services.system_control_service import SystemControlService
 from birdnetpi.services.webhook_service import WebhookService
+from birdnetpi.utils.cache import Cache
 from birdnetpi.utils.path_resolver import PathResolver
 from birdnetpi.web.core.config import get_config
 
@@ -121,7 +121,7 @@ class Container(containers.DeclarativeContainer):
 
     # Cache service - singleton for analytics performance
     cache_service = providers.Singleton(
-        CacheService,
+        Cache,
         # Use default settings optimized for SBC deployments
         memcached_host=config.provided.cache_host
         if hasattr(config.provided, "cache_host")

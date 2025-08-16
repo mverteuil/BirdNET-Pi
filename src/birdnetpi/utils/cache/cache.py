@@ -1,281 +1,36 @@
-"""Cache service for analytics queries with memcached backend and fallback support.
+"""Core cache implementation with automatic backend selection and fallback.
 
-This service provides caching for expensive analytics queries to improve dashboard
-performance. It uses memcached as the primary backend to minimize disk writes
-on SBC deployments where SD card longevity is important. Falls back to in-memory
-caching if memcached is unavailable.
-
-Key features:
-- Memcached backend preferred for SBC deployments (no disk writes)
-- Automatic fallback to in-memory caching if memcached unavailable
-- TTL management and cache invalidation strategies
-- Cache warming capabilities for common queries
-- Thread-safe operations with proper error handling
+This module provides the main Cache class (formerly CacheService) that manages
+caching for expensive operations with automatic backend selection.
 """
 
 import hashlib
 import json
-import pickle
 import time
-from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Any
 
 import structlog
 
-# Optional memcached dependency
-try:
-    import pymemcache
-    from pymemcache.client.base import Client as MemcacheClient
-
-    MEMCACHED_AVAILABLE = True
-except ImportError:
-    pymemcache = None  # type: ignore[assignment]
-    MemcacheClient = None  # type: ignore[assignment,misc]
-    MEMCACHED_AVAILABLE = False
-
-T = TypeVar("T")
+from birdnetpi.utils.cache.backends import (
+    MEMCACHED_AVAILABLE,
+    CacheBackend,
+    InMemoryBackend,
+    MemcachedBackend,
+)
 
 logger = structlog.get_logger(__name__)
 
 
-class CacheBackend(ABC):
-    """Abstract base class for cache backends."""
-
-    @abstractmethod
-    def get(self, key: str) -> Any:  # noqa: ANN401
-        """Get value from cache by key.
-
-        Args:
-            key: Cache key to retrieve
-
-        Returns:
-            Cached value or None if not found/expired
-        """
-        pass
-
-    @abstractmethod
-    def set(self, key: str, value: Any, ttl: int) -> bool:  # noqa: ANN401
-        """Set value in cache with TTL.
-
-        Args:
-            key: Cache key
-            value: Value to cache
-            ttl: Time-to-live in seconds
-
-        Returns:
-            True if successful, False otherwise
-        """
-        pass
-
-    @abstractmethod
-    def delete(self, key: str) -> bool:
-        """Delete value from cache.
-
-        Args:
-            key: Cache key to delete
-
-        Returns:
-            True if successful, False otherwise
-        """
-        pass
-
-    @abstractmethod
-    def clear(self) -> bool:
-        """Clear all cached data.
-
-        Returns:
-            True if successful, False otherwise
-        """
-        pass
-
-    @abstractmethod
-    def exists(self, key: str) -> bool:
-        """Check if key exists in cache.
-
-        Args:
-            key: Cache key to check
-
-        Returns:
-            True if key exists, False otherwise
-        """
-        pass
-
-
-class MemcachedBackend(CacheBackend):
-    """Memcached backend implementation.
-
-    Uses pymemcache for fast, memory-only caching that doesn't write to disk.
-    Ideal for SBC deployments where minimizing SD card writes is critical.
-    """
-
-    def __init__(self, host: str = "localhost", port: int = 11211, timeout: float = 1.0):
-        """Initialize memcached backend.
-
-        Args:
-            host: Memcached server host
-            port: Memcached server port
-            timeout: Connection timeout in seconds
-
-        Raises:
-            RuntimeError: If memcached is not available
-        """
-        if not MEMCACHED_AVAILABLE:
-            raise RuntimeError("pymemcache is required for MemcachedBackend")
-
-        self.client = MemcacheClient(  # type: ignore[misc]
-            (host, port),
-            timeout=timeout,
-            connect_timeout=timeout,
-            serializer=pickle,  # Use pickle for complex Python objects
-            deserializer=pickle,
-        )
-
-        # Test connection
-        try:
-            self.client.version()
-            logger.info("Memcached backend initialized successfully", host=host, port=port)
-        except Exception as e:
-            logger.error("Failed to connect to memcached", host=host, port=port, error=str(e))
-            raise RuntimeError(f"Failed to connect to memcached at {host}:{port}: {e}") from e
-
-    def get(self, key: str) -> Any:  # noqa: ANN401
-        """Get value from memcached."""
-        try:
-            return self.client.get(key)
-        except Exception as e:
-            logger.warning("Memcached get failed", key=key, error=str(e))
-            return None
-
-    def set(self, key: str, value: Any, ttl: int) -> bool:  # noqa: ANN401
-        """Set value in memcached with TTL."""
-        try:
-            result = self.client.set(key, value, expire=ttl)
-            return bool(result)
-        except Exception as e:
-            logger.warning("Memcached set failed", key=key, ttl=ttl, error=str(e))
-            return False
-
-    def delete(self, key: str) -> bool:
-        """Delete value from memcached."""
-        try:
-            return self.client.delete(key)
-        except Exception as e:
-            logger.warning("Memcached delete failed", key=key, error=str(e))
-            return False
-
-    def clear(self) -> bool:
-        """Clear all memcached data."""
-        try:
-            return self.client.flush_all()
-        except Exception as e:
-            logger.warning("Memcached clear failed", error=str(e))
-            return False
-
-    def exists(self, key: str) -> bool:
-        """Check if key exists in memcached."""
-        try:
-            return self.client.get(key) is not None
-        except Exception as e:
-            logger.warning("Memcached exists check failed", key=key, error=str(e))
-            return False
-
-
-class InMemoryBackend(CacheBackend):
-    """In-memory cache backend implementation.
-
-    Thread-safe fallback implementation using a simple dictionary with TTL tracking.
-    Used when memcached is unavailable. Suitable for single-process deployments.
-    """
-
-    def __init__(self):
-        """Initialize in-memory backend."""
-        # Cache storage: {key: (value, expiry_timestamp)}
-        self._cache: dict[str, tuple[Any, float]] = {}
-        logger.info("In-memory cache backend initialized")
-
-    def _is_expired(self, expiry: float) -> bool:
-        """Check if cache entry has expired."""
-        return time.time() > expiry
-
-    def _cleanup_expired(self) -> None:
-        """Remove expired entries from cache."""
-        current_time = time.time()
-        expired_keys = [key for key, (_, expiry) in self._cache.items() if current_time > expiry]
-        for key in expired_keys:
-            del self._cache[key]
-
-    def get(self, key: str) -> Any:  # noqa: ANN401
-        """Get value from in-memory cache."""
-        try:
-            if key in self._cache:
-                value, expiry = self._cache[key]
-                if not self._is_expired(expiry):
-                    return value
-                else:
-                    # Remove expired entry
-                    del self._cache[key]
-
-            # Periodic cleanup when cache gets large
-            if len(self._cache) > 1000:
-                self._cleanup_expired()
-
-            return None
-        except Exception as e:
-            logger.warning("In-memory get failed", key=key, error=str(e))
-            return None
-
-    def set(self, key: str, value: Any, ttl: int) -> bool:  # noqa: ANN401
-        """Set value in in-memory cache with TTL."""
-        try:
-            expiry = time.time() + ttl
-            self._cache[key] = (value, expiry)
-            return True
-        except Exception as e:
-            logger.warning("In-memory set failed", key=key, ttl=ttl, error=str(e))
-            return False
-
-    def delete(self, key: str) -> bool:
-        """Delete value from in-memory cache."""
-        try:
-            if key in self._cache:
-                del self._cache[key]
-                return True
-            return False
-        except Exception as e:
-            logger.warning("In-memory delete failed", key=key, error=str(e))
-            return False
-
-    def clear(self) -> bool:
-        """Clear all in-memory cache data."""
-        try:
-            self._cache.clear()
-            return True
-        except Exception as e:
-            logger.warning("In-memory clear failed", error=str(e))
-            return False
-
-    def exists(self, key: str) -> bool:
-        """Check if key exists in in-memory cache."""
-        try:
-            if key in self._cache:
-                _, expiry = self._cache[key]
-                if not self._is_expired(expiry):
-                    return True
-                else:
-                    del self._cache[key]
-            return False
-        except Exception as e:
-            logger.warning("In-memory exists check failed", key=key, error=str(e))
-            return False
-
-
-class CacheService:
-    """Analytics cache service with automatic backend selection and fallback.
+class Cache:
+    """Analytics cache with automatic backend selection and fallback.
 
     Provides caching for expensive analytics queries to improve dashboard performance.
     Automatically selects memcached if available, falls back to in-memory caching.
     Includes cache warming and invalidation strategies.
+
+    This class was previously named CacheService but has been renamed to Cache
+    for simplicity and clarity.
     """
 
     def __init__(
@@ -285,7 +40,7 @@ class CacheService:
         default_ttl: int = 300,  # 5 minutes default TTL
         enable_cache_warming: bool = True,
     ):
-        """Initialize cache service with automatic backend selection.
+        """Initialize cache with automatic backend selection.
 
         Args:
             memcached_host: Memcached server host (if available)
@@ -302,7 +57,7 @@ class CacheService:
             try:
                 self._backend = MemcachedBackend(memcached_host, memcached_port)
                 self.backend_type = "memcached"
-                logger.info("Cache service initialized with memcached backend")
+                logger.info("Cache initialized with memcached backend")
             except Exception as e:
                 logger.warning(
                     "Failed to initialize memcached, falling back to in-memory cache", error=str(e)
@@ -606,13 +361,13 @@ class CacheService:
             }
 
 
-def create_cache_service(
+def create_cache(
     memcached_host: str = "localhost",
     memcached_port: int = 11211,
     default_ttl: int = 300,
     enable_cache_warming: bool = True,
-) -> CacheService:
-    """Create a configured cache service.
+) -> Cache:
+    """Create a configured cache instance.
 
     Args:
         memcached_host: Memcached server host
@@ -621,9 +376,9 @@ def create_cache_service(
         enable_cache_warming: Whether to enable cache warming
 
     Returns:
-        Configured CacheService instance
+        Configured Cache instance
     """
-    return CacheService(
+    return Cache(
         memcached_host=memcached_host,
         memcached_port=memcached_port,
         default_ttl=default_ttl,
