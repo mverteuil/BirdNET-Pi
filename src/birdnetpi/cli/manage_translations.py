@@ -54,6 +54,8 @@ def extract(obj: dict[str, Any]) -> None:
     src_dir = Path(resolver.get_src_dir())
     babel_cfg = Path(resolver.get_babel_config_path()).relative_to(src_dir.parent)
     messages_pot = Path(resolver.get_messages_pot_path()).relative_to(src_dir.parent)
+    # Get the source directory relative to its parent (should be "src" in production)
+    src_dir_relative = src_dir.relative_to(src_dir.parent)
 
     cmd = [
         "uv",
@@ -70,7 +72,7 @@ def extract(obj: dict[str, Any]) -> None:
         "--copyright-holder=BirdNET-Pi Contributors",
         "-o",
         str(messages_pot),
-        "src",
+        str(src_dir_relative),
     ]
 
     success = run_command(cmd, "Extracting translatable strings")

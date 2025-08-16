@@ -88,7 +88,14 @@ manage-translations = "birdnetpi.cli.manage_translations:main"
 spectrogram-websocket-daemon = "birdnetpi.daemons.spectrogram_websocket_daemon:main"
 
 [tool.coverage.run]
-omit = ["tests/*", "*/dependency_injector/*"]
+source = ["src/birdnetpi"]
+omit = [
+  "tests/*",
+  "*/dependency_injector/*",
+  "/private/var/folders/*",
+  "/tmp/*",
+  "*/pytest-of-*/*"
+]
 
 [tool.pyright]
 exclude = ["**/build", "**/__pycache__"]
@@ -110,7 +117,7 @@ markers = [
   "no_leaks: detect asyncio task leaks, thread leaks, and event loop blocking"
 ]
 testpaths = ["tests"]
-addopts = "--cov=src"
+addopts = "--cov"
 asyncio_mode = "auto"
 
 [tool.ruff]
