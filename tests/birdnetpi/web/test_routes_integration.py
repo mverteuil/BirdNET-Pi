@@ -196,6 +196,9 @@ class TestDependencyInjectionValidation:
         This test validates that the DI container is wired correctly and would
         catch the type annotation errors we fixed.
         """
+        from birdnetpi.managers.data_manager import DataManager
+        from birdnetpi.managers.reporting_manager import ReportingManager
+
         container = integration_app.container  # type: ignore[attr-defined]
 
         # Get the actual instances from the container
@@ -204,11 +207,11 @@ class TestDependencyInjectionValidation:
 
         # These assertions would fail if we had the wrong type annotations
         # like we did when DataManager was typed as ReportingManager
-        assert type(data_manager).__name__ == "DataManager"
-        assert type(reporting_manager).__name__ == "ReportingManager"
+        assert isinstance(data_manager, DataManager)
+        assert isinstance(reporting_manager, ReportingManager)
 
-        # Verify they're separate types (not the same class)
-        assert type(data_manager) is not type(reporting_manager)
+        # Verify they're not the same instance
+        assert data_manager is not reporting_manager
 
         # Verify DataManager has the expected methods that were being called
         assert hasattr(data_manager, "get_all_detections")
