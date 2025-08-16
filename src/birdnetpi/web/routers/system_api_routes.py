@@ -3,8 +3,8 @@
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException
 
+from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
-from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.services.system_monitor_service import SystemMonitorService
 from birdnetpi.web.core.container import Container
 
@@ -40,15 +40,15 @@ async def get_hardware_component(
 @router.get("/overview")
 @inject
 async def get_system_overview(
-    reporting_manager: ReportingManager = Depends(  # noqa: B008
-        Provide[Container.reporting_manager]
+    data_manager: DataManager = Depends(  # noqa: B008
+        Provide[Container.data_manager]
     ),
 ) -> dict:
     """Get system overview data including disk usage, system info, and total detections."""
     system_monitor = SystemMonitorService()
     disk_usage = system_monitor.get_disk_usage()
     extra_info = system_monitor.get_extra_info()
-    total_detections = reporting_manager.detection_manager.get_total_detections()
+    total_detections = data_manager.count_detections()
 
     return {
         "disk_usage": disk_usage,

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.models.config import BirdNETConfig
@@ -47,15 +48,15 @@ async def get_best_recordings(
 @inject
 async def get_detections(
     request: Request,
-    reporting_manager: ReportingManager = Depends(  # noqa: B008
-        Provide[Container.reporting_manager]
+    data_manager: DataManager = Depends(  # noqa: B008
+        Provide[Container.data_manager]
     ),
     templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
 ) -> HTMLResponse:
     """Retrieve and display all detections."""
     try:
-        # Get all detections from the detection manager
-        all_detections = reporting_manager.detection_manager.get_all_detections()
+        # Get all detections from the data manager
+        all_detections = data_manager.get_all_detections()
         # Convert to dictionary format similar to other reports
         detections_data = [
             {
