@@ -185,8 +185,8 @@ class TestCheckLocal:
             result = runner.invoke(cli, ["check-local"])
 
             assert result.exit_code == 0
-            assert "✓ Models: 2 model files" in result.output
-            assert "✓ IOC Database:" in result.output
+            assert "✓ BirdNET Models: 2 model files" in result.output
+            assert "✓ IOC Reference Database:" in result.output
             assert "✓ Avibase Database:" in result.output
             assert "✓ PatLevin Database:" in result.output
 
@@ -214,13 +214,18 @@ class TestCheckLocal:
         path_resolver.get_models_dir = lambda: tmp_path / "models"
         path_resolver.get_ioc_database_path = lambda: tmp_path / "data" / "ioc_db.sqlite"
         path_resolver.get_database_dir = lambda: tmp_path / "data"
+        # Mock Avibase and PatLevin paths to point to tmp location where they don't exist
+        path_resolver.get_avibase_database_path = lambda: tmp_path / "data" / "avibase_database.db"
+        path_resolver.get_patlevin_database_path = (
+            lambda: tmp_path / "data" / "patlevin_database.db"
+        )
 
         with patch("birdnetpi.cli.install_assets.PathResolver", return_value=path_resolver):
             result = runner.invoke(cli, ["check-local"])
 
             assert result.exit_code == 0
-            assert "✗ Models: Not installed" in result.output
-            assert "✗ IOC Database: Not installed" in result.output
+            assert "✗ BirdNET Models: Not installed" in result.output
+            assert "✗ IOC Reference Database: Not installed" in result.output
             assert "✗ Avibase Database: Not installed" in result.output
             assert "✗ PatLevin Database: Not installed" in result.output
             assert "Expected location:" in result.output

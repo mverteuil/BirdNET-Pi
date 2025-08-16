@@ -23,7 +23,7 @@ def repo_root() -> Path:
 
 
 @pytest.fixture
-def path_resolver(tmp_path: Path) -> PathResolver:
+def path_resolver(tmp_path: Path, repo_root: Path) -> PathResolver:
     """Provide a PathResolver with proper separation of read-only and writable paths.
 
     IMPORTANT: This fixture properly isolates test data by:
@@ -51,11 +51,8 @@ def path_resolver(tmp_path: Path) -> PathResolver:
     DO NOT use environment variables to control paths - that approach fails because
     it affects ALL paths uniformly, when we need selective path overriding.
     """
-    from pathlib import Path
-
-    project_root = Path(__file__).parent.parent
-    real_data_dir = project_root / "data"
-    real_app_dir = project_root
+    real_data_dir = repo_root / "data"
+    real_app_dir = repo_root
 
     # Create resolver with real paths
     resolver = PathResolver()
@@ -118,24 +115,43 @@ def setup_test_environment():
 @pytest.fixture(scope="session", autouse=True)
 def check_required_assets():
     """Check that required assets are available for testing."""
+    import os
     from pathlib import Path
 
-    # Get project root directory
-    project_root = Path(__file__).parent.parent
-    real_data_dir = project_root / "data"
-    missing_assets = []
+    from birdnetpi.utils.asset_manifest import AssetManifest
+    from birdnetpi.utils.path_resolver import PathResolver
 
-    # Check for model files
-    models_dir = real_data_dir / "models"
-    if not models_dir.exists() or not any(models_dir.glob("*.tflite")):
-        missing_assets.append("Model files (*.tflite)")
+    # Get the repository root directly (same logic as repo_root fixture)
+    repo_root = Path(__file__).parent.parent.resolve()
+    # Set up PathResolver for the test data directory
+    real_data_dir = repo_root / "data"
 
-    # Note: labels.txt is legacy - IOC database is now used for bird species names
+    # Save current env, set BIRDNETPI_DATA to test data dir
+    old_env = os.environ.get("BIRDNETPI_DATA")
+    os.environ["BIRDNETPI_DATA"] = str(real_data_dir)
 
-    # Check for IOC database
-    ioc_db_path = real_data_dir / "database" / "ioc_reference.db"
-    if not ioc_db_path.exists():
-        missing_assets.append("IOC reference database")
+    try:
+        path_resolver = PathResolver()
+        missing_assets = []
+
+        # Check all required assets using AssetManifest
+        for asset in AssetManifest.get_required_assets():
+            method = getattr(path_resolver, asset.path_method)
+            asset_path = method()
+
+            # For directories, check if they exist and have content
+            if asset.is_directory:
+                if not asset_path.exists() or not any(asset_path.glob("*.tflite")):
+                    missing_assets.append(asset.name)
+            else:
+                if not asset_path.exists():
+                    missing_assets.append(asset.name)
+    finally:
+        # Restore environment
+        if old_env is not None:
+            os.environ["BIRDNETPI_DATA"] = old_env
+        else:
+            os.environ.pop("BIRDNETPI_DATA", None)
 
     if missing_assets:
         print()
@@ -150,7 +166,7 @@ def check_required_assets():
         print("│" + " " * 78 + "│")
         print("│  To run tests with assets, install them first:" + " " * 29 + "│")
         print("│    export BIRDNETPI_DATA=./data" + " " * 43 + "│")
-        print("│    uv run asset-installer install v2.1.0 --include-models --include-ioc-db│")
+        print("│    uv run install-assets install v2.1.0" + " " * 36 + "│")
         print("│" + " " * 78 + "│")
         print("│  Most tests will still pass without assets (mocked dependencies)." + " " * 9 + "│")
         print(

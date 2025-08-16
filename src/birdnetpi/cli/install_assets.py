@@ -12,6 +12,7 @@ from pathlib import Path
 import click
 
 from birdnetpi.managers.update_manager import UpdateManager
+from birdnetpi.utils.asset_manifest import AssetManifest
 from birdnetpi.utils.path_resolver import PathResolver
 
 
@@ -25,6 +26,79 @@ def cli(ctx: click.Context) -> None:
     ctx.ensure_object(dict)
     ctx.obj["path_resolver"] = PathResolver()
     ctx.obj["update_manager"] = UpdateManager(ctx.obj["path_resolver"])
+
+
+def _check_existing_assets(path_resolver: PathResolver) -> tuple[bool, list[str]]:
+    """Check if all required assets exist.
+
+    Returns:
+        Tuple of (all_present, missing_assets)
+    """
+    required_checks = []
+
+    for asset in AssetManifest.get_required_assets():
+        method = getattr(path_resolver, asset.path_method)
+        asset_path = method()
+
+        # For models directory, check for at least one model file
+        if asset.is_directory:
+            # Check if directory exists and has at least one .tflite file
+            if asset_path.exists():
+                model_files = list(asset_path.glob("*.tflite"))
+                if model_files:
+                    check_path = asset_path  # Directory exists with models
+                else:
+                    check_path = asset_path / "dummy"  # Will fail the check
+            else:
+                check_path = asset_path
+        else:
+            check_path = asset_path
+
+        required_checks.append((check_path, asset.name))
+
+    all_present = True
+    missing_assets = []
+
+    for path, name in required_checks:
+        if not path.exists():
+            all_present = False
+            missing_assets.append(name)
+
+    return all_present, missing_assets
+
+
+def _perform_installation(update_manager: "UpdateManager", version: str) -> dict:
+    """Perform the actual asset installation.
+
+    Returns:
+        Installation result dictionary
+    """
+    # Always download all assets for consistency
+    return update_manager.download_release_assets(
+        version=version,
+        include_models=True,
+        include_ioc_db=True,
+        include_avibase_db=True,
+        include_patlevin_db=True,
+        github_repo="mverteuil/BirdNET-Pi",
+    )
+
+
+def _display_installation_results(result: dict, output_json: str | None) -> None:
+    """Display installation results and optionally save to JSON."""
+    click.echo()
+    click.echo(click.style("✓ Asset installation completed successfully!", fg="green", bold=True))
+    click.echo(f"  Version: {result['version']}")
+    click.echo(f"  Downloaded assets: {len(result['downloaded_assets'])}")
+
+    for asset in result["downloaded_assets"]:
+        click.echo(f"    • {asset}")
+
+    # Output JSON if requested
+    if output_json:
+        Path(output_json).write_text(json.dumps(result, indent=2))
+        click.echo()
+        click.echo(f"Installation data written to: {output_json}")
 
 
 @cli.command()
@@ -61,23 +135,7 @@ def install(
 
     if skip_existing:
         # Skip existing mode - check if all required assets exist, install only if missing
-        required_checks = [
-            (
-                path_resolver.get_models_dir() / "BirdNET_GLOBAL_6K_V2.4_Model_FP16.tflite",
-                "BirdNET model",
-            ),
-            (path_resolver.get_ioc_database_path(), "IOC database"),
-            (path_resolver.get_database_dir() / "avibase_database.db", "Avibase database"),
-            (path_resolver.get_database_dir() / "patlevin_database.db", "PatLevin database"),
-        ]
-
-        all_present = True
-        missing_assets = []
-
-        for path, name in required_checks:
-            if not path.exists():
-                all_present = False
-                missing_assets.append(name)
+        all_present, missing_assets = _check_existing_assets(path_resolver)
 
         if all_present:
             click.echo(click.style(f"✓ All assets present for version {version}", fg="green"))
@@ -88,35 +146,11 @@ def install(
             # Continue to installation below
 
     update_manager = ctx.obj["update_manager"]
-
     click.echo(f"Installing complete asset release: {version}")
 
     try:
-        # Always download all assets for consistency
-        result = update_manager.download_release_assets(
-            version=version,
-            include_models=True,
-            include_ioc_db=True,
-            include_avibase_db=True,
-            include_patlevin_db=True,
-            github_repo="mverteuil/BirdNET-Pi",
-        )
-
-        click.echo()
-        click.echo(
-            click.style("✓ Asset installation completed successfully!", fg="green", bold=True)
-        )
-        click.echo(f"  Version: {result['version']}")
-        click.echo(f"  Downloaded assets: {len(result['downloaded_assets'])}")
-
-        for asset in result["downloaded_assets"]:
-            click.echo(f"    • {asset}")
-
-        # Output JSON if requested
-        if output_json:
-            Path(output_json).write_text(json.dumps(result, indent=2))
-            click.echo()
-            click.echo(f"Installation data written to: {output_json}")
+        result = _perform_installation(update_manager, version)
+        _display_installation_results(result, output_json)
 
     except Exception as e:
         error_msg = str(e)
@@ -197,59 +231,42 @@ def check_local(ctx: click.Context, verbose: bool) -> None:
     click.echo("Local asset status:")
     click.echo()
 
-    # Check models
-    models_dir = path_resolver.get_models_dir()
-    if models_dir.exists():
-        model_files = list(models_dir.rglob("*.tflite"))
-        total_size = sum(f.stat().st_size for f in models_dir.rglob("*") if f.is_file())
-        size_mb = total_size / 1024 / 1024
+    # Use AssetManifest to check all assets
+    for asset in AssetManifest.get_all_assets():
+        method = getattr(path_resolver, asset.path_method)
+        asset_path = method()
 
-        click.echo(
-            click.style(
-                f"  ✓ Models: {len(model_files)} model files ({size_mb:.1f} MB)", fg="green"
-            )
-        )
-        click.echo(f"    Location: {models_dir}")
+        if asset.is_directory:
+            # For directories (models), check if they exist and have content
+            if asset_path.exists():
+                model_files = list(asset_path.rglob("*.tflite"))
+                total_size = sum(f.stat().st_size for f in asset_path.rglob("*") if f.is_file())
+                size_mb = total_size / 1024 / 1024
 
-        if verbose:
-            for model_file in sorted(model_files):
-                file_size = model_file.stat().st_size / 1024 / 1024
-                click.echo(f"      - {model_file.name} ({file_size:.1f} MB)")
-    else:
-        click.echo(click.style("  ✗ Models: Not installed", fg="red"))
-        click.echo(f"    Expected location: {models_dir}")
+                click.echo(
+                    click.style(
+                        f"  ✓ {asset.name}: {len(model_files)} model files ({size_mb:.1f} MB)",
+                        fg="green",
+                    )
+                )
+                click.echo(f"    Location: {asset_path}")
 
-    click.echo()
-
-    # Check IOC database
-    ioc_db_path = path_resolver.get_ioc_database_path()
-    if ioc_db_path.exists():
-        file_size = ioc_db_path.stat().st_size / 1024 / 1024
-        click.echo(click.style(f"  ✓ IOC Database: {file_size:.1f} MB", fg="green"))
-        click.echo(f"    Location: {ioc_db_path}")
-    else:
-        click.echo(click.style("  ✗ IOC Database: Not installed", fg="red"))
-        click.echo(f"    Expected location: {ioc_db_path}")
-
-    # Check Avibase database
-    avibase_path = path_resolver.get_database_dir() / "avibase_database.db"
-    if avibase_path.exists():
-        file_size = avibase_path.stat().st_size / 1024 / 1024
-        click.echo(click.style(f"  ✓ Avibase Database: {file_size:.1f} MB", fg="green"))
-        click.echo(f"    Location: {avibase_path}")
-    else:
-        click.echo(click.style("  ✗ Avibase Database: Not installed", fg="red"))
-        click.echo(f"    Expected location: {avibase_path}")
-
-    # Check PatLevin database
-    patlevin_path = path_resolver.get_database_dir() / "patlevin_database.db"
-    if patlevin_path.exists():
-        file_size = patlevin_path.stat().st_size / 1024 / 1024
-        click.echo(click.style(f"  ✓ PatLevin Database: {file_size:.1f} MB", fg="green"))
-        click.echo(f"    Location: {patlevin_path}")
-    else:
-        click.echo(click.style("  ✗ PatLevin Database: Not installed", fg="red"))
-        click.echo(f"    Expected location: {patlevin_path}")
+                if verbose:
+                    for model_file in sorted(model_files):
+                        file_size = model_file.stat().st_size / 1024 / 1024
+                        click.echo(f"      - {model_file.name} ({file_size:.1f} MB)")
+            else:
+                click.echo(click.style(f"  ✗ {asset.name}: Not installed", fg="red"))
+                click.echo(f"    Expected location: {asset_path}")
+        else:
+            # For files (databases), check if they exist
+            if asset_path.exists():
+                file_size = asset_path.stat().st_size / 1024 / 1024
+                click.echo(click.style(f"  ✓ {asset.name}: {file_size:.1f} MB", fg="green"))
+                click.echo(f"    Location: {asset_path}")
+            else:
+                click.echo(click.style(f"  ✗ {asset.name}: Not installed", fg="red"))
+                click.echo(f"    Expected location: {asset_path}")
 
     click.echo()
 

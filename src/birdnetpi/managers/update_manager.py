@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.system_control_service import SystemControlService
+from birdnetpi.utils.asset_manifest import AssetManifest, AssetType
 from birdnetpi.utils.path_resolver import PathResolver
 
 
@@ -312,37 +313,37 @@ class UpdateManager:
             asset_tag = self._validate_asset_release(version, github_repo)
             asset_source_dir = self._download_and_extract_assets(asset_tag, github_repo)
 
-            # Download requested assets
-            if include_models:
-                self._download_models(asset_source_dir, results)
+            # Use AssetManifest to determine what to download
+            asset_flags = {
+                "BirdNET Models": include_models,
+                "IOC Reference Database": include_ioc_db,
+                "Avibase Database": include_avibase_db,
+                "PatLevin Database": include_patlevin_db,
+            }
 
-            # Define database configurations
-            database_configs = [
-                (
-                    include_ioc_db,
-                    "ioc_reference.db",
-                    self.path_resolver.get_ioc_database_path(),
-                    "IOC reference database",
-                ),
-                (
-                    include_avibase_db,
-                    "avibase_database.db",
-                    self.path_resolver.get_avibase_database_path(),
-                    "Avibase multilingual database",
-                ),
-                (
-                    include_patlevin_db,
-                    "patlevin_database.db",
-                    self.path_resolver.get_patlevin_database_path(),
-                    "PatLevin translations database",
-                ),
-            ]
+            # Get all assets from manifest
+            for asset in AssetManifest.get_all_assets():
+                if asset_flags.get(asset.name, False):
+                    # Get the path for this asset
+                    method = getattr(self.path_resolver, asset.path_method)
+                    target_path = method()
 
-            for should_download, filename, target_path, display_name in database_configs:
-                if should_download:
-                    self._download_database(
-                        asset_source_dir, filename, target_path, display_name, results
-                    )
+                    if asset.asset_type == AssetType.MODEL:
+                        self._download_models(asset_source_dir, results)
+                    else:
+                        # For databases, determine the source filename
+                        if "ioc" in asset.name.lower():
+                            db_filename = "ioc_reference.db"
+                        elif "avibase" in asset.name.lower():
+                            db_filename = "avibase_database.db"
+                        elif "patlevin" in asset.name.lower():
+                            db_filename = "patlevin_database.db"
+                        else:
+                            continue
+
+                        self._download_database(
+                            asset_source_dir, db_filename, target_path, asset.description, results
+                        )
 
             print(f"Asset download completed for version {version}")
             return results

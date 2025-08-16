@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from birdnetpi.utils.asset_manifest import AssetManifest
 from birdnetpi.utils.path_resolver import PathResolver
 
 
@@ -280,41 +281,23 @@ class ReleaseManager:
         Returns:
             List of default release assets
         """
-        # In development, prefer local data/ directory over production paths
-        models_path = self._get_asset_path("data/models", str(self.path_resolver.get_models_dir()))
-        database_path = self._get_asset_path(
-            "data/database/ioc_reference.db", str(self.path_resolver.get_ioc_database_path())
-        )
-        avibase_path = self._get_asset_path(
-            "data/database/avibase_database.db", str(self.path_resolver.get_avibase_database_path())
-        )
-        patlevin_path = self._get_asset_path(
-            "data/database/patlevin_database.db",
-            str(self.path_resolver.get_patlevin_database_path()),
-        )
+        # Use AssetManifest to get all release assets
+        asset_tuples = AssetManifest.get_release_assets(self.path_resolver)
 
-        return [
-            ReleaseAsset(
-                source_path=models_path,
-                target_name=Path("data/models"),
-                description="BirdNET TensorFlow Lite models for bird identification",
-            ),
-            ReleaseAsset(
-                source_path=database_path,
-                target_name=Path("data/database/ioc_reference.db"),
-                description="IOC World Bird Names reference database",
-            ),
-            ReleaseAsset(
-                source_path=avibase_path,
-                target_name=Path("data/database/avibase_database.db"),
-                description="Avibase multilingual bird names database (Lepage 2018, CC-BY-4.0)",
-            ),
-            ReleaseAsset(
-                source_path=patlevin_path,
-                target_name=Path("data/database/patlevin_database.db"),
-                description="BirdNET label translations compiled by Patrick Levin",
-            ),
-        ]
+        release_assets = []
+        for source_path, target_path, description in asset_tuples:
+            # In development, prefer local data/ directory over production paths
+            actual_source = self._get_asset_path(str(target_path), str(source_path))
+
+            release_assets.append(
+                ReleaseAsset(
+                    source_path=actual_source,
+                    target_name=target_path,
+                    description=description,
+                )
+            )
+
+        return release_assets
 
     def _get_asset_path(self, dev_path: str, prod_path: str) -> Path:
         """Get asset path, preferring development path over production path.
