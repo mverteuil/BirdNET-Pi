@@ -1,6 +1,6 @@
 FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
 
-# Set release version for asset downloads (this can be overridden via build arg)
+# Asset version for runtime downloads (can be overridden via environment variable)
 ARG BIRDNET_ASSETS_VERSION=v2.1.0
 
 ENV DNS_SERVER=8.8.8.8
@@ -87,36 +87,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Copy the configuration template for BirdNET-Pi
 COPY --chown=birdnetpi:birdnetpi config_templates/birdnetpi.yaml /var/lib/birdnetpi/config/birdnetpi.yaml
 
+# Set the asset version as an environment variable for runtime use
 ENV BIRDNET_ASSETS_VERSION=${BIRDNET_ASSETS_VERSION}
 
-# Download release assets with Docker cache based on version
-# This layer will be cached as long as the version doesn't change
-# Download and install assets using cache
-USER root
-RUN --mount=type=cache,target=/tmp/asset-cache,id=birdnet-assets \
-    echo "Installing BirdNET assets version: ${BIRDNET_ASSETS_VERSION}" && \
-    mkdir -p /tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/models && \
-    mkdir -p /tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/database && \
-    chown -R birdnetpi:birdnetpi /tmp/asset-cache && \
-    if [ -d "/tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/models" ] && [ -n "$(ls -A /tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/models 2>/dev/null)" ] && \
-       [ -d "/tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/database" ] && [ -f "/tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/database/ioc_reference.db" ]; then \
-        echo "Using cached assets for version ${BIRDNET_ASSETS_VERSION}" && \
-        mkdir -p /var/lib/birdnetpi/models && \
-        mkdir -p /var/lib/birdnetpi/database && \
-        cp -r /tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/models/* /var/lib/birdnetpi/models/ && \
-        cp -r /tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/database/* /var/lib/birdnetpi/database/ && \
-        chown -R birdnetpi:birdnetpi /var/lib/birdnetpi && \
-        echo "Assets restored from cache successfully"; \
-    else \
-        echo "No cache found for version ${BIRDNET_ASSETS_VERSION}, downloading fresh assets" && \
-        su birdnetpi -c "cd /opt/birdnetpi && uv run asset-installer install \"${BIRDNET_ASSETS_VERSION}\" --include-models --include-ioc-db --include-avibase-db --include-patlevin-db" && \
-        cp -r /var/lib/birdnetpi/models/* /tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/models/ && \
-        cp -r /var/lib/birdnetpi/database/* /tmp/asset-cache/${BIRDNET_ASSETS_VERSION}/database/ && \
-        echo "Assets cached for future builds"; \
-    fi
-
-# Switch back to birdnetpi user
-USER birdnetpi
+# Assets are now downloaded at runtime via init container
+# This reduces image size and leverages persistent volumes
 
 # Add the BirdNET-Pi virtual environment to the PATH
 ENV PATH="/opt/birdnetpi/.venv/bin:${PATH}"

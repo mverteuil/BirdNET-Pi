@@ -1,13 +1,36 @@
 services:
+  # Init container to ensure assets are installed
+  birdnet-pi-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: birdnet-pi-init
+    environment:
+      BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-v2.1.0}
+    command: >
+      sh -c "
+      echo 'Checking and installing BirdNET assets if needed...' &&
+      uv run install-assets install $${BIRDNET_ASSETS_VERSION} --skip-existing &&
+      echo 'Assets ready!'
+      "
+    volumes:
+      - ${BIRDNET_DATA_VOLUME:-birdnet-data}:/var/lib/birdnetpi # Shared data volume
+    networks:
+      - birdnetpi-network
+
   birdnet-pi:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: birdnet-pi
     restart: unless-stopped
+    depends_on:
+      birdnet-pi-init:
+        condition: service_completed_successfully
     environment:
       PULSE_SERVER: host.docker.internal
       DOCKER_CONTAINER: "true"
+      BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-v2.1.0}
     ports:
       - "8000:8000"   # Caddy
     healthcheck:

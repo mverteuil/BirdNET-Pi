@@ -29,11 +29,18 @@ def cli(ctx: click.Context) -> None:
 
 @cli.command()
 @click.argument("version")
+@click.option(
+    "--skip-existing",
+    is_flag=True,
+    help="Skip download if assets already exist (ideal for init containers)",
+)
 @click.option("--output-json", help="Output installation data to JSON file")
 @click.option("--remote", default="origin", help="Git remote to fetch from")
 @click.pass_context
-def install(ctx: click.Context, version: str, output_json: str | None, remote: str) -> None:
-    """Install complete asset release.
+def install(
+    ctx: click.Context, version: str, skip_existing: bool, output_json: str | None, remote: str
+) -> None:
+    """Install complete asset release or verify installation.
 
     VERSION: Release version to install (e.g., 'v2.0.0' or 'latest')
 
@@ -44,9 +51,42 @@ def install(ctx: click.Context, version: str, output_json: str | None, remote: s
       # Install specific version
       asset-installer install v2.1.0
 
+      # Skip if assets already exist (for init containers)
+      asset-installer install v2.1.0 --skip-existing
+
       # Save installation info to JSON
       asset-installer install latest --output-json install.json
     """
+    path_resolver = ctx.obj["path_resolver"]
+
+    if skip_existing:
+        # Skip existing mode - check if all required assets exist, install only if missing
+        required_checks = [
+            (
+                path_resolver.get_models_dir() / "BirdNET_GLOBAL_6K_V2.4_Model_FP16.tflite",
+                "BirdNET model",
+            ),
+            (path_resolver.get_ioc_database_path(), "IOC database"),
+            (path_resolver.get_database_dir() / "avibase_database.db", "Avibase database"),
+            (path_resolver.get_database_dir() / "patlevin_database.db", "PatLevin database"),
+        ]
+
+        all_present = True
+        missing_assets = []
+
+        for path, name in required_checks:
+            if not path.exists():
+                all_present = False
+                missing_assets.append(name)
+
+        if all_present:
+            click.echo(click.style(f"✓ All assets present for version {version}", fg="green"))
+            sys.exit(0)
+        else:
+            click.echo(click.style(f"✗ Missing assets: {', '.join(missing_assets)}", fg="yellow"))
+            click.echo(f"Installing missing assets for version: {version}")
+            # Continue to installation below
+
     update_manager = ctx.obj["update_manager"]
 
     click.echo(f"Installing complete asset release: {version}")
@@ -158,7 +198,7 @@ def check_local(ctx: click.Context, verbose: bool) -> None:
     click.echo()
 
     # Check models
-    models_dir = Path(path_resolver.get_models_dir())
+    models_dir = path_resolver.get_models_dir()
     if models_dir.exists():
         model_files = list(models_dir.rglob("*.tflite"))
         total_size = sum(f.stat().st_size for f in models_dir.rglob("*") if f.is_file())
@@ -182,7 +222,7 @@ def check_local(ctx: click.Context, verbose: bool) -> None:
     click.echo()
 
     # Check IOC database
-    ioc_db_path = Path(path_resolver.get_ioc_database_path())
+    ioc_db_path = path_resolver.get_ioc_database_path()
     if ioc_db_path.exists():
         file_size = ioc_db_path.stat().st_size / 1024 / 1024
         click.echo(click.style(f"  ✓ IOC Database: {file_size:.1f} MB", fg="green"))
@@ -192,7 +232,7 @@ def check_local(ctx: click.Context, verbose: bool) -> None:
         click.echo(f"    Expected location: {ioc_db_path}")
 
     # Check Avibase database
-    avibase_path = Path(path_resolver.get_data_dir()) / "avibase.db"
+    avibase_path = path_resolver.get_database_dir() / "avibase_database.db"
     if avibase_path.exists():
         file_size = avibase_path.stat().st_size / 1024 / 1024
         click.echo(click.style(f"  ✓ Avibase Database: {file_size:.1f} MB", fg="green"))
@@ -202,7 +242,7 @@ def check_local(ctx: click.Context, verbose: bool) -> None:
         click.echo(f"    Expected location: {avibase_path}")
 
     # Check PatLevin database
-    patlevin_path = Path(path_resolver.get_data_dir()) / "patlevin.db"
+    patlevin_path = path_resolver.get_database_dir() / "patlevin_database.db"
     if patlevin_path.exists():
         file_size = patlevin_path.stat().st_size / 1024 / 1024
         click.echo(click.style(f"  ✓ PatLevin Database: {file_size:.1f} MB", fg="green"))
