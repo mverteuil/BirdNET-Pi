@@ -28,22 +28,9 @@ from birdnetpi.utils.path_resolver import PathResolver
 from birdnetpi.web.core.config import get_config
 
 
-# Factory functions for services
-def _create_ioc_service(resolver: PathResolver) -> IOCDatabaseService:
-    """Create IOC database service."""
-    return IOCDatabaseService(db_path=resolver.get_ioc_database_path())
-
-
-def _create_multilingual_service(resolver: PathResolver) -> MultilingualDatabaseService:
-    """Create multilingual database service."""
-    return MultilingualDatabaseService(resolver)
-
-
-def _create_detection_query_service(
-    bnp_service: DatabaseService, multilingual_service: MultilingualDatabaseService
-) -> DetectionQueryService:
-    """Create detection query service."""
-    return DetectionQueryService(bnp_service, multilingual_service)
+def create_jinja2_templates(resolver: PathResolver) -> Jinja2Templates:
+    """Create Jinja2Templates with dynamic path from resolver."""
+    return Jinja2Templates(directory=str(resolver.get_templates_dir()))
 
 
 class Container(containers.DeclarativeContainer):
@@ -68,7 +55,7 @@ class Container(containers.DeclarativeContainer):
 
     # Templates configuration - singleton
     templates = providers.Singleton(
-        lambda resolver: Jinja2Templates(directory=str(resolver.get_templates_dir())),
+        create_jinja2_templates,
         resolver=path_resolver,
     )
 
@@ -83,23 +70,24 @@ class Container(containers.DeclarativeContainer):
         db_path=database_path,
     )
 
-    # IOC database service factory with error handling
+    # IOC database service
     ioc_database_service = providers.Singleton(
-        _create_ioc_service,
-        resolver=path_resolver,
+        IOCDatabaseService,
+        db_path=providers.Factory(
+            lambda resolver: resolver.get_ioc_database_path(), resolver=path_resolver
+        ),
     )
 
     # Multilingual database service with all three bird name databases
     multilingual_database_service = providers.Singleton(
-        _create_multilingual_service,
-        resolver=path_resolver,
+        MultilingualDatabaseService,
+        path_resolver=path_resolver,
     )
 
-    # Detection query service factory with error handling - now uses multilingual service
-
+    # Detection query service - now uses multilingual service
     detection_query_service = providers.Factory(
-        _create_detection_query_service,
-        bnp_service=bnp_database_service,
+        DetectionQueryService,
+        bnp_database_service=bnp_database_service,
         multilingual_service=multilingual_database_service,
     )
 
