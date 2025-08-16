@@ -18,7 +18,6 @@ import birdnetpi.cli.generate_dummy_data as gdd
 from birdnetpi.managers.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.models.config import BirdNETConfig
-from birdnetpi.utils.path_resolver import PathResolver
 
 
 @pytest.fixture
@@ -51,13 +50,14 @@ def mock_file_manager():
 
 
 @pytest.fixture
-def mock_path_resolver(tmp_path):
-    """Return a mock PathResolver instance for integration tests."""
-    mock = MagicMock(spec=PathResolver)
-    mock.get_detection_audio_path.return_value = (
+def mock_path_resolver(tmp_path, path_resolver):
+    """Return a PathResolver instance for integration tests."""
+    # Use the global path_resolver fixture and customize it
+    # get_detection_audio_path expects scientific_name and common_name parameters
+    path_resolver.get_detection_audio_path = lambda scientific_name, common_name: (
         tmp_path / "recordings/Test_bird/20240101_120000.wav"
     )
-    return mock
+    return path_resolver
 
 
 @pytest.fixture

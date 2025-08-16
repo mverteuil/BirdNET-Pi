@@ -7,7 +7,6 @@ import pytest
 
 from birdnetpi.managers.translation_manager import TranslationManager
 from birdnetpi.models.config import BirdNETConfig
-from birdnetpi.utils.path_resolver import PathResolver
 
 
 @pytest.fixture
@@ -26,17 +25,16 @@ def config_with_language():
 
 
 @pytest.fixture
-def mock_path_resolver():
+def mock_path_resolver(path_resolver):
     """Create mock file resolver."""
-    resolver = Mock(spec=PathResolver)
+    # Use the global path_resolver fixture and customize it
     locales_dir = Path(__file__).parent.parent.parent / "locales"
-    resolver.get_locales_dir.return_value = locales_dir
-    resolver.get_birdnetpi_config_path.return_value = "config/birdnetpi.yaml"
-    resolver.get_database_path.return_value = ":memory:"
-    resolver.get_models_dir.return_value = Path("models")
-    resolver.get_static_dir.return_value = Path("static")
-    resolver.get_templates_dir.return_value = Path("src/birdnetpi/web/templates")
-    return resolver
+    path_resolver.get_locales_dir = lambda: locales_dir
+    path_resolver.get_database_path = lambda: Path(":memory:")
+    path_resolver.get_models_dir = lambda: Path("models")
+    path_resolver.get_static_dir = lambda: Path("static")
+    path_resolver.get_templates_dir = lambda: Path("src/birdnetpi/web/templates")
+    return path_resolver
 
 
 class TestLanguageSwitching:

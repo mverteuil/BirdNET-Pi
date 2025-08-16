@@ -11,7 +11,7 @@ from birdnetpi.services.system_control_service import SystemControlService
 
 
 @pytest.fixture(autouse=True)
-def mock_dependencies(mocker):
+def mock_dependencies(mocker, tmp_path):
     """Mock external dependencies for generate_dummy_data.py."""
     with patch.multiple(
         "birdnetpi.cli.generate_dummy_data",
@@ -25,15 +25,20 @@ def mock_dependencies(mocker):
         generate_dummy_detections=DEFAULT,
         time=DEFAULT,
     ) as mocks:
-        # Configure mocks - return a proper mock Path object with default behavior
-        mock_db_path = MagicMock()
-        # Default behavior: file doesn't exist and has size 0
-        mock_db_path.exists.return_value = False
-        mock_stat = MagicMock()
-        mock_stat.st_size = 0
-        mock_db_path.stat.return_value = mock_stat
+        # Create MagicMock for database path that behaves like a Path
+        from pathlib import Path
+
+        mock_db_path = MagicMock(spec=Path)
+        mock_db_path.__str__ = lambda: str(tmp_path / "database" / "birdnetpi.db")
+        mock_db_path.exists = MagicMock(return_value=False)  # Default to not existing
+        mock_db_path.stat = MagicMock()
+
+        # Create MagicMock for config path
+        mock_config_path = MagicMock(spec=Path)
+        mock_config_path.__str__ = lambda: str(tmp_path / "config" / "birdnetpi.yaml")
+
         mocks["PathResolver"].return_value.get_database_path.return_value = mock_db_path
-        mocks["PathResolver"].return_value.get_birdnetpi_config_path.return_value = "/config/path"
+        mocks["PathResolver"].return_value.get_birdnetpi_config_path.return_value = mock_config_path
         mocks["ConfigFileParser"].return_value.load_config.return_value = MagicMock()
         mocks["DatabaseService"].return_value = MagicMock(spec=DatabaseService)
         mocks["DataManager"].return_value = MagicMock(spec=DataManager)

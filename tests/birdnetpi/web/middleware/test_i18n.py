@@ -1,6 +1,5 @@
 """Tests for internationalization middleware and translation system."""
 
-import tempfile
 from gettext import GNUTranslations, NullTranslations
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -10,28 +9,26 @@ from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from birdnetpi.managers.translation_manager import TranslationManager
-from birdnetpi.utils.path_resolver import PathResolver
 from birdnetpi.web.middleware.i18n import LanguageMiddleware
 
 
 @pytest.fixture
-def mock_path_resolver():
+def mock_path_resolver(path_resolver, tmp_path):
     """Create mock file resolver with temporary locales directory."""
-    resolver = Mock(spec=PathResolver)
-    with tempfile.TemporaryDirectory() as tmpdir:
-        locales_dir = Path(tmpdir) / "locales"
-        locales_dir.mkdir()
+    # Use the global path_resolver fixture and customize it
+    locales_dir = tmp_path / "locales"
+    locales_dir.mkdir()
 
-        # Create English locale directory
-        en_dir = locales_dir / "en" / "LC_MESSAGES"
-        en_dir.mkdir(parents=True)
+    # Create English locale directory
+    en_dir = locales_dir / "en" / "LC_MESSAGES"
+    en_dir.mkdir(parents=True)
 
-        # Create Spanish locale directory
-        es_dir = locales_dir / "es" / "LC_MESSAGES"
-        es_dir.mkdir(parents=True)
+    # Create Spanish locale directory
+    es_dir = locales_dir / "es" / "LC_MESSAGES"
+    es_dir.mkdir(parents=True)
 
-        resolver.get_locales_dir.return_value = locales_dir
-        yield resolver
+    path_resolver.get_locales_dir = lambda: locales_dir
+    return path_resolver
 
 
 @pytest.fixture

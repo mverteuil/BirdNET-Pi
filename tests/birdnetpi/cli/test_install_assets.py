@@ -163,13 +163,15 @@ class TestCheckLocal:
     """Test the check-local command."""
 
     @patch("birdnetpi.cli.install_assets.PathResolver")
-    def test_check_local_assets_exist(self, mock_path_resolver_class, tmp_path, runner):
+    def test_check_local_assets_exist(
+        self, mock_path_resolver_class, tmp_path, runner, path_resolver
+    ):
         """Should report existing assets."""
-        mock_resolver = MagicMock()
-        mock_resolver.get_models_dir.return_value = str(tmp_path / "models")
-        mock_resolver.get_ioc_database_path.return_value = str(tmp_path / "data" / "ioc_db.sqlite")
-        mock_resolver.get_data_dir.return_value = str(tmp_path / "data")
-        mock_path_resolver_class.return_value = mock_resolver
+        # Use the global path_resolver fixture and customize it
+        path_resolver.get_models_dir = lambda: tmp_path / "models"
+        path_resolver.get_ioc_database_path = lambda: tmp_path / "data" / "ioc_db.sqlite"
+        path_resolver.get_database_dir = lambda: tmp_path / "data"
+        mock_path_resolver_class.return_value = path_resolver
 
         # Create test files
         models_dir = tmp_path / "models"
@@ -180,8 +182,8 @@ class TestCheckLocal:
         data_dir = tmp_path / "data"
         data_dir.mkdir(parents=True)
         (data_dir / "ioc_db.sqlite").write_bytes(b"database" * 1000)
-        (data_dir / "avibase.db").write_bytes(b"avibase" * 500)
-        (data_dir / "patlevin.db").write_bytes(b"patlevin" * 750)
+        (data_dir / "avibase_database.db").write_bytes(b"avibase" * 500)
+        (data_dir / "patlevin_database.db").write_bytes(b"patlevin" * 750)
 
         result = runner.invoke(cli, ["check-local"])
 
@@ -192,13 +194,15 @@ class TestCheckLocal:
         assert "✓ PatLevin Database:" in result.output
 
     @patch("birdnetpi.cli.install_assets.PathResolver")
-    def test_check_local_verbose_mode(self, mock_path_resolver_class, tmp_path, runner):
+    def test_check_local_verbose_mode(
+        self, mock_path_resolver_class, tmp_path, runner, path_resolver
+    ):
         """Should show detailed info in verbose mode."""
-        mock_resolver = MagicMock()
-        mock_resolver.get_models_dir.return_value = str(tmp_path / "models")
-        mock_resolver.get_ioc_database_path.return_value = str(tmp_path / "data" / "ioc_db.sqlite")
-        mock_resolver.get_data_dir.return_value = str(tmp_path / "data")
-        mock_path_resolver_class.return_value = mock_resolver
+        # Use the global path_resolver fixture and customize it
+        path_resolver.get_models_dir = lambda: tmp_path / "models"
+        path_resolver.get_ioc_database_path = lambda: tmp_path / "data" / "ioc_db.sqlite"
+        path_resolver.get_database_dir = lambda: tmp_path / "data"
+        mock_path_resolver_class.return_value = path_resolver
 
         # Create test files
         models_dir = tmp_path / "models"
@@ -211,13 +215,15 @@ class TestCheckLocal:
         assert "- model1.tflite" in result.output
 
     @patch("birdnetpi.cli.install_assets.PathResolver")
-    def test_check_local_missing_files(self, mock_path_resolver_class, tmp_path, runner):
+    def test_check_local_missing_files(
+        self, mock_path_resolver_class, tmp_path, runner, path_resolver
+    ):
         """Should report missing assets."""
-        mock_resolver = MagicMock()
-        mock_resolver.get_models_dir.return_value = str(tmp_path / "models")
-        mock_resolver.get_ioc_database_path.return_value = str(tmp_path / "data" / "ioc_db.sqlite")
-        mock_resolver.get_data_dir.return_value = str(tmp_path / "data")
-        mock_path_resolver_class.return_value = mock_resolver
+        # Use the global path_resolver fixture and customize it
+        path_resolver.get_models_dir = lambda: tmp_path / "models"
+        path_resolver.get_ioc_database_path = lambda: tmp_path / "data" / "ioc_db.sqlite"
+        path_resolver.get_database_dir = lambda: tmp_path / "data"
+        mock_path_resolver_class.return_value = path_resolver
 
         result = runner.invoke(cli, ["check-local"])
 
