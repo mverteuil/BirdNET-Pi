@@ -77,14 +77,14 @@ dependencies = [
 ]
 
 [project.scripts]
-install-assets = "birdnetpi.cli.install_assets:main"
 audio-analysis-daemon = "birdnetpi.daemons.audio_analysis_daemon:main"
 audio-capture-daemon = "birdnetpi.daemons.audio_capture_daemon:main"
 audio-websocket-daemon = "birdnetpi.daemons.audio_websocket_daemon:main"
-generate-dummy-data = "birdnetpi.cli.generate_dummy_data:main"
-manage-translations = "birdnetpi.cli.manage_translations:main"
 configure-pulseaudio = "birdnetpi.cli.configure_pulseaudio:main"
+generate-dummy-data = "birdnetpi.cli.generate_dummy_data:main"
+install-assets = "birdnetpi.cli.install_assets:main"
 manage-releases = "birdnetpi.cli.manage_releases:main"
+manage-translations = "birdnetpi.cli.manage_translations:main"
 spectrogram-websocket-daemon = "birdnetpi.daemons.spectrogram_websocket_daemon:main"
 
 [tool.coverage.run]

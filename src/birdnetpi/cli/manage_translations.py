@@ -149,9 +149,9 @@ def init(obj: dict[str, Any], language: str) -> None:
     resolver = obj["resolver"]
 
     # Get paths relative to src directory parent (repo root)
-    src_dir = Path(resolver.get_src_dir())
-    messages_pot = Path(resolver.get_messages_pot_path()).relative_to(src_dir.parent)
-    locales_dir = Path(resolver.get_locales_dir()).relative_to(src_dir.parent)
+    src_dir = resolver.get_src_dir()
+    messages_pot = resolver.get_messages_pot_path().relative_to(src_dir.parent)
+    locales_dir = resolver.get_locales_dir().relative_to(src_dir.parent)
 
     cmd = [
         "uv",
