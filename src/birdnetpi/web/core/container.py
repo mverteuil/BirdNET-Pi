@@ -1,7 +1,5 @@
 """Dependency injection container for the BirdNET-Pi application."""
 
-from pathlib import Path
-
 from dependency_injector import containers, providers
 from fastapi.templating import Jinja2Templates
 
@@ -30,36 +28,22 @@ from birdnetpi.utils.path_resolver import PathResolver
 from birdnetpi.web.core.config import get_config
 
 
-# Factory functions for services with error handling
-def _create_ioc_service(resolver: PathResolver) -> IOCDatabaseService | None:
-    """Create IOC database service with graceful error handling."""
-    try:
-        return IOCDatabaseService(db_path=resolver.get_ioc_database_path())
-    except Exception as e:
-        print(f"Warning: IOC database service unavailable: {e}")
-        return None
+# Factory functions for services
+def _create_ioc_service(resolver: PathResolver) -> IOCDatabaseService:
+    """Create IOC database service."""
+    return IOCDatabaseService(db_path=resolver.get_ioc_database_path())
 
 
-def _create_multilingual_service(resolver: PathResolver) -> MultilingualDatabaseService | None:
-    """Create multilingual database service with graceful error handling."""
-    try:
-        return MultilingualDatabaseService(resolver)
-    except Exception as e:
-        print(f"Warning: Multilingual database service unavailable: {e}")
-        return None
+def _create_multilingual_service(resolver: PathResolver) -> MultilingualDatabaseService:
+    """Create multilingual database service."""
+    return MultilingualDatabaseService(resolver)
 
 
 def _create_detection_query_service(
-    bnp_service: DatabaseService, multilingual_service: MultilingualDatabaseService | None
-) -> DetectionQueryService | None:
-    """Create detection query service with graceful error handling."""
-    try:
-        if multilingual_service is None:
-            return None
-        return DetectionQueryService(bnp_service, multilingual_service)
-    except Exception as e:
-        print(f"Warning: Detection query service unavailable: {e}")
-        return None
+    bnp_service: DatabaseService, multilingual_service: MultilingualDatabaseService
+) -> DetectionQueryService:
+    """Create detection query service."""
+    return DetectionQueryService(bnp_service, multilingual_service)
 
 
 class Container(containers.DeclarativeContainer):
@@ -84,8 +68,8 @@ class Container(containers.DeclarativeContainer):
 
     # Templates configuration - singleton
     templates = providers.Singleton(
-        Jinja2Templates,
-        directory=str(Path(__file__).parent.parent / "templates"),
+        lambda resolver: Jinja2Templates(directory=str(resolver.get_templates_dir())),
+        resolver=path_resolver,
     )
 
     # Database path provider
