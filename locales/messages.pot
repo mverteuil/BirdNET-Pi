@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-08-09 21:42-0400\n"
+"POT-Creation-Date: 2025-08-16 11:41-0400\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -20,101 +20,6 @@ msgstr ""
 #: src/birdnetpi/web/templates/audio_device_selection.html:4
 #: src/birdnetpi/web/templates/audio_device_selection.html:8
 msgid "Audio Device Selection"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:6
-#: src/birdnetpi/web/templates/field_mode.html:258
-#: src/birdnetpi/web/templates/index.html:102
-#: src/birdnetpi/web/templates/livestream.html:291
-msgid "Field Mode"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:266
-msgid "Audio"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:267
-#: src/birdnetpi/web/templates/field_mode.html:271
-#: src/birdnetpi/web/templates/field_mode.html:275
-msgid "Checking..."
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:270
-msgid "GPS"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:274
-msgid "System"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:278
-msgid "Detection"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:279
-msgid "Active"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:285
-msgid "Location"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:287
-msgid "GPS: Not available"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:290
-msgid "Accuracy: Unknown"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:293
-msgid "Satellites: --"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:296
-msgid "Last update: Never"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:303
-msgid "CPU"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:307
-#: src/birdnetpi/web/templates/index.html:135
-msgid "Memory"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:311
-msgid "Disk"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:319
-msgid "Live Audio"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:322
-msgid "Spectrogram"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:325
-msgid "Refresh"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:327
-msgid "Home"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:332
-#: src/birdnetpi/web/templates/index.html:166
-msgid "Recent Detections"
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:333
-msgid "Loading detections..."
-msgstr ""
-
-#: src/birdnetpi/web/templates/field_mode.html:338
-msgid "Total Today:"
 msgstr ""
 
 #: src/birdnetpi/web/templates/index.html:6
@@ -202,6 +107,11 @@ msgstr ""
 msgid "Analyze detection patterns"
 msgstr ""
 
+#: src/birdnetpi/web/templates/index.html:102
+#: src/birdnetpi/web/templates/livestream.html:291
+msgid "Field Mode"
+msgstr ""
+
 #: src/birdnetpi/web/templates/index.html:103
 msgid "Manual recording mode"
 msgstr ""
@@ -227,12 +137,20 @@ msgstr ""
 msgid "CPU Usage"
 msgstr ""
 
+#: src/birdnetpi/web/templates/index.html:135
+msgid "Memory"
+msgstr ""
+
 #: src/birdnetpi/web/templates/index.html:146
 msgid "Disk Space"
 msgstr ""
 
 #: src/birdnetpi/web/templates/index.html:157
 msgid "Temperature"
+msgstr ""
+
+#: src/birdnetpi/web/templates/index.html:166
+msgid "Recent Detections"
 msgstr ""
 
 #: src/birdnetpi/web/templates/index.html:168

@@ -1,7 +1,5 @@
 """Comprehensive tests for ConfigFileParser covering all major functionality."""
 
-from unittest.mock import MagicMock
-
 import pytest
 import yaml
 
@@ -66,26 +64,25 @@ def test_save_config(config_file):
 class TestConfigFileParserInitialization:
     """Test ConfigFileParser initialization with different path configurations."""
 
-    def test_init___no_config_path_uses_path_resolver(self, mocker, tmp_path):
+    def test_init___no_config_path_uses_path_resolver(self, mocker, tmp_path, path_resolver):
         """Should use PathResolver when no config_path provided."""
         # Create actual paths in tmp_path to avoid MagicMock file creation
         config_path = tmp_path / "config.yaml"
         template_path = tmp_path / "template.yaml"
 
-        mock_resolver = mocker.patch("birdnetpi.utils.config_file_parser.PathResolver")
-        mock_instance = MagicMock()
-        mock_resolver.return_value = mock_instance
-        # Return actual Path objects, not strings, to match what PathResolver normally returns
-        mock_instance.get_birdnetpi_config_path.return_value = config_path
-        mock_instance.get_config_template_path.return_value = template_path
+        # Customize the global path_resolver
+        path_resolver.get_birdnetpi_config_path = lambda: config_path
+        path_resolver.get_config_template_path = lambda: template_path
+
+        mock_resolver = mocker.patch(
+            "birdnetpi.utils.config_file_parser.PathResolver", return_value=path_resolver
+        )
 
         parser = ConfigFileParser()
 
         assert parser.config_path == str(config_path)
         assert parser.template_path == str(template_path)
         mock_resolver.assert_called_once()
-        mock_instance.get_birdnetpi_config_path.assert_called_once()
-        mock_instance.get_config_template_path.assert_called_once()
 
     def test_init__explicit_config_path(self):
         """Should use explicit path when provided and derive template path."""

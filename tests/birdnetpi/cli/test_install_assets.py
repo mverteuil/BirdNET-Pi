@@ -162,77 +162,68 @@ class TestListVersions:
 class TestCheckLocal:
     """Test the check-local command."""
 
-    @patch("birdnetpi.cli.install_assets.PathResolver")
-    def test_check_local_assets_exist(
-        self, mock_path_resolver_class, tmp_path, runner, path_resolver
-    ):
+    def test_check_local_assets_exist(self, tmp_path, runner, path_resolver):
         """Should report existing assets."""
         # Use the global path_resolver fixture and customize it
         path_resolver.get_models_dir = lambda: tmp_path / "models"
         path_resolver.get_ioc_database_path = lambda: tmp_path / "data" / "ioc_db.sqlite"
         path_resolver.get_database_dir = lambda: tmp_path / "data"
-        mock_path_resolver_class.return_value = path_resolver
 
-        # Create test files
-        models_dir = tmp_path / "models"
-        models_dir.mkdir(parents=True)
-        (models_dir / "model1.tflite").write_bytes(b"model" * 1000)
-        (models_dir / "model2.tflite").write_bytes(b"model" * 2000)
+        with patch("birdnetpi.cli.install_assets.PathResolver", return_value=path_resolver):
+            # Create test files
+            models_dir = tmp_path / "models"
+            models_dir.mkdir(parents=True)
+            (models_dir / "model1.tflite").write_bytes(b"model" * 1000)
+            (models_dir / "model2.tflite").write_bytes(b"model" * 2000)
 
-        data_dir = tmp_path / "data"
-        data_dir.mkdir(parents=True)
-        (data_dir / "ioc_db.sqlite").write_bytes(b"database" * 1000)
-        (data_dir / "avibase_database.db").write_bytes(b"avibase" * 500)
-        (data_dir / "patlevin_database.db").write_bytes(b"patlevin" * 750)
+            data_dir = tmp_path / "data"
+            data_dir.mkdir(parents=True)
+            (data_dir / "ioc_db.sqlite").write_bytes(b"database" * 1000)
+            (data_dir / "avibase_database.db").write_bytes(b"avibase" * 500)
+            (data_dir / "patlevin_database.db").write_bytes(b"patlevin" * 750)
 
-        result = runner.invoke(cli, ["check-local"])
+            result = runner.invoke(cli, ["check-local"])
 
-        assert result.exit_code == 0
-        assert "✓ Models: 2 model files" in result.output
-        assert "✓ IOC Database:" in result.output
-        assert "✓ Avibase Database:" in result.output
-        assert "✓ PatLevin Database:" in result.output
+            assert result.exit_code == 0
+            assert "✓ Models: 2 model files" in result.output
+            assert "✓ IOC Database:" in result.output
+            assert "✓ Avibase Database:" in result.output
+            assert "✓ PatLevin Database:" in result.output
 
-    @patch("birdnetpi.cli.install_assets.PathResolver")
-    def test_check_local_verbose_mode(
-        self, mock_path_resolver_class, tmp_path, runner, path_resolver
-    ):
+    def test_check_local_verbose_mode(self, tmp_path, runner, path_resolver):
         """Should show detailed info in verbose mode."""
         # Use the global path_resolver fixture and customize it
         path_resolver.get_models_dir = lambda: tmp_path / "models"
         path_resolver.get_ioc_database_path = lambda: tmp_path / "data" / "ioc_db.sqlite"
         path_resolver.get_database_dir = lambda: tmp_path / "data"
-        mock_path_resolver_class.return_value = path_resolver
 
-        # Create test files
-        models_dir = tmp_path / "models"
-        models_dir.mkdir(parents=True)
-        (models_dir / "model1.tflite").write_bytes(b"model" * 1000)
+        with patch("birdnetpi.cli.install_assets.PathResolver", return_value=path_resolver):
+            # Create test files
+            models_dir = tmp_path / "models"
+            models_dir.mkdir(parents=True)
+            (models_dir / "model1.tflite").write_bytes(b"model" * 1000)
 
-        result = runner.invoke(cli, ["check-local", "--verbose"])
+            result = runner.invoke(cli, ["check-local", "--verbose"])
 
-        assert result.exit_code == 0
-        assert "- model1.tflite" in result.output
+            assert result.exit_code == 0
+            assert "- model1.tflite" in result.output
 
-    @patch("birdnetpi.cli.install_assets.PathResolver")
-    def test_check_local_missing_files(
-        self, mock_path_resolver_class, tmp_path, runner, path_resolver
-    ):
+    def test_check_local_missing_files(self, tmp_path, runner, path_resolver):
         """Should report missing assets."""
         # Use the global path_resolver fixture and customize it
         path_resolver.get_models_dir = lambda: tmp_path / "models"
         path_resolver.get_ioc_database_path = lambda: tmp_path / "data" / "ioc_db.sqlite"
         path_resolver.get_database_dir = lambda: tmp_path / "data"
-        mock_path_resolver_class.return_value = path_resolver
 
-        result = runner.invoke(cli, ["check-local"])
+        with patch("birdnetpi.cli.install_assets.PathResolver", return_value=path_resolver):
+            result = runner.invoke(cli, ["check-local"])
 
-        assert result.exit_code == 0
-        assert "✗ Models: Not installed" in result.output
-        assert "✗ IOC Database: Not installed" in result.output
-        assert "✗ Avibase Database: Not installed" in result.output
-        assert "✗ PatLevin Database: Not installed" in result.output
-        assert "Expected location:" in result.output
+            assert result.exit_code == 0
+            assert "✗ Models: Not installed" in result.output
+            assert "✗ IOC Database: Not installed" in result.output
+            assert "✗ Avibase Database: Not installed" in result.output
+            assert "✗ PatLevin Database: Not installed" in result.output
+            assert "Expected location:" in result.output
 
 
 class TestMainFunction:

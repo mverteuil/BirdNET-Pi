@@ -33,12 +33,15 @@ def mock_dependencies(mocker, tmp_path):
         mock_db_path.exists = MagicMock(return_value=False)  # Default to not existing
         mock_db_path.stat = MagicMock()
 
-        # Create MagicMock for config path
-        mock_config_path = MagicMock(spec=Path)
-        mock_config_path.__str__ = lambda: str(tmp_path / "config" / "birdnetpi.yaml")
+        # Create actual config path (not MagicMock) to prevent file creation with MagicMock names
+        config_dir = tmp_path / "config"
+        config_dir.mkdir(exist_ok=True)
+        config_path = config_dir / "birdnetpi.yaml"
+        # Write a minimal config to the temp file
+        config_path.write_text("site_name: BirdNET-Pi\nlatitude: 0.0\nlongitude: 0.0\n")
 
         mocks["PathResolver"].return_value.get_database_path.return_value = mock_db_path
-        mocks["PathResolver"].return_value.get_birdnetpi_config_path.return_value = mock_config_path
+        mocks["PathResolver"].return_value.get_birdnetpi_config_path.return_value = config_path
         mocks["ConfigFileParser"].return_value.load_config.return_value = MagicMock()
         mocks["DatabaseService"].return_value = MagicMock(spec=DatabaseService)
         mocks["DataManager"].return_value = MagicMock(spec=DataManager)

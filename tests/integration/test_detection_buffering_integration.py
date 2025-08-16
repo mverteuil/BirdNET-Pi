@@ -432,6 +432,7 @@ class TestDetectionBufferingWithAdminOperations:
                 ) as _mock_generate_dummy_detections,
                 patch("birdnetpi.cli.generate_dummy_data.time") as _mock_time,
                 patch("birdnetpi.cli.generate_dummy_data.os") as mock_os,
+                patch("birdnetpi.cli.generate_dummy_data.ConfigFileParser") as mock_config_parser,
             ):
                 # Configure mocks for generate_dummy_data
                 from pathlib import Path
@@ -440,6 +441,18 @@ class TestDetectionBufferingWithAdminOperations:
                 mock_db_path.exists.return_value = False
                 mock_db_path.stat.return_value.st_size = 0
                 mock_path_resolver.return_value.get_database_path.return_value = mock_db_path
+
+                # Create a proper temp config path to avoid MagicMock file creation
+                import tempfile
+
+                with tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".yaml", delete=False
+                ) as config_file:
+                    config_file.write("site_name: Test\nlatitude: 0.0\nlongitude: 0.0\n")
+                    config_path = Path(config_file.name)
+
+                mock_path_resolver.return_value.get_birdnetpi_config_path.return_value = config_path
+                mock_config_parser.return_value.load_config.return_value = MagicMock()
 
                 mock_os.path.exists.return_value = False
                 mock_os.getenv.return_value = "false"  # SBC environment

@@ -11,8 +11,6 @@ from birdnetpi.web.routers import (
     admin_api_routes,
     admin_view_routes,
     detections_api_routes,
-    field_api_routes,
-    field_view_routes,
     multimedia_view_routes,
     overview_api_routes,
     reporting_view_routes,
@@ -60,8 +58,6 @@ def create_app() -> FastAPI:
             "birdnetpi.web.routers.admin_api_routes",
             "birdnetpi.web.routers.admin_view_routes",
             "birdnetpi.web.routers.detections_api_routes",
-            "birdnetpi.web.routers.field_api_routes",
-            "birdnetpi.web.routers.field_view_routes",
             "birdnetpi.web.routers.multimedia_view_routes",
             "birdnetpi.web.routers.overview_api_routes",
             "birdnetpi.web.routers.reporting_view_routes",
@@ -82,10 +78,6 @@ def create_app() -> FastAPI:
 
     # Reports routes (consolidated under /reports prefix)
     app.include_router(reporting_view_routes.router, prefix="/reports", tags=["Reports"])
-
-    # Field mode routes
-    app.include_router(field_view_routes.router, tags=["Field Views"])
-    app.include_router(field_api_routes.router, prefix="/api/field", tags=["Field API"])
 
     # Multimedia view routes (livestream, spectrogram)
     app.include_router(multimedia_view_routes.router, tags=["Multimedia Views"])

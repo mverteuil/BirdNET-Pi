@@ -366,27 +366,25 @@ class TestPulseAudioSetup:
 
         assert result is None
 
-    def test_create_server_config(self, mock_config_dir, repo_root):
+    def test_create_server_config(self, mock_config_dir, repo_root, path_resolver):
         """Should create server configuration files."""
         mock_config_dir.mkdir(parents=True, exist_ok=True)
 
-        # Mock the PathResolver to use the correct template paths
+        # Customize the global path_resolver to use the correct template paths
+        project_root = repo_root
+
+        def get_template_file_path(template_name: str) -> Path:
+            return project_root / "config_templates" / template_name
+
+        path_resolver.get_template_file_path = get_template_file_path
+
         with (
             patch(
                 "birdnetpi.utils.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
                 return_value=mock_config_dir,
             ),
-            patch("birdnetpi.utils.pulseaudio_setup.PathResolver") as mock_resolver_class,
+            patch("birdnetpi.utils.pulseaudio_setup.PathResolver", return_value=path_resolver),
         ):
-            mock_resolver = mock_resolver_class.return_value
-            # Set up the template paths to the actual project location
-            project_root = repo_root
-
-            def get_template_file_path(template_name: str) -> Path:
-                return project_root / "config_templates" / template_name
-
-            mock_resolver.get_template_file_path.side_effect = get_template_file_path
-
             config_dir = PulseAudioSetup.create_server_config(
                 container_ip="192.168.1.100",
                 port=4713,
@@ -403,26 +401,28 @@ class TestPulseAudioSetup:
         assert "4713" in default_pa_content
 
     @patch("birdnetpi.utils.pulseaudio_setup.PulseAudioSetup.get_container_ip")
-    def test_create_server_config__auto_detect_ip(self, mock_get_ip, mock_config_dir, repo_root):
+    def test_create_server_config__auto_detect_ip(
+        self, mock_get_ip, mock_config_dir, repo_root, path_resolver
+    ):
         """Should auto-detect container IP when not provided."""
         mock_config_dir.mkdir(parents=True, exist_ok=True)
         mock_get_ip.return_value = "172.18.0.3"
+
+        # Customize the global path_resolver to use the correct template paths
+        project_root = repo_root
+
+        def get_template_file_path(template_name: str) -> Path:
+            return project_root / "config_templates" / template_name
+
+        path_resolver.get_template_file_path = get_template_file_path
 
         with (
             patch(
                 "birdnetpi.utils.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
                 return_value=mock_config_dir,
             ),
-            patch("birdnetpi.utils.pulseaudio_setup.PathResolver") as mock_resolver_class,
+            patch("birdnetpi.utils.pulseaudio_setup.PathResolver", return_value=path_resolver),
         ):
-            mock_resolver = mock_resolver_class.return_value
-            project_root = repo_root
-
-            def get_template_file_path(template_name: str) -> Path:
-                return project_root / "config_templates" / template_name
-
-            mock_resolver.get_template_file_path.side_effect = get_template_file_path
-
             config_dir = PulseAudioSetup.create_server_config(
                 container_ip=None,  # Should trigger auto-detection
                 port=4713,
@@ -439,50 +439,52 @@ class TestPulseAudioSetup:
 
     @patch("birdnetpi.utils.pulseaudio_setup.PulseAudioSetup.get_container_ip")
     def test_create_server_config__auto_detect_default_container(
-        self, mock_get_ip, mock_config_dir, repo_root
+        self, mock_get_ip, mock_config_dir, repo_root, path_resolver
     ):
         """Should use default container name for auto-detection."""
         mock_config_dir.mkdir(parents=True, exist_ok=True)
         mock_get_ip.return_value = "172.18.0.4"
 
+        # Customize the global path_resolver to use the correct template paths
+        project_root = repo_root
+
+        def get_template_file_path(template_name: str) -> Path:
+            return project_root / "config_templates" / template_name
+
+        path_resolver.get_template_file_path = get_template_file_path
+
         with (
             patch(
                 "birdnetpi.utils.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
                 return_value=mock_config_dir,
             ),
-            patch("birdnetpi.utils.pulseaudio_setup.PathResolver") as mock_resolver_class,
+            patch("birdnetpi.utils.pulseaudio_setup.PathResolver", return_value=path_resolver),
         ):
-            mock_resolver = mock_resolver_class.return_value
-            project_root = repo_root
-
-            def get_template_file_path(template_name: str) -> Path:
-                return project_root / "config_templates" / template_name
-
-            mock_resolver.get_template_file_path.side_effect = get_template_file_path
-
             PulseAudioSetup.create_server_config(container_ip=None)
 
         mock_get_ip.assert_called_once_with("birdnet-pi")  # Default container name
 
-    def test_create_server_config__explicit_ip_no_auto_detect(self, mock_config_dir, repo_root):
+    def test_create_server_config__explicit_ip_no_auto_detect(
+        self, mock_config_dir, repo_root, path_resolver
+    ):
         """Should not auto-detect when explicit IP is provided."""
         mock_config_dir.mkdir(parents=True, exist_ok=True)
+
+        # Customize the global path_resolver to use the correct template paths
+        project_root = repo_root
+
+        def get_template_file_path(template_name: str) -> Path:
+            return project_root / "config_templates" / template_name
+
+        path_resolver.get_template_file_path = get_template_file_path
 
         with (
             patch(
                 "birdnetpi.utils.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
                 return_value=mock_config_dir,
             ),
-            patch("birdnetpi.utils.pulseaudio_setup.PathResolver") as mock_resolver_class,
+            patch("birdnetpi.utils.pulseaudio_setup.PathResolver", return_value=path_resolver),
         ):
-            mock_resolver = mock_resolver_class.return_value
-            project_root = repo_root
-
-            def get_template_file_path(template_name: str) -> Path:
-                return project_root / "config_templates" / template_name
-
-            mock_resolver.get_template_file_path.side_effect = get_template_file_path
-
             with patch(
                 "birdnetpi.utils.pulseaudio_setup.PulseAudioSetup.get_container_ip"
             ) as mock_get_ip:
