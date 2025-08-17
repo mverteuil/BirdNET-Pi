@@ -1,12 +1,12 @@
 import os
 import time
 
+from birdnetpi.config import ConfigManager
 from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.services.species_display_service import SpeciesDisplayService
 from birdnetpi.services.system_control_service import SystemControlService
-from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.dummy_data_generator import generate_dummy_detections
 from birdnetpi.utils.path_resolver import PathResolver
 
@@ -23,8 +23,8 @@ def main() -> None:
     fastapi_service_name = _get_fastapi_service_name()
 
     # Load configuration for services
-    config_parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
-    config = config_parser.load_config()
+    config_manager = ConfigManager(path_resolver)
+    config = config_manager.load()
 
     # Check if database already has data
     if db_path.exists() and db_path.stat().st_size > 0:

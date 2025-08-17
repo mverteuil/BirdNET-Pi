@@ -1,7 +1,6 @@
-"""Consolidated configuration models for BirdNET-Pi.
+"""Configuration models for BirdNET-Pi.
 
-This module contains all configuration-related dataclasses and models
-used throughout the application.
+This module contains all configuration-related dataclasses used throughout the application.
 """
 
 from dataclasses import dataclass, field
@@ -19,7 +18,10 @@ class LoggingConfig:
 
 @dataclass
 class BirdNETConfig:
-    """Represents the configuration settings for the BirdNET-Pi application."""
+    """Configuration settings for the BirdNET-Pi application."""
+
+    # Version tracking
+    config_version: str = "2.0.0"  # Configuration schema version
 
     # Basic Settings
     site_name: str = "BirdNET-Pi"

@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, mock_open, patch
 import httpx
 import pytest
 
+from birdnetpi.config import BirdNETConfig
 from birdnetpi.managers.update_manager import UpdateManager
-from birdnetpi.models.config import BirdNETConfig
 
 
 @pytest.fixture

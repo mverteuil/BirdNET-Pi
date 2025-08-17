@@ -2,7 +2,7 @@ import os
 import subprocess
 from unittest.mock import MagicMock
 
-from birdnetpi.models.config import BirdNETConfig
+from birdnetpi.config import BirdNETConfig
 from birdnetpi.utils.structlog_configurator import (
     _add_static_context,
     _configure_handlers,

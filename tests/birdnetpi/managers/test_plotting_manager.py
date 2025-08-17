@@ -7,9 +7,9 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
+from birdnetpi.config import BirdNETConfig
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.plotting_manager import PlottingManager
-from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.location_service import LocationService
 
 

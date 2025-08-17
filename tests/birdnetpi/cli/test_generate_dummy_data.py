@@ -16,7 +16,7 @@ def mock_dependencies(mocker, tmp_path):
     with patch.multiple(
         "birdnetpi.cli.generate_dummy_data",
         PathResolver=DEFAULT,
-        ConfigFileParser=DEFAULT,
+        ConfigManager=DEFAULT,
         DatabaseService=DEFAULT,
         DataManager=DEFAULT,
         MultilingualDatabaseService=DEFAULT,
@@ -42,7 +42,7 @@ def mock_dependencies(mocker, tmp_path):
 
         mocks["PathResolver"].return_value.get_database_path.return_value = mock_db_path
         mocks["PathResolver"].return_value.get_birdnetpi_config_path.return_value = config_path
-        mocks["ConfigFileParser"].return_value.load_config.return_value = MagicMock()
+        mocks["ConfigManager"].return_value.load_config.return_value = MagicMock()
         mocks["DatabaseService"].return_value = MagicMock(spec=DatabaseService)
         mocks["DataManager"].return_value = MagicMock(spec=DataManager)
         mocks["MultilingualDatabaseService"].return_value = MagicMock(

@@ -6,7 +6,7 @@ providing a clean separation between data objects and presentation logic.
 
 from typing import TYPE_CHECKING
 
-from birdnetpi.models.config import BirdNETConfig
+from birdnetpi.config import BirdNETConfig
 
 if TYPE_CHECKING:
     from birdnetpi.services.detection_query_service import DetectionWithLocalization

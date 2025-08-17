@@ -9,7 +9,7 @@ try:
 except ImportError:
     import tensorflow.lite as tflite  # type: ignore[import-untyped,attr-defined]
 
-from birdnetpi.models.config import BirdNETConfig
+from birdnetpi.config import BirdNETConfig
 
 log = logging.getLogger(__name__)
 

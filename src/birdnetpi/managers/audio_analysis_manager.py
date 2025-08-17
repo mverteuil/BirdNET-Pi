@@ -10,8 +10,8 @@ from typing import Any
 import httpx
 import numpy as np
 
+from birdnetpi.config import BirdNETConfig
 from birdnetpi.managers.file_manager import FileManager
-from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.bird_detection_service import BirdDetectionService
 from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.utils.path_resolver import PathResolver

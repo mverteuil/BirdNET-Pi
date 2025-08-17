@@ -29,7 +29,7 @@ dev = [
 
 [project]
 name = "birdnet-pi"
-version = "2.0.0"
+version = "2.0.0a"
 description = "The next generation of real-time, acoustic bird classification."
 authors = [
   {name = "Matthew de Verteuil", email = "mverteuil@users.noreply.github.com"},

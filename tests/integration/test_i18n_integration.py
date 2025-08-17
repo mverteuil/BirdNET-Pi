@@ -5,8 +5,8 @@ from unittest.mock import Mock
 
 import pytest
 
+from birdnetpi.config import BirdNETConfig
 from birdnetpi.managers.translation_manager import TranslationManager
-from birdnetpi.models.config import BirdNETConfig
 
 
 @pytest.fixture

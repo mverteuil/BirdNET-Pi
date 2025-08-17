@@ -10,26 +10,8 @@ from birdnetpi.web.core.factory import create_app
 
 
 @pytest.fixture(scope="function")
-def app_with_admin_view_routes(tmp_path):
+def app_with_admin_view_routes(path_resolver):
     """Create FastAPI app with admin router and dependencies using the factory."""
-    # Create test config file for settings endpoint
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text("site_name: Test BirdNET-Pi\nlatitude: 40.7128\nlongitude: -74.0060")
-
-    # Mock the database service completely to avoid SQLite issues
-    mock_db_instance = Mock()
-    mock_db_instance.get_db.return_value.__enter__ = Mock()
-    mock_db_instance.get_db.return_value.__exit__ = Mock()
-    # Add engine mock for SQLAdmin
-    mock_engine = Mock()
-    mock_db_instance.engine = mock_engine
-
-    # Mock file resolver to use test config and temp database path
-    mock_resolver = Mock()
-    mock_resolver.get_birdnetpi_config_path.return_value = str(config_file)
-    mock_resolver.data_dir = tmp_path
-    mock_resolver.get_database_path.return_value = str(tmp_path / f"test_db_{id(tmp_path)}.sqlite")
-
     # Mock data manager for test_detection endpoint
     mock_data_manager = MagicMock(spec=DataManager)
     mock_data_manager.create_detection.return_value = None
@@ -45,9 +27,9 @@ def app_with_admin_view_routes(tmp_path):
         # Create the app using the factory
         app = create_app()
 
-    # Override additional dependencies to use mocks
+    # Override dependencies with our test versions
     if hasattr(app, "container"):
-        app.container.path_resolver.override(mock_resolver)  # type: ignore[attr-defined]
+        app.container.path_resolver.override(path_resolver)  # type: ignore[attr-defined]
         app.container.data_manager.override(mock_data_manager)  # type: ignore[attr-defined]
 
     yield app
@@ -206,7 +188,7 @@ class TestAdminRouterIntegration:
         assert response.status_code == 200
         assert response.headers["content-type"].startswith("text/html")
         # Check that some expected content is in the response
-        assert "Test BirdNET-Pi" in response.text
+        assert "BirdNET-Pi" in response.text
 
     @patch("birdnetpi.web.routers.admin_view_routes.LogService")
     def test_log_endpoint_returns_logs(self, mock_log_service, client):

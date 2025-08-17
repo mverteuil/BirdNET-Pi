@@ -10,10 +10,9 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.status import HTTP_303_SEE_OTHER
 
+from birdnetpi.config import BirdNETConfig, ConfigManager
 from birdnetpi.managers.data_manager import DataManager
-from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.log_service import LogService
-from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.path_resolver import PathResolver
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.detection import DetectionEvent
@@ -39,8 +38,8 @@ async def get_settings(
     templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
 ) -> Response:
     """Render the settings page with the current configuration."""
-    config_parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
-    app_config: BirdNETConfig = config_parser.load_config()
+    config_manager = ConfigManager(path_resolver)
+    app_config: BirdNETConfig = config_manager.load()
     return templates.TemplateResponse(request, "admin/settings.html", {"config": app_config})
 
 
@@ -109,7 +108,7 @@ async def post_settings(
     ),
 ) -> RedirectResponse:
     """Process the submitted settings form and save the updated configuration."""
-    config_parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
+    config_manager = ConfigManager(path_resolver)
     # Parse webhook URLs from comma-separated string to list
     webhook_urls_list = (
         [url.strip() for url in webhook_urls.split(",") if url.strip()] if webhook_urls else []
@@ -169,7 +168,7 @@ async def post_settings(
         webhook_urls=webhook_urls_list,
         webhook_events=webhook_events,
     )
-    config_parser.save_config(updated_config)
+    config_manager.save(updated_config)
     return RedirectResponse(url="/settings", status_code=HTTP_303_SEE_OTHER)
 
 
@@ -262,9 +261,9 @@ async def get_advanced_settings(
     templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
 ) -> Response:
     """Render the advanced YAML configuration editor."""
-    config_parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
+    config_manager = ConfigManager(path_resolver)
     # Load raw YAML content for editor
-    with open(config_parser.config_path) as f:
+    with open(config_manager.config_path) as f:
         config_yaml = f.read()
 
     return templates.TemplateResponse(

@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from birdnetpi.config import BirdNETConfig
 from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
-from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.web.core.container import Container
 
 router = APIRouter()

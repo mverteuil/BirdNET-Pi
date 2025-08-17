@@ -23,8 +23,8 @@ if TYPE_CHECKING:
 import websockets
 from websockets.asyncio.server import serve
 
+from birdnetpi.config import ConfigManager
 from birdnetpi.services.spectrogram_service import SpectrogramService
-from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.path_resolver import PathResolver
 
 # Configure logging for this script
@@ -142,9 +142,8 @@ async def _main_async() -> None:
 
     try:
         # Load configuration
-        config_path = path_resolver.get_birdnetpi_config_path()
-        config_parser = ConfigFileParser(config_path)
-        config = config_parser.load_config()
+        config_manager = ConfigManager(path_resolver)
+        config = config_manager.load()
         logger.info("Configuration loaded successfully.")
 
         # Open FIFO for reading

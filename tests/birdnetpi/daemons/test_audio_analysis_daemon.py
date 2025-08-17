@@ -71,7 +71,7 @@ def mock_dependencies(mocker, path_resolver):
         "birdnetpi.daemons.audio_analysis_daemon",
         PathResolver=DEFAULT,
         FileManager=DEFAULT,
-        ConfigFileParser=DEFAULT,
+        ConfigManager=DEFAULT,
         AudioAnalysisManager=DEFAULT,
     ) as mocks:
         # Use the global path_resolver fixture to prevent MagicMock folder creation

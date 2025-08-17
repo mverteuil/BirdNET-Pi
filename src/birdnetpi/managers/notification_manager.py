@@ -4,7 +4,7 @@ import logging
 
 from fastapi import WebSocket
 
-from birdnetpi.models.config import BirdNETConfig
+from birdnetpi.config import BirdNETConfig
 from birdnetpi.models.database_models import Detection
 from birdnetpi.services.mqtt_service import MQTTService
 from birdnetpi.services.webhook_service import WebhookService

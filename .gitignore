@@ -40,10 +40,6 @@ apprise.txt
 BirdDB.txt
 Birders_Guide_Installer_Configuration.txt
 birdnet.conf
-birdnet/
-build/
-config/
-datasets/
 exclude_species_list.txt
 firstrun.ini
 GEMINI.md

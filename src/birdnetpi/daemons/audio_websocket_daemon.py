@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from birdnetpi.services.audio_websocket_service import AudioWebSocketService
+from birdnetpi.utils.path_resolver import PathResolver
 
 # Configure logging for this script
 logging.basicConfig(
@@ -14,7 +15,8 @@ async def main_async() -> None:
     """Async main function that wraps the AudioWebSocketService."""
     logger.info("Starting audio websocket daemon.")
 
-    service = AudioWebSocketService()
+    path_resolver = PathResolver()
+    service = AudioWebSocketService(path_resolver)
 
     try:
         await service.start()

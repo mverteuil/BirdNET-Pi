@@ -1,4 +1,4 @@
-from birdnetpi.models.config import BirdNETConfig
+from birdnetpi.config import BirdNETConfig
 
 
 class BirdWeatherService:

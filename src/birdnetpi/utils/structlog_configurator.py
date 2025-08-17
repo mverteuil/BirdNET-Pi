@@ -20,7 +20,7 @@ from typing import Any
 
 import structlog
 
-from birdnetpi.models.config import BirdNETConfig
+from birdnetpi.config import BirdNETConfig
 
 
 def is_docker_environment() -> bool:

@@ -37,7 +37,7 @@ def mock_dependencies(mocker, test_config, fifo_paths):
     with patch.multiple(
         "birdnetpi.daemons.audio_capture_daemon",
         PathResolver=DEFAULT,
-        ConfigFileParser=DEFAULT,
+        ConfigManager=DEFAULT,
         AudioCaptureService=DEFAULT,
     ) as mocks:
         # Configure mocks with test data
@@ -45,7 +45,7 @@ def mock_dependencies(mocker, test_config, fifo_paths):
         mocks[
             "PathResolver"
         ].return_value.get_birdnetpi_config_path.return_value = "/tmp/config.yaml"
-        mocks["ConfigFileParser"].return_value.load_config.return_value = test_config
+        mocks["ConfigManager"].return_value.load.return_value = test_config
         mocks["AudioCaptureService"].return_value = MagicMock(spec=AudioCaptureService)
 
         # Yield mocks for individual test configuration
@@ -167,9 +167,7 @@ class TestAudioCaptureDaemon:
         mock_os_operations["path_exists"].side_effect = [False, False, True, True]
 
         # Simulate config file not found
-        mock_dependencies[
-            "ConfigFileParser"
-        ].return_value.load_config.side_effect = FileNotFoundError
+        mock_dependencies["ConfigManager"].return_value.load.side_effect = FileNotFoundError
 
         daemon.main()
 

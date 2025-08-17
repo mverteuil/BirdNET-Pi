@@ -1,3 +1,6 @@
+# WARNING: NEVER use 'docker-compose down -v' as it removes ALL volumes including production data!
+# For E2E tests, use: BIRDNET_DATA_VOLUME=birdnet-test-data docker-compose up/down
+# To remove test volume only: docker volume rm birdnet-test-data
 services:
   # Init container to ensure assets are installed
   birdnet-pi-init:
@@ -11,7 +14,16 @@ services:
       sh -c "
       echo 'Checking and installing BirdNET assets if needed...' &&
       uv run install-assets install $${BIRDNET_ASSETS_VERSION} --skip-existing &&
-      echo 'Assets ready!'
+      echo 'Assets ready!' &&
+      echo 'Ensuring config file exists...' &&
+      if [ ! -f /var/lib/birdnetpi/config/birdnetpi.yaml ]; then
+        echo 'Copying config template to volume...' &&
+        mkdir -p /var/lib/birdnetpi/config &&
+        cp /opt/birdnetpi/config_templates/birdnetpi.yaml /var/lib/birdnetpi/config/birdnetpi.yaml &&
+        echo 'Config template copied.';
+      else
+        echo 'Config file already exists.';
+      fi
       "
     volumes:
       - ${BIRDNET_DATA_VOLUME:-birdnet-data}:/var/lib/birdnetpi # Shared data volume

@@ -3,7 +3,7 @@ from typing import cast
 
 import pandas as pd
 
-from birdnetpi.models.config import BirdNETConfig
+from birdnetpi.config import BirdNETConfig
 from birdnetpi.services.location_service import LocationService
 
 

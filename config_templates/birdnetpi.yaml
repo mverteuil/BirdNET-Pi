@@ -1,6 +1,9 @@
 # BirdNET-Pi Configuration Template
 # This file provides default configuration values for a new BirdNET-Pi installation
 
+# Configuration Version (for compatibility checks and version migrations)
+config_version: "2.0.0"
+
 # Basic Settings
 site_name: BirdNET-Pi
 latitude: 0.0

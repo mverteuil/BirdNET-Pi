@@ -57,15 +57,15 @@ def generate_dummy_detections(data_manager: DataManager, num_detections: int = 1
 
 
 if __name__ == "__main__":
+    from birdnetpi.config import ConfigManager
     from birdnetpi.services.database_service import DatabaseService
     from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
     from birdnetpi.services.species_display_service import SpeciesDisplayService
-    from birdnetpi.utils.config_file_parser import ConfigFileParser
     from birdnetpi.utils.path_resolver import PathResolver
 
     path_resolver = PathResolver()
-    config_parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
-    config = config_parser.load_config()
+    config_manager = ConfigManager(path_resolver)
+    config = config_manager.load()
     bnp_database_service = DatabaseService(path_resolver.get_database_path())
     multilingual_service = MultilingualDatabaseService(path_resolver)
     species_display_service = SpeciesDisplayService(config)

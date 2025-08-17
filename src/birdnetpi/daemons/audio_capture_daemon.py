@@ -4,8 +4,8 @@ import os
 import signal
 import time
 
+from birdnetpi.config import ConfigManager
 from birdnetpi.services.audio_capture_service import AudioCaptureService
-from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.path_resolver import PathResolver
 
 # Configure logging for this script
@@ -78,8 +78,8 @@ def main() -> None:
         logger.info("FIFOs opened for writing.")
 
         # Load configuration
-        config_parser = ConfigFileParser(config_path)
-        config = config_parser.load_config()
+        config_manager = ConfigManager(path_resolver)
+        config = config_manager.load()
         logger.info("Configuration loaded successfully.")
 
         # Instantiate and start the AudioCaptureService

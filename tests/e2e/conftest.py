@@ -20,6 +20,9 @@ def docker_compose_up_down() -> Generator[None, None, None]:
 
     The cleanup phase uses AssetManifest to identify which paths should be preserved
     during cleanup (models, IOC database, etc.) and removes everything else.
+
+    CRITICAL: Uses BIRDNET_DATA_VOLUME environment variable to work with test volume.
+    NEVER use 'docker-compose down -v' as it removes ALL volumes including production data!
     """
     env = os.environ.copy()
     # Use a test-specific volume name to isolate test data

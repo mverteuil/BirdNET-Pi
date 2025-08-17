@@ -6,10 +6,10 @@ import signal
 import time
 from types import FrameType
 
+from birdnetpi.config import ConfigManager
 from birdnetpi.managers.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.services.ioc_database_service import IOCDatabaseService
-from birdnetpi.utils.config_file_parser import ConfigFileParser
 from birdnetpi.utils.path_resolver import PathResolver
 
 # Configure logging for this script
@@ -52,8 +52,8 @@ def main() -> None:
     _fifo_analysis_path = os.path.join(fifo_base_path, "birdnet_audio_analysis.fifo")
 
     file_manager = FileManager(path_resolver)
-    config_parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
-    config = config_parser.load_config()
+    config_manager = ConfigManager(path_resolver)
+    config = config_manager.load()
 
     # Create IOC database service (required for species normalization)
     ioc_database_service = IOCDatabaseService(db_path=path_resolver.get_ioc_database_path())

@@ -51,8 +51,8 @@ def test_admin_view_routes_endpoints():
         mock_config = MagicMock()
         mock_config.site_name = "Test Site"
 
-        with patch("birdnetpi.web.routers.admin_view_routes.ConfigFileParser") as mock_parser:
-            mock_parser.return_value.load_config.return_value = mock_config
+        with patch("birdnetpi.web.routers.admin_view_routes.ConfigManager") as mock_parser:
+            mock_parser.return_value.load.return_value = mock_config
 
             with TestClient(app) as client:
                 # Test that the admin endpoint exists

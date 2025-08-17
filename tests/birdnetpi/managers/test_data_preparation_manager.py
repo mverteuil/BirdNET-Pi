@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
+from birdnetpi.config import BirdNETConfig
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
-from birdnetpi.models.config import BirdNETConfig
 from birdnetpi.services.location_service import LocationService
 
 

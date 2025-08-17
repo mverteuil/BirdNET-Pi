@@ -13,7 +13,7 @@ matplotlib.use("Agg")
 # The pytest plugin automatically handles this when tests are marked with @pytest.mark.no_leaks
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def repo_root() -> Path:
     """Get the absolute path to the repository root.
 
@@ -80,7 +80,7 @@ def path_resolver(tmp_path: Path, repo_root: Path) -> PathResolver:
         / "models"
         / (model_filename if model_filename.endswith(".tflite") else f"{model_filename}.tflite")
     )
-    resolver.get_config_template_path = lambda: real_app_dir / "config" / "birdnetpi.yaml.template"
+    resolver.get_config_template_path = lambda: real_app_dir / "config_templates" / "birdnetpi.yaml"
     resolver.get_static_dir = lambda: real_app_dir / "src" / "birdnetpi" / "web" / "static"
     resolver.get_templates_dir = lambda: real_app_dir / "src" / "birdnetpi" / "web" / "templates"
 
@@ -108,8 +108,8 @@ def app_with_temp_data(path_resolver) -> FastAPI:
     """
     from dependency_injector import providers
 
+    from birdnetpi.config import ConfigManager
     from birdnetpi.services.database_service import DatabaseService
-    from birdnetpi.utils.config_file_parser import ConfigFileParser
     from birdnetpi.web.core.container import Container
 
     # Override the Container's providers at the class level BEFORE app creation
@@ -118,9 +118,9 @@ def app_with_temp_data(path_resolver) -> FastAPI:
     Container.path_resolver.override(providers.Singleton(lambda: path_resolver))
     Container.database_path.override(providers.Factory(lambda: path_resolver.get_database_path()))
 
-    # Create a test config using our path_resolver
-    parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
-    test_config = parser.load_config()
+    # Create a test config using our ConfigManager with test path_resolver
+    manager = ConfigManager(path_resolver)
+    test_config = manager.load()
     Container.config.override(providers.Singleton(lambda: test_config))
 
     # Create a test database service with the temp path
@@ -153,39 +153,23 @@ def app_with_temp_data(path_resolver) -> FastAPI:
 @pytest.fixture
 def test_config(path_resolver: PathResolver):
     """Load test configuration from the test config file."""
-    from birdnetpi.utils.config_file_parser import ConfigFileParser
+    from birdnetpi.config import ConfigManager
 
-    parser = ConfigFileParser(path_resolver.get_birdnetpi_config_path())
-    return parser.load_config()
-
-
-@pytest.fixture(scope="session", autouse=True)
-def setup_test_environment():
-    """Set up test environment.
-
-    This fixture ensures that any test creating PathResolver without
-    using the path_resolver fixture will still work properly.
-    """
-    # Currently a no-op, but kept for potential future session-level setup
-    yield
+    manager = ConfigManager(path_resolver)
+    return manager.load()
 
 
 @pytest.fixture(scope="session", autouse=True)
-def check_required_assets():
+def check_required_assets(repo_root: Path):
     """Check that required assets are available for testing."""
     import os
-    from pathlib import Path
 
     from birdnetpi.utils.asset_manifest import AssetManifest
     from birdnetpi.utils.path_resolver import PathResolver
 
-    # Get the repository root directly (same logic as repo_root fixture)
-    repo_root = Path(__file__).parent.parent.resolve()
-    # Set up PathResolver for the test data directory
     real_data_dir = repo_root / "data"
 
-    # Save current env, set BIRDNETPI_DATA to test data dir
-    old_env = os.environ.get("BIRDNETPI_DATA")
+    stashed_data_dir = os.environ.get("BIRDNETPI_DATA")
     os.environ["BIRDNETPI_DATA"] = str(real_data_dir)
 
     try:
@@ -204,32 +188,38 @@ def check_required_assets():
             else:
                 if not asset_path.exists():
                     missing_assets.append(asset.name)
+
+        if missing_assets:
+            print()
+            print("┌" + "─" * 78 + "┐")
+            print("│" + " " * 78 + "│")
+            print("│  ⚠️  MISSING ASSETS FOR TESTING" + " " * 45 + "│")
+            print("│" + " " * 78 + "│")
+            print("│  The following required assets are missing for testing:" + " " * 22 + "│")
+            for asset in missing_assets:
+                spaces_needed = 76 - len(f"│    • {asset}")
+                print(f"│    • {asset}" + " " * spaces_needed + "│")
+            print("│" + " " * 78 + "│")
+            print("│  To run tests with assets, install them first:" + " " * 29 + "│")
+            print("│    export BIRDNETPI_DATA=./data" + " " * 43 + "│")
+            print("│    uv run install-assets install v2.1.0" + " " * 36 + "│")
+            print("│" + " " * 78 + "│")
+            print(
+                "│  Most tests will still pass without assets (mocked dependencies)."
+                + " " * 9
+                + "│"
+            )
+            print(
+                "│  Only integration tests and some service tests require real assets."
+                + " " * 10
+                + "│"
+            )
+            print("│" + " " * 78 + "│")
+            print("└" + "─" * 78 + "┘")
+            print()
     finally:
         # Restore environment
-        if old_env is not None:
-            os.environ["BIRDNETPI_DATA"] = old_env
+        if stashed_data_dir is not None:
+            os.environ["BIRDNETPI_DATA"] = stashed_data_dir
         else:
             os.environ.pop("BIRDNETPI_DATA", None)
-
-    if missing_assets:
-        print()
-        print("┌" + "─" * 78 + "┐")
-        print("│" + " " * 78 + "│")
-        print("│  ⚠️  MISSING ASSETS FOR TESTING" + " " * 45 + "│")
-        print("│" + " " * 78 + "│")
-        print("│  The following required assets are missing for testing:" + " " * 22 + "│")
-        for asset in missing_assets:
-            spaces_needed = 76 - len(f"│    • {asset}")
-            print(f"│    • {asset}" + " " * spaces_needed + "│")
-        print("│" + " " * 78 + "│")
-        print("│  To run tests with assets, install them first:" + " " * 29 + "│")
-        print("│    export BIRDNETPI_DATA=./data" + " " * 43 + "│")
-        print("│    uv run install-assets install v2.1.0" + " " * 36 + "│")
-        print("│" + " " * 78 + "│")
-        print("│  Most tests will still pass without assets (mocked dependencies)." + " " * 9 + "│")
-        print(
-            "│  Only integration tests and some service tests require real assets." + " " * 10 + "│"
-        )
-        print("│" + " " * 78 + "│")
-        print("└" + "─" * 78 + "┘")
-        print()

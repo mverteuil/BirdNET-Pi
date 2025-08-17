@@ -9,9 +9,9 @@ import httpx
 import numpy as np
 import pytest
 
+from birdnetpi.config import BirdNETConfig
 from birdnetpi.managers.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.managers.file_manager import FileManager
-from birdnetpi.models.config import BirdNETConfig
 
 
 @pytest.fixture

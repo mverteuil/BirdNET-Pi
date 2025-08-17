@@ -24,12 +24,8 @@ def audio_websocket_service(path_resolver, mock_config):
     path_resolver.get_birdnetpi_config_path = lambda: "/mock/config.yaml"
     path_resolver.get_fifo_base_path = lambda: "/mock/fifo"
 
-    with patch(
-        "birdnetpi.services.audio_websocket_service.PathResolver",
-        return_value=path_resolver,
-    ):
-        service = AudioWebSocketService("/mock/config.yaml", "/mock/fifo")
-        return service
+    service = AudioWebSocketService(path_resolver)
+    return service
 
 
 class TestAudioWebSocketService:
@@ -42,16 +38,12 @@ class TestAudioWebSocketService:
         path_resolver.get_birdnetpi_config_path = lambda: "/mock/config.yaml"
         path_resolver.get_fifo_base_path = lambda: "/mock/fifo"
 
-        with patch(
-            "birdnetpi.services.audio_websocket_service.PathResolver",
-            return_value=path_resolver,
-        ):
-            service = AudioWebSocketService()
+        service = AudioWebSocketService(path_resolver)
 
-            assert service._shutdown_flag is False
-            assert service._fifo_livestream_path == "/mock/fifo/birdnet_audio_livestream.fifo"
-            assert service._audio_clients == set()
-            assert service._processing_active is False
+        assert service._shutdown_flag is False
+        assert service._fifo_livestream_path == "/mock/fifo/birdnet_audio_livestream.fifo"
+        assert service._audio_clients == set()
+        assert service._processing_active is False
 
     @pytest.mark.asyncio
     async def test_websocket_handler_audio_path(self, audio_websocket_service):
@@ -133,16 +125,12 @@ class TestAudioWebSocketService:
         """Should start service successfully."""
         with (
             patch(
-                "birdnetpi.services.audio_websocket_service.ConfigFileParser"
-            ) as mock_config_parser,
-            patch(
                 "birdnetpi.services.audio_websocket_service.os.open", return_value=123
             ) as mock_open,
             patch("birdnetpi.services.audio_websocket_service.serve") as mock_serve,
             patch("birdnetpi.services.audio_websocket_service.signal"),
             patch("birdnetpi.services.audio_websocket_service.atexit"),
         ):
-            mock_config_parser.return_value.load_config.return_value = mock_config
             mock_server = MagicMock()  # Regular mock, not AsyncMock
 
             # Mock serve to return an awaitable
@@ -152,10 +140,6 @@ class TestAudioWebSocketService:
             mock_serve.side_effect = mock_serve_func
 
             await audio_websocket_service.start()
-
-            # Verify configuration was loaded
-            mock_config_parser.assert_called_once_with("/mock/config.yaml")
-            mock_config_parser.return_value.load_config.assert_called_once()
 
             # Verify FIFO was opened
             mock_open.assert_called_once_with(
@@ -176,16 +160,9 @@ class TestAudioWebSocketService:
     @pytest.mark.asyncio
     async def test_start_fifo_not_found(self, audio_websocket_service, mock_config):
         """Should raise exception when FIFO not found."""
-        with (
-            patch(
-                "birdnetpi.services.audio_websocket_service.ConfigFileParser"
-            ) as mock_config_parser,
-            patch(
-                "birdnetpi.services.audio_websocket_service.os.open", side_effect=FileNotFoundError
-            ),
+        with patch(
+            "birdnetpi.services.audio_websocket_service.os.open", side_effect=FileNotFoundError
         ):
-            mock_config_parser.return_value.load_config.return_value = mock_config
-
             with pytest.raises(FileNotFoundError):
                 await audio_websocket_service.start()
 

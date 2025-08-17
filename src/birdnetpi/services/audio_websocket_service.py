@@ -8,14 +8,14 @@ import signal
 from types import FrameType
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from websockets.asyncio.server import ServerConnection
-
 import websockets
 from websockets.asyncio.server import serve
 
-from birdnetpi.utils.config_file_parser import ConfigFileParser
-from birdnetpi.utils.path_resolver import PathResolver
+if TYPE_CHECKING:
+    from websockets.asyncio.server import ServerConnection
+
+    from birdnetpi.utils.path_resolver import PathResolver
+
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class AudioWebSocketService:
     """Service that reads audio from FIFO and streams to WebSocket clients."""
 
-    def __init__(self, config_path: str | None = None, fifo_base_path: str | None = None) -> None:
+    def __init__(self, path_resolver: PathResolver) -> None:
         self._shutdown_flag = False
         self._fifo_livestream_path = None
         self._fifo_livestream_fd = None
@@ -31,10 +31,8 @@ class AudioWebSocketService:
         self._audio_clients = set()
         self._processing_active = False
 
-        # Initialize paths
-        path_resolver = PathResolver()
-        self._config_path = config_path or path_resolver.get_birdnetpi_config_path()
-        fifo_base = fifo_base_path or path_resolver.get_fifo_base_path()
+        # Initialize paths using injected PathResolver
+        fifo_base = path_resolver.get_fifo_base_path()
         self._fifo_livestream_path = os.path.join(fifo_base, "birdnet_audio_livestream.fifo")
 
         logger.info("AudioWebSocketService initialized.")
@@ -175,11 +173,6 @@ class AudioWebSocketService:
         atexit.register(self._cleanup_fifo_and_service)
 
         try:
-            # Load configuration
-            config_parser = ConfigFileParser(self._config_path)
-            _ = config_parser.load_config()
-            logger.info("Configuration loaded successfully.")
-
             # Open FIFO for reading
             if self._fifo_livestream_path is not None:
                 self._fifo_livestream_fd = os.open(
