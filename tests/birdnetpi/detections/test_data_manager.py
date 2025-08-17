@@ -54,12 +54,12 @@ class TestCoreOperations:
         mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
 
         mock_detection = MagicMock(spec=Detection)
-        mock_session.query.return_value.filter.return_value.first.return_value = mock_detection
+        mock_session.execute.return_value.scalar_one_or_none.return_value = mock_detection
 
         result = data_manager.get_detection_by_id(1)
 
         assert result == mock_detection
-        mock_session.query.assert_called_once_with(Detection)
+        mock_session.execute.assert_called_once()
 
     def test_get_all_detections_with_pagination(self, data_manager, mock_services):
         """Should retrieve all detections with pagination."""

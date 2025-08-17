@@ -20,7 +20,7 @@ import openpyxl
 
 if TYPE_CHECKING:
     from openpyxl.worksheet.worksheet import Worksheet
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, delete, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from birdnetpi.database.ioc.ioc_database_models import (
@@ -78,10 +78,10 @@ class IocDatabaseBuilder:
 
         # Clear existing data
         with self.get_db() as session:
-            session.query(IOCTranslation).delete()
-            session.query(IOCSpecies).delete()
-            session.query(IOCLanguage).delete()
-            session.query(IOCMetadata).delete()
+            session.execute(delete(IOCTranslation))
+            session.execute(delete(IOCSpecies))
+            session.execute(delete(IOCLanguage))
+            session.execute(delete(IOCMetadata))
             session.commit()
 
         # Stream XML data directly to database

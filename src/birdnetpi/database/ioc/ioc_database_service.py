@@ -6,7 +6,7 @@ For complex multilingual queries with fallback priorities, use MultilingualDatab
 
 from pathlib import Path
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.orm import sessionmaker
 
 from birdnetpi.database.ioc.ioc_database_models import IOCSpecies
@@ -45,29 +45,26 @@ class IOCDatabaseService:
             IOCSpeciesCore with essential fields or None if not found
         """
         with self.session_local() as session:
-            result = (
-                session.query(
-                    IOCSpecies.scientific_name,
-                    IOCSpecies.english_name,
-                    IOCSpecies.order_name,
-                    IOCSpecies.family,
-                    IOCSpecies.genus,
-                    IOCSpecies.species_epithet,
-                    IOCSpecies.authority,
-                )
-                .filter_by(scientific_name=scientific_name)
-                .first()
-            )
+            stmt = select(
+                IOCSpecies.scientific_name,
+                IOCSpecies.english_name,
+                IOCSpecies.order_name,
+                IOCSpecies.family,
+                IOCSpecies.genus,
+                IOCSpecies.species_epithet,
+                IOCSpecies.authority,
+            ).where(IOCSpecies.scientific_name == scientific_name)
+            result = session.execute(stmt).first()
 
             if result:
                 return IOCSpeciesCore(
-                    scientific_name=result[0],
-                    english_name=result[1],
-                    order_name=result[2],
-                    family=result[3],
-                    genus=result[4],
-                    species_epithet=result[5],
-                    authority=result[6],
+                    scientific_name=result[0],  # type: ignore[arg-type]
+                    english_name=result[1],  # type: ignore[arg-type]
+                    order_name=result[2],  # type: ignore[arg-type]
+                    family=result[3],  # type: ignore[arg-type]
+                    genus=result[4],  # type: ignore[arg-type]
+                    species_epithet=result[5],  # type: ignore[arg-type]
+                    authority=result[6],  # type: ignore[arg-type]
                 )
             return None
 
@@ -81,11 +78,10 @@ class IOCDatabaseService:
             IOC English common name or None if not found
         """
         with self.session_local() as session:
-            result = (
-                session.query(IOCSpecies.english_name)
-                .filter_by(scientific_name=scientific_name)
-                .scalar()
+            stmt = select(IOCSpecies.english_name).where(
+                IOCSpecies.scientific_name == scientific_name
             )
+            result = session.execute(stmt).scalar()
             return result
 
     def species_exists(self, scientific_name: str) -> bool:
@@ -98,8 +94,13 @@ class IOCDatabaseService:
             True if species exists, False otherwise
         """
         with self.session_local() as session:
-            count = session.query(IOCSpecies).filter_by(scientific_name=scientific_name).count()
-            return count > 0
+            stmt = (
+                select(func.count())
+                .select_from(IOCSpecies)
+                .where(IOCSpecies.scientific_name == scientific_name)
+            )
+            count = session.execute(stmt).scalar()
+            return count > 0  # type: ignore[operator]
 
     def get_species_count(self) -> int:
         """Get total number of species in the database.
@@ -108,7 +109,8 @@ class IOCDatabaseService:
             Number of species
         """
         with self.session_local() as session:
-            return session.query(IOCSpecies).count()
+            stmt = select(func.count()).select_from(IOCSpecies)
+            return session.execute(stmt).scalar()  # type: ignore[return-value]
 
     def get_metadata_value(self, key: str) -> str | None:
         """Get a specific metadata value.

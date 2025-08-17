@@ -12,6 +12,7 @@ from collections.abc import Callable
 from datetime import date
 from typing import Any, TypeVar
 
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import func
 
@@ -92,7 +93,8 @@ class DataManager:
         """Get a single detection by its ID."""
         with self.database_service.get_db() as session:
             try:
-                return session.query(Detection).filter(Detection.id == detection_id).first()
+                stmt = select(Detection).where(Detection.id == detection_id)
+                return session.execute(stmt).scalar_one_or_none()
             except SQLAlchemyError as e:
                 session.rollback()
                 print(f"Error retrieving detection by ID: {e}")
@@ -104,12 +106,12 @@ class DataManager:
         """Get all detections with optional pagination."""
         with self.database_service.get_db() as session:
             try:
-                query = session.query(Detection)
+                stmt = select(Detection)
                 if offset:
-                    query = query.offset(offset)
+                    stmt = stmt.offset(offset)
                 if limit:
-                    query = query.limit(limit)
-                return query.all()
+                    stmt = stmt.limit(limit)
+                return list(session.execute(stmt).scalars())
             except SQLAlchemyError as e:
                 session.rollback()
                 print(f"Error retrieving all detections: {e}")
@@ -163,7 +165,8 @@ class DataManager:
         """Update a detection record."""
         with self.database_service.get_db() as session:
             try:
-                detection = session.query(Detection).filter(Detection.id == detection_id).first()
+                stmt = select(Detection).where(Detection.id == detection_id)
+                detection = session.execute(stmt).scalar_one_or_none()
                 if detection:
                     for key, value in updates.items():
                         if hasattr(detection, key):
@@ -180,7 +183,8 @@ class DataManager:
         """Delete a detection record."""
         with self.database_service.get_db() as session:
             try:
-                detection = session.query(Detection).filter(Detection.id == detection_id).first()
+                stmt = select(Detection).where(Detection.id == detection_id)
+                detection = session.execute(stmt).scalar_one_or_none()
                 if detection:
                     session.delete(detection)
                     session.commit()
@@ -224,38 +228,38 @@ class DataManager:
         # Standard query without localization
         with self.database_service.get_db() as session:
             try:
-                query = session.query(Detection)
+                stmt = select(Detection)
 
                 # Apply filters
                 if species:
                     if isinstance(species, list):
-                        query = query.filter(Detection.scientific_name.in_(species))
+                        stmt = stmt.where(Detection.scientific_name.in_(species))
                     else:
-                        query = query.filter(Detection.scientific_name == species)
+                        stmt = stmt.where(Detection.scientific_name == species)
 
                 if start_date:
-                    query = query.filter(Detection.timestamp >= start_date)
+                    stmt = stmt.where(Detection.timestamp >= start_date)
                 if end_date:
-                    query = query.filter(Detection.timestamp <= end_date)
+                    stmt = stmt.where(Detection.timestamp <= end_date)
                 if min_confidence is not None:
-                    query = query.filter(Detection.confidence >= min_confidence)
+                    stmt = stmt.where(Detection.confidence >= min_confidence)
                 if max_confidence is not None:
-                    query = query.filter(Detection.confidence <= max_confidence)
+                    stmt = stmt.where(Detection.confidence <= max_confidence)
 
                 # Apply ordering
                 order_column = getattr(Detection, order_by, Detection.timestamp)
                 if order_desc:
-                    query = query.order_by(order_column.desc())
+                    stmt = stmt.order_by(order_column.desc())
                 else:
-                    query = query.order_by(order_column)
+                    stmt = stmt.order_by(order_column)
 
                 # Apply pagination
                 if offset:
-                    query = query.offset(offset)
+                    stmt = stmt.offset(offset)
                 if limit:
-                    query = query.limit(limit)
+                    stmt = stmt.limit(limit)
 
-                return query.all()
+                return list(session.execute(stmt).scalars())
             except SQLAlchemyError as e:
                 session.rollback()
                 print(f"Error querying detections: {e}")
@@ -312,19 +316,19 @@ class DataManager:
         """Count detections with optional filters."""
         with self.database_service.get_db() as session:
             try:
-                query = session.query(func.count(Detection.id))
+                stmt = select(func.count(Detection.id))
 
                 if filters:
                     if "species" in filters:
-                        query = query.filter(Detection.scientific_name == filters["species"])
+                        stmt = stmt.where(Detection.scientific_name == filters["species"])
                     if "start_date" in filters:
-                        query = query.filter(Detection.timestamp >= filters["start_date"])
+                        stmt = stmt.where(Detection.timestamp >= filters["start_date"])
                     if "end_date" in filters:
-                        query = query.filter(Detection.timestamp <= filters["end_date"])
+                        stmt = stmt.where(Detection.timestamp <= filters["end_date"])
                     if "min_confidence" in filters:
-                        query = query.filter(Detection.confidence >= filters["min_confidence"])
+                        stmt = stmt.where(Detection.confidence >= filters["min_confidence"])
 
-                return query.scalar() or 0
+                return session.execute(stmt).scalar() or 0
             except SQLAlchemyError as e:
                 session.rollback()
                 print(f"Error counting detections: {e}")
@@ -347,20 +351,18 @@ class DataManager:
 
         with self.database_service.get_db() as session:
             try:
-                query = session.query(
-                    Detection.scientific_name, func.count(Detection.id).label("count")
-                )
+                stmt = select(Detection.scientific_name, func.count(Detection.id).label("count"))
 
                 if start_date:
-                    query = query.filter(Detection.timestamp >= start_date)
+                    stmt = stmt.where(Detection.timestamp >= start_date)
                 if end_date:
-                    query = query.filter(Detection.timestamp <= end_date)
+                    stmt = stmt.where(Detection.timestamp <= end_date)
 
-                query = query.group_by(Detection.scientific_name)
-                query = query.order_by(func.count(Detection.id).desc())
+                stmt = stmt.group_by(Detection.scientific_name)
+                stmt = stmt.order_by(func.count(Detection.id).desc())
 
-                results = query.all()
-                return {row[0]: row[1] for row in results}
+                results = session.execute(stmt).all()
+                return {row[0]: row[1] for row in results}  # type: ignore[misc]
             except SQLAlchemyError as e:
                 session.rollback()
                 print(f"Error counting by species: {e}")
@@ -370,19 +372,19 @@ class DataManager:
         """Count detections by date with optional species filter."""
         with self.database_service.get_db() as session:
             try:
-                query = session.query(
+                stmt = select(
                     func.date(Detection.timestamp).label("date"),
                     func.count(Detection.id).label("count"),
                 )
 
                 if species:
-                    query = query.filter(Detection.scientific_name == species)
+                    stmt = stmt.where(Detection.scientific_name == species)
 
-                query = query.group_by(func.date(Detection.timestamp))
-                query = query.order_by(func.date(Detection.timestamp))
+                stmt = stmt.group_by(func.date(Detection.timestamp))
+                stmt = stmt.order_by(func.date(Detection.timestamp))
 
-                results = query.all()
-                return {row[0]: row[1] for row in results}
+                results = session.execute(stmt).all()
+                return {row[0]: row[1] for row in results}  # type: ignore[misc]
             except SQLAlchemyError as e:
                 session.rollback()
                 print(f"Error counting by date: {e}")
