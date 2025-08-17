@@ -60,7 +60,7 @@ if __name__ == "__main__":
     from birdnetpi.config import ConfigManager
     from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
     from birdnetpi.services.database_service import DatabaseService
-    from birdnetpi.services.species_display_service import SpeciesDisplayService
+    from birdnetpi.species.species_display_service import SpeciesDisplayService
     from birdnetpi.system.path_resolver import PathResolver
 
     path_resolver = PathResolver()

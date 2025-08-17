@@ -2,7 +2,7 @@
 
 import pytest
 
-from birdnetpi.utils.species_parser import (
+from birdnetpi.species.species_parser import (
     SpeciesComponents,
     SpeciesDisplayOptions,
     SpeciesParser,

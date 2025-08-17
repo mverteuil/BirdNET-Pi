@@ -89,7 +89,7 @@ def reporting_manager(
     mock_location_service,  # Added mock_location_service
 ):
     """Provide a ReportingManager instance with mocked dependencies."""
-    from birdnetpi.services.species_display_service import SpeciesDisplayService
+    from birdnetpi.species.species_display_service import SpeciesDisplayService
 
     mock_species_display_service = Mock(spec=SpeciesDisplayService)
 

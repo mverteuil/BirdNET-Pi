@@ -19,7 +19,7 @@ from birdnetpi.notifications.notification_manager import NotificationManager
 from birdnetpi.notifications.webhook_service import WebhookService
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.ioc_database_service import IOCDatabaseService
-from birdnetpi.services.species_display_service import SpeciesDisplayService
+from birdnetpi.species.species_display_service import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.hardware_monitor_manager import HardwareMonitorManager
 from birdnetpi.system.path_resolver import PathResolver

@@ -10,7 +10,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from birdnetpi.models.ioc_database_models import IOCSpecies
-from birdnetpi.models.ioc_species_core import IOCSpeciesCore
+from birdnetpi.species.ioc_species_core import IOCSpeciesCore
 
 
 class IOCDatabaseService:

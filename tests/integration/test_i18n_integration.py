@@ -220,7 +220,7 @@ class TestSpeciesTranslation:
 
     def test_species_display_modes(self, config_with_language):
         """Test different species display modes."""
-        from birdnetpi.services.species_display_service import SpeciesDisplayService
+        from birdnetpi.species.species_display_service import SpeciesDisplayService
 
         # Test different display modes
         modes = ["full", "common_name", "scientific_name"]

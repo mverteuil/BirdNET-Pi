@@ -265,7 +265,7 @@ class TestAudioAnalysisManager:
         mock_async_client.return_value.__aenter__.return_value.post = mock_post
 
         # Use test data for species information - import SpeciesParser here
-        from birdnetpi.utils.species_parser import SpeciesParser
+        from birdnetpi.species.species_parser import SpeciesParser
 
         species_tensor, confidence = test_species_data["confident"][
             0
@@ -301,7 +301,7 @@ class TestAudioAnalysisManager:
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
         # Parse species tensor to get proper components
-        from birdnetpi.utils.species_parser import SpeciesParser
+        from birdnetpi.species.species_parser import SpeciesParser
 
         species_components = SpeciesParser.parse_tensor_species(species)
         await audio_analysis_service._send_detection_event(
@@ -329,7 +329,7 @@ class TestAudioAnalysisManager:
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
         # Parse species tensor to get proper components
-        from birdnetpi.utils.species_parser import SpeciesParser
+        from birdnetpi.species.species_parser import SpeciesParser
 
         species_components = SpeciesParser.parse_tensor_species(species)
         await audio_analysis_service._send_detection_event(
@@ -357,7 +357,7 @@ class TestAudioAnalysisManager:
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
         # Parse species tensor to get proper components
-        from birdnetpi.utils.species_parser import SpeciesParser
+        from birdnetpi.species.species_parser import SpeciesParser
 
         species_components = SpeciesParser.parse_tensor_species(species)
         await audio_analysis_service._send_detection_event(
@@ -384,7 +384,7 @@ class TestAudioAnalysisManager:
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
         # Parse species tensor to get proper components
-        from birdnetpi.utils.species_parser import SpeciesParser
+        from birdnetpi.species.species_parser import SpeciesParser
 
         species_components = SpeciesParser.parse_tensor_species(species)
         await audio_analysis_service._send_detection_event(
@@ -520,7 +520,7 @@ class TestDetectionBuffering:
             raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
             # Create mock SpeciesComponents for test species
-            from birdnetpi.utils.species_parser import SpeciesComponents
+            from birdnetpi.species.species_parser import SpeciesComponents
 
             species_components = SpeciesComponents(
                 "Test species", "Test Species", "Test Species (Test species)"
@@ -558,7 +558,7 @@ class TestDetectionBuffering:
             raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
             # Create mock SpeciesComponents for test species
-            from birdnetpi.utils.species_parser import SpeciesComponents
+            from birdnetpi.species.species_parser import SpeciesComponents
 
             species_components = SpeciesComponents(
                 "Test species", "Test Species", "Test Species (Test species)"
@@ -591,7 +591,7 @@ class TestDetectionBuffering:
             raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
             # Create mock SpeciesComponents for test species
-            from birdnetpi.utils.species_parser import SpeciesComponents
+            from birdnetpi.species.species_parser import SpeciesComponents
 
             species_components = SpeciesComponents(
                 "Test species", "Test Species", "Test Species (Test species)"

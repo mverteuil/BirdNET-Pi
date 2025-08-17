@@ -11,7 +11,7 @@ from birdnetpi.analytics.plotting_manager import PlottingManager
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.location.location_service import LocationService
-from birdnetpi.services.species_display_service import SpeciesDisplayService
+from birdnetpi.species.species_display_service import SpeciesDisplayService
 from birdnetpi.system.path_resolver import PathResolver
 
 
