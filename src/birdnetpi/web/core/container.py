@@ -21,7 +21,6 @@ from birdnetpi.notifications.notification_manager import NotificationManager
 from birdnetpi.notifications.webhook_service import WebhookService
 from birdnetpi.species.species_display_service import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager
-from birdnetpi.system.hardware_monitor_manager import HardwareMonitorManager
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.system_control_service import SystemControlService
 from birdnetpi.utils.cache import Cache
@@ -172,14 +171,8 @@ class Container(containers.DeclarativeContainer):
         update_interval=config.provided.gps_update_interval,
     )
 
-    # Hardware monitoring manager - singleton
-    hardware_monitor_manager = providers.Singleton(
-        HardwareMonitorManager,
-        check_interval=config.provided.hardware_check_interval,
-        audio_device_check=config.provided.enable_audio_device_check,
-        system_resource_check=config.provided.enable_system_resource_check,
-        gps_check=config.provided.enable_gps_check,
-    )
+    # Note: Hardware monitoring has been replaced with SystemInspector static methods
+    # SystemInspector does not require dependency injection as it uses static methods
 
     # IoT services - singletons
     mqtt_service = providers.Singleton(

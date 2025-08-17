@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from birdnetpi.system.hardware_monitor_manager import HardwareMonitorManager
+# Note: HardwareMonitorManager has been replaced with SystemInspector static methods
 
 
 @pytest.fixture
@@ -31,13 +31,15 @@ def integration_app(app_with_temp_data, tmp_path):
         # We only need to mock hardware-specific things that can't run in tests
 
         # Mock only hardware-specific services
-        mock_hardware_monitor = MagicMock(spec=HardwareMonitorManager)
+        # Note: SystemInspector uses static methods, no need to mock at container level
+        # The routes will call SystemInspector.get_health_summary() directly
+        mock_hardware_monitor = MagicMock()
         mock_hardware_monitor.get_all_status.return_value = {
             "audio": {"status": "healthy"},
             "gps": {"status": "not_configured"},
         }
         mock_hardware_monitor.get_component_status.return_value = {"status": "healthy"}
-        app.container.hardware_monitor_manager.override(mock_hardware_monitor)  # type: ignore[attr-defined]
+        # hardware_monitor_manager no longer exists in container - SystemInspector is used directly
 
     return app
 
@@ -56,20 +58,23 @@ class TestSystemRoutesIntegration:
 
         This test would have caught the type mismatch and missing method issues.
         """
-        # Mock only the system monitor (hardware-specific)
-        mock_system_monitor = mocker.patch(
-            "birdnetpi.web.routers.system_api_routes.SystemMonitorService"
+        # Mock SystemInspector static methods (hardware-specific)
+        mocker.patch(
+            "birdnetpi.web.routers.system_api_routes.SystemInspector.get_disk_usage",
+            return_value={
+                "total": 100000000,
+                "used": 50000000,
+                "free": 50000000,
+                "percent": 50.0,
+            },
         )
-        mock_system_monitor.return_value.get_disk_usage.return_value = {
-            "total": 100000000,
-            "used": 50000000,
-            "free": 50000000,
-            "percent": 50.0,
-        }
-        mock_system_monitor.return_value.get_extra_info.return_value = {
-            "uptime": "1 day",
-            "load_average": [0.5, 0.6, 0.7],
-        }
+        mocker.patch(
+            "birdnetpi.web.routers.system_api_routes.SystemInspector.get_system_info",
+            return_value={
+                "uptime": "1 day",
+                "load_average": [0.5, 0.6, 0.7],
+            },
+        )
 
         # Make the actual request
         response = integration_client.get("/api/system/overview")
@@ -80,12 +85,12 @@ class TestSystemRoutesIntegration:
 
         # Verify all expected fields are present
         assert "disk_usage" in data
-        assert "extra_info" in data
+        assert "system_info" in data
         assert "total_detections" in data
 
         # Verify data types
         assert isinstance(data["disk_usage"], dict)
-        assert isinstance(data["extra_info"], dict)
+        assert isinstance(data["system_info"], dict)
         assert isinstance(data["total_detections"], int)
 
         # Verify the count_detections method works
@@ -97,28 +102,28 @@ class TestSystemRoutesIntegration:
 
         assert response.status_code == 200
         data = response.json()
-        assert "audio" in data
-        assert data["audio"]["status"] == "healthy"
+        assert "components" in data
+        assert "overall_status" in data
 
     def test_hardware_component_endpoint_integration(self, integration_client):
         """Test hardware component endpoint with real DI."""
-        response = integration_client.get("/api/system/hardware/component/audio")
+        response = integration_client.get("/api/system/hardware/component/cpu")
 
         assert response.status_code == 200
         data = response.json()
-        assert data["component"] == "audio"
-        assert data["status"]["status"] == "healthy"
+        assert data["component"] == "cpu"
+        assert "status" in data["status"]
 
     def test_hardware_component_not_found_integration(self, integration_client):
         """Test hardware component not found with real DI."""
-        # Configure the mock to return None for unknown component
-        hardware_monitor = integration_client.app.container.hardware_monitor_manager()  # type: ignore[attr-defined]
-        hardware_monitor.get_component_status.return_value = None
-
+        # No mocking needed - SystemInspector returns unknown status for unknown components
         response = integration_client.get("/api/system/hardware/component/unknown")
 
-        assert response.status_code == 404
-        assert "not found" in response.json()["detail"]
+        assert response.status_code == 200
+        data = response.json()
+        assert data["component"] == "unknown"
+        assert data["status"]["status"] == "unknown"
+        assert "not monitored" in data["status"]["message"]
 
 
 class TestReportingRoutesIntegration:

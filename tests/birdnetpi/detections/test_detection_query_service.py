@@ -94,7 +94,12 @@ def query_service(bnp_database_service, multilingual_service):
 @pytest.fixture
 def populated_ioc_db(ioc_database_service):
     """Populate IOC database with test data."""
-    with ioc_database_service.get_db() as session:
+    # Create tables first
+    from birdnetpi.database.ioc.ioc_database_models import IOCBase
+
+    IOCBase.metadata.create_all(ioc_database_service.engine)
+
+    with ioc_database_service.session_local() as session:
         # Add test species
         test_species = [
             IOCSpecies(

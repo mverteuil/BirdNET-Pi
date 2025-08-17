@@ -8,7 +8,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from birdnetpi.database.database_service import DatabaseService
-from birdnetpi.system.hardware_monitor_manager import HardwareMonitorManager
+
+# Note: HardwareMonitorManager has been replaced with SystemInspector static methods
 
 
 @pytest.fixture
@@ -32,14 +33,15 @@ def app_with_overview_services(app_with_temp_data):
 
     # Override services with mocks or test instances
     if hasattr(app, "container"):
-        # Mock hardware monitor service
-        mock_hardware_monitor = MagicMock(spec=HardwareMonitorManager)
+        # Note: SystemInspector uses static methods, no mocking needed at container level
+        # The route will call SystemInspector.get_health_summary() directly
+        mock_hardware_monitor = MagicMock()
         mock_hardware_monitor.get_all_status.return_value = {
             "disk_usage": {"usage": 50.0, "used_gb": 50.0, "total_gb": 100.0, "free_gb": 50.0},
             "cpu_temperature": "45.2°C",
             "memory_usage": {"percent": 40.0},
         }
-        app.container.hardware_monitor_manager.override(mock_hardware_monitor)  # type: ignore[attr-defined]
+        # hardware_monitor_manager no longer exists in container - SystemInspector is used directly
 
         # Mock data_manager to return detection count
         from birdnetpi.detections.data_manager import DataManager
@@ -84,8 +86,9 @@ class TestOverviewRouterIntegration:
         # Verify system status has expected structure
         system_status = data["system_status"]
         assert isinstance(system_status, dict)
-        # HardwareMonitorManager should return system status information
-        assert "disk_usage" in system_status
+        # SystemInspector should return health summary with components
+        assert "components" in system_status
+        assert "disk" in system_status["components"]
 
     def test_overview_endpoint_system_status_structure(self, client):
         """Should return system status information."""

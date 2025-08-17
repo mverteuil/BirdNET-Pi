@@ -16,13 +16,13 @@ from birdnetpi.species.ioc_species_core import IOCSpeciesCore
 class IOCDatabaseService:
     """Lightweight service for IOC database queries."""
 
-    def __init__(self, db_path: Path | str):
+    def __init__(self, db_path: Path):
         """Initialize IOC database service.
 
         Args:
             db_path: Path to IOC SQLite database
         """
-        self.db_path = Path(db_path)
+        self.db_path = db_path
         if not self.db_path.exists():
             raise FileNotFoundError(f"IOC database not found: {self.db_path}")
 

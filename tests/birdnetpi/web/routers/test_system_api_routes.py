@@ -6,7 +6,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from birdnetpi.detections.data_manager import DataManager
-from birdnetpi.system.hardware_monitor_manager import HardwareMonitorManager
+
+# Note: HardwareMonitorManager has been replaced with SystemInspector static methods
 
 
 @pytest.fixture
@@ -15,9 +16,8 @@ def app_with_system_router(app_with_temp_data):
     app = app_with_temp_data
 
     if hasattr(app, "container"):
-        # Mock hardware monitor service
-        mock_hardware_monitor = MagicMock(spec=HardwareMonitorManager)
-        app.container.hardware_monitor_manager.override(mock_hardware_monitor)  # type: ignore[attr-defined]
+        # Note: SystemInspector uses static methods, no mocking needed at container level
+        # Previously mocked hardware_monitor_manager is no longer needed
 
         # Mock data manager for system overview endpoint
         mock_data_manager = MagicMock(spec=DataManager)
@@ -36,21 +36,31 @@ def client(app_with_system_router):
 class TestHardwareEndpoints:
     """Test hardware monitoring API endpoints."""
 
-    def test_get_hardware_status(self, client):
+    def test_get_hardware_status(self, client, mocker):
         """Should return system hardware status."""
-        mock_status = {"cpu": "healthy", "memory": "normal", "temperature": 45.2}
-        client.app.container.hardware_monitor_manager().get_all_status.return_value = mock_status  # type: ignore[attr-defined]
+        mock_status = {
+            "components": {"cpu": {"status": "healthy"}},
+            "overall_status": "healthy",
+        }
+        mocker.patch(
+            "birdnetpi.web.routers.system_api_routes.SystemInspector.get_health_summary",
+            return_value=mock_status,
+        )
 
         response = client.get("/api/system/hardware/status")
 
         assert response.status_code == 200
         assert response.json() == mock_status
 
-    def test_get_hardware_component(self, client):
+    def test_get_hardware_component(self, client, mocker):
         """Should return specific component status."""
-        mock_status = {"status": "healthy", "value": 45.2}
-        client.app.container.hardware_monitor_manager().get_component_status.return_value = (  # type: ignore[attr-defined]
-            mock_status
+        mock_summary = {
+            "components": {"cpu": {"status": "healthy", "message": "CPU usage normal: 25%"}},
+            "overall_status": "healthy",
+        }
+        mocker.patch(
+            "birdnetpi.web.routers.system_api_routes.SystemInspector.get_health_summary",
+            return_value=mock_summary,
         )
 
         response = client.get("/api/system/hardware/component/cpu")
@@ -58,33 +68,46 @@ class TestHardwareEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data["component"] == "cpu"
-        assert data["status"] == mock_status
+        assert data["status"] == {"status": "healthy", "message": "CPU usage normal: 25%"}
 
-    def test_get_hardware_component_not_found(self, client):
-        """Should return 404 for unknown component."""
-        client.app.container.hardware_monitor_manager().get_component_status.return_value = None  # type: ignore[attr-defined]
+    def test_get_hardware_component_not_found(self, client, mocker):
+        """Should return status for unknown component."""
+        mock_summary = {
+            "components": {"cpu": {"status": "healthy"}},
+            "overall_status": "healthy",
+        }
+        mocker.patch(
+            "birdnetpi.web.routers.system_api_routes.SystemInspector.get_health_summary",
+            return_value=mock_summary,
+        )
 
         response = client.get("/api/system/hardware/component/unknown")
 
-        assert response.status_code == 404
-        assert "Component 'unknown' not found" in response.json()["detail"]
+        assert response.status_code == 200
+        data = response.json()
+        assert data["component"] == "unknown"
+        assert data["status"]["status"] == "unknown"
+        assert "not monitored" in data["status"]["message"]
 
     def test_get_system_overview(self, client, mocker):
         """Should return system overview data including disk usage and total detections."""
-        # Mock SystemMonitorService (it's created directly in the route)
-        mock_system_monitor = mocker.patch(
-            "birdnetpi.web.routers.system_api_routes.SystemMonitorService"
+        # Mock SystemInspector static methods
+        mocker.patch(
+            "birdnetpi.web.routers.system_api_routes.SystemInspector.get_disk_usage",
+            return_value={
+                "total": 100000000,
+                "used": 50000000,
+                "free": 50000000,
+                "percent": 50.0,
+            },
         )
-        mock_system_monitor.return_value.get_disk_usage.return_value = {
-            "total": 100000000,
-            "used": 50000000,
-            "free": 50000000,
-            "percent": 50.0,
-        }
-        mock_system_monitor.return_value.get_extra_info.return_value = {
-            "uptime": "2 days",
-            "load_average": [0.5, 0.6, 0.7],
-        }
+        mocker.patch(
+            "birdnetpi.web.routers.system_api_routes.SystemInspector.get_system_info",
+            return_value={
+                "uptime": "2 days",
+                "load_average": [0.5, 0.6, 0.7],
+            },
+        )
 
         # Configure mock data manager
         client.app.container.data_manager().count_detections.return_value = 1234  # type: ignore[attr-defined]
@@ -95,8 +118,8 @@ class TestHardwareEndpoints:
         data = response.json()
         assert "disk_usage" in data
         assert data["disk_usage"]["percent"] == 50.0
-        assert "extra_info" in data
-        assert data["extra_info"]["uptime"] == "2 days"
+        assert "system_info" in data
+        assert data["system_info"]["uptime"] == "2 days"
         assert "total_detections" in data
         assert data["total_detections"] == 1234
 
