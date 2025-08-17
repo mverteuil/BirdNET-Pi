@@ -8,7 +8,7 @@ import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
-from birdnetpi.managers.translation_manager import TranslationManager
+from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.web.middleware.i18n import LanguageMiddleware
 
 
@@ -191,7 +191,7 @@ class TestJinja2Integration:
         """Test Jinja2 i18n setup."""
         from jinja2 import Environment
 
-        from birdnetpi.managers.translation_manager import setup_jinja2_i18n
+        from birdnetpi.i18n.translation_manager import setup_jinja2_i18n
 
         # Create a mock Jinja2Templates object
         class MockTemplates:
@@ -210,7 +210,7 @@ class TestJinja2Integration:
         """Test that template translation functions work."""
         from jinja2 import Environment
 
-        from birdnetpi.managers.translation_manager import setup_jinja2_i18n
+        from birdnetpi.i18n.translation_manager import setup_jinja2_i18n
 
         class MockTemplates:
             def __init__(self):

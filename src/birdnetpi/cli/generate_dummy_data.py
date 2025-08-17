@@ -2,9 +2,9 @@ import os
 import time
 
 from birdnetpi.config import ConfigManager
+from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.services.species_display_service import SpeciesDisplayService
 from birdnetpi.services.system_control_service import SystemControlService
 from birdnetpi.utils.dummy_data_generator import generate_dummy_detections

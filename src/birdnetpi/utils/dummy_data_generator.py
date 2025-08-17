@@ -58,8 +58,8 @@ def generate_dummy_detections(data_manager: DataManager, num_detections: int = 1
 
 if __name__ == "__main__":
     from birdnetpi.config import ConfigManager
+    from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
     from birdnetpi.services.database_service import DatabaseService
-    from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
     from birdnetpi.services.species_display_service import SpeciesDisplayService
     from birdnetpi.utils.path_resolver import PathResolver
 

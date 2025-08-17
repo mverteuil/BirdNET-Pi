@@ -6,7 +6,7 @@ from unittest.mock import Mock
 import pytest
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.managers.translation_manager import TranslationManager
+from birdnetpi.i18n.translation_manager import TranslationManager
 
 
 @pytest.fixture
@@ -261,7 +261,7 @@ class TestSpeciesTranslation:
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
 
-        from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
+        from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 
         # The path_resolver fixture already points to data/database/ for the databases
         # Check if databases exist - skip test if not available
@@ -360,7 +360,7 @@ class TestEndToEndTranslation:
         """Test that templates can render with translations."""
         from jinja2 import DictLoader, Environment
 
-        from birdnetpi.managers.translation_manager import setup_jinja2_i18n
+        from birdnetpi.i18n.translation_manager import setup_jinja2_i18n
 
         # Create a simple template
         templates = {

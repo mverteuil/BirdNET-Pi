@@ -3,7 +3,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
-from birdnetpi.managers.translation_manager import setup_jinja2_i18n
+from birdnetpi.i18n.translation_manager import setup_jinja2_i18n
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.lifespan import lifespan
 from birdnetpi.web.middleware.i18n import LanguageMiddleware

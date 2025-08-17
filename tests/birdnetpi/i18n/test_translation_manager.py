@@ -7,7 +7,7 @@ import pytest
 from fastapi import Request
 from starlette.templating import Jinja2Templates
 
-from birdnetpi.managers.translation_manager import (
+from birdnetpi.i18n.translation_manager import (
     TranslationManager,
     get_translation,
     setup_jinja2_i18n,
@@ -63,7 +63,7 @@ class TestTranslationManager:
         assert manager.translations == {}
         assert manager.default_language == "en"
 
-    @patch("birdnetpi.managers.translation_manager.translation")
+    @patch("birdnetpi.i18n.translation_manager.translation")
     def test_get_translation(self, mock_translation_func, translation_manager):
         """Should get translation for specified language."""
         mock_trans = MagicMock(spec=gettext.GNUTranslations)
@@ -81,7 +81,7 @@ class TestTranslationManager:
         assert call_args[1]["fallback"] is True
         assert "locales" in str(call_args[1]["localedir"])  # Path should contain "locales"
 
-    @patch("birdnetpi.managers.translation_manager.translation")
+    @patch("birdnetpi.i18n.translation_manager.translation")
     def test_get_translation_cached(self, mock_translation_func, translation_manager):
         """Should return cached translation on subsequent calls."""
         mock_trans = MagicMock(spec=gettext.GNUTranslations)
@@ -92,7 +92,7 @@ class TestTranslationManager:
         assert result == mock_trans
         mock_translation_func.assert_not_called()
 
-    @patch("birdnetpi.managers.translation_manager.translation")
+    @patch("birdnetpi.i18n.translation_manager.translation")
     def test_get_translation_file_not_found_fallback(
         self, mock_translation_func, translation_manager
     ):
@@ -206,7 +206,7 @@ class TestJinja2Integration:
         mock_templates.env = mock_env
         mock_env.globals = {}
 
-        with patch("birdnetpi.managers.translation_manager.ngettext") as mock_ngettext:
+        with patch("birdnetpi.i18n.translation_manager.ngettext") as mock_ngettext:
             setup_jinja2_i18n(mock_templates)
 
             # Check that template globals were set
@@ -222,7 +222,7 @@ class TestJinja2Integration:
         mock_templates.env = mock_env
         mock_env.globals = {}
 
-        with patch("birdnetpi.managers.translation_manager._") as mock_gettext:
+        with patch("birdnetpi.i18n.translation_manager._") as mock_gettext:
             mock_gettext.return_value = "translated message"
 
             setup_jinja2_i18n(mock_templates)
@@ -251,7 +251,7 @@ class TestJinja2Integration:
 class TestTranslationIntegration:
     """Integration tests for translation functionality."""
 
-    @patch("birdnetpi.managers.translation_manager.translation")
+    @patch("birdnetpi.i18n.translation_manager.translation")
     def test_end_to_end_translation_flow(self, mock_translation_func, mock_path_resolver):
         """Should handle complete translation flow from request to installation."""
         # Setup
@@ -303,7 +303,7 @@ class TestTranslationIntegration:
                 translation_manager.install_for_request(mock_request)
                 mock_get.assert_called_with(expected_lang)
 
-    @patch("birdnetpi.managers.translation_manager.translation")
+    @patch("birdnetpi.i18n.translation_manager.translation")
     def test_fallback_chain(self, mock_translation_func, translation_manager):
         """Should handle fallback from missing language to default."""
         # First call fails, second succeeds with default

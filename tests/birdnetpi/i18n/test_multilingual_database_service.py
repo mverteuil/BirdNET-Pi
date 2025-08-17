@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
-from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
+from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 
 
 @pytest.fixture
