@@ -15,8 +15,8 @@ import numpy as np
 import pytest
 
 import birdnetpi.cli.generate_dummy_data as gdd
+from birdnetpi.audio.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.managers.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.managers.file_manager import FileManager
 
 
@@ -61,7 +61,7 @@ def mock_path_resolver(tmp_path, path_resolver):
 
 
 @pytest.fixture
-@patch("birdnetpi.managers.audio_analysis_manager.BirdDetectionService")
+@patch("birdnetpi.audio.audio_analysis_manager.BirdDetectionService")
 def audio_analysis_service_integration(
     mock_analysis_client_class, mock_file_manager, mock_path_resolver, mock_config
 ):
@@ -88,7 +88,7 @@ def audio_analysis_service_integration(
 @pytest.fixture(autouse=True)
 def caplog_integration(caplog):
     """Fixture to capture logs for integration tests."""
-    caplog.set_level(logging.INFO, logger="birdnetpi.managers.audio_analysis_manager")
+    caplog.set_level(logging.INFO, logger="birdnetpi.audio.audio_analysis_manager")
     caplog.set_level(logging.INFO, logger="birdnetpi.cli.generate_dummy_data")
     yield
 
@@ -218,7 +218,7 @@ class TestDetectionBufferingEndToEnd:
             assert buffer_size > 0, "Some detections should be buffered during admin operation"
         assert "Buffered detection event for Turdus migratorius" in caplog.text
 
-    @patch("birdnetpi.managers.audio_analysis_manager.BirdDetectionService")
+    @patch("birdnetpi.audio.audio_analysis_manager.BirdDetectionService")
     async def test_buffer_overflow_handling_during_extended_outage(
         self, mock_analysis_client_class, audio_analysis_service_integration, caplog
     ):

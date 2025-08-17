@@ -3,6 +3,8 @@
 from dependency_injector import containers, providers
 from fastapi.templating import Jinja2Templates
 
+from birdnetpi.audio.audio_websocket_service import AudioWebSocketService
+from birdnetpi.audio.spectrogram_service import SpectrogramService
 from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.file_manager import FileManager
@@ -11,7 +13,6 @@ from birdnetpi.managers.notification_manager import NotificationManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.managers.translation_manager import TranslationManager
-from birdnetpi.services.audio_websocket_service import AudioWebSocketService
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.detection_query_service import DetectionQueryService
 from birdnetpi.services.gps_service import GPSService
@@ -20,7 +21,6 @@ from birdnetpi.services.location_service import LocationService
 from birdnetpi.services.mqtt_service import MQTTService
 from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.services.species_display_service import SpeciesDisplayService
-from birdnetpi.services.spectrogram_service import SpectrogramService
 from birdnetpi.services.system_control_service import SystemControlService
 from birdnetpi.services.webhook_service import WebhookService
 from birdnetpi.utils.cache import Cache

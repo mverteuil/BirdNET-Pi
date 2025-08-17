@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import numpy as np
 import pytest
 
-from birdnetpi.services.spectrogram_service import SpectrogramService
+from birdnetpi.audio.spectrogram_service import SpectrogramService
 
 
 @pytest.fixture

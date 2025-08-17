@@ -2,8 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
+from birdnetpi.audio.audio_device_service import AudioDeviceService
 from birdnetpi.models.audio_device import AudioDevice
-from birdnetpi.services.audio_device_service import AudioDeviceService
 
 
 class TestAudioDeviceService:

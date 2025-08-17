@@ -6,8 +6,8 @@ import signal
 import time
 from types import FrameType
 
+from birdnetpi.audio.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.config import ConfigManager
-from birdnetpi.managers.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.utils.path_resolver import PathResolver

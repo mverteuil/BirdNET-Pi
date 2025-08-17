@@ -4,8 +4,8 @@ import os
 import signal
 import time
 
+from birdnetpi.audio.audio_capture_service import AudioCaptureService
 from birdnetpi.config import ConfigManager
-from birdnetpi.services.audio_capture_service import AudioCaptureService
 from birdnetpi.utils.path_resolver import PathResolver
 
 # Configure logging for this script

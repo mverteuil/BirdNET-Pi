@@ -4,8 +4,8 @@ import os
 import numpy as np
 import sounddevice as sd
 
+from birdnetpi.audio.filters import FilterChain
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.utils.filters import FilterChain
 
 logger = logging.getLogger(__name__)
 

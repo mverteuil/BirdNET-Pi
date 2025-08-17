@@ -23,8 +23,8 @@ if TYPE_CHECKING:
 import websockets
 from websockets.asyncio.server import serve
 
+from birdnetpi.audio.spectrogram_service import SpectrogramService
 from birdnetpi.config import ConfigManager
-from birdnetpi.services.spectrogram_service import SpectrogramService
 from birdnetpi.utils.path_resolver import PathResolver
 
 # Configure logging for this script

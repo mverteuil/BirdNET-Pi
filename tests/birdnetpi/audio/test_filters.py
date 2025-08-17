@@ -5,7 +5,7 @@ import logging
 import numpy as np
 import pytest
 
-from birdnetpi.utils.filters import (
+from birdnetpi.audio.filters import (
     AudioFilter,
     FilterChain,
     HighPassFilter,
@@ -155,7 +155,7 @@ class TestAudioFilter:
 
     def test_abstract_filter_process_method(self):
         """Test that abstract AudioFilter process method is callable."""
-        from birdnetpi.utils.filters import AudioFilter
+        from birdnetpi.audio.filters import AudioFilter
 
         # Create a minimal concrete implementation that implements process
         class MinimalFilter(AudioFilter):

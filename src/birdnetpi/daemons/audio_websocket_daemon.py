@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from birdnetpi.services.audio_websocket_service import AudioWebSocketService
+from birdnetpi.audio.audio_websocket_service import AudioWebSocketService
 from birdnetpi.utils.path_resolver import PathResolver
 
 # Configure logging for this script
