@@ -4,12 +4,12 @@ from unittest.mock import MagicMock, Mock, patch
 import pandas as pd
 import pytest
 
+from birdnetpi.analytics.data_preparation_manager import DataPreparationManager
+from birdnetpi.analytics.plotting_manager import PlottingManager
+from birdnetpi.analytics.reporting_manager import ReportingManager
 from birdnetpi.config import BirdNETConfig  # Added import
 from birdnetpi.detections.database_models import Detection
 from birdnetpi.location.location_service import LocationService  # Added import
-from birdnetpi.managers.data_preparation_manager import DataPreparationManager
-from birdnetpi.managers.plotting_manager import PlottingManager
-from birdnetpi.managers.reporting_manager import ReportingManager
 
 
 @pytest.fixture
@@ -147,7 +147,7 @@ def test_get_weekly_report_data(reporting_manager, data_manager):
     """Should return a dictionary of weekly report data."""
     today = datetime.date(2025, 7, 12)  # Saturday
     with patch(
-        "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+        "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
     ) as mock_date:
         mock_date.today.return_value = today
 
@@ -406,7 +406,7 @@ def test_get_todays_detections(reporting_manager, data_manager_no_ioc):
     today = datetime.date(2025, 7, 15)
 
     with patch(
-        "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+        "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
     ) as mock_date:
         mock_date.today.return_value = today
 
@@ -491,7 +491,7 @@ def test_get_weekly_report_data__no_detections(reporting_manager, data_manager):
     """Should handle scenario with no detections at all."""
     today = datetime.date(2025, 7, 12)  # Saturday
     with patch(
-        "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+        "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
     ) as mock_date:
         mock_date.today.return_value = today
 
@@ -530,7 +530,7 @@ def test_get_weekly_report_data__with_data_latest_date_calculation(reporting_man
     data_manager.get_new_species_data.return_value = []
 
     with patch(
-        "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+        "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
     ) as mock_date:
         mock_date.today.return_value = today
 
@@ -559,7 +559,7 @@ def test_get_weekly_report_data__latest_date_is_sunday(reporting_manager, data_m
     data_manager.get_new_species_data.return_value = []
 
     with patch(
-        "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+        "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
     ) as mock_date:
         mock_date.today.return_value = today
 
@@ -599,7 +599,7 @@ def test_get_weekly_report_data__invalid_timestamps(reporting_manager, data_mana
     data_manager.get_new_species_data.return_value = []
 
     with patch(
-        "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+        "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
     ) as mock_date:
         mock_date.today.return_value = today
 
@@ -769,7 +769,7 @@ def test_get_weekly_report_data__week_boundary_edge_cases(reporting_manager, dat
         data_manager.get_new_species_data.return_value = []
 
         with patch(
-            "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+            "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
         ) as mock_date:
             mock_date.today.return_value = datetime.date(2025, 7, 15)
 
@@ -783,7 +783,7 @@ def test_get_weekly_report_data__large_numbers(reporting_manager, data_manager):
     """Should handle large detection counts without overflow."""
     today = datetime.date(2025, 7, 12)
     with patch(
-        "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+        "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
     ) as mock_date:
         mock_date.today.return_value = today
 
@@ -807,7 +807,7 @@ def test_get_weekly_report_data__comprehensive_integration(reporting_manager, da
     """Should integrate all components for a comprehensive weekly report."""
     today = datetime.date(2025, 7, 12)  # Saturday
     with patch(
-        "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+        "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
     ) as mock_date:
         mock_date.today.return_value = today
 

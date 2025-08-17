@@ -7,10 +7,10 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
+from birdnetpi.analytics.data_preparation_manager import DataPreparationManager
+from birdnetpi.analytics.plotting_manager import PlottingManager
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.location.location_service import LocationService
-from birdnetpi.managers.data_preparation_manager import DataPreparationManager
-from birdnetpi.managers.plotting_manager import PlottingManager
 
 
 @pytest.fixture
@@ -224,13 +224,13 @@ def test_create__empty_plot(plotting_manager):
 def test_generate_spectrogram(plotting_manager, mocker):
     """Should generate a spectrogram and return it as BytesIO (covers lines 47-63)."""
     # Mock librosa functions
-    mock_load = mocker.patch("birdnetpi.managers.plotting_manager.librosa.load")
-    mock_stft = mocker.patch("birdnetpi.managers.plotting_manager.librosa.stft")
+    mock_load = mocker.patch("birdnetpi.analytics.plotting_manager.librosa.load")
+    mock_stft = mocker.patch("birdnetpi.analytics.plotting_manager.librosa.stft")
     mock_amplitude_to_db = mocker.patch(
-        "birdnetpi.managers.plotting_manager.librosa.amplitude_to_db"
+        "birdnetpi.analytics.plotting_manager.librosa.amplitude_to_db"
     )
-    mock_specshow = mocker.patch("birdnetpi.managers.plotting_manager.librosa.display.specshow")
-    mock_plt = mocker.patch("birdnetpi.managers.plotting_manager.plt")
+    mock_specshow = mocker.patch("birdnetpi.analytics.plotting_manager.librosa.display.specshow")
+    mock_plt = mocker.patch("birdnetpi.analytics.plotting_manager.plt")
 
     # Setup mock returns
     mock_load.return_value = (np.array([0.1, 0.2, 0.3]), 22050)  # (audio, sample_rate)

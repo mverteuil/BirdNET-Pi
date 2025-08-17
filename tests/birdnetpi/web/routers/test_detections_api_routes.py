@@ -7,8 +7,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from birdnetpi.analytics.plotting_manager import PlottingManager
 from birdnetpi.detections.data_manager import DataManager
-from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.routers.detections_api_routes import router
 

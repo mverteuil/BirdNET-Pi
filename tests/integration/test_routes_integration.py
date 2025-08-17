@@ -196,8 +196,8 @@ class TestDependencyInjectionValidation:
         This test validates that the DI container is wired correctly and would
         catch the type annotation errors we fixed.
         """
+        from birdnetpi.analytics.reporting_manager import ReportingManager
         from birdnetpi.detections.data_manager import DataManager
-        from birdnetpi.managers.reporting_manager import ReportingManager
 
         container = integration_app.container  # type: ignore[attr-defined]
 

@@ -14,7 +14,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from birdnetpi.managers.data_preparation_manager import DataPreparationManager
+from birdnetpi.analytics.data_preparation_manager import DataPreparationManager
 
 
 class PlottingManager:

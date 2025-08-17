@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from birdnetpi.managers.reporting_manager import ReportingManager
+from birdnetpi.analytics.reporting_manager import ReportingManager
 
 
 @pytest.fixture
@@ -35,8 +35,8 @@ def mock_location_service():
 @pytest.fixture
 def performance_reporting_manager(data_manager, path_resolver, mock_config, mock_location_service):
     """Provide a ReportingManager instance configured for performance testing."""
-    from birdnetpi.managers.data_preparation_manager import DataPreparationManager
-    from birdnetpi.managers.plotting_manager import PlottingManager
+    from birdnetpi.analytics.data_preparation_manager import DataPreparationManager
+    from birdnetpi.analytics.plotting_manager import PlottingManager
 
     mock_plotting_manager = MagicMock(spec=PlottingManager)
     mock_data_preparation_manager = MagicMock(spec=DataPreparationManager)
@@ -91,7 +91,7 @@ class TestWeeklyReportPerformance:
         data_manager.get_new_species_data.return_value = large_new_species
 
         with patch(
-            "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+            "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
         ) as mock_date:
             mock_date.today.return_value = today
 
@@ -131,7 +131,7 @@ class TestWeeklyReportPerformance:
         def execute_weekly_report():
             """Execute weekly report data retrieval."""
             with patch(
-                "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+                "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
             ) as mock_date:
                 mock_date.today.return_value = today
                 return performance_reporting_manager.get_weekly_report_data()
@@ -177,7 +177,7 @@ class TestWeeklyReportPerformance:
         data_manager.get_new_species_data.return_value = []
 
         with patch(
-            "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+            "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
         ) as mock_date:
             mock_date.today.return_value = today
 
@@ -276,7 +276,7 @@ class TestWeeklyReportPerformance:
             data_manager.get_new_species_data.return_value = []
 
             with patch(
-                "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+                "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
             ) as mock_date:
                 mock_date.today.return_value = today
 
@@ -353,7 +353,7 @@ class TestWeeklyReportPerformance:
             data_manager.get_new_species_data.return_value = new_species
 
             with patch(
-                "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+                "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
             ) as mock_date:
                 mock_date.today.return_value = today
 
@@ -453,7 +453,7 @@ class TestWeeklyReportIntegration:
         data_manager.get_new_species_data.return_value = realistic_new_species
 
         with patch(
-            "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+            "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
         ) as mock_date:
             mock_date.today.return_value = today
 
@@ -527,7 +527,7 @@ class TestWeeklyReportIntegration:
         ]
 
         with patch(
-            "birdnetpi.managers.reporting_manager.datetime.date", wraps=datetime.date
+            "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
         ) as mock_date:
             mock_date.today.return_value = today
 

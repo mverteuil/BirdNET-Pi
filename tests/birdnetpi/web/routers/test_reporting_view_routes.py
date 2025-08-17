@@ -3,8 +3,8 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
+from birdnetpi.analytics.reporting_manager import ReportingManager
 from birdnetpi.detections.data_manager import DataManager
-from birdnetpi.managers.reporting_manager import ReportingManager
 
 
 @pytest.fixture

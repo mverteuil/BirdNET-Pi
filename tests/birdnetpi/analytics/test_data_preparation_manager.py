@@ -4,9 +4,9 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
+from birdnetpi.analytics.data_preparation_manager import DataPreparationManager
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.location.location_service import LocationService
-from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 
 
 @pytest.fixture
@@ -192,7 +192,7 @@ class TestDataPreparationManager:
     def test_prepare_sunrise_sunset_data_for_plot(self, data_preparation_manager, mocker):
         """Test preparation of sunrise and sunset data for plotting."""
         mocker.patch(
-            "birdnetpi.managers.data_preparation_manager.DataPreparationManager.get_sunrise_sunset_data",
+            "birdnetpi.analytics.data_preparation_manager.DataPreparationManager.get_sunrise_sunset_data",
             return_value=(
                 [6.5],  # sunrise_times_dec (06:30)
                 [19.75],  # sunset_times_dec (19:45)
