@@ -11,7 +11,7 @@ from typing import Any
 
 from sqlalchemy import inspect, text
 
-from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.database.database_service import DatabaseService
 
 logger = logging.getLogger(__name__)
 

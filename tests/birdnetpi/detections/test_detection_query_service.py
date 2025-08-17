@@ -9,15 +9,14 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.exc import OperationalError
 
+from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.ioc.ioc_database_models import IOCSpecies, IOCTranslation
 from birdnetpi.detections.database_models import Detection
 from birdnetpi.detections.detection_query_service import (
     DetectionQueryService,
     DetectionWithLocalization,
 )
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
-from birdnetpi.models.ioc_database_models import IOCSpecies, IOCTranslation
-from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.utils.ioc_database_builder import IOCDatabaseBuilder
 
 
 @pytest.fixture
@@ -43,7 +42,9 @@ def bnp_database_service(temp_main_db):
 @pytest.fixture
 def ioc_database_service(temp_ioc_db):
     """Create IOC database service."""
-    return IOCDatabaseBuilder(temp_ioc_db)
+    from birdnetpi.database.ioc.ioc_database_service import IOCDatabaseService
+
+    return IOCDatabaseService(temp_ioc_db)
 
 
 @pytest.fixture

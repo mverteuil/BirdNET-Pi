@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
-from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.database.database_service import DatabaseService
 
 
 @pytest.fixture

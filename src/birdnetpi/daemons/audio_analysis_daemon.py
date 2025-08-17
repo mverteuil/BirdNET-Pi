@@ -8,7 +8,6 @@ from types import FrameType
 
 from birdnetpi.audio.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.config import ConfigManager
-from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
 
@@ -56,6 +55,8 @@ def main() -> None:
     config = config_manager.load()
 
     # Create IOC database service (required for species normalization)
+    from birdnetpi.database.ioc.ioc_database_service import IOCDatabaseService
+
     ioc_database_service = IOCDatabaseService(db_path=path_resolver.get_ioc_database_path())
     logger.info("IOC database service initialized")
 

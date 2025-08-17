@@ -8,7 +8,6 @@ This module handles all audio-related functionality including:
 - Spectrograms and visualizations
 """
 
-from birdnetpi.audio.models import GUID, AudioFile, PathType
-from birdnetpi.models.base import Base
+from birdnetpi.audio.models import AudioFile
 
-__all__ = ["GUID", "AudioFile", "Base", "PathType"]
+__all__ = ["AudioFile"]

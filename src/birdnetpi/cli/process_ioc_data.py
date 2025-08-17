@@ -14,7 +14,7 @@ from pathlib import Path
 
 import click
 
-from birdnetpi.utils.ioc_database_builder import IOCDatabaseBuilder
+from birdnetpi.database.ioc.ioc_database_builder import IocDatabaseBuilder
 
 
 @click.group()
@@ -52,7 +52,7 @@ def build(xml_file: Path, xlsx_file: Path | None, db_file: Path) -> None:
 
     try:
         # Create database builder
-        builder = IOCDatabaseBuilder(db_path=db_file)
+        builder = IocDatabaseBuilder(db_path=db_file)
 
         # Populate from files
         builder.populate_from_files(xml_file, xlsx_file)

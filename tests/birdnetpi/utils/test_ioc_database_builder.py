@@ -4,16 +4,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from birdnetpi.utils.ioc_database_builder import IOCDatabaseBuilder
+from birdnetpi.database.ioc.ioc_database_builder import IocDatabaseBuilder
 
 
-class TestIOCDatabaseBuilder:
+class TestIocDatabaseBuilder:
     """Test IOC database builder."""
 
     def test_database_builder_initialization(self, tmp_path):
         """Should initialize with database path."""
         db_path = tmp_path / "test.db"
-        builder = IOCDatabaseBuilder(db_path=db_path)
+        builder = IocDatabaseBuilder(db_path=db_path)
         assert builder.db_path == db_path
         assert db_path.parent.exists()
 
@@ -34,7 +34,7 @@ class TestIOCDatabaseBuilder:
         mock_parse.return_value = mock_tree
 
         # Create builder and populate
-        builder = IOCDatabaseBuilder(db_path=db_path)
+        builder = IocDatabaseBuilder(db_path=db_path)
         builder.populate_from_files(xml_file)
 
         # Verify XML was parsed
@@ -45,7 +45,7 @@ class TestIOCDatabaseBuilder:
         xml_file = tmp_path / "missing.xml"
         db_path = tmp_path / "test.db"
 
-        builder = IOCDatabaseBuilder(db_path=db_path)
+        builder = IocDatabaseBuilder(db_path=db_path)
 
         with pytest.raises(FileNotFoundError, match="XML file not found"):
             builder.populate_from_files(xml_file)

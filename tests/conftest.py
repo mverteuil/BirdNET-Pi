@@ -109,7 +109,7 @@ def app_with_temp_data(path_resolver) -> FastAPI:
     from dependency_injector import providers
 
     from birdnetpi.config import ConfigManager
-    from birdnetpi.services.database_service import DatabaseService
+    from birdnetpi.database.database_service import DatabaseService
     from birdnetpi.web.core.container import Container
 
     # Override the Container's providers at the class level BEFORE app creation

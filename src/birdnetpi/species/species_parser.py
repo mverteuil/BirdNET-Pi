@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
-    from birdnetpi.services.ioc_database_service import IOCDatabaseService
+    from birdnetpi.database.ioc.ioc_database_service import IOCDatabaseService
 
 
 class SpeciesComponents(NamedTuple):

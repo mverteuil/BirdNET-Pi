@@ -8,6 +8,8 @@ from birdnetpi.analytics.plotting_manager import PlottingManager
 from birdnetpi.analytics.reporting_manager import ReportingManager
 from birdnetpi.audio.audio_websocket_service import AudioWebSocketService
 from birdnetpi.audio.spectrogram_service import SpectrogramService
+from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.ioc.ioc_database_service import IOCDatabaseService
 from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.detections.detection_query_service import DetectionQueryService
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
@@ -17,8 +19,6 @@ from birdnetpi.location.location_service import LocationService
 from birdnetpi.notifications.mqtt_service import MQTTService
 from birdnetpi.notifications.notification_manager import NotificationManager
 from birdnetpi.notifications.webhook_service import WebhookService
-from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.species.species_display_service import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.hardware_monitor_manager import HardwareMonitorManager

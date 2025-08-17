@@ -15,6 +15,7 @@ from typing import Any, TypeVar
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import func
 
+from birdnetpi.database.database_service import DatabaseService
 from birdnetpi.detections.database_models import AudioFile, Detection
 from birdnetpi.detections.detection_query_service import (
     DetectionQueryService,
@@ -23,7 +24,6 @@ from birdnetpi.detections.detection_query_service import (
 from birdnetpi.detections.models import DetectionEvent
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.notifications.signals import detection_signal
-from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.species.species_display_service import SpeciesDisplayService
 
 # Type variable for decorator

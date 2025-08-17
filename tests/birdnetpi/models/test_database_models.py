@@ -3,7 +3,8 @@
 import uuid
 from unittest.mock import MagicMock
 
-from birdnetpi.detections.database_models import GUID, Detection
+from birdnetpi.database.model_utils import GUID
+from birdnetpi.detections.database_models import Detection
 
 
 class TestGUIDTypeDecorator:

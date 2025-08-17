@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from birdnetpi.models.ioc_database_models import (
+from birdnetpi.database.ioc.ioc_database_models import (
     IOCBase,
     IOCLanguage,
     IOCMetadata,
@@ -32,7 +32,7 @@ from birdnetpi.models.ioc_database_models import (
 )
 
 
-class IOCDatabaseBuilder:
+class IocDatabaseBuilder:
     """Builder for IOC World Bird Names SQLite databases."""
 
     def __init__(self, db_path: Path | str):
