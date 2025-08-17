@@ -4,7 +4,7 @@ from typing import cast
 import pandas as pd
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.services.location_service import LocationService
+from birdnetpi.location.location_service import LocationService
 
 
 class DataPreparationManager:

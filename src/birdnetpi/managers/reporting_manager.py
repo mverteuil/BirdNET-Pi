@@ -7,10 +7,10 @@ if TYPE_CHECKING:
     from birdnetpi.services.detection_query_service import DetectionWithLocalization
 
 from birdnetpi.config import BirdNETConfig
+from birdnetpi.location.location_service import LocationService
 from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.plotting_manager import PlottingManager
-from birdnetpi.services.location_service import LocationService
 from birdnetpi.services.species_display_service import SpeciesDisplayService
 from birdnetpi.utils.path_resolver import PathResolver
 

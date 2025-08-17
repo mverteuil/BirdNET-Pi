@@ -5,11 +5,11 @@ import pandas as pd
 import pytest
 
 from birdnetpi.config import BirdNETConfig  # Added import
+from birdnetpi.location.location_service import LocationService  # Added import
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 from birdnetpi.models.database_models import Detection
-from birdnetpi.services.location_service import LocationService  # Added import
 
 
 @pytest.fixture
