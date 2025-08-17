@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from birdnetpi.managers.data_manager import DataManager
+from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.managers.reporting_manager import ReportingManager
 
 
@@ -67,7 +67,7 @@ def test_get_all_detections(client):
     """Should retrieve all detections successfully."""
     from datetime import datetime
 
-    from birdnetpi.models.database_models import Detection
+    from birdnetpi.detections.database_models import Detection
 
     # Create mock detection objects
     mock_detection = MagicMock(spec=Detection)

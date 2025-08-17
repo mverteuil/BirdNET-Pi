@@ -4,12 +4,12 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
+from birdnetpi.detections.data_manager import DataManager
+from birdnetpi.detections.database_models import Detection
+from birdnetpi.detections.models import DetectionEvent
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
-from birdnetpi.managers.data_manager import DataManager
-from birdnetpi.models.database_models import Detection
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.species_display_service import SpeciesDisplayService
-from birdnetpi.web.models.detection import DetectionEvent
 
 
 @pytest.fixture

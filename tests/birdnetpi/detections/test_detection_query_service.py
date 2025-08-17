@@ -9,14 +9,14 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.exc import OperationalError
 
-from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
-from birdnetpi.models.database_models import Detection
-from birdnetpi.models.ioc_database_models import IOCSpecies, IOCTranslation
-from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.services.detection_query_service import (
+from birdnetpi.detections.database_models import Detection
+from birdnetpi.detections.detection_query_service import (
     DetectionQueryService,
     DetectionWithLocalization,
 )
+from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
+from birdnetpi.models.ioc_database_models import IOCSpecies, IOCTranslation
+from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.utils.ioc_database_builder import IOCDatabaseBuilder
 
 

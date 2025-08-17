@@ -5,11 +5,11 @@ import pandas as pd
 import pytest
 
 from birdnetpi.config import BirdNETConfig  # Added import
+from birdnetpi.detections.database_models import Detection
 from birdnetpi.location.location_service import LocationService  # Added import
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.managers.reporting_manager import ReportingManager
-from birdnetpi.models.database_models import Detection
 
 
 @pytest.fixture
@@ -413,7 +413,7 @@ def test_get_todays_detections(reporting_manager, data_manager_no_ioc):
         # Create mock Detection objects
         import uuid
 
-        from birdnetpi.models.database_models import Detection
+        from birdnetpi.detections.database_models import Detection
 
         mock_detections = [
             Detection(

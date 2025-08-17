@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 import pytest
 
+from birdnetpi.detections.database_models import AudioFile
 from birdnetpi.managers.file_manager import FileManager
-from birdnetpi.models.database_models import AudioFile
 
 
 @pytest.fixture

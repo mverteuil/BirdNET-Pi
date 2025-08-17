@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from birdnetpi.models.database_models import AudioFile, Base, Detection
+from birdnetpi.detections.database_models import AudioFile, Base, Detection
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.utils.database_optimizer import DatabaseOptimizer, QueryPerformanceMonitor
 

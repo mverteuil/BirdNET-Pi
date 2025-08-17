@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import pytest
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.models.database_models import Detection
+from birdnetpi.detections.database_models import Detection
 from birdnetpi.notifications.notification_manager import NotificationManager
 
 

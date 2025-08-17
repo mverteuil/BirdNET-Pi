@@ -6,10 +6,10 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from birdnetpi.managers.data_manager import DataManager
+from birdnetpi.detections.data_manager import DataManager
+from birdnetpi.detections.models import DetectionEvent, LocationUpdate
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.web.core.container import Container
-from birdnetpi.web.models.detection import DetectionEvent, LocationUpdate
 
 logger = logging.getLogger(__name__)
 

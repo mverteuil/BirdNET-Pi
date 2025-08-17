@@ -42,7 +42,7 @@ def app_with_overview_services(app_with_temp_data):
         app.container.hardware_monitor_manager.override(mock_hardware_monitor)  # type: ignore[attr-defined]
 
         # Mock data_manager to return detection count
-        from birdnetpi.managers.data_manager import DataManager
+        from birdnetpi.detections.data_manager import DataManager
 
         mock_data_manager = MagicMock(spec=DataManager)
         mock_data_manager.count_detections.return_value = 0

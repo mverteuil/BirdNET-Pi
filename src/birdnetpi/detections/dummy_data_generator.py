@@ -2,8 +2,8 @@ import datetime
 import random
 from datetime import UTC
 
-from birdnetpi.managers.data_manager import DataManager
-from birdnetpi.web.models.detection import DetectionEvent
+from birdnetpi.detections.data_manager import DataManager
+from birdnetpi.detections.models import DetectionEvent
 
 
 def generate_dummy_detections(data_manager: DataManager, num_detections: int = 100) -> None:

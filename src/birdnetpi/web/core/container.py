@@ -5,11 +5,12 @@ from fastapi.templating import Jinja2Templates
 
 from birdnetpi.audio.audio_websocket_service import AudioWebSocketService
 from birdnetpi.audio.spectrogram_service import SpectrogramService
+from birdnetpi.detections.data_manager import DataManager
+from birdnetpi.detections.detection_query_service import DetectionQueryService
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.location.gps_service import GPSService
 from birdnetpi.location.location_service import LocationService
-from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
@@ -19,7 +20,6 @@ from birdnetpi.notifications.mqtt_service import MQTTService
 from birdnetpi.notifications.notification_manager import NotificationManager
 from birdnetpi.notifications.webhook_service import WebhookService
 from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.services.detection_query_service import DetectionQueryService
 from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.services.species_display_service import SpeciesDisplayService
 from birdnetpi.services.system_control_service import SystemControlService

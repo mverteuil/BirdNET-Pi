@@ -5,7 +5,7 @@ from typing import ClassVar
 from fastapi import FastAPI
 from sqladmin import Admin, ModelView
 
-from birdnetpi.models.database_models import AudioFile, Detection
+from birdnetpi.detections.database_models import AudioFile, Detection
 
 
 class DetectionAdmin(ModelView, model=Detection):

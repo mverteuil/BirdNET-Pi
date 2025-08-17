@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from birdnetpi.managers.data_manager import DataManager
+from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.web.core.factory import create_app
 
 

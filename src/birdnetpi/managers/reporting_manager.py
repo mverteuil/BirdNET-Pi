@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING, Any, cast
 import pandas as pd
 
 if TYPE_CHECKING:
-    from birdnetpi.services.detection_query_service import DetectionWithLocalization
+    from birdnetpi.detections.detection_query_service import DetectionWithLocalization
 
 from birdnetpi.config import BirdNETConfig
+from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.location.location_service import LocationService
-from birdnetpi.managers.data_manager import DataManager
 from birdnetpi.managers.data_preparation_manager import DataPreparationManager
 from birdnetpi.managers.plotting_manager import PlottingManager
 from birdnetpi.services.species_display_service import SpeciesDisplayService

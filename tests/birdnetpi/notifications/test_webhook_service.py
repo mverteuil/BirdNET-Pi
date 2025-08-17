@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from birdnetpi.models.database_models import Detection
+from birdnetpi.detections.database_models import Detection
 from birdnetpi.notifications.webhook_service import WebhookConfig, WebhookService
 
 

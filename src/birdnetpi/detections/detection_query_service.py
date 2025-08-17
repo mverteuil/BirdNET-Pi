@@ -16,8 +16,8 @@ from dateutil import parser as date_parser
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from birdnetpi.detections.database_models import Detection
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
-from birdnetpi.models.database_models import Detection
 from birdnetpi.services.database_service import DatabaseService
 
 

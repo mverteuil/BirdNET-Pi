@@ -15,16 +15,16 @@ from typing import Any, TypeVar
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import func
 
-from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
-from birdnetpi.models.database_models import AudioFile, Detection
-from birdnetpi.notifications.signals import detection_signal
-from birdnetpi.services.database_service import DatabaseService
-from birdnetpi.services.detection_query_service import (
+from birdnetpi.detections.database_models import AudioFile, Detection
+from birdnetpi.detections.detection_query_service import (
     DetectionQueryService,
     DetectionWithLocalization,
 )
+from birdnetpi.detections.models import DetectionEvent
+from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
+from birdnetpi.notifications.signals import detection_signal
+from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.species_display_service import SpeciesDisplayService
-from birdnetpi.web.models.detection import DetectionEvent
 
 # Type variable for decorator
 T = TypeVar("T")

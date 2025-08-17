@@ -11,11 +11,11 @@ from fastapi.templating import Jinja2Templates
 from starlette.status import HTTP_303_SEE_OTHER
 
 from birdnetpi.config import BirdNETConfig, ConfigManager
-from birdnetpi.managers.data_manager import DataManager
+from birdnetpi.detections.data_manager import DataManager
+from birdnetpi.detections.models import DetectionEvent
 from birdnetpi.services.log_service import LogService
 from birdnetpi.utils.path_resolver import PathResolver
 from birdnetpi.web.core.container import Container
-from birdnetpi.web.models.detection import DetectionEvent
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

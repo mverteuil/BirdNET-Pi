@@ -3,7 +3,7 @@
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException
 
-from birdnetpi.managers.data_manager import DataManager
+from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
 from birdnetpi.services.system_monitor_service import SystemMonitorService
 from birdnetpi.web.core.container import Container

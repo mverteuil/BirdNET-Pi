@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from birdnetpi.models.database_models import Detection
+from birdnetpi.detections.database_models import Detection
 
 logger = logging.getLogger(__name__)
 
