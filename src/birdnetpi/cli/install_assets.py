@@ -11,8 +11,8 @@ from pathlib import Path
 
 import click
 
-from birdnetpi.managers.update_manager import UpdateManager
-from birdnetpi.utils.asset_manifest import AssetManifest
+from birdnetpi.releases.asset_manifest import AssetManifest
+from birdnetpi.releases.update_manager import UpdateManager
 from birdnetpi.utils.path_resolver import PathResolver
 
 

@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from birdnetpi.utils.asset_manifest import AssetManifest
+from birdnetpi.releases.asset_manifest import AssetManifest
 from birdnetpi.utils.path_resolver import PathResolver
 
 

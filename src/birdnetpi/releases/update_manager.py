@@ -9,8 +9,8 @@ import httpx
 from tqdm import tqdm
 
 from birdnetpi.config import BirdNETConfig
+from birdnetpi.releases.asset_manifest import AssetManifest, AssetType
 from birdnetpi.services.system_control_service import SystemControlService
-from birdnetpi.utils.asset_manifest import AssetManifest, AssetType
 from birdnetpi.utils.path_resolver import PathResolver
 
 

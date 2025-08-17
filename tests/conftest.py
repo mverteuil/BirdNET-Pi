@@ -164,7 +164,7 @@ def check_required_assets(repo_root: Path):
     """Check that required assets are available for testing."""
     import os
 
-    from birdnetpi.utils.asset_manifest import AssetManifest
+    from birdnetpi.releases.asset_manifest import AssetManifest
     from birdnetpi.utils.path_resolver import PathResolver
 
     real_data_dir = repo_root / "data"

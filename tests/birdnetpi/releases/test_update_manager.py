@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.managers.update_manager import UpdateManager
+from birdnetpi.releases.update_manager import UpdateManager
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def update_manager(mock_path_resolver, tmp_path):
     return manager
 
 
-@patch("birdnetpi.managers.update_manager.subprocess.run")
+@patch("birdnetpi.releases.update_manager.subprocess.run")
 def test_update_birdnet(mock_run, update_manager):
     """Should update BirdNET successfully."""
     config = BirdNETConfig()
@@ -53,7 +53,7 @@ def test_update_birdnet(mock_run, update_manager):
     update_manager.system_control.daemon_reload.assert_called_once()
 
 
-@patch("birdnetpi.managers.update_manager.subprocess.run")
+@patch("birdnetpi.releases.update_manager.subprocess.run")
 def test_get_commits_behind(mock_run, update_manager):
     """Should return the number of commits behind."""
     mock_run.return_value.stdout = (
@@ -63,7 +63,7 @@ def test_get_commits_behind(mock_run, update_manager):
     assert commits_behind == 3
 
 
-@patch("birdnetpi.managers.update_manager.subprocess.run")
+@patch("birdnetpi.releases.update_manager.subprocess.run")
 def test_get_commits_behind_diverged(mock_run, update_manager):
     """Should return the number of commits behind when diverged."""
     mock_run.return_value.stdout = (
@@ -74,7 +74,7 @@ def test_get_commits_behind_diverged(mock_run, update_manager):
     assert commits_behind == 3
 
 
-@patch("birdnetpi.managers.update_manager.subprocess.run")
+@patch("birdnetpi.releases.update_manager.subprocess.run")
 def test_get_commits_behind_up_to_date(mock_run, update_manager):
     """Should return 0 when the branch is up to date."""
     mock_run.return_value.stdout = "Your branch is up to date with 'origin/main'."
@@ -82,7 +82,7 @@ def test_get_commits_behind_up_to_date(mock_run, update_manager):
     assert commits_behind == 0
 
 
-@patch("birdnetpi.managers.update_manager.subprocess.run")
+@patch("birdnetpi.releases.update_manager.subprocess.run")
 def test_get_commits_behind_error(mock_run, update_manager):
     """Should return -1 when there is an error."""
     mock_run.side_effect = Exception

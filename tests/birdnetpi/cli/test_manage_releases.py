@@ -7,7 +7,7 @@ import pytest
 from click.testing import CliRunner
 
 from birdnetpi.cli.manage_releases import cli
-from birdnetpi.managers.release_manager import ReleaseAsset
+from birdnetpi.releases.release_manager import ReleaseAsset
 
 
 @pytest.fixture

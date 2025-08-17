@@ -11,7 +11,7 @@ from typing import Any
 
 import click
 
-from birdnetpi.managers.release_manager import ReleaseAsset, ReleaseConfig, ReleaseManager
+from birdnetpi.releases.release_manager import ReleaseAsset, ReleaseConfig, ReleaseManager
 from birdnetpi.utils.path_resolver import PathResolver
 
 

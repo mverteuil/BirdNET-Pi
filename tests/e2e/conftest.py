@@ -6,7 +6,7 @@ from collections.abc import Generator
 
 import pytest
 
-from birdnetpi.utils.asset_manifest import AssetManifest
+from birdnetpi.releases.asset_manifest import AssetManifest
 from birdnetpi.utils.path_resolver import PathResolver
 
 

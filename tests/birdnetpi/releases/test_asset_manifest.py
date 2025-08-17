@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from birdnetpi.utils.asset_manifest import Asset, AssetManifest, AssetType
+from birdnetpi.releases.asset_manifest import Asset, AssetManifest, AssetType
 
 
 class TestAssetManifest:

@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from birdnetpi.managers.release_manager import ReleaseAsset, ReleaseConfig, ReleaseManager
+from birdnetpi.releases.release_manager import ReleaseAsset, ReleaseConfig, ReleaseManager
 
 
 @pytest.fixture
