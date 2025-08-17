@@ -13,74 +13,16 @@ Supports different deployment targets:
 import logging
 import logging.handlers
 import os
-import subprocess
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 import structlog
 
+from birdnetpi.system.system_utils import SystemUtils
+
 if TYPE_CHECKING:
     from birdnetpi.config import BirdNETConfig
-
-
-def is_docker_environment() -> bool:
-    """Check if running in a Docker container."""
-    return os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER") == "true"
-
-
-def is_systemd_available() -> bool:
-    """Check if systemd/journald is available on the system."""
-    try:
-        result = subprocess.run(
-            ["systemctl", "--version"],
-            capture_output=True,
-            timeout=2,
-        )
-        return result.returncode == 0
-    except (subprocess.SubprocessError, FileNotFoundError):
-        return False
-
-
-def get_git_version() -> str:
-    """Get the current git branch and commit hash for version logging.
-
-    Returns version in format: branch@SHA[:8]
-    """
-    try:
-        # Get current branch
-        branch_result = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        branch = branch_result.stdout.strip() if branch_result.returncode == 0 else "unknown"
-
-        # Get current commit hash (8 chars as requested)
-        commit_result = subprocess.run(
-            ["git", "rev-parse", "--short=8", "HEAD"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        commit = commit_result.stdout.strip() if commit_result.returncode == 0 else "unknown"
-
-        return f"{branch}@{commit}"
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
-        return "unknown"
-
-
-def get_deployment_environment() -> str:
-    """Get deployment environment with 'unknown' fallback."""
-    if is_docker_environment():
-        return "docker"
-    elif is_systemd_available():
-        return "sbc"
-    elif os.environ.get("BIRDNETPI_ENV") == "development":
-        return "development"
-    else:
-        return "unknown"
 
 
 def _add_static_context(extra_fields: dict[str, str]) -> Callable:
@@ -97,8 +39,8 @@ def _add_static_context(extra_fields: dict[str, str]) -> Callable:
 
 def _get_environment_config() -> tuple[bool, bool, bool]:
     """Detect deployment environment and return configuration flags."""
-    is_docker = is_docker_environment()
-    has_systemd = is_systemd_available()
+    is_docker = SystemUtils.is_docker_environment()
+    has_systemd = SystemUtils.is_systemd_available()
     is_development = os.environ.get("BIRDNETPI_ENV", "production") == "development"
     return is_docker, has_systemd, is_development
 
@@ -110,8 +52,8 @@ def _configure_processors(
     # Build dynamic extra fields
     extra_fields = {
         "service": "birdnet-pi",
-        "version": get_git_version(),
-        "deployment": get_deployment_environment(),
+        "version": SystemUtils.get_git_version(),
+        "deployment": SystemUtils.get_deployment_environment(),
         **config.logging.extra_fields,  # Allow config to override/add fields
     }
 
@@ -233,9 +175,9 @@ def configure_structlog(config: "BirdNETConfig") -> None:
     logger = structlog.get_logger(__name__)
     logger.info(
         "Structured logging configured",
-        git_version=get_git_version(),
+        git_version=SystemUtils.get_git_version(),
         log_level=config.logging.level,
-        environment=get_deployment_environment(),
+        environment=SystemUtils.get_deployment_environment(),
         journald=has_systemd,
         json_output=config.logging.json_logs,
     )
