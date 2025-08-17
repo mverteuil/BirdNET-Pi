@@ -5,7 +5,7 @@ import logging
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
-from birdnetpi.managers.notification_manager import NotificationManager
+from birdnetpi.notifications.notification_manager import NotificationManager
 from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)

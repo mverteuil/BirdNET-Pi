@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from birdnetpi.models.database_models import Detection
-from birdnetpi.services.mqtt_service import MQTTService
+from birdnetpi.notifications.mqtt_service import MQTTService
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from birdnetpi.services.birdweather_service import BirdWeatherService
+from birdnetpi.notifications.birdweather_service import BirdWeatherService
 
 
 @pytest.fixture
