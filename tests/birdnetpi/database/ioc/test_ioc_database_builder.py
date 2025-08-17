@@ -17,7 +17,7 @@ class TestIocDatabaseBuilder:
         assert builder.db_path == db_path
         assert db_path.parent.exists()
 
-    @patch("birdnetpi.utils.ioc_database_builder.ET.parse")
+    @patch("birdnetpi.database.ioc.ioc_database_builder.ET.parse")
     def test_populate_from_files_xml_only(self, mock_parse, tmp_path):
         """Should populate database from XML file."""
         # Create test files

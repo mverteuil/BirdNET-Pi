@@ -226,7 +226,7 @@ class TestSpeciesParserWithIOC:
         # Create a temporary database service for testing
         from unittest.mock import MagicMock
 
-        from birdnetpi.services.ioc_database_service import IOCDatabaseService
+        from birdnetpi.database.ioc.ioc_database_service import IOCDatabaseService
 
         # Mock IOCDatabaseService since SpeciesParser now requires it
         mock_ioc_service = MagicMock(spec=IOCDatabaseService)

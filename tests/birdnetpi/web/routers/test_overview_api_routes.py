@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.database.database_service import DatabaseService
 from birdnetpi.system.hardware_monitor_manager import HardwareMonitorManager
 
 
