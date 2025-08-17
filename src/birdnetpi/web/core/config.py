@@ -3,7 +3,7 @@
 from functools import lru_cache
 
 from birdnetpi.config import BirdNETConfig, ConfigManager
-from birdnetpi.utils.path_resolver import PathResolver
+from birdnetpi.system.path_resolver import PathResolver
 
 
 @lru_cache

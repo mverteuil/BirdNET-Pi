@@ -17,7 +17,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
-    from birdnetpi.utils.path_resolver import PathResolver
+    from birdnetpi.system.path_resolver import PathResolver
 
 
 class MultilingualDatabaseService:

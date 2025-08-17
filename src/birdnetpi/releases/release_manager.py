@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from birdnetpi.releases.asset_manifest import AssetManifest
-from birdnetpi.utils.path_resolver import PathResolver
+from birdnetpi.system.path_resolver import PathResolver
 
 
 @dataclass

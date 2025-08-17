@@ -14,7 +14,7 @@ from websockets.asyncio.server import serve
 if TYPE_CHECKING:
     from websockets.asyncio.server import ServerConnection
 
-    from birdnetpi.utils.path_resolver import PathResolver
+    from birdnetpi.system.path_resolver import PathResolver
 
 
 logger = logging.getLogger(__name__)

@@ -4,8 +4,8 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException
 
 from birdnetpi.detections.data_manager import DataManager
-from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
-from birdnetpi.services.system_monitor_service import SystemMonitorService
+from birdnetpi.system.hardware_monitor_manager import HardwareMonitorManager
+from birdnetpi.system.system_monitor_service import SystemMonitorService
 from birdnetpi.web.core.container import Container
 
 router = APIRouter()

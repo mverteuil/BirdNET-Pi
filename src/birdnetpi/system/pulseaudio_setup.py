@@ -12,7 +12,7 @@ from typing import Any
 
 from jinja2 import Template
 
-from birdnetpi.utils.path_resolver import PathResolver
+from birdnetpi.system.path_resolver import PathResolver
 
 
 class PulseAudioSetup:

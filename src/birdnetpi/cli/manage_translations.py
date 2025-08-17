@@ -9,7 +9,7 @@ from typing import Any
 
 import click
 
-from birdnetpi.utils.path_resolver import PathResolver
+from birdnetpi.system.path_resolver import PathResolver
 
 
 def run_command(cmd: list[str], description: str) -> bool:

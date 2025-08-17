@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from birdnetpi.utils.system_utils import SystemUtils
+from birdnetpi.system.system_utils import SystemUtils
 
 
 @pytest.fixture
@@ -56,8 +56,8 @@ def test_subprocess_scenarios():
     }
 
 
-@patch("birdnetpi.utils.system_utils.open")
-@patch("birdnetpi.utils.system_utils.subprocess.run")
+@patch("birdnetpi.system.system_utils.open")
+@patch("birdnetpi.system.system_utils.subprocess.run")
 def test_get_system_timezone_from_etc_timezone(
     mock_run, mock_open, system_utils, test_timezone_data
 ):
@@ -70,8 +70,8 @@ def test_get_system_timezone_from_etc_timezone(
     mock_run.assert_not_called()
 
 
-@patch("birdnetpi.utils.system_utils.open")
-@patch("birdnetpi.utils.system_utils.subprocess.run")
+@patch("birdnetpi.system.system_utils.open")
+@patch("birdnetpi.system.system_utils.subprocess.run")
 def test_get_system_timezone_from_timedatectl(
     mock_run, mock_open, system_utils, test_timezone_data, test_file_scenarios
 ):
@@ -82,8 +82,8 @@ def test_get_system_timezone_from_timedatectl(
     assert timezone == test_timezone_data["valid_timezones"][1]  # Europe/London
 
 
-@patch("birdnetpi.utils.system_utils.open")
-@patch("birdnetpi.utils.system_utils.subprocess.run")
+@patch("birdnetpi.system.system_utils.open")
+@patch("birdnetpi.system.system_utils.subprocess.run")
 def test_get_system_timezone_fallback_to_utc(
     mock_run,
     mock_open,
@@ -99,8 +99,8 @@ def test_get_system_timezone_fallback_to_utc(
     assert timezone == test_timezone_data["fallback_timezone"]
 
 
-@patch("birdnetpi.utils.system_utils.open")
-@patch("birdnetpi.utils.system_utils.subprocess.run")
+@patch("birdnetpi.system.system_utils.open")
+@patch("birdnetpi.system.system_utils.subprocess.run")
 def test_get_system_timezone__empty_etc_timezone_file(
     mock_run, mock_open, system_utils, test_timezone_data, test_file_scenarios
 ):
@@ -114,8 +114,8 @@ def test_get_system_timezone__empty_etc_timezone_file(
     assert timezone == test_timezone_data["valid_timezones"][2]  # Asia/Tokyo
 
 
-@patch("birdnetpi.utils.system_utils.open")
-@patch("birdnetpi.utils.system_utils.subprocess.run")
+@patch("birdnetpi.system.system_utils.open")
+@patch("birdnetpi.system.system_utils.subprocess.run")
 def test_get_system_timezone__whitespace_only_etc_timezone(
     mock_run, mock_open, system_utils, test_timezone_data, test_file_scenarios
 ):
@@ -129,8 +129,8 @@ def test_get_system_timezone__whitespace_only_etc_timezone(
     assert timezone == test_timezone_data["valid_timezones"][1]  # Europe/London
 
 
-@patch("birdnetpi.utils.system_utils.open")
-@patch("birdnetpi.utils.system_utils.subprocess.run")
+@patch("birdnetpi.system.system_utils.open")
+@patch("birdnetpi.system.system_utils.subprocess.run")
 def test_get_system_timezone__permission_error_etc_timezone(
     mock_run, mock_open, system_utils, test_timezone_data, test_file_scenarios
 ):
@@ -142,8 +142,8 @@ def test_get_system_timezone__permission_error_etc_timezone(
     assert timezone == test_timezone_data["valid_timezones"][2]  # Asia/Tokyo
 
 
-@patch("birdnetpi.utils.system_utils.open")
-@patch("birdnetpi.utils.system_utils.subprocess.run")
+@patch("birdnetpi.system.system_utils.open")
+@patch("birdnetpi.system.system_utils.subprocess.run")
 def test_get_system_timezone__malformed_timedatectl_output(
     mock_run, mock_open, system_utils, test_timezone_data, test_file_scenarios
 ):
@@ -155,8 +155,8 @@ def test_get_system_timezone__malformed_timedatectl_output(
     assert timezone == test_timezone_data["fallback_timezone"]  # UTC
 
 
-@patch("birdnetpi.utils.system_utils.open")
-@patch("birdnetpi.utils.system_utils.subprocess.run")
+@patch("birdnetpi.system.system_utils.open")
+@patch("birdnetpi.system.system_utils.subprocess.run")
 def test_get_system_timezone__timedatectl_command_not_found(
     mock_run,
     mock_open,
@@ -173,8 +173,8 @@ def test_get_system_timezone__timedatectl_command_not_found(
     assert timezone == test_timezone_data["fallback_timezone"]  # UTC
 
 
-@patch("birdnetpi.utils.system_utils.open")
-@patch("birdnetpi.utils.system_utils.subprocess.run")
+@patch("birdnetpi.system.system_utils.open")
+@patch("birdnetpi.system.system_utils.subprocess.run")
 def test_get_system_timezone__timedatectl_timeout(
     mock_run,
     mock_open,
@@ -191,8 +191,8 @@ def test_get_system_timezone__timedatectl_timeout(
     assert timezone == test_timezone_data["fallback_timezone"]  # UTC
 
 
-@patch("birdnetpi.utils.system_utils.open")
-@patch("birdnetpi.utils.system_utils.subprocess.run")
+@patch("birdnetpi.system.system_utils.open")
+@patch("birdnetpi.system.system_utils.subprocess.run")
 def test_get_system_timezone__io_error_reading_file(
     mock_run, mock_open, system_utils, test_timezone_data, test_file_scenarios
 ):

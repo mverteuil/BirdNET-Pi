@@ -13,8 +13,8 @@ from starlette.status import HTTP_303_SEE_OTHER
 from birdnetpi.config import BirdNETConfig, ConfigManager
 from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.detections.models import DetectionEvent
-from birdnetpi.services.log_service import LogService
-from birdnetpi.utils.path_resolver import PathResolver
+from birdnetpi.system.log_service import LogService
+from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)

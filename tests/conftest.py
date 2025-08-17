@@ -4,7 +4,7 @@ import matplotlib
 import pytest
 from fastapi import FastAPI
 
-from birdnetpi.utils.path_resolver import PathResolver
+from birdnetpi.system.path_resolver import PathResolver
 
 # Configure matplotlib to use non-GUI backend for testing
 matplotlib.use("Agg")
@@ -165,7 +165,7 @@ def check_required_assets(repo_root: Path):
     import os
 
     from birdnetpi.releases.asset_manifest import AssetManifest
-    from birdnetpi.utils.path_resolver import PathResolver
+    from birdnetpi.system.path_resolver import PathResolver
 
     real_data_dir = repo_root / "data"
 

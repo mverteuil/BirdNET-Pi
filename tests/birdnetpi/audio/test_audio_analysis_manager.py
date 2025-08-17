@@ -11,7 +11,7 @@ import pytest
 
 from birdnetpi.audio.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.managers.file_manager import FileManager
+from birdnetpi.system.file_manager import FileManager
 
 
 @pytest.fixture

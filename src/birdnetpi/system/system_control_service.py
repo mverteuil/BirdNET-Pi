@@ -1,4 +1,4 @@
-from birdnetpi.utils.service_strategies import ServiceStrategySelector
+from birdnetpi.system.service_strategies import ServiceStrategySelector
 
 
 class SystemControlService:

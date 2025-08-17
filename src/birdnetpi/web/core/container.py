@@ -14,17 +14,17 @@ from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseSer
 from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.location.gps_service import GPSService
 from birdnetpi.location.location_service import LocationService
-from birdnetpi.managers.file_manager import FileManager
-from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
 from birdnetpi.notifications.mqtt_service import MQTTService
 from birdnetpi.notifications.notification_manager import NotificationManager
 from birdnetpi.notifications.webhook_service import WebhookService
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.ioc_database_service import IOCDatabaseService
 from birdnetpi.services.species_display_service import SpeciesDisplayService
-from birdnetpi.services.system_control_service import SystemControlService
+from birdnetpi.system.file_manager import FileManager
+from birdnetpi.system.hardware_monitor_manager import HardwareMonitorManager
+from birdnetpi.system.path_resolver import PathResolver
+from birdnetpi.system.system_control_service import SystemControlService
 from birdnetpi.utils.cache import Cache
-from birdnetpi.utils.path_resolver import PathResolver
 from birdnetpi.web.core.config import get_config
 
 

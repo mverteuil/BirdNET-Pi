@@ -12,7 +12,7 @@ from typing import Any
 import click
 
 from birdnetpi.releases.release_manager import ReleaseAsset, ReleaseConfig, ReleaseManager
-from birdnetpi.utils.path_resolver import PathResolver
+from birdnetpi.system.path_resolver import PathResolver
 
 
 def _add_asset_if_requested(

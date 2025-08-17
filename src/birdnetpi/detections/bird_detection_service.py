@@ -83,7 +83,7 @@ class BirdDetectionService:
         log.info("BirdDetectionService: LOADING TF LITE MODEL...")
 
         # Use PathResolver to get model path (filename-only approach)
-        from birdnetpi.utils.path_resolver import PathResolver
+        from birdnetpi.system.path_resolver import PathResolver
 
         path_resolver = PathResolver()
         model_path = path_resolver.get_model_path(self.model_name or "")  # Handle None
@@ -127,7 +127,7 @@ class BirdDetectionService:
             RuntimeError: If the metadata interpreter fails to initialize
         """
         # Use PathResolver for data model path
-        from birdnetpi.utils.path_resolver import PathResolver
+        from birdnetpi.system.path_resolver import PathResolver
 
         path_resolver = PathResolver()
         model_path = path_resolver.get_model_path(self.config.metadata_model)

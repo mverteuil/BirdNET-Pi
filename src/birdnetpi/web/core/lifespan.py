@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from birdnetpi.utils.structlog_configurator import configure_structlog
+from birdnetpi.system.structlog_configurator import configure_structlog
 from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)

@@ -14,7 +14,7 @@ def bird_detection_service(test_config, path_resolver, mocker):
     # Mock PathResolver to use our test resolver
     # It's imported inside the _load_model method
     mocker.patch(
-        "birdnetpi.utils.path_resolver.PathResolver",
+        "birdnetpi.system.path_resolver.PathResolver",
         return_value=path_resolver,
     )
 

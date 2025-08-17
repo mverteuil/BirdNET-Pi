@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from birdnetpi.managers.hardware_monitor_manager import HardwareMonitorManager
+from birdnetpi.system.hardware_monitor_manager import HardwareMonitorManager
 
 
 @pytest.fixture

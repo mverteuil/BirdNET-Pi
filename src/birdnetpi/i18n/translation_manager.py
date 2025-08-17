@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import Request
 
-from birdnetpi.utils.path_resolver import PathResolver
+from birdnetpi.system.path_resolver import PathResolver
 
 if TYPE_CHECKING:
     from starlette.templating import Jinja2Templates

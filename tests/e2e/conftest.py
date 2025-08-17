@@ -7,7 +7,7 @@ from collections.abc import Generator
 import pytest
 
 from birdnetpi.releases.asset_manifest import AssetManifest
-from birdnetpi.utils.path_resolver import PathResolver
+from birdnetpi.system.path_resolver import PathResolver
 
 
 @pytest.fixture(scope="module")

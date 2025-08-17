@@ -12,9 +12,9 @@ import numpy as np
 
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.bird_detection_service import BirdDetectionService
-from birdnetpi.managers.file_manager import FileManager
 from birdnetpi.services.ioc_database_service import IOCDatabaseService
-from birdnetpi.utils.path_resolver import PathResolver
+from birdnetpi.system.file_manager import FileManager
+from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.utils.species_parser import SpeciesComponents, SpeciesParser
 
 logger = logging.getLogger(__name__)

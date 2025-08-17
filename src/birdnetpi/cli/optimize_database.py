@@ -17,8 +17,8 @@ from typing import Any
 import click
 
 from birdnetpi.services.database_service import DatabaseService
+from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.utils.database_optimizer import DatabaseOptimizer
-from birdnetpi.utils.path_resolver import PathResolver
 
 # Configure logging
 logging.basicConfig(

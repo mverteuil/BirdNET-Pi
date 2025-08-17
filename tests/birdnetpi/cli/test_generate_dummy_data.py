@@ -7,7 +7,7 @@ from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.services.database_service import DatabaseService
 from birdnetpi.services.species_display_service import SpeciesDisplayService
-from birdnetpi.services.system_control_service import SystemControlService
+from birdnetpi.system.system_control_service import SystemControlService
 
 
 @pytest.fixture(autouse=True)

@@ -3,7 +3,7 @@ import subprocess
 from unittest.mock import MagicMock
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.utils.structlog_configurator import (
+from birdnetpi.system.structlog_configurator import (
     _add_static_context,
     _configure_handlers,
     _configure_processors,
@@ -101,27 +101,27 @@ class TestDeploymentEnvironment:
     def test_get_deployment_environment_docker(self, mocker):
         """Should return 'docker' when in Docker environment."""
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.is_docker_environment", return_value=True
+            "birdnetpi.system.structlog_configurator.is_docker_environment", return_value=True
         )
         assert get_deployment_environment() == "docker"
 
     def test_get_deployment_environment_sbc(self, mocker):
         """Should return 'sbc' when systemd available and not in Docker."""
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.is_docker_environment", return_value=False
+            "birdnetpi.system.structlog_configurator.is_docker_environment", return_value=False
         )
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.is_systemd_available", return_value=True
+            "birdnetpi.system.structlog_configurator.is_systemd_available", return_value=True
         )
         assert get_deployment_environment() == "sbc"
 
     def test_get_deployment_environment_development(self, mocker):
         """Should return 'development' when BIRDNETPI_ENV is set."""
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.is_docker_environment", return_value=False
+            "birdnetpi.system.structlog_configurator.is_docker_environment", return_value=False
         )
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.is_systemd_available", return_value=False
+            "birdnetpi.system.structlog_configurator.is_systemd_available", return_value=False
         )
         mocker.patch.dict(os.environ, {"BIRDNETPI_ENV": "development"})
         assert get_deployment_environment() == "development"
@@ -129,10 +129,10 @@ class TestDeploymentEnvironment:
     def test_get_deployment_environment_unknown(self, mocker):
         """Should return 'unknown' when no environment indicators present."""
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.is_docker_environment", return_value=False
+            "birdnetpi.system.structlog_configurator.is_docker_environment", return_value=False
         )
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.is_systemd_available", return_value=False
+            "birdnetpi.system.structlog_configurator.is_systemd_available", return_value=False
         )
         mocker.patch.dict(os.environ, {}, clear=True)
         assert get_deployment_environment() == "unknown"
@@ -160,10 +160,10 @@ class TestEnvironmentConfig:
     def test_get_environment_config_docker_dev(self, mocker):
         """Should detect Docker development environment."""
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.is_docker_environment", return_value=True
+            "birdnetpi.system.structlog_configurator.is_docker_environment", return_value=True
         )
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.is_systemd_available", return_value=False
+            "birdnetpi.system.structlog_configurator.is_systemd_available", return_value=False
         )
         mocker.patch.dict(os.environ, {"BIRDNETPI_ENV": "development"})
 
@@ -175,10 +175,10 @@ class TestEnvironmentConfig:
     def test_get_environment_config_sbc_production(self, mocker):
         """Should detect SBC production environment."""
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.is_docker_environment", return_value=False
+            "birdnetpi.system.structlog_configurator.is_docker_environment", return_value=False
         )
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.is_systemd_available", return_value=True
+            "birdnetpi.system.structlog_configurator.is_systemd_available", return_value=True
         )
         mocker.patch.dict(os.environ, {}, clear=True)
 
@@ -195,10 +195,11 @@ class TestProcessorConfiguration:
         """Should configure basic processors."""
         config = BirdNETConfig()
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.get_git_version", return_value="main@abc123"
+            "birdnetpi.system.structlog_configurator.get_git_version", return_value="main@abc123"
         )
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.get_deployment_environment", return_value="test"
+            "birdnetpi.system.structlog_configurator.get_deployment_environment",
+            return_value="test",
         )
 
         processors = _configure_processors(config, False, False, True)
@@ -211,10 +212,11 @@ class TestProcessorConfiguration:
         """Should include location when coordinates are set."""
         config = BirdNETConfig(latitude=40.7128, longitude=-74.0060)
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.get_git_version", return_value="main@abc123"
+            "birdnetpi.system.structlog_configurator.get_git_version", return_value="main@abc123"
         )
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.get_deployment_environment", return_value="test"
+            "birdnetpi.system.structlog_configurator.get_deployment_environment",
+            return_value="test",
         )
 
         processors = _configure_processors(config, False, False, True)
@@ -226,10 +228,10 @@ class TestProcessorConfiguration:
         """Should use JSON renderer for Docker/SBC environments."""
         config = BirdNETConfig()
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.get_git_version", return_value="main@abc123"
+            "birdnetpi.system.structlog_configurator.get_git_version", return_value="main@abc123"
         )
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator.get_deployment_environment",
+            "birdnetpi.system.structlog_configurator.get_deployment_environment",
             return_value="docker",
         )
 
@@ -278,7 +280,7 @@ class TestHandlerConfiguration:
 
         # Mock the _add_journald_handler function directly
         mock_add_journald = mocker.patch(
-            "birdnetpi.utils.structlog_configurator._add_journald_handler"
+            "birdnetpi.system.structlog_configurator._add_journald_handler"
         )
 
         _configure_handlers(config, False, True, False)
@@ -296,7 +298,7 @@ class TestHandlerConfiguration:
         mock_root.handlers = []
 
         # Mock the journald import to fail, triggering stderr fallback
-        mocker.patch("birdnetpi.utils.structlog_configurator._add_journald_handler")
+        mocker.patch("birdnetpi.system.structlog_configurator._add_journald_handler")
 
         _configure_handlers(config, False, True, False)
 
@@ -312,14 +314,14 @@ class TestMainConfiguration:
 
         # Mock all dependencies
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator._get_environment_config",
+            "birdnetpi.system.structlog_configurator._get_environment_config",
             return_value=(False, False, True),
         )
         mocker.patch(
-            "birdnetpi.utils.structlog_configurator._configure_processors", return_value=[]
+            "birdnetpi.system.structlog_configurator._configure_processors", return_value=[]
         )
         mock_configure = mocker.patch("structlog.configure")
-        mocker.patch("birdnetpi.utils.structlog_configurator._configure_handlers")
+        mocker.patch("birdnetpi.system.structlog_configurator._configure_handlers")
         mock_get_logger = mocker.patch("structlog.get_logger")
         mock_logger = MagicMock()
         mock_get_logger.return_value = mock_logger

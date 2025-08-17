@@ -16,11 +16,12 @@ import os
 import subprocess
 import sys
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from birdnetpi.config import BirdNETConfig
+if TYPE_CHECKING:
+    from birdnetpi.config import BirdNETConfig
 
 
 def is_docker_environment() -> bool:
@@ -103,7 +104,7 @@ def _get_environment_config() -> tuple[bool, bool, bool]:
 
 
 def _configure_processors(
-    config: BirdNETConfig, is_docker: bool, has_systemd: bool, is_development: bool
+    config: "BirdNETConfig", is_docker: bool, has_systemd: bool, is_development: bool
 ) -> list:
     """Configure structlog processors based on environment."""
     # Build dynamic extra fields
@@ -155,7 +156,7 @@ def _configure_processors(
 
 
 def _configure_handlers(
-    config: BirdNETConfig, is_docker: bool, has_systemd: bool, is_development: bool
+    config: "BirdNETConfig", is_docker: bool, has_systemd: bool, is_development: bool
 ) -> None:
     """Configure logging handlers based on environment."""
     root_logger = logging.getLogger()
@@ -180,7 +181,7 @@ def _configure_handlers(
 
 
 def _add_journald_handler(
-    config: BirdNETConfig, root_logger: logging.Logger, log_level: int
+    config: "BirdNETConfig", root_logger: logging.Logger, log_level: int
 ) -> None:
     """Add journald handler for systemd environments."""
     try:
@@ -198,7 +199,7 @@ def _add_journald_handler(
         root_logger.addHandler(stderr_handler)
 
 
-def configure_structlog(config: BirdNETConfig) -> None:
+def configure_structlog(config: "BirdNETConfig") -> None:
     """Configure structlog-based logging system.
 
     Automatically detects deployment environment and configures accordingly:

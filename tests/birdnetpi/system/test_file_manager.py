@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from birdnetpi.detections.database_models import AudioFile
-from birdnetpi.managers.file_manager import FileManager
+from birdnetpi.system.file_manager import FileManager
 
 
 @pytest.fixture
@@ -126,7 +126,7 @@ def test_directory_exists_false(file_manager):
 def test_save_detection_audio(file_manager):
     """Should save audio bytes to a WAV file and return AudioFile instance (covers lines 79-90)"""
     # Mock soundfile.write
-    with patch("birdnetpi.managers.file_manager.sf.write") as mock_sf_write:
+    with patch("birdnetpi.system.file_manager.sf.write") as mock_sf_write:
         # Prepare test data
         relative_path = Path("detections/test_audio.wav")
         raw_audio_bytes = b"\x00\x01" * 1000  # 2000 bytes of audio data

@@ -5,7 +5,7 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends
 
 from birdnetpi.config import ConfigManager
-from birdnetpi.utils.path_resolver import PathResolver
+from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.admin import YAMLConfigRequest
 

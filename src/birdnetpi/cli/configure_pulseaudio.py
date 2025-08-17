@@ -9,7 +9,7 @@ import sys
 
 import click
 
-from birdnetpi.utils.pulseaudio_setup import PulseAudioSetup
+from birdnetpi.system.pulseaudio_setup import PulseAudioSetup
 
 
 @click.group()

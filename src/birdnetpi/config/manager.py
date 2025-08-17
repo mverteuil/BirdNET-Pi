@@ -7,7 +7,7 @@ import yaml
 
 from birdnetpi.config.models import BirdNETConfig
 from birdnetpi.config.versions import VersionRegistry
-from birdnetpi.utils.path_resolver import PathResolver
+from birdnetpi.system.path_resolver import PathResolver
 
 
 class ConfigManager:

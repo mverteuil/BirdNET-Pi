@@ -3,8 +3,8 @@ from pathlib import Path
 
 import soundfile as sf
 
-from birdnetpi.detections.database_models import AudioFile
-from birdnetpi.utils.path_resolver import PathResolver
+from birdnetpi.audio.models import AudioFile
+from birdnetpi.system.path_resolver import PathResolver
 
 
 class FileManager:

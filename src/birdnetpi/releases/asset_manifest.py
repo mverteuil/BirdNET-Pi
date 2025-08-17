@@ -10,7 +10,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar
 
-from birdnetpi.utils.path_resolver import PathResolver
+from birdnetpi.system.path_resolver import PathResolver
 
 
 class AssetType(StrEnum):

@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from birdnetpi.utils.service_strategies import (
+from birdnetpi.system.service_strategies import (
     DockerSupervisordStrategy,
     EmbeddedSystemdStrategy,
     ServiceManagementStrategy,

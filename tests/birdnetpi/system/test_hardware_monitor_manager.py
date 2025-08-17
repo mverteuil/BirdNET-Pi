@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from birdnetpi.managers.hardware_monitor_manager import (
+from birdnetpi.system.hardware_monitor_manager import (
     ComponentStatus,
     HardwareMonitorManager,
     HealthStatus,
