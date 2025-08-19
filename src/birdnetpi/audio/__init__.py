@@ -8,6 +8,4 @@ This module handles all audio-related functionality including:
 - Spectrograms and visualizations
 """
 
-from birdnetpi.audio.models import AudioFile
-
-__all__ = ["AudioFile"]
+__all__ = []

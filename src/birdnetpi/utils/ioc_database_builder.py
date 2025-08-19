@@ -22,9 +22,9 @@ if TYPE_CHECKING:
     from openpyxl.worksheet.worksheet import Worksheet
 from sqlalchemy import create_engine, delete, text
 from sqlalchemy.orm import Session, sessionmaker
+from sqlmodel import SQLModel
 
-from birdnetpi.database.ioc.ioc_database_models import (
-    IOCBase,
+from birdnetpi.database.ioc.models import (
     IOCLanguage,
     IOCMetadata,
     IOCSpecies,
@@ -46,7 +46,7 @@ class IocDatabaseBuilder:
 
         # Create database connection
         self.engine = create_engine(f"sqlite:///{self.db_path}")
-        IOCBase.metadata.create_all(self.engine)
+        SQLModel.metadata.create_all(self.engine)
         self.session_local = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
 
         self._ioc_version = "unknown"

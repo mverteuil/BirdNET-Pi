@@ -4,11 +4,11 @@ import time
 from birdnetpi.config import ConfigManager
 from birdnetpi.database.database_service import DatabaseService
 from birdnetpi.detections.data_manager import DataManager
-from birdnetpi.detections.dummy_data_generator import generate_dummy_detections
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
-from birdnetpi.species.species_display_service import SpeciesDisplayService
+from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.system_control_service import SystemControlService
+from birdnetpi.utils.dummy_data_generator import generate_dummy_detections
 
 
 def main() -> None:

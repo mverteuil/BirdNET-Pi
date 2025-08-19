@@ -81,7 +81,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         # Start field mode services
         await container.gps_service().start()
-        await container.hardware_monitor_manager().start()
+        # hardware_monitor_manager has been removed - functionality moved to SystemInspector
 
         # Start IoT services
         await container.mqtt_service().start()
@@ -98,7 +98,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         try:
             await container.webhook_service().stop()
             await container.mqtt_service().stop()
-            await container.hardware_monitor_manager().stop()
+            # hardware_monitor_manager has been removed - functionality moved to SystemInspector
             await container.gps_service().stop()
             # Skip audio services - handled by standalone audio_websocket_daemon
 

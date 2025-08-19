@@ -9,17 +9,17 @@ from birdnetpi.analytics.reporting_manager import ReportingManager
 from birdnetpi.audio.audio_websocket_service import AudioWebSocketService
 from birdnetpi.audio.spectrogram_service import SpectrogramService
 from birdnetpi.database.database_service import DatabaseService
-from birdnetpi.database.ioc.ioc_database_service import IOCDatabaseService
+from birdnetpi.database.ioc.database_service import IOCDatabaseService
 from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.detections.detection_query_service import DetectionQueryService
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.location.gps_service import GPSService
 from birdnetpi.location.location_service import LocationService
-from birdnetpi.notifications.mqtt_service import MQTTService
+from birdnetpi.notifications.mqtt import MQTTService
 from birdnetpi.notifications.notification_manager import NotificationManager
-from birdnetpi.notifications.webhook_service import WebhookService
-from birdnetpi.species.species_display_service import SpeciesDisplayService
+from birdnetpi.notifications.webhooks import WebhookService
+from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.system_control_service import SystemControlService
@@ -40,11 +40,14 @@ class Container(containers.DeclarativeContainer):
     Services are configured as singletons or factories based on their usage patterns.
     """
 
-    # Configuration - singleton instance cached by @lru_cache
-    config = providers.Singleton(get_config)
-
     # Core infrastructure services - singletons
     path_resolver = providers.Singleton(PathResolver)
+
+    # Configuration - singleton instance that uses our path_resolver
+    config = providers.Singleton(
+        get_config,
+        path_resolver=path_resolver,
+    )
 
     # Translation manager - singleton
     translation_manager = providers.Singleton(
@@ -94,16 +97,10 @@ class Container(containers.DeclarativeContainer):
     cache_service = providers.Singleton(
         Cache,
         # Use default settings optimized for SBC deployments
-        memcached_host=config.provided.cache_host
-        if hasattr(config.provided, "cache_host")
-        else "localhost",
-        memcached_port=config.provided.cache_port
-        if hasattr(config.provided, "cache_port")
-        else 11211,
-        default_ttl=config.provided.cache_ttl if hasattr(config.provided, "cache_ttl") else 300,
-        enable_cache_warming=config.provided.enable_cache_warming
-        if hasattr(config.provided, "enable_cache_warming")
-        else True,
+        memcached_host="localhost",
+        memcached_port=11211,
+        default_ttl=300,
+        enable_cache_warming=True,
     )
 
     # Core business services - singletons
@@ -129,8 +126,8 @@ class Container(containers.DeclarativeContainer):
 
     location_service = providers.Singleton(
         LocationService,
-        latitude=config.provided.latitude,
-        longitude=config.provided.longitude,
+        latitude=providers.Factory(lambda c: c.latitude, c=config),
+        longitude=providers.Factory(lambda c: c.longitude, c=config),
     )
 
     # Data analysis services - singletons
@@ -151,14 +148,13 @@ class Container(containers.DeclarativeContainer):
     # Audio services - singletons
     audio_websocket_service = providers.Singleton(
         AudioWebSocketService,
-        samplerate=config.provided.sample_rate,
-        channels=config.provided.audio_channels,
+        path_resolver=path_resolver,
     )
 
     spectrogram_service = providers.Singleton(
         SpectrogramService,
-        sample_rate=config.provided.sample_rate,
-        channels=config.provided.audio_channels,
+        sample_rate=providers.Factory(lambda c: c.sample_rate, c=config),
+        channels=providers.Factory(lambda c: c.audio_channels, c=config),
         window_size=1024,  # Good balance of frequency/time resolution
         overlap=0.75,  # High overlap for smooth visualization
         update_rate=15.0,  # 15 FPS for smooth real-time display
@@ -167,8 +163,8 @@ class Container(containers.DeclarativeContainer):
     # GPS service - singleton
     gps_service = providers.Singleton(
         GPSService,
-        enable_gps=config.provided.enable_gps,
-        update_interval=config.provided.gps_update_interval,
+        enable_gps=providers.Factory(lambda c: c.enable_gps, c=config),
+        update_interval=providers.Factory(lambda c: c.gps_update_interval, c=config),
     )
 
     # Note: Hardware monitoring has been replaced with SystemInspector static methods
@@ -177,18 +173,18 @@ class Container(containers.DeclarativeContainer):
     # IoT services - singletons
     mqtt_service = providers.Singleton(
         MQTTService,
-        broker_host=config.provided.mqtt_broker_host,
-        broker_port=config.provided.mqtt_broker_port,
-        username=config.provided.mqtt_username,
-        password=config.provided.mqtt_password,
-        topic_prefix=config.provided.mqtt_topic_prefix,
-        client_id=config.provided.mqtt_client_id,
-        enable_mqtt=config.provided.enable_mqtt,
+        broker_host=providers.Factory(lambda c: c.mqtt_broker_host, c=config),
+        broker_port=providers.Factory(lambda c: c.mqtt_broker_port, c=config),
+        username=providers.Factory(lambda c: c.mqtt_username, c=config),
+        password=providers.Factory(lambda c: c.mqtt_password, c=config),
+        topic_prefix=providers.Factory(lambda c: c.mqtt_topic_prefix, c=config),
+        client_id=providers.Factory(lambda c: c.mqtt_client_id, c=config),
+        enable_mqtt=providers.Factory(lambda c: c.enable_mqtt, c=config),
     )
 
     webhook_service = providers.Singleton(
         WebhookService,
-        enable_webhooks=config.provided.enable_webhooks,
+        enable_webhooks=providers.Factory(lambda c: c.enable_webhooks, c=config),
     )
 
     # Notification manager - singleton (depends on other services)

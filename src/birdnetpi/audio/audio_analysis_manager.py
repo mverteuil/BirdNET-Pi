@@ -11,9 +11,9 @@ import httpx
 import numpy as np
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.database.ioc.ioc_database_service import IOCDatabaseService
+from birdnetpi.database.ioc.database_service import IOCDatabaseService
 from birdnetpi.detections.bird_detection_service import BirdDetectionService
-from birdnetpi.species.species_parser import SpeciesComponents, SpeciesParser
+from birdnetpi.species.parser import SpeciesComponents, SpeciesParser
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
 

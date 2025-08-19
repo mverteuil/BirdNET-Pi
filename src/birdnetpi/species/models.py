@@ -7,7 +7,7 @@ reducing memory usage and improving query performance compared to the full IOCSp
 from typing import NamedTuple
 
 
-class IOCSpeciesCore(NamedTuple):
+class Species(NamedTuple):
     """Minimal IOC species data for runtime use.
 
     This lightweight model contains only the fields actually used in the application:

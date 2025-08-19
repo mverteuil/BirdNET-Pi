@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from birdnetpi.detections.database_models import Detection
-from birdnetpi.notifications.webhook_service import WebhookConfig, WebhookService
+from birdnetpi.detections.models import Detection
+from birdnetpi.notifications.webhooks import WebhookConfig, WebhookService
 
 
 @pytest.fixture
@@ -202,7 +202,7 @@ class TestWebhookService:
             "https://another-valid.com/webhook",
         ]
 
-        with patch("birdnetpi.notifications.webhook_service.logger") as mock_logger:
+        with patch("birdnetpi.notifications.webhooks.logger") as mock_logger:
             service.configure_webhooks_from_urls(urls)
 
             # Only valid URLs should be added
@@ -644,7 +644,7 @@ class TestWebhookService:
         service = enabled_webhook_service
         service.client = None  # Set client to None
 
-        with patch("birdnetpi.notifications.webhook_service.logger") as mock_logger:
+        with patch("birdnetpi.notifications.webhooks.logger") as mock_logger:
             await service._send_to_webhooks("test", {"data": "test"})
             # Should return early without logging (covers line 258)
             mock_logger.debug.assert_not_called()
@@ -658,7 +658,7 @@ class TestWebhookService:
         service.webhooks = []  # No webhooks configured
 
         # Set debug level to capture the log
-        caplog.set_level(logging.DEBUG, logger="birdnetpi.notifications.webhook_service")
+        caplog.set_level(logging.DEBUG, logger="birdnetpi.notifications.webhooks")
 
         await service._send_to_webhooks("detection", {"data": "test"})
         # Should log debug message and return (covers lines 266-267)

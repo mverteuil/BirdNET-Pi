@@ -3,15 +3,17 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 
+from birdnetpi.detections.models import DetectionWithLocalization
+
 if TYPE_CHECKING:
-    from birdnetpi.detections.detection_query_service import DetectionWithLocalization
+    pass
 
 from birdnetpi.analytics.data_preparation_manager import DataPreparationManager
 from birdnetpi.analytics.plotting_manager import PlottingManager
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.location.location_service import LocationService
-from birdnetpi.species.species_display_service import SpeciesDisplayService
+from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.path_resolver import PathResolver
 
 
@@ -69,7 +71,7 @@ class ReportingManager:
         if use_l10n_data and self.data_manager.query_service:
             try:
                 # Get detections with localization data (all detections, no limit)
-                detections_with_l10n = (
+                detections_with_l10n: list[DetectionWithLocalization] = (
                     self.data_manager.query_service.get_detections_with_localization(
                         limit=10000,  # Large limit to get all data
                         language_code=language_code,
@@ -83,12 +85,12 @@ class ReportingManager:
                         "time": d.timestamp.strftime("%H:%M:%S"),
                         "scientific_name": d.scientific_name or "",
                         "confidence": d.confidence,
-                        "latitude": d.detection.latitude,
-                        "longitude": d.detection.longitude,
-                        "species_confidence_threshold": d.detection.species_confidence_threshold,
-                        "week": d.detection.week,
-                        "sensitivity_setting": d.detection.sensitivity_setting,
-                        "overlap": d.detection.overlap,
+                        "latitude": d.latitude,
+                        "longitude": d.longitude,
+                        "species_confidence_threshold": d.species_confidence_threshold,
+                        "week": d.week,
+                        "sensitivity_setting": d.sensitivity_setting,
+                        "overlap": d.overlap,
                         "ioc_english_name": d.ioc_english_name,
                         "translated_name": d.translated_name,
                         "family": d.family,
@@ -327,12 +329,15 @@ class ReportingManager:
         if use_l10n_data and self.data_manager.query_service:
             try:
                 # Get detections with localization using query_detections
-                detections_with_l10n = self.data_manager.query_detections(
-                    limit=limit,
-                    order_by="timestamp",
-                    order_desc=True,
-                    include_localization=True,
-                    language_code=language_code,
+                detections_with_l10n: list[DetectionWithLocalization] = cast(
+                    list[DetectionWithLocalization],
+                    self.data_manager.query_detections(
+                        limit=limit,
+                        order_by="timestamp",
+                        order_desc=True,
+                        include_localization=True,
+                        language_code=language_code,
+                    ),
                 )
                 # Convert DetectionWithLocalization objects to dictionaries
                 return [
@@ -342,8 +347,8 @@ class ReportingManager:
                         "scientific_name": d.scientific_name or "",
                         "common_name": self._get_formatted_species_name(d, prefer_translation=True),
                         "confidence": d.confidence or 0,
-                        "latitude": d.detection.latitude if hasattr(d, "detection") else "",
-                        "longitude": d.detection.longitude if hasattr(d, "detection") else "",
+                        "latitude": d.latitude if hasattr(d, "detection") else "",
+                        "longitude": d.longitude if hasattr(d, "detection") else "",
                     }
                     for d in detections_with_l10n
                 ]
@@ -381,7 +386,7 @@ class ReportingManager:
         # Try to use IOC-enhanced data if available
         if use_l10n_data and self.data_manager.query_service:
             try:
-                detections_with_l10n = (
+                detections_with_l10n: list[DetectionWithLocalization] = (
                     self.data_manager.query_service.get_detections_with_localization(
                         limit=1000, since=start_datetime, language_code=language_code
                     )
@@ -414,8 +419,8 @@ class ReportingManager:
                         "scientific_name": d.scientific_name or "",
                         "common_name": self._get_formatted_species_name(d, prefer_translation=True),
                         "confidence": d.confidence or 0,
-                        "latitude": d.detection.latitude or "",
-                        "longitude": d.detection.longitude or "",
+                        "latitude": d.latitude or "",
+                        "longitude": d.longitude or "",
                         "ioc_english_name": d.ioc_english_name,
                         "translated_name": d.translated_name,
                         "family": d.family,

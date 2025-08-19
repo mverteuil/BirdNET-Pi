@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from birdnetpi.detections.data_manager import DataManager
-from birdnetpi.detections.dummy_data_generator import generate_dummy_detections
-from birdnetpi.detections.models import DetectionEvent
+from birdnetpi.utils.dummy_data_generator import generate_dummy_detections
+from birdnetpi.web.models.detections import DetectionEvent
 
 
 @pytest.fixture
@@ -40,7 +40,7 @@ class TestDummyDataGenerator:
         import sys
 
         # Get the path to the module
-        module_path = repo_root / "src" / "birdnetpi" / "detections" / "dummy_data_generator.py"
+        module_path = repo_root / "src" / "birdnetpi" / "utils" / "dummy_data_generator.py"
 
         # Try to run the module as script, but expect it to fail quickly due to missing dependencies
         # We just want to trigger the __main__ block for coverage

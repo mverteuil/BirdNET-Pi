@@ -6,8 +6,7 @@ from typing import Any
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
-
-from birdnetpi.database.model_utils import Base
+from sqlmodel import SQLModel
 
 
 class DatabaseService:
@@ -60,7 +59,7 @@ class DatabaseService:
 
             cursor.close()
 
-        Base.metadata.create_all(self.engine)
+        SQLModel.metadata.create_all(self.engine)
         self.session_local = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
 
         # Initialize performance optimizations
@@ -178,7 +177,7 @@ class DatabaseService:
         """Clear all data from the database tables."""
         db = self.session_local()
         try:
-            for table in Base.metadata.sorted_tables:
+            for table in SQLModel.metadata.sorted_tables:
                 db.execute(table.delete())
             db.commit()
             print("Database cleared successfully.")

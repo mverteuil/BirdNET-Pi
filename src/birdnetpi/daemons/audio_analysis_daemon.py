@@ -55,7 +55,7 @@ def main() -> None:
     config = config_manager.load()
 
     # Create IOC database service (required for species normalization)
-    from birdnetpi.database.ioc.ioc_database_service import IOCDatabaseService
+    from birdnetpi.database.ioc.database_service import IOCDatabaseService
 
     ioc_database_service = IOCDatabaseService(db_path=path_resolver.get_ioc_database_path())
     logger.info("IOC database service initialized")

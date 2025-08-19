@@ -67,7 +67,7 @@ def test_get_all_detections(client):
     """Should retrieve all detections successfully."""
     from datetime import datetime
 
-    from birdnetpi.detections.database_models import Detection
+    from birdnetpi.detections.models import Detection
 
     # Create mock detection objects
     mock_detection = MagicMock(spec=Detection)

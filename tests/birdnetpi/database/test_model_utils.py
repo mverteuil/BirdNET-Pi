@@ -1,90 +1,6 @@
 """Tests for database models."""
 
-import uuid
-from unittest.mock import MagicMock
-
-from birdnetpi.database.model_utils import GUID
-from birdnetpi.detections.database_models import Detection
-
-
-class TestGUIDTypeDecorator:
-    """Test the GUID TypeDecorator class."""
-
-    def test_process_bind_param__none(self):
-        """Test process_bind_param returns None when value is None."""
-        guid = GUID()
-        dialect = MagicMock()
-
-        result = guid.process_bind_param(None, dialect)
-
-        assert result is None  # This covers line 26
-
-    def test_process_bind_param__uuid_instance(self):
-        """Test process_bind_param returns string when value is UUID instance."""
-        guid = GUID()
-        dialect = MagicMock()
-        test_uuid = uuid.uuid4()
-
-        result = guid.process_bind_param(test_uuid, dialect)
-
-        assert result == str(test_uuid)
-
-    def test_process_bind_param__string_uuid(self):
-        """Test process_bind_param converts string to UUID then string."""
-        guid = GUID()
-        dialect = MagicMock()
-        test_uuid_str = "550e8400-e29b-41d4-a716-446655440000"
-
-        result = guid.process_bind_param(test_uuid_str, dialect)
-
-        # This covers line 28 - converting string to UUID then back to string
-        assert result == test_uuid_str
-
-    def test_process_result_value__none(self):
-        """Test process_result_value returns None when value is None."""
-        guid = GUID()
-        dialect = MagicMock()
-
-        result = guid.process_result_value(None, dialect)
-
-        assert result is None  # This covers line 34
-
-    def test_process_result_value__uuid_instance(self):
-        """Test process_result_value returns UUID when value is already UUID."""
-        guid = GUID()
-        dialect = MagicMock()
-        test_uuid = uuid.uuid4()
-
-        result = guid.process_result_value(test_uuid, dialect)
-
-        assert result == test_uuid  # This covers line 37
-
-    def test_process_result_value__string(self):
-        """Test process_result_value converts string to UUID."""
-        guid = GUID()
-        dialect = MagicMock()
-        test_uuid_str = "550e8400-e29b-41d4-a716-446655440000"
-        expected_uuid = uuid.UUID(test_uuid_str)
-
-        result = guid.process_result_value(test_uuid_str, dialect)
-
-        assert result == expected_uuid
-        assert isinstance(result, uuid.UUID)
-
-    def test_load_dialect_impl(self):
-        """Test load_dialect_impl returns CHAR(36) type descriptor."""
-        guid = GUID()
-        dialect = MagicMock()
-
-        result = guid.load_dialect_impl(dialect)
-
-        dialect.type_descriptor.assert_called_once()
-        assert result == dialect.type_descriptor.return_value
-
-    def test_cache_ok_is_true(self):
-        """Test that cache_ok is set to True."""
-        guid = GUID()
-        assert guid.cache_ok is True
+from birdnetpi.detections.models import Detection
 
 
 class TestDetection:
@@ -93,8 +9,10 @@ class TestDetection:
     def test_get_display_name_returns_common_name(self):
         """Test get_display_name returns common name when available."""
         detection = Detection(
+            species_tensor="Turdus migratorius_American Robin",
             common_name="American Robin",
             scientific_name="Turdus migratorius",
+            confidence=0.95,
         )
 
         result = detection.get_display_name()
@@ -104,8 +22,10 @@ class TestDetection:
     def test_get_display_name_falls_back_to_scientific_name(self):
         """Test get_display_name returns scientific name when common name is None."""
         detection = Detection(
+            species_tensor="Turdus migratorius_American Robin",
             common_name=None,
             scientific_name="Turdus migratorius",
+            confidence=0.95,
         )
 
         result = detection.get_display_name()

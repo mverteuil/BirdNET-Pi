@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from birdnetpi.config import BirdNETConfig
 
 if TYPE_CHECKING:
-    from birdnetpi.detections.detection_query_service import DetectionWithLocalization
+    from birdnetpi.detections.models import DetectionWithLocalization
 
 
 class SpeciesDisplayService:

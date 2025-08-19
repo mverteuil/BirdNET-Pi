@@ -179,7 +179,7 @@ class TestDetectionsAPIRoutes:
     def test_get_detection_spectrogram(self, client):
         """Should generate and return spectrogram for detection."""
         mock_detection = MagicMock()
-        mock_detection.audio_file_path = "/path/to/audio.wav"
+        mock_detection.audio_file.file_path = "/path/to/audio.wav"
         client.mock_data_manager.get_detection_by_id.return_value = mock_detection
 
         mock_spectrogram_buffer = MagicMock()
@@ -206,7 +206,7 @@ class TestDetectionsAPIRoutes:
     def test_get_detection_spectrogram__no_audio_file(self, client):
         """Should return 404 when detection has no audio file."""
         mock_detection = MagicMock()
-        mock_detection.audio_file_path = None
+        mock_detection.audio_file = None
         client.mock_data_manager.get_detection_by_id.return_value = mock_detection
 
         response = client.get("/api/detections/123/spectrogram")

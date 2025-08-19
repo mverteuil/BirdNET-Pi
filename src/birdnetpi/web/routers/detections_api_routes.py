@@ -8,8 +8,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from birdnetpi.analytics.plotting_manager import PlottingManager
 from birdnetpi.detections.data_manager import DataManager
-from birdnetpi.detections.models import DetectionEvent, LocationUpdate
 from birdnetpi.web.core.container import Container
+from birdnetpi.web.models.detections import DetectionEvent, LocationUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ async def get_recent_detections(
             )
             detection_list = [
                 {
-                    "id": detection.id if hasattr(detection, "id") else detection.detection.id,
+                    "id": detection.id,
                     "scientific_name": detection.scientific_name,
                     "common_name": (
                         data_manager.get_species_display_name(detection, True, language_code)
@@ -70,25 +70,13 @@ async def get_recent_detections(
                     ),
                     "confidence": detection.confidence,
                     "timestamp": detection.timestamp.isoformat(),
-                    "latitude": (
-                        detection.detection.latitude if hasattr(detection, "detection") else None
-                    ),
-                    "longitude": (
-                        detection.detection.longitude if hasattr(detection, "detection") else None
-                    ),
-                    "ioc_english_name": (
-                        detection.ioc_english_name
-                        if hasattr(detection, "ioc_english_name")
-                        else None
-                    ),
-                    "translated_name": (
-                        detection.translated_name if hasattr(detection, "translated_name") else None
-                    ),
-                    "family": detection.family if hasattr(detection, "family") else None,
-                    "genus": detection.genus if hasattr(detection, "genus") else None,
-                    "order_name": detection.order_name
-                    if hasattr(detection, "order_name")
-                    else None,
+                    "latitude": getattr(detection, "latitude", None),
+                    "longitude": getattr(detection, "longitude", None),
+                    "ioc_english_name": getattr(detection, "ioc_english_name", None),
+                    "translated_name": getattr(detection, "translated_name", None),
+                    "family": getattr(detection, "family", None),
+                    "genus": getattr(detection, "genus", None),
+                    "order_name": getattr(detection, "order_name", None),
                 }
                 for detection in detections
             ]
@@ -207,14 +195,14 @@ async def get_detection(
                         ),
                         "confidence": detection_with_l10n.confidence,
                         "timestamp": detection_with_l10n.timestamp.isoformat(),
-                        "latitude": detection_with_l10n.detection.latitude,
-                        "longitude": detection_with_l10n.detection.longitude,
+                        "latitude": detection_with_l10n.latitude,
+                        "longitude": detection_with_l10n.longitude,
                         "species_confidence_threshold": (
-                            detection_with_l10n.detection.species_confidence_threshold
+                            detection_with_l10n.species_confidence_threshold
                         ),
-                        "week": detection_with_l10n.detection.week,
-                        "sensitivity_setting": detection_with_l10n.detection.sensitivity_setting,
-                        "overlap": detection_with_l10n.detection.overlap,
+                        "week": detection_with_l10n.week,
+                        "sensitivity_setting": detection_with_l10n.sensitivity_setting,
+                        "overlap": detection_with_l10n.overlap,
                         "ioc_english_name": detection_with_l10n.ioc_english_name,
                         "translated_name": detection_with_l10n.translated_name,
                         "family": detection_with_l10n.family,
@@ -270,12 +258,12 @@ async def get_detection_spectrogram(
             raise HTTPException(status_code=404, detail="Detection not found")
 
         # Get the audio file path from the detection
-        if not detection.audio_file_path:
+        if not detection.audio_file or not detection.audio_file.file_path:
             raise HTTPException(
                 status_code=404, detail="No audio file associated with this detection"
             )
 
-        spectrogram_buffer = plotting_manager.generate_spectrogram(detection.audio_file_path)
+        spectrogram_buffer = plotting_manager.generate_spectrogram(detection.audio_file.file_path)
         return StreamingResponse(content=iter([spectrogram_buffer.read()]), media_type="image/png")
     except HTTPException:
         raise

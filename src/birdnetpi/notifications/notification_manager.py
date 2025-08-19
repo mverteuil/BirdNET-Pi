@@ -5,10 +5,10 @@ import logging
 from fastapi import WebSocket
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.detections.database_models import Detection
-from birdnetpi.notifications.mqtt_service import MQTTService
+from birdnetpi.detections.models import Detection
+from birdnetpi.notifications.mqtt import MQTTService
 from birdnetpi.notifications.signals import detection_signal
-from birdnetpi.notifications.webhook_service import WebhookService
+from birdnetpi.notifications.webhooks import WebhookService
 
 logger = logging.getLogger(__name__)
 

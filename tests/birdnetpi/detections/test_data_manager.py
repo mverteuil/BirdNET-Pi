@@ -8,14 +8,13 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from birdnetpi.database.database_service import DatabaseService
 from birdnetpi.detections.data_manager import DataManager
-from birdnetpi.detections.database_models import AudioFile, Detection
 from birdnetpi.detections.detection_query_service import (
     DetectionQueryService,
-    DetectionWithLocalization,
 )
-from birdnetpi.detections.models import DetectionEvent
+from birdnetpi.detections.models import AudioFile, Detection, DetectionWithLocalization
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
-from birdnetpi.species.species_display_service import SpeciesDisplayService
+from birdnetpi.species.display import SpeciesDisplayService
+from birdnetpi.web.models.detections import DetectionEvent
 
 
 @pytest.fixture
@@ -67,16 +66,14 @@ class TestCoreOperations:
         mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
 
         mock_detections = [MagicMock(spec=Detection), MagicMock(spec=Detection)]
-        mock_query = mock_session.query.return_value
-        mock_query.offset.return_value = mock_query
-        mock_query.limit.return_value = mock_query
-        mock_query.all.return_value = mock_detections
+        mock_scalars = MagicMock()
+        mock_scalars.__iter__ = lambda x: iter(mock_detections)
+        mock_session.execute.return_value.scalars.return_value = mock_scalars
 
         result = data_manager.get_all_detections(limit=10, offset=20)
 
         assert result == mock_detections
-        mock_query.offset.assert_called_once_with(20)
-        mock_query.limit.assert_called_once_with(10)
+        mock_session.execute.assert_called_once()
 
     def test_create_detection(self, data_manager, mock_services):
         """Should create a new detection with audio file."""
@@ -119,7 +116,7 @@ class TestCoreOperations:
 
         mock_detection = MagicMock(spec=Detection)
         mock_detection.confidence = 0.8
-        mock_session.query.return_value.filter.return_value.first.return_value = mock_detection
+        mock_session.execute.return_value.scalar_one_or_none.return_value = mock_detection
 
         updates = {"confidence": 0.95, "common_name": "Updated Robin"}
         result = data_manager.update_detection(1, updates)
@@ -135,7 +132,7 @@ class TestCoreOperations:
         mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
 
         mock_detection = MagicMock(spec=Detection)
-        mock_session.query.return_value.filter.return_value.first.return_value = mock_detection
+        mock_session.execute.return_value.scalar_one_or_none.return_value = mock_detection
 
         result = data_manager.delete_detection(1)
 
@@ -152,13 +149,10 @@ class TestQueryMethods:
         mock_session = MagicMock()
         mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
 
-        mock_query = mock_session.query.return_value
-        mock_query.filter.return_value = mock_query
-        mock_query.order_by.return_value = mock_query
-        mock_query.offset.return_value = mock_query
-        mock_query.limit.return_value = mock_query
         mock_detections = [MagicMock(spec=Detection)]
-        mock_query.all.return_value = mock_detections
+        mock_scalars = MagicMock()
+        mock_scalars.__iter__ = lambda x: iter(mock_detections)
+        mock_session.execute.return_value.scalars.return_value = mock_scalars
 
         result = data_manager.query_detections(
             species="Turdus migratorius",
@@ -171,8 +165,7 @@ class TestQueryMethods:
         )
 
         assert result == mock_detections
-        assert mock_query.filter.called
-        assert mock_query.order_by.called
+        assert mock_session.execute.called
 
     def test_query_detections_with_localization(self, data_manager, mock_services):
         """Should use DetectionQueryService when localization requested."""
@@ -220,29 +213,31 @@ class TestCountMethods:
         mock_session = MagicMock()
         mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
 
-        mock_query = mock_session.query.return_value
-        mock_query.filter.return_value = mock_query
-        mock_query.scalar.return_value = 42
+        mock_session.scalar.return_value = 42
 
         filters = {"species": "Turdus migratorius", "min_confidence": 0.8}
         result = data_manager.count_detections(filters)
 
         assert result == 42
-        assert mock_query.filter.called
+        assert mock_session.scalar.called
 
     def test_count_by_species(self, data_manager, mock_services):
         """Should count detections by species."""
         mock_session = MagicMock()
         mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
 
-        mock_query = mock_session.query.return_value
-        mock_query.filter.return_value = mock_query
-        mock_query.group_by.return_value = mock_query
-        mock_query.order_by.return_value = mock_query
-        mock_query.all.return_value = [
-            ("Turdus migratorius", 10),
-            ("Cardinalis cardinalis", 5),
-        ]
+        # Return Row-like objects with dictionary access
+        mock_row1 = MagicMock()
+        mock_row1.__getitem__ = lambda self, key: {
+            "scientific_name": "Turdus migratorius",
+            "count": 10,
+        }[key]
+        mock_row2 = MagicMock()
+        mock_row2.__getitem__ = lambda self, key: {
+            "scientific_name": "Cardinalis cardinalis",
+            "count": 5,
+        }[key]
+        mock_session.execute.return_value.__iter__ = lambda self: iter([mock_row1, mock_row2])
 
         result = data_manager.count_by_species(
             start_date=datetime(2023, 1, 1),
@@ -258,14 +253,12 @@ class TestCountMethods:
 
         from datetime import date
 
-        mock_query = mock_session.query.return_value
-        mock_query.filter.return_value = mock_query
-        mock_query.group_by.return_value = mock_query
-        mock_query.order_by.return_value = mock_query
-        mock_query.all.return_value = [
-            (date(2023, 1, 1), 5),
-            (date(2023, 1, 2), 8),
-        ]
+        # Return Row-like objects with dictionary access
+        mock_row1 = MagicMock()
+        mock_row1.__getitem__ = lambda self, key: {"date": date(2023, 1, 1), "count": 5}[key]
+        mock_row2 = MagicMock()
+        mock_row2.__getitem__ = lambda self, key: {"date": date(2023, 1, 2), "count": 8}[key]
+        mock_session.execute.return_value.__iter__ = lambda self: iter([mock_row1, mock_row2])
 
         result = data_manager.count_by_date(species="Turdus migratorius")
 
@@ -315,28 +308,40 @@ class TestSpecializedQueries:
         mock_session = MagicMock()
         mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
 
-        mock_query = mock_session.query.return_value
-        mock_query.filter.return_value = mock_query
-        mock_query.order_by.return_value = mock_query
-        mock_query.limit.return_value = mock_query
         mock_detections = [MagicMock(spec=Detection)]
-        mock_query.all.return_value = mock_detections
+        mock_scalars = MagicMock()
+        mock_scalars.__iter__ = lambda x: iter(mock_detections)
+        mock_session.execute.return_value.scalars.return_value = mock_scalars
 
         result = data_manager.get_recent_detections(limit=5)
 
         assert result == mock_detections
-        mock_query.limit.assert_called_with(5)
+        assert mock_session.execute.called
 
     def test_get_top_species_with_prior_counts(self, data_manager, mock_services):
         """Should get top species with prior period counts."""
         mock_session = MagicMock()
         mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
 
-        # Mock the complex query result
-        mock_session.query().outerjoin().order_by().limit().all.return_value = [
-            ("Turdus migratorius", "American Robin", 25, 15),
-            ("Cardinalis cardinalis", "Northern Cardinal", 20, 10),
-        ]
+        # Mock the complex query result - the method uses session.execute()
+        # Return Row-like objects with dictionary access
+        mock_row1 = MagicMock()
+        mock_row1.__getitem__ = lambda self, key: {
+            "scientific_name": "Turdus migratorius",
+            "common_name": "American Robin",
+            "current_count": 25,
+            "prior_count": 15,
+        }[key]
+
+        mock_row2 = MagicMock()
+        mock_row2.__getitem__ = lambda self, key: {
+            "scientific_name": "Cardinalis cardinalis",
+            "common_name": "Northern Cardinal",
+            "current_count": 20,
+            "prior_count": 10,
+        }[key]
+
+        mock_session.execute.return_value.__iter__ = lambda self: iter([mock_row1, mock_row2])
 
         result = data_manager.get_top_species_with_prior_counts(
             datetime(2023, 1, 1),
@@ -355,28 +360,15 @@ class TestSpecializedQueries:
         mock_session = MagicMock()
         mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
 
-        # Mock the complex window function query
-        mock_subquery = MagicMock()
-        mock_subquery.c.id = "id"
-        mock_session.query.return_value.subquery.return_value = mock_subquery
-
+        # Mock the detection result
         mock_detection = MagicMock(spec=Detection)
         mock_detection.scientific_name = "Turdus migratorius"
         mock_detection.confidence = 0.95
 
-        mock_query = MagicMock()
-        mock_query.filter.return_value = mock_query
-        mock_query.order_by.return_value = mock_query
-        mock_query.limit.return_value = mock_query
-        mock_query.all.return_value = [mock_detection]
-
-        # Set up the second query call - properly handle *args
-        def query_side_effect(*args, **kwargs):
-            if args and args[0] == Detection:
-                return mock_query
-            return MagicMock()
-
-        mock_session.query.side_effect = query_side_effect
+        # The method uses session.scalars().all()
+        mock_scalars = MagicMock()
+        mock_scalars.all.return_value = [mock_detection]
+        mock_session.scalars.return_value = mock_scalars
 
         result = data_manager.get_best_detections(limit=5)
 
@@ -392,7 +384,7 @@ class TestErrorHandling:
         mock_session = MagicMock()
         mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
 
-        mock_session.query.side_effect = SQLAlchemyError("Database error")
+        mock_session.execute.side_effect = SQLAlchemyError("Database error")
 
         with pytest.raises(SQLAlchemyError):
             data_manager.get_detection_by_id(1)

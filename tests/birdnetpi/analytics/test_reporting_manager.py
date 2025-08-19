@@ -1,4 +1,5 @@
 import datetime
+import uuid
 from unittest.mock import MagicMock, Mock, patch
 
 import pandas as pd
@@ -8,7 +9,7 @@ from birdnetpi.analytics.data_preparation_manager import DataPreparationManager
 from birdnetpi.analytics.plotting_manager import PlottingManager
 from birdnetpi.analytics.reporting_manager import ReportingManager
 from birdnetpi.config import BirdNETConfig  # Added import
-from birdnetpi.detections.database_models import Detection
+from birdnetpi.detections.models import Detection
 from birdnetpi.location.location_service import LocationService  # Added import
 
 
@@ -89,7 +90,7 @@ def reporting_manager(
     mock_location_service,  # Added mock_location_service
 ):
     """Provide a ReportingManager instance with mocked dependencies."""
-    from birdnetpi.species.species_display_service import SpeciesDisplayService
+    from birdnetpi.species.display import SpeciesDisplayService
 
     mock_species_display_service = Mock(spec=SpeciesDisplayService)
 
@@ -280,31 +281,31 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, data_manager):
     # Mock the fallback get_all_detections in case IOC fails
     mock_detections = [
         Detection(
-            id=1,
+            id=uuid.uuid4(),
             species_tensor="Turdus migratorius_American Robin",
             scientific_name="Turdus migratorius",
             common_name="American Robin",
             timestamp=datetime.datetime(2025, 7, 15, 8, 0, 0),
             confidence=0.9,
-            audio_file_id=101,  # Assign a mock audio_file_id
+            audio_file_id=uuid.uuid4(),  # Assign a mock audio_file_id
         ),
         Detection(
-            id=2,
+            id=uuid.uuid4(),
             species_tensor="Turdus migratorius_American Robin",
             scientific_name="Turdus migratorius",
             common_name="American Robin",
             timestamp=datetime.datetime(2025, 7, 15, 8, 15, 0),
             confidence=0.8,
-            audio_file_id=102,  # Assign a mock audio_file_id
+            audio_file_id=uuid.uuid4(),  # Assign a mock audio_file_id
         ),
         Detection(
-            id=3,
+            id=uuid.uuid4(),
             species_tensor="Cardinalis cardinalis_Northern Cardinal",
             scientific_name="Cardinalis cardinalis",
             common_name="Northern Cardinal",
             timestamp=datetime.datetime(2025, 7, 15, 9, 0, 0),
             confidence=0.95,
-            audio_file_id=103,  # Assign a mock audio_file_id
+            audio_file_id=uuid.uuid4(),  # Assign a mock audio_file_id
         ),
     ]
     data_manager.get_all_detections.return_value = mock_detections
@@ -411,9 +412,7 @@ def test_get_todays_detections(reporting_manager, data_manager_no_ioc):
         mock_date.today.return_value = today
 
         # Create mock Detection objects
-        import uuid
-
-        from birdnetpi.detections.database_models import Detection
+        from birdnetpi.detections.models import Detection
 
         mock_detections = [
             Detection(

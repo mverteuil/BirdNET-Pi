@@ -1,10 +1,10 @@
 """Notifications domain for alerts, webhooks, messaging services, and event signals."""
 
-from birdnetpi.notifications.birdweather_service import BirdWeatherService
-from birdnetpi.notifications.mqtt_service import MQTTService
+from birdnetpi.notifications.birdweather import BirdWeatherService
+from birdnetpi.notifications.mqtt import MQTTService
 from birdnetpi.notifications.notification_manager import NotificationManager
 from birdnetpi.notifications.signals import detection_signal
-from birdnetpi.notifications.webhook_service import WebhookConfig, WebhookService
+from birdnetpi.notifications.webhooks import WebhookConfig, WebhookService
 
 __all__ = [
     "BirdWeatherService",

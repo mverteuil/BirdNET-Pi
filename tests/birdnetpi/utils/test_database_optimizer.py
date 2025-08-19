@@ -7,10 +7,11 @@ from pathlib import Path
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlmodel import SQLModel
 
-from birdnetpi.database.database_optimizer import DatabaseOptimizer, QueryPerformanceMonitor
 from birdnetpi.database.database_service import DatabaseService
-from birdnetpi.detections.database_models import AudioFile, Base, Detection
+from birdnetpi.detections.models import AudioFile, Detection
+from birdnetpi.utils.database_optimizer import DatabaseOptimizer, QueryPerformanceMonitor
 
 
 @pytest.fixture
@@ -21,7 +22,7 @@ def temp_db():
 
     # Create database and tables
     engine = create_engine(f"sqlite:///{db_path}")
-    Base.metadata.create_all(engine)
+    SQLModel.metadata.create_all(engine)
 
     # Add test data
     session_class = sessionmaker(bind=engine)

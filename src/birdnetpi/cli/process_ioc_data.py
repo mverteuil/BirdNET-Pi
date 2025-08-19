@@ -14,7 +14,7 @@ from pathlib import Path
 
 import click
 
-from birdnetpi.database.ioc.ioc_database_builder import IocDatabaseBuilder
+from birdnetpi.utils.ioc_database_builder import IocDatabaseBuilder
 
 
 @click.group()

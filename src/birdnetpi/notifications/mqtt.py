@@ -12,7 +12,7 @@ from typing import Any
 
 import paho.mqtt.client as mqtt
 
-from birdnetpi.detections.database_models import Detection
+from birdnetpi.detections.models import Detection
 
 logger = logging.getLogger(__name__)
 
@@ -217,7 +217,7 @@ class MQTTService:
                     "sensitivity_setting": detection.sensitivity_setting,
                     "overlap": detection.overlap,
                 },
-                "detection_id": detection.id,
+                "detection_id": str(detection.id) if detection.id else None,
             }
 
             # Publish to detections topic

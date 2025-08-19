@@ -75,118 +75,54 @@ class MultilingualDatabaseService:
         Returns:
             Dictionary with common_name, source, and metadata
         """
-        select_parts, join_parts = self._build_query_parts(language_code)
+        # Priority order: IOC English (for en) → IOC translation → PatLevin → Avibase
 
-        # Build and execute query (select_parts always has entries now)
-        query = self._build_coalesce_query(select_parts, join_parts, language_code)
+        # Try IOC English name first (for English only)
+        if language_code == "en":
+            stmt = text("""
+                SELECT english_name
+                FROM ioc.species
+                WHERE LOWER(scientific_name) = LOWER(:sci_name)
+            """)
+            result = session.execute(stmt, {"sci_name": scientific_name}).first()
+            if result and result.english_name:  # type: ignore[attr-defined]
+                return {"common_name": result.english_name, "source": "IOC"}  # type: ignore[attr-defined]
 
-        result = session.execute(
-            text(query), {"sci_name": scientific_name, "lang": language_code}
-        ).fetchone()
+        # Try IOC translations
+        stmt = text("""
+            SELECT common_name
+            FROM ioc.translations
+            WHERE LOWER(scientific_name) = LOWER(:sci_name)
+            AND language_code = :lang
+        """)
+        result = session.execute(stmt, {"sci_name": scientific_name, "lang": language_code}).first()
+        if result and result.common_name:  # type: ignore[attr-defined]
+            return {"common_name": result.common_name, "source": "IOC"}  # type: ignore[attr-defined]
 
-        if result:
-            return {"common_name": result[0], "source": result[1]}
+        # Try PatLevin
+        stmt = text("""
+            SELECT common_name
+            FROM patlevin.patlevin_labels
+            WHERE LOWER(scientific_name) = LOWER(:sci_name)
+            AND language_code = :lang
+        """)
+        result = session.execute(stmt, {"sci_name": scientific_name, "lang": language_code}).first()
+        if result and result.common_name:  # type: ignore[attr-defined]
+            return {"common_name": result.common_name, "source": "PatLevin"}  # type: ignore[attr-defined]
+
+        # Try Avibase
+        stmt = text("""
+            SELECT common_name
+            FROM avibase.avibase_names
+            WHERE LOWER(scientific_name) = LOWER(:sci_name)
+            AND language_code = :lang
+        """)
+        result = session.execute(stmt, {"sci_name": scientific_name, "lang": language_code}).first()
+        if result and result.common_name:  # type: ignore[attr-defined]
+            return {"common_name": result.common_name, "source": "Avibase"}  # type: ignore[attr-defined]
+
+        # No match found
         return {"common_name": None, "source": None}
-
-    def _build_query_parts(self, language_code: str) -> tuple[list[str], list[str]]:
-        """Build query parts for common name lookup.
-
-        Args:
-            language_code: Language code for translation
-
-        Returns:
-            Tuple of (select_parts, join_parts) for the query
-        """
-        select_parts = []
-        join_parts = []
-
-        # Always include all three databases
-        self._add_ioc_query_parts(select_parts, join_parts, language_code)
-
-        select_parts.append("patlevin.common_name")
-        join_parts.append(
-            """LEFT JOIN patlevin.patlevin_labels patlevin
-               ON LOWER(patlevin.scientific_name) = LOWER(:sci_name)
-               AND patlevin.language_code = :lang"""
-        )
-
-        select_parts.append("avibase.common_name")
-        join_parts.append(
-            """LEFT JOIN avibase.avibase_names avibase
-               ON LOWER(avibase.scientific_name) = LOWER(:sci_name)
-               AND avibase.language_code = :lang"""
-        )
-
-        return select_parts, join_parts
-
-    def _add_ioc_query_parts(
-        self, select_parts: list[str], join_parts: list[str], language_code: str
-    ) -> None:
-        """Add IOC database query parts to select and join lists.
-
-        Args:
-            select_parts: List to append select expressions to
-            join_parts: List to append join expressions to
-            language_code: Language code for translation
-        """
-        # IOC only has English names in the species table
-        if language_code == "en":
-            select_parts.append("ioc_species.english_name")
-            join_parts.append(
-                """LEFT JOIN ioc.species ioc_species
-                   ON LOWER(ioc_species.scientific_name) = LOWER(:sci_name)"""
-            )
-        # IOC translations in separate table
-        select_parts.append("ioc_trans.common_name")
-        join_parts.append(
-            """LEFT JOIN ioc.translations ioc_trans
-               ON LOWER(ioc_trans.scientific_name) = LOWER(:sci_name)
-               AND ioc_trans.language_code = :lang"""
-        )
-
-    def _build_coalesce_query(
-        self, select_parts: list[str], join_parts: list[str], language_code: str
-    ) -> str:
-        """Build the final COALESCE query with source detection.
-
-        Args:
-            select_parts: List of select expressions
-            join_parts: List of join expressions
-            language_code: Language code for source detection
-
-        Returns:
-            Complete SQL query string
-        """
-        coalesce_expr = f"COALESCE({', '.join(select_parts)})"
-        source_expr = self._build_source_expression(language_code)
-
-        return f"""
-            SELECT
-                {coalesce_expr} as common_name,
-                {source_expr} as source
-            FROM (SELECT 1 as dummy) base
-            {" ".join(join_parts)}
-        """
-
-    def _build_source_expression(self, language_code: str) -> str:
-        """Build CASE expression for source detection.
-
-        Args:
-            language_code: Language code for IOC English name detection
-
-        Returns:
-            SQL CASE expression string
-        """
-        source_cases = []
-
-        # Always include all databases in source detection
-        if language_code == "en":
-            source_cases.append("WHEN ioc_species.english_name IS NOT NULL THEN 'IOC'")
-        source_cases.append("WHEN ioc_trans.common_name IS NOT NULL THEN 'IOC'")
-        source_cases.append("WHEN patlevin.common_name IS NOT NULL THEN 'PatLevin'")
-        source_cases.append("WHEN avibase.common_name IS NOT NULL THEN 'Avibase'")
-
-        return f"CASE {' '.join(source_cases)} ELSE NULL END"
 
     def get_all_translations(
         self, session: Session, scientific_name: str
@@ -204,50 +140,56 @@ class MultilingualDatabaseService:
 
         # Get from IOC
         # English from species table
-        query = """
-            SELECT 'en' as lang, english_name as name
+        stmt = text("""
+            SELECT english_name
             FROM ioc.species
             WHERE LOWER(scientific_name) = LOWER(:sci_name)
-        """
-        result = session.execute(text(query), {"sci_name": scientific_name}).fetchone()
-        if result:
-            translations.setdefault("en", []).append({"name": result[1], "source": "IOC"})
+        """)
+        result = session.execute(stmt, {"sci_name": scientific_name}).first()
+        if result and result.english_name:  # type: ignore[attr-defined]
+            translations.setdefault("en", []).append({"name": result.english_name, "source": "IOC"})  # type: ignore[attr-defined]
 
         # Other languages from translations table
-        query = """
+        stmt = text("""
             SELECT language_code, common_name
             FROM ioc.translations
             WHERE LOWER(scientific_name) = LOWER(:sci_name)
-        """
-        for row in session.execute(text(query), {"sci_name": scientific_name}):
-            lang = row[0]
-            translations.setdefault(lang, []).append({"name": row[1], "source": "IOC"})
+        """)
+        for row in session.execute(stmt, {"sci_name": scientific_name}):
+            if row.language_code and row.common_name:  # type: ignore[attr-defined]
+                translations.setdefault(row.language_code, []).append(  # type: ignore[attr-defined]
+                    {"name": row.common_name, "source": "IOC"}  # type: ignore[attr-defined]
+                )
 
         # Get from PatLevin
-        query = """
+        stmt = text("""
             SELECT language_code, common_name
             FROM patlevin.patlevin_labels
             WHERE LOWER(scientific_name) = LOWER(:sci_name)
-        """
-        for row in session.execute(text(query), {"sci_name": scientific_name}):
-            lang = row[0]
-            # Check if not duplicate
-            existing_names = [t["name"] for t in translations.get(lang, [])]
-            if row[1] not in existing_names:
-                translations.setdefault(lang, []).append({"name": row[1], "source": "PatLevin"})
+        """)
+        for row in session.execute(stmt, {"sci_name": scientific_name}):
+            if row.language_code and row.common_name:  # type: ignore[attr-defined]
+                # Check if not duplicate
+                existing_names = [t["name"] for t in translations.get(row.language_code, [])]  # type: ignore[attr-defined]
+                if row.common_name not in existing_names:  # type: ignore[attr-defined]
+                    translations.setdefault(row.language_code, []).append(  # type: ignore[attr-defined]
+                        {"name": row.common_name, "source": "PatLevin"}  # type: ignore[attr-defined]
+                    )
 
         # Get from Avibase
-        query = """
+        stmt = text("""
             SELECT language_code, common_name
             FROM avibase.avibase_names
             WHERE LOWER(scientific_name) = LOWER(:sci_name)
-        """
-        for row in session.execute(text(query), {"sci_name": scientific_name}):
-            lang = row[0]
-            # Check if not duplicate
-            existing_names = [t["name"] for t in translations.get(lang, [])]
-            if row[1] not in existing_names:
-                translations.setdefault(lang, []).append({"name": row[1], "source": "Avibase"})
+        """)
+        for row in session.execute(stmt, {"sci_name": scientific_name}):
+            if row.language_code and row.common_name:  # type: ignore[attr-defined]
+                # Check if not duplicate
+                existing_names = [t["name"] for t in translations.get(row.language_code, [])]  # type: ignore[attr-defined]
+                if row.common_name not in existing_names:  # type: ignore[attr-defined]
+                    translations.setdefault(row.language_code, []).append(  # type: ignore[attr-defined]
+                        {"name": row.common_name, "source": "Avibase"}  # type: ignore[attr-defined]
+                    )
 
         return translations
 

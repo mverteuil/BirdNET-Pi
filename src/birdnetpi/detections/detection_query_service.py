@@ -6,8 +6,6 @@ ATTACH DATABASE functionality to efficiently join across databases while minimiz
 write operations to protect SD card longevity.
 """
 
-import hashlib
-import time
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -17,53 +15,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from birdnetpi.database.database_service import DatabaseService
-from birdnetpi.detections.database_models import Detection
+from birdnetpi.detections.models import Detection, DetectionWithLocalization
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
-
-
-class DetectionWithLocalization:
-    """Data class for detection with localization information."""
-
-    def __init__(
-        self,
-        detection: Detection,
-        ioc_english_name: str | None = None,
-        translated_name: str | None = None,
-        family: str | None = None,
-        genus: str | None = None,
-        order_name: str | None = None,
-    ):
-        self.detection = detection
-        self.ioc_english_name = ioc_english_name
-        self.translated_name = translated_name
-        self.family = family
-        self.genus = genus
-        self.order_name = order_name
-
-    @property
-    def id(self) -> UUID:
-        """Get detection ID."""
-        return self.detection.id  # type: ignore[return-value]
-
-    @property
-    def scientific_name(self) -> str:
-        """Get scientific name."""
-        return self.detection.scientific_name  # type: ignore[return-value]
-
-    @property
-    def common_name(self) -> str:
-        """Get common name from detection."""
-        return self.detection.common_name  # type: ignore[return-value]
-
-    @property
-    def confidence(self) -> float:
-        """Get detection confidence."""
-        return self.detection.confidence  # type: ignore[return-value]
-
-    @property
-    def timestamp(self) -> datetime:
-        """Get detection timestamp."""
-        return self.detection.timestamp  # type: ignore[return-value]
 
 
 class DetectionQueryService:
@@ -80,97 +33,15 @@ class DetectionQueryService:
         self,
         bnp_database_service: DatabaseService,
         multilingual_service: MultilingualDatabaseService,
-        cache_ttl: int = 300,
     ):
         """Initialize detection query service.
 
         Args:
             bnp_database_service: Main database service for detections
             multilingual_service: Multilingual database service (IOC/Avibase/PatLevin)
-            cache_ttl: Cache time-to-live in seconds (default: 5 minutes)
         """
         self.bnp_database_service = bnp_database_service
         self.multilingual_service = multilingual_service
-        self.cache_ttl = cache_ttl
-
-        # In-memory cache: {cache_key: (data, expiry_timestamp)}
-        self._cache = {}
-
-    def _generate_cache_key(
-        self, method: str, **kwargs: str | int | float | datetime | None
-    ) -> str:
-        """Generate a cache key based on method name and parameters.
-
-        Args:
-            method: Method name being cached
-            **kwargs: Method parameters
-
-        Returns:
-            SHA-256 hash of the cache key components
-        """
-        # Sort parameters for consistent key generation
-        key_parts = [method]
-        for key, value in sorted(kwargs.items()):
-            if isinstance(value, datetime):
-                key_parts.append(f"{key}:{value.isoformat()}")
-            elif value is not None:
-                key_parts.append(f"{key}:{value!s}")
-
-        cache_string = "|".join(key_parts)
-        return hashlib.sha256(cache_string.encode()).hexdigest()
-
-    def _get_from_cache(
-        self, cache_key: str
-    ) -> DetectionWithLocalization | list[DetectionWithLocalization] | list[dict[str, Any]] | None:
-        """Get data from cache if available and not expired.
-
-        Args:
-            cache_key: Cache key to retrieve
-
-        Returns:
-            Cached data if available and valid, None otherwise
-        """
-        if cache_key not in self._cache:
-            return None
-
-        data, expiry = self._cache[cache_key]
-        current_time = time.time()
-
-        if current_time > expiry:
-            # Cache expired, remove it
-            del self._cache[cache_key]
-            return None
-
-        return data
-
-    def _set_cache(
-        self,
-        cache_key: str,
-        data: (DetectionWithLocalization | list[DetectionWithLocalization] | list[dict[str, Any]]),
-    ) -> None:
-        """Store data in cache with TTL expiry.
-
-        Args:
-            cache_key: Cache key to store under
-            data: Data to cache
-        """
-        expiry = time.time() + self.cache_ttl
-        self._cache[cache_key] = (data, expiry)
-
-        # Simple cache cleanup: remove expired entries periodically
-        if len(self._cache) > 100:  # Cleanup when cache gets large
-            self._cleanup_expired_cache()
-
-    def _cleanup_expired_cache(self) -> None:
-        """Remove expired cache entries."""
-        current_time = time.time()
-        expired_keys = [key for key, (_, expiry) in self._cache.items() if current_time > expiry]
-        for key in expired_keys:
-            del self._cache[key]
-
-    def clear_cache(self) -> None:
-        """Clear all cached data."""
-        self._cache.clear()
 
     def _parse_timestamp(self, timestamp_value: datetime | str | int | float) -> datetime:
         """Parse timestamp from various formats.
@@ -236,18 +107,6 @@ class DetectionQueryService:
         Returns:
             DetectionWithLocalization object or None if not found
         """
-        # Generate cache key for single detection
-        cache_key = self._generate_cache_key(
-            "get_detection_with_localization",
-            detection_id=str(detection_id),
-            language_code=language_code,
-        )
-
-        # Try to get from cache first
-        cached_result = self._get_from_cache(cache_key)
-        if cached_result is not None and isinstance(cached_result, DetectionWithLocalization):
-            return cached_result
-
         with self.bnp_database_service.get_db() as session:
             self.multilingual_service.attach_all_to_session(session)
             try:
@@ -300,14 +159,24 @@ class DetectionQueryService:
                     return None
 
                 # Create Detection object
+                # Handle both string and UUID inputs for ID
+                detection_id_val = result.id if isinstance(result.id, UUID) else UUID(result.id)  # type: ignore[attr-defined]
+                audio_file_id_val = None
+                if result.audio_file_id:  # type: ignore[attr-defined]
+                    audio_file_id_val = (
+                        result.audio_file_id  # type: ignore[attr-defined]
+                        if isinstance(result.audio_file_id, UUID)  # type: ignore[attr-defined]
+                        else UUID(result.audio_file_id)  # type: ignore[attr-defined]
+                    )
+
                 detection = Detection(
-                    id=UUID(result.id),  # type: ignore[attr-defined]
+                    id=detection_id_val,
                     species_tensor=result.species_tensor,  # type: ignore[attr-defined]
                     scientific_name=result.scientific_name,  # type: ignore[attr-defined]
                     common_name=result.common_name,  # type: ignore[attr-defined]
                     confidence=result.confidence,  # type: ignore[attr-defined]
                     timestamp=self._parse_timestamp(result.timestamp),  # type: ignore[attr-defined]
-                    audio_file_id=UUID(result.audio_file_id) if result.audio_file_id else None,  # type: ignore[attr-defined]
+                    audio_file_id=audio_file_id_val,
                     latitude=result.latitude,  # type: ignore[attr-defined]
                     longitude=result.longitude,  # type: ignore[attr-defined]
                     species_confidence_threshold=result.species_confidence_threshold,  # type: ignore[attr-defined]
@@ -325,8 +194,6 @@ class DetectionQueryService:
                     order_name=result.order_name,  # type: ignore[attr-defined]
                 )
 
-                # Cache the result before returning
-                self._set_cache(cache_key, detection_with_l10n)
                 return detection_with_l10n
 
             finally:
@@ -348,19 +215,6 @@ class DetectionQueryService:
         Returns:
             List of species summary dictionaries
         """
-        # Generate cache key for species summary
-        cache_key = self._generate_cache_key(
-            "get_species_summary",
-            language_code=language_code,
-            since=since,
-            family_filter=family_filter,
-        )
-
-        # Try to get from cache first
-        cached_result = self._get_from_cache(cache_key)
-        if cached_result is not None and isinstance(cached_result, list):
-            return cached_result  # type: ignore[return-value]
-
         with self.bnp_database_service.get_db() as session:
             self.multilingual_service.attach_all_to_session(session)
             try:
@@ -429,8 +283,6 @@ class DetectionQueryService:
                     for result in results
                 ]
 
-                # Cache the result before returning
-                self._set_cache(cache_key, species_summary)
                 return species_summary
 
             finally:
@@ -448,16 +300,6 @@ class DetectionQueryService:
         Returns:
             List of family summary dictionaries
         """
-        # Generate cache key for family summary
-        cache_key = self._generate_cache_key(
-            "get_family_summary", language_code=language_code, since=since
-        )
-
-        # Try to get from cache first
-        cached_result = self._get_from_cache(cache_key)
-        if cached_result is not None and isinstance(cached_result, list):
-            return cached_result  # type: ignore[return-value]
-
         with self.bnp_database_service.get_db() as session:
             self.multilingual_service.attach_all_to_session(session)
             try:
@@ -499,8 +341,6 @@ class DetectionQueryService:
                     for result in results
                 ]
 
-                # Cache the result before returning
-                self._set_cache(cache_key, family_summary)
                 return family_summary
 
             finally:

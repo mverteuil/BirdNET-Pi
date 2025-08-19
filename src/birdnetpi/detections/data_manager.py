@@ -8,24 +8,30 @@ patterns while preserving the underlying service architecture.
 
 import datetime
 import functools
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import date
-from typing import Any, TypeVar
+from pathlib import Path
+from typing import Any, TypeVar, cast
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql import func
 
 from birdnetpi.database.database_service import DatabaseService
-from birdnetpi.detections.database_models import AudioFile, Detection
 from birdnetpi.detections.detection_query_service import (
     DetectionQueryService,
+)
+from birdnetpi.detections.models import (
+    AudioFile,
+    Detection,
+    DetectionBase,
     DetectionWithLocalization,
 )
-from birdnetpi.detections.models import DetectionEvent
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.notifications.signals import detection_signal
-from birdnetpi.species.species_display_service import SpeciesDisplayService
+from birdnetpi.species.display import SpeciesDisplayService
+from birdnetpi.web.models.detections import DetectionEvent
 
 # Type variable for decorator
 T = TypeVar("T")
@@ -102,7 +108,7 @@ class DataManager:
 
     def get_all_detections(
         self, limit: int | None = None, offset: int | None = None
-    ) -> list[Detection]:
+    ) -> Sequence[DetectionBase]:
         """Get all detections with optional pagination."""
         with self.database_service.get_db() as session:
             try:
@@ -130,7 +136,7 @@ class DataManager:
                 audio_file = None
                 if detection_event.audio_file_path:
                     audio_file = AudioFile(
-                        file_path=detection_event.audio_file_path,
+                        file_path=Path(detection_event.audio_file_path),
                         duration=detection_event.duration,
                         size_bytes=detection_event.size_bytes,
                     )
@@ -210,7 +216,7 @@ class DataManager:
         order_desc: bool = True,
         include_localization: bool = False,
         language_code: str = "en",
-    ) -> list[Detection] | list[DetectionWithLocalization]:
+    ) -> Sequence[DetectionBase] | list[DetectionWithLocalization]:
         """Query detections with flexible filtering and optional localization.
 
         This is the main query method that consolidates various filtering patterns.
@@ -233,7 +239,9 @@ class DataManager:
                 # Apply filters
                 if species:
                     if isinstance(species, list):
-                        stmt = stmt.where(Detection.scientific_name.in_(species))
+                        stmt = stmt.where(
+                            cast(InstrumentedAttribute, Detection.scientific_name).in_(species)
+                        )
                     else:
                         stmt = stmt.where(Detection.scientific_name == species)
 
@@ -247,7 +255,9 @@ class DataManager:
                     stmt = stmt.where(Detection.confidence <= max_confidence)
 
                 # Apply ordering
-                order_column = getattr(Detection, order_by, Detection.timestamp)
+                order_column = cast(
+                    InstrumentedAttribute, getattr(Detection, order_by, Detection.timestamp)
+                )
                 if order_desc:
                     stmt = stmt.order_by(order_column.desc())
                 else:
@@ -328,7 +338,7 @@ class DataManager:
                     if "min_confidence" in filters:
                         stmt = stmt.where(Detection.confidence >= filters["min_confidence"])
 
-                return session.execute(stmt).scalar() or 0
+                return session.scalar(stmt) or 0
             except SQLAlchemyError as e:
                 session.rollback()
                 print(f"Error counting detections: {e}")
@@ -361,8 +371,11 @@ class DataManager:
                 stmt = stmt.group_by(Detection.scientific_name)
                 stmt = stmt.order_by(func.count(Detection.id).desc())
 
-                results = session.execute(stmt).all()
-                return {row[0]: row[1] for row in results}  # type: ignore[misc]
+                results = list(session.execute(stmt))
+                # Row objects support dictionary access in SQLAlchemy 2.0
+                if not results:
+                    return {}
+                return {str(row["scientific_name"]): int(row["count"]) for row in results}
             except SQLAlchemyError as e:
                 session.rollback()
                 print(f"Error counting by species: {e}")
@@ -383,8 +396,11 @@ class DataManager:
                 stmt = stmt.group_by(func.date(Detection.timestamp))
                 stmt = stmt.order_by(func.date(Detection.timestamp))
 
-                results = session.execute(stmt).all()
-                return {row[0]: row[1] for row in results}  # type: ignore[misc]
+                results = list(session.execute(stmt))
+                # Row objects support dictionary access in SQLAlchemy 2.0
+                if not results:
+                    return {}
+                return {row["date"]: int(row["count"]) for row in results}
             except SQLAlchemyError as e:
                 session.rollback()
                 print(f"Error counting by date: {e}")
@@ -394,7 +410,7 @@ class DataManager:
 
     def get_species_display_name(
         self,
-        detection: Detection | DetectionWithLocalization,
+        detection: DetectionBase | DetectionWithLocalization,
         prefer_translation: bool = True,
         language_code: str = "en",
     ) -> str:
@@ -413,21 +429,19 @@ class DataManager:
 
     # ==================== Specialized Queries ====================
 
-    def get_recent_detections(self, limit: int = 10) -> list[Detection]:
+    def get_recent_detections(self, limit: int = 10) -> Sequence[DetectionBase]:
         """Get the most recent detections."""
+        # When include_localization is False (default), we get Sequence[DetectionBase]
         result = self.query_detections(limit=limit, order_by="timestamp", order_desc=True)
-        # Ensure we return list[Detection] type
-        if isinstance(result, list) and (not result or isinstance(result[0], Detection)):
-            return result  # type: ignore
-        return []
+        assert isinstance(result, list)
+        return result
 
-    def get_detections_by_species(self, species_name: str) -> list[Detection]:
+    def get_detections_by_species(self, species_name: str) -> Sequence[DetectionBase]:
         """Get all detections for a specific species."""
+        # When include_localization is False (default), we get Sequence[DetectionBase]
         result = self.query_detections(species=species_name)
-        # Ensure we return list[Detection] type
-        if isinstance(result, list) and (not result or isinstance(result[0], Detection)):
-            return result  # type: ignore
-        return []
+        assert isinstance(result, list)
+        return result
 
     def get_detection_counts_by_date_range(
         self, start_date: datetime.datetime, end_date: datetime.datetime
@@ -435,16 +449,16 @@ class DataManager:
         """Get total detection count and unique species count within a date range."""
         with self.database_service.get_db() as session:
             try:
-                total_count = (
-                    session.query(Detection)
-                    .filter(Detection.timestamp.between(start_date, end_date))
-                    .count()
+                total_count = session.scalar(
+                    select(func.count())
+                    .select_from(Detection)
+                    .where(Detection.timestamp >= start_date)
+                    .where(Detection.timestamp <= end_date)
                 )
-                unique_species_count = (
-                    session.query(Detection.scientific_name)
-                    .filter(Detection.timestamp.between(start_date, end_date))
-                    .distinct()
-                    .count()
+                unique_species_count = session.scalar(
+                    select(func.count(func.distinct(Detection.scientific_name)))
+                    .where(Detection.timestamp >= start_date)
+                    .where(Detection.timestamp <= end_date)
                 )
                 return {
                     "total_count": total_count,
@@ -466,52 +480,61 @@ class DataManager:
         with self.database_service.get_db() as session:
             try:
                 current_week_subquery = (
-                    session.query(
-                        Detection.scientific_name.label("scientific_name"),
+                    select(
+                        cast(InstrumentedAttribute, Detection.scientific_name).label(
+                            "scientific_name"
+                        ),
                         func.coalesce(
                             Detection.common_name,
                             Detection.scientific_name,
                         ).label("common_name"),
                         func.count(Detection.scientific_name).label("current_count"),
                     )
-                    .filter(Detection.timestamp.between(start_date, end_date))
+                    .where(Detection.timestamp >= start_date)
+                    .where(Detection.timestamp <= end_date)
                     .group_by(Detection.scientific_name)
                     .subquery()
                 )
 
                 prior_week_subquery = (
-                    session.query(
-                        Detection.scientific_name.label("scientific_name"),
+                    select(
+                        cast(InstrumentedAttribute, Detection.scientific_name).label(
+                            "scientific_name"
+                        ),
                         func.count(Detection.scientific_name).label("prior_count"),
                     )
-                    .filter(Detection.timestamp.between(prior_start_date, prior_end_date))
+                    .where(Detection.timestamp >= prior_start_date)
+                    .where(Detection.timestamp <= prior_end_date)
                     .group_by(Detection.scientific_name)
                     .subquery()
                 )
 
-                results = (
-                    session.query(
-                        current_week_subquery.c.scientific_name,
-                        current_week_subquery.c.common_name,
-                        current_week_subquery.c.current_count,
-                        func.coalesce(prior_week_subquery.c.prior_count, 0).label("prior_count"),
+                results = list(
+                    session.execute(
+                        select(
+                            current_week_subquery.c.scientific_name,
+                            current_week_subquery.c.common_name,
+                            current_week_subquery.c.current_count,
+                            func.coalesce(prior_week_subquery.c.prior_count, 0).label(
+                                "prior_count"
+                            ),
+                        )
+                        .outerjoin(
+                            prior_week_subquery,
+                            current_week_subquery.c.scientific_name
+                            == prior_week_subquery.c.scientific_name,
+                        )
+                        .order_by(current_week_subquery.c.current_count.desc())
+                        .limit(10)
                     )
-                    .outerjoin(
-                        prior_week_subquery,
-                        current_week_subquery.c.scientific_name
-                        == prior_week_subquery.c.scientific_name,
-                    )
-                    .order_by(current_week_subquery.c.current_count.desc())
-                    .limit(10)
-                    .all()
                 )
 
                 return [
                     {
-                        "scientific_name": row[0],
-                        "common_name": row[1],
-                        "current_count": row[2],
-                        "prior_count": row[3],
+                        "scientific_name": row["scientific_name"],
+                        "common_name": row["common_name"],
+                        "current_count": row["current_count"],
+                        "prior_count": row["prior_count"],
                     }
                     for row in results
                 ]
@@ -528,32 +551,40 @@ class DataManager:
             try:
                 # Subquery to find all species detected before the start_date
                 prior_species_subquery = (
-                    session.query(Detection.scientific_name)
-                    .filter(Detection.timestamp < start_date)
+                    select(Detection.scientific_name)
+                    .where(Detection.timestamp < start_date)
                     .distinct()
                 )
 
                 # Query for new species in current range
-                new_species_results = (
-                    session.query(
-                        Detection.scientific_name,
-                        func.coalesce(
-                            Detection.common_name,
+                new_species_results = list(
+                    session.execute(
+                        select(
                             Detection.scientific_name,
-                        ).label("common_name"),
-                        func.count(Detection.scientific_name).label("count"),
+                            func.coalesce(
+                                Detection.common_name,
+                                Detection.scientific_name,
+                            ).label("common_name"),
+                            func.count(Detection.scientific_name).label("count"),
+                        )
+                        .where(
+                            Detection.timestamp >= start_date,
+                            Detection.timestamp <= end_date,
+                            ~cast(InstrumentedAttribute, Detection.scientific_name).in_(
+                                prior_species_subquery
+                            ),
+                        )
+                        .group_by(Detection.scientific_name)
+                        .order_by(func.count(Detection.scientific_name).desc())
                     )
-                    .filter(
-                        Detection.timestamp.between(start_date, end_date),
-                        ~Detection.scientific_name.in_(prior_species_subquery),
-                    )
-                    .group_by(Detection.scientific_name)
-                    .order_by(func.count(Detection.scientific_name).desc())
-                    .all()
                 )
 
                 return [
-                    {"species": row[0], "common_name": row[1], "count": row[2]}
+                    {
+                        "species": row["scientific_name"],
+                        "common_name": row["common_name"],
+                        "count": row["count"],
+                    }
                     for row in new_species_results
                 ]
             except SQLAlchemyError as e:
@@ -561,34 +592,35 @@ class DataManager:
                 print(f"Error getting new species data: {e}")
                 raise
 
-    def get_best_detections(self, limit: int = 10) -> list[Detection]:
+    def get_best_detections(self, limit: int = 10) -> Sequence[DetectionBase]:
         """Get the best detection for each species, sorted by confidence."""
         with self.database_service.get_db() as session:
             try:
                 # Subquery to rank detections by confidence for each species
-                ranked_subquery = session.query(
-                    Detection.id,
-                    func.row_number()
-                    .over(
-                        partition_by=Detection.scientific_name,
-                        order_by=Detection.confidence.desc(),
+                ranked_subquery = (
+                    select(
+                        Detection.id,
+                        func.row_number()
+                        .over(
+                            partition_by=Detection.scientific_name,
+                            order_by=cast(InstrumentedAttribute, Detection.confidence).desc(),
+                        )
+                        .label("rn"),
                     )
-                    .label("rn"),
                 ).subquery()
 
                 # Get the IDs of the top-ranked detection for each species
-                best_detection_ids_query = session.query(ranked_subquery.c.id).filter(
+                best_detection_ids_query = select(ranked_subquery.c.id).where(
                     ranked_subquery.c.rn == 1
                 )
 
                 # Get the full detection objects for those IDs
-                best_detections = (
-                    session.query(Detection)
-                    .filter(Detection.id.in_(best_detection_ids_query))
-                    .order_by(Detection.confidence.desc())
+                best_detections = session.scalars(
+                    select(Detection)
+                    .where(cast(InstrumentedAttribute, Detection.id).in_(best_detection_ids_query))
+                    .order_by(cast(InstrumentedAttribute, Detection.confidence).desc())
                     .limit(limit)
-                    .all()
-                )
+                ).all()
 
                 return best_detections
             except SQLAlchemyError as e:
@@ -602,7 +634,7 @@ class DataManager:
         """Get an audio file record by its path."""
         with self.database_service.get_db() as session:
             try:
-                return session.query(AudioFile).filter(AudioFile.file_path == file_path).first()
+                return session.scalar(select(AudioFile).where(AudioFile.file_path == file_path))
             except SQLAlchemyError as e:
                 session.rollback()
                 print(f"Error retrieving audio file: {e}")

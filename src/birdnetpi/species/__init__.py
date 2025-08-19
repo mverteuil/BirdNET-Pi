@@ -6,12 +6,12 @@ This package contains all species-related functionality:
 - SpeciesParser: Utilities for parsing and extracting species information
 """
 
-from birdnetpi.species.ioc_species_core import IOCSpeciesCore
-from birdnetpi.species.species_display_service import SpeciesDisplayService
-from birdnetpi.species.species_parser import SpeciesParser
+from birdnetpi.species.display import SpeciesDisplayService
+from birdnetpi.species.models import Species
+from birdnetpi.species.parser import SpeciesParser
 
 __all__ = [
-    "IOCSpeciesCore",
+    "Species",
     "SpeciesDisplayService",
     "SpeciesParser",
 ]

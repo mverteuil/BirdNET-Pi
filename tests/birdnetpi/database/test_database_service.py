@@ -37,10 +37,12 @@ def test_checkpoint_wal(bnp_database_service):
     """Should successfully checkpoint WAL file"""
     with patch.object(bnp_database_service, "get_db") as mock_get_db:
         mock_session = MagicMock()
+
+        # Return a tuple with 3 values as expected by checkpoint_wal
         mock_session.execute.return_value.fetchone.return_value = (
             0,
-            100,
-            100,
+            10,
+            10,
         )  # busy, log_pages, checkpointed
         mock_get_db.return_value.__enter__.return_value = mock_session
 

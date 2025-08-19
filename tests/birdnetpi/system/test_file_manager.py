@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from birdnetpi.detections.database_models import AudioFile
+from birdnetpi.detections.models import AudioFile
 from birdnetpi.system.file_manager import FileManager
 
 
