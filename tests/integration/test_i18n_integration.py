@@ -253,13 +253,13 @@ class TestSpeciesTranslation:
                 assert result == "Turdus migratorius"
                 assert "American Robin" not in result
 
-    def test_multilingual_species_names(self, path_resolver):
+    @pytest.mark.asyncio
+    async def test_multilingual_species_names(self, path_resolver):
         """Test that species names work in multiple languages using actual databases."""
         from pathlib import Path
 
         import pytest
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import sessionmaker
+        from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
         from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 
@@ -285,37 +285,34 @@ class TestSpeciesTranslation:
         # Create service with real databases
         service = MultilingualDatabaseService(path_resolver)
 
-        # Create a real SQLite session
-        engine = create_engine("sqlite:///:memory:")
-        session_factory = sessionmaker(bind=engine)
-        session = session_factory()
+        # Create an async SQLite session
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        async with AsyncSession(engine) as session:
+            # Attach the real databases
+            await service.attach_all_to_session(session)
 
-        # Attach the real databases
-        service.attach_all_to_session(session)
+            try:
+                # Test with a real species that should exist in the databases
+                result = await service.get_best_common_name(session, "Turdus migratorius", "es")
 
-        try:
-            # Test with a real species that should exist in the databases
-            result = service.get_best_common_name(session, "Turdus migratorius", "es")
+                # Should get a real Spanish name
+                assert result["common_name"] is not None
+                assert result["source"] in ["IOC", "PatLevin", "Avibase"]
+                # The actual Spanish name might vary but should contain "Zorzal" or "Petirrojo"
 
-            # Should get a real Spanish name
-            assert result["common_name"] is not None
-            assert result["source"] in ["IOC", "PatLevin", "Avibase"]
-            # The actual Spanish name might vary but should contain "Zorzal" or "Petirrojo"
+                # Test English name
+                result_en = await service.get_best_common_name(session, "Turdus migratorius", "en")
+                assert result_en["common_name"] == "American Robin"
+                assert result_en["source"] == "IOC"
 
-            # Test English name
-            result_en = service.get_best_common_name(session, "Turdus migratorius", "en")
-            assert result_en["common_name"] == "American Robin"
-            assert result_en["source"] == "IOC"
+                # Test French name
+                result_fr = await service.get_best_common_name(session, "Turdus migratorius", "fr")
+                assert result_fr["common_name"] is not None
+                assert "Merle" in result_fr["common_name"] or "merle" in result_fr["common_name"]
 
-            # Test French name
-            result_fr = service.get_best_common_name(session, "Turdus migratorius", "fr")
-            assert result_fr["common_name"] is not None
-            assert "Merle" in result_fr["common_name"] or "merle" in result_fr["common_name"]
-
-        finally:
-            # Clean up
-            service.detach_all_from_session(session)
-            session.close()
+            finally:
+                # Clean up
+                await service.detach_all_from_session(session)
 
 
 class TestEndToEndTranslation:

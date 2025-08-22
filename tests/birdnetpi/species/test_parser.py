@@ -23,11 +23,12 @@ def reset_species_parser_instance():
 class TestSpeciesParser:
     """Test cases for SpeciesParser functionality."""
 
-    def test_parse_tensor_species_valid_format(self):
+    @pytest.mark.asyncio
+    async def test_parse_tensor_species_valid_format(self):
         """Test parsing valid tensor output format."""
         tensor_output = "Abeillia abeillei_Emerald-chinned Hummingbird"
 
-        components = SpeciesParser.parse_tensor_species(tensor_output)
+        components = await SpeciesParser.parse_tensor_species(tensor_output)
 
         assert components.scientific_name == "Abeillia abeillei"
         assert components.common_name == "Emerald-chinned Hummingbird"
@@ -36,79 +37,89 @@ class TestSpeciesParser:
         )  # Placeholder until IOC service
         assert components.full_species == "Emerald-chinned Hummingbird (Abeillia abeillei)"
 
-    def test_parse_tensor_species_another_example(self):
+    @pytest.mark.asyncio
+    async def test_parse_tensor_species_another_example(self):
         """Test parsing another valid tensor output format."""
         tensor_output = "Turdus migratorius_American Robin"
 
-        components = SpeciesParser.parse_tensor_species(tensor_output)
+        components = await SpeciesParser.parse_tensor_species(tensor_output)
 
         assert components.scientific_name == "Turdus migratorius"
         assert components.common_name == "American Robin"
         assert components.common_name == "American Robin"
         assert components.full_species == "American Robin (Turdus migratorius)"
 
-    def test_parse_tensor_species__invalid_format__no_underscore(self):
+    @pytest.mark.asyncio
+    async def test_parse_tensor_species__invalid_format__no_underscore(self):
         """Test parsing fails with invalid format (no underscore)."""
         tensor_output = "Abeillia abeillei Emerald-chinned Hummingbird"
 
         with pytest.raises(ValueError, match="Invalid tensor species format"):
-            SpeciesParser.parse_tensor_species(tensor_output)
+            await SpeciesParser.parse_tensor_species(tensor_output)
 
-    def test_parse_tensor_species__invalid_format__empty_parts(self):
+    @pytest.mark.asyncio
+    async def test_parse_tensor_species__invalid_format__empty_parts(self):
         """Test parsing fails with empty components."""
         tensor_output = "_Emerald-chinned Hummingbird"
 
         with pytest.raises(ValueError, match="Invalid species components"):
-            SpeciesParser.parse_tensor_species(tensor_output)
+            await SpeciesParser.parse_tensor_species(tensor_output)
 
-    def test_parse_tensor_species__invalid_format__empty_string(self):
+    @pytest.mark.asyncio
+    async def test_parse_tensor_species__invalid_format__empty_string(self):
         """Test parsing fails with empty string."""
         with pytest.raises(ValueError, match="Invalid tensor output"):
-            SpeciesParser.parse_tensor_species("")
+            await SpeciesParser.parse_tensor_species("")
 
-    def test_extract_common_name_prefer_ioc(self):
+    @pytest.mark.asyncio
+    async def test_extract_common_name_prefer_ioc(self):
         """Test extracting common name preferring IOC."""
         tensor_output = "Turdus migratorius_American Robin"
 
-        common_name = SpeciesParser.extract_common_name(tensor_output, prefer_ioc=True)
+        common_name = await SpeciesParser.extract_common_name(tensor_output, prefer_ioc=True)
 
         assert common_name == "American Robin"  # IOC placeholder
 
-    def test_extract_common_name_prefer_tensor(self):
+    @pytest.mark.asyncio
+    async def test_extract_common_name_prefer_tensor(self):
         """Test extracting common name preferring tensor."""
         tensor_output = "Turdus migratorius_American Robin"
 
-        common_name = SpeciesParser.extract_common_name(tensor_output, prefer_ioc=False)
+        common_name = await SpeciesParser.extract_common_name(tensor_output, prefer_ioc=False)
 
         assert common_name == "American Robin"  # Tensor original
 
-    def test_extract_scientific_name(self):
+    @pytest.mark.asyncio
+    async def test_extract_scientific_name(self):
         """Test extracting scientific name."""
         tensor_output = "Turdus migratorius_American Robin"
 
-        scientific_name = SpeciesParser.extract_scientific_name(tensor_output)
+        scientific_name = await SpeciesParser.extract_scientific_name(tensor_output)
 
         assert scientific_name == "Turdus migratorius"
 
-    def test_format_full_species(self):
+    @pytest.mark.asyncio
+    async def test_format_full_species(self):
         """Test formatting full species name."""
         tensor_output = "Turdus migratorius_American Robin"
 
-        full_species = SpeciesParser.format_full_species(tensor_output)
+        full_species = await SpeciesParser.format_full_species(tensor_output)
 
         assert full_species == "American Robin (Turdus migratorius)"
 
-    def test_is_valid_tensor_format_valid(self):
+    @pytest.mark.asyncio
+    async def test_is_valid_tensor_format_valid(self):
         """Test validation of valid tensor format."""
         tensor_output = "Turdus migratorius_American Robin"
 
-        assert SpeciesParser.is_valid_tensor_format(tensor_output) is True
+        assert await SpeciesParser.is_valid_tensor_format(tensor_output) is True
 
-    def test_is_valid_tensor_format_invalid(self):
+    @pytest.mark.asyncio
+    async def test_is_valid_tensor_format_invalid(self):
         """Test validation of invalid tensor format."""
         tensor_output = "Invalid format without underscore"
 
-        assert SpeciesParser.is_valid_tensor_format(tensor_output) is False
+        assert await SpeciesParser.is_valid_tensor_format(tensor_output) is False
 
 
 class TestSpeciesDisplayOptions:
@@ -226,13 +237,13 @@ class TestSpeciesParserWithIOC:
         # Create a temporary database service for testing
         from unittest.mock import MagicMock
 
-        from birdnetpi.database.ioc.database_service import IOCDatabaseService
+        from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 
-        # Mock IOCDatabaseService since SpeciesParser now requires it
-        mock_ioc_service = MagicMock(spec=IOCDatabaseService)
-        parser = SpeciesParser(mock_ioc_service)
+        # Mock MultilingualDatabaseService since SpeciesParser now requires it
+        mock_multilingual_service = MagicMock(spec=MultilingualDatabaseService)
+        parser = SpeciesParser(mock_multilingual_service)
 
-        assert parser.ioc_database is mock_ioc_service
+        assert parser.multilingual_service is mock_multilingual_service
 
     def test_format_species_display_fallback_to_common_name(self):
         """Test format_species_for_display fallback when both display options are disabled."""

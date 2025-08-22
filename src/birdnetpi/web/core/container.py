@@ -9,7 +9,6 @@ from birdnetpi.analytics.reporting_manager import ReportingManager
 from birdnetpi.audio.audio_websocket_service import AudioWebSocketService
 from birdnetpi.audio.spectrogram_service import SpectrogramService
 from birdnetpi.database.database_service import DatabaseService
-from birdnetpi.database.ioc.database_service import IOCDatabaseService
 from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.detections.detection_query_service import DetectionQueryService
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
@@ -70,14 +69,6 @@ class Container(containers.DeclarativeContainer):
     bnp_database_service = providers.Singleton(
         DatabaseService,
         db_path=database_path,
-    )
-
-    # IOC database service
-    ioc_database_service = providers.Singleton(
-        IOCDatabaseService,
-        db_path=providers.Factory(
-            lambda resolver: resolver.get_ioc_database_path(), resolver=path_resolver
-        ),
     )
 
     # Multilingual database service with all three bird name databases

@@ -35,7 +35,7 @@ async def get_best_recordings(
 ) -> HTMLResponse:
     """Retrieve a list of the best recorded audio files based on confidence."""
     try:
-        best_recordings = reporting_manager.get_best_detections(limit=20)
+        best_recordings = await reporting_manager.get_best_detections(limit=20)
     except Exception:
         # If database is not accessible, show empty state
         best_recordings = []
@@ -56,7 +56,7 @@ async def get_detections(
     """Retrieve and display all detections."""
     try:
         # Get all detections from the data manager
-        all_detections = data_manager.get_all_detections()
+        all_detections = await data_manager.get_all_detections()
         # Convert to dictionary format similar to other reports
         detections_data = [
             {
@@ -89,7 +89,7 @@ async def get_todays_detections(
 ) -> HTMLResponse:
     """Retrieve a list of today's detections."""
     try:
-        todays_detections = reporting_manager.get_todays_detections()
+        todays_detections = await reporting_manager.get_todays_detections()
     except Exception:
         # If database is not accessible, show empty state
         todays_detections = []
@@ -111,7 +111,7 @@ async def get_weekly_report(
 ) -> HTMLResponse:
     """Retrieve and display weekly report data."""
     try:
-        weekly_data = reporting_manager.get_weekly_report_data()
+        weekly_data = await reporting_manager.get_weekly_report_data()
     except Exception:
         # If database is not accessible, show empty state
         weekly_data = {
@@ -147,7 +147,7 @@ async def get_charts(
 ) -> HTMLResponse:
     """Generate and display various charts related to bird detections."""
     try:
-        df = reporting_manager.get_data()
+        df = await reporting_manager.get_data()
 
         # Default values for plot generation
         start_date = (

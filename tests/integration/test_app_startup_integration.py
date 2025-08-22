@@ -8,7 +8,6 @@ from dependency_injector import providers
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from birdnetpi.database.ioc.database_service import IOCDatabaseService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
@@ -73,9 +72,6 @@ class TestAppStartupIntegration:
         Container.database_path.override(
             providers.Factory(lambda: test_resolver.get_database_path())
         )
-        Container.ioc_database_service.override(
-            providers.Singleton(IOCDatabaseService, db_path=test_resolver.get_ioc_database_path())
-        )
 
         # Create the app using the factory
         app = create_app()
@@ -85,7 +81,6 @@ class TestAppStartupIntegration:
         # Clean up overrides
         Container.path_resolver.reset_override()
         Container.database_path.reset_override()
-        Container.ioc_database_service.reset_override()
 
     def test_app_creation_succeeds(self, app_with_real_container: FastAPI):
         """Test that the app can be created without errors."""

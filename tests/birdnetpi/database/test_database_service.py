@@ -1,72 +1,125 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+import pytest_asyncio
 from sqlalchemy.exc import SQLAlchemyError
 
 from birdnetpi.database.database_service import DatabaseService
 
 
-@pytest.fixture
-def bnp_database_service(tmp_path) -> DatabaseService:
+@pytest_asyncio.fixture
+async def bnp_database_service(tmp_path) -> DatabaseService:
     """Provide a DatabaseService instance for testing."""
     db_path = tmp_path / "test.db"
-    return DatabaseService(db_path)
+
+    # Patch problematic parts during initialization
+    with patch("birdnetpi.database.database_service.SQLModel.metadata.create_all"):
+        # Patch the event listener and create_engine that are imported inside __init__
+        with patch("sqlalchemy.event.listens_for"):
+            with patch("sqlalchemy.create_engine") as mock_create_engine:
+                # Mock the sync engine
+                mock_sync_engine = MagicMock()
+                mock_create_engine.return_value = mock_sync_engine
+                service = DatabaseService(db_path)
+
+    # The service is now created without trying to initialize the database
+    # The methods we're testing will be properly mocked in each test
+    return service
 
 
-def test_clear_database(bnp_database_service):
+@pytest.mark.asyncio
+async def test_clear_database(bnp_database_service):
     """Should clear all data from the database tables successfully"""
-    # This test now checks that the clear_database method runs without error.
-    # A more thorough test would involve adding data and then checking that it was deleted.
-    bnp_database_service.clear_database()
+    from unittest.mock import AsyncMock, PropertyMock
 
+    # Mock the database session to avoid actual database operations
+    with patch.object(bnp_database_service, "get_async_db") as mock_get_async_db:
+        mock_session = AsyncMock()
+        mock_get_async_db.return_value.__aenter__.return_value = mock_session
 
-def test_clear_database_failure(bnp_database_service, monkeypatch):
-    """Should handle clear database failure and rollback"""
-    # We now need to mock the session object used by the service
-    mock_session = MagicMock()
-    mock_session.execute.side_effect = SQLAlchemyError("Test Error")
-    monkeypatch.setattr(bnp_database_service, "session_local", lambda: mock_session)
+        # Mock SQLModel.metadata.sorted_tables as a property
+        mock_table = MagicMock()
+        mock_table.delete.return_value = MagicMock()
 
-    with pytest.raises(SQLAlchemyError):
-        bnp_database_service.clear_database()
-
-    mock_session.rollback.assert_called_once()
-
-
-def test_checkpoint_wal(bnp_database_service):
-    """Should successfully checkpoint WAL file"""
-    with patch.object(bnp_database_service, "get_db") as mock_get_db:
-        mock_session = MagicMock()
-
-        # Return a tuple with 3 values as expected by checkpoint_wal
-        mock_session.execute.return_value.fetchone.return_value = (
-            0,
-            10,
-            10,
-        )  # busy, log_pages, checkpointed
-        mock_get_db.return_value.__enter__.return_value = mock_session
-
-        bnp_database_service.checkpoint_wal("RESTART")
+        with patch(
+            "birdnetpi.database.database_service.SQLModel.metadata", new_callable=PropertyMock
+        ) as mock_metadata:
+            mock_metadata.return_value.sorted_tables = [mock_table]
+            await bnp_database_service.clear_database()
 
         mock_session.execute.assert_called_once()
         mock_session.commit.assert_called_once()
 
 
-def test_checkpoint_wal_failure(bnp_database_service):
+@pytest.mark.asyncio
+async def test_clear_database_failure(bnp_database_service):
+    """Should handle clear database failure and rollback"""
+    from unittest.mock import AsyncMock, PropertyMock
+
+    # Mock the database session to simulate a failure
+    with patch.object(bnp_database_service, "get_async_db") as mock_get_async_db:
+        mock_session = AsyncMock()
+        mock_session.execute.side_effect = SQLAlchemyError("Test Error")
+        mock_get_async_db.return_value.__aenter__.return_value = mock_session
+
+        # Mock SQLModel.metadata.sorted_tables
+        mock_table = MagicMock()
+        mock_table.delete.return_value = MagicMock()
+
+        with patch(
+            "birdnetpi.database.database_service.SQLModel.metadata", new_callable=PropertyMock
+        ) as mock_metadata:
+            mock_metadata.return_value.sorted_tables = [mock_table]
+
+            with pytest.raises(SQLAlchemyError):
+                await bnp_database_service.clear_database()
+
+            mock_session.rollback.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_checkpoint_wal(bnp_database_service):
+    """Should successfully checkpoint WAL file"""
+    from unittest.mock import AsyncMock
+
+    with patch.object(bnp_database_service, "get_async_db") as mock_get_async_db:
+        mock_session = AsyncMock()
+
+        # Create a mock result object with fetchone method
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (0, 10, 10)  # busy, log_pages, checkpointed
+        mock_session.execute.return_value = mock_result
+
+        # Setup async context manager
+        mock_get_async_db.return_value.__aenter__.return_value = mock_session
+
+        await bnp_database_service.checkpoint_wal("RESTART")
+
+        mock_session.execute.assert_called_once()
+        mock_session.commit.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_checkpoint_wal_failure(bnp_database_service):
     """Should handle WAL checkpoint failure gracefully"""
-    with patch.object(bnp_database_service, "get_db") as mock_get_db:
-        mock_session = MagicMock()
+    from unittest.mock import AsyncMock
+
+    with patch.object(bnp_database_service, "get_async_db") as mock_get_async_db:
+        mock_session = AsyncMock()
         mock_session.execute.side_effect = SQLAlchemyError("WAL Error")
-        mock_get_db.return_value.__enter__.return_value = mock_session
+        mock_get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Should not raise exception, just print warning
-        bnp_database_service.checkpoint_wal("RESTART")
+        await bnp_database_service.checkpoint_wal("RESTART")
 
         mock_session.execute.assert_called_once()
 
 
-def test_get_database_stats(bnp_database_service, tmp_path):
+@pytest.mark.asyncio
+async def test_get_database_stats(bnp_database_service, tmp_path):
     """Should return database statistics"""
+    from unittest.mock import AsyncMock
+
     # Create fake database files
     db_path = tmp_path / "test.db"
     db_path.write_text("fake db content")
@@ -80,19 +133,20 @@ def test_get_database_stats(bnp_database_service, tmp_path):
     # Mock the database path and session queries
     bnp_database_service.db_path = db_path
 
-    with patch.object(bnp_database_service, "get_db") as mock_get_db:
-        mock_session = MagicMock()
+    with patch.object(bnp_database_service, "get_async_db") as mock_get_async_db:
+        mock_session = AsyncMock()
 
         # Mock pragma results
-        mock_session.execute.side_effect = [
+        mock_results = [
             MagicMock(fetchone=lambda: [1000]),  # page_count
             MagicMock(fetchone=lambda: [4096]),  # page_size
             MagicMock(fetchone=lambda: [0, 50, 50]),  # wal_checkpoint
             MagicMock(fetchone=lambda: ["wal"]),  # journal_mode
         ]
-        mock_get_db.return_value.__enter__.return_value = mock_session
+        mock_session.execute.side_effect = mock_results
+        mock_get_async_db.return_value.__aenter__.return_value = mock_session
 
-        stats = bnp_database_service.get_database_stats()
+        stats = await bnp_database_service.get_database_stats()
 
         # Verify file size calculations
         assert "main_db_size" in stats
@@ -107,26 +161,32 @@ def test_get_database_stats(bnp_database_service, tmp_path):
         assert stats["journal_mode"] == "wal"
 
 
-def test_vacuum_database(bnp_database_service):
+@pytest.mark.asyncio
+async def test_vacuum_database(bnp_database_service):
     """Should successfully vacuum database"""
-    with patch.object(bnp_database_service, "get_db") as mock_get_db:
-        mock_session = MagicMock()
-        mock_get_db.return_value.__enter__.return_value = mock_session
+    from unittest.mock import AsyncMock
 
-        bnp_database_service.vacuum_database()
+    with patch.object(bnp_database_service, "get_async_db") as mock_get_async_db:
+        mock_session = AsyncMock()
+        mock_get_async_db.return_value.__aenter__.return_value = mock_session
+
+        await bnp_database_service.vacuum_database()
 
         mock_session.execute.assert_called_once()
         mock_session.commit.assert_called_once()
 
 
-def test_vacuum_database_failure(bnp_database_service):
+@pytest.mark.asyncio
+async def test_vacuum_database_failure(bnp_database_service):
     """Should handle vacuum database failure"""
-    with patch.object(bnp_database_service, "get_db") as mock_get_db:
-        mock_session = MagicMock()
+    from unittest.mock import AsyncMock
+
+    with patch.object(bnp_database_service, "get_async_db") as mock_get_async_db:
+        mock_session = AsyncMock()
         mock_session.execute.side_effect = SQLAlchemyError("Vacuum Error")
-        mock_get_db.return_value.__enter__.return_value = mock_session
+        mock_get_async_db.return_value.__aenter__.return_value = mock_session
 
         with pytest.raises(SQLAlchemyError):
-            bnp_database_service.vacuum_database()
+            await bnp_database_service.vacuum_database()
 
         mock_session.rollback.assert_called_once()

@@ -1,3 +1,4 @@
+import asyncio
 import os
 import time
 
@@ -11,7 +12,7 @@ from birdnetpi.system.system_control_service import SystemControlService
 from birdnetpi.utils.dummy_data_generator import generate_dummy_detections
 
 
-def main() -> None:
+async def run() -> None:
     """Generate dummy data for the application."""
     path_resolver = PathResolver()
     db_path = path_resolver.get_database_path()
@@ -36,7 +37,8 @@ def main() -> None:
             data_manager = DataManager(
                 bnp_database_service, multilingual_service, species_display_service
             )
-            if data_manager.get_all_detections():
+            detections = await data_manager.get_all_detections()
+            if detections:
                 print("Database already contains data. Skipping dummy data generation.")
                 return
         except Exception as e:
@@ -69,7 +71,7 @@ def main() -> None:
         data_manager = DataManager(
             bnp_database_service, multilingual_service, species_display_service
         )
-        generate_dummy_detections(data_manager)
+        await generate_dummy_detections(data_manager)
         print("Dummy data generation complete.")
 
     finally:
@@ -93,6 +95,11 @@ def _get_fastapi_service_name() -> str:
     else:
         # On SBC/systemd, it might be a systemd service
         return "birdnetpi-fastapi"  # Common systemd service name pattern
+
+
+def main() -> None:
+    """Entry point for the console script."""
+    asyncio.run(run())
 
 
 if __name__ == "__main__":

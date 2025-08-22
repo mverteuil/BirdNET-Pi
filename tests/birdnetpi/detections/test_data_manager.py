@@ -1,7 +1,7 @@
 """Tests for the DataManager - single source of truth for detection data access."""
 
 from datetime import datetime
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
@@ -47,38 +47,51 @@ def data_manager(mock_services):
 class TestCoreOperations:
     """Test core CRUD operations."""
 
-    def test_get_detection_by_id(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_get_detection_by_id(self, data_manager, mock_services):
         """Should retrieve a detection by its ID."""
         mock_session = MagicMock()
-        mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
 
         mock_detection = MagicMock(spec=Detection)
-        mock_session.execute.return_value.scalar_one_or_none.return_value = mock_detection
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_detection
+        mock_session.execute = AsyncMock(return_value=mock_result)
 
-        result = data_manager.get_detection_by_id(1)
+        result = await data_manager.get_detection_by_id(1)
 
         assert result == mock_detection
         mock_session.execute.assert_called_once()
 
-    def test_get_all_detections_with_pagination(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_get_all_detections_with_pagination(self, data_manager, mock_services):
         """Should retrieve all detections with pagination."""
         mock_session = MagicMock()
-        mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
 
         mock_detections = [MagicMock(spec=Detection), MagicMock(spec=Detection)]
         mock_scalars = MagicMock()
         mock_scalars.__iter__ = lambda x: iter(mock_detections)
-        mock_session.execute.return_value.scalars.return_value = mock_scalars
+        mock_result = MagicMock()
+        mock_result.scalars.return_value = mock_scalars
+        mock_session.execute = AsyncMock(return_value=mock_result)
 
-        result = data_manager.get_all_detections(limit=10, offset=20)
+        result = await data_manager.get_all_detections(limit=10, offset=20)
 
-        assert result == mock_detections
+        assert list(result) == mock_detections
         mock_session.execute.assert_called_once()
 
-    def test_create_detection(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_create_detection(self, data_manager, mock_services):
         """Should create a new detection with audio file."""
-        mock_session = MagicMock()
-        mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
+        mock_session = AsyncMock()
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
 
         detection_event = DetectionEvent(
             species_tensor="Turdus migratorius_American Robin",
@@ -97,7 +110,7 @@ class TestCoreOperations:
             overlap=2.5,
         )
 
-        data_manager.create_detection(detection_event)
+        await data_manager.create_detection(detection_event)
 
         # Verify AudioFile creation
         audio_file_call = mock_session.add.call_args_list[0]
@@ -109,32 +122,46 @@ class TestCoreOperations:
 
         mock_session.commit.assert_called_once()
 
-    def test_update_detection(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_update_detection(self, data_manager, mock_services):
         """Should update a detection record."""
         mock_session = MagicMock()
-        mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
 
         mock_detection = MagicMock(spec=Detection)
         mock_detection.confidence = 0.8
-        mock_session.execute.return_value.scalar_one_or_none.return_value = mock_detection
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_detection
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.commit = AsyncMock()
+        mock_session.refresh = AsyncMock()
 
         updates = {"confidence": 0.95, "common_name": "Updated Robin"}
-        result = data_manager.update_detection(1, updates)
+        result = await data_manager.update_detection(1, updates)
 
         assert result == mock_detection
         assert mock_detection.confidence == 0.95
         assert mock_detection.common_name == "Updated Robin"
         mock_session.commit.assert_called_once()
 
-    def test_delete_detection(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_delete_detection(self, data_manager, mock_services):
         """Should delete a detection record."""
         mock_session = MagicMock()
-        mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
 
         mock_detection = MagicMock(spec=Detection)
-        mock_session.execute.return_value.scalar_one_or_none.return_value = mock_detection
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_detection
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.delete = MagicMock()
+        mock_session.commit = AsyncMock()
 
-        result = data_manager.delete_detection(1)
+        result = await data_manager.delete_detection(1)
 
         assert result is True
         mock_session.delete.assert_called_once_with(mock_detection)
@@ -144,17 +171,22 @@ class TestCoreOperations:
 class TestQueryMethods:
     """Test query methods."""
 
-    def test_query_detections_with_filters(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_query_detections_with_filters(self, data_manager, mock_services):
         """Should query detections with multiple filters."""
         mock_session = MagicMock()
-        mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
 
         mock_detections = [MagicMock(spec=Detection)]
         mock_scalars = MagicMock()
         mock_scalars.__iter__ = lambda x: iter(mock_detections)
-        mock_session.execute.return_value.scalars.return_value = mock_scalars
+        mock_result = MagicMock()
+        mock_result.scalars.return_value = mock_scalars
+        mock_session.execute = AsyncMock(return_value=mock_result)
 
-        result = data_manager.query_detections(
+        result = await data_manager.query_detections(
             species="Turdus migratorius",
             start_date=datetime(2023, 1, 1),
             end_date=datetime(2023, 12, 31),
@@ -167,14 +199,15 @@ class TestQueryMethods:
         assert result == mock_detections
         assert mock_session.execute.called
 
-    def test_query_detections_with_localization(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_query_detections_with_localization(self, data_manager, mock_services):
         """Should use DetectionQueryService when localization requested."""
         mock_detections = [MagicMock(spec=DetectionWithLocalization)]
-        mock_services[
-            "detection_query_service"
-        ].get_detections_with_localization.return_value = mock_detections
+        mock_services["detection_query_service"].get_detections_with_localization = AsyncMock(
+            return_value=mock_detections
+        )
 
-        result = data_manager.query_detections(
+        result = await data_manager.query_detections(
             species="Turdus migratorius",
             include_localization=True,
             language_code="es",
@@ -185,15 +218,16 @@ class TestQueryMethods:
             "detection_query_service"
         ].get_detections_with_localization.assert_called_once()
 
-    def test_get_detections_with_localization(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_get_detections_with_localization(self, data_manager, mock_services):
         """Should get detections with localized names."""
         mock_detections = [MagicMock(spec=DetectionWithLocalization)]
-        mock_services[
-            "detection_query_service"
-        ].get_detections_with_localization.return_value = mock_detections
+        mock_services["detection_query_service"].get_detections_with_localization = AsyncMock(
+            return_value=mock_detections
+        )
 
         filters = {"species": "Turdus migratorius", "family": "Turdidae"}
-        result = data_manager.get_detections_with_localization(
+        result = await data_manager.get_detections_with_localization(
             filters=filters,
             limit=50,
             language_code="fr",
@@ -208,23 +242,29 @@ class TestQueryMethods:
 class TestCountMethods:
     """Test count methods."""
 
-    def test_count_detections(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_count_detections(self, data_manager, mock_services):
         """Should count detections with filters."""
-        mock_session = MagicMock()
-        mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
+        mock_session = AsyncMock()
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
 
         mock_session.scalar.return_value = 42
 
         filters = {"species": "Turdus migratorius", "min_confidence": 0.8}
-        result = data_manager.count_detections(filters)
+        result = await data_manager.count_detections(filters)
 
         assert result == 42
         assert mock_session.scalar.called
 
-    def test_count_by_species(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_count_by_species(self, data_manager, mock_services):
         """Should count detections by species."""
-        mock_session = MagicMock()
-        mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
+        mock_session = AsyncMock()
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Return Row-like objects with dictionary access
         mock_row1 = MagicMock()
@@ -239,17 +279,20 @@ class TestCountMethods:
         }[key]
         mock_session.execute.return_value.__iter__ = lambda self: iter([mock_row1, mock_row2])
 
-        result = data_manager.count_by_species(
+        result = await data_manager.count_by_species(
             start_date=datetime(2023, 1, 1),
             end_date=datetime(2023, 12, 31),
         )
 
         assert result == {"Turdus migratorius": 10, "Cardinalis cardinalis": 5}
 
-    def test_count_by_date(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_count_by_date(self, data_manager, mock_services):
         """Should count detections by date."""
-        mock_session = MagicMock()
-        mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
+        mock_session = AsyncMock()
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
 
         from datetime import date
 
@@ -260,7 +303,7 @@ class TestCountMethods:
         mock_row2.__getitem__ = lambda self, key: {"date": date(2023, 1, 2), "count": 8}[key]
         mock_session.execute.return_value.__iter__ = lambda self: iter([mock_row1, mock_row2])
 
-        result = data_manager.count_by_date(species="Turdus migratorius")
+        result = await data_manager.count_by_date(species="Turdus migratorius")
 
         assert result == {date(2023, 1, 1): 5, date(2023, 1, 2): 8}
 
@@ -268,7 +311,8 @@ class TestCountMethods:
 class TestTranslationHelpers:
     """Test translation helper methods."""
 
-    def test_get_species_display_name_with_localization(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_get_species_display_name_with_localization(self, data_manager, mock_services):
         """Should use species display service for DetectionWithLocalization."""
         mock_detection = MagicMock(spec=DetectionWithLocalization)
         mock_services[
@@ -286,7 +330,8 @@ class TestTranslationHelpers:
             mock_detection, True
         )
 
-    def test_get_species_display_name_plain_detection(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_get_species_display_name_plain_detection(self, data_manager, mock_services):
         """Should handle plain Detection objects."""
         mock_detection = MagicMock(spec=Detection)
         mock_detection.scientific_name = "Turdus migratorius"
@@ -303,25 +348,33 @@ class TestTranslationHelpers:
 class TestSpecializedQueries:
     """Test specialized queries migrated from DetectionManager."""
 
-    def test_get_recent_detections(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_get_recent_detections(self, data_manager, mock_services):
         """Should get recent detections using query_detections."""
         mock_session = MagicMock()
-        mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
 
         mock_detections = [MagicMock(spec=Detection)]
         mock_scalars = MagicMock()
         mock_scalars.__iter__ = lambda x: iter(mock_detections)
-        mock_session.execute.return_value.scalars.return_value = mock_scalars
+        mock_result = MagicMock()
+        mock_result.scalars.return_value = mock_scalars
+        mock_session.execute = AsyncMock(return_value=mock_result)
 
-        result = data_manager.get_recent_detections(limit=5)
+        result = await data_manager.get_recent_detections(limit=5)
 
         assert result == mock_detections
         assert mock_session.execute.called
 
-    def test_get_top_species_with_prior_counts(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_get_top_species_with_prior_counts(self, data_manager, mock_services):
         """Should get top species with prior period counts."""
-        mock_session = MagicMock()
-        mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
+        mock_session = AsyncMock()
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Mock the complex query result - the method uses session.execute()
         # Return Row-like objects with dictionary access
@@ -343,7 +396,7 @@ class TestSpecializedQueries:
 
         mock_session.execute.return_value.__iter__ = lambda self: iter([mock_row1, mock_row2])
 
-        result = data_manager.get_top_species_with_prior_counts(
+        result = await data_manager.get_top_species_with_prior_counts(
             datetime(2023, 1, 1),
             datetime(2023, 1, 31),
             datetime(2022, 12, 1),
@@ -355,10 +408,13 @@ class TestSpecializedQueries:
         assert result[0]["current_count"] == 25
         assert result[0]["prior_count"] == 15
 
-    def test_get_best_detections(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_get_best_detections(self, data_manager, mock_services):
         """Should get best detection per species by confidence."""
-        mock_session = MagicMock()
-        mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
+        mock_session = AsyncMock()
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Mock the detection result
         mock_detection = MagicMock(spec=Detection)
@@ -370,7 +426,7 @@ class TestSpecializedQueries:
         mock_scalars.all.return_value = [mock_detection]
         mock_session.scalars.return_value = mock_scalars
 
-        result = data_manager.get_best_detections(limit=5)
+        result = await data_manager.get_best_detections(limit=5)
 
         assert len(result) == 1
         assert result[0] == mock_detection
@@ -379,21 +435,25 @@ class TestSpecializedQueries:
 class TestErrorHandling:
     """Test error handling."""
 
-    def test_database_error_handling(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_database_error_handling(self, data_manager, mock_services):
         """Should handle database errors gracefully."""
-        mock_session = MagicMock()
-        mock_services["database_service"].get_db.return_value.__enter__.return_value = mock_session
+        mock_session = AsyncMock()
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
 
         mock_session.execute.side_effect = SQLAlchemyError("Database error")
 
         with pytest.raises(SQLAlchemyError):
-            data_manager.get_detection_by_id(1)
+            await data_manager.get_detection_by_id(1)
 
         mock_session.rollback.assert_called_once()
 
-    def test_no_query_service_for_localization(self, data_manager, mock_services):
+    @pytest.mark.asyncio
+    async def test_no_query_service_for_localization(self, data_manager, mock_services):
         """Should raise error when query service not available for localization."""
         data_manager.query_service = None
 
         with pytest.raises(RuntimeError, match="DetectionQueryService not available"):
-            data_manager.get_detections_with_localization()
+            await data_manager.get_detections_with_localization()

@@ -59,7 +59,7 @@ class ReportingManager:
                 return detection.translated_name
         return detection.common_name or detection.scientific_name
 
-    def get_data(self, use_l10n_data: bool = True, language_code: str = "en") -> pd.DataFrame:
+    async def get_data(self, use_l10n_data: bool = True, language_code: str = "en") -> pd.DataFrame:
         """Retrieve all detection data from the database and format it into a DataFrame.
 
         Args:
@@ -71,11 +71,11 @@ class ReportingManager:
         if use_l10n_data and self.data_manager.query_service:
             try:
                 # Get detections with localization data (all detections, no limit)
-                detections_with_l10n: list[DetectionWithLocalization] = (
-                    self.data_manager.query_service.get_detections_with_localization(
-                        limit=10000,  # Large limit to get all data
-                        language_code=language_code,
-                    )
+                detections_with_l10n: list[
+                    DetectionWithLocalization
+                ] = await self.data_manager.query_service.get_detections_with_localization(
+                    limit=10000,  # Large limit to get all data
+                    language_code=language_code,
                 )
                 data = [
                     {
@@ -108,7 +108,7 @@ class ReportingManager:
 
         if not use_l10n_data:
             # Original implementation without IOC data
-            detections = self.data_manager.get_all_detections()
+            detections = await self.data_manager.get_all_detections()
             data = [
                 {
                     "common_name": d.common_name or "",
@@ -152,7 +152,7 @@ class ReportingManager:
             df = df.set_index("datetime")
         return df
 
-    def _get_weekly_stats(
+    async def _get_weekly_stats(
         self,
         start_date: datetime.date,
         end_date: datetime.date,
@@ -160,17 +160,17 @@ class ReportingManager:
         prior_end_date: datetime.date,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Get total detection counts and unique species counts for the current and prior weeks."""
-        current_week_stats = self.data_manager.get_detection_counts_by_date_range(
+        current_week_stats = await self.data_manager.get_detection_counts_by_date_range(
             datetime.datetime.combine(start_date, datetime.time.min),
             datetime.datetime.combine(end_date, datetime.time.max),
         )
-        prior_week_stats = self.data_manager.get_detection_counts_by_date_range(
+        prior_week_stats = await self.data_manager.get_detection_counts_by_date_range(
             datetime.datetime.combine(prior_start_date, datetime.time.min),
             datetime.datetime.combine(prior_end_date, datetime.time.max),
         )
         return current_week_stats, prior_week_stats
 
-    def _get_top_species_data(
+    async def _get_top_species_data(
         self,
         start_date: datetime.date,
         end_date: datetime.date,
@@ -178,7 +178,7 @@ class ReportingManager:
         prior_end_date: datetime.date,
     ) -> list[dict[str, Any]]:
         """Fetch the top 10 species for the current week and their counts from the prior week."""
-        top_10_species_rows = self.data_manager.get_top_species_with_prior_counts(
+        top_10_species_rows = await self.data_manager.get_top_species_with_prior_counts(
             datetime.datetime.combine(start_date, datetime.time.min),
             datetime.datetime.combine(end_date, datetime.time.max),
             datetime.datetime.combine(prior_start_date, datetime.time.min),
@@ -203,11 +203,11 @@ class ReportingManager:
                 )
         return top_10_species
 
-    def _get_new_species_data(
+    async def _get_new_species_data(
         self, start_date: datetime.date, end_date: datetime.date
     ) -> list[dict[str, Any]]:
         """Fetch new species detected in the current week that were not present in prior data."""
-        new_species_rows = self.data_manager.get_new_species_data(
+        new_species_rows = await self.data_manager.get_new_species_data(
             datetime.datetime.combine(start_date, datetime.time.min),
             datetime.datetime.combine(end_date, datetime.time.max),
         )
@@ -239,12 +239,12 @@ class ReportingManager:
             )
         return percentage_diff_total, percentage_diff_unique_species
 
-    def get_weekly_report_data(self) -> dict[str, Any]:
+    async def get_weekly_report_data(self) -> dict[str, Any]:
         """Retrieve and process data for the weekly report."""
         today = datetime.date.today()
 
         # Check if we have data for the current period
-        all_detections = self.data_manager.get_all_detections()
+        all_detections = await self.data_manager.get_all_detections()
 
         if all_detections:
             # Get the date range of available data
@@ -277,15 +277,15 @@ class ReportingManager:
         prior_start_date = start_date - datetime.timedelta(days=7)
         prior_end_date = end_date - datetime.timedelta(days=7)
 
-        current_week_stats, prior_week_stats = self._get_weekly_stats(
+        current_week_stats, prior_week_stats = await self._get_weekly_stats(
             start_date, end_date, prior_start_date, prior_end_date
         )
 
-        top_10_species = self._get_top_species_data(
+        top_10_species = await self._get_top_species_data(
             start_date, end_date, prior_start_date, prior_end_date
         )
 
-        new_species = self._get_new_species_data(start_date, end_date)
+        new_species = await self._get_new_species_data(start_date, end_date)
 
         # Extract counts
         total_detections_current = current_week_stats["total_count"] if current_week_stats else 0
@@ -316,7 +316,7 @@ class ReportingManager:
             "new_species": new_species,
         }
 
-    def get_most_recent_detections(
+    async def get_most_recent_detections(
         self, limit: int = 10, language_code: str = "en", use_l10n_data: bool = True
     ) -> list[dict[str, Any]]:
         """Retrieve the most recent detection records from the database.
@@ -331,7 +331,7 @@ class ReportingManager:
                 # Get detections with localization using query_detections
                 detections_with_l10n: list[DetectionWithLocalization] = cast(
                     list[DetectionWithLocalization],
-                    self.data_manager.query_detections(
+                    await self.data_manager.query_detections(
                         limit=limit,
                         order_by="timestamp",
                         order_desc=True,
@@ -356,7 +356,7 @@ class ReportingManager:
                 print(f"Error getting recent detections with localization data, falling back: {e}")
 
         # Fallback to original method - convert Detection objects to dicts
-        recent_detections = self.data_manager.get_recent_detections(limit)
+        recent_detections = await self.data_manager.get_recent_detections(limit)
         return [
             {
                 "date": d.timestamp.strftime("%Y-%m-%d") if d.timestamp else "",
@@ -370,7 +370,7 @@ class ReportingManager:
             for d in recent_detections
         ]
 
-    def get_todays_detections(
+    async def get_todays_detections(
         self, language_code: str = "en", use_l10n_data: bool = True
     ) -> list[dict[str, Any]]:
         """Retrieve all detection records from the database for the current day.
@@ -386,10 +386,10 @@ class ReportingManager:
         # Try to use IOC-enhanced data if available
         if use_l10n_data and self.data_manager.query_service:
             try:
-                detections_with_l10n: list[DetectionWithLocalization] = (
-                    self.data_manager.query_service.get_detections_with_localization(
-                        limit=1000, since=start_datetime, language_code=language_code
-                    )
+                detections_with_l10n: list[
+                    DetectionWithLocalization
+                ] = await self.data_manager.query_service.get_detections_with_localization(
+                    limit=1000, since=start_datetime, language_code=language_code
                 )
 
                 # Filter for today's detections
@@ -435,7 +435,7 @@ class ReportingManager:
                 use_l10n_data = False
 
         # Fallback to original implementation
-        all_detections = self.data_manager.get_all_detections()
+        all_detections = await self.data_manager.get_all_detections()
         todays_detections = [
             d
             for d in all_detections
@@ -495,9 +495,9 @@ class ReportingManager:
             df, resample_selection, species
         )
 
-    def get_best_detections(self, limit: int = 20) -> list[dict]:
+    async def get_best_detections(self, limit: int = 20) -> list[dict]:
         """Retrieve the best detections from the database."""
-        best_detections = self.data_manager.get_best_detections(limit)
+        best_detections = await self.data_manager.get_best_detections(limit)
         # Convert Detection objects to dictionaries
         return [
             {

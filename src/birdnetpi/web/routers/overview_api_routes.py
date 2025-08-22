@@ -18,7 +18,7 @@ async def get_overview_data(
     """Retrieve various system and application overview data."""
     # Get system monitoring data using SystemInspector
     system_status = SystemInspector.get_health_summary()
-    total_detections = data_manager.count_detections()
+    total_detections = await data_manager.count_detections()
 
     return {
         "system_status": system_status,

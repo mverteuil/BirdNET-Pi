@@ -74,7 +74,9 @@ dependencies = [
   "tzlocal",
   "uvicorn",
   "websockets>=15.0.1",
-  "wtforms>=3.1.2"
+  "wtforms>=3.1.2",
+  "aiosqlite>=0.21.0",
+  "greenlet>=3.2.3"
 ]
 
 [project.scripts]
@@ -118,7 +120,7 @@ markers = [
   "no_leaks: detect asyncio task leaks, thread leaks, and event loop blocking"
 ]
 testpaths = ["tests"]
-addopts = "--cov"
+addopts = "--cov=src"
 asyncio_mode = "auto"
 
 [tool.ruff]

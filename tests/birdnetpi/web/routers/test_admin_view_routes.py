@@ -10,11 +10,26 @@ from birdnetpi.web.core.factory import create_app
 
 
 @pytest.fixture(scope="function")
-def app_with_admin_view_routes(path_resolver):
+def app_with_admin_view_routes(path_resolver, repo_root):
     """Create FastAPI app with admin router and dependencies using the factory."""
+    from dependency_injector import providers
+    from fastapi.templating import Jinja2Templates
+
+    from birdnetpi.web.core.container import Container
+
     # Mock data manager for test_detection endpoint
     mock_data_manager = MagicMock(spec=DataManager)
     mock_data_manager.create_detection.return_value = None
+
+    # Override Container providers BEFORE app creation
+    Container.path_resolver.override(providers.Singleton(lambda: path_resolver))
+    Container.data_manager.override(providers.Singleton(lambda: mock_data_manager))
+
+    # Override templates to use the correct path
+    templates_dir = repo_root / "src" / "birdnetpi" / "web" / "templates"
+    Container.templates.override(
+        providers.Singleton(lambda: Jinja2Templates(directory=str(templates_dir)))
+    )
 
     # Patch the SQLAdmin setup to avoid database issues entirely
     def mock_setup_sqladmin(app):
@@ -27,17 +42,12 @@ def app_with_admin_view_routes(path_resolver):
         # Create the app using the factory
         app = create_app()
 
-    # Override dependencies with our test versions
-    if hasattr(app, "container"):
-        app.container.path_resolver.override(path_resolver)  # type: ignore[attr-defined]
-        app.container.data_manager.override(mock_data_manager)  # type: ignore[attr-defined]
-
     yield app
 
     # Clean up: reset overrides after each test
-    if hasattr(app, "container"):
-        app.container.path_resolver.reset_override()  # type: ignore[attr-defined]
-        app.container.data_manager.reset_override()  # type: ignore[attr-defined]
+    Container.path_resolver.reset_override()
+    Container.data_manager.reset_override()
+    Container.templates.reset_override()
 
 
 @pytest.fixture

@@ -104,14 +104,26 @@ def audio_analysis_service(
     mock_analysis_client = MagicMock()
     mock_analysis_client_class.return_value = mock_analysis_client
 
-    # Mock IOCDatabaseService
-    mock_ioc_database_service = MagicMock()
+    # Mock MultilingualDatabaseService and AsyncSession
+    mock_multilingual_service = MagicMock()
+    # Make get_best_common_name async and return a dict with common_name
+    mock_multilingual_service.get_best_common_name = AsyncMock(
+        return_value={"common_name": "Test Bird"}
+    )
+    mock_session = MagicMock()
+
+    # Initialize SpeciesParser with the mock service
+    from birdnetpi.species.parser import SpeciesParser
+
+    SpeciesParser._instance = None  # Reset singleton
+    SpeciesParser(mock_multilingual_service)  # Initialize with mock
 
     service = AudioAnalysisManager(
         mock_file_manager,
         mock_path_resolver,
         mock_config,
-        mock_ioc_database_service,
+        mock_multilingual_service,
+        mock_session,
         detection_buffer_max_size=100,  # Smaller buffer for testing
         buffer_flush_interval=0.1,  # Faster interval for testing
     )
@@ -270,7 +282,7 @@ class TestAudioAnalysisManager:
         species_tensor, confidence = test_species_data["confident"][
             0
         ]  # Turdus migratorius_American Robin, 0.85
-        species_components = SpeciesParser.parse_tensor_species(species_tensor)
+        species_components = await SpeciesParser.parse_tensor_species(species_tensor)
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
         await audio_analysis_service._send_detection_event(
@@ -303,7 +315,7 @@ class TestAudioAnalysisManager:
         # Parse species tensor to get proper components
         from birdnetpi.species.parser import SpeciesParser
 
-        species_components = SpeciesParser.parse_tensor_species(species)
+        species_components = await SpeciesParser.parse_tensor_species(species)
         await audio_analysis_service._send_detection_event(
             species_components, confidence, raw_audio_bytes
         )
@@ -331,7 +343,7 @@ class TestAudioAnalysisManager:
         # Parse species tensor to get proper components
         from birdnetpi.species.parser import SpeciesParser
 
-        species_components = SpeciesParser.parse_tensor_species(species)
+        species_components = await SpeciesParser.parse_tensor_species(species)
         await audio_analysis_service._send_detection_event(
             species_components, confidence, raw_audio_bytes
         )
@@ -359,7 +371,7 @@ class TestAudioAnalysisManager:
         # Parse species tensor to get proper components
         from birdnetpi.species.parser import SpeciesParser
 
-        species_components = SpeciesParser.parse_tensor_species(species)
+        species_components = await SpeciesParser.parse_tensor_species(species)
         await audio_analysis_service._send_detection_event(
             species_components, confidence, raw_audio_bytes
         )
@@ -386,7 +398,7 @@ class TestAudioAnalysisManager:
         # Parse species tensor to get proper components
         from birdnetpi.species.parser import SpeciesParser
 
-        species_components = SpeciesParser.parse_tensor_species(species)
+        species_components = await SpeciesParser.parse_tensor_species(species)
         await audio_analysis_service._send_detection_event(
             species_components, confidence, raw_audio_bytes
         )
@@ -790,8 +802,19 @@ class TestDetectionBuffering:
         mock_analysis_client = MagicMock()
         mock_analysis_client_class.return_value = mock_analysis_client
 
-        # Mock IOCDatabaseService
-        mock_ioc_database_service = MagicMock()
+        # Mock MultilingualDatabaseService and AsyncSession
+        mock_multilingual_service = MagicMock()
+        # Make get_best_common_name async and return a dict with common_name
+        mock_multilingual_service.get_best_common_name = AsyncMock(
+            return_value={"common_name": "Test Bird"}
+        )
+        mock_session = MagicMock()
+
+        # Initialize SpeciesParser with the mock service
+        from birdnetpi.species.parser import SpeciesParser
+
+        SpeciesParser._instance = None  # Reset singleton
+        SpeciesParser(mock_multilingual_service)  # Initialize with mock
 
         # Set a small max size for testing
         max_size = 5
@@ -799,7 +822,8 @@ class TestDetectionBuffering:
             audio_analysis_service.file_manager,
             audio_analysis_service.path_resolver,
             audio_analysis_service.config,
-            mock_ioc_database_service,
+            mock_multilingual_service,
+            mock_session,
             detection_buffer_max_size=max_size,
             buffer_flush_interval=1.0,
         )

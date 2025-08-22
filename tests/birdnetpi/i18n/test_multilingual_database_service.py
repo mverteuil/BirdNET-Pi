@@ -1,11 +1,10 @@
 """Tests for multilingual database service."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
-from sqlalchemy.orm import sessionmaker
 
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 
@@ -43,32 +42,22 @@ def multilingual_service(mock_path_resolver):
 
 @pytest.fixture
 def mock_session():
-    """Create mock SQLAlchemy session."""
-    session = MagicMock()
-    session.execute.return_value = MagicMock()
+    """Create mock SQLAlchemy async session."""
+    session = AsyncMock()
+    session.execute = AsyncMock()
     return session
 
 
 @pytest.fixture
-def in_memory_session():
-    """Create real in-memory SQLite session for integration tests."""
-    engine = create_engine("sqlite:///:memory:")
-    session_local = sessionmaker(bind=engine)
-    session = session_local()
+async def in_memory_session(async_in_memory_session):
+    """Use the global async session fixture and add test-specific tables.
 
-    # Create test tables for cross-database queries
-    session.execute(
-        text("""
-        CREATE TABLE IF NOT EXISTS test_main (
-            id INTEGER PRIMARY KEY,
-            name TEXT
-        )
-    """)
-    )
-    session.commit()
-
-    yield session
-    session.close()
+    This fixture uses the global async_in_memory_session from conftest.py
+    and adds additional test-specific tables for multilingual tests.
+    """
+    # The global fixture already creates test_main table
+    # We just need to pass it through
+    return async_in_memory_session
 
 
 class TestMultilingualDatabaseServiceInitialization:
@@ -88,9 +77,10 @@ class TestMultilingualDatabaseServiceInitialization:
 class TestAttachDetachDatabases:
     """Test database attachment and detachment functionality."""
 
-    def test_attach_all_to_session_all_databases(self, multilingual_service, mock_session):
+    @pytest.mark.asyncio
+    async def test_attach_all_to_session_all_databases(self, multilingual_service, mock_session):
         """Should attach all available databases to session."""
-        multilingual_service.attach_all_to_session(mock_session)
+        await multilingual_service.attach_all_to_session(mock_session)
 
         # Verify all three ATTACH DATABASE commands were executed
         assert mock_session.execute.call_count == 3
@@ -106,9 +96,10 @@ class TestAttachDetachDatabases:
         assert any("AS avibase" in cmd for cmd in attach_commands)
         assert any("AS patlevin" in cmd for cmd in attach_commands)
 
-    def test_detach_all_from_session(self, multilingual_service, mock_session):
+    @pytest.mark.asyncio
+    async def test_detach_all_from_session(self, multilingual_service, mock_session):
         """Should detach all available databases from session."""
-        multilingual_service.detach_all_from_session(mock_session)
+        await multilingual_service.detach_all_from_session(mock_session)
 
         # Verify all three DETACH DATABASE commands were executed
         assert mock_session.execute.call_count == 3
@@ -120,7 +111,10 @@ class TestAttachDetachDatabases:
         assert any("DETACH DATABASE avibase" in cmd for cmd in detach_commands)
         assert any("DETACH DATABASE patlevin" in cmd for cmd in detach_commands)
 
-    def test_detach_all_from_session__exception_handling(self, multilingual_service, mock_session):
+    @pytest.mark.asyncio
+    async def test_detach_all_from_session__exception_handling(
+        self, multilingual_service, mock_session
+    ):
         """Should handle exceptions during detach gracefully."""
         mock_session.execute.side_effect = [
             None,  # First detach succeeds
@@ -129,7 +123,7 @@ class TestAttachDetachDatabases:
         ]
 
         # Should not raise exception despite error in middle
-        multilingual_service.detach_all_from_session(mock_session)
+        await multilingual_service.detach_all_from_session(mock_session)
 
         # All three detach commands should still be attempted
         assert mock_session.execute.call_count == 3
@@ -138,16 +132,21 @@ class TestAttachDetachDatabases:
 class TestGetBestCommonName:
     """Test priority-based common name resolution."""
 
-    def test_get_best_common_name_all_databases_ioc_english(
+    @pytest.mark.asyncio
+    async def test_get_best_common_name_all_databases_ioc_english(
         self, multilingual_service, mock_session
     ):
         """Should build query with all databases for IOC English lookup."""
         # Mock query result - now using proper SQLAlchemy queries
         mock_result = MagicMock()
         mock_result.english_name = "American Robin"
-        mock_session.execute.return_value.first.return_value = mock_result
+        mock_execute_result = AsyncMock()
+        mock_execute_result.first = MagicMock(return_value=mock_result)
+        mock_session.execute.return_value = mock_execute_result
 
-        result = multilingual_service.get_best_common_name(mock_session, "Turdus migratorius", "en")
+        result = await multilingual_service.get_best_common_name(
+            mock_session, "Turdus migratorius", "en"
+        )
 
         # Should execute query for IOC species first (for English)
         mock_session.execute.assert_called()
@@ -156,15 +155,20 @@ class TestGetBestCommonName:
         assert result["common_name"] == "American Robin"
         assert result["source"] == "IOC"
 
-    def test_get_best_common_name_all_databases_non_english(
+    @pytest.mark.asyncio
+    async def test_get_best_common_name_all_databases_non_english(
         self, multilingual_service, mock_session
     ):
         """Should build query without IOC species table for non-English languages."""
         mock_result = MagicMock()
         mock_result.common_name = "Petirrojo Americano"
-        mock_session.execute.return_value.first.return_value = mock_result
+        mock_execute_result = AsyncMock()
+        mock_execute_result.first = MagicMock(return_value=mock_result)
+        mock_session.execute.return_value = mock_execute_result
 
-        result = multilingual_service.get_best_common_name(mock_session, "Turdus migratorius", "es")
+        result = await multilingual_service.get_best_common_name(
+            mock_session, "Turdus migratorius", "es"
+        )
 
         # Should execute query for IOC translations (not English species table)
         mock_session.execute.assert_called()
@@ -172,25 +176,33 @@ class TestGetBestCommonName:
         assert result["common_name"] == "Petirrojo Americano"
         assert result["source"] == "IOC"
 
-    def test_get_best_common_name__no_result(self, multilingual_service, mock_session):
+    @pytest.mark.asyncio
+    async def test_get_best_common_name__no_result(self, multilingual_service, mock_session):
         """Should return empty result when no match is found."""
-        mock_session.execute.return_value.first.return_value = None
+        mock_execute_result = AsyncMock()
+        mock_execute_result.first = MagicMock(return_value=None)
+        mock_session.execute.return_value = mock_execute_result
 
-        result = multilingual_service.get_best_common_name(
+        result = await multilingual_service.get_best_common_name(
             mock_session, "Nonexistent species", "en"
         )
 
         assert result["common_name"] is None
         assert result["source"] is None
 
-    def test_get_best_common_name__sql_injection_prevention(
+    @pytest.mark.asyncio
+    async def test_get_best_common_name__sql_injection_prevention(
         self, multilingual_service, mock_session
     ):
         """Should prevent SQL injection through parameterized queries."""
-        mock_session.execute.return_value.first.return_value = None
+        mock_execute_result = AsyncMock()
+        mock_execute_result.first = MagicMock(return_value=None)
+        mock_session.execute.return_value = mock_execute_result
 
         # Try injection through scientific name
-        multilingual_service.get_best_common_name(mock_session, "'; DROP TABLE species; --", "en")
+        await multilingual_service.get_best_common_name(
+            mock_session, "'; DROP TABLE species; --", "en"
+        )
 
         # Should use parameterized queries, not string interpolation
         mock_session.execute.assert_called()
@@ -198,16 +210,21 @@ class TestGetBestCommonName:
         # The SQL should be a compiled statement, not raw text with injected values
         assert "DROP TABLE" not in str(call)
 
-    def test_get_best_common_name__priority_source_detection(
+    @pytest.mark.asyncio
+    async def test_get_best_common_name__priority_source_detection(
         self, multilingual_service, mock_session
     ):
         """Should correctly detect source based on priority order."""
         # Test when IOC English name is found (highest priority for English)
         mock_result = MagicMock()
         mock_result.english_name = "American Robin"
-        mock_session.execute.return_value.first.return_value = mock_result
+        mock_execute_result = AsyncMock()
+        mock_execute_result.first = MagicMock(return_value=mock_result)
+        mock_session.execute.return_value = mock_execute_result
 
-        result = multilingual_service.get_best_common_name(mock_session, "Turdus migratorius", "en")
+        result = await multilingual_service.get_best_common_name(
+            mock_session, "Turdus migratorius", "en"
+        )
 
         # First priority should return IOC
         assert result["source"] == "IOC"
@@ -216,20 +233,30 @@ class TestGetBestCommonName:
         mock_session.reset_mock()
         mock_result.common_name = "American Robin"
         # For Spanish, it goes: IOC translations, PatLevin, Avibase
-        mock_session.execute.return_value.first.side_effect = [
-            None,  # IOC translation not found
-            mock_result,  # PatLevin found
-            None,  # Won't reach Avibase
+        mock_execute_result1 = AsyncMock()
+        mock_execute_result1.first = MagicMock(return_value=None)  # IOC translation not found
+        mock_execute_result2 = AsyncMock()
+        mock_execute_result2.first = MagicMock(return_value=mock_result)  # PatLevin found
+        mock_execute_result3 = AsyncMock()
+        mock_execute_result3.first = MagicMock(return_value=None)  # Won't reach Avibase
+
+        mock_session.execute.side_effect = [
+            mock_execute_result1,
+            mock_execute_result2,
+            mock_execute_result3,
         ]
 
-        result = multilingual_service.get_best_common_name(mock_session, "Turdus migratorius", "es")
+        result = await multilingual_service.get_best_common_name(
+            mock_session, "Turdus migratorius", "es"
+        )
         assert result["source"] == "PatLevin"
 
 
 class TestGetAllTranslations:
     """Test comprehensive translation retrieval from all databases."""
 
-    def test_get_all_translations_all_databases(self, multilingual_service, mock_session):
+    @pytest.mark.asyncio
+    async def test_get_all_translations_all_databases(self, multilingual_service, mock_session):
         """Should retrieve translations from all available databases."""
         # Create mock result for IOC species (first() returns single row)
         ioc_species_result = MagicMock()
@@ -261,23 +288,29 @@ class TestGetAllTranslations:
         avibase_row2.common_name = "Tordo-americano"
 
         # Mock execute to return different results for each query
-        mock_execute = MagicMock()
-
         # First call: IOC species (uses .first())
-        first_result = MagicMock()
-        first_result.first.return_value = ioc_species_result
+        first_result = AsyncMock()
+        first_result.first = MagicMock(return_value=ioc_species_result)
+
+        # Create mocks for translation queries that return iterable results
+        ioc_trans_result = MagicMock()
+        ioc_trans_result.__iter__ = lambda self: iter([ioc_trans_row1, ioc_trans_row2])
+
+        patlevin_result = MagicMock()
+        patlevin_result.__iter__ = lambda self: iter([patlevin_row1, patlevin_row2])
+
+        avibase_result = MagicMock()
+        avibase_result.__iter__ = lambda self: iter([avibase_row1, avibase_row2])
 
         # Subsequent calls: translations (use iteration)
-        mock_execute.side_effect = [
+        mock_session.execute.side_effect = [
             first_result,  # IOC species query
-            iter([ioc_trans_row1, ioc_trans_row2]),  # IOC translations
-            iter([patlevin_row1, patlevin_row2]),  # PatLevin
-            iter([avibase_row1, avibase_row2]),  # Avibase
+            ioc_trans_result,  # IOC translations
+            patlevin_result,  # PatLevin
+            avibase_result,  # Avibase
         ]
 
-        mock_session.execute = mock_execute
-
-        result = multilingual_service.get_all_translations(mock_session, "Turdus migratorius")
+        result = await multilingual_service.get_all_translations(mock_session, "Turdus migratorius")
 
         # Should execute 4 queries (IOC species, IOC translations, PatLevin, Avibase)
         assert mock_session.execute.call_count == 4
@@ -303,7 +336,8 @@ class TestGetAllTranslations:
         assert "it" in result
         assert result["it"][0]["source"] == "Avibase"
 
-    def test_get_all_translations__deduplication(self, multilingual_service, mock_session):
+    @pytest.mark.asyncio
+    async def test_get_all_translations__deduplication(self, multilingual_service, mock_session):
         """Should deduplicate identical names from different sources."""
         # Create proper mock result objects with fetchone() method
         ioc_species_result = MagicMock()
@@ -339,7 +373,7 @@ class TestGetAllTranslations:
             avibase_result,
         ]
 
-        result = multilingual_service.get_all_translations(mock_session, "Turdus migratorius")
+        result = await multilingual_service.get_all_translations(mock_session, "Turdus migratorius")
 
         assert "en" in result
         # Based on the test failure, it looks like we get 3 results:
@@ -355,7 +389,8 @@ class TestGetAllTranslations:
         assert "IOC" in sources
         assert "Avibase" in sources
 
-    def test_get_all_translations__sql_injection_prevention(
+    @pytest.mark.asyncio
+    async def test_get_all_translations__sql_injection_prevention(
         self, multilingual_service, mock_session
     ):
         """Should prevent SQL injection in all query parameters."""
@@ -373,7 +408,7 @@ class TestGetAllTranslations:
             empty_iter_result,  # Avibase - empty
         ]
 
-        multilingual_service.get_all_translations(mock_session, "'; DROP TABLE species; --")
+        await multilingual_service.get_all_translations(mock_session, "'; DROP TABLE species; --")
 
         # Check all 4 queries use parameterized approach
         calls = mock_session.execute.call_args_list
@@ -399,22 +434,29 @@ class TestGetAttribution:
 class TestErrorHandling:
     """Test error handling across the service."""
 
-    def test_attach_all_to_session__database_error(self, multilingual_service, mock_session):
+    @pytest.mark.asyncio
+    async def test_attach_all_to_session__database_error(self, multilingual_service, mock_session):
         """Should handle database errors during attach operations."""
         mock_session.execute.side_effect = OperationalError("statement", "params", "orig")
 
         # Should not suppress the exception - let caller handle it
         with pytest.raises(OperationalError):
-            multilingual_service.attach_all_to_session(mock_session)
+            await multilingual_service.attach_all_to_session(mock_session)
 
-    def test_get_best_common_name__database_error(self, multilingual_service, mock_session):
+    @pytest.mark.asyncio
+    async def test_get_best_common_name__database_error(self, multilingual_service, mock_session):
         """Should handle database errors during query execution."""
         mock_session.execute.side_effect = SQLAlchemyError("Query failed")
 
         with pytest.raises(SQLAlchemyError):
-            multilingual_service.get_best_common_name(mock_session, "Turdus migratorius", "en")
+            await multilingual_service.get_best_common_name(
+                mock_session, "Turdus migratorius", "en"
+            )
 
-    def test_get_all_translations__partial_database_error(self, multilingual_service, mock_session):
+    @pytest.mark.asyncio
+    async def test_get_all_translations__partial_database_error(
+        self, multilingual_service, mock_session
+    ):
         """Should handle errors from individual database queries gracefully."""
         # Create proper mock result object for successful query
         success_result = MagicMock()
@@ -439,7 +481,7 @@ class TestErrorHandling:
         ]
 
         with pytest.raises(SQLAlchemyError):
-            multilingual_service.get_all_translations(mock_session, "Turdus migratorius")
+            await multilingual_service.get_all_translations(mock_session, "Turdus migratorius")
 
     def test_path_resolver_error_handling(self, path_resolver):
         """Should handle file resolver errors during initialization."""
@@ -456,7 +498,10 @@ class TestErrorHandling:
 class TestIntegrationWithRealSession:
     """Integration tests using real SQLite session."""
 
-    def test_attach_detach_integration(self, multilingual_service, in_memory_session, tmp_path):
+    @pytest.mark.asyncio
+    async def test_attach_detach_integration(
+        self, multilingual_service, in_memory_session, tmp_path
+    ):
         """Should successfully attach and detach real database files."""
         # Create temporary database files
         ioc_db = tmp_path / "ioc.db"
@@ -464,6 +509,8 @@ class TestIntegrationWithRealSession:
         patlevin_db = tmp_path / "patlevin.db"
 
         # Create the database files with minimal schema
+        from sqlalchemy import create_engine
+
         for db_path in [ioc_db, avibase_db, patlevin_db]:
             engine = create_engine(f"sqlite:///{db_path}")
             with engine.begin() as conn:
@@ -477,40 +524,48 @@ class TestIntegrationWithRealSession:
 
         try:
             # Test attach
-            multilingual_service.attach_all_to_session(in_memory_session)
+            await multilingual_service.attach_all_to_session(in_memory_session)
 
             # Verify databases are attached by querying schema
-            result = in_memory_session.execute(
+            result = await in_memory_session.execute(
                 text("SELECT name FROM ioc.sqlite_master WHERE type='table'")
             )
-            assert "test_table" in [row[0] for row in result.fetchall()]
+            rows = result.fetchall()
+            assert "test_table" in [row[0] for row in rows]
 
             # Test detach
-            multilingual_service.detach_all_from_session(in_memory_session)
+            await multilingual_service.detach_all_from_session(in_memory_session)
 
             # Verify databases are detached
             with pytest.raises(OperationalError):
-                in_memory_session.execute(text("SELECT * FROM ioc.test_table"))
+                await in_memory_session.execute(text("SELECT * FROM ioc.test_table"))
 
         except Exception as e:
             # Clean up on error
             try:
-                multilingual_service.detach_all_from_session(in_memory_session)
+                await multilingual_service.detach_all_from_session(in_memory_session)
             except Exception:
                 pass
             raise e
 
-    def test_query_building_integration(self, multilingual_service, in_memory_session):
+    @pytest.mark.asyncio
+    async def test_query_building_integration(self, multilingual_service, in_memory_session):
         """Should build and execute valid SQL queries."""
         # Test that the query building doesn't have syntax errors
         with patch.object(in_memory_session, "execute") as mock_execute:
-            mock_execute.return_value.fetchone.return_value = None
+            mock_result = AsyncMock()
+            mock_result.first = MagicMock(return_value=None)
+            mock_execute.return_value = mock_result
 
-            multilingual_service.get_best_common_name(in_memory_session, "Turdus migratorius", "en")
+            await multilingual_service.get_best_common_name(
+                in_memory_session, "Turdus migratorius", "en"
+            )
 
-            # Verify a valid query was attempted
-            mock_execute.assert_called_once()
-            call_args = mock_execute.call_args
+            # Verify valid queries were attempted (4 queries for different databases)
+            assert mock_execute.call_count == 4
+
+            # Check the first call
+            call_args = mock_execute.call_args_list[0]
             query_obj = call_args[0][0]
             params = call_args[0][1]
 
@@ -524,11 +579,14 @@ class TestIntegrationWithRealSession:
 class TestEdgeCases:
     """Test edge cases and boundary conditions."""
 
-    def test_empty_scientific_name(self, multilingual_service, mock_session):
+    @pytest.mark.asyncio
+    async def test_empty_scientific_name(self, multilingual_service, mock_session):
         """Should handle empty scientific name gracefully."""
-        mock_session.execute.return_value.first.return_value = None
+        mock_execute_result = AsyncMock()
+        mock_execute_result.first = MagicMock(return_value=None)
+        mock_session.execute.return_value = mock_execute_result
 
-        result = multilingual_service.get_best_common_name(mock_session, "", "en")
+        result = await multilingual_service.get_best_common_name(mock_session, "", "en")
 
         # Should execute multiple queries (IOC English, IOC translations, PatLevin, Avibase)
         assert mock_session.execute.call_count == 4
@@ -539,35 +597,46 @@ class TestEdgeCases:
         assert result["common_name"] is None
         assert result["source"] is None
 
-    def test_special_characters_in_scientific_name(self, multilingual_service, mock_session):
+    @pytest.mark.asyncio
+    async def test_special_characters_in_scientific_name(self, multilingual_service, mock_session):
         """Should handle special characters in scientific names."""
-        mock_session.execute.return_value.first.return_value = None
+        mock_execute_result = AsyncMock()
+        mock_execute_result.first = MagicMock(return_value=None)
+        mock_session.execute.return_value = mock_execute_result
 
         special_name = "Turdus (migratorius) x merula"
 
-        multilingual_service.get_best_common_name(mock_session, special_name, "en")
+        await multilingual_service.get_best_common_name(mock_session, special_name, "en")
 
         params = mock_session.execute.call_args[0][1]
         assert params["sci_name"] == special_name
 
-    def test_unusual_language_codes(self, multilingual_service, mock_session):
+    @pytest.mark.asyncio
+    async def test_unusual_language_codes(self, multilingual_service, mock_session):
         """Should handle unusual language codes."""
-        mock_session.execute.return_value.fetchone.return_value = None
+        mock_execute_result = AsyncMock()
+        mock_execute_result.first = MagicMock(return_value=None)
 
         unusual_codes = ["zh-CN", "pt-BR", "en-US", "fr-CA", "x-custom"]
 
         for code in unusual_codes:
             mock_session.reset_mock()
-            multilingual_service.get_best_common_name(mock_session, "Turdus migratorius", code)
+            mock_session.execute.return_value = mock_execute_result
+            await multilingual_service.get_best_common_name(
+                mock_session, "Turdus migratorius", code
+            )
 
             params = mock_session.execute.call_args[0][1]
             assert params["lang"] == code
 
-    def test_case_sensitivity_in_queries(self, multilingual_service, mock_session):
+    @pytest.mark.asyncio
+    async def test_case_sensitivity_in_queries(self, multilingual_service, mock_session):
         """Should handle case variations in scientific names through LOWER() function."""
-        mock_session.execute.return_value.fetchone.return_value = None
+        mock_execute_result = AsyncMock()
+        mock_execute_result.first = MagicMock(return_value=None)
+        mock_session.execute.return_value = mock_execute_result
 
-        multilingual_service.get_best_common_name(mock_session, "TURDUS MIGRATORIUS", "en")
+        await multilingual_service.get_best_common_name(mock_session, "TURDUS MIGRATORIUS", "en")
 
         # Verify query uses LOWER() function for case-insensitive comparison
         call_args = mock_session.execute.call_args

@@ -31,18 +31,36 @@ def mock_data_preparation_manager():
 @pytest.fixture
 def data_manager():
     """Provide a mock DataManager instance."""
+    from unittest.mock import AsyncMock
+
     mock = MagicMock()
     # Set up query_service to make reporting manager use IOC methods
     mock.query_service = MagicMock()
+    # Make async methods return AsyncMock
+    mock.get_all_detections = AsyncMock(return_value=[])
+    mock.query_detections = AsyncMock(return_value=[])
+    mock.get_recent_detections = AsyncMock(return_value=[])
+    mock.get_best_detections = AsyncMock(return_value=[])
+    mock.get_detection_counts_by_date_range = AsyncMock(return_value=None)
+    mock.get_top_species_with_prior_counts = AsyncMock(return_value=[])
+    mock.get_new_species_data = AsyncMock(return_value=[])
+    mock.count_by_species = AsyncMock(return_value={})
+    mock.get_top_species_with_prior_counts = AsyncMock(return_value=[])
+    mock.query_service.get_detections_with_localization = AsyncMock(return_value=[])
     return mock
 
 
 @pytest.fixture
 def data_manager_no_ioc():
     """Provide a mock DataManager instance without IOC service."""
+    from unittest.mock import AsyncMock
+
     mock = MagicMock()
     # Disable IOC methods to test fallback path
     mock.query_service = None
+    # Make async methods return AsyncMock
+    mock.get_all_detections = AsyncMock(return_value=[])
+    mock.query_detections = AsyncMock(return_value=[])
     return mock
 
 
@@ -106,7 +124,8 @@ def reporting_manager(
     return manager
 
 
-def test_get_most_recent_detections(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_most_recent_detections(reporting_manager, data_manager):
     """Should return a list of recent detections."""
     # Create mock detections with proper attributes
     mock_detection1 = MagicMock()
@@ -137,14 +156,15 @@ def test_get_most_recent_detections(reporting_manager, data_manager):
         "Northern Cardinal",
     ]
 
-    recent_detections = reporting_manager.get_most_recent_detections(limit=2)
+    recent_detections = await reporting_manager.get_most_recent_detections(limit=2)
 
     assert len(recent_detections) == 2
     assert recent_detections[0]["common_name"] == "American Robin"
     data_manager.query_detections.assert_called_once()
 
 
-def test_get_weekly_report_data(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_weekly_report_data(reporting_manager, data_manager):
     """Should return a dictionary of weekly report data."""
     today = datetime.date(2025, 7, 12)  # Saturday
     with patch(
@@ -174,7 +194,7 @@ def test_get_weekly_report_data(reporting_manager, data_manager):
 
         data_manager.get_new_species_data.return_value = [{"species": "Blue Jay", "count": 5}]
 
-        report_data = reporting_manager.get_weekly_report_data()
+        report_data = await reporting_manager.get_weekly_report_data()
 
         assert report_data["start_date"] == "2025-06-30"
         assert report_data["end_date"] == "2025-07-06"
@@ -213,7 +233,8 @@ def test_get_weekly_report_data(reporting_manager, data_manager):
         )
 
 
-def test_get_daily_detection_data_for_plotting(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_daily_detection_data_for_plotting(reporting_manager, data_manager):
     """Should prepare daily detection data for plotting."""
     # Mock DetectionWithLocalization objects for the IOC service
     from unittest.mock import MagicMock
@@ -318,7 +339,7 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, data_manager):
     ]
 
     # Call get_data to get the DataFrame
-    df = reporting_manager.get_data()
+    df = await reporting_manager.get_data()
 
     # Mock the return value of prepare_daily_plot_data
     reporting_manager.data_preparation_manager.prepare_daily_plot_data.return_value = (
@@ -329,10 +350,13 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, data_manager):
     )
 
     # Call the method under test
-    day_hour_freq, saved_time_labels, fig_dec_y, fig_x = (
-        reporting_manager.get_daily_detection_data_for_plotting(
-            df, resample_selection="15min", species="American Robin"
-        )
+    (
+        day_hour_freq,
+        saved_time_labels,
+        fig_dec_y,
+        fig_x,
+    ) = reporting_manager.get_daily_detection_data_for_plotting(
+        df, resample_selection="15min", species="American Robin"
     )
 
     # Assertions
@@ -341,7 +365,8 @@ def test_get_daily_detection_data_for_plotting(reporting_manager, data_manager):
     assert "Northern Cardinal" in df["common_name"].unique()
 
 
-def test_get_best_detections(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_best_detections(reporting_manager, data_manager):
     """Should return a list of best detections sorted by confidence."""
     # Mock Detection objects that will be returned by data_manager
     mock_detection_1 = MagicMock()
@@ -364,7 +389,7 @@ def test_get_best_detections(reporting_manager, data_manager):
 
     data_manager.get_best_detections.return_value = [mock_detection_1, mock_detection_2]
 
-    best_detections = reporting_manager.get_best_detections(limit=2)
+    best_detections = await reporting_manager.get_best_detections(limit=2)
 
     assert len(best_detections) == 2
     assert best_detections[0]["common_name"] == "Northern Cardinal"
@@ -372,13 +397,14 @@ def test_get_best_detections(reporting_manager, data_manager):
     data_manager.get_best_detections.assert_called_once_with(2)
 
 
-def test_get_data__empty_detections(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_data__empty_detections(reporting_manager, data_manager):
     """Should handle empty detections and return empty DataFrame with correct columns."""
     # Mock empty detections
     data_manager.get_all_detections.return_value = []
 
     # Call get_data
-    df = reporting_manager.get_data()
+    df = await reporting_manager.get_data()
 
     # Verify DataFrame is empty but has correct structure
     assert df.empty
@@ -399,7 +425,8 @@ def test_get_data__empty_detections(reporting_manager, data_manager):
     assert pd.api.types.is_datetime64_any_dtype(df.index)
 
 
-def test_get_todays_detections(reporting_manager, data_manager_no_ioc):
+@pytest.mark.asyncio
+async def test_get_todays_detections(reporting_manager, data_manager_no_ioc):
     """Should retrieve detections for the current day."""
     # Replace the data_manager in the reporting_manager with non-IOC version
     reporting_manager.data_manager = data_manager_no_ioc
@@ -448,7 +475,7 @@ def test_get_todays_detections(reporting_manager, data_manager_no_ioc):
         data_manager_no_ioc.get_all_detections.return_value = mock_detections
 
         # Call the method
-        todays_detections = reporting_manager.get_todays_detections()
+        todays_detections = await reporting_manager.get_todays_detections()
 
         # Verify the results - only 2 detections from today
         assert len(todays_detections) == 2
@@ -462,7 +489,8 @@ def test_get_todays_detections(reporting_manager, data_manager_no_ioc):
         data_manager_no_ioc.get_all_detections.assert_called_once()
 
 
-def test_date_filter(reporting_manager):
+@pytest.mark.asyncio
+async def test_date_filter(reporting_manager):
     """Should filter DataFrame by date range."""
     # Create test DataFrame with datetime index
     dates = pd.date_range(start="2025-07-10", end="2025-07-20", freq="D")
@@ -486,7 +514,8 @@ def test_date_filter(reporting_manager):
 # COMPREHENSIVE WEEKLY REPORT TESTS
 
 
-def test_get_weekly_report_data__no_detections(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_weekly_report_data__no_detections(reporting_manager, data_manager):
     """Should handle scenario with no detections at all."""
     today = datetime.date(2025, 7, 12)  # Saturday
     with patch(
@@ -500,7 +529,7 @@ def test_get_weekly_report_data__no_detections(reporting_manager, data_manager):
         data_manager.get_top_species_with_prior_counts.return_value = []
         data_manager.get_new_species_data.return_value = []
 
-        report_data = reporting_manager.get_weekly_report_data()
+        report_data = await reporting_manager.get_weekly_report_data()
 
         assert report_data["total_detections_current"] == 0
         assert report_data["unique_species_current"] == 0
@@ -512,7 +541,10 @@ def test_get_weekly_report_data__no_detections(reporting_manager, data_manager):
         assert report_data["new_species"] == []
 
 
-def test_get_weekly_report_data__with_data_latest_date_calculation(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_weekly_report_data__with_data_latest_date_calculation(
+    reporting_manager, data_manager
+):
     """Should calculate date ranges based on latest available data."""
     today = datetime.date(2025, 8, 15)  # Friday
 
@@ -533,7 +565,7 @@ def test_get_weekly_report_data__with_data_latest_date_calculation(reporting_man
     ) as mock_date:
         mock_date.today.return_value = today
 
-        report_data = reporting_manager.get_weekly_report_data()
+        report_data = await reporting_manager.get_weekly_report_data()
 
         # Should use Aug 4-10 as the week (Sunday = Aug 10)
         assert report_data["start_date"] == "2025-08-04"
@@ -541,7 +573,8 @@ def test_get_weekly_report_data__with_data_latest_date_calculation(reporting_man
         assert report_data["week_number"] == 32
 
 
-def test_get_weekly_report_data__latest_date_is_sunday(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_weekly_report_data__latest_date_is_sunday(reporting_manager, data_manager):
     """Should handle when latest detection date is already a Sunday."""
     today = datetime.date(2025, 8, 15)  # Friday
 
@@ -562,7 +595,7 @@ def test_get_weekly_report_data__latest_date_is_sunday(reporting_manager, data_m
     ) as mock_date:
         mock_date.today.return_value = today
 
-        report_data = reporting_manager.get_weekly_report_data()
+        report_data = await reporting_manager.get_weekly_report_data()
 
         # Should use Aug 5-11 as the week (Sunday = Aug 11)
         assert report_data["start_date"] == "2025-08-05"
@@ -570,7 +603,8 @@ def test_get_weekly_report_data__latest_date_is_sunday(reporting_manager, data_m
         assert report_data["week_number"] == 32
 
 
-def test_get_weekly_report_data__invalid_timestamps(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_weekly_report_data__invalid_timestamps(reporting_manager, data_manager):
     """Should handle detections with invalid or None timestamps."""
     today = datetime.date(2025, 7, 12)  # Saturday
 
@@ -603,13 +637,14 @@ def test_get_weekly_report_data__invalid_timestamps(reporting_manager, data_mana
         mock_date.today.return_value = today
 
         # Should not raise an exception and use the valid timestamp
-        report_data = reporting_manager.get_weekly_report_data()
+        report_data = await reporting_manager.get_weekly_report_data()
 
         assert report_data["start_date"] == "2025-07-01"  # Based on July 10 detection
         assert report_data["end_date"] == "2025-07-07"  # Monday of week containing July 10
 
 
-def test_calculate_percentage_differences__zero_prior(reporting_manager):
+@pytest.mark.asyncio
+async def test_calculate_percentage_differences__zero_prior(reporting_manager):
     """Should handle zero prior values in percentage calculations."""
     result_total, result_unique = reporting_manager._calculate_percentage_differences(10, 5, 0, 0)
 
@@ -617,7 +652,8 @@ def test_calculate_percentage_differences__zero_prior(reporting_manager):
     assert result_unique == 0  # Should be 0 when prior is 0
 
 
-def test_calculate_percentage_differences__normal_calculation(reporting_manager):
+@pytest.mark.asyncio
+async def test_calculate_percentage_differences__normal_calculation(reporting_manager):
     """Should calculate percentage differences correctly for normal values."""
     result_total, result_unique = reporting_manager._calculate_percentage_differences(
         120, 15, 100, 10
@@ -627,7 +663,8 @@ def test_calculate_percentage_differences__normal_calculation(reporting_manager)
     assert result_unique == 50  # (15-10)/10 * 100 = 50%
 
 
-def test_calculate_percentage_differences__negative_change(reporting_manager):
+@pytest.mark.asyncio
+async def test_calculate_percentage_differences__negative_change(reporting_manager):
     """Should calculate negative percentage differences correctly."""
     result_total, result_unique = reporting_manager._calculate_percentage_differences(
         80, 6, 100, 10
@@ -637,7 +674,8 @@ def test_calculate_percentage_differences__negative_change(reporting_manager):
     assert result_unique == -40  # (6-10)/10 * 100 = -40%
 
 
-def test_calculate_percentage_differences__fractional_rounding(reporting_manager):
+@pytest.mark.asyncio
+async def test_calculate_percentage_differences__fractional_rounding(reporting_manager):
     """Should round percentage differences to nearest integer."""
     result_total, result_unique = reporting_manager._calculate_percentage_differences(
         103, 11, 100, 10
@@ -652,11 +690,12 @@ def test_calculate_percentage_differences__fractional_rounding(reporting_manager
     assert result_total_rounded == 1  # 1% exact
 
 
-def test_get_top_species_data__no_data(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_top_species_data__no_data(reporting_manager, data_manager):
     """Should handle empty top species data."""
     data_manager.get_top_species_with_prior_counts.return_value = []
 
-    result = reporting_manager._get_top_species_data(
+    result = await reporting_manager._get_top_species_data(
         datetime.date(2025, 7, 7),
         datetime.date(2025, 7, 13),
         datetime.date(2025, 6, 30),
@@ -666,7 +705,8 @@ def test_get_top_species_data__no_data(reporting_manager, data_manager):
     assert result == []
 
 
-def test_get_top_species_data__with_zero_prior_counts(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_top_species_data__with_zero_prior_counts(reporting_manager, data_manager):
     """Should handle top species with zero prior counts (new species in top 10)."""
     data_manager.get_top_species_with_prior_counts.return_value = [
         {
@@ -683,7 +723,7 @@ def test_get_top_species_data__with_zero_prior_counts(reporting_manager, data_ma
         },
     ]
 
-    result = reporting_manager._get_top_species_data(
+    result = await reporting_manager._get_top_species_data(
         datetime.date(2025, 7, 7),
         datetime.date(2025, 7, 13),
         datetime.date(2025, 6, 30),
@@ -700,11 +740,12 @@ def test_get_top_species_data__with_zero_prior_counts(reporting_manager, data_ma
     assert result[1]["percentage_diff"] == 33  # (20-15)/15 * 100 = 33.33 -> 33
 
 
-def test_get_new_species_data__no_data(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_new_species_data__no_data(reporting_manager, data_manager):
     """Should handle empty new species data."""
     data_manager.get_new_species_data.return_value = []
 
-    result = reporting_manager._get_new_species_data(
+    result = await reporting_manager._get_new_species_data(
         datetime.date(2025, 7, 7),
         datetime.date(2025, 7, 13),
     )
@@ -712,14 +753,15 @@ def test_get_new_species_data__no_data(reporting_manager, data_manager):
     assert result == []
 
 
-def test_get_new_species_data__with_data(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_new_species_data__with_data(reporting_manager, data_manager):
     """Should format new species data correctly."""
     data_manager.get_new_species_data.return_value = [
         {"species": "Blue Jay", "count": 8},
         {"species": "House Sparrow", "count": 12},
     ]
 
-    result = reporting_manager._get_new_species_data(
+    result = await reporting_manager._get_new_species_data(
         datetime.date(2025, 7, 7),
         datetime.date(2025, 7, 13),
     )
@@ -731,11 +773,12 @@ def test_get_new_species_data__with_data(reporting_manager, data_manager):
     assert result[1]["count"] == 12
 
 
-def test_get_weekly_stats__none_results(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_weekly_stats__none_results(reporting_manager, data_manager):
     """Should handle None results from detection counts."""
     data_manager.get_detection_counts_by_date_range.side_effect = [None, None]
 
-    current_stats, prior_stats = reporting_manager._get_weekly_stats(
+    current_stats, prior_stats = await reporting_manager._get_weekly_stats(
         datetime.date(2025, 7, 7),
         datetime.date(2025, 7, 13),
         datetime.date(2025, 6, 30),
@@ -746,7 +789,8 @@ def test_get_weekly_stats__none_results(reporting_manager, data_manager):
     assert prior_stats is None
 
 
-def test_get_weekly_report_data__week_boundary_edge_cases(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_weekly_report_data__week_boundary_edge_cases(reporting_manager, data_manager):
     """Should handle various week boundary scenarios correctly."""
     # Test different weekdays as latest date
     test_cases = [
@@ -772,13 +816,14 @@ def test_get_weekly_report_data__week_boundary_edge_cases(reporting_manager, dat
         ) as mock_date:
             mock_date.today.return_value = datetime.date(2025, 7, 15)
 
-            report_data = reporting_manager.get_weekly_report_data()
+            report_data = await reporting_manager.get_weekly_report_data()
 
             assert report_data["start_date"] == expected_start, f"Failed for {latest_date}"
             assert report_data["end_date"] == expected_end, f"Failed for {latest_date}"
 
 
-def test_get_weekly_report_data__large_numbers(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_weekly_report_data__large_numbers(reporting_manager, data_manager):
     """Should handle large detection counts without overflow."""
     today = datetime.date(2025, 7, 12)
     with patch(
@@ -794,7 +839,7 @@ def test_get_weekly_report_data__large_numbers(reporting_manager, data_manager):
         data_manager.get_top_species_with_prior_counts.return_value = []
         data_manager.get_new_species_data.return_value = []
 
-        report_data = reporting_manager.get_weekly_report_data()
+        report_data = await reporting_manager.get_weekly_report_data()
 
         assert report_data["total_detections_current"] == 50000
         assert report_data["unique_species_current"] == 500
@@ -802,7 +847,8 @@ def test_get_weekly_report_data__large_numbers(reporting_manager, data_manager):
         assert report_data["percentage_diff_unique_species"] == 100  # 100% increase
 
 
-def test_get_weekly_report_data__comprehensive_integration(reporting_manager, data_manager):
+@pytest.mark.asyncio
+async def test_get_weekly_report_data__comprehensive_integration(reporting_manager, data_manager):
     """Should integrate all components for a comprehensive weekly report."""
     today = datetime.date(2025, 7, 12)  # Saturday
     with patch(
@@ -846,7 +892,7 @@ def test_get_weekly_report_data__comprehensive_integration(reporting_manager, da
             {"species": "White-breasted Nuthatch", "count": 4},
         ]
 
-        report_data = reporting_manager.get_weekly_report_data()
+        report_data = await reporting_manager.get_weekly_report_data()
 
         # Verify all components are correctly integrated
         assert report_data["start_date"] == "2025-07-01"  # Week containing July 10

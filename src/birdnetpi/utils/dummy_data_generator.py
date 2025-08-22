@@ -6,7 +6,7 @@ from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.web.models.detections import DetectionEvent
 
 
-def generate_dummy_detections(data_manager: DataManager, num_detections: int = 100) -> None:
+async def generate_dummy_detections(data_manager: DataManager, num_detections: int = 100) -> None:
     """Generate and add dummy detection data to the database."""
     # Updated to use tensor format: "Scientific_name_Common Name"
     species_list = [
@@ -52,23 +52,30 @@ def generate_dummy_detections(data_manager: DataManager, num_detections: int = 1
         }
         # Convert dict to DetectionEvent object
         detection_event = DetectionEvent(**detection_data)
-        data_manager.create_detection(detection_event)
+        await data_manager.create_detection(detection_event)
     print(f"Generated {num_detections} dummy detections.")
 
 
 if __name__ == "__main__":
+    import asyncio
+
     from birdnetpi.config import ConfigManager
     from birdnetpi.database.database_service import DatabaseService
     from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
     from birdnetpi.species.display import SpeciesDisplayService
     from birdnetpi.system.path_resolver import PathResolver
 
-    path_resolver = PathResolver()
-    config_manager = ConfigManager(path_resolver)
-    config = config_manager.load()
-    bnp_database_service = DatabaseService(path_resolver.get_database_path())
-    multilingual_service = MultilingualDatabaseService(path_resolver)
-    species_display_service = SpeciesDisplayService(config)
-    data_manager = DataManager(bnp_database_service, multilingual_service, species_display_service)
+    async def run() -> None:
+        """Run the dummy data generator."""
+        path_resolver = PathResolver()
+        config_manager = ConfigManager(path_resolver)
+        config = config_manager.load()
+        bnp_database_service = DatabaseService(path_resolver.get_database_path())
+        multilingual_service = MultilingualDatabaseService(path_resolver)
+        species_display_service = SpeciesDisplayService(config)
+        data_manager = DataManager(
+            bnp_database_service, multilingual_service, species_display_service
+        )
+        await generate_dummy_detections(data_manager)
 
-    generate_dummy_detections(data_manager)
+    asyncio.run(run())

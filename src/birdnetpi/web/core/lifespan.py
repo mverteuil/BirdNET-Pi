@@ -77,6 +77,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Start all services in proper order
     try:
+        # Initialize database service (creates tables and applies optimizations)
+        database_service = container.bnp_database_service()
+        await database_service.initialize()
+        logger.info("Database initialized successfully")
+
         # Skip audio services - handled by standalone audio_websocket_daemon for better reliability
 
         # Start field mode services

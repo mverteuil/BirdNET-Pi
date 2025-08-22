@@ -7,7 +7,6 @@ import pytest
 from dependency_injector import providers
 
 from birdnetpi.database.database_service import DatabaseService
-from birdnetpi.database.ioc.database_service import IOCDatabaseService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.web.core.container import Container
 
@@ -82,17 +81,11 @@ class TestContainerIntegration:
             providers.Factory(lambda: test_resolver.get_database_path())
         )
 
-        # Override IOC database service to use test path
-        container.ioc_database_service.override(
-            providers.Singleton(IOCDatabaseService, db_path=test_resolver.get_ioc_database_path())
-        )
-
         yield container
 
         # Clean up overrides
         container.path_resolver.reset_override()
         container.database_path.reset_override()
-        container.ioc_database_service.reset_override()
 
     def test_container_creation(self):
         """Test that Container can be created without errors."""
@@ -140,14 +133,6 @@ class TestContainerIntegration:
         assert isinstance(db_service, DatabaseService)
         assert str(test_paths) in str(db_service.db_path)
 
-    def test_ioc_database_service_provider(
-        self, container_with_overrides: Container, test_paths: Path
-    ):
-        """Test that ioc_database_service provider uses test paths."""
-        ioc_service = container_with_overrides.ioc_database_service()
-        assert isinstance(ioc_service, IOCDatabaseService)
-        assert str(test_paths) in str(ioc_service.db_path)
-
     def test_multilingual_database_service_provider(self, container_with_overrides: Container):
         """Test that multilingual_database_service can be instantiated."""
         multilingual_service = container_with_overrides.multilingual_database_service()
@@ -166,7 +151,6 @@ class TestContainerIntegration:
             "translation_manager",
             "templates",
             "bnp_database_service",
-            "ioc_database_service",
             "multilingual_database_service",
             "detection_query_service",
             "file_manager",

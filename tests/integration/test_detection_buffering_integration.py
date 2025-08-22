@@ -8,7 +8,7 @@ import asyncio
 import logging
 import threading
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import numpy as np
@@ -63,21 +63,36 @@ def mock_path_resolver(tmp_path, path_resolver):
 @pytest.fixture
 @patch("birdnetpi.audio.audio_analysis_manager.BirdDetectionService")
 def audio_analysis_service_integration(
-    mock_analysis_client_class, mock_file_manager, mock_path_resolver, mock_config
+    mock_analysis_client_class,
+    mock_file_manager,
+    mock_path_resolver,
+    mock_config,
 ):
     """Return an AudioAnalysisManager instance for integration testing."""
     # Mock the BirdDetectionService constructor
     mock_analysis_client = MagicMock()
     mock_analysis_client_class.return_value = mock_analysis_client
 
-    # Mock IOCDatabaseService
-    mock_ioc_database_service = MagicMock()
+    # Mock MultilingualDatabaseService and AsyncSession
+    mock_multilingual_service = MagicMock()
+    # Make get_best_common_name async and return a dict with common_name
+    mock_multilingual_service.get_best_common_name = AsyncMock(
+        return_value={"common_name": "Test Bird"}
+    )
+    mock_session = MagicMock()
+
+    # Initialize SpeciesParser with the mock service
+    from birdnetpi.species.parser import SpeciesParser
+
+    SpeciesParser._instance = None  # Reset singleton
+    SpeciesParser(mock_multilingual_service)  # Initialize with mock
 
     service = AudioAnalysisManager(
         mock_file_manager,
         mock_path_resolver,
         mock_config,
-        mock_ioc_database_service,
+        mock_multilingual_service,
+        mock_session,
         detection_buffer_max_size=50,  # Reasonable size for integration tests
         buffer_flush_interval=0.1,  # Fast interval for testing
     )
@@ -220,22 +235,37 @@ class TestDetectionBufferingEndToEnd:
 
     @patch("birdnetpi.audio.audio_analysis_manager.BirdDetectionService")
     async def test_buffer_overflow_handling_during_extended_outage(
-        self, mock_analysis_client_class, audio_analysis_service_integration, caplog
+        self,
+        mock_analysis_client_class,
+        audio_analysis_service_integration,
+        caplog,
     ):
         """Should handle buffer overflow gracefully during extended FastAPI outages."""
         # Mock the BirdDetectionService constructor
         mock_analysis_client = MagicMock()
         mock_analysis_client_class.return_value = mock_analysis_client
 
-        # Mock IOCDatabaseService
-        mock_ioc_database_service = MagicMock()
+        # Mock MultilingualDatabaseService and AsyncSession
+        mock_multilingual_service = MagicMock()
+        # Make get_best_common_name async and return a dict with common_name
+        mock_multilingual_service.get_best_common_name = AsyncMock(
+            return_value={"common_name": "Test Bird"}
+        )
+        mock_session = MagicMock()
+
+        # Initialize SpeciesParser with the mock service
+        from birdnetpi.species.parser import SpeciesParser
+
+        SpeciesParser._instance = None  # Reset singleton
+        SpeciesParser(mock_multilingual_service)  # Initialize with mock
 
         # Create service with small buffer for testing overflow
         service = AudioAnalysisManager(
             audio_analysis_service_integration.file_manager,
             audio_analysis_service_integration.path_resolver,
             audio_analysis_service_integration.config,
-            mock_ioc_database_service,
+            mock_multilingual_service,
+            mock_session,
             detection_buffer_max_size=3,  # Small buffer to trigger overflow
             buffer_flush_interval=0.1,
         )
@@ -475,7 +505,7 @@ class TestDetectionBufferingWithAdminOperations:
                     assert "Buffered detection event for Turdus migratorius" in caplog.text
 
                     # Run the admin operation
-                    gdd.main()
+                    await gdd.run()
 
             # After admin operation, FastAPI should be available again
             with patch("httpx.AsyncClient") as mock_client:

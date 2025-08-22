@@ -15,8 +15,10 @@ Architecture:
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, NamedTuple
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 if TYPE_CHECKING:
-    from birdnetpi.database.ioc.database_service import IOCDatabaseService
+    from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 
 
 class SpeciesComponents(NamedTuple):
@@ -43,20 +45,22 @@ class SpeciesParser:
 
     # Class-level instance for global access
     _instance: "SpeciesParser | None" = None
+    # Class-level session for database queries
+    _session: "AsyncSession | None" = None
 
-    def __init__(self, ioc_database_service: "IOCDatabaseService"):
-        """Initialize parser with required IOC database service.
+    def __init__(self, multilingual_service: "MultilingualDatabaseService"):
+        """Initialize parser with required multilingual database service.
 
         Args:
-            ioc_database_service: Service for IOC species lookup and translation (required)
+            multilingual_service: Service for multilingual species lookup (required)
 
         Raises:
-            TypeError: If ioc_database_service is None
+            TypeError: If multilingual_service is None
         """
-        if ioc_database_service is None:
-            raise TypeError("IOCDatabaseService is required for SpeciesParser")
+        if multilingual_service is None:
+            raise TypeError("MultilingualDatabaseService is required for SpeciesParser")
 
-        self.ioc_database = ioc_database_service
+        self.multilingual_service = multilingual_service
         # Set as global instance if none exists
         if SpeciesParser._instance is None:
             SpeciesParser._instance = self
@@ -66,11 +70,20 @@ class SpeciesParser:
         """Get the global parser instance for IOC lookups."""
         return cls._instance
 
-    def get_ioc_common_name(self, scientific_name: str) -> str | None:
-        """Get IOC canonical common name from database service.
+    @classmethod
+    def set_session(cls, session: "AsyncSession") -> None:
+        """Set the database session for species lookups.
 
-        Uses the lightweight get_species_core method that returns only essential fields,
-        reducing memory usage and improving query performance.
+        Args:
+            session: AsyncSession with multilingual databases attached
+        """
+        cls._session = session
+
+    async def get_ioc_common_name(self, scientific_name: str) -> str | None:
+        """Get IOC canonical common name from multilingual database service.
+
+        Uses the multilingual database service to get the best available common name,
+        prioritizing IOC English names.
 
         Args:
             scientific_name: Scientific name to look up
@@ -78,14 +91,17 @@ class SpeciesParser:
         Returns:
             IOC English common name or None if species not found
         """
-        # Use lightweight query that returns minimal model
-        species = self.ioc_database.get_species_core(scientific_name)
-        if species:
-            return species.english_name
-        return None
+        if not self._session:
+            return None
+
+        # Get best common name with English preference (IOC priority)
+        result = await self.multilingual_service.get_best_common_name(
+            self._session, scientific_name, language_code="en"
+        )
+        return result.get("common_name")
 
     @staticmethod
-    def parse_tensor_species(tensor_output: str) -> SpeciesComponents:
+    async def parse_tensor_species(tensor_output: str) -> SpeciesComponents:
         """Parse species name from tensor model output format with IOC normalization.
 
         The tensor models output species in the format:
@@ -125,7 +141,7 @@ class SpeciesParser:
         # Use IOC canonical name if available, otherwise fallback to tensor common name
         ioc_common_name = None
         if parser_instance := SpeciesParser._get_parser_instance():
-            ioc_common_name = parser_instance.get_ioc_common_name(scientific_name)
+            ioc_common_name = await parser_instance.get_ioc_common_name(scientific_name)
 
         # Use IOC canonical name if available, otherwise use tensor common name
         final_common_name = ioc_common_name or common_name
@@ -178,7 +194,7 @@ class SpeciesParser:
         )
 
     @staticmethod
-    def extract_common_name(tensor_output: str, prefer_ioc: bool = True) -> str:
+    async def extract_common_name(tensor_output: str, prefer_ioc: bool = True) -> str:
         """Extract common name from tensor output, preferring IOC canonical name.
 
         Args:
@@ -188,11 +204,11 @@ class SpeciesParser:
         Returns:
             Common name (IOC canonical if prefer_ioc=True, otherwise tensor)
         """
-        components = SpeciesParser.parse_tensor_species(tensor_output)
+        components = await SpeciesParser.parse_tensor_species(tensor_output)
         return components.common_name
 
     @staticmethod
-    def extract_scientific_name(tensor_output: str) -> str:
+    async def extract_scientific_name(tensor_output: str) -> str:
         """Extract just the scientific name from tensor output.
 
         Args:
@@ -201,10 +217,11 @@ class SpeciesParser:
         Returns:
             Scientific name portion only
         """
-        return SpeciesParser.parse_tensor_species(tensor_output).scientific_name
+        components = await SpeciesParser.parse_tensor_species(tensor_output)
+        return components.scientific_name
 
     @staticmethod
-    def format_full_species(tensor_output: str) -> str:
+    async def format_full_species(tensor_output: str) -> str:
         """Format tensor output as full species name.
 
         Args:
@@ -213,10 +230,11 @@ class SpeciesParser:
         Returns:
             Formatted full species as "Common Name (Scientific Name)"
         """
-        return SpeciesParser.parse_tensor_species(tensor_output).full_species
+        components = await SpeciesParser.parse_tensor_species(tensor_output)
+        return components.full_species
 
     @staticmethod
-    def is_valid_tensor_format(tensor_output: str) -> bool:
+    async def is_valid_tensor_format(tensor_output: str) -> bool:
         """Check if a string is in valid tensor species format.
 
         Args:
@@ -226,7 +244,7 @@ class SpeciesParser:
             True if string matches expected tensor format
         """
         try:
-            SpeciesParser.parse_tensor_species(tensor_output)
+            await SpeciesParser.parse_tensor_species(tensor_output)
             return True
         except ValueError:
             return False

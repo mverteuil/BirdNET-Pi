@@ -31,7 +31,7 @@ async def create_detection(
     )
 
     # Create detection - the @emit_detection_event decorator handles event emission
-    saved_detection = data_manager.create_detection(detection_event)
+    saved_detection = await data_manager.create_detection(detection_event)
 
     return {"message": "Detection received and dispatched", "detection_id": saved_detection.id}
 
@@ -51,7 +51,7 @@ async def get_recent_detections(
     try:
         if include_l10n:
             # Use DataManager for localization-enhanced data
-            detections = data_manager.query_detections(
+            detections = await data_manager.query_detections(
                 limit=limit,
                 offset=offset,
                 order_by="timestamp",
@@ -82,7 +82,7 @@ async def get_recent_detections(
             ]
         else:
             # Use regular detection data (fallback)
-            detections = data_manager.get_recent_detections(limit)
+            detections = await data_manager.get_recent_detections(limit)
             detection_list = [
                 {
                     "id": detection.id,
@@ -115,7 +115,7 @@ async def get_detection_count(
             target_date = datetime.now(UTC).date()
 
         # Use DataManager for counting
-        counts = data_manager.count_by_date()
+        counts = await data_manager.count_by_date()
         count = counts.get(target_date, 0)
 
         return JSONResponse({"date": target_date.isoformat(), "count": count})
@@ -136,12 +136,12 @@ async def update_detection_location(
     """Update detection location with GPS coordinates."""
     try:
         # Get the detection using DataManager
-        detection = data_manager.get_detection_by_id(detection_id)
+        detection = await data_manager.get_detection_by_id(detection_id)
         if not detection:
             raise HTTPException(status_code=404, detail="Detection not found")
 
         # Update the location using DataManager
-        updated_detection = data_manager.update_detection(
+        updated_detection = await data_manager.update_detection(
             detection_id, {"latitude": location.latitude, "longitude": location.longitude}
         )
 
@@ -181,7 +181,7 @@ async def get_detection(
         # Try to get localization-enhanced data first
         if include_l10n:
             try:
-                detection_with_l10n = data_manager.get_detection_with_localization(
+                detection_with_l10n = await data_manager.get_detection_with_localization(
                     id_to_use, language_code
                 )
                 if detection_with_l10n:
@@ -216,7 +216,7 @@ async def get_detection(
                 )
 
         # Fallback to regular detection
-        detection = data_manager.get_detection_by_id(id_to_use)
+        detection = await data_manager.get_detection_by_id(id_to_use)
         if not detection:
             raise HTTPException(status_code=404, detail="Detection not found")
 
@@ -253,7 +253,7 @@ async def get_detection_spectrogram(
     """Generate and return a spectrogram for a specific detection's audio file."""
     try:
         # Get the detection to find the associated audio file path
-        detection = data_manager.get_detection_by_id(detection_id)
+        detection = await data_manager.get_detection_by_id(detection_id)
         if not detection:
             raise HTTPException(status_code=404, detail="Detection not found")
 
@@ -284,7 +284,7 @@ async def get_species_summary(
 ) -> JSONResponse:
     """Get detection count summary by species with translation data."""
     try:
-        species_summary = data_manager.count_by_species(
+        species_summary = await data_manager.count_by_species(
             start_date=since,
             include_localized_names=True,
             language_code=language_code,
@@ -312,7 +312,7 @@ async def get_family_summary(
     """Get detection count summary by taxonomic family with translation data."""
     try:
         # Get species summary with family information
-        species_summary = data_manager.count_by_species(
+        species_summary = await data_manager.count_by_species(
             start_date=since,
             include_localized_names=True,
             language_code=language_code,

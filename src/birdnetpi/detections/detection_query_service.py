@@ -12,7 +12,7 @@ from uuid import UUID
 
 from dateutil import parser as date_parser
 from sqlalchemy import text
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from birdnetpi.database.database_service import DatabaseService
 from birdnetpi.detections.models import Detection, DetectionWithLocalization
@@ -58,7 +58,7 @@ class DetectionQueryService:
             return date_parser.parse(timestamp_value)
         return datetime.fromisoformat(str(timestamp_value))
 
-    def get_detections_with_localization(
+    async def get_detections_with_localization(
         self,
         limit: int = 100,
         offset: int = 0,
@@ -80,10 +80,10 @@ class DetectionQueryService:
         Returns:
             List of DetectionWithLocalization objects
         """
-        with self.bnp_database_service.get_db() as session:
-            self.multilingual_service.attach_all_to_session(session)
+        async with self.bnp_database_service.get_async_db() as session:
+            await self.multilingual_service.attach_all_to_session(session)
             try:
-                return self._execute_join_query(
+                return await self._execute_join_query(
                     session=session,
                     limit=limit,
                     offset=offset,
@@ -93,9 +93,9 @@ class DetectionQueryService:
                     family_filter=family_filter,
                 )
             finally:
-                self.multilingual_service.detach_all_from_session(session)
+                await self.multilingual_service.detach_all_from_session(session)
 
-    def get_detection_with_localization(
+    async def get_detection_with_localization(
         self, detection_id: UUID, language_code: str = "en"
     ) -> DetectionWithLocalization | None:
         """Get single detection with translation data by ID.
@@ -107,8 +107,8 @@ class DetectionQueryService:
         Returns:
             DetectionWithLocalization object or None if not found
         """
-        with self.bnp_database_service.get_db() as session:
-            self.multilingual_service.attach_all_to_session(session)
+        async with self.bnp_database_service.get_async_db() as session:
+            await self.multilingual_service.attach_all_to_session(session)
             try:
                 # Updated query to use COALESCE across all three databases
                 # Priority: IOC → PatLevin → Avibase
@@ -151,9 +151,10 @@ class DetectionQueryService:
                     WHERE d.id = :detection_id
                 """)
 
-                result = session.execute(
+                result = await session.execute(
                     query_sql, {"detection_id": str(detection_id), "language_code": language_code}
-                ).fetchone()
+                )
+                result = result.fetchone()
 
                 if not result:
                     return None
@@ -197,9 +198,9 @@ class DetectionQueryService:
                 return detection_with_l10n
 
             finally:
-                self.multilingual_service.detach_all_from_session(session)
+                await self.multilingual_service.detach_all_from_session(session)
 
-    def get_species_summary(
+    async def get_species_summary(
         self,
         language_code: str = "en",
         since: datetime | None = None,
@@ -215,8 +216,8 @@ class DetectionQueryService:
         Returns:
             List of species summary dictionaries
         """
-        with self.bnp_database_service.get_db() as session:
-            self.multilingual_service.attach_all_to_session(session)
+        async with self.bnp_database_service.get_async_db() as session:
+            await self.multilingual_service.attach_all_to_session(session)
             try:
                 where_clause = "WHERE 1=1"
                 params: dict[str, Any] = {"language_code": language_code}
@@ -263,7 +264,8 @@ class DetectionQueryService:
                     ORDER BY detection_count DESC
                 """)
 
-                results = session.execute(query_sql, params).fetchall()
+                result = await session.execute(query_sql, params)
+                results = result.fetchall()
 
                 species_summary = [
                     {
@@ -286,9 +288,9 @@ class DetectionQueryService:
                 return species_summary
 
             finally:
-                self.multilingual_service.detach_all_from_session(session)
+                await self.multilingual_service.detach_all_from_session(session)
 
-    def get_family_summary(
+    async def get_family_summary(
         self, language_code: str = "en", since: datetime | None = None
     ) -> list[dict[str, Any]]:
         """Get detection count summary by taxonomic family.
@@ -300,8 +302,8 @@ class DetectionQueryService:
         Returns:
             List of family summary dictionaries
         """
-        with self.bnp_database_service.get_db() as session:
-            self.multilingual_service.attach_all_to_session(session)
+        async with self.bnp_database_service.get_async_db() as session:
+            await self.multilingual_service.attach_all_to_session(session)
             try:
                 where_clause = "WHERE s.family IS NOT NULL"
                 params: dict[str, Any] = {"language_code": language_code}
@@ -325,7 +327,8 @@ class DetectionQueryService:
                     ORDER BY detection_count DESC
                 """)
 
-                results = session.execute(query_sql, params).fetchall()
+                result = await session.execute(query_sql, params)
+                results = result.fetchall()
 
                 family_summary = [
                     {
@@ -344,11 +347,11 @@ class DetectionQueryService:
                 return family_summary
 
             finally:
-                self.multilingual_service.detach_all_from_session(session)
+                await self.multilingual_service.detach_all_from_session(session)
 
-    def _execute_join_query(
+    async def _execute_join_query(
         self,
-        session: Session,
+        session: AsyncSession,
         limit: int,
         offset: int,
         language_code: str,
@@ -415,7 +418,8 @@ class DetectionQueryService:
             LIMIT :limit OFFSET :offset
         """)
 
-        results = session.execute(query_sql, params).fetchall()
+        result = await session.execute(query_sql, params)
+        results = result.fetchall()
 
         detection_data_list = []
         for result in results:

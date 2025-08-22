@@ -9,8 +9,8 @@ from pathlib import Path
 from sqlalchemy import create_engine, exists, func, select, text
 from sqlalchemy.orm import sessionmaker
 
-from birdnetpi.database.ioc.models import IOCSpecies
 from birdnetpi.species.models import Species
+from birdnetpi.utils.ioc_models import IOCSpecies
 
 
 class IOCDatabaseService:

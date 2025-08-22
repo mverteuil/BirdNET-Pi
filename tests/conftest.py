@@ -151,6 +151,41 @@ def app_with_temp_data(path_resolver) -> FastAPI:
 
 
 @pytest.fixture
+async def async_in_memory_session():
+    """Create real in-memory async SQLite session for integration tests.
+
+    This is a global fixture that can be used consistently across all tests
+    that need an async SQLAlchemy session for testing.
+    """
+    from typing import cast
+
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+    from sqlalchemy.orm import sessionmaker
+
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    # Use sessionmaker with class_=AsyncSession which is the standard pattern
+    session_local = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    # Create session explicitly to help pyright understand the type
+    session = cast(AsyncSession, session_local())
+    try:
+        # Create test tables if needed
+        await session.execute(
+            text("""
+            CREATE TABLE IF NOT EXISTS test_main (
+                id INTEGER PRIMARY KEY,
+                name TEXT
+            )
+        """)
+        )
+        await session.commit()
+        yield session
+    finally:
+        await session.close()
+
+
+@pytest.fixture
 def test_config(path_resolver: PathResolver):
     """Load test configuration from the test config file."""
     from birdnetpi.config import ConfigManager

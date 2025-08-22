@@ -11,16 +11,21 @@ from birdnetpi.web.models.detections import DetectionEvent
 @pytest.fixture
 def mock_data_manager():
     """Mock DataManager instance."""
-    return MagicMock(spec=DataManager)
+    from unittest.mock import AsyncMock
+
+    mock = MagicMock(spec=DataManager)
+    mock.create_detection = AsyncMock()
+    return mock
 
 
 class TestDummyDataGenerator:
     """Test the TestDummyDataGenerator class."""
 
-    def test_generate_dummy_detections(self, mock_data_manager):
+    @pytest.mark.asyncio
+    async def test_generate_dummy_detections(self, mock_data_manager):
         """Generate the specified number of dummy detections and add them via DetectionManager."""
         num_detections = 5
-        generate_dummy_detections(mock_data_manager, num_detections)
+        await generate_dummy_detections(mock_data_manager, num_detections)
 
         # Assert that create_detection was called the correct number of times
         assert mock_data_manager.create_detection.call_count == num_detections

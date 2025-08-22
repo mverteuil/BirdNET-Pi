@@ -44,7 +44,7 @@ async def get_system_overview(
     """Get system overview data including disk usage, system info, and total detections."""
     disk_usage = SystemInspector.get_disk_usage()
     system_info = SystemInspector.get_system_info()
-    total_detections = data_manager.count_detections()
+    total_detections = await data_manager.count_detections()
 
     return {
         "disk_usage": disk_usage,

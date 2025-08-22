@@ -24,7 +24,7 @@ from sqlalchemy import create_engine, delete, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlmodel import SQLModel
 
-from birdnetpi.database.ioc.models import (
+from birdnetpi.utils.ioc_models import (
     IOCLanguage,
     IOCMetadata,
     IOCSpecies,

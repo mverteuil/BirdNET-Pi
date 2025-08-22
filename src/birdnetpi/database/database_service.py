@@ -1,12 +1,20 @@
 import contextlib
-from collections.abc import Generator
+import logging
+from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,  # type: ignore[attr-defined]
+    create_async_engine,
+)
 from sqlalchemy.orm import Session, sessionmaker
 from sqlmodel import SQLModel
+
+logger = logging.getLogger(__name__)
 
 
 class DatabaseService:
@@ -16,16 +24,39 @@ class DatabaseService:
         self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Configure SQLite engine with SD card optimizations
-        self.engine = create_engine(
-            f"sqlite:///{self.db_path}",
+        # Store database URL for later use
+        self.db_url = f"sqlite+aiosqlite:///{self.db_path}"
+
+        # Configure async SQLite engine with SD card optimizations
+        self.async_engine = create_async_engine(
+            self.db_url,
             # Optimize connection pool for SQLite
             pool_pre_ping=True,
             pool_recycle=3600,  # Recycle connections every hour
         )
 
-        # Apply SD card optimizations on every connection
-        @event.listens_for(self.engine, "connect")
+        self.async_session_local = async_sessionmaker(
+            autocommit=False, autoflush=False, bind=self.async_engine, class_=AsyncSession
+        )
+
+        # Create sync engine and sessionmaker for backward compatibility with utilities
+        # Note: aiosqlite doesn't have a sync_engine attribute, so we create one separately
+        from sqlalchemy import create_engine, event
+
+        if self.db_url.startswith("sqlite"):
+            # For SQLite, create a separate sync engine
+            sync_url = self.db_url.replace("+aiosqlite", "")
+            self.sync_engine = create_engine(sync_url, echo=False)
+        else:
+            # For other databases that support both sync and async
+            self.sync_engine = getattr(self.async_engine, "sync_engine", None)
+            if self.sync_engine is None:
+                # Create a sync version of the URL
+                sync_url = self.db_url.replace("postgresql+asyncpg", "postgresql")
+                self.sync_engine = create_engine(sync_url, echo=False)
+
+        # Apply SD card optimizations on every connection to the sync engine
+        @event.listens_for(self.sync_engine, "connect")
         def set_sqlite_pragma(
             dbapi_connection: Any,  # noqa: ANN401
             connection_record: Any,  # noqa: ANN401
@@ -51,83 +82,102 @@ class DatabaseService:
             # Enable memory-mapped I/O for better read performance
             cursor.execute("PRAGMA mmap_size = 268435456")  # 256MB
 
-            # Optimize locking for single-process access
-            cursor.execute("PRAGMA locking_mode = EXCLUSIVE")
+            # Don't use exclusive locking since we have both sync and async engines
+            # cursor.execute("PRAGMA locking_mode = EXCLUSIVE")
 
             # Faster query planning (less CPU overhead)
             cursor.execute("PRAGMA optimize")
 
             cursor.close()
 
-        SQLModel.metadata.create_all(self.engine)
-        self.session_local = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+        self.session_local = sessionmaker(autocommit=False, autoflush=False, bind=self.sync_engine)
 
-        # Initialize performance optimizations
-        self._apply_startup_optimizations()
+        # Provide alias for backward compatibility
+        self.engine = self.sync_engine
+
+        # For CLI utilities, initialize tables synchronously in constructor
+        SQLModel.metadata.create_all(self.sync_engine)
+
+    async def initialize(self) -> None:
+        """Initialize the database asynchronously."""
+        # Create tables using sync engine within async context
+        async with self.async_engine.begin() as conn:
+            await conn.run_sync(SQLModel.metadata.create_all)
+
+        # Apply startup optimizations
+        await self._apply_startup_optimizations()
+
+    @contextlib.asynccontextmanager
+    async def get_async_db(self) -> AsyncGenerator[AsyncSession, None]:
+        """Provide an async database session for dependency injection."""
+        async with self.async_session_local() as session:
+            yield session
 
     @contextlib.contextmanager
     def get_db(self) -> Generator[Session, Any, None]:
-        """Provide a database session for dependency injection."""
+        """Provide a sync database session for CLI utilities and backward compatibility."""
         db = self.session_local()
         try:
             yield db
         finally:
             db.close()
 
-    def _apply_startup_optimizations(self) -> None:
+    async def _apply_startup_optimizations(self) -> None:
         """Apply one-time startup optimizations for SD card longevity."""
-        with self.get_db() as session:
+        async with self.get_async_db() as session:
             try:
                 # Analyze tables for optimal query planning
-                session.execute(text("ANALYZE"))
+                await session.execute(text("ANALYZE"))
 
                 # Update table statistics for better query optimization
-                session.execute(text("PRAGMA optimize"))
+                await session.execute(text("PRAGMA optimize"))
 
-                session.commit()
+                await session.commit()
             except SQLAlchemyError as e:
-                session.rollback()
-                print(f"Warning: Failed to apply startup optimizations: {e}")
+                await session.rollback()
+                logger.warning("Failed to apply startup optimizations: %s", e)
 
-    def checkpoint_wal(self, mode: str = "RESTART") -> None:
+    async def checkpoint_wal(self, mode: str = "RESTART") -> None:
         """Manually checkpoint WAL file to reduce its size.
 
         Args:
             mode: Checkpoint mode - "PASSIVE", "FULL", "RESTART", or "TRUNCATE"
                  RESTART is recommended for SD card longevity as it truncates WAL
         """
-        with self.get_db() as session:
+        async with self.get_async_db() as session:
             try:
-                result = session.execute(text(f"PRAGMA wal_checkpoint({mode})"))
+                result = await session.execute(text(f"PRAGMA wal_checkpoint({mode})"))
                 checkpoint_result = result.fetchone()
                 if checkpoint_result:
                     busy_count, log_pages, checkpointed = checkpoint_result
                     if busy_count == 0:
-                        print(f"WAL checkpoint successful: {checkpointed}/{log_pages} pages")
+                        logger.info(
+                            "WAL checkpoint successful: %d/%d pages", checkpointed, log_pages
+                        )
                     else:
-                        print(f"WAL checkpoint partially blocked: {busy_count} busy")
-                session.commit()
+                        logger.warning("WAL checkpoint partially blocked: %d busy", busy_count)
+                await session.commit()
             except SQLAlchemyError as e:
-                print(f"Warning: WAL checkpoint failed: {e}")
+                logger.warning("WAL checkpoint failed: %s", e)
 
-    def vacuum_database(self) -> None:
+    async def vacuum_database(self) -> None:
         """Vacuum database to reclaim space and optimize storage.
 
         Note: This operation requires significant free space (2x database size)
         and should be used sparingly on SD cards due to write amplification.
         """
-        with self.get_db() as session:
+        async with self.get_async_db() as session:
             try:
                 # Vacuum requires direct connection access
-                session.execute(text("VACUUM"))
-                session.commit()
-                print("Database vacuum completed successfully.")
+                await session.execute(text("VACUUM"))
+                await session.commit()
+                logger.info("Database vacuum completed successfully")
             except SQLAlchemyError as e:
-                session.rollback()
-                print(f"Error vacuuming database: {e}")
+                await session.rollback()
+                logger.error("Error vacuuming database: %s", e)
                 raise
 
-    def get_database_stats(self) -> dict[str, Any]:
+    async def get_database_stats(self) -> dict[str, Any]:
         """Get database statistics useful for monitoring SD card usage.
 
         Returns:
@@ -148,42 +198,44 @@ class DatabaseService:
             stats["total_size"] = stats["main_db_size"] + stats["wal_size"] + stats["shm_size"]
 
         # Get SQLite internal stats
-        with self.get_db() as session:
+        async with self.get_async_db() as session:
             try:
                 # Page information
-                page_count_result = session.execute(text("PRAGMA page_count")).fetchone()
-                stats["page_count"] = page_count_result[0] if page_count_result else 0
+                page_count_result = await session.execute(text("PRAGMA page_count"))
+                page_count_row = page_count_result.fetchone()
+                stats["page_count"] = page_count_row[0] if page_count_row else 0
 
-                page_size_result = session.execute(text("PRAGMA page_size")).fetchone()
-                stats["page_size"] = page_size_result[0] if page_size_result else 4096
+                page_size_result = await session.execute(text("PRAGMA page_size"))
+                page_size_row = page_size_result.fetchone()
+                stats["page_size"] = page_size_row[0] if page_size_row else 4096
 
                 # WAL information
-                wal_checkpoint_result = session.execute(text("PRAGMA wal_checkpoint")).fetchone()
-                if wal_checkpoint_result:
-                    stats["wal_busy_count"] = wal_checkpoint_result[0]
-                    stats["wal_log_pages"] = wal_checkpoint_result[1]
-                    stats["wal_checkpointed_pages"] = wal_checkpoint_result[2]
+                wal_checkpoint_result = await session.execute(text("PRAGMA wal_checkpoint"))
+                wal_checkpoint_row = wal_checkpoint_result.fetchone()
+                if wal_checkpoint_row:
+                    stats["wal_busy_count"] = wal_checkpoint_row[0]
+                    stats["wal_log_pages"] = wal_checkpoint_row[1]
+                    stats["wal_checkpointed_pages"] = wal_checkpoint_row[2]
 
                 # Journal mode
-                journal_mode_result = session.execute(text("PRAGMA journal_mode")).fetchone()
-                stats["journal_mode"] = journal_mode_result[0] if journal_mode_result else "unknown"
+                journal_mode_result = await session.execute(text("PRAGMA journal_mode"))
+                journal_mode_row = journal_mode_result.fetchone()
+                stats["journal_mode"] = journal_mode_row[0] if journal_mode_row else "unknown"
 
             except SQLAlchemyError as e:
-                print(f"Warning: Could not retrieve all database stats: {e}")
+                logger.warning("Could not retrieve all database stats: %s", e)
 
         return stats
 
-    def clear_database(self) -> None:
+    async def clear_database(self) -> None:
         """Clear all data from the database tables."""
-        db = self.session_local()
-        try:
-            for table in SQLModel.metadata.sorted_tables:
-                db.execute(table.delete())
-            db.commit()
-            print("Database cleared successfully.")
-        except SQLAlchemyError as e:
-            db.rollback()
-            print(f"Error clearing database: {e}")
-            raise
-        finally:
-            db.close()
+        async with self.get_async_db() as session:
+            try:
+                for table in SQLModel.metadata.sorted_tables:
+                    await session.execute(table.delete())
+                await session.commit()
+                logger.info("Database cleared successfully")
+            except SQLAlchemyError as e:
+                await session.rollback()
+                logger.error("Error clearing database: %s", e)
+                raise

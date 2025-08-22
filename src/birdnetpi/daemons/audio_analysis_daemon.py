@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 _shutdown_flag = False
 _fifo_analysis_path = None
 _fifo_analysis_fd = None
+_session = None
 
 
 def _signal_handler(signum: int, frame: FrameType | None) -> None:
@@ -29,16 +30,19 @@ def _signal_handler(signum: int, frame: FrameType | None) -> None:
 
 
 def _cleanup_fifo() -> None:
-    global _fifo_analysis_fd, _fifo_analysis_path
+    global _fifo_analysis_fd, _fifo_analysis_path, _session
     if _fifo_analysis_fd:
         os.close(_fifo_analysis_fd)
         logger.info("Closed FIFO: %s", _fifo_analysis_path)
         _fifo_analysis_fd = None
+    # Clean up database session if it exists
+    if "_session" in globals() and _session:
+        asyncio.run(_session.close())
 
 
 def main() -> None:
     """Run the audio analysis wrapper."""
-    global _fifo_analysis_path, _fifo_analysis_fd
+    global _fifo_analysis_path, _fifo_analysis_fd, _session
     logger.info("Starting audio analysis wrapper.")
 
     # Register signal handlers and atexit for cleanup
@@ -54,14 +58,32 @@ def main() -> None:
     config_manager = ConfigManager(path_resolver)
     config = config_manager.load()
 
-    # Create IOC database service (required for species normalization)
-    from birdnetpi.database.ioc.database_service import IOCDatabaseService
+    # Create multilingual database service and session for species normalization
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+    from sqlalchemy.orm import sessionmaker
 
-    ioc_database_service = IOCDatabaseService(db_path=path_resolver.get_ioc_database_path())
-    logger.info("IOC database service initialized")
+    from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
+
+    multilingual_service = MultilingualDatabaseService(path_resolver)
+    logger.info("Multilingual database service initialized")
+
+    # Create async session for database queries
+    # Using a simple in-memory database for the main session since we only use ATTACH
+
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    async def init_session() -> AsyncSession:
+        """Initialize session with attached databases."""
+        session: AsyncSession = async_session_maker()  # type: ignore[assignment]
+        await multilingual_service.attach_all_to_session(session)
+        return session
+
+    # Create and initialize the session
+    _session = asyncio.run(init_session())
 
     audio_analysis_service = AudioAnalysisManager(
-        file_manager, path_resolver, config, ioc_database_service
+        file_manager, path_resolver, config, multilingual_service, _session
     )
 
     try:

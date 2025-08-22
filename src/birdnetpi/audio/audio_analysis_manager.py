@@ -5,17 +5,20 @@ import threading
 import time
 from collections import deque
 from datetime import UTC
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import numpy as np
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.database.ioc.database_service import IOCDatabaseService
 from birdnetpi.detections.bird_detection_service import BirdDetectionService
 from birdnetpi.species.parser import SpeciesComponents, SpeciesParser
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
+
+if TYPE_CHECKING:
+    from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +31,8 @@ class AudioAnalysisManager:
         file_manager: FileManager,
         path_resolver: PathResolver,
         config: BirdNETConfig,
-        ioc_database_service: IOCDatabaseService,
+        multilingual_service: "MultilingualDatabaseService",
+        session: "AsyncSession",
         detection_buffer_max_size: int = 1000,
         buffer_flush_interval: float = 5.0,
     ) -> None:
@@ -38,8 +42,10 @@ class AudioAnalysisManager:
         self.config = config
         self.analysis_client = BirdDetectionService(config)
 
-        # Initialize SpeciesParser with IOC database service for canonical name lookups
-        self.species_parser = SpeciesParser(ioc_database_service)
+        # Initialize SpeciesParser with multilingual database service for canonical name lookups
+        self.species_parser = SpeciesParser(multilingual_service)
+        # Set the session for database queries
+        SpeciesParser.set_session(session)
 
         # Buffer for accumulating audio chunks for analysis
         self.audio_buffer = np.array([], dtype=np.int16)
@@ -168,7 +174,9 @@ class AudioAnalysisManager:
                 if confidence >= self.config.species_confidence_threshold:
                     # Parse species tensor using SpeciesParser
                     try:
-                        species_components = SpeciesParser.parse_tensor_species(species_tensor)
+                        species_components = await SpeciesParser.parse_tensor_species(
+                            species_tensor
+                        )
                     except ValueError as e:
                         logger.error(f"Invalid species tensor format '{species_tensor}': {e}")
                         continue  # Skip this detection if tensor format is invalid

@@ -5,7 +5,7 @@ for the weekly report feature that are too expensive to run with the standard te
 """
 
 import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -55,7 +55,8 @@ def performance_reporting_manager(data_manager, path_resolver, mock_config, mock
 class TestWeeklyReportPerformance:
     """Test performance characteristics of weekly report functionality."""
 
-    def test_get_weekly_report_data__large_dataset_performance(
+    @pytest.mark.asyncio
+    async def test_get_weekly_report_data__large_dataset_performance(
         self, performance_reporting_manager, data_manager
     ):
         """Should handle large datasets efficiently without timeouts."""
@@ -66,9 +67,11 @@ class TestWeeklyReportPerformance:
         # Simulate large dataset scenario
         mock_detection = MagicMock()
         mock_detection.timestamp = datetime.datetime(2025, 7, 10, 14, 30, 0)
+        data_manager.get_all_detections = AsyncMock()
         data_manager.get_all_detections.return_value = [mock_detection]
 
         # Mock large numbers that might be seen in production
+        data_manager.get_detection_counts_by_date_range = AsyncMock()
         data_manager.get_detection_counts_by_date_range.side_effect = [
             {"total_count": 100000, "unique_species": 1500},  # Current week
             {"total_count": 85000, "unique_species": 1200},  # Prior week
@@ -84,10 +87,12 @@ class TestWeeklyReportPerformance:
             }
             for i in range(10)
         ]
+        data_manager.get_top_species_with_prior_counts = AsyncMock()
         data_manager.get_top_species_with_prior_counts.return_value = large_top_species
 
         # Large new species list
         large_new_species = [{"species": f"New_Species_{i}", "count": 100 - i} for i in range(20)]
+        data_manager.get_new_species_data = AsyncMock()
         data_manager.get_new_species_data.return_value = large_new_species
 
         with patch(
@@ -97,7 +102,7 @@ class TestWeeklyReportPerformance:
 
             # Measure execution time
             start_time = time.time()
-            report_data = performance_reporting_manager.get_weekly_report_data()
+            report_data = await performance_reporting_manager.get_weekly_report_data()
             execution_time = time.time() - start_time
 
             # Performance assertions
@@ -107,39 +112,43 @@ class TestWeeklyReportPerformance:
             assert len(report_data["top_10_species"]) == 10
             assert len(report_data["new_species"]) == 20
 
-    def test_get_weekly_report_data__concurrent_execution_safety(
+    @pytest.mark.asyncio
+    async def test_get_weekly_report_data__concurrent_execution_safety(
         self, performance_reporting_manager, data_manager
     ):
         """Should be thread-safe for concurrent execution."""
-        import concurrent.futures
-
         today = datetime.date(2025, 7, 12)
 
         # Setup consistent mock data
         mock_detection = MagicMock()
         mock_detection.timestamp = datetime.datetime(2025, 7, 10, 14, 30, 0)
+        data_manager.get_all_detections = AsyncMock()
         data_manager.get_all_detections.return_value = [mock_detection]
 
+        data_manager.get_detection_counts_by_date_range = AsyncMock()
         data_manager.get_detection_counts_by_date_range.side_effect = [
             {"total_count": 1000, "unique_species": 50},
             {"total_count": 800, "unique_species": 40},
         ] * 10  # Enough for multiple concurrent calls
 
+        data_manager.get_top_species_with_prior_counts = AsyncMock()
         data_manager.get_top_species_with_prior_counts.return_value = []
+        data_manager.get_new_species_data = AsyncMock()
         data_manager.get_new_species_data.return_value = []
 
-        def execute_weekly_report():
+        async def execute_weekly_report():
             """Execute weekly report data retrieval."""
             with patch(
                 "birdnetpi.analytics.reporting_manager.datetime.date", wraps=datetime.date
             ) as mock_date:
                 mock_date.today.return_value = today
-                return performance_reporting_manager.get_weekly_report_data()
+                return await performance_reporting_manager.get_weekly_report_data()
 
         # Execute concurrently
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [executor.submit(execute_weekly_report) for _ in range(5)]
-            results = [future.result() for future in concurrent.futures.as_completed(futures)]
+        import asyncio
+
+        tasks = [execute_weekly_report() for _ in range(5)]
+        results = await asyncio.gather(*tasks)
 
         # All executions should succeed with consistent results
         assert len(results) == 5
@@ -147,7 +156,8 @@ class TestWeeklyReportPerformance:
             assert result["total_detections_current"] == 1000
             assert result["unique_species_current"] == 50
 
-    def test_get_weekly_report_data__memory_efficiency(
+    @pytest.mark.asyncio
+    async def test_get_weekly_report_data__memory_efficiency(
         self, performance_reporting_manager, data_manager
     ):
         """Should not accumulate excessive memory during execution."""
@@ -165,15 +175,19 @@ class TestWeeklyReportPerformance:
         # Setup mock data
         mock_detection = MagicMock()
         mock_detection.timestamp = datetime.datetime(2025, 7, 10, 14, 30, 0)
+        data_manager.get_all_detections = AsyncMock()
         data_manager.get_all_detections.return_value = [mock_detection]
 
         # Each iteration requires 2 calls (current + prior week), so 10 iterations need 20 values
+        data_manager.get_detection_counts_by_date_range = AsyncMock()
         data_manager.get_detection_counts_by_date_range.side_effect = [
             {"total_count": 50000, "unique_species": 500},
             {"total_count": 45000, "unique_species": 450},
         ] * 10
 
+        data_manager.get_top_species_with_prior_counts = AsyncMock()
         data_manager.get_top_species_with_prior_counts.return_value = []
+        data_manager.get_new_species_data = AsyncMock()
         data_manager.get_new_species_data.return_value = []
 
         with patch(
@@ -183,7 +197,7 @@ class TestWeeklyReportPerformance:
 
             # Execute multiple times to check for memory leaks
             for _ in range(10):
-                performance_reporting_manager.get_weekly_report_data()
+                await performance_reporting_manager.get_weekly_report_data()
                 gc.collect()  # Force garbage collection
 
         # Check memory usage after execution
@@ -221,7 +235,8 @@ class TestWeeklyReportPerformance:
             assert result_total == expected_total, f"Total: {result_total} != {expected_total}"
             assert result_unique == expected_unique, f"Unique: {result_unique} != {expected_unique}"
 
-    def test_get_weekly_report_data__date_edge_cases_comprehensive(
+    @pytest.mark.asyncio
+    async def test_get_weekly_report_data__date_edge_cases_comprehensive(
         self, performance_reporting_manager, data_manager
     ):
         """Should handle comprehensive date edge cases and boundary conditions."""
@@ -266,13 +281,17 @@ class TestWeeklyReportPerformance:
             mock_detection.timestamp = datetime.datetime.combine(
                 latest_detection_date, datetime.time(12, 0, 0)
             )
+            data_manager.get_all_detections = AsyncMock()
             data_manager.get_all_detections.return_value = [mock_detection]
 
+            data_manager.get_detection_counts_by_date_range = AsyncMock()
             data_manager.get_detection_counts_by_date_range.side_effect = [
                 {"total_count": 10, "unique_species": 5},
                 {"total_count": 8, "unique_species": 4},
             ]
+            data_manager.get_top_species_with_prior_counts = AsyncMock()
             data_manager.get_top_species_with_prior_counts.return_value = []
+            data_manager.get_new_species_data = AsyncMock()
             data_manager.get_new_species_data.return_value = []
 
             with patch(
@@ -280,7 +299,7 @@ class TestWeeklyReportPerformance:
             ) as mock_date:
                 mock_date.today.return_value = today
 
-                report_data = performance_reporting_manager.get_weekly_report_data()
+                report_data = await performance_reporting_manager.get_weekly_report_data()
 
                 assert report_data["start_date"] == expected_start, (
                     f"Start date mismatch for {today}: "
@@ -290,7 +309,8 @@ class TestWeeklyReportPerformance:
                     f"End date mismatch for {today}: {report_data['end_date']} != {expected_end}"
                 )
 
-    def test_get_weekly_report_data__stress_test_multiple_scenarios(
+    @pytest.mark.asyncio
+    async def test_get_weekly_report_data__stress_test_multiple_scenarios(
         self, performance_reporting_manager, data_manager
     ):
         """Should handle stress testing with multiple rapid scenario changes."""
@@ -323,11 +343,13 @@ class TestWeeklyReportPerformance:
         today = datetime.date(2025, 7, 12)
         mock_detection = MagicMock()
         mock_detection.timestamp = datetime.datetime(2025, 7, 10, 14, 30, 0)
+        data_manager.get_all_detections = AsyncMock()
         data_manager.get_all_detections.return_value = [mock_detection]
 
         execution_times = []
 
         for scenario in scenarios:
+            data_manager.get_detection_counts_by_date_range = AsyncMock()
             data_manager.get_detection_counts_by_date_range.side_effect = [
                 scenario["current"],
                 scenario["prior"],
@@ -343,6 +365,7 @@ class TestWeeklyReportPerformance:
                 }
                 for i in range(scenario["top_species_count"])
             ]
+            data_manager.get_top_species_with_prior_counts = AsyncMock()
             data_manager.get_top_species_with_prior_counts.return_value = top_species
 
             # Mock new species
@@ -350,6 +373,7 @@ class TestWeeklyReportPerformance:
                 {"species": f"New_Species_{i}", "count": 20 - i}
                 for i in range(scenario["new_species_count"])
             ]
+            data_manager.get_new_species_data = AsyncMock()
             data_manager.get_new_species_data.return_value = new_species
 
             with patch(
@@ -358,7 +382,7 @@ class TestWeeklyReportPerformance:
                 mock_date.today.return_value = today
 
                 start_time = time.time()
-                report_data = performance_reporting_manager.get_weekly_report_data()
+                report_data = await performance_reporting_manager.get_weekly_report_data()
                 execution_time = time.time() - start_time
                 execution_times.append(execution_time)
 
@@ -381,7 +405,8 @@ class TestWeeklyReportPerformance:
 class TestWeeklyReportIntegration:
     """Integration tests that verify interaction between components."""
 
-    def test_weekly_report_end_to_end_integration(
+    @pytest.mark.asyncio
+    async def test_weekly_report_end_to_end_integration(
         self, performance_reporting_manager, data_manager
     ):
         """Should integrate all weekly report components correctly in realistic scenario."""
@@ -402,9 +427,11 @@ class TestWeeklyReportIntegration:
             mock_detection.timestamp = ts
             mock_detections.append(mock_detection)
 
+        data_manager.get_all_detections = AsyncMock()
         data_manager.get_all_detections.return_value = mock_detections
 
         # Realistic detection counts
+        data_manager.get_detection_counts_by_date_range = AsyncMock()
         data_manager.get_detection_counts_by_date_range.side_effect = [
             {"total_count": 156, "unique_species": 23},  # Current week
             {"total_count": 134, "unique_species": 19},  # Prior week
@@ -443,6 +470,7 @@ class TestWeeklyReportIntegration:
                 "prior_count": 12,
             },  # Same
         ]
+        data_manager.get_top_species_with_prior_counts = AsyncMock()
         data_manager.get_top_species_with_prior_counts.return_value = realistic_top_species
 
         # Realistic new species
@@ -450,6 +478,7 @@ class TestWeeklyReportIntegration:
             {"species": "Regulus calendula", "count": 7},  # Ruby-crowned Kinglet
             {"species": "Dendroica petechia", "count": 4},  # Yellow Warbler
         ]
+        data_manager.get_new_species_data = AsyncMock()
         data_manager.get_new_species_data.return_value = realistic_new_species
 
         with patch(
@@ -457,7 +486,7 @@ class TestWeeklyReportIntegration:
         ) as mock_date:
             mock_date.today.return_value = today
 
-            report_data = performance_reporting_manager.get_weekly_report_data()
+            report_data = await performance_reporting_manager.get_weekly_report_data()
 
             # Comprehensive integration verification
             assert (
@@ -498,7 +527,8 @@ class TestWeeklyReportIntegration:
             assert new_species[1]["common_name"] == "Dendroica petechia"
             assert new_species[1]["count"] == 4
 
-    def test_weekly_report_database_interaction_patterns(
+    @pytest.mark.asyncio
+    async def test_weekly_report_database_interaction_patterns(
         self, performance_reporting_manager, data_manager
     ):
         """Should verify correct database interaction patterns and call sequences."""
@@ -506,13 +536,16 @@ class TestWeeklyReportIntegration:
 
         mock_detection = MagicMock()
         mock_detection.timestamp = datetime.datetime(2025, 7, 10, 14, 30, 0)
+        data_manager.get_all_detections = AsyncMock()
         data_manager.get_all_detections.return_value = [mock_detection]
 
+        data_manager.get_detection_counts_by_date_range = AsyncMock()
         data_manager.get_detection_counts_by_date_range.side_effect = [
             {"total_count": 100, "unique_species": 15},
             {"total_count": 80, "unique_species": 12},
         ]
 
+        data_manager.get_top_species_with_prior_counts = AsyncMock()
         data_manager.get_top_species_with_prior_counts.return_value = [
             {
                 "scientific_name": "Test species",
@@ -522,6 +555,7 @@ class TestWeeklyReportIntegration:
             }
         ]
 
+        data_manager.get_new_species_data = AsyncMock()
         data_manager.get_new_species_data.return_value = [
             {"species": "New test species", "count": 5}
         ]
@@ -531,7 +565,7 @@ class TestWeeklyReportIntegration:
         ) as mock_date:
             mock_date.today.return_value = today
 
-            performance_reporting_manager.get_weekly_report_data()
+            await performance_reporting_manager.get_weekly_report_data()
 
             # Verify correct call sequence and parameters
             data_manager.get_all_detections.assert_called_once()

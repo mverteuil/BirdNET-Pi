@@ -1,4 +1,4 @@
-from unittest.mock import DEFAULT, MagicMock, patch
+from unittest.mock import DEFAULT, AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -13,6 +13,12 @@ from birdnetpi.system.system_control_service import SystemControlService
 @pytest.fixture(autouse=True)
 def mock_dependencies(mocker, tmp_path):
     """Mock external dependencies for generate_dummy_data.py."""
+    # Patch generate_dummy_detections separately since it's imported directly
+    mock_generate = mocker.patch(
+        "birdnetpi.cli.generate_dummy_data.generate_dummy_detections",
+        new=AsyncMock(return_value=None),
+    )
+
     with patch.multiple(
         "birdnetpi.cli.generate_dummy_data",
         PathResolver=DEFAULT,
@@ -22,7 +28,6 @@ def mock_dependencies(mocker, tmp_path):
         MultilingualDatabaseService=DEFAULT,
         SpeciesDisplayService=DEFAULT,
         SystemControlService=DEFAULT,
-        generate_dummy_detections=DEFAULT,
         time=DEFAULT,
     ) as mocks:
         # Create MagicMock for database path that behaves like a Path
@@ -44,14 +49,19 @@ def mock_dependencies(mocker, tmp_path):
         mocks["PathResolver"].return_value.get_birdnetpi_config_path.return_value = config_path
         mocks["ConfigManager"].return_value.load_config.return_value = MagicMock()
         mocks["DatabaseService"].return_value = MagicMock(spec=DatabaseService)
-        mocks["DataManager"].return_value = MagicMock(spec=DataManager)
+        mock_data_manager = MagicMock(spec=DataManager)
+        mock_data_manager.get_all_detections = AsyncMock(return_value=[])
+        mock_data_manager.create_detection = AsyncMock(return_value=None)
+        mocks["DataManager"].return_value = mock_data_manager
         mocks["MultilingualDatabaseService"].return_value = MagicMock(
             spec=MultilingualDatabaseService
         )
         mocks["SpeciesDisplayService"].return_value = MagicMock(spec=SpeciesDisplayService)
         mocks["SystemControlService"].return_value = MagicMock(spec=SystemControlService)
-        mocks["generate_dummy_detections"].return_value = None
         mocks["time"].sleep = MagicMock()
+
+        # Add the generate_dummy_detections mock to the mocks dict
+        mocks["generate_dummy_detections"] = mock_generate
 
         # Yield mocks for individual test configuration
         yield mocks
@@ -60,7 +70,8 @@ def mock_dependencies(mocker, tmp_path):
 class TestGenerateDummyData:
     """Test the generate_dummy_data wrapper."""
 
-    def test_main_database_exists__has_data(self, mock_dependencies, capsys):
+    @pytest.mark.asyncio
+    async def test_main_database_exists__has_data(self, mock_dependencies, capsys):
         """Should skip dummy data generation if database exists and has data."""
         # Mock the Path object methods directly
         mock_db_path = mock_dependencies["PathResolver"].return_value.get_database_path.return_value
@@ -75,7 +86,7 @@ class TestGenerateDummyData:
             "detection1"
         ]
 
-        gdd.main()
+        await gdd.run()
 
         captured = capsys.readouterr()
         assert "Database already contains data. Skipping dummy data generation." in captured.out
@@ -85,7 +96,8 @@ class TestGenerateDummyData:
             "SystemControlService"
         ].return_value.get_service_status.assert_not_called()
 
-    def test_main_database_exists_but_is__empty__fastapi_not_running(
+    @pytest.mark.asyncio
+    async def test_main_database_exists_but_is__empty__fastapi_not_running(
         self, mock_dependencies, capsys
     ):
         """Should generate dummy data if database exists but is empty and FastAPI is not running."""
@@ -101,7 +113,7 @@ class TestGenerateDummyData:
             "SystemControlService"
         ].return_value.get_service_status.return_value = "inactive"
 
-        gdd.main()
+        await gdd.run()
 
         captured = capsys.readouterr()
         assert "Database is empty or does not exist. Generating dummy data..." in captured.out
@@ -114,7 +126,10 @@ class TestGenerateDummyData:
         mock_dependencies["SystemControlService"].return_value.stop_service.assert_not_called()
         mock_dependencies["SystemControlService"].return_value.start_service.assert_not_called()
 
-    def test_main_database_exists_but_is__empty__fastapi_running(self, mock_dependencies, capsys):
+    @pytest.mark.asyncio
+    async def test_main_database_exists_but_is__empty__fastapi_running(
+        self, mock_dependencies, capsys
+    ):
         """Should stop FastAPI, generate data, then restart FastAPI."""
         # Configure Path object to simulate existing but empty file
         mock_db_path = mock_dependencies["PathResolver"].return_value.get_database_path.return_value
@@ -128,7 +143,7 @@ class TestGenerateDummyData:
             "SystemControlService"
         ].return_value.get_service_status.return_value = "active"
 
-        gdd.main()
+        await gdd.run()
 
         captured = capsys.readouterr()
         assert (
@@ -152,7 +167,8 @@ class TestGenerateDummyData:
         ].return_value.start_service.assert_called_once_with("birdnetpi-fastapi")
         mock_dependencies["time"].sleep.assert_called_once_with(3)
 
-    def test_main_database_does_not_exist(self, mock_dependencies, capsys):
+    @pytest.mark.asyncio
+    async def test_main_database_does_not_exist(self, mock_dependencies, capsys):
         """Should generate dummy data if database does not exist."""
         # Configure Path object to simulate non-existent file
         mock_db_path = mock_dependencies["PathResolver"].return_value.get_database_path.return_value
@@ -162,14 +178,15 @@ class TestGenerateDummyData:
             "SystemControlService"
         ].return_value.get_service_status.return_value = "inactive"
 
-        gdd.main()
+        await gdd.run()
 
         captured = capsys.readouterr()
         assert "Database is empty or does not exist. Generating dummy data..." in captured.out
         assert "Dummy data generation complete." in captured.out
         mock_dependencies["generate_dummy_detections"].assert_called_once()
 
-    def test_main_service_status_check_failure(self, mock_dependencies, capsys):
+    @pytest.mark.asyncio
+    async def test_main_service_status_check_failure(self, mock_dependencies, capsys):
         """Should handle service status check failures gracefully."""
         # Configure Path object to simulate non-existent file
         mock_db_path = mock_dependencies["PathResolver"].return_value.get_database_path.return_value
@@ -179,7 +196,7 @@ class TestGenerateDummyData:
             "SystemControlService"
         ].return_value.get_service_status.side_effect = Exception("Service check failed")
 
-        gdd.main()
+        await gdd.run()
 
         captured = capsys.readouterr()
         assert (
@@ -190,7 +207,8 @@ class TestGenerateDummyData:
         assert "Dummy data generation complete." in captured.out
         mock_dependencies["generate_dummy_detections"].assert_called_once()
 
-    def test_main_service_stop_failure(self, mock_dependencies, capsys):
+    @pytest.mark.asyncio
+    async def test_main_service_stop_failure(self, mock_dependencies, capsys):
         """Should handle service stop failures gracefully."""
         # Configure Path object to simulate non-existent file
         mock_db_path = mock_dependencies["PathResolver"].return_value.get_database_path.return_value
@@ -203,14 +221,15 @@ class TestGenerateDummyData:
             "Stop failed"
         )
 
-        gdd.main()
+        await gdd.run()
 
         captured = capsys.readouterr()
         assert "Warning: Could not check FastAPI service status: Stop failed" in captured.out
         assert "Proceeding with dummy data generation..." in captured.out
         mock_dependencies["generate_dummy_detections"].assert_called_once()
 
-    def test_main_service_restart_failure(self, mock_dependencies, capsys):
+    @pytest.mark.asyncio
+    async def test_main_service_restart_failure(self, mock_dependencies, capsys):
         """Should handle service restart failures gracefully."""
         # Configure Path object to simulate non-existent file
         mock_db_path = mock_dependencies["PathResolver"].return_value.get_database_path.return_value
@@ -223,7 +242,7 @@ class TestGenerateDummyData:
             "SystemControlService"
         ].return_value.start_service.side_effect = Exception("Restart failed")
 
-        gdd.main()
+        await gdd.run()
 
         captured = capsys.readouterr()
         assert (
@@ -331,7 +350,8 @@ class TestGetFastAPIServiceName:
 
         assert result == "birdnetpi-fastapi"
 
-    def test_main_uses_correct_service_name__docker(self, mocker, mock_dependencies, capsys):
+    @pytest.mark.asyncio
+    async def test_main_uses_correct_service_name__docker(self, mocker, mock_dependencies, capsys):
         """Should use Docker service name in Docker environment."""
         mock_os = mocker.patch("birdnetpi.cli.generate_dummy_data.os")
         mock_os.path.exists.return_value = False
@@ -341,7 +361,7 @@ class TestGetFastAPIServiceName:
             "SystemControlService"
         ].return_value.get_service_status.return_value = "active"
 
-        gdd.main()
+        await gdd.run()
 
         captured = capsys.readouterr()
         assert "FastAPI service (fastapi) is running. Stopping it temporarily..." in captured.out
@@ -357,7 +377,8 @@ class TestGetFastAPIServiceName:
             "SystemControlService"
         ].return_value.start_service.assert_called_once_with("fastapi")
 
-    def test_main_uses_correct_service_name__sbc(self, mocker, mock_dependencies, capsys):
+    @pytest.mark.asyncio
+    async def test_main_uses_correct_service_name__sbc(self, mocker, mock_dependencies, capsys):
         """Should use SBC service name in SBC environment."""
         mock_os = mocker.patch("birdnetpi.cli.generate_dummy_data.os")
         mock_os.path.exists.return_value = False
@@ -367,7 +388,7 @@ class TestGetFastAPIServiceName:
             "SystemControlService"
         ].return_value.get_service_status.return_value = "active"
 
-        gdd.main()
+        await gdd.run()
 
         captured = capsys.readouterr()
         assert (

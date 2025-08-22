@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import text
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 if TYPE_CHECKING:
     from birdnetpi.system.path_resolver import PathResolver
@@ -37,38 +37,38 @@ class MultilingualDatabaseService:
         # All three databases are always present - the asset downloader ensures this
         # No need for fallback support
 
-    def attach_all_to_session(self, session: Session) -> None:
+    async def attach_all_to_session(self, session: AsyncSession) -> None:
         """Attach all databases to session for cross-database queries.
 
         Args:
-            session: SQLAlchemy session (typically from main detections database)
+            session: SQLAlchemy async session (typically from main detections database)
         """
         # Always attach all three databases - they're guaranteed to exist
-        session.execute(text(f"ATTACH DATABASE '{self.ioc_db_path}' AS ioc"))
-        session.execute(text(f"ATTACH DATABASE '{self.avibase_db_path}' AS avibase"))
-        session.execute(text(f"ATTACH DATABASE '{self.patlevin_db_path}' AS patlevin"))
+        await session.execute(text(f"ATTACH DATABASE '{self.ioc_db_path}' AS ioc"))
+        await session.execute(text(f"ATTACH DATABASE '{self.avibase_db_path}' AS avibase"))
+        await session.execute(text(f"ATTACH DATABASE '{self.patlevin_db_path}' AS patlevin"))
 
-    def detach_all_from_session(self, session: Session) -> None:
+    async def detach_all_from_session(self, session: AsyncSession) -> None:
         """Detach all databases from session.
 
         Args:
-            session: SQLAlchemy session
+            session: SQLAlchemy async session
         """
         # Detach all three databases
         for db_alias in ["ioc", "avibase", "patlevin"]:
             try:
-                session.execute(text(f"DETACH DATABASE {db_alias}"))
+                await session.execute(text(f"DETACH DATABASE {db_alias}"))
             except Exception:
                 # Ignore errors if database wasn't attached (shouldn't happen)
                 pass
 
-    def get_best_common_name(
-        self, session: Session, scientific_name: str, language_code: str = "en"
+    async def get_best_common_name(
+        self, session: AsyncSession, scientific_name: str, language_code: str = "en"
     ) -> dict[str, Any]:
         """Get best available common name using priority: IOC → PatLevin → Avibase.
 
         Args:
-            session: SQLAlchemy session with databases attached
+            session: SQLAlchemy async session with databases attached
             scientific_name: Scientific name to look up
             language_code: Language code for translation (default: en)
 
@@ -84,9 +84,10 @@ class MultilingualDatabaseService:
                 FROM ioc.species
                 WHERE LOWER(scientific_name) = LOWER(:sci_name)
             """)
-            result = session.execute(stmt, {"sci_name": scientific_name}).first()
-            if result and result.english_name:  # type: ignore[attr-defined]
-                return {"common_name": result.english_name, "source": "IOC"}  # type: ignore[attr-defined]
+            result = await session.execute(stmt, {"sci_name": scientific_name})
+            row = result.first()
+            if row and row.english_name:  # type: ignore[attr-defined]
+                return {"common_name": row.english_name, "source": "IOC"}  # type: ignore[attr-defined]
 
         # Try IOC translations
         stmt = text("""
@@ -95,9 +96,10 @@ class MultilingualDatabaseService:
             WHERE LOWER(scientific_name) = LOWER(:sci_name)
             AND language_code = :lang
         """)
-        result = session.execute(stmt, {"sci_name": scientific_name, "lang": language_code}).first()
-        if result and result.common_name:  # type: ignore[attr-defined]
-            return {"common_name": result.common_name, "source": "IOC"}  # type: ignore[attr-defined]
+        result = await session.execute(stmt, {"sci_name": scientific_name, "lang": language_code})
+        row = result.first()
+        if row and row.common_name:  # type: ignore[attr-defined]
+            return {"common_name": row.common_name, "source": "IOC"}  # type: ignore[attr-defined]
 
         # Try PatLevin
         stmt = text("""
@@ -106,9 +108,10 @@ class MultilingualDatabaseService:
             WHERE LOWER(scientific_name) = LOWER(:sci_name)
             AND language_code = :lang
         """)
-        result = session.execute(stmt, {"sci_name": scientific_name, "lang": language_code}).first()
-        if result and result.common_name:  # type: ignore[attr-defined]
-            return {"common_name": result.common_name, "source": "PatLevin"}  # type: ignore[attr-defined]
+        result = await session.execute(stmt, {"sci_name": scientific_name, "lang": language_code})
+        row = result.first()
+        if row and row.common_name:  # type: ignore[attr-defined]
+            return {"common_name": row.common_name, "source": "PatLevin"}  # type: ignore[attr-defined]
 
         # Try Avibase
         stmt = text("""
@@ -117,20 +120,21 @@ class MultilingualDatabaseService:
             WHERE LOWER(scientific_name) = LOWER(:sci_name)
             AND language_code = :lang
         """)
-        result = session.execute(stmt, {"sci_name": scientific_name, "lang": language_code}).first()
-        if result and result.common_name:  # type: ignore[attr-defined]
-            return {"common_name": result.common_name, "source": "Avibase"}  # type: ignore[attr-defined]
+        result = await session.execute(stmt, {"sci_name": scientific_name, "lang": language_code})
+        row = result.first()
+        if row and row.common_name:  # type: ignore[attr-defined]
+            return {"common_name": row.common_name, "source": "Avibase"}  # type: ignore[attr-defined]
 
         # No match found
         return {"common_name": None, "source": None}
 
-    def get_all_translations(
-        self, session: Session, scientific_name: str
+    async def get_all_translations(
+        self, session: AsyncSession, scientific_name: str
     ) -> dict[str, list[dict[str, str]]]:
         """Get all available translations from all databases.
 
         Args:
-            session: SQLAlchemy session with databases attached
+            session: SQLAlchemy async session with databases attached
             scientific_name: Scientific name to look up
 
         Returns:
@@ -145,9 +149,10 @@ class MultilingualDatabaseService:
             FROM ioc.species
             WHERE LOWER(scientific_name) = LOWER(:sci_name)
         """)
-        result = session.execute(stmt, {"sci_name": scientific_name}).first()
-        if result and result.english_name:  # type: ignore[attr-defined]
-            translations.setdefault("en", []).append({"name": result.english_name, "source": "IOC"})  # type: ignore[attr-defined]
+        result = await session.execute(stmt, {"sci_name": scientific_name})
+        row = result.first()
+        if row and row.english_name:  # type: ignore[attr-defined]
+            translations.setdefault("en", []).append({"name": row.english_name, "source": "IOC"})  # type: ignore[attr-defined]
 
         # Other languages from translations table
         stmt = text("""
@@ -155,7 +160,8 @@ class MultilingualDatabaseService:
             FROM ioc.translations
             WHERE LOWER(scientific_name) = LOWER(:sci_name)
         """)
-        for row in session.execute(stmt, {"sci_name": scientific_name}):
+        result = await session.execute(stmt, {"sci_name": scientific_name})
+        for row in result:
             if row.language_code and row.common_name:  # type: ignore[attr-defined]
                 translations.setdefault(row.language_code, []).append(  # type: ignore[attr-defined]
                     {"name": row.common_name, "source": "IOC"}  # type: ignore[attr-defined]
@@ -167,7 +173,8 @@ class MultilingualDatabaseService:
             FROM patlevin.patlevin_labels
             WHERE LOWER(scientific_name) = LOWER(:sci_name)
         """)
-        for row in session.execute(stmt, {"sci_name": scientific_name}):
+        result = await session.execute(stmt, {"sci_name": scientific_name})
+        for row in result:
             if row.language_code and row.common_name:  # type: ignore[attr-defined]
                 # Check if not duplicate
                 existing_names = [t["name"] for t in translations.get(row.language_code, [])]  # type: ignore[attr-defined]
@@ -182,7 +189,8 @@ class MultilingualDatabaseService:
             FROM avibase.avibase_names
             WHERE LOWER(scientific_name) = LOWER(:sci_name)
         """)
-        for row in session.execute(stmt, {"sci_name": scientific_name}):
+        result = await session.execute(stmt, {"sci_name": scientific_name})
+        for row in result:
             if row.language_code and row.common_name:  # type: ignore[attr-defined]
                 # Check if not duplicate
                 existing_names = [t["name"] for t in translations.get(row.language_code, [])]  # type: ignore[attr-defined]
