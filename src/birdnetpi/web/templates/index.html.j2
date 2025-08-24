@@ -4,439 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BirdNET-Pi</title>
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      body {
-        font-family: Georgia, "Times New Roman", serif;
-        background: #fdfcfa;
-        color: #2c2c2c;
-        line-height: 1.5;
-        padding: 20px;
-        max-width: 1200px;
-        margin: 0 auto;
-      }
-
-      /* Header - minimal identification */
-      header {
-        margin-bottom: 1.5rem;
-        padding-bottom: 0.75rem;
-        border-bottom: 1px solid #111;
-      }
-
-      h1 {
-        font-size: 1.5rem;
-        font-weight: normal;
-        margin-bottom: 0.25rem;
-      }
-
-      .tagline {
-        font-size: 0.9rem;
-        color: #666;
-        font-style: italic;
-      }
-
-      /* Hero Visualization Section */
-      .hero-viz {
-        margin-bottom: 2rem;
-        background: linear-gradient(135deg, #fdfcfa 0%, #f8f6f2 100%);
-        position: relative;
-        overflow: hidden;
-        height: 320px;
-      }
-
-      #visualization {
-        width: 100%;
-        height: 100%;
-        position: relative;
-      }
-
-      .dot {
-        position: absolute;
-        border-radius: 50%;
-        mix-blend-mode: multiply;
-        animation: gentle-pulse 4s ease-in-out infinite;
-        opacity: 0;
-        transition: opacity 1s ease-in;
-      }
-
-      .dot.visible {
-        opacity: 0.12;
-      }
-
-      @keyframes gentle-pulse {
-        0%,
-        100% {
-          transform: scale(1);
-        }
-        50% {
-          transform: scale(1.1);
-        }
-      }
-
-      .dot-ring {
-        position: absolute;
-        border-radius: 50%;
-        border: 1px solid;
-        opacity: 0.08;
-        pointer-events: none;
-        animation: expand 8s linear infinite;
-      }
-
-      @keyframes expand {
-        0% {
-          transform: scale(1);
-          opacity: 0.08;
-        }
-        100% {
-          transform: scale(3);
-          opacity: 0;
-        }
-      }
-
-      .activity-wave {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(
-          90deg,
-          transparent 0%,
-          rgba(46, 125, 50, 0.03) 20%,
-          rgba(245, 124, 0, 0.03) 50%,
-          rgba(198, 40, 40, 0.03) 80%,
-          transparent 100%
-        );
-        animation: wave 30s linear infinite;
-        opacity: 0.5;
-      }
-
-      @keyframes wave {
-        0% {
-          transform: translateX(-100%);
-        }
-        100% {
-          transform: translateX(100%);
-        }
-      }
-
-      .time-gradient {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(
-          90deg,
-          rgba(30, 30, 80, 0.02) 0%,
-          /* night */ rgba(255, 183, 77, 0.05) 25%,
-          /* dawn */ rgba(255, 255, 255, 0) 50%,
-          /* midday */ rgba(255, 152, 0, 0.05) 75%,
-          /* dusk */ rgba(30, 30, 80, 0.02) 100%
-        ); /* night */
-        pointer-events: none;
-      }
-
-      @keyframes float {
-        0%,
-        100% {
-          transform: translateY(0) translateX(0);
-          opacity: 0.05;
-        }
-        25% {
-          transform: translateY(-30px) translateX(20px);
-          opacity: 0.1;
-        }
-        50% {
-          transform: translateY(20px) translateX(-10px);
-          opacity: 0.08;
-        }
-        75% {
-          transform: translateY(-10px) translateX(30px);
-          opacity: 0.12;
-        }
-      }
-
-      /* Navigation - prominent but minimal */
-      .main-nav {
-        display: flex;
-        gap: 0;
-        margin-bottom: 1.5rem;
-        border-bottom: 2px solid #111;
-        border-top: 1px solid #111;
-        background: #f8f8f8;
-      }
-
-      .nav-item {
-        padding: 0.5rem 1rem;
-        color: #111;
-        text-decoration: none;
-        font-size: 0.9rem;
-        border-right: 1px solid #ddd;
-        transition: background 0.2s;
-      }
-
-      .nav-item:hover {
-        background: #fff;
-        text-decoration: underline;
-      }
-
-      .nav-item:last-child {
-        border-right: none;
-      }
-
-      /* Primary metrics - inline presentation */
-      .primary-metrics {
-        font-size: 1rem;
-        margin-bottom: 1.5rem;
-        line-height: 1.8;
-      }
-
-      .metric {
-        color: #111;
-        font-weight: normal;
-      }
-
-      /* System status - horizontal bar */
-      .system-status {
-        display: flex;
-        gap: 0;
-        margin-bottom: 1.5rem;
-        height: 32px;
-        background: #f8f8f6;
-        border: 1px solid #e0e0e0;
-        position: relative;
-        overflow: hidden;
-      }
-
-      .status-segment {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        border-right: 1px solid #e0e0e0;
-        padding: 0 0.75rem;
-        min-width: 0;
-        transition: background 0.3s ease;
-      }
-
-      .status-segment:last-child {
-        border-right: none;
-      }
-
-      .status-segment:hover {
-        background: rgba(255, 255, 255, 0.5);
-      }
-
-      .status-indicator {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        height: 2px;
-        background: #4caf50;
-        transition:
-          width 0.3s ease,
-          background 0.3s ease;
-      }
-
-      .status-indicator.warning {
-        background: #ff9800;
-      }
-
-      .status-indicator.critical {
-        background: #f44336;
-      }
-
-      .status-label {
-        font-size: 0.7rem;
-        color: #999;
-        margin-right: 0.5rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-
-      .status-value {
-        font-size: 0.85rem;
-        color: #333;
-        font-weight: 500;
-      }
-
-      .status-detail {
-        font-size: 0.7rem;
-        color: #666;
-        margin-left: 0.25rem;
-      }
-
-      /* Tooltip for status segments */
-      .status-tooltip {
-        position: absolute;
-        bottom: 100%;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 4px 8px;
-        border-radius: 3px;
-        font-size: 0.75rem;
-        white-space: nowrap;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.2s;
-        margin-bottom: 4px;
-      }
-
-      .status-segment:hover .status-tooltip {
-        opacity: 1;
-      }
-
-      /* Main grid */
-      .main-grid {
-        display: grid;
-        grid-template-columns: 2fr 1fr;
-        gap: 2rem;
-        margin-bottom: 2rem;
-      }
-
-      /* Detection log */
-      .detection-log {
-        font-size: 0.85rem;
-      }
-
-      .log-header {
-        font-weight: normal;
-        margin-bottom: 0.5rem;
-        padding-bottom: 0.25rem;
-        border-bottom: 1px solid #111;
-        display: grid;
-        grid-template-columns: 60px 1fr 60px;
-        gap: 1rem;
-      }
-
-      .log-entry {
-        display: grid;
-        grid-template-columns: 60px 1fr 60px;
-        gap: 1rem;
-        padding: 0.3rem 0;
-        border-bottom: 1px dotted #e0e0e0;
-        transition: background 0.1s;
-      }
-
-      .log-entry:hover {
-        background: #f8f8f8;
-      }
-
-      .time {
-        color: #666;
-        font-size: 0.8rem;
-      }
-
-      .confidence {
-        text-align: right;
-        font-size: 0.8rem;
-      }
-
-      .count {
-        text-align: right;
-        font-size: 0.8rem;
-        color: #666;
-      }
-
-      /* Species frequency list */
-      .frequency-list {
-        font-size: 0.85rem;
-      }
-
-      .list-header {
-        font-weight: normal;
-        margin-bottom: 0.5rem;
-        padding-bottom: 0.25rem;
-        border-bottom: 1px solid #111;
-      }
-
-      .frequency-item {
-        display: grid;
-        grid-template-columns: 1fr 40px 40px;
-        gap: 0.5rem;
-        padding: 0.3rem 0;
-        border-bottom: 1px dotted #e0e0e0;
-      }
-
-      .frequency-item:hover {
-        background: #f8f8f8;
-      }
-
-      .species-name {
-        font-size: 0.85rem;
-      }
-
-      .freq-count {
-        text-align: right;
-        font-size: 0.8rem;
-      }
-
-      .freq-bar {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-      }
-
-      .bar {
-        height: 3px;
-        background: #666;
-        display: inline-block;
-      }
-
-      /* Live indicator */
-      .live {
-        display: inline-block;
-        width: 6px;
-        height: 6px;
-        background: #d32f2f;
-        border-radius: 50%;
-        margin-left: 0.5rem;
-        animation: pulse 2s infinite;
-      }
-
-      @keyframes pulse {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.3;
-        }
-      }
-
-      /* Annotations */
-      .annotation {
-        font-size: 0.75rem;
-        color: #666;
-        font-style: italic;
-        margin-top: 1rem;
-      }
-
-      /* Responsive adjustments */
-      @media (max-width: 768px) {
-        .main-grid {
-          grid-template-columns: 1fr;
-        }
-
-        .log-header,
-        .log-entry {
-          grid-template-columns: 50px 1fr 50px;
-        }
-
-        .count {
-          display: none;
-        }
-
-        .hero-viz {
-          height: 240px;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}" />
   </head>
   <body>
     <header>
@@ -571,12 +139,17 @@
     </p>
 
     <script>
+      // Helper function to get CSS variable values
+      function getCSSVariable(varName) {
+        return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+      }
+
       // Build species data from server-provided frequency data
       const speciesData = {};
       {% for species in species_frequency %}
       speciesData["{{ species.name }}"] = {
         count: {{ species.count }},
-        color: {{ species.count }} > 200 ? "#2e7d32" : {{ species.count }} > 50 ? "#f57c00" : "#c62828"
+        color: {{ species.count }} > 200 ? getCSSVariable('--color-activity-high') : {{ species.count }} > 50 ? getCSSVariable('--color-activity-medium') : getCSSVariable('--color-activity-low')
       };
       {% endfor %}
 
@@ -655,7 +228,7 @@
           const size = baseSize + Math.random() * 20;
 
           // Color based on species frequency with more variation
-          const baseColor = d.color || (speciesData[d.species] ? speciesData[d.species].color : "#666");
+          const baseColor = d.color || (speciesData[d.species] ? speciesData[d.species].color : getCSSVariable('--color-text-secondary'));
           const opacity = 0.12 + Math.random() * 0.08;
 
           // Apply styles
@@ -695,7 +268,7 @@
           particle.className = "dot";
           particle.style.width = "2px";
           particle.style.height = "2px";
-          particle.style.background = "#999";
+          particle.style.background = getCSSVariable('--color-viz-particle');
           particle.style.left = `${Math.random() * 100}%`;
           particle.style.top = `${Math.random() * 100}%`;
           particle.style.animation = `float ${20 + Math.random() * 10}s infinite ease-in-out`;
@@ -729,9 +302,9 @@
         setInterval(() => {
           const pulse = document.querySelector(".live");
           if (pulse) {
-            pulse.style.background = "#4caf50";
+            pulse.style.background = getCSSVariable('--color-status-success');
             setTimeout(() => {
-              pulse.style.background = "#d32f2f";
+              pulse.style.background = getCSSVariable('--color-status-live');
             }, 1000);
           }
         }, 10000);

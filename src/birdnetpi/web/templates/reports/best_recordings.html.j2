@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Best Recordings</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Georgia, 'Times New Roman', serif;
+            background: #fdfcfa;
+            color: #2c2c2c;
+            line-height: 1.5;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #111;
+        }
+
+        h1 {
+            font-size: 1.3rem;
+            font-weight: normal;
+            margin-bottom: 0.25rem;
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            color: #666;
+            font-style: italic;
+        }
+
+        /* Navigation */
+        .nav {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #111;
+            border-top: 1px solid #111;
+            background: #f8f8f8;
+        }
+
+        .nav a {
+            padding: 0.4rem 1rem;
+            color: #111;
+            text-decoration: none;
+            font-size: 0.85rem;
+            border-right: 1px solid #ddd;
+        }
+
+        .nav a:hover {
+            background: #fff;
+            text-decoration: underline;
+        }
+
+        .nav a.active {
+            background: #fff;
+            font-weight: bold;
+        }
+
+        /* Filter controls */
+        .controls {
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px dotted #ccc;
+        }
+
+        .control-item {
+            display: inline-block;
+            margin-right: 2rem;
+        }
+
+        .control-label {
+            color: #666;
+            margin-right: 0.5rem;
+        }
+
+        .control-input {
+            width: 120px;
+            padding: 0.2rem 0.4rem;
+            border: 1px solid #ccc;
+            background: #fff;
+            font-family: inherit;
+            font-size: 0.8rem;
+        }
+
+        /* Recording entries */
+        .recording-entry {
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid #111;
+        }
+
+        .recording-entry:last-child {
+            border-bottom: none;
+        }
+
+        /* Recording header */
+        .recording-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 1rem;
+        }
+
+        .species-info {
+            flex: 1;
+        }
+
+        .species-name {
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .scientific-name {
+            font-style: italic;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .confidence-display {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        /* Recording content grid */
+        .recording-content {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        /* Spectrogram with proper scale */
+        .spectrogram-wrapper {
+            display: grid;
+            grid-template-columns: 30px auto;
+            grid-template-rows: auto 20px;
+            gap: 5px;
+            font-size: 0.7rem;
+            color: #666;
+        }
+
+        .freq-scale {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            text-align: right;
+            padding-right: 3px;
+        }
+
+        .spectrogram-container {
+            background: #fff;
+            border: 1px solid #999;
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .spectrogram {
+            width: 300px;
+            height: 150px;
+            display: block;
+        }
+
+        .time-scale {
+            grid-column: 2;
+            grid-row: 2;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Recording details */
+        .recording-details {
+            font-size: 0.85rem;
+        }
+
+        .detail-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .detail-item {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .detail-label {
+            color: #666;
+        }
+
+        .detail-value {
+            color: #111;
+        }
+
+        /* Audio controls */
+        .audio-controls {
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px dotted #ccc;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .play-button {
+            color: #666;
+            text-decoration: underline;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: inherit;
+            font-size: inherit;
+            padding: 0;
+        }
+
+        .play-button:hover {
+            color: #111;
+        }
+
+        .download-link {
+            color: #666;
+            text-decoration: underline;
+        }
+
+        .download-link:hover {
+            color: #111;
+        }
+
+        /* Mini waveform */
+        .waveform {
+            display: flex;
+            align-items: flex-end;
+            height: 20px;
+            gap: 1px;
+            flex: 1;
+            max-width: 200px;
+        }
+
+        .waveform-bar {
+            width: 2px;
+            background: #ccc;
+            flex-shrink: 0;
+        }
+        .summary-table {
+            width: 100%;
+            font-size: 0.85rem;
+            border-collapse: collapse;
+            margin-bottom: 2rem;
+        }
+
+        .summary-table th {
+            text-align: left;
+            font-weight: normal;
+            padding: 0.5rem 0.25rem;
+            border-bottom: 1px solid #111;
+            font-size: 0.8rem;
+        }
+
+        .summary-table td {
+            padding: 0.3rem 0.25rem;
+            border-bottom: 1px dotted #ddd;
+        }
+
+        .summary-table tr:hover {
+            background: #f8f8f8;
+        }
+
+        .table-number {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* No data message */
+        .no-data {
+            text-align: center;
+            color: #999;
+            font-style: italic;
+            padding: 3rem;
+        }
+
+        /* Annotations */
+        .annotation {
+            font-size: 0.75rem;
+            color: #666;
+            font-style: italic;
+            margin-top: 0.5rem;
+        }
+
+        /* Inline audio waveform */
+        .waveform {
+            display: inline-block;
+            width: 100px;
+            height: 20px;
+            vertical-align: middle;
+            margin-left: 0.5rem;
+        }
+
+        .waveform-bar {
+            display: inline-block;
+            width: 2px;
+            background: #999;
+            vertical-align: middle;
+            margin-right: 1px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Best Recordings</h1>
+        <p class="subtitle">Highest confidence detection per species · Sorted by confidence · Spectrograms at 48 kHz sampling rate</p>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <a href="/">Dashboard</a>
+        <a href="/reports/detections">Detections</a>
+        <a href="/reports/best" class="active">Best Recordings</a>
+        <a href="/livestream">Livestream</a>
+        <a href="/reports">Analysis</a>
+        <a href="/field">Field Mode</a>
+        <a href="/admin/settings">Settings</a>
+    </nav>
+
+    <!-- Filter controls -->
+    <div class="controls">
+        <span class="control-item">
+            <span class="control-label">Min confidence:</span>
+            <input type="number" class="control-input" id="minConfidence" value="70" min="0" max="100" step="5" onchange="filterRecordings()"> %
+        </span>
+        <span class="control-item">
+            <span class="control-label">Date range:</span>
+            <input type="date" class="control-input" id="startDate" onchange="filterRecordings()">
+            <span style="margin: 0 0.5rem;">to</span>
+            <input type="date" class="control-input" id="endDate" onchange="filterRecordings()">
+        </span>
+        <span class="control-item">
+            <span class="control-label">Sort by:</span>
+            <select class="control-input" onchange="sortRecordings(this.value)">
+                <option value="confidence">Confidence</option>
+                <option value="date">Date</option>
+                <option value="species">Species</option>
+                <option value="duration">Duration</option>
+            </select>
+        </span>
+    </div>
+
+    <!-- Summary statistics table -->
+    <table class="summary-table">
+        <thead>
+            <tr>
+                <th>Species</th>
+                <th>Scientific Name</th>
+                <th class="table-number">Best Conf.</th>
+                <th class="table-number">Avg Conf.</th>
+                <th class="table-number">Count</th>
+                <th>Latest</th>
+                <th>Recording</th>
+            </tr>
+        </thead>
+        <tbody id="summaryTable">
+            <tr>
+                <td>American Robin</td>
+                <td style="font-style: italic; color: #666;">Turdus migratorius</td>
+                <td class="table-number">98.7%</td>
+                <td class="table-number">84.2%</td>
+                <td class="table-number">342</td>
+                <td>2025-01-15 14:32</td>
+                <td><a href="#robin" class="download-link">View</a></td>
+            </tr>
+            <tr>
+                <td>Blue Jay</td>
+                <td style="font-style: italic; color: #666;">Cyanocitta cristata</td>
+                <td class="table-number">97.3%</td>
+                <td class="table-number">81.5%</td>
+                <td class="table-number">287</td>
+                <td>2025-01-15 11:45</td>
+                <td><a href="#bluejay" class="download-link">View</a></td>
+            </tr>
+            <tr>
+                <td>Northern Cardinal</td>
+                <td style="font-style: italic; color: #666;">Cardinalis cardinalis</td>
+                <td class="table-number">96.8%</td>
+                <td class="table-number">86.7%</td>
+                <td class="table-number">198</td>
+                <td>2025-01-15 07:23</td>
+                <td><a href="#cardinal" class="download-link">View</a></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Recording entries -->
+    <div id="recordings">
+        <div class="recording-entry" id="robin">
+            <div class="recording-header">
+                <div class="species-info">
+                    <div class="species-name">American Robin</div>
+                    <div class="scientific-name">Turdus migratorius</div>
+                </div>
+                <div class="confidence-display">98.7%</div>
+            </div>
+
+            <div class="recording-content">
+                <div class="spectrogram-wrapper">
+                    <div class="freq-scale">
+                        <span>12 kHz</span>
+                        <span>8</span>
+                        <span>4</span>
+                        <span>0</span>
+                    </div>
+                    <div class="spectrogram-container">
+                        <canvas class="spectrogram" id="spectrogram-1"></canvas>
+                    </div>
+                    <div></div>
+                    <div class="time-scale">
+                        <span>0</span>
+                        <span>0.5</span>
+                        <span>1.0</span>
+                        <span>1.5</span>
+                        <span>2.0</span>
+                        <span>2.5</span>
+                        <span>3.0 s</span>
+                    </div>
+                </div>
+
+                <div class="recording-details">
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <span class="detail-label">Date:</span>
+                            <span class="detail-value">2025-01-15</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Time:</span>
+                            <span class="detail-value">14:32:18</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Duration:</span>
+                            <span class="detail-value">3.0 s</span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <span class="detail-label">Freq range:</span>
+                            <span class="detail-value">2.1-8.4 kHz</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Peak freq:</span>
+                            <span class="detail-value">4.2 kHz</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">SNR:</span>
+                            <span class="detail-value">18.3 dB</span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <span class="detail-label">Location:</span>
+                            <span class="detail-value">42.9834°N, 79.0103°W</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Model:</span>
+                            <span class="detail-value">BirdNET_V2.4</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Processing:</span>
+                            <span class="detail-value">142 ms</span>
+                        </div>
+                    </div>
+
+                    <div class="audio-controls">
+                        <button class="play-button" onclick="playAudio('robin.mp3')">▶ Play</button>
+                        <a href="/recordings/robin.mp3" class="download-link">MP3</a>
+                        <a href="/recordings/robin.wav" class="download-link">WAV</a>
+                        <div class="waveform" id="waveform-1"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="recording-entry" id="bluejay">
+            <div class="recording-header">
+                <div class="species-info">
+                    <div class="species-name">Blue Jay</div>
+                    <div class="scientific-name">Cyanocitta cristata</div>
+                </div>
+                <div class="confidence-display">97.3%</div>
+            </div>
+
+            <div class="recording-content">
+                <div class="spectrogram-wrapper">
+                    <div class="freq-scale">
+                        <span>12 kHz</span>
+                        <span>8</span>
+                        <span>4</span>
+                        <span>0</span>
+                    </div>
+                    <div class="spectrogram-container">
+                        <canvas class="spectrogram" id="spectrogram-2"></canvas>
+                    </div>
+                    <div></div>
+                    <div class="time-scale">
+                        <span>0</span>
+                        <span>0.5</span>
+                        <span>1.0</span>
+                        <span>1.5</span>
+                        <span>2.0</span>
+                        <span>2.5</span>
+                        <span>3.0 s</span>
+                    </div>
+                </div>
+
+                <div class="recording-details">
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <span class="detail-label">Date:</span>
+                            <span class="detail-value">2025-01-15</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Time:</span>
+                            <span class="detail-value">11:45:32</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Duration:</span>
+                            <span class="detail-value">3.0 s</span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <span class="detail-label">Freq range:</span>
+                            <span class="detail-value">1.8-6.2 kHz</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Peak freq:</span>
+                            <span class="detail-value">3.8 kHz</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">SNR:</span>
+                            <span class="detail-value">22.1 dB</span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <span class="detail-label">Location:</span>
+                            <span class="detail-value">42.9834°N, 79.0103°W</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Model:</span>
+                            <span class="detail-value">BirdNET_V2.4</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Processing:</span>
+                            <span class="detail-value">138 ms</span>
+                        </div>
+                    </div>
+
+                    <div class="audio-controls">
+                        <button class="play-button" onclick="playAudio('bluejay.mp3')">▶ Play</button>
+                        <a href="/recordings/bluejay.mp3" class="download-link">MP3</a>
+                        <a href="/recordings/bluejay.wav" class="download-link">WAV</a>
+                        <div class="waveform" id="waveform-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="recording-entry" id="cardinal">
+            <div class="recording-header">
+                <div class="species-info">
+                    <div class="species-name">Northern Cardinal</div>
+                    <div class="scientific-name">Cardinalis cardinalis</div>
+                </div>
+                <div class="confidence-display">96.8%</div>
+            </div>
+
+            <div class="recording-content">
+                <div class="spectrogram-wrapper">
+                    <div class="freq-scale">
+                        <span>12 kHz</span>
+                        <span>8</span>
+                        <span>4</span>
+                        <span>0</span>
+                    </div>
+                    <div class="spectrogram-container">
+                        <canvas class="spectrogram" id="spectrogram-3"></canvas>
+                    </div>
+                    <div></div>
+                    <div class="time-scale">
+                        <span>0</span>
+                        <span>0.5</span>
+                        <span>1.0</span>
+                        <span>1.5</span>
+                        <span>2.0</span>
+                        <span>2.5</span>
+                        <span>3.0 s</span>
+                    </div>
+                </div>
+
+                <div class="recording-details">
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <span class="detail-label">Date:</span>
+                            <span class="detail-value">2025-01-15</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Time:</span>
+                            <span class="detail-value">07:23:45</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Duration:</span>
+                            <span class="detail-value">3.0 s</span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <span class="detail-label">Freq range:</span>
+                            <span class="detail-value">1.5-7.8 kHz</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Peak freq:</span>
+                            <span class="detail-value">3.2 kHz</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">SNR:</span>
+                            <span class="detail-value">19.7 dB</span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <span class="detail-label">Location:</span>
+                            <span class="detail-value">42.9834°N, 79.0103°W</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Model:</span>
+                            <span class="detail-value">BirdNET_V2.4</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Processing:</span>
+                            <span class="detail-value">155 ms</span>
+                        </div>
+                    </div>
+
+                    <div class="audio-controls">
+                        <button class="play-button" onclick="playAudio('cardinal.mp3')">▶ Play</button>
+                        <a href="/recordings/cardinal.mp3" class="download-link">MP3</a>
+                        <a href="/recordings/cardinal.wav" class="download-link">WAV</a>
+                        <div class="waveform" id="waveform-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Generate spectrograms for each recording
+        function generateSpectrogram(canvasId, birdType) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            canvas.width = 300;
+            canvas.height = 150;
+
+            // Clear with white background
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Generate bird-specific patterns
+            const patterns = {
+                'spectrogram-1': { // Robin - sweeping tones
+                    baseFreq: 0.4,
+                    sweepRange: 0.3,
+                    harmonics: 3,
+                    tempo: 8
+                },
+                'spectrogram-2': { // Blue Jay - harsh calls
+                    baseFreq: 0.3,
+                    sweepRange: 0.2,
+                    harmonics: 5,
+                    tempo: 6
+                },
+                'spectrogram-3': { // Cardinal - clear whistles
+                    baseFreq: 0.25,
+                    sweepRange: 0.4,
+                    harmonics: 2,
+                    tempo: 4
+                }
+            };
+
+            const pattern = patterns[canvasId] || patterns['spectrogram-1'];
+
+            // Draw spectrogram pattern
+            for (let x = 0; x < canvas.width; x++) {
+                for (let y = 0; y < canvas.height; y++) {
+                    // Create bird call pattern
+                    const time = x / canvas.width;
+                    const freq = 1 - (y / canvas.height);
+
+                    let intensity = 0;
+
+                    // Add harmonics
+                    for (let h = 1; h <= pattern.harmonics; h++) {
+                        const harmFreq = pattern.baseFreq * h;
+                        const sweep = Math.sin(time * pattern.tempo * Math.PI) * pattern.sweepRange;
+                        const targetFreq = harmFreq + sweep;
+
+                        const distance = Math.abs(freq - targetFreq);
+                        if (distance < 0.05) {
+                            intensity += Math.exp(-distance * 100) / h;
+                        }
+                    }
+
+                    // Add some noise
+                    intensity += Math.random() * 0.1;
+
+                    // Clamp and convert to grayscale
+                    intensity = Math.min(1, Math.max(0, intensity));
+                    const gray = Math.floor(255 * (1 - intensity));
+
+                    ctx.fillStyle = `rgb(${gray},${gray},${gray})`;
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }
+
+        // Generate waveforms
+        function generateWaveform(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            container.innerHTML = '';
+            for (let i = 0; i < 60; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'waveform-bar';
+                const height = Math.random() * 15 + 5;
+                bar.style.height = height + 'px';
+                container.appendChild(bar);
+            }
+        }
+
+        // Play audio function
+        function playAudio(file) {
+            console.log('Playing:', file);
+            // In real implementation, this would play the audio file
+        }
+
+        // Filter recordings
+        function filterRecordings() {
+            const minConf = document.getElementById('minConfidence').value;
+            console.log('Filtering by confidence:', minConf);
+        }
+
+        // Sort recordings
+        function sortRecordings(sortBy) {
+            console.log('Sorting by:', sortBy);
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Generate all spectrograms
+            generateSpectrogram('spectrogram-1', 'robin');
+            generateSpectrogram('spectrogram-2', 'bluejay');
+            generateSpectrogram('spectrogram-3', 'cardinal');
+
+            // Generate waveforms
+            generateWaveform('waveform-1');
+            generateWaveform('waveform-2');
+            generateWaveform('waveform-3');
+
+            // Set default dates
+            const today = new Date().toISOString().split('T')[0];
+            const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            document.getElementById('startDate').value = weekAgo;
+            document.getElementById('endDate').value = today;
+        });
+    </script>
+</body>
+</html>

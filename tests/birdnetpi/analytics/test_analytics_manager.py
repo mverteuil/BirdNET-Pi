@@ -68,14 +68,14 @@ class TestDashboardAnalytics:
                 {
                     "scientific_name": "Turdus migratorius",
                     "common_name": "American Robin",
-                    "count": 250,
+                    "count": 25,
                 },
                 {
                     "scientific_name": "Cardinalis cardinalis",
                     "common_name": "Northern Cardinal",
-                    "count": 100,
+                    "count": 10,
                 },
-                {"scientific_name": "Cyanocitta cristata", "common_name": "Blue Jay", "count": 30},
+                {"scientific_name": "Cyanocitta cristata", "common_name": "Blue Jay", "count": 3},
             ]
         )
 
@@ -85,20 +85,20 @@ class TestDashboardAnalytics:
 
         # Check first species
         assert analysis[0]["name"] == "American Robin"
-        assert analysis[0]["count"] == 250
-        assert analysis[0]["percentage"] == pytest.approx(250 / 380 * 100)
+        assert analysis[0]["count"] == 25
+        assert analysis[0]["percentage"] == pytest.approx(25 / 38 * 100)
         assert analysis[0]["category"] == "common"
 
         # Check second species
         assert analysis[1]["name"] == "Northern Cardinal"
-        assert analysis[1]["count"] == 100
-        assert analysis[1]["percentage"] == pytest.approx(100 / 380 * 100)
+        assert analysis[1]["count"] == 10
+        assert analysis[1]["percentage"] == pytest.approx(10 / 38 * 100)
         assert analysis[1]["category"] == "regular"
 
         # Check third species
         assert analysis[2]["name"] == "Blue Jay"
-        assert analysis[2]["count"] == 30
-        assert analysis[2]["percentage"] == pytest.approx(30 / 380 * 100)
+        assert analysis[2]["count"] == 3
+        assert analysis[2]["percentage"] == pytest.approx(3 / 38 * 100)
         assert analysis[2]["category"] == "uncommon"
 
     @pytest.mark.asyncio
@@ -265,16 +265,17 @@ class TestFrequencyCategorization:
 
     def test_categorize_frequency(self, analytics_manager):
         """Test species frequency categorization."""
-        # Test common (>200)
-        assert analytics_manager._categorize_frequency(201) == "common"
-        assert analytics_manager._categorize_frequency(500) == "common"
+        # Test common (>20)
+        assert analytics_manager._categorize_frequency(21) == "common"
+        assert analytics_manager._categorize_frequency(50) == "common"
+        assert analytics_manager._categorize_frequency(100) == "common"
 
-        # Test regular (51-200)
-        assert analytics_manager._categorize_frequency(51) == "regular"
-        assert analytics_manager._categorize_frequency(100) == "regular"
-        assert analytics_manager._categorize_frequency(200) == "regular"
+        # Test regular (>5 to 20)
+        assert analytics_manager._categorize_frequency(6) == "regular"
+        assert analytics_manager._categorize_frequency(10) == "regular"
+        assert analytics_manager._categorize_frequency(20) == "regular"
 
-        # Test uncommon (<=50)
+        # Test uncommon (<=5)
         assert analytics_manager._categorize_frequency(0) == "uncommon"
         assert analytics_manager._categorize_frequency(1) == "uncommon"
-        assert analytics_manager._categorize_frequency(50) == "uncommon"
+        assert analytics_manager._categorize_frequency(5) == "uncommon"

@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Detections</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Georgia, 'Times New Roman', serif;
+            background: #fdfcfa;
+            color: #2c2c2c;
+            line-height: 1.4;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #111;
+        }
+
+        h1 {
+            font-size: 1.3rem;
+            font-weight: normal;
+            margin-bottom: 0.25rem;
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            color: #666;
+            font-style: italic;
+        }
+
+        /* Navigation */
+        .nav {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #111;
+            border-top: 1px solid #111;
+            background: #f8f8f8;
+        }
+
+        .nav a {
+            padding: 0.4rem 1rem;
+            color: #111;
+            text-decoration: none;
+            font-size: 0.85rem;
+            border-right: 1px solid #ddd;
+        }
+
+        .nav a:hover {
+            background: #fff;
+            text-decoration: underline;
+        }
+
+        .nav a.active {
+            background: #fff;
+            font-weight: bold;
+        }
+
+        /* Summary statistics */
+        .summary-line {
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px dotted #ccc;
+            line-height: 1.6;
+        }
+
+        .stat-value {
+            color: #111;
+            font-weight: bold;
+        }
+
+        /* Filter controls */
+        .filters {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            align-items: baseline;
+        }
+
+        .filter-item {
+            display: flex;
+            gap: 0.5rem;
+            align-items: baseline;
+        }
+
+        .filter-label {
+            color: #666;
+        }
+
+        .filter-input {
+            padding: 0.2rem 0.4rem;
+            border: 1px solid #ccc;
+            background: #fff;
+            font-family: inherit;
+            font-size: 0.8rem;
+        }
+
+        /* Pagination controls */
+        .pagination {
+            display: flex;
+            gap: 1rem;
+            align-items: baseline;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        .page-info {
+            color: #666;
+        }
+
+        .page-link {
+            color: #666;
+            text-decoration: underline;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: inherit;
+            font-size: inherit;
+            padding: 0;
+        }
+
+        .page-link:hover:not(:disabled) {
+            color: #111;
+        }
+
+        .page-link:disabled {
+            color: #ccc;
+            text-decoration: none;
+            cursor: default;
+        }
+
+        /* Detection table */
+        .detection-table {
+            width: 100%;
+            font-size: 0.85rem;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+
+        .detection-table th {
+            text-align: left;
+            font-weight: normal;
+            padding: 0.4rem 0.25rem;
+            border-bottom: 1px solid #111;
+            font-size: 0.8rem;
+            position: sticky;
+            top: 0;
+            background: #fdfcfa;
+            z-index: 10;
+        }
+
+        .detection-table td {
+            padding: 0.3rem 0.25rem;
+            border-bottom: 1px dotted #e0e0e0;
+            vertical-align: top;
+        }
+
+        .detection-table tr:hover {
+            background: #f8f8f8;
+        }
+
+        .scientific-name {
+            font-style: italic;
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .confidence-cell {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .confidence-spark {
+            display: inline-block;
+            width: 40px;
+            height: 8px;
+            background: #e0e0e0;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+            position: relative;
+        }
+
+        .confidence-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: #666;
+        }
+
+        .location-coords {
+            font-size: 0.75rem;
+            color: #666;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .audio-link {
+            color: #666;
+            text-decoration: underline;
+            font-size: 0.8rem;
+        }
+
+        .audio-link:hover {
+            color: #111;
+        }
+
+        /* Time grouping headers */
+        .time-group {
+            font-weight: bold;
+            background: #f0f0f0;
+            padding: 0.4rem 0.25rem;
+            border-bottom: 1px solid #666;
+            font-size: 0.85rem;
+        }
+
+        /* Export controls */
+        .export-controls {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #111;
+            font-size: 0.85rem;
+        }
+
+        .export-link {
+            color: #666;
+            text-decoration: underline;
+            margin-right: 1.5rem;
+        }
+
+        .export-link:hover {
+            color: #111;
+        }
+
+        /* No data message */
+        .no-data {
+            text-align: center;
+            color: #999;
+            font-style: italic;
+            padding: 3rem;
+        }
+
+        /* Species frequency sidebar */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 250px;
+            gap: 2rem;
+        }
+
+        .frequency-list {
+            font-size: 0.8rem;
+            border-left: 1px solid #111;
+            padding-left: 1rem;
+        }
+
+        .frequency-header {
+            font-weight: normal;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.25rem;
+            border-bottom: 1px solid #111;
+        }
+
+        .frequency-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.2rem 0;
+            border-bottom: 1px dotted #e0e0e0;
+        }
+
+        .frequency-item:hover {
+            background: #f8f8f8;
+        }
+
+        .frequency-species {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .frequency-count {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            margin-left: 0.5rem;
+        }
+
+        /* Annotations */
+        .annotation {
+            font-size: 0.75rem;
+            color: #666;
+            font-style: italic;
+            margin-top: 0.5rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .frequency-list {
+                border-left: none;
+                border-top: 1px solid #111;
+                padding-left: 0;
+                padding-top: 1rem;
+                margin-top: 1rem;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .detection-table {
+                font-size: 0.75rem;
+            }
+
+            .filters {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .scientific-name {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>All Detections</h1>
+        <p class="subtitle">Complete detection history · Sorted by time · Confidence threshold ≥0.70</p>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <a href="/">Dashboard</a>
+        <a href="/reports/detections" class="active">Detections</a>
+        <a href="/reports/best">Best Recordings</a>
+        <a href="/livestream">Livestream</a>
+        <a href="/reports">Analysis</a>
+        <a href="/field">Field Mode</a>
+        <a href="/admin/settings">Settings</a>
+    </nav>
+
+    <!-- Summary statistics -->
+    <div class="summary-line">
+        <span class="stat-value">34,892</span> total detections ·
+        <span class="stat-value">156</span> unique species ·
+        <span class="stat-value">82.4%</span> average confidence ·
+        <span class="stat-value">2,847</span> today ·
+        <span class="stat-value">18,234</span> this week ·
+        First detection: <span class="stat-value">2024-03-15 06:23:14</span>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+        <div class="filter-item">
+            <span class="filter-label">Species:</span>
+            <input type="text" class="filter-input" id="speciesFilter" placeholder="Filter..." onkeyup="filterDetections()" style="width: 150px;">
+        </div>
+        <div class="filter-item">
+            <span class="filter-label">Date from:</span>
+            <input type="date" class="filter-input" id="dateFrom" onchange="filterDetections()">
+        </div>
+        <div class="filter-item">
+            <span class="filter-label">to:</span>
+            <input type="date" class="filter-input" id="dateTo" onchange="filterDetections()">
+        </div>
+        <div class="filter-item">
+            <span class="filter-label">Min confidence:</span>
+            <input type="number" class="filter-input" id="minConf" value="70" min="0" max="100" step="5" onchange="filterDetections()" style="width: 60px;">%
+        </div>
+        <div class="filter-item">
+            <span class="filter-label">Location:</span>
+            <select class="filter-input" id="locationFilter" onchange="filterDetections()">
+                <option value="">All</option>
+                <option value="north">North Trail</option>
+                <option value="garden">Garden</option>
+                <option value="meadow">Meadow</option>
+                <option value="forest">Forest Edge</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination">
+        <button class="page-link" onclick="previousPage()" id="prevBtn">← Previous</button>
+        <span class="page-info">
+            Showing <span id="startRecord">1</span>–<span id="endRecord">100</span> of <span id="totalRecords">34,892</span> detections
+        </span>
+        <button class="page-link" onclick="nextPage()" id="nextBtn">Next →</button>
+        <span class="filter-item">
+            <span class="filter-label">Per page:</span>
+            <select class="filter-input" id="perPage" onchange="changePageSize()">
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="200">200</option>
+                <option value="500">500</option>
+            </select>
+        </span>
+    </div>
+
+    <div class="main-grid">
+        <!-- Detection table -->
+        <div>
+            <table class="detection-table" id="detectionTable">
+                <thead>
+                    <tr>
+                        <th style="width: 120px;">Date/Time</th>
+                        <th>Species</th>
+                        <th style="width: 80px;">Confidence</th>
+                        <th style="width: 120px;">Location</th>
+                        <th style="width: 60px;">Audio</th>
+                    </tr>
+                </thead>
+                <tbody id="detectionTableBody">
+                    <!-- Today's detections -->
+                    <tr><td colspan="5" class="time-group">Today - January 15, 2025</td></tr>
+                    <tr>
+                        <td>14:32:18</td>
+                        <td>
+                            American Robin
+                            <div class="scientific-name">Turdus migratorius</div>
+                        </td>
+                        <td class="confidence-cell">
+                            94.3%
+                            <span class="confidence-spark">
+                                <span class="confidence-fill" style="width: 94.3%"></span>
+                            </span>
+                        </td>
+                        <td>
+                            North Trail
+                            <div class="location-coords">42.9834, -79.0103</div>
+                        </td>
+                        <td>
+                            <a href="/recordings/2025-01-15-14-32-18.mp3" class="audio-link">Play</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>14:28:45</td>
+                        <td>
+                            Blue Jay
+                            <div class="scientific-name">Cyanocitta cristata</div>
+                        </td>
+                        <td class="confidence-cell">
+                            87.2%
+                            <span class="confidence-spark">
+                                <span class="confidence-fill" style="width: 87.2%"></span>
+                            </span>
+                        </td>
+                        <td>
+                            Garden
+                            <div class="location-coords">42.9834, -79.0103</div>
+                        </td>
+                        <td>
+                            <a href="/recordings/2025-01-15-14-28-45.mp3" class="audio-link">Play</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>14:15:32</td>
+                        <td>
+                            Northern Cardinal
+                            <div class="scientific-name">Cardinalis cardinalis</div>
+                        </td>
+                        <td class="confidence-cell">
+                            91.8%
+                            <span class="confidence-spark">
+                                <span class="confidence-fill" style="width: 91.8%"></span>
+                            </span>
+                        </td>
+                        <td>
+                            Oak Grove
+                            <div class="location-coords">42.9834, -79.0103</div>
+                        </td>
+                        <td>
+                            <a href="/recordings/2025-01-15-14-15-32.mp3" class="audio-link">Play</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>13:52:14</td>
+                        <td>
+                            House Sparrow
+                            <div class="scientific-name">Passer domesticus</div>
+                        </td>
+                        <td class="confidence-cell">
+                            78.5%
+                            <span class="confidence-spark">
+                                <span class="confidence-fill" style="width: 78.5%"></span>
+                            </span>
+                        </td>
+                        <td>
+                            Feeder
+                            <div class="location-coords">42.9834, -79.0103</div>
+                        </td>
+                        <td>
+                            <a href="/recordings/2025-01-15-13-52-14.mp3" class="audio-link">Play</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>13:41:08</td>
+                        <td>
+                            American Crow
+                            <div class="scientific-name">Corvus brachyrhynchos</div>
+                        </td>
+                        <td class="confidence-cell">
+                            96.1%
+                            <span class="confidence-spark">
+                                <span class="confidence-fill" style="width: 96.1%"></span>
+                            </span>
+                        </td>
+                        <td>
+                            Field
+                            <div class="location-coords">42.9834, -79.0103</div>
+                        </td>
+                        <td>
+                            <a href="/recordings/2025-01-15-13-41-08.mp3" class="audio-link">Play</a>
+                        </td>
+                    </tr>
+
+                    <!-- Yesterday's detections -->
+                    <tr><td colspan="5" class="time-group">Yesterday - January 14, 2025</td></tr>
+                    <tr>
+                        <td>17:23:45</td>
+                        <td>
+                            Great Blue Heron
+                            <div class="scientific-name">Ardea herodias</div>
+                        </td>
+                        <td class="confidence-cell">
+                            88.7%
+                            <span class="confidence-spark">
+                                <span class="confidence-fill" style="width: 88.7%"></span>
+                            </span>
+                        </td>
+                        <td>
+                            Lake Shore
+                            <div class="location-coords">42.9834, -79.0103</div>
+                        </td>
+                        <td>
+                            <a href="/recordings/2025-01-14-17-23-45.mp3" class="audio-link">Play</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>16:45:12</td>
+                        <td>
+                            Red-tailed Hawk
+                            <div class="scientific-name">Buteo jamaicensis</div>
+                        </td>
+                        <td class="confidence-cell">
+                            92.3%
+                            <span class="confidence-spark">
+                                <span class="confidence-fill" style="width: 92.3%"></span>
+                            </span>
+                        </td>
+                        <td>
+                            North Trail
+                            <div class="location-coords">42.9834, -79.0103</div>
+                        </td>
+                        <td>
+                            <a href="/recordings/2025-01-14-16-45-12.mp3" class="audio-link">Play</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Export controls -->
+            <div class="export-controls">
+                Export data:
+                <a href="/export/csv" class="export-link">CSV</a>
+                <a href="/export/json" class="export-link">JSON</a>
+                <a href="/export/excel" class="export-link">Excel</a>
+                <a href="/export/ebird" class="export-link">eBird format</a>
+            </div>
+        </div>
+
+        <!-- Species frequency sidebar -->
+        <div class="frequency-list">
+            <div class="frequency-header">Species Frequency</div>
+            <div id="frequencyList">
+                <div class="frequency-item">
+                    <span class="frequency-species">American Robin</span>
+                    <span class="frequency-count">3,847</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="frequency-species">Blue Jay</span>
+                    <span class="frequency-count">2,923</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="frequency-species">Northern Cardinal</span>
+                    <span class="frequency-count">2,456</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="frequency-species">House Sparrow</span>
+                    <span class="frequency-count">2,187</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="frequency-species">American Crow</span>
+                    <span class="frequency-count">1,934</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="frequency-species">Mourning Dove</span>
+                    <span class="frequency-count">1,756</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="frequency-species">Black-capped Chickadee</span>
+                    <span class="frequency-count">1,523</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="frequency-species">Song Sparrow</span>
+                    <span class="frequency-count">1,342</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="frequency-species">Red-winged Blackbird</span>
+                    <span class="frequency-count">1,198</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="frequency-species">European Starling</span>
+                    <span class="frequency-count">1,087</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="frequency-species">White-breasted Nuthatch</span>
+                    <span class="frequency-count">967</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="frequency-species">Downy Woodpecker</span>
+                    <span class="frequency-count">834</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="frequency-species">Red-tailed Hawk</span>
+                    <span class="frequency-count">423</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="frequency-species">Great Blue Heron</span>
+                    <span class="frequency-count">287</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="frequency-species">Cooper's Hawk</span>
+                    <span class="frequency-count">198</span>
+                </div>
+            </div>
+
+            <p class="annotation" style="margin-top: 1rem;">
+                Top 15 species shown · Total: 156 species
+            </p>
+        </div>
+    </div>
+
+    <p class="annotation" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dotted #ccc;">
+        Last updated: <span id="lastUpdate">2025-01-15 14:35:22</span> ·
+        Database size: 284 MB ·
+        Audio files: 12.3 GB ·
+        Processing latency: <span id="latency">42</span> ms
+    </p>
+
+    <script>
+        let currentPage = 1;
+        let pageSize = 100;
+        let filteredData = [];
+
+        // Filter detections
+        function filterDetections() {
+            const species = document.getElementById('speciesFilter').value.toLowerCase();
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const minConf = document.getElementById('minConf').value;
+            const location = document.getElementById('locationFilter').value;
+
+            // In real implementation, this would filter the actual data
+            console.log('Filtering:', { species, dateFrom, dateTo, minConf, location });
+
+            // Update counts
+            updatePagination();
+        }
+
+        // Pagination functions
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                loadPage();
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(34892 / pageSize);
+            if (currentPage < totalPages) {
+                currentPage++;
+                loadPage();
+            }
+        }
+
+        function changePageSize() {
+            pageSize = parseInt(document.getElementById('perPage').value);
+            currentPage = 1;
+            loadPage();
+        }
+
+        function loadPage() {
+            // In real implementation, this would load data from server
+            updatePagination();
+        }
+
+        function updatePagination() {
+            const total = 34892; // This would be filtered count
+            const start = (currentPage - 1) * pageSize + 1;
+            const end = Math.min(currentPage * pageSize, total);
+
+            document.getElementById('startRecord').textContent = start;
+            document.getElementById('endRecord').textContent = end;
+            document.getElementById('totalRecords').textContent = total;
+
+            // Enable/disable pagination buttons
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = end >= total;
+        }
+
+        // Update frequency list based on visible data
+        function updateFrequencyList() {
+            // In real implementation, this would calculate from actual data
+            console.log('Updating frequency list');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set default date range
+            const today = new Date().toISOString().split('T')[0];
+            const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            document.getElementById('dateFrom').value = monthAgo;
+            document.getElementById('dateTo').value = today;
+
+            // Update last update time
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+
+            // Initialize pagination
+            updatePagination();
+        });
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+            document.getElementById('latency').textContent = Math.floor(Math.random() * 20 + 30);
+        }, 30000);
+    </script>
+</body>
+</html>

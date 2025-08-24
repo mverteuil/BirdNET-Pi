@@ -40,7 +40,7 @@ async def get_settings(
     """Render the settings page with the current configuration."""
     config_manager = ConfigManager(path_resolver)
     app_config: BirdNETConfig = config_manager.load()
-    return templates.TemplateResponse(request, "admin/settings.html", {"config": app_config})
+    return templates.TemplateResponse(request, "admin/settings.html.j2", {"config": app_config})
 
 
 @router.post("/settings", response_class=HTMLResponse)

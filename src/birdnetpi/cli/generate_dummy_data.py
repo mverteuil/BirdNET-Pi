@@ -14,7 +14,7 @@ from birdnetpi.system.system_control_service import SystemControlService
 from birdnetpi.utils.dummy_data_generator import generate_dummy_detections
 
 
-async def run_async(count: int, days: int) -> None:
+async def run(count: int = 100, days: int = 3) -> None:
     """Generate dummy data for the application."""
     path_resolver = PathResolver()
     db_path = path_resolver.get_database_path()
@@ -47,6 +47,8 @@ async def run_async(count: int, days: int) -> None:
             print(f"Warning: Could not check existing data due to database lock: {e}")
             print("Database appears to be in use. Attempting to stop services automatically...")
             # Continue to service management instead of exiting early
+    else:
+        print("Database is empty or does not exist. Generating dummy data...")
 
     # Check if FastAPI is running
     fastapi_was_running = False
@@ -130,7 +132,7 @@ def main(count: int, days: int, verbose: bool) -> None:
     if verbose:
         print(f"Generating {count} detections from the last {days} day(s)...")
 
-    asyncio.run(run_async(count, days))
+    asyncio.run(run(count, days))
 
 
 if __name__ == "__main__":

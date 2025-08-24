@@ -19,4 +19,6 @@ async def get_livestream(
     config: BirdNETConfig = Depends(Provide[Container.config]),  # noqa: B008
 ) -> HTMLResponse:
     """Render the livestream page."""
-    return templates.TemplateResponse(request, "livestream.html", {"site_name": config.site_name})
+    return templates.TemplateResponse(
+        request, "livestream.html.j2", {"site_name": config.site_name}
+    )

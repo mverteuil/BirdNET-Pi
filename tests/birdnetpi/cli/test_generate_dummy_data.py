@@ -72,7 +72,7 @@ class TestGenerateDummyData:
 
     @pytest.mark.asyncio
     async def test_main_database_exists__has_data(self, mock_dependencies, capsys):
-        """Should skip dummy data generation if database exists and has data."""
+        """Should add more dummy data when database exists and has data."""
         # Mock the Path object methods directly
         mock_db_path = mock_dependencies["PathResolver"].return_value.get_database_path.return_value
         mock_db_path.exists.return_value = True
@@ -89,12 +89,14 @@ class TestGenerateDummyData:
         await gdd.run()
 
         captured = capsys.readouterr()
-        assert "Database already contains data. Skipping dummy data generation." in captured.out
-        mock_dependencies["generate_dummy_detections"].assert_not_called()
-        # Should not interact with system control service if skipping generation
+        assert "Database already contains 1 detections." in captured.out
+        assert "Adding more dummy data..." in captured.out
+        assert "Dummy data generation complete" in captured.out
+        mock_dependencies["generate_dummy_detections"].assert_called_once()
+        # Should still check service status when adding more data
         mock_dependencies[
             "SystemControlService"
-        ].return_value.get_service_status.assert_not_called()
+        ].return_value.get_service_status.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_main_database_exists_but_is__empty__fastapi_not_running(

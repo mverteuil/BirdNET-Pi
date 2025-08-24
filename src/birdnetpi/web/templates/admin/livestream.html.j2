@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BirdNET-Pi Livestream</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Georgia, 'Times New Roman', serif;
+            background: #fdfcfa;
+            color: #2c2c2c;
+            line-height: 1.4;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #111;
+        }
+
+        h1 {
+            font-size: 1.3rem;
+            font-weight: normal;
+            margin-bottom: 0.25rem;
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            color: #666;
+            font-style: italic;
+        }
+
+        /* Navigation */
+        .nav {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #111;
+            border-top: 1px solid #111;
+            background: #f8f8f8;
+        }
+
+        .nav a {
+            padding: 0.4rem 1rem;
+            color: #111;
+            text-decoration: none;
+            font-size: 0.85rem;
+            border-right: 1px solid #ddd;
+        }
+
+        .nav a:hover {
+            background: #fff;
+            text-decoration: underline;
+        }
+
+        .nav a.active {
+            background: #fff;
+            font-weight: bold;
+        }
+
+        /* Connection status - inline text */
+        .status-line {
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px dotted #ccc;
+            line-height: 1.6;
+        }
+
+        .status-value {
+            color: #111;
+            font-weight: normal;
+        }
+
+        .status-active {
+            color: #4caf50;
+        }
+
+        .status-inactive {
+            color: #d32f2f;
+        }
+
+        /* Controls - minimal text buttons */
+        .controls {
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 2rem;
+            align-items: baseline;
+            margin-bottom: 0.5rem;
+        }
+
+        .control-button {
+            color: #666;
+            text-decoration: underline;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: inherit;
+            font-size: inherit;
+            padding: 0;
+        }
+
+        .control-button:hover {
+            color: #111;
+        }
+
+        .control-button.active {
+            color: #111;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .control-label {
+            color: #666;
+            margin-right: 0.5rem;
+        }
+
+        .control-value {
+            width: 60px;
+            padding: 0.2rem 0.4rem;
+            border: 1px solid #ccc;
+            background: #fff;
+            font-family: inherit;
+            font-size: 0.8rem;
+        }
+
+        /* Main grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Spectrogram container */
+        .spectrogram-section {
+            border-top: 1px solid #111;
+            padding-top: 1rem;
+        }
+
+        .section-title {
+            font-size: 0.9rem;
+            font-weight: normal;
+            margin-bottom: 0.5rem;
+        }
+
+        #spectrogramCanvas {
+            width: 100%;
+            height: 300px;
+            background: #fff;
+            border: 1px solid #999;
+            margin-bottom: 0.5rem;
+        }
+
+        .freq-axis {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: #666;
+            margin-bottom: 0.25rem;
+        }
+
+        .time-axis {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: #666;
+        }
+
+        /* Detection log */
+        .detection-log {
+            font-size: 0.85rem;
+        }
+
+        .log-header {
+            display: grid;
+            grid-template-columns: 60px 1fr 50px;
+            gap: 1rem;
+            padding-bottom: 0.25rem;
+            border-bottom: 1px solid #111;
+            margin-bottom: 0.5rem;
+        }
+
+        .log-entry {
+            display: grid;
+            grid-template-columns: 60px 1fr 50px;
+            gap: 1rem;
+            padding: 0.3rem 0;
+            border-bottom: 1px dotted #e0e0e0;
+        }
+
+        .log-entry:hover {
+            background: #f8f8f8;
+        }
+
+        .time {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .confidence {
+            text-align: right;
+            font-size: 0.8rem;
+        }
+
+        /* Audio waveform visualization */
+        .waveform-container {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #111;
+        }
+
+        #waveformCanvas {
+            width: 100%;
+            height: 60px;
+            background: #fff;
+            border: 1px solid #999;
+        }
+
+        /* Message log */
+        .message-log {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #111;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .message {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            color: #666;
+            padding: 0.2rem 0;
+            border-bottom: 1px dotted #e0e0e0;
+        }
+
+        /* Annotations */
+        .annotation {
+            font-size: 0.75rem;
+            color: #666;
+            font-style: italic;
+            margin-top: 0.5rem;
+        }
+
+        /* No data message */
+        .no-data {
+            color: #999;
+            font-style: italic;
+            padding: 1rem 0;
+            text-align: center;
+        }
+
+        /* Inline metrics */
+        .inline-metrics {
+            display: flex;
+            gap: 2rem;
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-item {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .metric-value {
+            color: #111;
+            font-weight: normal;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Live Audio Stream</h1>
+    <p class="subtitle">Real-time acoustic monitoring · 48 kHz sampling · 3-second
+        windows</p>
+</header>
+
+<!-- Navigation -->
+<nav class="nav">
+    <a href="/">Dashboard</a>
+    <a href="/reports/detections">Detections</a>
+    <a href="/reports/best">Best Recordings</a>
+    <a href="#" class="active">Livestream</a>
+    <a href="/reports">Analysis</a>
+    <a href="/field">Field Mode</a>
+    <a href="/admin/settings">Settings</a>
+</nav>
+
+<!-- Connection status -->
+<div class="status-line">
+    Audio: <span id="audioStatus" class="status-value status-inactive">Disconnected</span>
+    ·
+    Spectrogram: <span id="spectrogramStatus" class="status-value status-inactive">Disconnected</span>
+    ·
+    Updates: <span id="updateRate" class="status-value">0 Hz</span> ·
+    Latency: <span id="latency" class="status-value">-- ms</span> ·
+    Buffer: <span id="bufferSize" class="status-value">0 KB</span>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+    <div class="control-row">
+        <button class="control-button" id="audioToggle" onclick="toggleAudio()">Connect
+            Audio
+        </button>
+        <button class="control-button" id="spectrogramToggle"
+                onclick="toggleSpectrogram()">Connect Spectrogram
+        </button>
+        <span class="control-label">Volume:</span>
+        <input type="range" min="0" max="100" value="60"
+               style="width: 100px; vertical-align: middle;"
+               onchange="setVolume(this.value)">
+        <span id="volumeValue" class="status-value">60%</span>
+    </div>
+    <div class="control-row">
+        <span class="control-label">Frequency max:</span>
+        <input type="number" class="control-value" id="maxFreq" value="12000" min="1000"
+               max="24000" step="500" onchange="updateFrequencyRange()"> Hz
+        <span class="control-label" style="margin-left: 2rem;">Time window:</span>
+        <input type="number" class="control-value" id="timeWindow" value="10" min="5"
+               max="60" step="5" onchange="updateTimeWindow()"> s
+        <span class="control-label" style="margin-left: 2rem;">Gain:</span>
+        <input type="range" min="1" max="100" value="50"
+               style="width: 80px; vertical-align: middle;"
+               onchange="updateGain(this.value)">
+    </div>
+</div>
+
+<!-- Main content -->
+<div class="main-grid">
+    <!-- Left column: Spectrogram and waveform -->
+    <div>
+        <!-- Spectrogram -->
+        <div class="spectrogram-section">
+            <h2 class="section-title">Spectrogram</h2>
+            <div class="freq-axis">
+                <span>0 Hz</span>
+                <span>3 kHz</span>
+                <span>6 kHz</span>
+                <span>9 kHz</span>
+                <span id="maxFreqLabel">12 kHz</span>
+            </div>
+            <canvas id="spectrogramCanvas"></canvas>
+            <div class="time-axis">
+                <span id="timeStart">-10s</span>
+                <span>-7.5s</span>
+                <span>-5s</span>
+                <span>-2.5s</span>
+                <span>now</span>
+            </div>
+            <div class="inline-metrics">
+                <div class="metric-item">FFT size: <span class="metric-value">1024</span>
+                </div>
+                <div class="metric-item">Overlap: <span class="metric-value">50%</span>
+                </div>
+                <div class="metric-item">Resolution: <span
+                        class="metric-value">46.9 Hz</span></div>
+                <div class="metric-item">Frame rate: <span class="metric-value"
+                                                           id="frameRate">0 fps</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Waveform -->
+        <div class="waveform-container">
+            <h2 class="section-title">Audio Waveform</h2>
+            <canvas id="waveformCanvas"></canvas>
+            <div class="inline-metrics">
+                <div class="metric-item">Peak: <span class="metric-value" id="peakLevel">-∞ dB</span>
+                </div>
+                <div class="metric-item">RMS: <span class="metric-value" id="rmsLevel">-∞ dB</span>
+                </div>
+                <div class="metric-item">Samples: <span class="metric-value"
+                                                        id="sampleCount">0</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right column: Detection log -->
+    <div class="detection-log">
+        <div class="log-header">
+            <span>Time</span>
+            <span>Species</span>
+            <span>Conf.</span>
+        </div>
+        <div id="detectionList">
+            <div class="no-data">No detections yet</div>
+        </div>
+    </div>
+</div>
+
+<!-- Message log -->
+<div class="message-log">
+    <h2 class="section-title">System Log</h2>
+    <div id="messageLog"></div>
+</div>
+
+<p class="annotation">
+    WebSocket protocol · Binary PCM streaming · Client-side FFT processing ·
+    Detection threshold ≥0.70 · Mel-scale spectrogram rendering
+</p>
+
+<script>
+    // WebSocket connections
+    let audioWs = null;
+    let spectrogramWs = null;
+    let audioContext = null;
+    let gainNode = null;
+
+    // Canvas contexts
+    const spectrogramCanvas = document.getElementById('spectrogramCanvas');
+    const spectrogramCtx = spectrogramCanvas.getContext('2d');
+    const waveformCanvas = document.getElementById('waveformCanvas');
+    const waveformCtx = waveformCanvas.getContext('2d');
+
+    // Data storage
+    let spectrogramHistory = [];
+    let waveformBuffer = [];
+    let detections = [];
+    let lastFrameTime = Date.now();
+    let frameCount = 0;
+
+    // Settings
+    let maxFrequency = 12000;
+    let timeWindow = 10;
+    let gain = 50;
+    let volume = 60;
+
+    // Resize canvases
+    function resizeCanvases() {
+        spectrogramCanvas.width = spectrogramCanvas.offsetWidth;
+        spectrogramCanvas.height = 300;
+        waveformCanvas.width = waveformCanvas.offsetWidth;
+        waveformCanvas.height = 60;
+    }
+
+    // Toggle audio connection
+    function toggleAudio() {
+        const button = document.getElementById('audioToggle');
+        if (audioWs && audioWs.readyState === WebSocket.OPEN) {
+            audioWs.close();
+            button.textContent = 'Connect Audio';
+            button.classList.remove('active');
+        } else {
+            connectAudio();
+            button.textContent = 'Disconnect Audio';
+            button.classList.add('active');
+        }
+    }
+
+    // Toggle spectrogram connection
+    function toggleSpectrogram() {
+        const button = document.getElementById('spectrogramToggle');
+        if (spectrogramWs && spectrogramWs.readyState === WebSocket.OPEN) {
+            spectrogramWs.close();
+            button.textContent = 'Connect Spectrogram';
+            button.classList.remove('active');
+        } else {
+            connectSpectrogram();
+            button.textContent = 'Disconnect Spectrogram';
+            button.classList.add('active');
+        }
+    }
+
+    // Connect audio WebSocket
+    function connectAudio() {
+        const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        audioWs = new WebSocket(`${wsProtocol}//${location.host}/ws/audio`);
+
+        audioWs.onopen = () => {
+            updateStatus('audioStatus', 'Connected', true);
+            addMessage('Audio connected');
+            initAudioContext();
+        };
+
+        audioWs.onmessage = (event) => {
+            if (event.data instanceof ArrayBuffer) {
+                handleAudioData(event.data);
+            }
+        };
+
+        audioWs.onclose = () => {
+            updateStatus('audioStatus', 'Disconnected', false);
+            addMessage('Audio disconnected');
+        };
+    }
+
+    // Connect spectrogram WebSocket
+    function connectSpectrogram() {
+        const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        spectrogramWs = new WebSocket(`${wsProtocol}//${location.host}/ws/spectrogram`);
+
+        spectrogramWs.onopen = () => {
+            updateStatus('spectrogramStatus', 'Connected', true);
+            addMessage('Spectrogram connected');
+        };
+
+        spectrogramWs.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'spectrogram') {
+                    handleSpectrogramData(data);
+                } else if (data.type === 'detection') {
+                    handleDetection(data);
+                }
+            } catch (e) {
+                console.error('Parse error:', e);
+            }
+        };
+
+        spectrogramWs.onclose = () => {
+            updateStatus('spectrogramStatus', 'Disconnected', false);
+            addMessage('Spectrogram disconnected');
+        };
+    }
+
+    // Initialize audio context
+    async function initAudioContext() {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            gainNode = audioContext.createGain();
+            gainNode.connect(audioContext.destination);
+            gainNode.gain.value = volume / 100;
+        }
+        if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+        }
+    }
+
+    // Handle audio data
+    function handleAudioData(arrayBuffer) {
+        if (!audioContext) return;
+
+        const dataView = new DataView(arrayBuffer);
+        const dataLength = dataView.getUint32(0, true);
+        const pcmData = new Int16Array(arrayBuffer, 4, dataLength / 2);
+
+        // Update waveform
+        updateWaveform(pcmData);
+
+        // Play audio
+        const audioBuffer = audioContext.createBuffer(1, pcmData.length, 48000);
+        const channelData = audioBuffer.getChannelData(0);
+        for (let i = 0; i < pcmData.length; i++) {
+            channelData[i] = pcmData[i] / 32768.0;
+        }
+
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(gainNode);
+        source.start(0);
+
+        // Update buffer size
+        document.getElementById('bufferSize').textContent = (arrayBuffer.byteLength / 1024).toFixed(1) + ' KB';
+    }
+
+    // Handle spectrogram data
+    function handleSpectrogramData(data) {
+        if (data.data && data.shape) {
+            spectrogramHistory.push({
+                data: data.data,
+                timestamp: Date.now()
+            });
+
+            // Limit history
+            const maxSlices = Math.ceil(timeWindow * 15); // 15 Hz update rate
+            if (spectrogramHistory.length > maxSlices) {
+                spectrogramHistory = spectrogramHistory.slice(-maxSlices);
+            }
+
+            drawSpectrogram();
+            updateMetrics();
+        }
+    }
+
+    // Handle detection
+    function handleDetection(data) {
+        const time = new Date().toTimeString().slice(0, 5);
+        detections.unshift({
+            time: time,
+            species: data.species || 'Unknown',
+            confidence: Math.round(data.confidence * 100)
+        });
+
+        // Limit to 20 detections
+        if (detections.length > 20) {
+            detections = detections.slice(0, 20);
+        }
+
+        updateDetectionList();
+        addMessage(`Detection: ${data.species} (${Math.round(data.confidence * 100)}%)`);
+    }
+
+    // Draw spectrogram
+    function drawSpectrogram() {
+        const width = spectrogramCanvas.width;
+        const height = spectrogramCanvas.height;
+
+        // Clear with white background
+        spectrogramCtx.fillStyle = '#ffffff';
+        spectrogramCtx.fillRect(0, 0, width, height);
+
+        if (spectrogramHistory.length === 0) return;
+
+        const sliceWidth = width / spectrogramHistory.length;
+
+        spectrogramHistory.forEach((item, timeIndex) => {
+            if (!item.data || !Array.isArray(item.data[0])) return;
+
+            const freqData = item.data[0]; // First time slice
+            const freqBins = freqData.length;
+            const maxFreqBin = Math.floor((maxFrequency / 24000) * freqBins);
+
+            for (let freqIndex = 0; freqIndex < maxFreqBin; freqIndex++) {
+                const magnitude = freqData[freqIndex];
+                const normalized = Math.max(0, Math.min(1, (magnitude + 60) / 60 * (gain / 50)));
+
+                // Black on white
+                const gray = Math.floor(255 * (1 - normalized));
+                spectrogramCtx.fillStyle = `rgb(${gray},${gray},${gray})`;
+
+                const x = timeIndex * sliceWidth;
+                const y = height - (freqIndex / maxFreqBin) * height;
+                const h = Math.ceil(height / maxFreqBin);
+
+                spectrogramCtx.fillRect(x, y - h, Math.ceil(sliceWidth), h);
+            }
+        });
+
+        frameCount++;
+    }
+
+    // Update waveform
+    function updateWaveform(pcmData) {
+        const width = waveformCanvas.width;
+        const height = waveformCanvas.height;
+
+        // Clear
+        waveformCtx.fillStyle = '#ffffff';
+        waveformCtx.fillRect(0, 0, width, height);
+
+        // Draw zero line
+        waveformCtx.strokeStyle = '#ccc';
+        waveformCtx.lineWidth = 1;
+        waveformCtx.beginPath();
+        waveformCtx.moveTo(0, height / 2);
+        waveformCtx.lineTo(width, height / 2);
+        waveformCtx.stroke();
+
+        // Draw waveform
+        waveformCtx.strokeStyle = '#111';
+        waveformCtx.lineWidth = 1;
+        waveformCtx.beginPath();
+
+        const step = Math.ceil(pcmData.length / width);
+        let peak = 0;
+        let rms = 0;
+
+        for (let i = 0; i < width; i++) {
+            const index = i * step;
+            const value = pcmData[index] / 32768;
+            const y = (1 - value) * height / 2;
+
+            if (i === 0) {
+                waveformCtx.moveTo(i, y);
+            } else {
+                waveformCtx.lineTo(i, y);
+            }
+
+            peak = Math.max(peak, Math.abs(value));
+            rms += value * value;
+        }
+
+        waveformCtx.stroke();
+
+        // Update levels
+        rms = Math.sqrt(rms / width);
+        document.getElementById('peakLevel').textContent = peak > 0 ? (20 * Math.log10(peak)).toFixed(1) + ' dB' : '-∞ dB';
+        document.getElementById('rmsLevel').textContent = rms > 0 ? (20 * Math.log10(rms)).toFixed(1) + ' dB' : '-∞ dB';
+        document.getElementById('sampleCount').textContent = pcmData.length.toLocaleString();
+    }
+
+    // Update detection list
+    function updateDetectionList() {
+        const container = document.getElementById('detectionList');
+
+        if (detections.length === 0) {
+            container.innerHTML = '<div class="no-data">No detections yet</div>';
+            return;
+        }
+
+        container.innerHTML = detections.map(d => `
+                <div class="log-entry">
+                    <span class="time">${d.time}</span>
+                    <span>${d.species}</span>
+                    <span class="confidence">${d.confidence}%</span>
+                </div>
+            `).join('');
+    }
+
+    // Update metrics
+    function updateMetrics() {
+        const now = Date.now();
+        const elapsed = (now - lastFrameTime) / 1000;
+
+        if (elapsed > 1) {
+            const fps = frameCount / elapsed;
+            document.getElementById('frameRate').textContent = fps.toFixed(1) + ' fps';
+            document.getElementById('updateRate').textContent = fps.toFixed(1) + ' Hz';
+
+            frameCount = 0;
+            lastFrameTime = now;
+        }
+
+        // Update latency
+        if (spectrogramHistory.length > 0) {
+            const latency = now - spectrogramHistory[spectrogramHistory.length - 1].timestamp;
+            document.getElementById('latency').textContent = Math.round(latency) + ' ms';
+        }
+    }
+
+    // Update status
+    function updateStatus(elementId, text, active) {
+        const element = document.getElementById(elementId);
+        element.textContent = text;
+        element.className = active ? 'status-value status-active' : 'status-value status-inactive';
+    }
+
+    // Add message to log
+    function addMessage(text) {
+        const log = document.getElementById('messageLog');
+        const message = document.createElement('div');
+        message.className = 'message';
+        message.textContent = new Date().toTimeString().slice(0, 8) + ' ' + text;
+        log.appendChild(message);
+
+        // Limit to 20 messages
+        while (log.children.length > 20) {
+            log.removeChild(log.firstChild);
+        }
+
+        log.scrollTop = log.scrollHeight;
+    }
+
+    // Settings functions
+    function setVolume(value) {
+        volume = value;
+        document.getElementById('volumeValue').textContent = value + '%';
+        if (gainNode) {
+            gainNode.gain.value = value / 100;
+        }
+    }
+
+    function updateFrequencyRange() {
+        maxFrequency = parseInt(document.getElementById('maxFreq').value);
+        document.getElementById('maxFreqLabel').textContent = (maxFrequency / 1000).toFixed(1) + ' kHz';
+    }
+
+    function updateTimeWindow() {
+        timeWindow = parseInt(document.getElementById('timeWindow').value);
+        document.getElementById('timeStart').textContent = '-' + timeWindow + 's';
+    }
+
+    function updateGain(value) {
+        gain = value;
+    }
+
+    // Initialize
+    window.addEventListener('load', () => {
+        resizeCanvases();
+        addMessage('System ready');
+    });
+
+    window.addEventListener('resize', resizeCanvases);
+
+    // Keep connections alive
+    setInterval(() => {
+        if (audioWs && audioWs.readyState === WebSocket.OPEN) {
+            audioWs.send('ping');
+        }
+        if (spectrogramWs && spectrogramWs.readyState === WebSocket.OPEN) {
+            spectrogramWs.send('ping');
+        }
+    }, 30000);
+</script>
+</body>
+</html>

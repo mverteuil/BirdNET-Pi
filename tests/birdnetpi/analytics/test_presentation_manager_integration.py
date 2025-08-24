@@ -237,7 +237,7 @@ class TestLandingPageIntegration:
         assert sys_status.memory.percent == 60.0
         assert sys_status.memory.used_gb == pytest.approx(4.0, rel=0.01)
         assert sys_status.disk.percent == 75.0
-        assert sys_status.uptime == "2d"
+        assert sys_status.uptime == "2"  # Numeric value, suffix added in template
 
     @pytest.mark.asyncio
     async def test_temporal_patterns_integration(self, presentation_manager):
@@ -278,7 +278,7 @@ class TestLandingPageIntegration:
         for detection in detection_log:
             assert ":" in detection.time  # HH:MM format
             assert "%" in detection.confidence  # Percentage format
-            assert detection.count == 1  # Individual detections
+            # DetectionLogEntry doesn't have a count field - it shows individual detections
 
 
 class TestAPIResponseIntegration:

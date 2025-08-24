@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detection Analysis</title>
+    <!-- Load Plotly from CDN -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Georgia, 'Times New Roman', serif;
+            background: #fdfcfa;
+            color: #2c2c2c;
+            line-height: 1.5;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #111;
+        }
+
+        h1 {
+            font-size: 1.3rem;
+            font-weight: normal;
+            margin-bottom: 0.25rem;
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            color: #666;
+            font-style: italic;
+        }
+
+        /* Navigation */
+        .nav {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #111;
+            border-top: 1px solid #111;
+            background: #f8f8f8;
+        }
+
+        .nav a {
+            padding: 0.4rem 1rem;
+            color: #111;
+            text-decoration: none;
+            font-size: 0.85rem;
+            border-right: 1px solid #ddd;
+        }
+
+        .nav a:hover {
+            background: #fff;
+            text-decoration: underline;
+        }
+
+        .nav a.active {
+            background: #fff;
+            font-weight: bold;
+        }
+
+        /* Time period selector */
+        .period-selector {
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
+        }
+
+        .period-link {
+            color: #666;
+            text-decoration: none;
+            margin-right: 1.5rem;
+            cursor: pointer;
+        }
+
+        .period-link:hover {
+            color: #111;
+            text-decoration: underline;
+        }
+
+        .period-link.active {
+            color: #111;
+            font-weight: bold;
+        }
+
+        /* Summary statistics */
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+            padding: 1rem 0;
+            border-top: 1px dotted #ccc;
+            border-bottom: 1px dotted #ccc;
+            font-size: 0.85rem;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .stat-value {
+            color: #111;
+            font-size: 1.1rem;
+        }
+
+        .stat-detail {
+            color: #666;
+            font-size: 0.75rem;
+            font-style: italic;
+        }
+
+        /* Chart sections */
+        .chart-section {
+            margin-bottom: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #111;
+        }
+
+        .chart-title {
+            font-size: 1rem;
+            font-weight: normal;
+            margin-bottom: 0.5rem;
+        }
+
+        .chart-subtitle {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 0.75rem;
+        }
+
+        .chart-container {
+            margin-bottom: 0.5rem;
+            background: #fff;
+            border: 1px solid #999;
+        }
+
+        /* Data table */
+        .data-table {
+            width: 100%;
+            font-size: 0.85rem;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .data-table th {
+            text-align: left;
+            font-weight: normal;
+            padding: 0.5rem 0.25rem;
+            border-bottom: 1px solid #111;
+            font-size: 0.8rem;
+        }
+
+        .data-table td {
+            padding: 0.3rem 0.25rem;
+            border-bottom: 1px dotted #ddd;
+        }
+
+        .data-table tr:hover {
+            background: #f8f8f8;
+        }
+
+        .table-number {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Activity dots */
+        .activity-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 0.25rem;
+        }
+
+        /* Small multiples grid */
+        .small-multiples {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .small-chart {
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 0.5rem;
+        }
+
+        .small-chart-title {
+            font-size: 0.75rem;
+            margin-bottom: 0.25rem;
+            color: #666;
+        }
+
+        .small-chart-value {
+            font-size: 0.9rem;
+            color: #111;
+        }
+
+        /* Diversity scales */
+        .diversity-scale {
+            margin-top: 0.5rem;
+            height: 8px;
+            background: linear-gradient(to right, #e0e0e0 0%, #999 50%, #333 100%);
+            position: relative;
+            border: 1px solid #999;
+        }
+
+        .diversity-marker {
+            position: absolute;
+            top: -4px;
+            width: 16px;
+            height: 16px;
+            background: #111;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        .diversity-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: #999;
+            margin-top: 0.25rem;
+        }
+
+        /* Matrix view */
+        .matrix-view {
+            overflow-x: auto;
+        }
+
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: minmax(120px, 1fr) repeat(24, 1fr);
+            gap: 0;
+            font-size: 0.7rem;
+            width: 100%;
+        }
+
+        .matrix-header {
+            background: transparent;
+            padding: 0.25rem 0.1rem;
+            text-align: center;
+            font-size: 0.65rem;
+            color: #666;
+        }
+
+        .matrix-label {
+            background: transparent;
+            padding: 0.25rem 0.5rem 0.25rem 0;
+            text-align: right;
+            font-size: 0.7rem;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .matrix-cell {
+            background: #fff;
+            text-align: center;
+            padding: 0.2rem 0;
+            font-size: 0.6rem;
+            position: relative;
+            min-height: 20px;
+        }
+
+        .matrix-cell:hover {
+            outline: 1px solid #666;
+            z-index: 10;
+        }
+
+        /* Species summary styles */
+        .species-summary-row {
+            display: grid;
+            grid-template-columns: 1fr auto auto auto;
+            gap: 0.5rem;
+            padding: 0.25rem 0;
+            border-bottom: 1px dotted #e0e0e0;
+            align-items: center;
+        }
+
+        .species-summary-row:hover {
+            background: #f8f8f8;
+        }
+
+        .summary-sparkline {
+            height: 15px;
+            width: 100px;
+        }
+
+        .peak-indicator {
+            display: inline-block;
+            width: 30px;
+            height: 15px;
+            position: relative;
+            background: linear-gradient(to right, #f0f0f0 0%, #f0f0f0 100%);
+        }
+
+        .peak-marker {
+            position: absolute;
+            top: 0;
+            width: 2px;
+            height: 15px;
+            background: #d32f2f;
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            font-size: 0.75rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        /* Species glyphs */
+        .glyph-map {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .species-glyph {
+            text-align: center;
+        }
+
+        .glyph-visual {
+            margin-bottom: 0.25rem;
+        }
+
+        .glyph-name {
+            font-size: 0.7rem;
+            color: #666;
+        }
+
+        .glyph-value {
+            font-size: 0.8rem;
+            color: #111;
+            font-weight: bold;
+        }
+
+        /* Color scale */
+        .color-scale {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1rem 0;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .scale-gradient {
+            flex: 1;
+            height: 20px;
+            background: linear-gradient(to right,
+                #ffffff 0%,
+                #fffef7 10%,
+                #fff9e6 20%,
+                #fef0d9 30%,
+                #fdcc8a 50%,
+                #fc8d59 70%,
+                #d7301f 100%);
+            border: 1px solid #999;
+        }
+
+        .scale-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: #999;
+            margin-top: 0.25rem;
+        }
+
+        /* Annotations */
+        .annotation {
+            font-size: 0.75rem;
+            color: #666;
+            font-style: italic;
+            margin-top: 0.5rem;
+        }
+
+        /* Controls */
+        .controls {
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+        }
+
+        .control-item {
+            display: inline-block;
+            margin-right: 2rem;
+        }
+
+        .control-label {
+            color: #666;
+            margin-right: 0.5rem;
+        }
+
+        .control-input {
+            width: 80px;
+            padding: 0.2rem 0.4rem;
+            border: 1px solid #ccc;
+            background: #fff;
+            font-family: inherit;
+            font-size: 0.8rem;
+        }
+
+        /* Icons for species families */
+        .species-icon {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-right: 0.25rem;
+        }
+
+        .icon-circle {
+            border-radius: 50%;
+        }
+
+        .icon-square {
+            /* Square is default */
+        }
+
+        .icon-triangle {
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 12px solid;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .nav {
+                flex-wrap: wrap;
+            }
+
+            .summary-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .small-multiples {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Detection Analysis</h1>
+        <p class="subtitle">Temporal patterns and species distribution · Confidence threshold ≥0.70</p>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <a href="/">Dashboard</a>
+        <a href="/reports/detections">Detections</a>
+        <a href="/reports/best">Best Recordings</a>
+        <a href="/livestream">Livestream</a>
+        <a href="/reports" class="active">Analysis</a>
+        <a href="/field">Field Mode</a>
+        <a href="/admin/settings">Settings</a>
+    </nav>
+
+    <!-- Time period selector -->
+    <div class="period-selector">
+        Time period:
+        <a class="period-link active" onclick="setPeriod('day')">24 hours</a>
+        <a class="period-link" onclick="setPeriod('week')">7 days</a>
+        <a class="period-link" onclick="setPeriod('month')">30 days</a>
+        <a class="period-link" onclick="setPeriod('year')">365 days</a>
+        <a class="period-link" onclick="setPeriod('all')">All time</a>
+    </div>
+
+    <!-- Summary statistics -->
+    <div class="summary-stats">
+        <div class="stat-item">
+            <span class="stat-label">Total detections</span>
+            <span class="stat-value" id="totalDetections">2,847</span>
+            <span class="stat-detail">Last 24 hours</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Unique species</span>
+            <span class="stat-value" id="uniqueSpecies">47</span>
+            <span class="stat-detail">12 new today</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Peak hour</span>
+            <span class="stat-value" id="peakHour">07:00-08:00</span>
+            <span class="stat-detail">342 detections</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Most common</span>
+            <span class="stat-value" id="mostCommon">American Robin</span>
+            <span class="stat-detail">487 detections</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Avg confidence</span>
+            <span class="stat-value" id="avgConfidence">82.3%</span>
+            <span class="stat-detail">σ = 8.7%</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Detection rate</span>
+            <span class="stat-value" id="detectionRate">118.6/hr</span>
+            <span class="stat-detail">↑18% from yesterday</span>
+        </div>
+    </div>
+
+    <!-- Diversity indices over time -->
+    <div class="chart-section">
+        <h2 class="chart-title">Diversity Indices Timeline</h2>
+        <p class="chart-subtitle">Shannon (H') and Simpson (D) indices · Daily values for past 30 days</p>
+
+        <div id="diversity-plot" class="chart-container" style="height: 250px;"></div>
+
+        <p class="annotation">
+            Shannon H': 0 = single species, >3 = high diversity · Simpson D: 0 = low diversity, 1 = infinite diversity ·
+            Circle size indicates species richness (number of unique species)
+        </p>
+    </div>
+
+    <!-- Species glyph visualization -->
+    <div class="chart-section">
+        <h2 class="chart-title">Species Activity Patterns</h2>
+        <p class="chart-subtitle">Size = detection count · Color = time of day preference · Shape = bird family</p>
+
+        <div class="legend">
+            <div class="legend-item">
+                <span class="species-icon icon-circle" style="background: #2196F3;"></span>
+                <span>Songbirds</span>
+            </div>
+            <div class="legend-item">
+                <span class="species-icon icon-square" style="background: #ff9800;"></span>
+                <span>Raptors</span>
+            </div>
+            <div class="legend-item">
+                <span class="species-icon icon-triangle" style="border-bottom-color: #4caf50;"></span>
+                <span>Waterfowl</span>
+            </div>
+            <div class="legend-item">
+                <span class="species-icon" style="width: 0; height: 0; border: 6px solid #e91e63; transform: rotate(45deg);"></span>
+                <span>Woodpeckers</span>
+            </div>
+        </div>
+
+        <div class="glyph-map">
+            <div class="species-glyph">
+                <div class="glyph-visual">
+                    <svg width="60" height="60">
+                        <circle cx="30" cy="30" r="25" fill="#2196F3" opacity="0.8"/>
+                        <text x="30" y="35" text-anchor="middle" font-size="12" fill="white">AR</text>
+                    </svg>
+                </div>
+                <div class="glyph-name">American Robin</div>
+                <div class="glyph-value">487</div>
+            </div>
+            <div class="species-glyph">
+                <div class="glyph-visual">
+                    <svg width="60" height="60">
+                        <circle cx="30" cy="30" r="22" fill="#2196F3" opacity="0.7"/>
+                        <text x="30" y="35" text-anchor="middle" font-size="12" fill="white">BJ</text>
+                    </svg>
+                </div>
+                <div class="glyph-name">Blue Jay</div>
+                <div class="glyph-value">342</div>
+            </div>
+            <div class="species-glyph">
+                <div class="glyph-visual">
+                    <svg width="60" height="60">
+                        <circle cx="30" cy="30" r="20" fill="#e91e63" opacity="0.8"/>
+                        <text x="30" y="35" text-anchor="middle" font-size="12" fill="white">NC</text>
+                    </svg>
+                </div>
+                <div class="glyph-name">Northern Cardinal</div>
+                <div class="glyph-value">298</div>
+            </div>
+            <div class="species-glyph">
+                <div class="glyph-visual">
+                    <svg width="60" height="60">
+                        <rect x="15" y="15" width="30" height="30" fill="#ff9800" opacity="0.8"/>
+                        <text x="30" y="35" text-anchor="middle" font-size="12" fill="white">RTH</text>
+                    </svg>
+                </div>
+                <div class="glyph-name">Red-tailed Hawk</div>
+                <div class="glyph-value">43</div>
+            </div>
+            <div class="species-glyph">
+                <div class="glyph-visual">
+                    <svg width="60" height="60">
+                        <polygon points="30,10 50,50 10,50" fill="#4caf50" opacity="0.8"/>
+                        <text x="30" y="40" text-anchor="middle" font-size="10" fill="white">MD</text>
+                    </svg>
+                </div>
+                <div class="glyph-name">Mallard Duck</div>
+                <div class="glyph-value">67</div>
+            </div>
+            <div class="species-glyph">
+                <div class="glyph-visual">
+                    <svg width="60" height="60">
+                        <rect x="18" y="18" width="24" height="24" fill="#e91e63" opacity="0.8" transform="rotate(45 30 30)"/>
+                        <text x="30" y="35" text-anchor="middle" font-size="10" fill="white">DW</text>
+                    </svg>
+                </div>
+                <div class="glyph-name">Downy Woodpecker</div>
+                <div class="glyph-value">84</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Color-coded frequency scale -->
+    <div class="chart-section">
+        <h2 class="chart-title">Detection Intensity Scale</h2>
+        <p class="chart-subtitle">Color encoding for temporal detection patterns</p>
+
+        <div class="color-scale">
+            <span>Low activity</span>
+            <div class="scale-gradient"></div>
+            <span>High activity</span>
+        </div>
+        <div class="scale-labels" style="margin-left: 100px; margin-right: 100px;">
+            <span>0</span>
+            <span>10</span>
+            <span>25</span>
+            <span>50</span>
+            <span>100</span>
+            <span>200+</span>
+        </div>
+    </div>
+
+    <!-- Species by hour matrix with color -->
+    <div class="chart-section">
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-bottom: 0.75rem;">
+            <h2 class="chart-title">Species Detection Matrix</h2>
+            <h3 style="font-size: 1rem; font-weight: normal; color: #2c2c2c; margin: 0;">Daily Totals & Peak Hours</h3>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; align-items: start;">
+            <div>
+                <p class="chart-subtitle" style="margin-bottom: 0.75rem;">Hourly distribution · Color intensity = detection frequency · Numbers show counts >10</p>
+                <div class="matrix-view">
+                    <div class="matrix-grid" id="speciesMatrix"></div>
+                </div>
+            </div>
+
+            <div id="species-summary" style="font-size: 0.75rem;">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Multi-day plot -->
+    <div class="chart-section">
+        <h2 class="chart-title">Multi-Day Pattern</h2>
+        <p class="chart-subtitle">7-day hourly detection frequency · Each row represents one day</p>
+
+        <div class="controls">
+            <span class="control-item">
+                <span class="control-label">Aggregation:</span>
+                <select class="control-input" onchange="updateAggregation(this.value)">
+                    <option value="count">Count</option>
+                    <option value="species">Species</option>
+                    <option value="confidence">Avg Conf.</option>
+                </select>
+            </span>
+            <span class="control-item">
+                <span class="control-label">Scale:</span>
+                <select class="control-input" onchange="updateScale(this.value)">
+                    <option value="linear">Linear</option>
+                    <option value="log">Log</option>
+                </select>
+            </span>
+        </div>
+
+        <div id="multi-day-plot" class="chart-container" style="height: 400px;"></div>
+
+        <p class="annotation">
+            Horizontal axis: hours (0-23) · Vertical axis: dates · Color intensity: detection frequency
+        </p>
+    </div>
+
+    <!-- Daily detection pattern -->
+    <div class="chart-section">
+        <h2 class="chart-title">Daily Detection Pattern</h2>
+        <p class="chart-subtitle">15-minute intervals · Today vs 7-day average</p>
+
+        <div id="daily-plot" class="chart-container" style="height: 300px;"></div>
+
+        <p class="annotation">
+            Gray area: 7-day average ± standard deviation · Black line: today's detections
+        </p>
+    </div>
+
+    <!-- Species frequency table with activity indicators -->
+    <div class="chart-section">
+        <h2 class="chart-title">Species Frequency Table</h2>
+        <p class="chart-subtitle">Top 20 species by detection count · Colored dots indicate peak activity time</p>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Activity</th>
+                    <th>Species</th>
+                    <th>Scientific Name</th>
+                    <th class="table-number">Count</th>
+                    <th class="table-number">%</th>
+                    <th class="table-number">Avg Conf</th>
+                    <th>Peak Time</th>
+                    <th>Trend (24h)</th>
+                </tr>
+            </thead>
+            <tbody id="speciesTable"></tbody>
+        </table>
+
+        <div class="legend" style="margin-top: 0.5rem;">
+            <div class="legend-item">
+                <span class="activity-dot" style="background: #ffd700;"></span>
+                <span style="font-size: 0.75rem;">Dawn (5-8am)</span>
+            </div>
+            <div class="legend-item">
+                <span class="activity-dot" style="background: #87ceeb;"></span>
+                <span style="font-size: 0.75rem;">Morning (8-11am)</span>
+            </div>
+            <div class="legend-item">
+                <span class="activity-dot" style="background: #ffa500;"></span>
+                <span style="font-size: 0.75rem;">Midday (11am-3pm)</span>
+            </div>
+            <div class="legend-item">
+                <span class="activity-dot" style="background: #ff69b4;"></span>
+                <span style="font-size: 0.75rem;">Evening (3-7pm)</span>
+            </div>
+            <div class="legend-item">
+                <span class="activity-dot" style="background: #4169e1;"></span>
+                <span style="font-size: 0.75rem;">Dusk (7-9pm)</span>
+            </div>
+            <div class="legend-item">
+                <span class="activity-dot" style="background: #191970;"></span>
+                <span style="font-size: 0.75rem;">Night (9pm-5am)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Small multiples for top species -->
+    <div class="chart-section">
+        <h2 class="chart-title">Individual Species Patterns</h2>
+        <p class="chart-subtitle">24-hour detection patterns for top 12 species</p>
+
+        <div class="small-multiples" id="smallMultiples"></div>
+    </div>
+
+    <p class="annotation" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #111;">
+        Data updated: <span id="updateTime">--</span> ·
+        Processing time: <span id="processTime">--</span> ms ·
+        Total records: <span id="totalRecords">--</span> ·
+        Date range: <span id="dateRange">--</span>
+    </p>
+
+    <script>
+        // Initialize with sample data or real data from server
+        var plot_data = typeof plot_data !== 'undefined' ? plot_data : {};
+
+        // Calculate diversity indices
+        function calculateDiversityIndices(speciesCounts) {
+            const total = speciesCounts.reduce((sum, count) => sum + count, 0);
+            if (total === 0) return { shannon: 0, simpson: 0 };
+
+            let shannon = 0;
+            let simpson = 0;
+
+            speciesCounts.forEach(count => {
+                if (count > 0) {
+                    const pi = count / total;
+                    shannon -= pi * Math.log(pi);
+                    simpson += pi * pi;
+                }
+            });
+
+            simpson = 1 - simpson;
+
+            return {
+                shannon: shannon.toFixed(2),
+                simpson: simpson.toFixed(2),
+                richness: speciesCounts.filter(c => c > 0).length
+            };
+        }
+
+        // Draw diversity timeline
+        function drawDiversityTimeline() {
+            const container = document.getElementById('diversity-plot');
+            if (!container) return;
+
+            container.innerHTML = '';
+            const canvas = document.createElement('canvas');
+            canvas.width = container.offsetWidth - 2;
+            canvas.height = 250;
+            container.appendChild(canvas);
+
+            const ctx = canvas.getContext('2d');
+
+            // Generate sample data for 30 days
+            const days = 30;
+            const data = [];
+
+            for (let i = 0; i < days; i++) {
+                const baseSpecies = 25 + Math.random() * 25;
+                const counts = [];
+                for (let j = 0; j < baseSpecies; j++) {
+                    counts.push(Math.floor(Math.random() * 100 * Math.exp(-j/10)));
+                }
+
+                const indices = calculateDiversityIndices(counts);
+                data.push({
+                    day: i,
+                    shannon: parseFloat(indices.shannon),
+                    simpson: parseFloat(indices.simpson),
+                    richness: indices.richness
+                });
+            }
+
+            // Chart dimensions
+            const padding = { left: 50, right: 30, top: 20, bottom: 40 };
+            const width = canvas.width - padding.left - padding.right;
+            const height = canvas.height - padding.top - padding.bottom;
+
+            // Clear canvas
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw axes
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(padding.left, padding.top);
+            ctx.lineTo(padding.left, padding.top + height);
+            ctx.lineTo(padding.left + width, padding.top + height);
+            ctx.stroke();
+
+            // Draw grid lines
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 0.5;
+
+            for (let i = 1; i < 4; i++) {
+                const y = padding.top + (i / 4) * height;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(padding.left + width, y);
+                ctx.stroke();
+            }
+
+            // Y-axis labels
+            ctx.font = '10px Georgia';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'right';
+
+            for (let i = 0; i <= 4; i++) {
+                const y = padding.top + height - (i / 4) * height;
+                ctx.fillText((i).toFixed(1), padding.left - 5, y + 3);
+            }
+
+            // Draw Shannon line
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            data.forEach((d, i) => {
+                const x = padding.left + (i / (days - 1)) * width;
+                const y = padding.top + height - (d.shannon / 4) * height;
+
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Draw Simpson line
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+
+            data.forEach((d, i) => {
+                const x = padding.left + (i / (days - 1)) * width;
+                const y = padding.top + height - d.simpson * height;
+
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Draw richness circles
+            data.forEach((d, i) => {
+                const x = padding.left + (i / (days - 1)) * width;
+                const shannonY = padding.top + height - (d.shannon / 4) * height;
+
+                const radius = 2 + (d.richness / 50) * 6;
+                const intensity = Math.floor(255 * (1 - d.shannon / 4));
+                ctx.fillStyle = `rgb(${intensity},${intensity},${intensity})`;
+
+                ctx.beginPath();
+                ctx.arc(x, shannonY, radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+
+            // X-axis labels
+            ctx.fillStyle = '#666';
+            ctx.font = '10px Georgia';
+            ctx.textAlign = 'center';
+
+            for (let i = 0; i <= days; i += 5) {
+                const x = padding.left + (i / (days - 1)) * width;
+                const date = new Date();
+                date.setDate(date.getDate() - (days - i));
+                ctx.fillText(date.getDate(), x, padding.top + height + 15);
+            }
+
+            // Legend
+            ctx.font = '11px Georgia';
+            ctx.fillStyle = '#111';
+            ctx.fillText('— Shannon H′', padding.left + width - 100, padding.top + 20);
+
+            ctx.fillStyle = '#666';
+            ctx.fillText('— Simpson D', padding.left + width - 100, padding.top + 35);
+
+            ctx.fillStyle = '#999';
+            ctx.font = '9px Georgia';
+            ctx.fillText('○ = species richness', padding.left + width - 100, padding.top + 50);
+        }
+
+        // Generate species matrix with color
+        function generateSpeciesMatrix() {
+            const matrix = document.getElementById('speciesMatrix');
+            const species = [
+                {name: 'American Robin', family: 'songbird'},
+                {name: 'Blue Jay', family: 'songbird'},
+                {name: 'Northern Cardinal', family: 'songbird'},
+                {name: 'Red-tailed Hawk', family: 'raptor'},
+                {name: 'Great Blue Heron', family: 'waterfowl'},
+                {name: 'Downy Woodpecker', family: 'woodpecker'},
+                {name: 'Barred Owl', family: 'owl'}
+            ];
+
+            const speciesData = [];
+
+            function getColorForValue(value) {
+                if (value === 0) return '#ffffff';
+                if (value < 5) return '#fffef7';
+                if (value < 10) return '#fff9e6';
+                if (value < 20) return '#fef0d9';
+                if (value < 40) return '#fdcc8a';
+                if (value < 80) return '#fc8d59';
+                return '#d7301f';
+            }
+
+            // Create header row - empty first cell for species column
+            matrix.innerHTML = '<div class="matrix-header"></div>';
+            for (let h = 0; h < 24; h++) {
+                matrix.innerHTML += `<div class="matrix-header">${h}</div>`;
+            }
+
+            // Data rows with seamless color cells
+            species.forEach(sp => {
+                const hourlyData = [];
+                let total = 0;
+                let peakHour = 0;
+                let peakValue = 0;
+
+                matrix.innerHTML += `<div class="matrix-label">${sp.name}</div>`;
+                for (let h = 0; h < 24; h++) {
+                    const morningPeak = Math.exp(-Math.pow(h - 7, 2) / 18);
+                    const eveningPeak = Math.exp(-Math.pow(h - 18, 2) / 24);
+                    let value = 0;
+
+                    if (sp.family === 'owl') {
+                        value = Math.floor((1 - morningPeak) * Math.random() * 30);
+                    } else if (sp.family === 'raptor') {
+                        const middayPeak = Math.exp(-Math.pow(h - 12, 2) / 20);
+                        value = Math.floor(middayPeak * Math.random() * 25);
+                    } else {
+                        value = Math.floor((morningPeak + eveningPeak * 0.7) * Math.random() * 40);
+                    }
+
+                    hourlyData.push(value);
+                    total += value;
+                    if (value > peakValue) {
+                        peakValue = value;
+                        peakHour = h;
+                    }
+
+                    const color = getColorForValue(value);
+                    const textColor = value > 40 ? '#fff' : '#333';
+                    matrix.innerHTML += `<div class="matrix-cell" style="background: ${color}; color: ${textColor};" title="${sp.name} at ${h}:00 - ${value} detections">${value > 10 ? value : ''}</div>`;
+                }
+
+                speciesData.push({
+                    name: sp.name,
+                    total: total,
+                    peakHour: peakHour,
+                    peakValue: peakValue,
+                    hourlyData: hourlyData
+                });
+            });
+
+            // Generate summary panel
+            generateSpeciesSummary(speciesData);
+        }
+
+        // Generate species summary panel
+        function generateSpeciesSummary(speciesData) {
+            const summary = document.getElementById('species-summary');
+            if (!summary) return;
+
+            // Sort by total detections
+            speciesData.sort((a, b) => b.total - a.total);
+
+            summary.innerHTML = speciesData.map(sp => {
+                const maxVal = Math.max(...sp.hourlyData);
+                const sparkBars = sp.hourlyData.map(val => {
+                    const height = maxVal > 0 ? (val / maxVal) * 100 : 0;
+                    return `<div style="display: inline-block; width: 3px; height: ${height}%; background: #999; vertical-align: bottom; margin-right: 1px;"></div>`;
+                }).join('');
+
+                const peakPosition = (sp.peakHour / 23) * 100;
+
+                return `
+                    <div class="species-summary-row">
+                        <div style="font-size: 0.7rem;">${sp.name}</div>
+                        <div style="text-align: right; font-size: 0.7rem; color: #666;">${sp.total}</div>
+                        <div class="peak-indicator">
+                            <div class="peak-marker" style="left: ${peakPosition}%;" title="Peak at ${sp.peakHour}:00"></div>
+                        </div>
+                        <div class="summary-sparkline" style="height: 15px; display: flex; align-items: flex-end;">
+                            ${sparkBars}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Add legend at bottom
+            summary.innerHTML += `
+                <div style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px dotted #ccc;">
+                    <div style="font-size: 0.65rem; color: #666; margin-bottom: 0.25rem;">Peak hour indicator:</div>
+                    <div class="peak-indicator" style="width: 60px; margin-bottom: 0.5rem;">
+                        <div class="peak-marker" style="left: 30%;"></div>
+                    </div>
+                    <div style="font-size: 0.6rem; color: #999;">
+                        <div>0h &nbsp; &nbsp; &nbsp; &nbsp; 12h &nbsp; &nbsp; &nbsp; &nbsp; 23h</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Generate species table
+        function generateSpeciesTable() {
+            const tbody = document.getElementById('speciesTable');
+            const species = [
+                {name: 'American Robin', scientific: 'Turdus migratorius', count: 487, pct: 17.1, conf: 84.2, peak: '07:00', trend: '+12%', activityColor: '#ffd700'},
+                {name: 'Blue Jay', scientific: 'Cyanocitta cristata', count: 342, pct: 12.0, conf: 81.5, peak: '09:00', trend: '+8%', activityColor: '#87ceeb'},
+                {name: 'Northern Cardinal', scientific: 'Cardinalis cardinalis', count: 298, pct: 10.5, conf: 86.7, peak: '06:30', trend: '-3%', activityColor: '#ffd700'},
+                {name: 'House Sparrow', scientific: 'Passer domesticus', count: 276, pct: 9.7, conf: 79.3, peak: '08:00', trend: '+22%', activityColor: '#87ceeb'},
+                {name: 'Mourning Dove', scientific: 'Zenaida macroura', count: 234, pct: 8.2, conf: 82.1, peak: '17:30', trend: '0%', activityColor: '#ff69b4'},
+            ];
+
+            tbody.innerHTML = species.map(sp => {
+                const trendColor = sp.trend.startsWith('+') ? '#4caf50' : sp.trend.startsWith('-') ? '#d32f2f' : '#666';
+                const trendSymbol = sp.trend.startsWith('+') ? '↑' : sp.trend.startsWith('-') ? '↓' : '→';
+
+                return `
+                    <tr>
+                        <td><span class="activity-dot" style="background: ${sp.activityColor};"></span></td>
+                        <td>${sp.name}</td>
+                        <td style="font-style: italic; color: #666;">${sp.scientific}</td>
+                        <td class="table-number">${sp.count}</td>
+                        <td class="table-number">${sp.pct}%</td>
+                        <td class="table-number">${sp.conf}%</td>
+                        <td>${sp.peak}</td>
+                        <td style="color: ${trendColor};">${trendSymbol}${sp.trend}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Generate small multiples
+        function generateSmallMultiples() {
+            const container = document.getElementById('smallMultiples');
+            const species = ['American Robin', 'Blue Jay', 'Northern Cardinal', 'House Sparrow',
+                           'Mourning Dove', 'Black-capped Chickadee', 'American Crow', 'Song Sparrow',
+                           'Red-winged Blackbird', 'European Starling', 'White-breasted Nuthatch', 'Downy Woodpecker'];
+
+            container.innerHTML = species.map(sp => `
+                <div class="small-chart">
+                    <div class="small-chart-title">${sp}</div>
+                    <canvas id="chart-${sp.replace(/\s/g, '-')}" width="160" height="60"></canvas>
+                    <div class="small-chart-value">Peak: 07:00</div>
+                </div>
+            `).join('');
+
+            // Draw mini charts
+            species.forEach(sp => {
+                const canvas = document.getElementById(`chart-${sp.replace(/\s/g, '-')}`);
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.strokeStyle = '#666';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    for (let i = 0; i < 24; i++) {
+                        const morningPeak = Math.exp(-Math.pow(i - 7, 2) / 18);
+                        const eveningPeak = Math.exp(-Math.pow(i - 18, 2) / 24);
+                        const y = 60 - (morningPeak + eveningPeak * 0.7) * 50 * (0.5 + Math.random() * 0.5);
+                        if (i === 0) ctx.moveTo(i * 6.67, y);
+                        else ctx.lineTo(i * 6.67, y);
+                    }
+                    ctx.stroke();
+                }
+            });
+        }
+
+        // Create multi-day heatmap
+        function createCanvasMultiDayPlot() {
+            const container = document.getElementById('multi-day-plot');
+            container.innerHTML = '';
+
+            const canvas = document.createElement('canvas');
+            canvas.width = container.offsetWidth - 2;
+            canvas.height = 400;
+            container.appendChild(canvas);
+
+            const ctx = canvas.getContext('2d');
+
+            const days = ['Jan 9', 'Jan 10', 'Jan 11', 'Jan 12', 'Jan 13', 'Jan 14', 'Jan 15'];
+            const hours = Array.from({length: 24}, (_, i) => i);
+
+            const cellWidth = (canvas.width - 60) / 24;
+            const cellHeight = (canvas.height - 40) / 7;
+
+            ctx.font = '11px Georgia';
+            ctx.fillStyle = '#666';
+
+            days.forEach((day, i) => {
+                ctx.fillText(day, 5, 30 + i * cellHeight + cellHeight/2);
+            });
+
+            hours.forEach((hour, i) => {
+                if (hour % 3 === 0) {
+                    ctx.fillText(hour.toString(), 60 + i * cellWidth, canvas.height - 5);
+                }
+            });
+
+            days.forEach((_, dayIndex) => {
+                hours.forEach((hour, hourIndex) => {
+                    const morningPeak = Math.exp(-Math.pow(hour - 7, 2) / 18);
+                    const eveningPeak = Math.exp(-Math.pow(hour - 18, 2) / 24);
+                    const value = (morningPeak + eveningPeak * 0.7) * Math.random();
+
+                    const gray = Math.floor(255 * (1 - value));
+                    ctx.fillStyle = `rgb(${gray},${gray},${gray})`;
+
+                    const x = 60 + hourIndex * cellWidth;
+                    const y = 20 + dayIndex * cellHeight;
+                    ctx.fillRect(x, y, cellWidth - 1, cellHeight - 1);
+
+                    if (value > 0.5) {
+                        const count = Math.floor(value * 100);
+                        ctx.fillStyle = value > 0.7 ? '#fff' : '#000';
+                        ctx.font = '9px Georgia';
+                        ctx.fillText(count.toString(), x + cellWidth/2 - 8, y + cellHeight/2 + 3);
+                    }
+                });
+            });
+
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(60, 20);
+            ctx.lineTo(60, canvas.height - 20);
+            ctx.lineTo(canvas.width - 10, canvas.height - 20);
+            ctx.stroke();
+        }
+
+        // Create daily pattern chart
+        function createCanvasDailyPlot() {
+            const container = document.getElementById('daily-plot');
+            container.innerHTML = '';
+
+            const canvas = document.createElement('canvas');
+            canvas.width = container.offsetWidth - 2;
+            canvas.height = 300;
+            container.appendChild(canvas);
+
+            const ctx = canvas.getContext('2d');
+
+            const intervals = 96;
+            const width = canvas.width - 70;
+            const height = canvas.height - 40;
+            const startX = 60;
+            const startY = 20;
+
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(startX, startY + height);
+            ctx.lineTo(startX + width, startY + height);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= 24; i += 3) {
+                const x = startX + (i / 24) * width;
+                ctx.beginPath();
+                ctx.moveTo(x, startY);
+                ctx.lineTo(x, startY + height);
+                ctx.stroke();
+            }
+
+            ctx.font = '10px Georgia';
+            ctx.fillStyle = '#666';
+            const maxValue = 50;
+            for (let i = 0; i <= 5; i++) {
+                const y = startY + height - (i / 5) * height;
+                const value = Math.round((i / 5) * maxValue);
+                ctx.fillText(value.toString(), startX - 25, y + 3);
+
+                if (i > 0) {
+                    ctx.strokeStyle = '#e0e0e0';
+                    ctx.beginPath();
+                    ctx.moveTo(startX, y);
+                    ctx.lineTo(startX + width, y);
+                    ctx.stroke();
+                }
+            }
+
+            for (let i = 0; i <= 24; i += 3) {
+                const x = startX + (i / 24) * width;
+                ctx.fillText(i + ':00', x - 15, startY + height + 15);
+            }
+
+            // Draw 7-day average band
+            ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';
+            ctx.beginPath();
+            ctx.moveTo(startX, startY + height);
+
+            for (let i = 0; i < intervals; i++) {
+                const x = startX + (i / intervals) * width;
+                const hour = (i / intervals) * 24;
+                const morningPeak = Math.exp(-Math.pow(hour - 7, 2) / 18);
+                const eveningPeak = Math.exp(-Math.pow(hour - 18, 2) / 24);
+                const avgValue = (morningPeak + eveningPeak * 0.7) * 35;
+                const y = startY + height - (avgValue / maxValue) * height;
+                ctx.lineTo(x, y - 5);
+            }
+
+            for (let i = intervals - 1; i >= 0; i--) {
+                const x = startX + (i / intervals) * width;
+                const hour = (i / intervals) * 24;
+                const morningPeak = Math.exp(-Math.pow(hour - 7, 2) / 18);
+                const eveningPeak = Math.exp(-Math.pow(hour - 18, 2) / 24);
+                const avgValue = (morningPeak + eveningPeak * 0.7) * 35;
+                const y = startY + height - (avgValue / maxValue) * height;
+                ctx.lineTo(x, y + 5);
+            }
+
+            ctx.closePath();
+            ctx.fill();
+
+            // Draw 7-day average line
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+
+            for (let i = 0; i < intervals; i++) {
+                const x = startX + (i / intervals) * width;
+                const hour = (i / intervals) * 24;
+                const morningPeak = Math.exp(-Math.pow(hour - 7, 2) / 18);
+                const eveningPeak = Math.exp(-Math.pow(hour - 18, 2) / 24);
+                const avgValue = (morningPeak + eveningPeak * 0.7) * 35;
+                const y = startY + height - (avgValue / maxValue) * height;
+
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Draw today's data
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            for (let i = 0; i < intervals; i++) {
+                const x = startX + (i / intervals) * width;
+                const hour = (i / intervals) * 24;
+                const morningPeak = Math.exp(-Math.pow(hour - 7, 2) / 18);
+                const eveningPeak = Math.exp(-Math.pow(hour - 18, 2) / 24);
+                const todayValue = (morningPeak + eveningPeak * 0.7) * 40 + Math.random() * 5;
+                const y = startY + height - (todayValue / maxValue) * height;
+
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+
+        // Period selector
+        function setPeriod(period) {
+            document.querySelectorAll('.period-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            updateData(period);
+        }
+
+        // Update functions
+        function updateAggregation(value) {
+            console.log('Aggregation:', value);
+        }
+
+        function updateScale(value) {
+            console.log('Scale:', value);
+        }
+
+        function updateData(period) {
+            console.log('Period:', period);
+        }
+
+        // Update timestamps
+        function updateTimestamps() {
+            document.getElementById('updateTime').textContent = new Date().toLocaleString();
+            document.getElementById('processTime').textContent = Math.floor(Math.random() * 100 + 50);
+            document.getElementById('totalRecords').textContent = '34,567';
+            document.getElementById('dateRange').textContent = '2025-01-01 to 2025-01-15';
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                generateSpeciesMatrix();
+                generateSpeciesTable();
+                generateSmallMultiples();
+                updateTimestamps();
+
+                // Initialize all charts
+                drawDiversityTimeline();
+                createCanvasMultiDayPlot();
+                createCanvasDailyPlot();
+
+                // Update timestamps every minute
+                setInterval(updateTimestamps, 60000);
+            } catch (error) {
+                console.error('Initialization error:', error);
+            }
+        });
+    </script>
+</body>
+</html>
