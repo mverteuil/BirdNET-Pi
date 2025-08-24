@@ -65,9 +65,15 @@ class TestLandingPageData:
     """Test landing page data preparation."""
 
     @pytest.mark.asyncio
+    @patch("birdnetpi.analytics.presentation.AudioDeviceService")
     @patch("birdnetpi.analytics.presentation.SystemInspector")
     async def test_get_landing_page_data(
-        self, mock_inspector, presentation_manager, mock_analytics_manager, sample_detections
+        self,
+        mock_inspector,
+        mock_audio_service,
+        presentation_manager,
+        mock_analytics_manager,
+        sample_detections,
     ):
         """Test complete landing page data assembly."""
         # Configure SystemInspector mocks
@@ -86,6 +92,12 @@ class TestLandingPageData:
         mock_inspector.get_system_info.return_value = {
             "boot_time": 1704067200.0,  # 2024-01-01 00:00:00
         }
+
+        # Configure AudioDeviceService mock
+        mock_audio_device = MagicMock()
+        mock_audio_device.name = "Test USB Audio"
+        mock_audio_service_instance = mock_audio_service.return_value
+        mock_audio_service_instance.discover_input_devices.return_value = [mock_audio_device]
 
         # Configure analytics manager mocks (as async)
         mock_analytics_manager.get_dashboard_summary = AsyncMock(
@@ -243,7 +255,7 @@ class TestLandingPageData:
         assert data.system_status.cpu.percent == 45.5
         assert data.system_status.cpu.temp == 55.2
         assert data.system_status.memory.percent == 65.0
-        assert data.system_status.uptime == "1d"
+        assert data.system_status.uptime == "1"  # Numeric value only
 
 
 class TestFormatting:
@@ -279,7 +291,6 @@ class TestFormatting:
         assert formatted[0].time == "10:30"
         assert formatted[0].species == "American Robin"
         assert formatted[0].confidence == "95%"
-        assert formatted[0].count == 1
 
         # Check detection with no common name
         assert formatted[2].species == "Unknown species"  # Falls back to scientific name
@@ -361,9 +372,12 @@ class TestFormatting:
 class TestSystemStatus:
     """Test system status monitoring."""
 
+    @patch("birdnetpi.analytics.presentation.AudioDeviceService")
     @patch("birdnetpi.analytics.presentation.SystemInspector")
     @patch("time.time")
-    def test_get_system_status(self, mock_time, mock_inspector, presentation_manager):
+    def test_get_system_status(
+        self, mock_time, mock_inspector, mock_audio_service, presentation_manager
+    ):
         """Test system status retrieval and formatting."""
         # Configure time mock
         mock_time.return_value = 1704240000.0  # 2024-01-03 00:00:00
@@ -385,6 +399,12 @@ class TestSystemStatus:
             "boot_time": 1703980800.0,  # 2023-12-31 00:00:00 (3 days ago)
         }
 
+        # Configure AudioDeviceService mock
+        mock_audio_device = MagicMock()
+        mock_audio_device.name = "Test Audio Device"
+        mock_audio_service_instance = mock_audio_service.return_value
+        mock_audio_service_instance.discover_input_devices.return_value = [mock_audio_device]
+
         status = presentation_manager._get_system_status()
 
         # Verify CPU metrics
@@ -401,17 +421,18 @@ class TestSystemStatus:
         assert status.disk.used_gb == pytest.approx(50.0, rel=0.01)
         assert status.disk.total_gb == pytest.approx(100.0, rel=0.01)
 
-        # Verify audio (placeholder values)
-        assert status.audio.level_db == -42
-        assert status.audio.device == "USB Audio Device"
+        # Verify audio device is retrieved from AudioDeviceService
+        assert status.audio.level_db == -60  # Silence/no signal
+        assert status.audio.device == "Test Audio Device"
 
-        # Verify uptime calculation
-        assert status.uptime == "3d"
+        # Verify uptime calculation (numeric value only)
+        assert status.uptime == "3"
 
+    @patch("birdnetpi.analytics.presentation.AudioDeviceService")
     @patch("birdnetpi.analytics.presentation.SystemInspector")
     @patch("time.time")
     def test_get_system_status_no_temperature(
-        self, mock_time, mock_inspector, presentation_manager
+        self, mock_time, mock_inspector, mock_audio_service, presentation_manager
     ):
         """Test system status when temperature is not available."""
         mock_time.return_value = 1704240000.0
@@ -431,10 +452,17 @@ class TestSystemStatus:
         }
         mock_inspector.get_system_info.return_value = {"boot_time": 1704153600.0}
 
+        # Configure AudioDeviceService mock with no devices
+        mock_audio_service_instance = mock_audio_service.return_value
+        mock_audio_service_instance.discover_input_devices.return_value = []
+
         status = presentation_manager._get_system_status()
 
         # Should handle None temperature gracefully
         assert status.cpu.temp == 0
+
+        # Should handle no audio devices gracefully
+        assert status.audio.device == "No audio device"
 
 
 class TestAPIFormatting:

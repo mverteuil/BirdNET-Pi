@@ -2,6 +2,8 @@ import asyncio
 import os
 import time
 
+import click
+
 from birdnetpi.config import ConfigManager
 from birdnetpi.database.database_service import DatabaseService
 from birdnetpi.detections.data_manager import DataManager
@@ -12,7 +14,7 @@ from birdnetpi.system.system_control_service import SystemControlService
 from birdnetpi.utils.dummy_data_generator import generate_dummy_detections
 
 
-async def run() -> None:
+async def run_async(count: int, days: int) -> None:
     """Generate dummy data for the application."""
     path_resolver = PathResolver()
     db_path = path_resolver.get_database_path()
@@ -27,7 +29,7 @@ async def run() -> None:
     config_manager = ConfigManager(path_resolver)
     config = config_manager.load()
 
-    # Check if database already has data
+    # Check if database exists
     if db_path.exists() and db_path.stat().st_size > 0:
         print(f"Database file exists and is {db_path.stat().st_size} bytes.")
         try:
@@ -39,8 +41,8 @@ async def run() -> None:
             )
             detections = await data_manager.get_all_detections()
             if detections:
-                print("Database already contains data. Skipping dummy data generation.")
-                return
+                print(f"Database already contains {len(detections)} detections.")
+                print("Adding more dummy data...")
         except Exception as e:
             print(f"Warning: Could not check existing data due to database lock: {e}")
             print("Database appears to be in use. Attempting to stop services automatically...")
@@ -64,15 +66,15 @@ async def run() -> None:
 
     try:
         # Generate dummy data with exclusive database access
-        print("Database is empty or does not exist. Generating dummy data...")
+        print("Generating dummy data...")
         bnp_database_service = DatabaseService(db_path)
         multilingual_service = MultilingualDatabaseService(path_resolver)
         species_display_service = SpeciesDisplayService(config)
         data_manager = DataManager(
             bnp_database_service, multilingual_service, species_display_service
         )
-        await generate_dummy_detections(data_manager)
-        print("Dummy data generation complete.")
+        await generate_dummy_detections(data_manager, num_detections=count, max_days_ago=days)
+        print(f"Dummy data generation complete. Generated {count} detections.")
 
     finally:
         # Restart FastAPI if it was running before
@@ -97,9 +99,38 @@ def _get_fastapi_service_name() -> str:
         return "birdnetpi-fastapi"  # Common systemd service name pattern
 
 
-def main() -> None:
-    """Entry point for the console script."""
-    asyncio.run(run())
+@click.command()
+@click.option(
+    "--count", "-n", default=100, type=int, help="Number of detections to generate (default: 100)"
+)
+@click.option(
+    "--days",
+    "-d",
+    default=1,
+    type=int,
+    help="Maximum days in the past for detections (0=today only, default: 1)",
+)
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
+def main(count: int, days: int, verbose: bool) -> None:
+    """Generate dummy detection data for testing BirdNET-Pi.
+
+    This command creates realistic bird detection data for testing and development.
+    By default, it generates 100 detections within the last 24 hours.
+
+    Examples:
+        # Generate 100 detections from today only
+        generate-dummy-data --days 0
+
+        # Generate 500 detections from the last week
+        generate-dummy-data --count 500 --days 7
+
+        # Generate 50 detections from the last 24 hours (default)
+        generate-dummy-data --count 50
+    """
+    if verbose:
+        print(f"Generating {count} detections from the last {days} day(s)...")
+
+    asyncio.run(run_async(count, days))
 
 
 if __name__ == "__main__":

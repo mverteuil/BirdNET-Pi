@@ -95,13 +95,19 @@ def create_app() -> FastAPI:
         # Get instances directly from the container to avoid DI issues
         config = container.config()
         templates = container.templates()
+        presentation_manager = container.presentation_manager()
+
+        # Get landing page data
+        landing_data = await presentation_manager.get_landing_page_data_safe()
 
         return templates.TemplateResponse(
             request,
-            "index.html",
+            "index.html.j2",
             {
                 "site_name": config.site_name,
+                "location": f"{config.latitude:.4f}, {config.longitude:.4f}",
                 "websocket_url": f"ws://{request.url.hostname}:8000/ws/notifications",
+                **landing_data.model_dump(),
             },
         )
 

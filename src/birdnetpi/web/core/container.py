@@ -3,6 +3,8 @@
 from dependency_injector import containers, providers
 from fastapi.templating import Jinja2Templates
 
+from birdnetpi.analytics.analytics import AnalyticsManager
+from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.audio.audio_websocket_service import AudioWebSocketService
 from birdnetpi.audio.spectrogram_service import SpectrogramService
 from birdnetpi.database.database_service import DatabaseService
@@ -170,4 +172,17 @@ class Container(containers.DeclarativeContainer):
         config=config,
         mqtt_service=mqtt_service,
         webhook_service=webhook_service,
+    )
+
+    # Analytics and Presentation services
+    analytics_manager = providers.Singleton(
+        AnalyticsManager,
+        data_manager=data_manager,
+        config=config,
+    )
+
+    presentation_manager = providers.Singleton(
+        PresentationManager,
+        analytics_manager=analytics_manager,
+        config=config,
     )

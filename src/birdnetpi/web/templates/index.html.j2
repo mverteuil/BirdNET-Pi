@@ -310,13 +310,13 @@
         padding-bottom: 0.25rem;
         border-bottom: 1px solid #111;
         display: grid;
-        grid-template-columns: 60px 1fr 60px 50px;
+        grid-template-columns: 60px 1fr 60px;
         gap: 1rem;
       }
 
       .log-entry {
         display: grid;
-        grid-template-columns: 60px 1fr 60px 50px;
+        grid-template-columns: 60px 1fr 60px;
         gap: 1rem;
         padding: 0.3rem 0;
         border-bottom: 1px dotted #e0e0e0;
@@ -440,9 +440,9 @@
   </head>
   <body>
     <header>
-      <h1>BirdNET-Pi <span class="live" title="System Active"></span></h1>
+      <h1>{{ site_name | default('BirdNET-Pi') }} <span class="live" title="System Active"></span></h1>
       <p class="tagline">
-        Continuous acoustic monitoring · Raspberry Pi 4 · Welland, Ontario
+        Continuous acoustic monitoring · {{ system_status.device_name | default('Unknown Device') }} · {{ location | default('Location not set') }}
       </p>
     </header>
 
@@ -467,50 +467,50 @@
 
     <!-- Primary metrics - inline presentation -->
     <div class="primary-metrics">
-      <span class="metric">156</span> species detected ·
-      <span class="metric">2,847</span> detections today ·
-      <span class="metric">47</span> active species this week ·
-      <span class="metric">12.3 GB</span> recordings ·
-      <span class="metric">876</span> hours monitored · Confidence threshold
-      <span class="metric">≥0.70</span>
+      <span class="metric">{{ metrics.species_detected }}</span> species detected ·
+      <span class="metric">{{ metrics.detections_today }}</span> detections today ·
+      <span class="metric">{{ metrics.species_week }}</span> active species this week ·
+      <span class="metric">{{ metrics.storage }}</span> recordings ·
+      <span class="metric">{{ metrics.hours }}</span> hours monitored · Confidence threshold
+      <span class="metric">{{ metrics.threshold }}</span>
     </div>
 
     <!-- System status bar -->
     <div class="system-status">
       <div class="status-segment">
-        <span class="status-tooltip">CPU Temperature: 42°C</span>
+        <span class="status-tooltip">CPU Temperature: {{ system_status.cpu.temp }}°C</span>
         <span class="status-label">CPU</span>
-        <span class="status-value">23%</span>
-        <span class="status-indicator" style="width: 23%"></span>
+        <span class="status-value">{{ system_status.cpu.percent | round | int }}%</span>
+        <span class="status-indicator" style="width: {{ system_status.cpu.percent }}%"></span>
       </div>
 
       <div class="status-segment">
-        <span class="status-tooltip">1.2 GB / 4.0 GB used</span>
+        <span class="status-tooltip">{{ system_status.memory.used_gb | round(1) }} GB / {{ system_status.memory.total_gb | round(1) }} GB used</span>
         <span class="status-label">Mem</span>
-        <span class="status-value">30%</span>
-        <span class="status-indicator" style="width: 30%"></span>
+        <span class="status-value">{{ system_status.memory.percent | round | int }}%</span>
+        <span class="status-indicator" style="width: {{ system_status.memory.percent }}%"></span>
       </div>
 
       <div class="status-segment">
-        <span class="status-tooltip">28.4 GB / 32.0 GB used</span>
+        <span class="status-tooltip">{{ system_status.disk.used_gb | round(1) }} GB / {{ system_status.disk.total_gb | round(1) }} GB used</span>
         <span class="status-label">Disk</span>
-        <span class="status-value">89%</span>
-        <span class="status-indicator warning" style="width: 89%"></span>
+        <span class="status-value">{{ system_status.disk.percent | round | int }}%</span>
+        <span class="status-indicator {% if system_status.disk.percent > 80 %}warning{% elif system_status.disk.percent > 90 %}critical{% endif %}" style="width: {{ system_status.disk.percent }}%"></span>
       </div>
 
       <div class="status-segment">
-        <span class="status-tooltip">USB Audio Device · 48 kHz</span>
+        <span class="status-tooltip">{{ system_status.audio.device }} · 48 kHz</span>
         <span class="status-label">Audio</span>
         <span class="status-value"
-          >-42<span class="status-detail">dB</span></span
+          >{{ system_status.audio.level_db }}<span class="status-detail">dB</span></span
         >
-        <span class="status-indicator" style="width: 58%"></span>
+        <span class="status-indicator" style="width: {{ system_status.audio.level_percent }}%"></span>
       </div>
 
       <div class="status-segment">
         <span class="status-tooltip">System uptime</span>
         <span class="status-label">Up</span>
-        <span class="status-value">14<span class="status-detail">d</span></span>
+        <span class="status-value">{{ system_status.uptime }}d</span>
         <span class="status-indicator" style="width: 100%"></span>
       </div>
     </div>
@@ -523,143 +523,44 @@
           <span>Time</span>
           <span>Species</span>
           <span>Conf.</span>
-          <span>Count</span>
         </div>
+        {% for detection in detection_log[:10] %}
         <div class="log-entry">
-          <span class="time">16:47</span>
-          <span>American Robin</span>
-          <span class="confidence">94%</span>
-          <span class="count">3</span>
+          <span class="time">{{ detection.time }}</span>
+          <span>{{ detection.species }}</span>
+          <span class="confidence">{{ detection.confidence }}</span>
         </div>
+        {% endfor %}
+        {% if not detection_log %}
         <div class="log-entry">
-          <span class="time">16:42</span>
-          <span>Blue Jay</span>
-          <span class="confidence">87%</span>
-          <span class="count">1</span>
+          <span class="time">--:--</span>
+          <span>No recent detections</span>
+          <span class="confidence">--</span>
         </div>
-        <div class="log-entry">
-          <span class="time">16:38</span>
-          <span>Northern Cardinal</span>
-          <span class="confidence">91%</span>
-          <span class="count">2</span>
-        </div>
-        <div class="log-entry">
-          <span class="time">16:31</span>
-          <span>House Sparrow</span>
-          <span class="confidence">78%</span>
-          <span class="count">7</span>
-        </div>
-        <div class="log-entry">
-          <span class="time">16:29</span>
-          <span>American Crow</span>
-          <span class="confidence">96%</span>
-          <span class="count">4</span>
-        </div>
-        <div class="log-entry">
-          <span class="time">16:24</span>
-          <span>Mourning Dove</span>
-          <span class="confidence">82%</span>
-          <span class="count">2</span>
-        </div>
-        <div class="log-entry">
-          <span class="time">16:19</span>
-          <span>Black-capped Chickadee</span>
-          <span class="confidence">89%</span>
-          <span class="count">3</span>
-        </div>
-        <div class="log-entry">
-          <span class="time">16:15</span>
-          <span>Red-winged Blackbird</span>
-          <span class="confidence">73%</span>
-          <span class="count">1</span>
-        </div>
-        <div class="log-entry">
-          <span class="time">16:11</span>
-          <span>Song Sparrow</span>
-          <span class="confidence">85%</span>
-          <span class="count">2</span>
-        </div>
-        <div class="log-entry">
-          <span class="time">16:08</span>
-          <span>European Starling</span>
-          <span class="confidence">92%</span>
-          <span class="count">11</span>
-        </div>
+        {% endif %}
       </div>
 
       <!-- Species frequency -->
       <div class="frequency-list">
         <div class="list-header">Today's Species (24h)</div>
+        {% for species in species_frequency[:10] %}
         <div class="frequency-item">
-          <span class="species-name">American Robin</span>
-          <span class="freq-count">342</span>
+          <span class="species-name">{{ species.name }}</span>
+          <span class="freq-count">{{ species.count }}</span>
           <span class="freq-bar"
-            ><span class="bar" style="width: 100%"></span
+            ><span class="bar" style="width: {{ species.bar_width }}"></span
           ></span>
         </div>
+        {% endfor %}
+        {% if not species_frequency %}
         <div class="frequency-item">
-          <span class="species-name">House Sparrow</span>
-          <span class="freq-count">287</span>
+          <span class="species-name">No species detected today</span>
+          <span class="freq-count">0</span>
           <span class="freq-bar"
-            ><span class="bar" style="width: 84%"></span
+            ><span class="bar" style="width: 0%"></span
           ></span>
         </div>
-        <div class="frequency-item">
-          <span class="species-name">European Starling</span>
-          <span class="freq-count">243</span>
-          <span class="freq-bar"
-            ><span class="bar" style="width: 71%"></span
-          ></span>
-        </div>
-        <div class="frequency-item">
-          <span class="species-name">Blue Jay</span>
-          <span class="freq-count">198</span>
-          <span class="freq-bar"
-            ><span class="bar" style="width: 58%"></span
-          ></span>
-        </div>
-        <div class="frequency-item">
-          <span class="species-name">Northern Cardinal</span>
-          <span class="freq-count">176</span>
-          <span class="freq-bar"
-            ><span class="bar" style="width: 51%"></span
-          ></span>
-        </div>
-        <div class="frequency-item">
-          <span class="species-name">American Crow</span>
-          <span class="freq-count">154</span>
-          <span class="freq-bar"
-            ><span class="bar" style="width: 45%"></span
-          ></span>
-        </div>
-        <div class="frequency-item">
-          <span class="species-name">Mourning Dove</span>
-          <span class="freq-count">132</span>
-          <span class="freq-bar"
-            ><span class="bar" style="width: 39%"></span
-          ></span>
-        </div>
-        <div class="frequency-item">
-          <span class="species-name">Black-capped Chickadee</span>
-          <span class="freq-count">98</span>
-          <span class="freq-bar"
-            ><span class="bar" style="width: 29%"></span
-          ></span>
-        </div>
-        <div class="frequency-item">
-          <span class="species-name">Song Sparrow</span>
-          <span class="freq-count">87</span>
-          <span class="freq-bar"
-            ><span class="bar" style="width: 25%"></span
-          ></span>
-        </div>
-        <div class="frequency-item">
-          <span class="species-name">Red-winged Blackbird</span>
-          <span class="freq-count">76</span>
-          <span class="freq-bar"
-            ><span class="bar" style="width: 22%"></span
-          ></span>
-        </div>
+        {% endif %}
       </div>
     </div>
 
@@ -670,100 +571,60 @@
     </p>
 
     <script>
-      // Species data with daily counts for frequency classification
-      const speciesData = {
-        "American Robin": { count: 342, color: "#2e7d32" },
-        "House Sparrow": { count: 287, color: "#2e7d32" },
-        "European Starling": { count: 243, color: "#2e7d32" },
-        "Blue Jay": { count: 198, color: "#f57c00" },
-        "Northern Cardinal": { count: 176, color: "#f57c00" },
-        "American Crow": { count: 154, color: "#f57c00" },
-        "Mourning Dove": { count: 132, color: "#f57c00" },
-        "Black-capped Chickadee": { count: 98, color: "#f57c00" },
-        "Song Sparrow": { count: 87, color: "#f57c00" },
-        "Red-winged Blackbird": { count: 76, color: "#f57c00" },
-        "White-breasted Nuthatch": { count: 54, color: "#f57c00" },
-        "Downy Woodpecker": { count: 43, color: "#c62828" },
-        "Cedar Waxwing": { count: 31, color: "#c62828" },
-        "American Goldfinch": { count: 28, color: "#c62828" },
-        "Red-bellied Woodpecker": { count: 21, color: "#c62828" },
-        "Tufted Titmouse": { count: 18, color: "#c62828" },
-        "Carolina Wren": { count: 14, color: "#c62828" },
-        "Brown-headed Cowbird": { count: 11, color: "#c62828" },
-        "Common Grackle": { count: 9, color: "#c62828" },
-        "Pileated Woodpecker": { count: 3, color: "#c62828" },
+      // Build species data from server-provided frequency data
+      const speciesData = {};
+      {% for species in species_frequency %}
+      speciesData["{{ species.name }}"] = {
+        count: {{ species.count }},
+        color: {{ species.count }} > 200 ? "#2e7d32" : {{ species.count }} > 50 ? "#f57c00" : "#c62828"
       };
+      {% endfor %}
 
-      // Generate detection data for the abstract visualization
+      // Get hourly distribution from server
+      const hourlyDistribution = {{ hourly_distribution | tojson }};
+
+      // Get visualization data from server
+      const visualizationData = {{ visualization_data | tojson }};
+
+      // Use real detection data or generate based on hourly distribution
       function generateDetections() {
         const detections = [];
-        const species = Object.keys(speciesData);
 
-        // Dawn chorus (5:00-8:00) - heavy clustering
-        for (let i = 0; i < 180; i++) {
-          const hour = 5 + Math.random() * 3;
-          detections.push({
-            time: hour,
-            confidence: 70 + Math.random() * 30,
-            species: species[Math.floor(Math.random() * 10)],
-            count: Math.random() > 0.7 ? Math.floor(Math.random() * 5) + 1 : 1,
+        // If we have real visualization data, use it
+        if (visualizationData && visualizationData.length > 0) {
+          visualizationData.forEach(d => {
+            detections.push({
+              time: d.x,  // Already in hours (0-24)
+              confidence: d.y * 100,  // Convert from fraction to percentage
+              species: d.species,
+              color: d.color,
+              count: 1
+            });
           });
-        }
+        } else if (hourlyDistribution && hourlyDistribution.length > 0) {
+          // Generate based on hourly distribution
+          const species = Object.keys(speciesData);
 
-        // Morning activity (8:00-11:00)
-        for (let i = 0; i < 120; i++) {
-          const hour = 8 + Math.random() * 3;
-          detections.push({
-            time: hour,
-            confidence: 70 + Math.random() * 30,
-            species: species[Math.floor(Math.random() * species.length)],
-            count: Math.random() > 0.8 ? Math.floor(Math.random() * 3) + 1 : 1,
+          hourlyDistribution.forEach((count, hour) => {
+            for (let i = 0; i < count; i++) {
+              detections.push({
+                time: hour + Math.random(),
+                confidence: 70 + Math.random() * 30,
+                species: species.length > 0 ? species[Math.floor(Math.random() * species.length)] : "Unknown",
+                count: 1
+              });
+            }
           });
-        }
-
-        // Midday lull (11:00-15:00) - sparse
-        for (let i = 0; i < 30; i++) {
-          const hour = 11 + Math.random() * 4;
-          detections.push({
-            time: hour,
-            confidence: 70 + Math.random() * 30,
-            species: species[Math.floor(Math.random() * species.length)],
-            count: 1,
-          });
-        }
-
-        // Afternoon activity (15:00-18:00) - increasing
-        for (let i = 0; i < 150; i++) {
-          const hour = 15 + Math.random() * 3;
-          detections.push({
-            time: hour,
-            confidence: 70 + Math.random() * 30,
-            species: species[Math.floor(Math.random() * 12)],
-            count: Math.random() > 0.7 ? Math.floor(Math.random() * 4) + 1 : 1,
-          });
-        }
-
-        // Evening chorus (18:00-20:00)
-        for (let i = 0; i < 90; i++) {
-          const hour = 18 + Math.random() * 2;
-          detections.push({
-            time: hour,
-            confidence: 70 + Math.random() * 30,
-            species: species[Math.floor(Math.random() * 8)],
-            count: Math.random() > 0.6 ? Math.floor(Math.random() * 3) + 1 : 1,
-          });
-        }
-
-        // Night (20:00-5:00) - very sparse
-        for (let i = 0; i < 15; i++) {
-          let hour = 20 + Math.random() * 9;
-          if (hour >= 24) hour -= 24;
-          detections.push({
-            time: hour,
-            confidence: 70 + Math.random() * 30,
-            species: species[Math.floor(Math.random() * species.length)],
-            count: 1,
-          });
+        } else {
+          // Fallback to minimal mock data
+          for (let i = 0; i < 50; i++) {
+            detections.push({
+              time: Math.random() * 24,
+              confidence: 70 + Math.random() * 30,
+              species: "Unknown",
+              count: 1
+            });
+          }
         }
 
         return detections;
@@ -794,7 +655,7 @@
           const size = baseSize + Math.random() * 20;
 
           // Color based on species frequency with more variation
-          const baseColor = speciesData[d.species].color;
+          const baseColor = d.color || (speciesData[d.species] ? speciesData[d.species].color : "#666");
           const opacity = 0.12 + Math.random() * 0.08;
 
           // Apply styles
@@ -875,44 +736,8 @@
           }
         }, 10000);
 
-        // Simulate live system updates
-        setInterval(() => {
-          // Update CPU
-          const cpuValue = 15 + Math.random() * 20;
-          const cpuSegment = document.querySelector(
-            ".status-segment:nth-child(1)",
-          );
-          cpuSegment.querySelector(".status-value").textContent =
-            Math.round(cpuValue) + "%";
-          cpuSegment.querySelector(".status-indicator").style.width =
-            cpuValue + "%";
-
-          // Update Memory occasionally
-          if (Math.random() > 0.8) {
-            const memValue = 25 + Math.random() * 15;
-            const memSegment = document.querySelector(
-              ".status-segment:nth-child(2)",
-            );
-            memSegment.querySelector(".status-value").textContent =
-              Math.round(memValue) + "%";
-            memSegment.querySelector(".status-indicator").style.width =
-              memValue + "%";
-          }
-
-          // Update Audio level
-          const audioValue = -48 + Math.random() * 12;
-          const audioSegment = document.querySelector(
-            ".status-segment:nth-child(4)",
-          );
-          audioSegment.querySelector(".status-value").innerHTML =
-            audioValue.toFixed(0) + '<span class="status-detail">dB</span>';
-          const audioPercent = Math.max(
-            0,
-            Math.min(100, (60 + parseFloat(audioValue)) * 1.67),
-          );
-          audioSegment.querySelector(".status-indicator").style.width =
-            audioPercent + "%";
-        }, 3000);
+        // TODO: Replace with WebSocket connection for real-time system updates
+        // For now, the values from the backend are displayed statically
       });
     </script>
   </body>

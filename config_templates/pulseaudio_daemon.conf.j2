@@ -18,8 +18,11 @@ default-fragments = 8
 default-fragment-size-msec = 125
 
 # Network settings
-enable-lfe-remixing = no
+# Replaced deprecated enable-lfe-remixing with new options
+remixing-produce-lfe = no
+remixing-consume-lfe = no
 high-priority = yes
 nice-level = -15
-realtime-scheduling = yes
-realtime-priority = 5
+# Disable realtime scheduling on macOS (not supported by Homebrew build)
+realtime-scheduling = no
+# realtime-priority = 5  # Commented out since realtime-scheduling is disabled

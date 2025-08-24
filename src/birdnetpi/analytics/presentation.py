@@ -1,3 +1,4 @@
+import logging
 import time
 from collections.abc import Sequence
 from datetime import datetime
@@ -11,9 +12,12 @@ from birdnetpi.analytics.analytics import (
     ScatterDataDict,
     SpeciesFrequencyDict,
 )
+from birdnetpi.audio.audio_device_service import AudioDeviceService
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.models import DetectionBase
 from birdnetpi.system.status import SystemInspector
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
@@ -35,7 +39,6 @@ class DetectionLogEntry(BaseModel):
     time: str
     species: str
     confidence: str
-    count: int
 
 
 class SpeciesListEntry(BaseModel):
@@ -83,6 +86,7 @@ class AudioStatus(BaseModel):
 
     level_db: int
     device: str
+    level_percent: float  # Pre-calculated percentage for display
 
 
 class SystemStatusDict(BaseModel):
@@ -93,6 +97,7 @@ class SystemStatusDict(BaseModel):
     disk: DiskStatus
     audio: AudioStatus
     uptime: str
+    device_name: str
 
 
 class LandingPageData(BaseModel):
@@ -151,6 +156,36 @@ class PresentationManager:
 
     # --- Landing Page ---
 
+    async def get_landing_page_data_safe(self) -> LandingPageData:
+        """Get landing page data with error handling and fallback values."""
+        try:
+            return await self.get_landing_page_data()
+        except Exception:
+            logger.exception("Failed to get landing page data")
+            # Return safe defaults
+            return LandingPageData(
+                metrics=MetricsDict(
+                    species_detected="0",
+                    detections_today="0",
+                    species_week="0",
+                    storage="0 GB",
+                    hours="0",
+                    threshold="≥0.70",
+                ),
+                detection_log=[],
+                species_frequency=[],
+                hourly_distribution=[0] * 24,
+                visualization_data=[],
+                system_status=SystemStatusDict(
+                    cpu=CPUStatus(percent=0, temp=0),
+                    memory=MemoryStatus(percent=0, used_gb=0, total_gb=0),
+                    disk=DiskStatus(percent=0, used_gb=0, total_gb=0),
+                    audio=AudioStatus(level_db=-60, device="", level_percent=0),
+                    uptime="0",  # Numeric value only
+                    device_name="",
+                ),
+            )
+
     async def get_landing_page_data(self) -> LandingPageData:
         """Format all data needed for landing page."""
         summary = await self.analytics_manager.get_dashboard_summary()
@@ -186,7 +221,6 @@ class PresentationManager:
                 time=d.timestamp.strftime("%H:%M"),
                 species=d.common_name or d.scientific_name,
                 confidence=f"{d.confidence:.0%}",
-                count=1,  # Or aggregate if needed
             )
             for d in detections
         ]
@@ -233,6 +267,24 @@ class PresentationManager:
         uptime_seconds = time.time() - boot_time
         uptime_days = int(uptime_seconds // 86400)
 
+        # Get audio device information
+        audio_device_name = "No audio device"
+        try:
+            audio_service = AudioDeviceService()
+            input_devices = audio_service.discover_input_devices()
+            if input_devices:
+                # Use the first available input device
+                audio_device_name = input_devices[0].name
+        except Exception:
+            logger.exception("Failed to get audio device information")
+            audio_device_name = "Unknown audio device"
+
+        # Audio level monitoring would require real-time audio analysis
+        # For now, using a placeholder that represents "no signal"
+        # Real implementation would need integration with audio monitoring daemon
+        audio_level_db = -60  # Represents silence/no signal
+        audio_level_percent = max(0, min(100, (60 + audio_level_db) * 1.67))
+
         return SystemStatusDict(
             cpu=CPUStatus(percent=cpu_percent, temp=cpu_temp if cpu_temp is not None else 0),
             memory=MemoryStatus(
@@ -246,10 +298,12 @@ class PresentationManager:
                 total_gb=disk_info["total"] / (1024**3),
             ),
             audio=AudioStatus(
-                level_db=-42,  # Would come from audio monitoring
-                device="USB Audio Device",  # TODO: Get from audio device service
+                level_db=audio_level_db,
+                device=audio_device_name,
+                level_percent=audio_level_percent,
             ),
-            uptime=f"{uptime_days}d",
+            uptime=str(uptime_days),  # Return numeric value as string
+            device_name=system_info.get("device_name", ""),
         )
 
     # --- API Responses ---

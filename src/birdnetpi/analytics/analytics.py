@@ -166,10 +166,16 @@ class AnalyticsManager:
 
     @staticmethod
     def _categorize_frequency(count: int) -> str:
-        """Categorize species by detection frequency."""
-        if count > 200:
+        """Categorize species by detection frequency.
+
+        Thresholds are calibrated for 24-hour periods:
+        - Common: More than 20 detections (frequent visitor)
+        - Regular: 6-20 detections (occasional visitor)
+        - Uncommon: 5 or fewer detections (rare sighting)
+        """
+        if count > 20:
             return "common"
-        elif count > 50:
+        elif count > 5:
             return "regular"
         else:
             return "uncommon"

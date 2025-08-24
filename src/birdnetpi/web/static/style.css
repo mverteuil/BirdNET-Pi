@@ -580,7 +580,7 @@ body {
   margin-bottom: 1rem;
 }
 
-/* Additional styles from index.html */
+/* Additional styles from index.html.j2 */
 
 .card-badge {
   padding: 0.3rem 0.8rem;

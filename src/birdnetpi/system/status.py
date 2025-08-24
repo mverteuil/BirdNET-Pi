@@ -5,9 +5,11 @@ Consolidates functionality from the former hardware_monitor_manager and system_m
 """
 
 import asyncio
+import platform
 import shutil
 import subprocess
 from enum import Enum
+from pathlib import Path
 from typing import Any, TypedDict
 
 import psutil
@@ -335,6 +337,91 @@ class SystemInspector:
             return False, f"GPS device check failed: {e}"
 
     @staticmethod
+    def _check_docker_environment() -> bool:
+        """Check if running in a Docker container."""
+        return Path("/.dockerenv").exists() or Path("/run/.containerenv").exists()
+
+    @staticmethod
+    def _get_raspberry_pi_model() -> str | None:
+        """Try to detect Raspberry Pi model from device tree."""
+        try:
+            with open("/proc/device-tree/model") as f:
+                model = f.read().strip().replace("\x00", "")
+                if model:
+                    # Clean up the model string
+                    if "raspberry pi" in model.lower():
+                        # Extract important part: "Raspberry Pi 4 Model B" -> "Raspberry Pi 4"
+                        parts = model.split()
+                        if len(parts) >= 3:
+                            return f"{parts[0]} {parts[1]} {parts[2]}"
+                    return model
+        except (FileNotFoundError, PermissionError):
+            return None
+
+    @staticmethod
+    def _get_macos_model() -> str:
+        """Get macOS hardware model name."""
+        try:
+            result = subprocess.run(
+                ["sysctl", "-n", "hw.model"], capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0 and result.stdout:
+                model = result.stdout.strip()
+                # Convert Mac model identifiers to friendly names
+                mac_models = {
+                    "MacBookPro": "MacBook Pro",
+                    "MacBookAir": "MacBook Air",
+                    "iMac": "iMac",
+                    "Mac": "Mac",
+                }
+                for key, value in mac_models.items():
+                    if key in model:
+                        return value
+                return model
+        except (subprocess.SubprocessError, FileNotFoundError):
+            pass
+        return "macOS"
+
+    @staticmethod
+    def _get_linux_type() -> str:
+        """Get specific Linux device type based on architecture."""
+        machine = platform.machine()
+        if machine in ["x86_64", "amd64"]:
+            return "Linux PC"
+        elif machine.startswith("arm") or machine == "aarch64":
+            return "ARM Linux"
+        return "Linux"
+
+    @staticmethod
+    def get_device_name() -> str:
+        """Get a descriptive name for the current device/platform.
+
+        Returns:
+            Device name string (e.g., "Raspberry Pi 4", "Docker Container", "MacBook Pro")
+        """
+        # Check if running in Docker
+        if SystemInspector._check_docker_environment():
+            return "Docker Container"
+
+        # Try to detect Raspberry Pi model
+        rpi_model = SystemInspector._get_raspberry_pi_model()
+        if rpi_model:
+            return rpi_model
+
+        system = platform.system()
+
+        # Platform-specific detection
+        if system == "Darwin":
+            return SystemInspector._get_macos_model()
+        elif system == "Linux":
+            return SystemInspector._get_linux_type()
+        elif system == "Windows":
+            return "Windows PC"
+
+        # Generic fallback
+        return system
+
+    @staticmethod
     def get_system_info() -> dict[str, Any]:
         """Get comprehensive system information.
 
@@ -346,6 +433,8 @@ class SystemInspector:
         # Basic system info
         info["cpu_count"] = psutil.cpu_count()
         info["boot_time"] = psutil.boot_time()
+        info["device_name"] = SystemInspector.get_device_name()
+        info["platform"] = platform.platform()
 
         # Resource usage
         info["cpu_percent"] = SystemInspector.get_cpu_usage()

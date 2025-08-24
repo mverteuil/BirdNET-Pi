@@ -6,8 +6,24 @@ from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.web.models.detections import DetectionEvent
 
 
-async def generate_dummy_detections(data_manager: DataManager, num_detections: int = 100) -> None:
-    """Generate and add dummy detection data to the database."""
+async def generate_dummy_detections(
+    data_manager: DataManager, num_detections: int = 100, max_days_ago: int = 1
+) -> None:
+    """Generate and add dummy detection data to the database.
+
+    Args:
+        data_manager: DataManager instance for database operations
+        num_detections: Number of detections to generate
+        max_days_ago: Maximum days in the past for detections (0 = today only)
+    """
+    # Ensure database tables exist
+    try:
+        # This will create tables if they don't exist
+        await data_manager.count_detections()
+    except Exception:
+        # If count fails, tables might not exist yet - that's okay
+        pass
+
     # Updated to use tensor format: "Scientific_name_Common Name"
     species_list = [
         "Turdus migratorius_American Robin",
@@ -23,8 +39,16 @@ async def generate_dummy_detections(data_manager: DataManager, num_detections: i
     ]
 
     for _ in range(num_detections):
+        # Generate timestamps with more weight on recent times
+        if max_days_ago == 0:
+            # All detections today
+            days_ago = 0
+        else:
+            # Use exponential distribution to favor recent times
+            days_ago = min(int(random.expovariate(1.0 / (max_days_ago / 3))), max_days_ago)
+
         timestamp = datetime.datetime.now(UTC) - datetime.timedelta(
-            days=random.randint(0, 30),
+            days=days_ago,
             hours=random.randint(0, 23),
             minutes=random.randint(0, 59),
             seconds=random.randint(0, 59),
@@ -34,13 +58,18 @@ async def generate_dummy_detections(data_manager: DataManager, num_detections: i
         species_tensor = random.choice(species_list)
         scientific_name, common_name = species_tensor.split("_", 1)
 
+        # Add random microseconds to ensure unique file paths
+        unique_suffix = random.randint(0, 999999)
+
         detection_data = {
             "species_tensor": species_tensor,
             "scientific_name": scientific_name,
             "common_name": common_name,
             "confidence": round(random.uniform(0.5, 0.99), 2),
             "timestamp": timestamp,
-            "audio_file_path": f"/app/audio/{timestamp.strftime('%Y%m%d_%H%M%S')}.wav",
+            "audio_file_path": (
+                f"/app/audio/{timestamp.strftime('%Y%m%d_%H%M%S')}_{unique_suffix:06d}.wav"
+            ),
             "latitude": round(random.uniform(30.0, 40.0), 4),
             "longitude": round(random.uniform(-80.0, -70.0), 4),
             "species_confidence_threshold": random.uniform(0.1, 0.5),
