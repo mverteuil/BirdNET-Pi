@@ -105,7 +105,7 @@ class TestAppStartupIntegration:
         assert "/" in routes
         assert "/api/system/hardware/status" in routes
         assert "/api/detections/recent" in routes
-        assert "/reports/today" in routes
+        # assert "/reports/today" in routes  # Removed from codebase
         assert "/admin/settings" in routes
 
     def test_root_endpoint_works(self, app_with_real_container: FastAPI):

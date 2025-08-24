@@ -14,7 +14,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any, TypeVar, cast
 
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql import func
@@ -651,6 +651,186 @@ class DataManager:
             except SQLAlchemyError:
                 await session.rollback()
                 logger.exception("Error retrieving audio file")
+                raise
+
+    # ==================== Analytics Methods ====================
+    # Methods needed by AnalyticsManager for dashboard and visualizations
+
+    async def get_detection_count(
+        self, start_time: datetime.datetime, end_time: datetime.datetime
+    ) -> int:
+        """Get count of detections in a time range.
+
+        Args:
+            start_time: Start of time range
+            end_time: End of time range
+
+        Returns:
+            Number of detections in the time range
+        """
+        async with self.database_service.get_async_db() as session:
+            try:
+                count = await session.scalar(
+                    select(func.count())
+                    .select_from(Detection)
+                    .where(Detection.timestamp >= start_time)
+                    .where(Detection.timestamp <= end_time)
+                )
+                return count or 0
+            except SQLAlchemyError:
+                await session.rollback()
+                logger.exception("Error getting detection count")
+                raise
+
+    async def get_unique_species_count(
+        self, start_time: datetime.datetime, end_time: datetime.datetime
+    ) -> int:
+        """Get count of unique species detected in a time range.
+
+        Args:
+            start_time: Start of time range
+            end_time: End of time range
+
+        Returns:
+            Number of unique species detected
+        """
+        async with self.database_service.get_async_db() as session:
+            try:
+                count = await session.scalar(
+                    select(func.count(func.distinct(Detection.scientific_name)))
+                    .where(Detection.timestamp >= start_time)
+                    .where(Detection.timestamp <= end_time)
+                )
+                return count or 0
+            except SQLAlchemyError:
+                await session.rollback()
+                logger.exception("Error getting unique species count")
+                raise
+
+    async def get_storage_metrics(self) -> dict[str, Any]:
+        """Get storage metrics for audio files.
+
+        Returns:
+            Dictionary with total_bytes and total_duration
+        """
+        async with self.database_service.get_async_db() as session:
+            try:
+                # Get total file size and duration
+                result = await session.execute(
+                    select(
+                        func.sum(AudioFile.size_bytes).label("total_bytes"),
+                        func.sum(AudioFile.duration).label("total_duration"),
+                    )
+                )
+                row = result.first()
+
+                if row:
+                    return {
+                        "total_bytes": row.total_bytes or 0,
+                        "total_duration": row.total_duration or 0,
+                    }
+                return {"total_bytes": 0, "total_duration": 0}
+            except SQLAlchemyError:
+                await session.rollback()
+                logger.exception("Error getting storage metrics")
+                raise
+
+    async def get_species_counts(
+        self, start_time: datetime.datetime, end_time: datetime.datetime
+    ) -> list[dict[str, Any]]:
+        """Get species with their detection counts in a time range.
+
+        Args:
+            start_time: Start of time range
+            end_time: End of time range
+
+        Returns:
+            List of dicts with scientific_name, common_name, and count
+        """
+        async with self.database_service.get_async_db() as session:
+            try:
+                result = await session.execute(
+                    select(
+                        Detection.scientific_name,
+                        Detection.common_name,
+                        func.count().label("count"),
+                    )
+                    .where(Detection.timestamp >= start_time)
+                    .where(Detection.timestamp <= end_time)
+                    .group_by(Detection.scientific_name, Detection.common_name)
+                    .order_by(func.count().desc())
+                )
+
+                return [
+                    {
+                        "scientific_name": row.scientific_name,
+                        "common_name": row.common_name,
+                        "count": row.count,
+                    }
+                    for row in result
+                ]
+            except SQLAlchemyError:
+                await session.rollback()
+                logger.exception("Error getting species counts")
+                raise
+
+    async def get_hourly_counts(self, target_date: date) -> list[dict[str, Any]]:
+        """Get hourly detection counts for a specific date.
+
+        Args:
+            target_date: Date to get hourly counts for
+
+        Returns:
+            List of dicts with hour and count
+        """
+        async with self.database_service.get_async_db() as session:
+            try:
+                # Convert date to datetime range
+                start_time = datetime.datetime.combine(target_date, datetime.time.min)
+                end_time = datetime.datetime.combine(target_date, datetime.time.max)
+
+                # SQLite-specific hour extraction
+                result = await session.execute(
+                    select(
+                        func.strftime("%H", Detection.timestamp).label("hour"),
+                        func.count().label("count"),
+                    )
+                    .where(Detection.timestamp >= start_time)
+                    .where(Detection.timestamp <= end_time)
+                    .group_by(func.strftime("%H", Detection.timestamp))
+                    .order_by("hour")
+                )
+
+                return [{"hour": int(row.hour), "count": row.count} for row in result]
+            except SQLAlchemyError:
+                await session.rollback()
+                logger.exception("Error getting hourly counts")
+                raise
+
+    async def get_detections_in_range(
+        self, start_time: datetime.datetime, end_time: datetime.datetime
+    ) -> Sequence[Detection]:
+        """Get all detections within a time range.
+
+        Args:
+            start_time: Start of time range
+            end_time: End of time range
+
+        Returns:
+            List of Detection objects
+        """
+        async with self.database_service.get_async_db() as session:
+            try:
+                result = await session.execute(
+                    select(Detection)
+                    .where(Detection.timestamp >= start_time)
+                    .where(Detection.timestamp <= end_time)
+                    .order_by(desc(Detection.timestamp))
+                )
+                return result.scalars().all()
+            except SQLAlchemyError:
+                await session.rollback()
+                logger.exception("Error getting detections in range")
                 raise
 
     # ==================== Raw Query Escape Hatch ====================

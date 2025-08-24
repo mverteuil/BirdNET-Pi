@@ -197,8 +197,8 @@ class TestAdminRouterIntegration:
 
         assert response.status_code == 200
         assert response.headers["content-type"].startswith("text/html")
-        # Check that some expected content is in the response
-        assert "BirdNET-Pi" in response.text
+        # Settings page is a placeholder - just check it renders
+        assert "Settings" in response.text
 
     @patch("birdnetpi.web.routers.admin_view_routes.LogService")
     def test_log_endpoint_returns_logs(self, mock_log_service, client):

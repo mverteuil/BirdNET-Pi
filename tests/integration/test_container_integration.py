@@ -71,6 +71,9 @@ class TestContainerIntegration:
     @pytest.fixture
     def container_with_overrides(self, test_resolver: PathResolver):
         """Create a Container with test path overrides."""
+        import gc
+        import time
+
         container = Container()
 
         # Override path_resolver
@@ -83,9 +86,23 @@ class TestContainerIntegration:
 
         yield container
 
+        # Clean up singleton instances to prevent resource leaks
+        # Reset all singleton providers to ensure clean state
+        if container.bnp_database_service.provided:
+            container.bnp_database_service.reset()
+        if container.multilingual_database_service.provided:
+            container.multilingual_database_service.reset()
+        if container.cache_service.provided:
+            container.cache_service.reset()
+
         # Clean up overrides
         container.path_resolver.reset_override()
         container.database_path.reset_override()
+
+        # Force garbage collection to release SQLite locks
+        gc.collect()
+        # Small delay to ensure SQLite releases file locks
+        time.sleep(0.01)
 
     def test_container_creation(self):
         """Test that Container can be created without errors."""
@@ -105,7 +122,7 @@ class TestContainerIntegration:
                 "birdnetpi.web.routers.detections_api_routes",
                 "birdnetpi.web.routers.multimedia_view_routes",
                 "birdnetpi.web.routers.overview_api_routes",
-                "birdnetpi.web.routers.reporting_view_routes",
+                # "birdnetpi.web.routers.reporting_view_routes",  # Removed from codebase
                 "birdnetpi.web.routers.sqladmin_view_routes",
                 "birdnetpi.web.routers.system_api_routes",
                 "birdnetpi.web.routers.websocket_routes",
@@ -130,8 +147,15 @@ class TestContainerIntegration:
     def test_database_service_provider(self, container_with_overrides: Container, test_paths: Path):
         """Test that bnp_database_service provider uses test paths."""
         db_service = container_with_overrides.bnp_database_service()
-        assert isinstance(db_service, DatabaseService)
-        assert str(test_paths) in str(db_service.db_path)
+        try:
+            assert isinstance(db_service, DatabaseService)
+            assert str(test_paths) in str(db_service.db_path)
+        finally:
+            # Explicitly close database connections to prevent SQLite locking
+            if hasattr(db_service, "sync_engine") and db_service.sync_engine:
+                db_service.sync_engine.dispose()
+            # Note: async_engine.dispose() is async and can't be called here
+            # The container cleanup will handle it via reset_singleton()
 
     def test_multilingual_database_service_provider(self, container_with_overrides: Container):
         """Test that multilingual_database_service can be instantiated."""
@@ -157,8 +181,6 @@ class TestContainerIntegration:
             "species_display_service",
             "data_manager",
             "location_service",
-            "data_preparation_manager",
-            "plotting_manager",
             "system_control_service",
             "audio_websocket_service",
             "spectrogram_service",
@@ -166,7 +188,6 @@ class TestContainerIntegration:
             "mqtt_service",
             "webhook_service",
             "notification_manager",
-            "reporting_manager",
         ]
 
         for provider_name in critical_providers:
@@ -188,12 +209,12 @@ class TestContainerIntegration:
 
     def test_provider_factory_behavior(self, container_with_overrides: Container):
         """Test that factory providers return new instances."""
-        # reporting_manager is defined as a Factory
-        manager1 = container_with_overrides.reporting_manager()
-        manager2 = container_with_overrides.reporting_manager()
+        # detection_query_service is defined as a Factory
+        service1 = container_with_overrides.detection_query_service()
+        service2 = container_with_overrides.detection_query_service()
 
         # They should be different instances
-        assert manager1 is not manager2
+        assert service1 is not service2
 
     def test_container_reset_overrides(self, test_resolver: PathResolver):
         """Test that overrides can be properly reset."""

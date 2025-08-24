@@ -4,9 +4,10 @@ from uuid import UUID
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 
-from birdnetpi.analytics.plotting_manager import PlottingManager
+# from birdnetpi.analytics.plotting_manager import PlottingManager  # Removed - analytics refactor
+# TODO: Re-implement spectrogram generation without PlottingManager
 from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.detections import DetectionEvent, LocationUpdate
@@ -241,35 +242,23 @@ async def get_detection(
         raise HTTPException(status_code=500, detail="Error retrieving detection") from e
 
 
-@router.get("/{detection_id}/spectrogram")
-@inject
-async def get_detection_spectrogram(
-    detection_id: int,
-    data_manager: DataManager = Depends(  # noqa: B008
-        Provide[Container.data_manager]
-    ),
-    plotting_manager: PlottingManager = Depends(Provide[Container.plotting_manager]),  # noqa: B008
-) -> StreamingResponse:
-    """Generate and return a spectrogram for a specific detection's audio file."""
-    try:
-        # Get the detection to find the associated audio file path
-        detection = await data_manager.get_detection_by_id(detection_id)
-        if not detection:
-            raise HTTPException(status_code=404, detail="Detection not found")
-
-        # Get the audio file path from the detection
-        if not detection.audio_file or not detection.audio_file.file_path:
-            raise HTTPException(
-                status_code=404, detail="No audio file associated with this detection"
-            )
-
-        spectrogram_buffer = plotting_manager.generate_spectrogram(detection.audio_file.file_path)
-        return StreamingResponse(content=iter([spectrogram_buffer.read()]), media_type="image/png")
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Error generating spectrogram for detection %s: %s", detection_id, e)
-        raise HTTPException(status_code=500, detail=f"Error generating spectrogram: {e}") from e
+# TODO: Re-implement spectrogram generation endpoint
+# The spectrogram endpoint has been temporarily disabled after removing PlottingManager.
+# This functionality needs to be re-implemented using a different approach.
+# @router.get("/{detection_id}/spectrogram")
+# @inject
+# async def get_detection_spectrogram(
+#     detection_id: int,
+#     data_manager: DataManager = Depends(
+#         Provide[Container.data_manager]
+#     ),
+# ) -> StreamingResponse:
+#     """Generate and return a spectrogram for a specific detection's audio file."""
+#     # Implementation temporarily removed - needs replacement for PlottingManager
+#     raise HTTPException(
+#         status_code=501,
+#         detail="Spectrogram generation temporarily unavailable - being reimplemented"
+#     )
 
 
 @router.get("/species/summary")

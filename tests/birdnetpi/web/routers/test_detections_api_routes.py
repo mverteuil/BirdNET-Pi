@@ -7,7 +7,6 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from birdnetpi.analytics.plotting_manager import PlottingManager
 from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.routers.detections_api_routes import router
@@ -24,13 +23,13 @@ def client():
 
     # Override services with mocks
     mock_data_manager = MagicMock(spec=DataManager)
-    mock_plotting_manager = MagicMock(spec=PlottingManager)
+    # PlottingManager has been removed from the codebase
 
     # Add query_service attribute to the mock data manager
     mock_data_manager.query_service = None
 
     container.data_manager.override(mock_data_manager)
-    container.plotting_manager.override(mock_plotting_manager)
+    # container.plotting_manager.override() - removed as PlottingManager no longer exists
 
     # Wire the container
     container.wire(modules=["birdnetpi.web.routers.detections_api_routes"])
@@ -44,7 +43,7 @@ def client():
 
     # Store the mocks for access in tests
     client.mock_data_manager = mock_data_manager  # type: ignore[attr-defined]
-    client.mock_plotting_manager = mock_plotting_manager  # type: ignore[attr-defined]
+    # client.mock_plotting_manager removed - PlottingManager no longer exists
 
     return client
 
@@ -176,53 +175,4 @@ class TestDetectionsAPIRoutes:
         assert data["message"] == "Location updated successfully"
         assert data["detection_id"] == 123
 
-    def test_get_detection_spectrogram(self, client):
-        """Should generate and return spectrogram for detection."""
-        mock_detection = MagicMock()
-        mock_detection.audio_file.file_path = "/path/to/audio.wav"
-        client.mock_data_manager.get_detection_by_id.return_value = mock_detection
-
-        mock_spectrogram_buffer = MagicMock()
-        mock_spectrogram_buffer.read.return_value = b"fake_png_data"
-        client.mock_plotting_manager.generate_spectrogram.return_value = mock_spectrogram_buffer
-
-        response = client.get("/api/detections/123/spectrogram")
-
-        assert response.status_code == 200
-        assert response.headers["content-type"] == "image/png"
-        client.mock_plotting_manager.generate_spectrogram.assert_called_once_with(
-            "/path/to/audio.wav"
-        )
-
-    def test_get_detection_spectrogram_not_found(self, client):
-        """Should return 404 for non-existent detection."""
-        client.mock_data_manager.get_detection_by_id.return_value = None
-
-        response = client.get("/api/detections/999/spectrogram")
-
-        assert response.status_code == 404
-        assert "Detection not found" in response.json()["detail"]
-
-    def test_get_detection_spectrogram__no_audio_file(self, client):
-        """Should return 404 when detection has no audio file."""
-        mock_detection = MagicMock()
-        mock_detection.audio_file = None
-        client.mock_data_manager.get_detection_by_id.return_value = mock_detection
-
-        response = client.get("/api/detections/123/spectrogram")
-
-        assert response.status_code == 404
-        assert "No audio file associated" in response.json()["detail"]
-
-    def test_get_detection_spectrogram__error_handling(self, client):
-        """Should handle plotting manager errors."""
-        mock_detection = MagicMock()
-        mock_detection.audio_file_path = "/path/to/audio.wav"
-        client.mock_data_manager.get_detection_by_id.return_value = mock_detection
-
-        client.mock_plotting_manager.generate_spectrogram.side_effect = Exception("Plotting error")
-
-        response = client.get("/api/detections/123/spectrogram")
-
-        assert response.status_code == 500
-        assert "Error generating spectrogram" in response.json()["detail"]
+    # Spectrogram tests removed - endpoint and PlottingManager have been removed from codebase

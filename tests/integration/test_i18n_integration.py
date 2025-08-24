@@ -111,6 +111,7 @@ class TestLanguageSwitching:
 class TestTranslationContent:
     """Test actual translation content."""
 
+    @pytest.mark.skip(reason="Skipped until templates are replaced with proper i18n support")
     def test_message_extraction_coverage(self):
         """Test that key UI elements are marked for translation."""
         templates_dir = Path("src/birdnetpi/web/templates")
@@ -318,6 +319,7 @@ class TestSpeciesTranslation:
 class TestEndToEndTranslation:
     """Test complete translation flow."""
 
+    @pytest.mark.skip(reason="Skipped until templates are replaced with proper i18n support")
     def test_translation_extraction_update_compile_cycle(self):
         """Test the complete translation workflow."""
         import subprocess

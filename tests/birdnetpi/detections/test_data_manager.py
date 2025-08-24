@@ -1,5 +1,6 @@
 """Tests for the DataManager - single source of truth for detection data access."""
 
+import uuid
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
@@ -89,6 +90,8 @@ class TestCoreOperations:
     async def test_create_detection(self, data_manager, mock_services):
         """Should create a new detection with audio file."""
         mock_session = AsyncMock()
+        # Configure synchronous methods on AsyncSession
+        mock_session.add = MagicMock()  # add() is synchronous even in AsyncSession
         mock_services[
             "database_service"
         ].get_async_db.return_value.__aenter__.return_value = mock_session
@@ -457,3 +460,236 @@ class TestErrorHandling:
 
         with pytest.raises(RuntimeError, match="DetectionQueryService not available"):
             await data_manager.get_detections_with_localization()
+
+
+class TestAnalyticsMethods:
+    """Test analytics-specific methods added for AnalyticsManager integration."""
+
+    @pytest.mark.asyncio
+    async def test_get_detection_count(self, data_manager, mock_services):
+        """Should return count of detections in time range."""
+        start_time = datetime(2024, 1, 1, 0, 0, 0)
+        end_time = datetime(2024, 1, 1, 23, 59, 59)
+
+        # Mock the database session with scalar method
+        mock_session = AsyncMock()
+        # session.scalar() returns the count directly
+        mock_session.scalar = AsyncMock(return_value=42)
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
+
+        count = await data_manager.get_detection_count(start_time, end_time)
+
+        assert count == 42
+        mock_session.scalar.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_unique_species_count(self, data_manager, mock_services):
+        """Should return count of unique species in time range."""
+        start_time = datetime(2024, 1, 1, 0, 0, 0)
+        end_time = datetime(2024, 1, 1, 23, 59, 59)
+
+        # Mock the database session with scalar method
+        mock_session = AsyncMock()
+        # session.scalar() returns the count directly
+        mock_session.scalar = AsyncMock(return_value=15)
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
+
+        count = await data_manager.get_unique_species_count(start_time, end_time)
+
+        assert count == 15
+        mock_session.scalar.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_storage_metrics(self, data_manager, mock_services):
+        """Should return storage metrics for audio files."""
+        # Mock the database session and query result
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_row = MagicMock()
+        mock_row.total_bytes = 1024 * 1024 * 100  # 100MB
+        mock_row.total_duration = 3600  # 1 hour
+        mock_result.first.return_value = mock_row
+        mock_session.execute.return_value = mock_result
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
+
+        metrics = await data_manager.get_storage_metrics()
+
+        assert metrics["total_bytes"] == 1024 * 1024 * 100
+        assert metrics["total_duration"] == 3600
+        mock_session.execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_storage_metrics_no_data(self, data_manager, mock_services):
+        """Should return zeros when no audio files exist."""
+        # Mock the database session with no results
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.first.return_value = None
+        mock_session.execute.return_value = mock_result
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
+
+        metrics = await data_manager.get_storage_metrics()
+
+        assert metrics["total_bytes"] == 0
+        assert metrics["total_duration"] == 0
+
+    @pytest.mark.asyncio
+    async def test_get_species_counts(self, data_manager, mock_services):
+        """Should return species with detection counts."""
+        start_time = datetime(2024, 1, 1, 0, 0, 0)
+        end_time = datetime(2024, 1, 1, 23, 59, 59)
+
+        # Mock the database session and query result
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+
+        # Create mock rows
+        mock_row1 = MagicMock()
+        mock_row1.scientific_name = "Turdus migratorius"
+        mock_row1.common_name = "American Robin"
+        mock_row1.count = 25
+
+        mock_row2 = MagicMock()
+        mock_row2.scientific_name = "Cardinalis cardinalis"
+        mock_row2.common_name = "Northern Cardinal"
+        mock_row2.count = 18
+
+        mock_result.__iter__ = MagicMock(return_value=iter([mock_row1, mock_row2]))
+        mock_session.execute.return_value = mock_result
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
+
+        species_counts = await data_manager.get_species_counts(start_time, end_time)
+
+        assert len(species_counts) == 2
+        assert species_counts[0]["scientific_name"] == "Turdus migratorius"
+        assert species_counts[0]["common_name"] == "American Robin"
+        assert species_counts[0]["count"] == 25
+        assert species_counts[1]["scientific_name"] == "Cardinalis cardinalis"
+        assert species_counts[1]["common_name"] == "Northern Cardinal"
+        assert species_counts[1]["count"] == 18
+
+    @pytest.mark.asyncio
+    async def test_get_hourly_counts(self, data_manager, mock_services):
+        """Should return hourly detection counts for a date."""
+        from datetime import date
+
+        target_date = date(2024, 1, 1)
+
+        # Mock the database session and query result
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+
+        # Create mock rows for different hours
+        mock_row1 = MagicMock()
+        mock_row1.hour = "06"
+        mock_row1.count = 10
+
+        mock_row2 = MagicMock()
+        mock_row2.hour = "07"
+        mock_row2.count = 15
+
+        mock_row3 = MagicMock()
+        mock_row3.hour = "08"
+        mock_row3.count = 20
+
+        mock_result.__iter__ = MagicMock(return_value=iter([mock_row1, mock_row2, mock_row3]))
+        mock_session.execute.return_value = mock_result
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
+
+        hourly_counts = await data_manager.get_hourly_counts(target_date)
+
+        assert len(hourly_counts) == 3
+        assert hourly_counts[0]["hour"] == 6
+        assert hourly_counts[0]["count"] == 10
+        assert hourly_counts[1]["hour"] == 7
+        assert hourly_counts[1]["count"] == 15
+        assert hourly_counts[2]["hour"] == 8
+        assert hourly_counts[2]["count"] == 20
+
+    @pytest.mark.asyncio
+    async def test_get_detections_in_range(self, data_manager, mock_services):
+        """Should return all detections within time range."""
+        start_time = datetime(2024, 1, 1, 0, 0, 0)
+        end_time = datetime(2024, 1, 1, 23, 59, 59)
+
+        # Mock the database session and query result
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+
+        # Create mock detection objects
+        detection1 = Detection(
+            id=uuid.uuid4(),
+            species_tensor="Turdus migratorius_American Robin",
+            scientific_name="Turdus migratorius",
+            common_name="American Robin",
+            confidence=0.95,
+            timestamp=datetime(2024, 1, 1, 10, 0, 0),
+        )
+
+        detection2 = Detection(
+            id=uuid.uuid4(),
+            species_tensor="Cardinalis cardinalis_Northern Cardinal",
+            scientific_name="Cardinalis cardinalis",
+            common_name="Northern Cardinal",
+            confidence=0.88,
+            timestamp=datetime(2024, 1, 1, 11, 0, 0),
+        )
+
+        mock_result.scalars.return_value.all.return_value = [detection1, detection2]
+        mock_session.execute.return_value = mock_result
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
+
+        detections = await data_manager.get_detections_in_range(start_time, end_time)
+
+        assert len(detections) == 2
+        assert detections[0].scientific_name == "Turdus migratorius"
+        assert detections[0].confidence == 0.95
+        assert detections[1].scientific_name == "Cardinalis cardinalis"
+        assert detections[1].confidence == 0.88
+
+    @pytest.mark.asyncio
+    async def test_analytics_methods_handle_errors(self, data_manager, mock_services):
+        """Should handle database errors gracefully in analytics methods."""
+        from datetime import date
+
+        # Mock the database session to raise an error
+        mock_session = AsyncMock()
+        mock_session.execute.side_effect = SQLAlchemyError("Database error")
+        mock_session.scalar.side_effect = SQLAlchemyError("Database error")
+        mock_session.rollback = AsyncMock()  # Mock rollback method
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
+
+        # Test each method handles errors and raises them
+        with pytest.raises(SQLAlchemyError):
+            await data_manager.get_detection_count(datetime.now(), datetime.now())
+
+        with pytest.raises(SQLAlchemyError):
+            await data_manager.get_unique_species_count(datetime.now(), datetime.now())
+
+        with pytest.raises(SQLAlchemyError):
+            await data_manager.get_storage_metrics()
+
+        with pytest.raises(SQLAlchemyError):
+            await data_manager.get_species_counts(datetime.now(), datetime.now())
+
+        with pytest.raises(SQLAlchemyError):
+            await data_manager.get_hourly_counts(date.today())
+
+        with pytest.raises(SQLAlchemyError):
+            await data_manager.get_detections_in_range(datetime.now(), datetime.now())

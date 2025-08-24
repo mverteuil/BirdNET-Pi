@@ -3,9 +3,6 @@
 from dependency_injector import containers, providers
 from fastapi.templating import Jinja2Templates
 
-from birdnetpi.analytics.data_preparation_manager import DataPreparationManager
-from birdnetpi.analytics.plotting_manager import PlottingManager
-from birdnetpi.analytics.reporting_manager import ReportingManager
 from birdnetpi.audio.audio_websocket_service import AudioWebSocketService
 from birdnetpi.audio.spectrogram_service import SpectrogramService
 from birdnetpi.database.database_service import DatabaseService
@@ -121,18 +118,6 @@ class Container(containers.DeclarativeContainer):
         longitude=providers.Factory(lambda c: c.longitude, c=config),
     )
 
-    # Data analysis services - singletons
-    data_preparation_manager = providers.Singleton(
-        DataPreparationManager,
-        config=config,
-        location_service=location_service,
-    )
-
-    plotting_manager = providers.Singleton(
-        PlottingManager,
-        data_preparation_manager=data_preparation_manager,
-    )
-
     # System services - singletons
     system_control_service = providers.Singleton(SystemControlService)
 
@@ -185,16 +170,4 @@ class Container(containers.DeclarativeContainer):
         config=config,
         mqtt_service=mqtt_service,
         webhook_service=webhook_service,
-    )
-
-    # Request-scoped managers (factories - new instance per request)
-    reporting_manager = providers.Factory(
-        ReportingManager,
-        data_manager=data_manager,
-        path_resolver=path_resolver,
-        config=config,
-        plotting_manager=plotting_manager,
-        data_preparation_manager=data_preparation_manager,
-        location_service=location_service,
-        species_display_service=species_display_service,
     )

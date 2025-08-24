@@ -2,7 +2,7 @@
 
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -47,7 +47,8 @@ def app_with_overview_services(app_with_temp_data):
         from birdnetpi.detections.data_manager import DataManager
 
         mock_data_manager = MagicMock(spec=DataManager)
-        mock_data_manager.count_detections.return_value = 0
+        # count_detections is async, so use AsyncMock
+        mock_data_manager.count_detections = AsyncMock(return_value=0)
         app.container.data_manager.override(mock_data_manager)  # type: ignore[attr-defined]
 
     return app
