@@ -78,7 +78,10 @@ class TestMQTTService:
         """Test starting MQTT service when enabled."""
         service = enabled_mqtt_service
 
-        with patch("paho.mqtt.client.Client") as mock_client_class:
+        with (
+            patch("paho.mqtt.client.Client") as mock_client_class,
+            patch("asyncio.sleep"),
+        ):  # Mock sleep to prevent slowness
             mock_client = MagicMock()
             mock_client.connect.return_value = 0  # MQTT_ERR_SUCCESS
             mock_client_class.return_value = mock_client
@@ -97,7 +100,10 @@ class TestMQTTService:
         service.username = "auth_user"
         service.password = "auth_pass"
 
-        with patch("paho.mqtt.client.Client") as mock_client_class:
+        with (
+            patch("paho.mqtt.client.Client") as mock_client_class,
+            patch("asyncio.sleep"),
+        ):  # Mock sleep to prevent slowness
             mock_client = MagicMock()
             mock_client.connect.return_value = 0
             mock_client_class.return_value = mock_client

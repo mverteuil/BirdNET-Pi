@@ -20,5 +20,5 @@ async def get_livestream(
 ) -> HTMLResponse:
     """Render the livestream page."""
     return templates.TemplateResponse(
-        request, "livestream.html.j2", {"site_name": config.site_name}
+        request, "admin/livestream.html.j2", {"site_name": config.site_name}
     )

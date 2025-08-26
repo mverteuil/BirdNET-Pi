@@ -12,6 +12,7 @@ dev = [
   "pytest-asyncio>=0.23.8",
   "pytest-cov>=6.2.1",
   "pytest-mock==3.7.0",
+  "pytest-timeout>=2.4.0",
   "pytest>=7.1.2",
   "ruff>=0.12.5",
   "types-decorator>=5.2.0.20250324",
@@ -68,15 +69,15 @@ dependencies = [
   "sqlmodel>=0.0.24",
   "structlog>=25.4.0",
   "suntime",
-  "tensorflow>=2.19.0 ; platform_machine != 'aarch64' or sys_platform == 'darwin'",
-  "tflite-runtime>=2.14.0 ; platform_machine == 'aarch64' and sys_platform == 'linux'",
   "tqdm>=4.67.1",
   "tzlocal",
   "uvicorn",
   "websockets>=15.0.1",
   "wtforms>=3.1.2",
   "aiosqlite>=0.21.0",
-  "greenlet>=3.2.3"
+  "greenlet>=3.2.3",
+  "python-systemd>=0.0.9",
+  "ai-edge-litert<1.4.0"
 ]
 
 [project.scripts]
@@ -120,6 +121,7 @@ markers = [
   "no_leaks: detect asyncio task leaks, thread leaks, and event loop blocking"
 ]
 testpaths = ["tests"]
+norecursedirs = ["docs", "*.egg-info", ".git", ".venv", "data"]
 addopts = "--cov=src"
 asyncio_mode = "auto"
 

@@ -8,7 +8,6 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from birdnetpi.system.structlog_configurator import configure_structlog
 from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)
@@ -33,9 +32,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Get the container from the app (ignore type error - runtime dynamic attribute)
     container: Container = app.container  # type: ignore[attr-defined]
 
-    # Configure structured logging based on loaded config
+    # Get config (structlog is already configured in main.py)
     config = container.config()
-    configure_structlog(config)
 
     # Initialize file resolver and mount static files
     path_resolver = container.path_resolver()

@@ -29,7 +29,8 @@ async def test_database_with_data(tmp_path):
     # Create test data
     async with db_service.get_async_db() as session:
         # Create audio files and detections for different time periods
-        now = datetime.datetime.now()
+        # Use a fixed date/time for reproducible tests
+        now = datetime.datetime(2024, 3, 15, 15, 30, 0)  # 3:30 PM on March 15, 2024
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Morning detections (today) - 3 hours ago
@@ -46,7 +47,7 @@ async def test_database_with_data(tmp_path):
                 scientific_name="Turdus migratorius",
                 common_name="American Robin",
                 confidence=0.85 + i * 0.02,
-                timestamp=now - timedelta(hours=3, minutes=-i * 10),
+                timestamp=now - timedelta(hours=3) + timedelta(minutes=i * 10),
                 species_confidence_threshold=0.5,
                 week=1,
                 sensitivity_setting=1.0,
@@ -99,12 +100,23 @@ async def test_database_with_data(tmp_path):
         await session.flush()
         from sqlalchemy import func, select
 
+        # Debug timestamps
+        all_detections = await session.scalars(select(Detection))
+        for det in all_detections:
+            is_today = det.timestamp >= today_start and det.timestamp < today_start + timedelta(
+                days=1
+            )
+            print(
+                f"DEBUG: Detection timestamp: {det.timestamp}, today_start: {today_start}, "
+                f"is_today: {is_today}"
+            )
+
         today_count_query = select(func.count(Detection.id)).where(
             Detection.timestamp >= today_start,
             Detection.timestamp < today_start + timedelta(days=1),
         )
         today_count = await session.scalar(today_count_query)
-        print(f"DEBUG: Created {today_count} detections for today")
+        print(f"DEBUG: Created {today_count} detections for today (expecting 9)")
 
         # Yesterday's detections
         yesterday = today_start - timedelta(days=1)
@@ -154,7 +166,8 @@ async def test_database_with_data(tmp_path):
         await session.commit()
 
     try:
-        yield db_service
+        # Return both db_service and the reference time
+        yield (db_service, now)
     finally:
         # Close async engine to prevent event loop warnings
         if hasattr(db_service, "async_engine"):
@@ -178,7 +191,8 @@ def mock_species_display_service():
 @pytest.fixture
 def mock_detection_query_service(test_database_with_data, mock_multilingual_service):
     """Create a DetectionQueryService with mocks."""
-    return DetectionQueryService(test_database_with_data, mock_multilingual_service)
+    db_service, _ = test_database_with_data  # Unpack tuple
+    return DetectionQueryService(db_service, mock_multilingual_service)
 
 
 @pytest.fixture
@@ -189,11 +203,12 @@ async def analytics_manager_with_db(
     mock_detection_query_service,
 ):
     """Create AnalyticsManager with real database."""
+    db_service, _ = test_database_with_data  # Unpack tuple
     config = BirdNETConfig()
     config.species_confidence_threshold = 0.5
 
     data_manager = DataManager(
-        database_service=test_database_with_data,
+        database_service=db_service,
         multilingual_service=mock_multilingual_service,
         species_display_service=mock_species_display_service,
         detection_query_service=mock_detection_query_service,
@@ -206,8 +221,19 @@ class TestDashboardAnalyticsIntegration:
     """Integration tests for dashboard analytics."""
 
     @pytest.mark.asyncio
-    async def test_get_dashboard_summary_integration(self, analytics_manager_with_db):
+    async def test_get_dashboard_summary_integration(
+        self, analytics_manager_with_db, test_database_with_data, mocker
+    ):
         """Test dashboard summary with real data."""
+        # Use the same fixed time reference that was used to create the test data
+        _, fixed_now = test_database_with_data  # Unpack tuple
+
+        # Patch datetime to use our fixed reference time
+        mock_datetime = mocker.patch("birdnetpi.analytics.analytics.datetime")
+        mock_datetime.now.return_value = fixed_now
+        mock_datetime.min = datetime.datetime.min
+        mocker.patch("birdnetpi.analytics.analytics.timedelta", datetime.timedelta)
+
         summary = await analytics_manager_with_db.get_dashboard_summary()
 
         # Debug: print actual values
@@ -231,8 +257,19 @@ class TestDashboardAnalyticsIntegration:
         assert summary["confidence_threshold"] == 0.5
 
     @pytest.mark.asyncio
-    async def test_get_species_frequency_analysis_integration(self, analytics_manager_with_db):
+    async def test_get_species_frequency_analysis_integration(
+        self, analytics_manager_with_db, test_database_with_data, mocker
+    ):
         """Test species frequency analysis with real data."""
+        # Use the same fixed time reference that was used to create the test data
+        _, fixed_now = test_database_with_data  # Unpack tuple
+
+        # Patch datetime to use our fixed reference time
+        mock_datetime = mocker.patch("birdnetpi.analytics.analytics.datetime")
+        mock_datetime.now.return_value = fixed_now
+        mock_datetime.min = datetime.datetime.min
+        mocker.patch("birdnetpi.analytics.analytics.timedelta", datetime.timedelta)
+
         # Analyze last 24 hours
         analysis = await analytics_manager_with_db.get_species_frequency_analysis(hours=24)
 
@@ -259,9 +296,20 @@ class TestDashboardAnalyticsIntegration:
         assert species_by_name["Blue Jay"]["percentage"] == pytest.approx(1 / 9 * 100)
 
     @pytest.mark.asyncio
-    async def test_get_temporal_patterns_integration(self, analytics_manager_with_db):
+    async def test_get_temporal_patterns_integration(
+        self, analytics_manager_with_db, test_database_with_data, mocker
+    ):
         """Test temporal patterns with real data."""
-        today = datetime.datetime.now().date()
+        # Use the same fixed time reference that was used to create the test data
+        _, fixed_now = test_database_with_data  # Unpack tuple
+        today = fixed_now.date()
+
+        # Patch datetime to use our fixed reference time
+        mock_datetime = mocker.patch("birdnetpi.analytics.analytics.datetime")
+        mock_datetime.now.return_value = fixed_now
+        mock_datetime.combine = datetime.datetime.combine
+        mocker.patch("birdnetpi.analytics.analytics.timedelta", datetime.timedelta)
+
         patterns = await analytics_manager_with_db.get_temporal_patterns(today)
 
         # Check hourly distribution - detections spread across hours due to minute offsets
@@ -285,8 +333,18 @@ class TestDashboardAnalyticsIntegration:
         assert total_in_periods == 9  # All 9 detections should be accounted for
 
     @pytest.mark.asyncio
-    async def test_get_detection_scatter_data_integration(self, analytics_manager_with_db):
+    async def test_get_detection_scatter_data_integration(
+        self, analytics_manager_with_db, test_database_with_data, mocker
+    ):
         """Test scatter plot data with real detections."""
+        # Use the same fixed time reference that was used to create the test data
+        _, fixed_now = test_database_with_data  # Unpack tuple
+
+        # Patch datetime to use our fixed reference time
+        mock_datetime = mocker.patch("birdnetpi.analytics.analytics.datetime")
+        mock_datetime.now.return_value = fixed_now
+        mocker.patch("birdnetpi.analytics.analytics.timedelta", datetime.timedelta)
+
         scatter_data = await analytics_manager_with_db.get_detection_scatter_data(hours=24)
 
         # Should have today's 9 detections
@@ -296,9 +354,10 @@ class TestDashboardAnalyticsIntegration:
         morning_times = [d["time"] for d in scatter_data if d["species"] == "American Robin"]
         assert len(morning_times) == 5
 
-        # Times should be around (now - 3 hours)
-        now = datetime.datetime.now()
-        expected_hour = (now - timedelta(hours=3)).hour + (now - timedelta(hours=3)).minute / 60
+        # Times should be around (fixed_now - 3 hours)
+        expected_hour = (fixed_now - timedelta(hours=3)).hour + (
+            fixed_now - timedelta(hours=3)
+        ).minute / 60
         # Allow for some variation in minutes
         assert min(morning_times) == pytest.approx(expected_hour, abs=1.0)
 
@@ -315,8 +374,19 @@ class TestDashboardAnalyticsIntegration:
             assert detection["frequency_category"] == "uncommon"
 
     @pytest.mark.asyncio
-    async def test_get_species_frequency_analysis_multiple_days(self, analytics_manager_with_db):
+    async def test_get_species_frequency_analysis_multiple_days(
+        self, analytics_manager_with_db, test_database_with_data, mocker
+    ):
         """Test species frequency analysis across multiple days."""
+        # Use the same fixed time reference that was used to create the test data
+        _, fixed_now = test_database_with_data  # Unpack tuple
+
+        # Patch datetime to use our fixed reference time
+        mock_datetime = mocker.patch("birdnetpi.analytics.analytics.datetime")
+        mock_datetime.now.return_value = fixed_now
+        mock_datetime.min = datetime.datetime.min
+        mocker.patch("birdnetpi.analytics.analytics.timedelta", datetime.timedelta)
+
         # Analyze last 48 hours (includes yesterday)
         analysis = await analytics_manager_with_db.get_species_frequency_analysis(hours=48)
 

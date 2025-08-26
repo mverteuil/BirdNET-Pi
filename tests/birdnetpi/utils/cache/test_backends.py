@@ -1,6 +1,5 @@
 """Comprehensive tests for cache backends."""
 
-import pickle
 import time
 from datetime import datetime
 from unittest.mock import MagicMock, patch
@@ -193,16 +192,17 @@ class TestMemcachedBackend:
             mock_instance.version.return_value = b"1.5.0"
             mock_client.return_value = mock_instance
 
-            backend = MemcachedBackend("localhost", 11211)
+            backend = MemcachedBackend("127.0.0.1", 11211)
 
             assert backend.client == mock_instance
-            mock_client.assert_called_once_with(
-                ("localhost", 11211),
-                serializer=pickle,
-                deserializer=pickle,
-                connect_timeout=1,
-                timeout=1,
-            )
+            # Check that client was called with correct args
+            call_args = mock_client.call_args
+            assert call_args[0][0] == ("127.0.0.1", 11211)
+            assert call_args[1]["connect_timeout"] == 1
+            assert call_args[1]["timeout"] == 1
+            # Check that serializer and deserializer are functions
+            assert callable(call_args[1]["serializer"])
+            assert callable(call_args[1]["deserializer"])
 
     @pytest.mark.skipif(not MEMCACHED_AVAILABLE, reason="pymemcache not installed")
     def test_init_connection_failure(self):

@@ -1,4 +1,8 @@
+import logging
+
 from birdnetpi.config import BirdNETConfig
+
+logger = logging.getLogger(__name__)
 
 
 class BirdWeatherService:
@@ -21,9 +25,12 @@ class BirdWeatherService:
                 timeout=5,
             )
             response.raise_for_status()  # Raise an exception for HTTP errors
-            print(f"Successfully sent detection to BirdWeather: {response.status_code}")
+            logger.info(
+                "Successfully sent detection to BirdWeather",
+                extra={"status_code": response.status_code},
+            )
         except requests.exceptions.RequestException as e:
-            print(f"Failed to send detection to BirdWeather: {e}")
+            logger.error("Failed to send detection to BirdWeather", extra={"error": str(e)})
 
     def get_birdweather_data(self, location: dict) -> dict:
         """Retrieve BirdWeather data for a given location."""
@@ -39,8 +46,11 @@ class BirdWeatherService:
                 timeout=5,
             )
             response.raise_for_status()  # Raise an exception for HTTP errors
-            print(f"Successfully retrieved BirdWeather data: {response.status_code}")
+            logger.info(
+                "Successfully retrieved BirdWeather data",
+                extra={"status_code": response.status_code},
+            )
             return response.json()
         except requests.exceptions.RequestException as e:
-            print(f"Failed to retrieve BirdWeather data: {e}")
+            logger.error("Failed to retrieve BirdWeather data", extra={"error": str(e)})
             return {}

@@ -6,11 +6,10 @@ caching for expensive operations with automatic backend selection.
 
 import hashlib
 import json
+import logging
 import time
 from collections.abc import Callable
 from typing import Any
-
-import structlog
 
 from birdnetpi.utils.cache.backends import (
     MEMCACHED_AVAILABLE,
@@ -19,7 +18,7 @@ from birdnetpi.utils.cache.backends import (
     MemcachedBackend,
 )
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class Cache:
@@ -35,7 +34,7 @@ class Cache:
 
     def __init__(
         self,
-        memcached_host: str = "localhost",
+        memcached_host: str = "127.0.0.1",
         memcached_port: int = 11211,
         default_ttl: int = 300,  # 5 minutes default TTL
         enable_cache_warming: bool = True,
@@ -57,15 +56,16 @@ class Cache:
             try:
                 self._backend = MemcachedBackend(memcached_host, memcached_port)
                 self.backend_type = "memcached"
-                logger.info("Cache initialized with memcached backend")
+                logger.debug("Cache initialized with memcached backend")
             except Exception as e:
                 logger.warning(
-                    "Failed to initialize memcached, falling back to in-memory cache", error=str(e)
+                    "Failed to initialize memcached, falling back to in-memory cache",
+                    extra={"error": str(e)},
                 )
                 self._backend = InMemoryBackend()
                 self.backend_type = "memory"
         else:
-            logger.info("Memcached not available, using in-memory cache backend")
+            logger.warning("Memcached not available, using in-memory cache backend")
             self._backend = InMemoryBackend()
             self.backend_type = "memory"
 
@@ -121,15 +121,15 @@ class Cache:
             result = self._backend.get(cache_key)
             if result is not None:
                 self._stats["hits"] += 1
-                logger.debug("Cache hit", namespace=namespace, key=cache_key[:8])
+                logger.debug("Cache hit", extra={"namespace": namespace, "key": cache_key[:8]})
                 return result
             else:
                 self._stats["misses"] += 1
-                logger.debug("Cache miss", namespace=namespace, key=cache_key[:8])
+                logger.debug("Cache miss", extra={"namespace": namespace, "key": cache_key[:8]})
                 return None
         except Exception as e:
             self._stats["errors"] += 1
-            logger.error("Cache get error", namespace=namespace, error=str(e))
+            logger.error("Cache get error", extra={"namespace": namespace, "error": str(e)})
             return None
 
     def set(self, namespace: str, value: Any, ttl: int | None = None, **kwargs: Any) -> bool:  # noqa: ANN401
@@ -151,14 +151,19 @@ class Cache:
             success = self._backend.set(cache_key, value, cache_ttl)
             if success:
                 self._stats["sets"] += 1
-                logger.debug("Cache set", namespace=namespace, key=cache_key[:8], ttl=cache_ttl)
+                logger.debug(
+                    "Cache set",
+                    extra={"namespace": namespace, "key": cache_key[:8], "ttl": cache_ttl},
+                )
             else:
                 self._stats["errors"] += 1
-                logger.warning("Cache set failed", namespace=namespace, key=cache_key[:8])
+                logger.warning(
+                    "Cache set failed", extra={"namespace": namespace, "key": cache_key[:8]}
+                )
             return success
         except Exception as e:
             self._stats["errors"] += 1
-            logger.error("Cache set error", namespace=namespace, error=str(e))
+            logger.error("Cache set error", extra={"namespace": namespace, "error": str(e)})
             return False
 
     def delete(self, namespace: str, **kwargs: Any) -> bool:  # noqa: ANN401
@@ -177,11 +182,11 @@ class Cache:
             success = self._backend.delete(cache_key)
             if success:
                 self._stats["deletes"] += 1
-                logger.debug("Cache delete", namespace=namespace, key=cache_key[:8])
+                logger.debug("Cache delete", extra={"namespace": namespace, "key": cache_key[:8]})
             return success
         except Exception as e:
             self._stats["errors"] += 1
-            logger.error("Cache delete error", namespace=namespace, error=str(e))
+            logger.error("Cache delete error", extra={"namespace": namespace, "error": str(e)})
             return False
 
     def exists(self, namespace: str, **kwargs: Any) -> bool:  # noqa: ANN401
@@ -200,7 +205,9 @@ class Cache:
             return self._backend.exists(cache_key)
         except Exception as e:
             self._stats["errors"] += 1
-            logger.error("Cache exists check error", namespace=namespace, error=str(e))
+            logger.error(
+                "Cache exists check error", extra={"namespace": namespace, "error": str(e)}
+            )
             return False
 
     def invalidate_pattern(self, namespace: str) -> bool:
@@ -216,7 +223,7 @@ class Cache:
         Returns:
             True if successful, False otherwise
         """
-        logger.info("Invalidating cache pattern", namespace=namespace)
+        logger.info("Invalidating cache pattern", extra={"namespace": namespace})
         return self.clear()
 
     def clear(self) -> bool:
@@ -235,7 +242,7 @@ class Cache:
             return success
         except Exception as e:
             self._stats["errors"] += 1
-            logger.error("Cache clear error", error=str(e))
+            logger.error("Cache clear error", extra={"error": str(e)})
             return False
 
     def warm_cache(
@@ -254,37 +261,41 @@ class Cache:
             return {}
 
         results = {}
-        logger.info("Starting cache warming", functions_count=len(cache_warming_functions))
+        logger.info(
+            "Starting cache warming", extra={"functions_count": len(cache_warming_functions)}
+        )
 
         for namespace, func, kwargs, ttl in cache_warming_functions:
             try:
                 # Check if already cached
                 if self.exists(namespace, **kwargs):
-                    logger.debug("Cache already warmed", namespace=namespace)
+                    logger.debug("Cache already warmed", extra={"namespace": namespace})
                     results[namespace] = True
                     continue
 
                 # Execute function and cache result
-                logger.debug("Warming cache", namespace=namespace)
+                logger.debug("Warming cache", extra={"namespace": namespace})
                 result = func(**kwargs)
 
                 success = self.set(namespace, result, ttl, **kwargs)
                 results[namespace] = success
 
                 if success:
-                    logger.debug("Cache warmed successfully", namespace=namespace)
+                    logger.debug("Cache warmed successfully", extra={"namespace": namespace})
                 else:
-                    logger.warning("Failed to warm cache", namespace=namespace)
+                    logger.warning("Failed to warm cache", extra={"namespace": namespace})
 
             except Exception as e:
-                logger.error("Cache warming error", namespace=namespace, error=str(e))
+                logger.error("Cache warming error", extra={"namespace": namespace, "error": str(e)})
                 results[namespace] = False
 
         successful_warms = sum(1 for success in results.values() if success)
         logger.info(
             "Cache warming completed",
-            successful=successful_warms,
-            total=len(cache_warming_functions),
+            extra={
+                "successful": successful_warms,
+                "total": len(cache_warming_functions),
+            },
         )
 
         return results

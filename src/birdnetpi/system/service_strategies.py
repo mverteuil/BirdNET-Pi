@@ -1,6 +1,9 @@
 import abc
+import logging
 import os
 import subprocess
+
+logger = logging.getLogger(__name__)
 
 
 class ServiceManagementStrategy(abc.ABC):
@@ -57,16 +60,16 @@ class EmbeddedSystemdStrategy(ServiceManagementStrategy):
                 cmd.append(service_name)
             subprocess.run(cmd, check=True)
             if service_name:
-                print(f"Service {service_name} {action}ed successfully.")
+                logger.info(f"Service {service_name} {action}ed successfully.")
             else:
-                print(f"Systemctl {action} completed successfully.")
+                logger.info(f"Systemctl {action} completed successfully.")
         except subprocess.CalledProcessError as e:
             if service_name:
-                print(f"Error {action}ing service {service_name}: {e}")
+                logger.error(f"Error {action}ing service {service_name}: {e}")
             else:
-                print(f"Error running systemctl {action}: {e}")
+                logger.error(f"Error running systemctl {action}: {e}")
         except FileNotFoundError:
-            print("Error: systemctl command not found. Is systemd installed?")
+            logger.error("Error: systemctl command not found. Is systemd installed?")
 
     def start_service(self, service_name: str) -> None:
         """Start a specified system service."""
@@ -104,7 +107,7 @@ class EmbeddedSystemdStrategy(ServiceManagementStrategy):
             else:
                 return "unknown"
         except FileNotFoundError:
-            print("Error: systemctl command not found. Is systemd installed?")
+            logger.error("Error: systemctl command not found. Is systemd installed?")
             return "error"
 
     def daemon_reload(self) -> None:
@@ -123,16 +126,16 @@ class DockerSupervisordStrategy(ServiceManagementStrategy):
                 cmd.append(service_name)
             subprocess.run(cmd, check=True)
             if service_name:
-                print(f"Service {service_name} {action}ed successfully via supervisorctl.")
+                logger.info(f"Service {service_name} {action}ed successfully via supervisorctl.")
             else:
-                print(f"Supervisorctl {action} completed successfully.")
+                logger.info(f"Supervisorctl {action} completed successfully.")
         except subprocess.CalledProcessError as e:
             if service_name:
-                print(f"Error {action}ing service {service_name} via supervisorctl: {e}")
+                logger.error(f"Error {action}ing service {service_name} via supervisorctl: {e}")
             else:
-                print(f"Error running supervisorctl {action}: {e}")
+                logger.error(f"Error running supervisorctl {action}: {e}")
         except FileNotFoundError:
-            print(
+            logger.error(
                 "Error: supervisorctl command not found. Is Supervisord installed and configured?"
             )
 
@@ -150,7 +153,7 @@ class DockerSupervisordStrategy(ServiceManagementStrategy):
 
     def enable_service(self, service_name: str) -> None:
         """Enable a specified system service to start on boot."""
-        print(
+        logger.info(
             "Enabling service "
             f"{service_name} is not directly supported by supervisorctl in the "
             "same way as systemd. Supervisor manages processes based on its "
@@ -159,7 +162,7 @@ class DockerSupervisordStrategy(ServiceManagementStrategy):
 
     def disable_service(self, service_name: str) -> None:
         """Disable a specified system service from starting on boot."""
-        print(
+        logger.info(
             "Disabling service "
             f"{service_name} is not directly supported by supervisorctl in the "
             "same way as systemd. To disable, remove it from Supervisor's "
@@ -183,7 +186,7 @@ class DockerSupervisordStrategy(ServiceManagementStrategy):
             else:
                 return "unknown"
         except FileNotFoundError:
-            print("Error: supervisorctl command not found. Is Supervisor installed?")
+            logger.error("Error: supervisorctl command not found. Is Supervisor installed?")
             return "error"
 
     def daemon_reload(self) -> None:

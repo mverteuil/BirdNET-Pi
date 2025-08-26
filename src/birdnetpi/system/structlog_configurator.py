@@ -47,7 +47,7 @@ def _get_environment_config() -> tuple[bool, bool, bool]:
 
 def _configure_processors(
     config: "BirdNETConfig", is_docker: bool, has_systemd: bool, is_development: bool
-) -> list:
+) -> tuple[list, bool]:
     """Configure structlog processors based on environment."""
     # Build dynamic extra fields
     extra_fields = {
@@ -89,16 +89,15 @@ def _configure_processors(
         if dev_json_logs:
             use_json = True
 
-    if use_json:
-        processors.append(structlog.processors.JSONRenderer())
-    else:
-        processors.append(structlog.dev.ConsoleRenderer(colors=True))
+    # IMPORTANT: wrap_for_formatter MUST be the final processor when using ProcessorFormatter
+    # This enables stdlib logging integration
+    processors.append(structlog.stdlib.ProcessorFormatter.wrap_for_formatter)
 
-    return processors
+    return processors, use_json
 
 
 def _configure_handlers(
-    config: "BirdNETConfig", is_docker: bool, has_systemd: bool, is_development: bool
+    config: "BirdNETConfig", use_json: bool, has_systemd: bool, is_development: bool
 ) -> None:
     """Configure logging handlers based on environment."""
     root_logger = logging.getLogger()
@@ -109,21 +108,37 @@ def _configure_handlers(
         root_logger.removeHandler(handler)
     root_logger.setLevel(log_level)
 
+    # Create ProcessorFormatter to integrate stdlib logging with structlog
+    # The foreign_pre_chain processes stdlib log records before the final renderer
+    formatter = structlog.stdlib.ProcessorFormatter(
+        processor=structlog.processors.JSONRenderer()
+        if use_json
+        else structlog.dev.ConsoleRenderer(colors=True),
+        foreign_pre_chain=[
+            structlog.stdlib.add_log_level,
+            structlog.stdlib.add_logger_name,
+            structlog.processors.TimeStamper(fmt="ISO"),
+            structlog.stdlib.ExtraAdder(),  # IMPORTANT: Extracts extra dict fields from stdlib logs
+        ],
+    )
+
     # Environment-specific handler configuration
-    if is_docker or not has_systemd or is_development:
-        # Console output for Docker and development
+    if has_systemd and not is_development:
+        # Use journald if available (Docker or SBC with systemd)
+        _add_journald_handler(config, root_logger, log_level, formatter)
+    else:
+        # Fallback to console for development or non-systemd environments
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(log_level)
-        console_handler.setFormatter(logging.Formatter("%(message)s"))
+        console_handler.setFormatter(formatter)
         root_logger.addHandler(console_handler)
-
-    # Journald for SBC deployments (or systemd environments)
-    if has_systemd:
-        _add_journald_handler(config, root_logger, log_level)
 
 
 def _add_journald_handler(
-    config: "BirdNETConfig", root_logger: logging.Logger, log_level: int
+    config: "BirdNETConfig",
+    root_logger: logging.Logger,
+    log_level: int,
+    formatter: structlog.stdlib.ProcessorFormatter,
 ) -> None:
     """Add journald handler for systemd environments."""
     try:
@@ -131,13 +146,13 @@ def _add_journald_handler(
 
         journal_handler = journal.JournalHandler()
         journal_handler.setLevel(log_level)
-        journal_handler.setFormatter(logging.Formatter("%(message)s"))
+        journal_handler.setFormatter(formatter)
         root_logger.addHandler(journal_handler)
     except ImportError:
         # Fallback to stderr if systemd-python not available
         stderr_handler = logging.StreamHandler(sys.stderr)
         stderr_handler.setLevel(log_level)
-        stderr_handler.setFormatter(logging.Formatter("%(message)s"))
+        stderr_handler.setFormatter(formatter)
         root_logger.addHandler(stderr_handler)
 
 
@@ -155,8 +170,8 @@ def configure_structlog(config: "BirdNETConfig") -> None:
     # Detect environment
     is_docker, has_systemd, is_development = _get_environment_config()
 
-    # Configure processors
-    processors = _configure_processors(config, is_docker, has_systemd, is_development)
+    # Configure processors (returns processors and use_json flag)
+    processors, use_json = _configure_processors(config, is_docker, has_systemd, is_development)
 
     # Configure structlog
     structlog.configure(
@@ -169,27 +184,17 @@ def configure_structlog(config: "BirdNETConfig") -> None:
     )
 
     # Configure handlers
-    _configure_handlers(config, is_docker, has_systemd, is_development)
+    _configure_handlers(config, use_json, has_systemd, is_development)
 
     # Log configuration success
-    logger = structlog.get_logger(__name__)
+    logger = logging.getLogger(__name__)
     logger.info(
         "Structured logging configured",
-        git_version=SystemUtils.get_git_version(),
-        log_level=config.logging.level,
-        environment=SystemUtils.get_deployment_environment(),
-        journald=has_systemd,
-        json_output=config.logging.json_logs,
+        extra={
+            "git_version": SystemUtils.get_git_version(),
+            "log_level": config.logging.level,
+            "environment": SystemUtils.get_deployment_environment(),
+            "journald": has_systemd,
+            "json_output": config.logging.json_logs,
+        },
     )
-
-
-def get_logger(name: str) -> structlog.BoundLogger:
-    """Get a structlog logger instance.
-
-    Args:
-        name: Logger name (usually __name__)
-
-    Returns:
-        Configured structlog BoundLogger instance
-    """
-    return structlog.get_logger(name)

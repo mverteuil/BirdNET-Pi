@@ -56,9 +56,16 @@ class AudioAnalysisManager:
         self.buffer_lock = threading.Lock()
         self.flush_interval = buffer_flush_interval
 
-        # Start background buffer flush task
+        # Initialize background buffer flush task (but don't start it yet)
         self._stop_flush_task = False
         self._flush_task = None
+        # Thread will be started by calling start_buffer_flush_task()
+
+    def start_buffer_flush_task(self) -> None:
+        """Start the background task to flush detection buffer."""
+        if self._flush_task and self._flush_task.is_alive():
+            logger.warning("Buffer flush task already running")
+            return
         self._start_buffer_flush_task()
 
     def _start_buffer_flush_task(self) -> None:
@@ -68,8 +75,8 @@ class AudioAnalysisManager:
             while not self._stop_flush_task:
                 try:
                     asyncio.run(self._flush_detection_buffer())
-                except Exception as e:
-                    logger.error(f"Error in buffer flush loop: {e}", exc_info=True)
+                except Exception:
+                    logger.exception("Error in buffer flush loop")
                 time.sleep(self.flush_interval)
 
         flush_thread = threading.Thread(target=flush_loop, daemon=True)
@@ -89,7 +96,9 @@ class AudioAnalysisManager:
         if not buffered_detections:
             return
 
-        logger.info(f"Attempting to flush {len(buffered_detections)} buffered detections")
+        logger.info(
+            "Attempting to flush buffered detections", extra={"count": len(buffered_detections)}
+        )
 
         # Try to send each buffered detection
         successful_sends = 0
@@ -99,17 +108,24 @@ class AudioAnalysisManager:
             for detection_data in buffered_detections:
                 try:
                     response = await client.post(
-                        "http://fastapi:8888/api/detections", json=detection_data
+                        "http://127.0.0.1:8000/api/detections", json=detection_data
                     )
                     response.raise_for_status()
                     successful_sends += 1
                     species_name = detection_data.get("species_tensor", "Unknown")
-                    logger.debug(f"Successfully flushed buffered detection: {species_name}")
+                    logger.debug(
+                        "Successfully flushed buffered detection", extra={"species": species_name}
+                    )
                 except (httpx.RequestError, httpx.HTTPStatusError) as e:
-                    logger.debug(f"Failed to flush detection (will re-buffer): {e}")
+                    logger.debug(
+                        "Failed to flush detection (will re-buffer)",
+                        extra={"error": str(e), "detection": detection_data},
+                    )
                     failed_detections.append(detection_data)
-                except Exception as e:
-                    logger.error(f"Unexpected error flushing detection: {e}", exc_info=True)
+                except Exception:
+                    logger.exception(
+                        "Unexpected error flushing detection", extra={"detection": detection_data}
+                    )
                     failed_detections.append(detection_data)
 
         # Re-add failed detections to buffer
@@ -117,10 +133,15 @@ class AudioAnalysisManager:
             with self.buffer_lock:
                 for detection in failed_detections:
                     self.detection_buffer.append(detection)
-            logger.warning(f"Re-buffered {len(failed_detections)} failed detections")
+            logger.warning(
+                "Re-buffered failed detections",
+                extra={"count": len(failed_detections), "failed_detections": failed_detections},
+            )
 
         if successful_sends > 0:
-            logger.info(f"Successfully flushed {successful_sends} buffered detections")
+            logger.info(
+                "Successfully flushed buffered detections", extra={"count": successful_sends}
+            )
 
     def stop_buffer_flush_task(self) -> None:
         """Stop the background buffer flush task."""
@@ -132,7 +153,7 @@ class AudioAnalysisManager:
         """Process a chunk of audio data for analysis."""
         # Convert bytes to numpy array (assuming int16 from AudioCaptureService)
         audio_data = np.frombuffer(audio_data_bytes, dtype=np.int16)
-        logger.debug(f"AudioAnalysisService received chunk. Shape: {audio_data.shape}")
+        logger.debug("AudioAnalysisService received chunk", extra={"shape": audio_data.shape})
 
         # Audio streaming is now handled by separate WebSocket daemon via livestream.fifo
 
@@ -178,7 +199,10 @@ class AudioAnalysisManager:
                             species_tensor
                         )
                     except ValueError as e:
-                        logger.error(f"Invalid species tensor format '{species_tensor}': {e}")
+                        logger.error(
+                            "Invalid species tensor format",
+                            extra={"species_tensor": species_tensor, "error": str(e)},
+                        )
                         continue  # Skip this detection if tensor format is invalid
                     # Convert audio chunk back to bytes for saving
                     audio_bytes = (audio_chunk * 32767).astype(np.int16).tobytes()
@@ -188,8 +212,8 @@ class AudioAnalysisManager:
                         f"(confidence: {confidence:.3f})"
                     )
 
-        except Exception as e:
-            logger.error(f"Error during BirdNET analysis: {e}", exc_info=True)
+        except Exception:
+            logger.exception("Error during BirdNET analysis")
 
     async def _send_detection_event(
         self, species_components: SpeciesComponents, confidence: float, raw_audio_bytes: bytes
@@ -218,9 +242,11 @@ class AudioAnalysisManager:
                 self.config.sample_rate,  # Get from config
                 self.config.audio_channels,  # Get from config
             )
-            logger.info(f"Saved detection audio to {audio_file_instance.file_path!s}")
-        except Exception as e:
-            logger.error(f"Failed to save detection audio: {e}", exc_info=True)
+            logger.info(
+                "Saved detection audio", extra={"file_path": str(audio_file_instance.file_path)}
+            )
+        except Exception:
+            logger.exception("Failed to save detection audio")
             return  # Don't send detection if audio save fails
 
         detection_data = {
@@ -253,12 +279,20 @@ class AudioAnalysisManager:
                     "http://fastapi:8888/api/detections", json=detection_data
                 )
                 response.raise_for_status()  # Raise an exception for bad status codes
-                logger.info(f"Detection event sent: {species_components.scientific_name}")
+                logger.info(
+                    "Detection event sent", extra={"species": species_components.scientific_name}
+                )
                 return  # Success - no need to buffer
         except (httpx.RequestError, httpx.HTTPStatusError) as e:
-            logger.warning(f"FastAPI unavailable, buffering detection: {e}")
+            logger.warning(
+                "FastAPI unavailable, buffering detection",
+                extra={"error": str(e), "detection_buffered": True},
+            )
         except Exception as e:
-            logger.warning(f"Unexpected error sending detection, buffering: {e}")
+            logger.warning(
+                "Unexpected error sending detection, buffering",
+                extra={"error": str(e), "detection_buffered": True},
+            )
 
         # FastAPI is unavailable - buffer the detection
         with self.buffer_lock:

@@ -61,43 +61,49 @@ def mock_path_resolver(tmp_path, path_resolver):
 
 
 @pytest.fixture
-@patch("birdnetpi.audio.audio_analysis_manager.BirdDetectionService")
 def audio_analysis_service_integration(
-    mock_analysis_client_class,
     mock_file_manager,
     mock_path_resolver,
     mock_config,
 ):
-    """Return an AudioAnalysisManager instance for integration testing."""
-    # Mock the BirdDetectionService constructor
-    mock_analysis_client = MagicMock()
-    mock_analysis_client_class.return_value = mock_analysis_client
+    """Yield an AudioAnalysisManager instance for integration testing with proper cleanup."""
+    with patch(
+        "birdnetpi.audio.audio_analysis_manager.BirdDetectionService"
+    ) as mock_analysis_client_class:
+        # Mock the BirdDetectionService constructor
+        mock_analysis_client = MagicMock()
+        mock_analysis_client_class.return_value = mock_analysis_client
 
-    # Mock MultilingualDatabaseService and AsyncSession
-    mock_multilingual_service = MagicMock()
-    # Make get_best_common_name async and return a dict with common_name
-    mock_multilingual_service.get_best_common_name = AsyncMock(
-        return_value={"common_name": "Test Bird"}
-    )
-    mock_session = MagicMock()
+        # Mock MultilingualDatabaseService and AsyncSession
+        mock_multilingual_service = MagicMock()
+        # Make get_best_common_name async and return a dict with common_name
+        mock_multilingual_service.get_best_common_name = AsyncMock(
+            return_value={"common_name": "Test Bird"}
+        )
+        mock_session = MagicMock()
 
-    # Initialize SpeciesParser with the mock service
-    from birdnetpi.species.parser import SpeciesParser
+        # Initialize SpeciesParser with the mock service
+        from birdnetpi.species.parser import SpeciesParser
 
-    SpeciesParser._instance = None  # Reset singleton
-    SpeciesParser(mock_multilingual_service)  # Initialize with mock
+        SpeciesParser._instance = None  # Reset singleton
+        SpeciesParser(mock_multilingual_service)  # Initialize with mock
 
-    service = AudioAnalysisManager(
-        mock_file_manager,
-        mock_path_resolver,
-        mock_config,
-        mock_multilingual_service,
-        mock_session,
-        detection_buffer_max_size=50,  # Reasonable size for integration tests
-        buffer_flush_interval=0.1,  # Fast interval for testing
-    )
-    service.analysis_client = mock_analysis_client
-    return service
+        service = AudioAnalysisManager(
+            mock_file_manager,
+            mock_path_resolver,
+            mock_config,
+            mock_multilingual_service,
+            mock_session,
+            detection_buffer_max_size=50,  # Reasonable size for integration tests
+            buffer_flush_interval=0.1,  # Fast interval for testing
+        )
+        service.analysis_client = mock_analysis_client
+        # Start the buffer flush task for automatic flushing
+        service.start_buffer_flush_task()
+
+        # Ensure the task is stopped after the test
+        yield service
+        service.stop_buffer_flush_task()
 
 
 @pytest.fixture(autouse=True)
@@ -110,12 +116,6 @@ def caplog_integration(caplog):
 
 class TestDetectionBufferingEndToEnd:
     """End-to-end integration tests for detection buffering system."""
-
-    @pytest.fixture(autouse=True)
-    def setup_cleanup(self, audio_analysis_service_integration):
-        """Set up and clean up for integration tests."""
-        yield
-        audio_analysis_service_integration.stop_buffer_flush_task()
 
     async def test_detection_buffering_during_fastapi_outage(
         self, audio_analysis_service_integration, caplog
@@ -168,7 +168,7 @@ class TestDetectionBufferingEndToEnd:
                 buffer_size = len(service.detection_buffer)
 
             assert buffer_size == 0
-            assert "Successfully flushed 2 buffered detections" in caplog.text
+            assert "Successfully flushed buffered detections" in caplog.text
 
     async def test_concurrent_detection__admin_operations(
         self, audio_analysis_service_integration, caplog
@@ -347,7 +347,7 @@ class TestDetectionBufferingEndToEnd:
                 buffer_size = len(service.detection_buffer)
 
             assert buffer_size == 0
-            assert "Successfully flushed 3 buffered detections" in caplog.text
+            assert "Successfully flushed buffered detections" in caplog.text
 
     async def test_mixed_success__failure_during_partial_recovery(
         self, audio_analysis_service_integration, caplog
@@ -404,8 +404,9 @@ class TestDetectionBufferingEndToEnd:
             assert "Cardinalis cardinalis" in buffered_scientific_names
 
             # Verify successful sends were logged
-            assert "Detection event sent: Turdus migratorius" in caplog.text
-            assert "Detection event sent: Passer domesticus" in caplog.text
+            assert "Detection event sent" in caplog.text
+            assert "Bird detected: Turdus migratorius" in caplog.text
+            assert "Bird detected: Passer domesticus" in caplog.text
 
             # Verify failed detections were buffered
             assert "Buffered detection event for Corvus brachyrhynchos" in caplog.text
@@ -445,7 +446,8 @@ class TestDetectionBufferingWithAdminOperations:
                 with service.buffer_lock:
                     initial_buffer_size = len(service.detection_buffer)
                 assert initial_buffer_size == 0
-                assert "Detection event sent: Turdus migratorius" in caplog.text
+                assert "Detection event sent" in caplog.text
+                assert "Bird detected: Turdus migratorius" in caplog.text
 
             # Simulate admin operation affecting FastAPI
             with (
@@ -520,7 +522,7 @@ class TestDetectionBufferingWithAdminOperations:
                 with service.buffer_lock:
                     final_buffer_size = len(service.detection_buffer)
                 assert final_buffer_size == 0
-                assert "Successfully flushed 1 buffered detections" in caplog.text
+                assert "Successfully flushed buffered detections" in caplog.text
 
         finally:
             service.stop_buffer_flush_task()

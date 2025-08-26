@@ -36,6 +36,7 @@ class AudioCaptureService:
         self.analysis_filter_chain = analysis_filter_chain
         self.livestream_filter_chain = livestream_filter_chain
         self.stream = None
+        self._shutdown_requested = False
 
         # Configure filter chains if provided
         if self.analysis_filter_chain:
@@ -84,8 +85,18 @@ class AudioCaptureService:
         except BlockingIOError:
             # This can happen if the readers are not keeping up
             logger.warning("FIFO write would block, skipping frame.")
-        except Exception as e:
-            logger.error("Error writing to FIFO: %s", e)
+        except BrokenPipeError:
+            # This happens during shutdown when FIFOs are closed
+            logger.debug("FIFO closed, requesting shutdown.")
+            # Don't stop the stream from within the callback - just flag for shutdown
+            self._shutdown_requested = True
+        except OSError as e:
+            # Handle other OS errors gracefully during shutdown
+            if e.errno == 9:  # Bad file descriptor (EBADF)
+                logger.debug("FIFO file descriptor closed during shutdown.")
+                self._shutdown_requested = True
+            else:
+                logger.error("Error writing to FIFO: %s", e)
 
     def start_capture(self) -> None:
         """Start the audio capture stream."""
@@ -111,10 +122,24 @@ class AudioCaptureService:
             raise
 
     def stop_capture(self) -> None:
-        """Stop the audio capture stream."""
+        """Stop the audio capture stream gracefully."""
         if self.stream and not self.stream.stopped:
-            self.stream.stop()
-            self.stream.close()
-            logger.info("Audio capture stream stopped and closed.")
+            try:
+                # Abort first to immediately stop processing
+                self.stream.abort()
+                # Small delay to allow threads to terminate
+                import time
+
+                time.sleep(0.1)
+                # Then close the stream
+                self.stream.close()
+                logger.info("Audio capture stream stopped and closed.")
+            except Exception as e:
+                # pthread_join errors during shutdown are expected and can be ignored
+                error_str = str(e)
+                if "pthread_join" in error_str or "PaUnixThread_Terminate" in error_str:
+                    logger.debug("Thread termination warning during shutdown (expected): %s", e)
+                else:
+                    logger.error(f"Error stopping audio stream: {e}")
         else:
             logger.info("Audio capture stream is not running.")

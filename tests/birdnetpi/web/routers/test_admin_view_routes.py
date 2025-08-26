@@ -52,8 +52,13 @@ def app_with_admin_view_routes(path_resolver, repo_root):
 
 @pytest.fixture
 def client(app_with_admin_view_routes):
-    """Create test client with real app."""
-    return TestClient(app_with_admin_view_routes)
+    """Create test client with real app.
+
+    Note: We use the TestClient as a context manager to ensure
+    lifespan events (including static file mounting) are triggered.
+    """
+    with TestClient(app_with_admin_view_routes) as test_client:
+        yield test_client
 
 
 class TestAdminRouterIntegration:

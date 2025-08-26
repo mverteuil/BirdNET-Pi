@@ -100,22 +100,18 @@ class TestEmbeddedSystemdStrategy:
         assert status == "error"
 
     @patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, ["systemctl"]))
-    @patch("builtins.print")
-    def test_should_handle_systemctl_command_error(self, mock_print, mock_run):
+    def test_should_handle_systemctl_command_error(self, mock_run, caplog):
         """Should handle CalledProcessError from systemctl command (covers lines 51-52)."""
         strategy = EmbeddedSystemdStrategy()
         strategy.start_service("test_service")
-        mock_print.assert_called_once()
-        assert "Error starting service test_service" in mock_print.call_args[0][0]
+        assert "Error starting service test_service" in caplog.text
 
     @patch("subprocess.run", side_effect=FileNotFoundError)
-    @patch("builtins.print")
-    def test_should_handle_systemctl_not_found_in_command(self, mock_print, mock_run):
+    def test_should_handle_systemctl_not_found_in_command(self, mock_run, caplog):
         """Should handle FileNotFoundError from systemctl command (covers lines 53-54)."""
         strategy = EmbeddedSystemdStrategy()
         strategy.start_service("test_service")
-        mock_print.assert_called_once()
-        assert "systemctl command not found" in mock_print.call_args[0][0]
+        assert "systemctl command not found" in caplog.text
 
     @patch(
         "subprocess.run",
@@ -154,21 +150,23 @@ class TestDockerSupervisordStrategy:
         strategy.restart_service("test_service")
         mock_run.assert_called_once_with(["supervisorctl", "restart", "test_service"], check=True)
 
-    @patch("builtins.print")
-    def test_should_inform_on_enable_service(self, mock_print):
-        """Should print an informative message for enable_service."""
+    def test_should_inform_on_enable_service(self, caplog):
+        """Should log an informative message for enable_service."""
+        import logging
+
+        caplog.set_level(logging.INFO)
         strategy = DockerSupervisordStrategy()
         strategy.enable_service("test_service")
-        mock_print.assert_called_once()
-        assert "not directly supported" in mock_print.call_args[0][0]
+        assert "not directly supported" in caplog.text
 
-    @patch("builtins.print")
-    def test_should_inform_on_disable_service(self, mock_print):
-        """Should print an informative message for disable_service."""
+    def test_should_inform_on_disable_service(self, caplog):
+        """Should log an informative message for disable_service."""
+        import logging
+
+        caplog.set_level(logging.INFO)
         strategy = DockerSupervisordStrategy()
         strategy.disable_service("test_service")
-        mock_print.assert_called_once()
-        assert "not directly supported" in mock_print.call_args[0][0]
+        assert "not directly supported" in caplog.text
 
     @patch("subprocess.run")
     def test_should_get_service_status_running(self, mock_run):
@@ -207,22 +205,21 @@ class TestDockerSupervisordStrategy:
         assert status == "error"
 
     @patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, ["supervisorctl"]))
-    @patch("builtins.print")
-    def test_should_handle_supervisorctl_command_error(self, mock_print, mock_run):
+    def test_should_handle_supervisorctl_command_error(self, mock_run, caplog):
         """Should handle CalledProcessError from supervisorctl command (covers lines 104-105)."""
         strategy = DockerSupervisordStrategy()
         strategy.start_service("test_service")
-        mock_print.assert_called_once()
-        assert "Error starting service test_service via supervisorctl" in mock_print.call_args[0][0]
+        assert "Error starting service test_service via supervisorctl" in caplog.text
 
     @patch("subprocess.run", side_effect=FileNotFoundError)
-    @patch("builtins.print")
-    def test_should_handle_supervisorctl_not_found_in_command(self, mock_print, mock_run):
+    def test_should_handle_supervisorctl_not_found_in_command(self, mock_run, caplog):
         """Should handle FileNotFoundError from supervisorctl command (covers lines 106-109)."""
         strategy = DockerSupervisordStrategy()
         strategy.start_service("test_service")
-        mock_print.assert_called_once()
-        assert "supervisorctl command not found" in mock_print.call_args[0][0]
+        assert (
+            "supervisorctl command not found. Is Supervisord installed and configured?"
+            in caplog.text
+        )
 
     @patch(
         "subprocess.run",

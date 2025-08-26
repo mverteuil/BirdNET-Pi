@@ -190,7 +190,8 @@ class TestAudioAnalysisManager:
         assert hasattr(audio_analysis_service, "audio_buffer")
         assert hasattr(audio_analysis_service, "detection_buffer")
         assert hasattr(audio_analysis_service, "buffer_lock")
-        assert audio_analysis_service._flush_task is not None
+        # Flush task is not started automatically anymore
+        assert audio_analysis_service._flush_task is None
 
     @pytest.mark.asyncio
     async def test_process_audio_chunk_accumulates_buffer(
@@ -321,7 +322,9 @@ class TestAudioAnalysisManager:
         )
 
         mock_async_client.assert_not_called()
-        assert "Failed to save detection audio: Audio save error" in caplog.text
+        assert "Failed to save detection audio" in caplog.text
+        # The exception details appear in the traceback
+        assert "Audio save error" in caplog.text
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient")
@@ -348,7 +351,7 @@ class TestAudioAnalysisManager:
             species_components, confidence, raw_audio_bytes
         )
 
-        assert "FastAPI unavailable, buffering detection: Network error" in caplog.text
+        assert "FastAPI unavailable, buffering detection" in caplog.text
         # Extract scientific name from tensor format for log assertion
         scientific_name = species.split("_")[0]
         assert f"Buffered detection event for {scientific_name}" in caplog.text
@@ -376,7 +379,7 @@ class TestAudioAnalysisManager:
             species_components, confidence, raw_audio_bytes
         )
 
-        assert "FastAPI unavailable, buffering detection: Not Found" in caplog.text
+        assert "FastAPI unavailable, buffering detection" in caplog.text
         # Extract scientific name from tensor format for log assertion
         scientific_name = species.split("_")[0]
         assert f"Buffered detection event for {scientific_name}" in caplog.text
@@ -403,7 +406,7 @@ class TestAudioAnalysisManager:
             species_components, confidence, raw_audio_bytes
         )
 
-        assert "Unexpected error sending detection, buffering: Unexpected error" in caplog.text
+        assert "Unexpected error sending detection, buffering" in caplog.text
         # Extract scientific name from tensor format for log assertion
         scientific_name = species.split("_")[0]
         assert f"Buffered detection event for {scientific_name}" in caplog.text
@@ -425,7 +428,9 @@ class TestAudioAnalysisManager:
         await audio_analysis_service._analyze_audio_chunk(audio_chunk)
 
         # Should have logged the error
-        assert "Error during BirdNET analysis: Analysis failed" in caplog.text
+        assert "Error during BirdNET analysis" in caplog.text
+        # Exception details appear in the traceback
+        assert "Analysis failed" in caplog.text
 
     @pytest.mark.asyncio
     async def test_analyze_audio_chunk__no_detections(
@@ -458,7 +463,8 @@ class TestAudioAnalysisManager:
 
         await audio_analysis_service._analyze_audio_chunk(invalid_chunk)
 
-        assert "Error during BirdNET analysis: Invalid audio format" in caplog.text
+        assert "Error during BirdNET analysis" in caplog.text
+        assert "Invalid audio format" in caplog.text
 
     @pytest.mark.asyncio
     async def test_process_audio_chunk__empty_chunk(self, audio_analysis_service):
@@ -496,12 +502,22 @@ class TestDetectionBuffering:
 
     async def test_start_buffer_flush_task(self, audio_analysis_service):
         """Should start background thread for buffer flushing."""
+        # Task should not be started automatically
+        assert audio_analysis_service._flush_task is None
+
+        # Start the task
+        audio_analysis_service.start_buffer_flush_task()
+
+        # Now it should be running
         assert audio_analysis_service._flush_task is not None
         assert audio_analysis_service._flush_task.is_alive()
         assert not audio_analysis_service._stop_flush_task
 
     async def test_stop_buffer_flush_task(self, audio_analysis_service):
         """Should stop the background buffer flush task cleanly."""
+        # Start the task first
+        audio_analysis_service.start_buffer_flush_task()
+
         # Verify task is running
         assert audio_analysis_service._flush_task.is_alive()
 
@@ -658,8 +674,8 @@ class TestDetectionBuffering:
             # Verify HTTP request was made
             mock_client.return_value.__aenter__.return_value.post.assert_called_once()
 
-            assert "Attempting to flush 1 buffered detections" in caplog.text
-            assert "Successfully flushed 1 buffered detections" in caplog.text
+            assert "Attempting to flush buffered detections" in caplog.text
+            assert "Successfully flushed buffered detections" in caplog.text
 
     async def test_flush_detection_buffer_partial_failure(self, audio_analysis_service, caplog):
         """Should re-buffer failed detections and flush successful ones."""
@@ -703,8 +719,12 @@ class TestDetectionBuffering:
             success_response.raise_for_status = MagicMock()
             responses.append(success_response)
 
-            # Second call fails
-            responses.append(httpx.RequestError("Connection failed", request=MagicMock()))
+            # Second call fails with HTTPStatusError
+            failed_response = MagicMock()
+            failed_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+                "Server error", request=MagicMock(), response=MagicMock(status_code=500)
+            )
+            responses.append(failed_response)
 
             # Third call succeeds
             success_response2 = MagicMock()
@@ -723,9 +743,9 @@ class TestDetectionBuffering:
                     rebuffered["scientific_name"] == "Corvus brachyrhynchos"
                 )  # The middle one that failed
 
-            assert "Attempting to flush 3 buffered detections" in caplog.text
-            assert "Successfully flushed 2 buffered detections" in caplog.text
-            assert "Re-buffered 1 failed detections" in caplog.text
+            assert "Attempting to flush buffered detections" in caplog.text
+            assert "Successfully flushed buffered detections" in caplog.text
+            assert "Re-buffered failed detections" in caplog.text
 
     async def test_flush_detection_buffer_all_failures(self, audio_analysis_service, caplog):
         """Should re-buffer all detections when all flush attempts fail."""
@@ -756,8 +776,8 @@ class TestDetectionBuffering:
                 rebuffered = next(iter(audio_analysis_service.detection_buffer))
                 assert rebuffered["scientific_name"] == "Turdus migratorius"
 
-            assert "Attempting to flush 1 buffered detections" in caplog.text
-            assert "Re-buffered 1 failed detections" in caplog.text
+            assert "Attempting to flush buffered detections" in caplog.text
+            assert "Re-buffered failed detections" in caplog.text
             assert "Successfully flushed" not in caplog.text  # No successful flushes
 
     async def test_flush_detection_buffer_unexpected__error_handling(
@@ -789,9 +809,9 @@ class TestDetectionBuffering:
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 1
 
-            assert "Attempting to flush 1 buffered detections" in caplog.text
+            assert "Attempting to flush buffered detections" in caplog.text
             assert "Unexpected error flushing detection" in caplog.text
-            assert "Re-buffered 1 failed detections" in caplog.text
+            assert "Re-buffered failed detections" in caplog.text
 
     @patch("birdnetpi.audio.audio_analysis_manager.BirdDetectionService")
     async def test_detection_buffer_max_size_enforcement(
@@ -904,6 +924,9 @@ class TestDetectionBuffering:
         # Use faster flush interval for testing
         audio_analysis_service.flush_interval = 0.1
 
+        # Start the background flush task
+        audio_analysis_service.start_buffer_flush_task()
+
         with patch("httpx.AsyncClient") as mock_client:
             # Mock successful HTTP response
             mock_response = MagicMock()
@@ -929,12 +952,15 @@ class TestDetectionBuffering:
                 buffer_size = len(audio_analysis_service.detection_buffer)
 
             assert buffer_size == 0
-            assert "Successfully flushed 1 buffered detections" in caplog.text
+            assert "Successfully flushed buffered detections" in caplog.text
 
     async def test_background_flush__failed_requests(self, audio_analysis_service, caplog):
         """Should keep retrying buffered detections in background when FastAPI fails."""
         # Use faster flush interval for testing
         audio_analysis_service.flush_interval = 0.1
+
+        # Start the background flush task
+        audio_analysis_service.start_buffer_flush_task()
 
         with patch("httpx.AsyncClient") as mock_client:
             # Mock HTTP failure initially
@@ -961,7 +987,7 @@ class TestDetectionBuffering:
                 buffer_size = len(audio_analysis_service.detection_buffer)
 
             assert buffer_size == 1
-            assert "Re-buffered 1 failed detections" in caplog.text
+            assert "Re-buffered failed detections" in caplog.text
 
             # Now mock successful response
             mock_response = MagicMock()
@@ -977,7 +1003,7 @@ class TestDetectionBuffering:
                 buffer_size = len(audio_analysis_service.detection_buffer)
 
             assert buffer_size == 0
-            assert "Successfully flushed 1 buffered detections" in caplog.text
+            assert "Successfully flushed buffered detections" in caplog.text
 
 
 class TestDetectionBufferingIntegration:
@@ -1039,7 +1065,7 @@ class TestDetectionBufferingIntegration:
             with audio_analysis_service.buffer_lock:
                 assert len(audio_analysis_service.detection_buffer) == 0
 
-            assert "Successfully flushed 1 buffered detections" in caplog.text
+            assert "Successfully flushed buffered detections" in caplog.text
 
     async def test_mixed_success__failure_detection_processing(
         self, audio_analysis_service, caplog
@@ -1095,7 +1121,8 @@ class TestDetectionBufferingIntegration:
                 assert buffered["scientific_name"] == "Corvus brachyrhynchos"
 
             # Verify successful sends were logged
-            assert "Detection event sent: Turdus migratorius" in caplog.text
-            assert "Detection event sent: Passer domesticus" in caplog.text
+            assert "Detection event sent" in caplog.text
+            assert "Bird detected: Turdus migratorius" in caplog.text
+            assert "Bird detected: Passer domesticus" in caplog.text
             # Verify failed detection was buffered
             assert "Buffered detection event for Corvus brachyrhynchos" in caplog.text

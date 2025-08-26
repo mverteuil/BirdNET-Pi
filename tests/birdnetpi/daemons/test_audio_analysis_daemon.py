@@ -1,12 +1,18 @@
-import asyncio
 import logging
 import os
 import signal
-from unittest.mock import DEFAULT, AsyncMock, MagicMock, patch
+from unittest.mock import DEFAULT, MagicMock, patch
 
 import pytest
 
 import birdnetpi.daemons.audio_analysis_daemon as daemon
+
+
+@pytest.fixture(autouse=True)
+def mock_daemon_setup(mocker, path_resolver):
+    """Mock daemon setup to avoid subprocess calls and file system access."""
+    mocker.patch("birdnetpi.daemons.audio_analysis_daemon.configure_structlog")
+    mocker.patch("birdnetpi.daemons.audio_analysis_daemon.PathResolver", return_value=path_resolver)
 
 
 @pytest.fixture
@@ -79,6 +85,20 @@ def mock_dependencies(mocker, path_resolver):
         path_resolver.get_fifo_base_path = lambda: "/tmp/fifo"
         mocks["PathResolver"].return_value = path_resolver
 
+        # Mock AudioAnalysisManager properly to prevent thread/event loop creation
+        mock_audio_manager = MagicMock()
+        # Track calls to process_audio_chunk
+        mock_audio_manager._process_calls = []
+
+        # Make process_audio_chunk an async coroutine that tracks calls
+        async def mock_process_chunk(data):
+            mock_audio_manager._process_calls.append(data)
+
+        mock_audio_manager.process_audio_chunk = mock_process_chunk
+        mock_audio_manager.start_buffer_flush_task = MagicMock()  # Mock the start method
+        mock_audio_manager.stop_buffer_flush_task = MagicMock()
+        mocks["AudioAnalysisManager"].return_value = mock_audio_manager
+
         # Yield mocks for individual test configuration
         yield mocks
 
@@ -105,7 +125,6 @@ class TestAudioAnalysisDaemon:
         """Should open FIFO, read data, process, and close on shutdown."""
         _mock_signal = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.signal")
         mock_atexit = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.atexit")
-        mock_asyncio = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.asyncio")
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.time")
         mock_global_shutdown_flag = mocker.patch(
             "birdnetpi.daemons.audio_analysis_daemon._shutdown_flag", new_callable=MagicMock
@@ -122,16 +141,10 @@ class TestAudioAnalysisDaemon:
             test_fifo_data["path"], os.O_RDONLY | os.O_NONBLOCK
         )
         assert mock_os_operations.read.call_count == 2
-        mock_asyncio.run.assert_any_call(
-            mock_dependencies["AudioAnalysisManager"].return_value.process_audio_chunk(
-                test_fifo_data["chunks"][0]
-            )
-        )
-        mock_asyncio.run.assert_any_call(
-            mock_dependencies["AudioAnalysisManager"].return_value.process_audio_chunk(
-                test_fifo_data["chunks"][1]
-            )
-        )
+        # Verify process_audio_chunk was called with correct data
+        process_calls = mock_dependencies["AudioAnalysisManager"].return_value._process_calls
+        assert test_fifo_data["chunks"][0] in process_calls
+        assert test_fifo_data["chunks"][1] in process_calls
         mock_atexit.register.assert_called_once_with(daemon._cleanup_fifo)
         _mock_signal.signal.assert_any_call(_mock_signal.SIGTERM, daemon._signal_handler)
         _mock_signal.signal.assert_any_call(_mock_signal.SIGINT, daemon._signal_handler)
@@ -155,7 +168,6 @@ class TestAudioAnalysisDaemon:
         """Should log an error if the FIFO is not found."""
         mock_os = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.os")
         _mock_signal = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.signal")
-        mock_asyncio = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.asyncio")
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.atexit")
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.time")
 
@@ -167,12 +179,7 @@ class TestAudioAnalysisDaemon:
         )
         mock_global_shutdown_flag.__bool__.side_effect = test_daemon_lifecycle["immediate_exit"]
 
-        # Mock asyncio.run to return a mock session for init_session and handle cleanup
-        mock_session = AsyncMock()
-        mock_asyncio.run.side_effect = [
-            mock_session,  # First call for init_session()
-            None,  # Second call for cleanup (session.close())
-        ]
+        # The test will fail at os.open before any async code runs, so no need for async mocks
 
         # Run the main function
         daemon.main()
@@ -180,8 +187,6 @@ class TestAudioAnalysisDaemon:
         # Assertions using test data
         assert test_error_scenarios["expected_error_messages"]["fifo_not_found"] in caplog.text
         mock_os.read.assert_not_called()
-        # asyncio.run IS called for init_session and cleanup, not for audio processing
-        assert mock_asyncio.run.call_count == 2  # init_session and cleanup
         _mock_signal.signal.assert_any_call(_mock_signal.SIGTERM, daemon._signal_handler)
         _mock_signal.signal.assert_any_call(_mock_signal.SIGINT, daemon._signal_handler)
 
@@ -198,7 +203,6 @@ class TestAudioAnalysisDaemon:
         mock_os = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.os")
         _mock_signal = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.signal")
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.atexit")
-        mocker.patch("birdnetpi.daemons.audio_analysis_daemon.asyncio")
         mock_time = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.time")
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.logging.basicConfig")
 
@@ -247,21 +251,8 @@ class TestAudioAnalysisDaemon:
             "birdnetpi.daemons.audio_analysis_daemon._fifo_analysis_path", "/tmp/test_fifo.fifo"
         )
 
-        # Mock the session with an async close method
-
-        mock_session = AsyncMock()
-        mocker.patch("birdnetpi.daemons.audio_analysis_daemon._session", mock_session)
-
-        # Mock asyncio.run to actually call the coroutine
-        original_run = asyncio.run
-
-        def mock_run(coro):
-            if asyncio.iscoroutine(coro):
-                # For testing, just call the close method synchronously
-                return None
-            return original_run(coro)
-
-        mocker.patch("birdnetpi.daemons.audio_analysis_daemon.asyncio.run", side_effect=mock_run)
+        # Mock _session to None to skip session cleanup
+        mocker.patch("birdnetpi.daemons.audio_analysis_daemon._session", None)
 
         daemon._cleanup_fifo()
         mock_os.close.assert_called_once_with(456)
@@ -274,7 +265,6 @@ class TestAudioAnalysisDaemon:
         mock_os = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.os")
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.signal")
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.atexit")
-        mocker.patch("birdnetpi.daemons.audio_analysis_daemon.asyncio")
         mock_time = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.time")
 
         mock_os.path.join.return_value = test_fifo_data["path"]
@@ -294,7 +284,9 @@ class TestAudioAnalysisDaemon:
         daemon.main()
 
         # Should call time.sleep when no audio data using test data timeout
-        mock_time.sleep.assert_called_with(test_fifo_data["read_timeout"])
+        # Check that the read timeout sleep was called (not the cleanup sleep)
+        sleep_calls = mock_time.sleep.call_args_list
+        assert any(call == mocker.call(test_fifo_data["read_timeout"]) for call in sleep_calls)
 
     def test_main_general__exception_handling(
         self, mocker, mock_dependencies, test_fifo_data, test_error_scenarios, caplog
@@ -303,11 +295,10 @@ class TestAudioAnalysisDaemon:
         mock_os = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.os")
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.signal")
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.atexit")
-        mocker.patch("birdnetpi.daemons.audio_analysis_daemon.asyncio")
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.time")
 
         mock_os.path.join.return_value = test_fifo_data["path"]
-        # Use test data for general exception
+        # Use test data for general exception - this will fail before any async code runs
         mock_os.open.side_effect = test_error_scenarios["general_error"]
 
         # Run the main function
@@ -341,7 +332,6 @@ class TestAudioAnalysisDaemon:
         mock_os = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.os")
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.signal")
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.atexit")
-        mocker.patch("birdnetpi.daemons.audio_analysis_daemon.asyncio")
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.time")
 
         mock_os.path.join.return_value = test_fifo_data["path"]
@@ -371,7 +361,11 @@ class TestAudioAnalysisDaemon:
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.time")
 
         # Mock asyncio.run to return a mock session first, then raise exception for audio processing
-        mock_session = AsyncMock()
+        class MockSession:
+            async def close(self):
+                pass
+
+        mock_session = MockSession()
         mock_asyncio.run.side_effect = [
             mock_session,  # First call for init_session()
             Exception("Audio processing failed"),  # Second call for audio processing

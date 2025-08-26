@@ -7,10 +7,12 @@ from birdnetpi.i18n.translation_manager import setup_jinja2_i18n
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.lifespan import lifespan
 from birdnetpi.web.middleware.i18n import LanguageMiddleware
+from birdnetpi.web.middleware.request_logging import StructuredRequestLoggingMiddleware
 from birdnetpi.web.routers import (
     admin_api_routes,
     admin_view_routes,
     detections_api_routes,
+    health_api_routes,
     multimedia_view_routes,
     overview_api_routes,
     sqladmin_view_routes,
@@ -46,6 +48,9 @@ def create_app() -> FastAPI:
     # Add LanguageMiddleware
     app.add_middleware(LanguageMiddleware)
 
+    # Add structured request logging middleware
+    app.add_middleware(StructuredRequestLoggingMiddleware)
+
     # Configure Jinja2 templates with i18n support
     templates = container.templates()
     setup_jinja2_i18n(templates)
@@ -57,6 +62,7 @@ def create_app() -> FastAPI:
             "birdnetpi.web.routers.admin_api_routes",
             "birdnetpi.web.routers.admin_view_routes",
             "birdnetpi.web.routers.detections_api_routes",
+            "birdnetpi.web.routers.health_api_routes",
             "birdnetpi.web.routers.multimedia_view_routes",
             "birdnetpi.web.routers.overview_api_routes",
             "birdnetpi.web.routers.sqladmin_view_routes",
@@ -66,6 +72,9 @@ def create_app() -> FastAPI:
     )
 
     # Include routers with proper prefixes and consistent tagging
+    # Health check routes (no authentication required)
+    app.include_router(health_api_routes.router, prefix="/api/health", tags=["Health"])
+
     # Admin routes (consolidated under /admin prefix)
     app.include_router(admin_view_routes.router, prefix="/admin", tags=["Admin Views"])
     app.include_router(admin_api_routes.router, prefix="/admin/config", tags=["Admin API"])

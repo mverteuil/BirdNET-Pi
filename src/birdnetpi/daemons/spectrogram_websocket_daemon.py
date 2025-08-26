@@ -26,11 +26,9 @@ from websockets.asyncio.server import serve
 from birdnetpi.audio.spectrogram_service import SpectrogramService
 from birdnetpi.config import ConfigManager
 from birdnetpi.system.path_resolver import PathResolver
+from birdnetpi.system.structlog_configurator import configure_structlog
 
-# Configure logging for this script
-logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+# Logger will be configured when main runs
 logger = logging.getLogger(__name__)
 
 _shutdown_flag = False
@@ -195,12 +193,18 @@ async def _main_async() -> None:
 
 def main() -> None:
     """Run the spectrogram websocket service."""
+    # Configure structlog first thing in main
+    path_resolver = PathResolver()
+    config_manager = ConfigManager(path_resolver)
+    config = config_manager.load()
+    configure_structlog(config)
+
     try:
         asyncio.run(_main_async())
     except KeyboardInterrupt:
         logger.info("Received keyboard interrupt, shutting down...")
-    except Exception as e:
-        logger.error("Error in main: %s", e, exc_info=True)
+    except Exception:
+        logger.exception("Error in main")
 
 
 if __name__ == "__main__":

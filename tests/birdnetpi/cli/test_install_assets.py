@@ -185,7 +185,7 @@ class TestCheckLocal:
             result = runner.invoke(cli, ["check-local"])
 
             assert result.exit_code == 0
-            assert "✓ BirdNET Models: 2 model files" in result.output
+            assert "✓ BirdNET Models: 2 models" in result.output
             assert "✓ IOC Reference Database:" in result.output
             assert "✓ Avibase Database:" in result.output
             assert "✓ PatLevin Database:" in result.output

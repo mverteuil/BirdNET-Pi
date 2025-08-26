@@ -5,12 +5,11 @@ This module provides different backend implementations for caching:
 - InMemoryBackend: Uses a simple dictionary for single-process caching
 """
 
+import logging
 import pickle
 import time
 from abc import ABC, abstractmethod
 from typing import Any
-
-import structlog
 
 # Optional memcached dependency
 try:
@@ -23,7 +22,7 @@ except ImportError:
     MemcacheClient = None  # type: ignore[assignment,misc]
     MEMCACHED_AVAILABLE = False
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class CacheBackend(ABC):
@@ -96,7 +95,7 @@ class MemcachedBackend(CacheBackend):
     Ideal for SBC deployments where minimizing SD card writes is critical.
     """
 
-    def __init__(self, host: str = "localhost", port: int = 11211, timeout: float = 1.0):
+    def __init__(self, host: str = "127.0.0.1", port: int = 11211, timeout: float = 1.0):
         """Initialize memcached backend.
 
         Args:
@@ -110,28 +109,59 @@ class MemcachedBackend(CacheBackend):
         if not MEMCACHED_AVAILABLE:
             raise RuntimeError("pymemcache is required for MemcachedBackend")
 
+        # Define serializer functions for pymemcache
+        def serialize(key: bytes, value: Any) -> tuple[bytes, int]:  # noqa: ANN401
+            if isinstance(value, bytes):
+                return value, 1
+            return pickle.dumps(value), 2
+
+        def deserialize(key: bytes, value: bytes, flags: int) -> Any:  # noqa: ANN401
+            if flags == 1:
+                return value
+            if flags == 2:
+                return pickle.loads(value)
+            raise ValueError(f"Unknown serialization flags: {flags}")
+
         self.client = MemcacheClient(  # type: ignore[misc]
             (host, port),
             timeout=timeout,
             connect_timeout=timeout,
-            serializer=pickle,  # Use pickle for complex Python objects
-            deserializer=pickle,
+            serializer=serialize,
+            deserializer=deserialize,
         )
 
-        # Test connection
-        try:
-            self.client.version()
-            logger.info("Memcached backend initialized successfully", host=host, port=port)
-        except Exception as e:
-            logger.error("Failed to connect to memcached", host=host, port=port, error=str(e))
-            raise RuntimeError(f"Failed to connect to memcached at {host}:{port}: {e}") from e
+        # Test connection with retries for startup timing
+        max_retries = 3
+        retry_delay = 0.5
+        for attempt in range(max_retries):
+            try:
+                self.client.version()
+                logger.debug(
+                    "Memcached backend initialized successfully", extra={"host": host, "port": port}
+                )
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.debug(
+                        f"Memcached connection attempt {attempt + 1} failed, retrying...",
+                        extra={"error": str(e)},
+                    )
+                    time.sleep(retry_delay)
+                else:
+                    logger.error(
+                        "Failed to connect to memcached",
+                        extra={"host": host, "port": port, "error": str(e)},
+                    )
+                    raise RuntimeError(
+                        f"Failed to connect to memcached at {host}:{port}: {e}"
+                    ) from e
 
     def get(self, key: str) -> Any:  # noqa: ANN401
         """Get value from memcached."""
         try:
             return self.client.get(key)
         except Exception as e:
-            logger.warning("Memcached get failed", key=key, error=str(e))
+            logger.warning("Memcached get failed", extra={"key": key, "error": str(e)})
             return None
 
     def set(self, key: str, value: Any, ttl: int) -> bool:  # noqa: ANN401
@@ -140,7 +170,7 @@ class MemcachedBackend(CacheBackend):
             result = self.client.set(key, value, expire=ttl)
             return bool(result)
         except Exception as e:
-            logger.warning("Memcached set failed", key=key, ttl=ttl, error=str(e))
+            logger.warning("Memcached set failed", extra={"key": key, "ttl": ttl, "error": str(e)})
             return False
 
     def delete(self, key: str) -> bool:
@@ -148,7 +178,7 @@ class MemcachedBackend(CacheBackend):
         try:
             return self.client.delete(key)
         except Exception as e:
-            logger.warning("Memcached delete failed", key=key, error=str(e))
+            logger.warning("Memcached delete failed", extra={"key": key, "error": str(e)})
             return False
 
     def clear(self) -> bool:
@@ -156,7 +186,7 @@ class MemcachedBackend(CacheBackend):
         try:
             return self.client.flush_all()
         except Exception as e:
-            logger.warning("Memcached clear failed", error=str(e))
+            logger.warning("Memcached clear failed", extra={"error": str(e)})
             return False
 
     def exists(self, key: str) -> bool:
@@ -164,7 +194,7 @@ class MemcachedBackend(CacheBackend):
         try:
             return self.client.get(key) is not None
         except Exception as e:
-            logger.warning("Memcached exists check failed", key=key, error=str(e))
+            logger.warning("Memcached exists check failed", extra={"key": key, "error": str(e)})
             return False
 
 
@@ -209,7 +239,7 @@ class InMemoryBackend(CacheBackend):
 
             return None
         except Exception as e:
-            logger.warning("In-memory get failed", key=key, error=str(e))
+            logger.warning("In-memory get failed", extra={"key": key, "error": str(e)})
             return None
 
     def set(self, key: str, value: Any, ttl: int) -> bool:  # noqa: ANN401
@@ -219,7 +249,7 @@ class InMemoryBackend(CacheBackend):
             self._cache[key] = (value, expiry)
             return True
         except Exception as e:
-            logger.warning("In-memory set failed", key=key, ttl=ttl, error=str(e))
+            logger.warning("In-memory set failed", extra={"key": key, "ttl": ttl, "error": str(e)})
             return False
 
     def delete(self, key: str) -> bool:
@@ -230,7 +260,7 @@ class InMemoryBackend(CacheBackend):
                 return True
             return False
         except Exception as e:
-            logger.warning("In-memory delete failed", key=key, error=str(e))
+            logger.warning("In-memory delete failed", extra={"key": key, "error": str(e)})
             return False
 
     def clear(self) -> bool:
@@ -239,7 +269,7 @@ class InMemoryBackend(CacheBackend):
             self._cache.clear()
             return True
         except Exception as e:
-            logger.warning("In-memory clear failed", error=str(e))
+            logger.warning("In-memory clear failed", extra={"error": str(e)})
             return False
 
     def exists(self, key: str) -> bool:
@@ -253,5 +283,5 @@ class InMemoryBackend(CacheBackend):
                     del self._cache[key]
             return False
         except Exception as e:
-            logger.warning("In-memory exists check failed", key=key, error=str(e))
+            logger.warning("In-memory exists check failed", extra={"key": key, "error": str(e)})
             return False

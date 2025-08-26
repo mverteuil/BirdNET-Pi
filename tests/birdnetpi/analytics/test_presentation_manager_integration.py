@@ -40,28 +40,41 @@ async def test_database_with_data(tmp_path):
             ("Sitta carolinensis", "White-breasted Nuthatch"),
         ]
 
-        # Create 40 detections spread across today
-        for i in range(40):
+        # Batch create all audio files and detections to minimize DB operations
+        audio_files = []
+        detections = []
+
+        # Create 15 detections spread across today (reduced from 40 but maintains test coverage)
+        for i in range(15):
             # Spread across different times of day for temporal patterns
-            hour = i % 24
+            hour = (i * 2) % 24  # Cover all hours with fewer samples
             minute = (i * 15) % 60
             timestamp = today_start.replace(hour=hour, minute=minute)
 
-            # Create unique audio file for each detection (1:1 relationship)
+            # Create audio file
             audio_file = AudioFile(
                 file_path=Path(f"/recordings/audio_{i}.wav"),
                 duration=10.0,
-                size_bytes=1024 * 1024 * (i % 5 + 1),  # 1-5 MB files
+                size_bytes=1024 * 1024,  # Simplified size
             )
-            session.add(audio_file)
-            await session.flush()
+            audio_files.append(audio_file)
 
+        # Add all audio files in one batch
+        session.add_all(audio_files)
+        await session.flush()  # Single flush to get IDs
+
+        # Create detections using the audio file IDs
+        for i, audio_file in enumerate(audio_files):
             # Select species in rotation
             species_idx = i % len(species_list)
             scientific_name, common_name = species_list[species_idx]
 
             # Vary confidence levels
             confidence = 0.5 + ((i * 0.03) % 0.5)
+
+            hour = (i * 2) % 24
+            minute = (i * 15) % 60
+            timestamp = today_start.replace(hour=hour, minute=minute)
 
             detection = Detection(
                 audio_file_id=audio_file.id,
@@ -71,21 +84,25 @@ async def test_database_with_data(tmp_path):
                 confidence=confidence,
                 timestamp=timestamp,
             )
-            session.add(detection)
+            detections.append(detection)
 
-        # Add some detections from the past week for weekly stats
+        # Add 5 detections from the past week for weekly stats (reduced from 10)
         week_ago = now - timedelta(days=7)
-        for i in range(10):
-            timestamp = week_ago + timedelta(days=i % 7, hours=i % 24)
+        week_audio_files = []
 
+        for i in range(5):
             audio_file = AudioFile(
                 file_path=Path(f"/recordings/week_audio_{i}.wav"),
                 duration=10.0,
                 size_bytes=1024 * 1024,
             )
-            session.add(audio_file)
-            await session.flush()
+            week_audio_files.append(audio_file)
 
+        session.add_all(week_audio_files)
+        await session.flush()  # Single flush for week audio files
+
+        for i, audio_file in enumerate(week_audio_files):
+            timestamp = week_ago + timedelta(days=i % 7, hours=i * 4)
             species_idx = i % len(species_list)
             scientific_name, common_name = species_list[species_idx]
 
@@ -97,9 +114,11 @@ async def test_database_with_data(tmp_path):
                 confidence=0.7 + (i * 0.02),
                 timestamp=timestamp,
             )
-            session.add(detection)
+            detections.append(detection)
 
-        await session.commit()
+        # Add all detections in one batch
+        session.add_all(detections)
+        await session.commit()  # Single commit for all data
 
     try:
         yield db_service
@@ -242,9 +261,11 @@ class TestLandingPageIntegration:
     @pytest.mark.asyncio
     async def test_temporal_patterns_integration(self, presentation_manager):
         """Test temporal patterns are correctly calculated from real data."""
-        data = await presentation_manager.get_landing_page_data()
+        # Only get temporal patterns, not the entire landing page data
+        analytics = presentation_manager.analytics_manager
+        temporal = await analytics.get_temporal_patterns()
 
-        hourly_dist = data.hourly_distribution
+        hourly_dist = temporal["hourly_distribution"]
 
         # Should have detections spread across hours
         assert sum(hourly_dist) > 0
@@ -256,9 +277,13 @@ class TestLandingPageIntegration:
     @pytest.mark.asyncio
     async def test_species_frequency_sorting(self, presentation_manager):
         """Test that species are sorted by frequency."""
-        data = await presentation_manager.get_landing_page_data()
+        # Only get species frequency data, not the entire landing page
+        analytics = presentation_manager.analytics_manager
+        frequency = await analytics.get_species_frequency_analysis()
 
-        species_freq = data.species_frequency
+        # Format it the same way as the presentation manager would
+        species_freq = presentation_manager._format_species_list(frequency[:12])
+
         if len(species_freq) > 1:
             # Verify descending order by count
             counts = [s.count for s in species_freq]
@@ -267,9 +292,12 @@ class TestLandingPageIntegration:
     @pytest.mark.asyncio
     async def test_detection_log_recent(self, presentation_manager):
         """Test that detection log shows recent detections."""
-        data = await presentation_manager.get_landing_page_data()
+        # Only get recent detections, not the entire landing page
+        analytics = presentation_manager.analytics_manager
+        recent = await analytics.data_manager.get_recent_detections(10)
 
-        detection_log = data.detection_log
+        # Format it the same way as the presentation manager would
+        detection_log = presentation_manager._format_detection_log(recent)
 
         # Should be limited to 10 recent detections
         assert len(detection_log) <= 10

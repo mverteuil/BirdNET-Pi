@@ -10,11 +10,9 @@ from birdnetpi.audio.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.config import ConfigManager
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
+from birdnetpi.system.structlog_configurator import configure_structlog
 
-# Configure logging for this script
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+# Logger will be configured when main runs
 logger = logging.getLogger(__name__)
 
 _shutdown_flag = False
@@ -30,19 +28,39 @@ def _signal_handler(signum: int, frame: FrameType | None) -> None:
 
 
 def _cleanup_fifo() -> None:
-    global _fifo_analysis_fd, _fifo_analysis_path, _session
+    global _fifo_analysis_fd, _fifo_analysis_path, _session, _audio_analysis_service
+
+    # Stop audio analysis manager first to ensure no ongoing processing
+    if "_audio_analysis_service" in globals() and _audio_analysis_service:
+        try:
+            _audio_analysis_service.stop_buffer_flush_task()
+            logger.info("Stopped audio analysis buffer flush task")
+            # Give a moment for threads to finish
+            time.sleep(0.2)
+        except Exception as e:
+            logger.debug("Error stopping buffer flush task: %s", e)
+
+    # Close FIFO
     if _fifo_analysis_fd:
         os.close(_fifo_analysis_fd)
         logger.info("Closed FIFO: %s", _fifo_analysis_path)
         _fifo_analysis_fd = None
-    # Clean up database session if it exists
+
+    # Clean up database session last
     if "_session" in globals() and _session:
         asyncio.run(_session.close())
 
 
 def main() -> None:
     """Run the audio analysis wrapper."""
-    global _fifo_analysis_path, _fifo_analysis_fd, _session
+    global _fifo_analysis_path, _fifo_analysis_fd, _session, _audio_analysis_service
+
+    # Configure structlog first thing in main
+    path_resolver = PathResolver()
+    config_manager = ConfigManager(path_resolver)
+    config = config_manager.load()
+    configure_structlog(config)
+
     logger.info("Starting audio analysis wrapper.")
 
     # Register signal handlers and atexit for cleanup
@@ -50,13 +68,10 @@ def main() -> None:
     signal.signal(signal.SIGINT, _signal_handler)
     atexit.register(_cleanup_fifo)
 
-    path_resolver = PathResolver()
     fifo_base_path = path_resolver.get_fifo_base_path()
     _fifo_analysis_path = os.path.join(fifo_base_path, "birdnet_audio_analysis.fifo")
 
     file_manager = FileManager(path_resolver)
-    config_manager = ConfigManager(path_resolver)
-    config = config_manager.load()
 
     # Create multilingual database service and session for species normalization
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -82,9 +97,11 @@ def main() -> None:
     # Create and initialize the session
     _session = asyncio.run(init_session())
 
-    audio_analysis_service = AudioAnalysisManager(
+    _audio_analysis_service = AudioAnalysisManager(
         file_manager, path_resolver, config, multilingual_service, _session
     )
+    # Start the buffer flush task explicitly
+    _audio_analysis_service.start_buffer_flush_task()
 
     try:
         # Open FIFO for reading
@@ -97,7 +114,7 @@ def main() -> None:
                 audio_data_bytes = os.read(_fifo_analysis_fd, buffer_size)
 
                 if audio_data_bytes:
-                    asyncio.run(audio_analysis_service.process_audio_chunk(audio_data_bytes))
+                    asyncio.run(_audio_analysis_service.process_audio_chunk(audio_data_bytes))
                 else:
                     time.sleep(0.01)
 

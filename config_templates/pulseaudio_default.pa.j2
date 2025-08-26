@@ -9,7 +9,7 @@
 
 # Enable network streaming
 {% if enable_network %}
-load-module module-native-protocol-tcp auth-ip-acl={{ container_ip }} port={{ port }}
+load-module module-native-protocol-tcp auth-ip-acl={{ container_ip }} auth-cookie-enabled=1 port={{ port }}
 {% else %}
 # Network streaming disabled
 {% endif %}

@@ -251,11 +251,13 @@ class UpdateManager:
         models_target = self.path_resolver.get_models_dir()
         models_target.mkdir(parents=True, exist_ok=True)
 
-        # Copy all model files
-        for model_file in models_source.glob("*.tflite"):
-            target_file = models_target / model_file.name
-            shutil.copy2(model_file, target_file)
-            results["downloaded_assets"].append(f"Model: {model_file.name}")
+        # Copy all model files (.tflite and .txt labels)
+        for pattern in ["*.tflite", "*.txt"]:
+            for model_file in models_source.glob(pattern):
+                target_file = models_target / model_file.name
+                shutil.copy2(model_file, target_file)
+                file_type = "Model" if model_file.suffix == ".tflite" else "Labels"
+                results["downloaded_assets"].append(f"{file_type}: {model_file.name}")
 
         print(f"Downloaded models to {models_target}")
 

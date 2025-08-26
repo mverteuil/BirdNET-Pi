@@ -4,440 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: Georgia, 'Times New Roman', serif;
-            background: #fdfcfa;
-            color: #2c2c2c;
-            line-height: 1.5;
-            padding: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        /* Header */
-        header {
-            margin-bottom: 1.5rem;
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid #111;
-        }
-
-        h1 {
-            font-size: 1.3rem;
-            font-weight: normal;
-            margin-bottom: 0.25rem;
-        }
-
-        .subtitle {
-            font-size: 0.85rem;
-            color: #666;
-            font-style: italic;
-        }
-
-        /* Navigation */
-        .nav {
-            display: flex;
-            gap: 0;
-            margin-bottom: 1.5rem;
-            border-bottom: 2px solid #111;
-            border-top: 1px solid #111;
-            background: #f8f8f8;
-        }
-
-        .nav a {
-            padding: 0.4rem 1rem;
-            color: #111;
-            text-decoration: none;
-            font-size: 0.85rem;
-            border-right: 1px solid #ddd;
-        }
-
-        .nav a:hover {
-            background: #fff;
-            text-decoration: underline;
-        }
-
-        .nav a.active {
-            background: #fff;
-            font-weight: bold;
-        }
-
-        /* Settings sections */
-        .settings-section {
-            margin-bottom: 2rem;
-            padding-bottom: 1.5rem;
-            border-bottom: 1px dotted #ccc;
-        }
-
-        .settings-section:last-child {
-            border-bottom: none;
-        }
-
-        .section-title {
-            font-size: 1.1rem;
-            font-weight: normal;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid #111;
-        }
-
-        /* Setting row */
-        .setting-row {
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            gap: 2rem;
-            margin-bottom: 1.5rem;
-            align-items: start;
-        }
-
-        .setting-label {
-            text-align: right;
-            padding-top: 0.25rem;
-        }
-
-        .label-text {
-            font-size: 0.9rem;
-            color: #111;
-        }
-
-        .label-description {
-            font-size: 0.75rem;
-            color: #666;
-            font-style: italic;
-            margin-top: 0.25rem;
-        }
-
-        /* Trade-off slider with labels */
-        .tradeoff-control {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .tradeoff-slider {
-            position: relative;
-            height: 40px;
-            background: linear-gradient(to right, #f0f0f0 0%, #666 100%);
-            border: 1px solid #999;
-        }
-
-        .slider-handle {
-            position: absolute;
-            width: 20px;
-            height: 100%;
-            background: #111;
-            border: 2px solid #fff;
-            cursor: ew-resize;
-            top: 0;
-        }
-
-        .slider-value {
-            position: absolute;
-            top: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.85rem;
-            font-weight: bold;
-            background: #fff;
-            padding: 0 0.25rem;
-        }
-
-        .tradeoff-labels {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.8rem;
-            color: #666;
-        }
-
-        .tradeoff-scale {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.7rem;
-            color: #999;
-            margin-top: 0.25rem;
-        }
-
-        /* Choice matrix for discrete options */
-        .choice-matrix {
-            display: grid;
-            gap: 0.5rem;
-            max-width: 600px;
-        }
-
-        .choice-option {
-            display: grid;
-            grid-template-columns: 30px 150px 1fr;
-            gap: 1rem;
-            padding: 0.75rem;
-            border: 1px solid #e0e0e0;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .choice-option:hover {
-            background: #f8f8f8;
-            border-color: #999;
-        }
-
-        .choice-option.selected {
-            background: #111;
-            color: #fff;
-            border-color: #111;
-        }
-
-        .choice-option.selected .option-details {
-            color: #ccc;
-        }
-
-        .choice-radio {
-            width: 16px;
-            height: 16px;
-            border: 2px solid #666;
-            border-radius: 50%;
-            position: relative;
-        }
-
-        .choice-option.selected .choice-radio::after {
-            content: '';
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            background: #fff;
-            border-radius: 50%;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        .option-name {
-            font-weight: normal;
-        }
-
-        .option-details {
-            font-size: 0.8rem;
-            color: #666;
-        }
-
-        /* Balance control */
-        .balance-control {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            max-width: 600px;
-        }
-
-        .balance-bar {
-            flex: 1;
-            height: 30px;
-            position: relative;
-            background: #f0f0f0;
-            border: 1px solid #999;
-        }
-
-        .balance-fill {
-            position: absolute;
-            left: 0;
-            top: 0;
-            height: 100%;
-            background: #111;
-            transition: width 0.2s;
-        }
-
-        .balance-markers {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 100%;
-            display: flex;
-        }
-
-        .balance-marker {
-            flex: 1;
-            border-right: 1px dotted #999;
-        }
-
-        .balance-marker:last-child {
-            border-right: none;
-        }
-
-        .balance-value {
-            position: absolute;
-            top: 50%;
-            left: var(--position);
-            transform: translate(-50%, -50%);
-            background: #fff;
-            padding: 0 0.5rem;
-            font-size: 0.85rem;
-            font-weight: bold;
-            border: 1px solid #666;
-        }
-
-        /* Numeric input with context */
-        .numeric-control {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            max-width: 400px;
-        }
-
-        .numeric-input-group {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .numeric-input {
-            width: 100px;
-            padding: 0.3rem 0.5rem;
-            border: 1px solid #ccc;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            text-align: right;
-        }
-
-        .numeric-unit {
-            font-size: 0.85rem;
-            color: #666;
-        }
-
-        .numeric-context {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.75rem;
-            color: #666;
-            padding: 0.25rem 0;
-        }
-
-        /* Text options as inline choices */
-        .text-choices {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-
-        .text-choice {
-            padding: 0.4rem 0.8rem;
-            border: 1px solid #ccc;
-            background: #fff;
-            cursor: pointer;
-            font-size: 0.85rem;
-            transition: all 0.2s;
-        }
-
-        .text-choice:hover {
-            border-color: #666;
-            background: #f8f8f8;
-        }
-
-        .text-choice.selected {
-            background: #111;
-            color: #fff;
-            border-color: #111;
-        }
-
-        /* Coordinate input */
-        .coordinate-input {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            max-width: 400px;
-        }
-
-        .coord-field {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .coord-label {
-            font-size: 0.8rem;
-            color: #666;
-        }
-
-        .coord-input {
-            padding: 0.3rem 0.5rem;
-            border: 1px solid #ccc;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-        }
-
-        /* Submit controls */
-        .form-controls {
-            margin-top: 2rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid #111;
-            display: flex;
-            gap: 2rem;
-            align-items: baseline;
-        }
-
-        .submit-button {
-            background: none;
-            border: 1px solid #111;
-            padding: 0.5rem 1.5rem;
-            font-family: inherit;
-            font-size: 0.9rem;
-            cursor: pointer;
-        }
-
-        .submit-button:hover {
-            background: #111;
-            color: #fff;
-        }
-
-        .action-link {
-            color: #666;
-            text-decoration: underline;
-            font-size: 0.85rem;
-        }
-
-        .action-link:hover {
-            color: #111;
-        }
-
-        /* Screen reader only text */
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0,0,0,0);
-            white-space: nowrap;
-            border: 0;
-        }
-
-        /* Focus styles for accessibility */
-        *:focus {
-            outline: 2px solid #111;
-            outline-offset: 2px;
-        }
-
-        /* Status messages */
-        .status-message {
-            padding: 0.75rem;
-            margin-bottom: 1rem;
-            border-left: 3px solid #666;
-            background: #f8f8f8;
-            font-size: 0.85rem;
-        }
-
-        .status-success {
-            border-color: #4caf50;
-        }
-
-        .status-error {
-            border-color: #d32f2f;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}">
 </head>
 <body>
     <header>
@@ -475,7 +42,7 @@
                          aria-valuemin="50"
                          aria-valuemax="95"
                          tabindex="0">
-                        <div class="slider-handle" style="left: 40%;">
+                        <div class="slider-handle" data-position="40">
                             <div class="slider-value">0.70</div>
                         </div>
                     </div>
@@ -516,8 +83,8 @@
                             <div class="balance-marker"></div>
                             <div class="balance-marker"></div>
                         </div>
-                        <div class="balance-fill" style="width: 50%;"></div>
-                        <div class="balance-value" style="--position: 50%;">1.25</div>
+                        <div class="balance-fill" data-width="50"></div>
+                        <div class="balance-value" data-position="50">1.25</div>
                     </div>
                     <span>Noisy</span>
                 </div>
@@ -545,7 +112,7 @@
                         <span>↓ Less CPU usage</span>
                         <span>More complete detection ↑</span>
                     </div>
-                    <div class="numeric-context" style="color: #999;">
+                    <div class="numeric-context text-tertiary">
                         <span>0s: No overlap</span>
                         <span>1.5s: Balanced</span>
                         <span>3s: Maximum</span>
@@ -733,13 +300,32 @@
         <div class="form-controls">
             <button type="submit" class="submit-button">Save Configuration</button>
             <a href="/admin/advanced-settings" class="action-link">YAML Editor</a>
-            <a href="/admin/export-config" class="action-link">Export Settings</a>
-            <a href="/admin/import-config" class="action-link">Import Settings</a>
-            <span class="action-link" style="margin-left: auto;">Last saved: 2025-01-15 14:32:18</span>
+            <span class="action-link ml-auto">Last saved: 2025-01-15 14:32:18</span>
         </div>
     </form>
 
     <script>
+        // Initialize dynamic positioning from data attributes
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize slider positions
+            document.querySelectorAll('.slider-handle[data-position]').forEach(handle => {
+                const position = handle.getAttribute('data-position');
+                handle.style.left = position + '%';
+            });
+
+            // Initialize balance fills
+            document.querySelectorAll('.balance-fill[data-width]').forEach(fill => {
+                const width = fill.getAttribute('data-width');
+                fill.style.width = width + '%';
+            });
+
+            // Initialize balance values
+            document.querySelectorAll('.balance-value[data-position]').forEach(value => {
+                const position = value.getAttribute('data-position');
+                value.style.setProperty('--position', position + '%');
+            });
+        });
+
         // Handle choice selection
         function selectOption(element) {
             const group = element.closest('[role="radiogroup"]');
@@ -805,6 +391,7 @@
             const handle = slider.querySelector('.slider-handle');
             if (handle) {
                 handle.style.left = percent + '%';
+                handle.setAttribute('data-position', percent);
                 const valueDisplay = handle.querySelector('.slider-value');
                 if (valueDisplay) {
                     valueDisplay.textContent = value.toFixed(2);
@@ -814,11 +401,13 @@
             const fill = slider.querySelector('.balance-fill');
             if (fill) {
                 fill.style.width = percent + '%';
+                fill.setAttribute('data-width', percent);
             }
 
             const balanceValue = slider.querySelector('.balance-value');
             if (balanceValue) {
                 balanceValue.style.setProperty('--position', percent + '%');
+                balanceValue.setAttribute('data-position', percent);
                 balanceValue.textContent = value.toFixed(2);
             }
         }

@@ -40,13 +40,14 @@ def _check_existing_assets(path_resolver: PathResolver) -> tuple[bool, list[str]
         method = getattr(path_resolver, asset.path_method)
         asset_path = method()
 
-        # For models directory, check for at least one model file
+        # For models directory, check for model and label files
         if asset.is_directory:
-            # Check if directory exists and has at least one .tflite file
+            # Check if directory exists and has model files (.tflite) or label files (.txt)
             if asset_path.exists():
                 model_files = list(asset_path.glob("*.tflite"))
-                if model_files:
-                    check_path = asset_path  # Directory exists with models
+                label_files = list(asset_path.glob("*.txt"))
+                if model_files or label_files:
+                    check_path = asset_path  # Directory exists with model assets
                 else:
                     check_path = asset_path / "dummy"  # Will fail the check
             else:
@@ -240,21 +241,33 @@ def check_local(ctx: click.Context, verbose: bool) -> None:
             # For directories (models), check if they exist and have content
             if asset_path.exists():
                 model_files = list(asset_path.rglob("*.tflite"))
+                label_files = list(asset_path.rglob("*.txt"))
                 total_size = sum(f.stat().st_size for f in asset_path.rglob("*") if f.is_file())
                 size_mb = total_size / 1024 / 1024
 
+                file_count_str = ""
+                if model_files:
+                    file_count_str += f"{len(model_files)} models"
+                if label_files:
+                    if file_count_str:
+                        file_count_str += f", {len(label_files)} labels"
+                    else:
+                        file_count_str = f"{len(label_files)} labels"
+
                 click.echo(
                     click.style(
-                        f"  ✓ {asset.name}: {len(model_files)} model files ({size_mb:.1f} MB)",
+                        f"  ✓ {asset.name}: {file_count_str} ({size_mb:.1f} MB)",
                         fg="green",
                     )
                 )
                 click.echo(f"    Location: {asset_path}")
 
                 if verbose:
-                    for model_file in sorted(model_files):
-                        file_size = model_file.stat().st_size / 1024 / 1024
-                        click.echo(f"      - {model_file.name} ({file_size:.1f} MB)")
+                    all_files = sorted(model_files + label_files)
+                    for asset_file in all_files:
+                        file_size = asset_file.stat().st_size / 1024 / 1024
+                        file_type = "model" if asset_file.suffix == ".tflite" else "labels"
+                        click.echo(f"      - {asset_file.name} ({file_size:.1f} MB) [{file_type}]")
             else:
                 click.echo(click.style(f"  ✗ {asset.name}: Not installed", fg="red"))
                 click.echo(f"    Expected location: {asset_path}")

@@ -9,6 +9,13 @@ import birdnetpi.daemons.audio_capture_daemon as daemon
 from birdnetpi.audio.audio_capture_service import AudioCaptureService
 
 
+@pytest.fixture(autouse=True)
+def mock_daemon_setup(mocker, path_resolver):
+    """Mock daemon setup to avoid subprocess calls and file system access."""
+    mocker.patch("birdnetpi.daemons.audio_capture_daemon.configure_structlog")
+    mocker.patch("birdnetpi.daemons.audio_capture_daemon.PathResolver", return_value=path_resolver)
+
+
 @pytest.fixture
 def test_config():
     """Provide test configuration data."""
@@ -32,19 +39,17 @@ def file_descriptors():
 
 
 @pytest.fixture(autouse=True)
-def mock_dependencies(mocker, test_config, fifo_paths):
+def mock_dependencies(mocker, test_config, fifo_paths, path_resolver):
     """Mock external dependencies for audio_capture_daemon.py."""
+    # Configure path_resolver with test paths
+    path_resolver.get_fifo_base_path = lambda: fifo_paths["base"]
+
     with patch.multiple(
         "birdnetpi.daemons.audio_capture_daemon",
-        PathResolver=DEFAULT,
         ConfigManager=DEFAULT,
         AudioCaptureService=DEFAULT,
     ) as mocks:
         # Configure mocks with test data
-        mocks["PathResolver"].return_value.get_fifo_base_path.return_value = fifo_paths["base"]
-        mocks[
-            "PathResolver"
-        ].return_value.get_birdnetpi_config_path.return_value = "/tmp/config.yaml"
         mocks["ConfigManager"].return_value.load.return_value = test_config
         mocks["AudioCaptureService"].return_value = MagicMock(spec=AudioCaptureService)
 
@@ -73,7 +78,7 @@ def mock_os_operations(mocker, fifo_paths, file_descriptors):
         "path_exists": mocker.patch("birdnetpi.daemons.audio_capture_daemon.os.path.exists"),
         "path_join": mocker.patch(
             "birdnetpi.daemons.audio_capture_daemon.os.path.join",
-            side_effect=lambda *args: "/".join(args),
+            side_effect=lambda *args: "/".join(str(arg) for arg in args),
         ),
     }
     return mocks
@@ -127,7 +132,7 @@ class TestAudioCaptureDaemon:
         mock_atexit.register.assert_called_once_with(daemon._cleanup_fifos)
         mock_signal.signal.assert_any_call(mock_signal.SIGTERM, daemon._signal_handler)
         mock_signal.signal.assert_any_call(mock_signal.SIGINT, daemon._signal_handler)
-        mock_time.sleep.assert_called_with(1)
+        mock_time.sleep.assert_called_with(0.1)  # Changed to more responsive polling interval
 
         # Assertions for log messages
         expected_logs = [
@@ -163,18 +168,15 @@ class TestAudioCaptureDaemon:
     def test_run_audio_capture_daemon__config_not_found(
         self, mocker, mock_dependencies, mock_os_operations, caplog
     ):
-        """Should log an error if the configuration file is not found."""
+        """Should raise FileNotFoundError if the configuration file is not found."""
         mock_os_operations["path_exists"].side_effect = [False, False, True, True]
 
         # Simulate config file not found
         mock_dependencies["ConfigManager"].return_value.load.side_effect = FileNotFoundError
 
-        daemon.main()
-
-        assert (
-            "Configuration file not found at /tmp/config.yaml. Please ensure it exists."
-            in caplog.text
-        )
+        # The daemon should fail if config is not found
+        with pytest.raises(FileNotFoundError):
+            daemon.main()
         # Service should not be started if config is missing
         mock_dependencies["AudioCaptureService"].return_value.start_capture.assert_not_called()
         mock_dependencies["AudioCaptureService"].return_value.stop_capture.assert_not_called()
@@ -192,7 +194,8 @@ class TestAudioCaptureDaemon:
 
         daemon.main()
 
-        assert "An error occurred in the audio capture wrapper: Test error" in caplog.text
+        assert "An error occurred in the audio capture wrapper" in caplog.text
+        assert "Test error" in caplog.text
         mock_dependencies["AudioCaptureService"].return_value.stop_capture.assert_called_once()
 
     def test_run_audio_capture_daemon__fifo_creation_error(
@@ -204,7 +207,8 @@ class TestAudioCaptureDaemon:
 
         daemon.main()
 
-        assert "An error occurred in the audio capture wrapper: Permission denied" in caplog.text
+        assert "An error occurred in the audio capture wrapper" in caplog.text
+        assert "Permission denied" in caplog.text
         mock_dependencies["AudioCaptureService"].return_value.start_capture.assert_not_called()
 
     def test_run_audio_capture_daemon__fifo_open_error(
@@ -216,7 +220,8 @@ class TestAudioCaptureDaemon:
 
         daemon.main()
 
-        assert "An error occurred in the audio capture wrapper: FIFO not found" in caplog.text
+        assert "An error occurred in the audio capture wrapper" in caplog.text
+        assert "FIFO not found" in caplog.text
         mock_dependencies["AudioCaptureService"].return_value.start_capture.assert_not_called()
 
     def test_handle_signal_shutdown(self, mocker):

@@ -5,6 +5,15 @@ import pytest
 import birdnetpi.daemons.audio_websocket_daemon as daemon
 
 
+@pytest.fixture(autouse=True)
+def mock_daemon_setup(mocker, path_resolver):
+    """Mock daemon setup to avoid subprocess calls and file system access."""
+    mocker.patch("birdnetpi.daemons.audio_websocket_daemon.configure_structlog")
+    mocker.patch(
+        "birdnetpi.daemons.audio_websocket_daemon.PathResolver", return_value=path_resolver
+    )
+
+
 class TestAudioWebsocketDaemon:
     """Test the audio websocket daemon wrapper."""
 

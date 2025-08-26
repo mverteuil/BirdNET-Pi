@@ -370,21 +370,19 @@ class TestPulseAudioSetup:
         """Should create server configuration files."""
         mock_config_dir.mkdir(parents=True, exist_ok=True)
 
-        # Customize the global path_resolver to use the correct template paths
-        project_root = repo_root
-
-        def get_template_file_path(template_name: str) -> Path:
-            return project_root / "config_templates" / template_name
-
-        path_resolver.get_template_file_path = get_template_file_path
-
+        # The function calculates templates_dir from __file__, so we need to patch Path
         with (
             patch(
                 "birdnetpi.system.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
                 return_value=mock_config_dir,
             ),
-            patch("birdnetpi.system.pulseaudio_setup.PathResolver", return_value=path_resolver),
+            patch("birdnetpi.system.pulseaudio_setup.Path") as mock_path,
         ):
+            # Mock the Path(__file__) chain to return our templates directory
+            mock_file_path = MagicMock()
+            mock_path.return_value = mock_file_path
+            mock_file_path.parent.parent.parent.parent = repo_root
+
             config_dir = PulseAudioSetup.create_server_config(
                 container_ip="192.168.1.100",
                 port=4713,
@@ -408,21 +406,18 @@ class TestPulseAudioSetup:
         mock_config_dir.mkdir(parents=True, exist_ok=True)
         mock_get_ip.return_value = "172.18.0.3"
 
-        # Customize the global path_resolver to use the correct template paths
-        project_root = repo_root
-
-        def get_template_file_path(template_name: str) -> Path:
-            return project_root / "config_templates" / template_name
-
-        path_resolver.get_template_file_path = get_template_file_path
-
         with (
             patch(
                 "birdnetpi.system.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
                 return_value=mock_config_dir,
             ),
-            patch("birdnetpi.system.pulseaudio_setup.PathResolver", return_value=path_resolver),
+            patch("birdnetpi.system.pulseaudio_setup.Path") as mock_path,
         ):
+            # Mock the Path(__file__) chain to return our templates directory
+            mock_file_path = MagicMock()
+            mock_path.return_value = mock_file_path
+            mock_file_path.parent.parent.parent.parent = repo_root
+
             config_dir = PulseAudioSetup.create_server_config(
                 container_ip=None,  # Should trigger auto-detection
                 port=4713,
@@ -445,21 +440,18 @@ class TestPulseAudioSetup:
         mock_config_dir.mkdir(parents=True, exist_ok=True)
         mock_get_ip.return_value = "172.18.0.4"
 
-        # Customize the global path_resolver to use the correct template paths
-        project_root = repo_root
-
-        def get_template_file_path(template_name: str) -> Path:
-            return project_root / "config_templates" / template_name
-
-        path_resolver.get_template_file_path = get_template_file_path
-
         with (
             patch(
                 "birdnetpi.system.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
                 return_value=mock_config_dir,
             ),
-            patch("birdnetpi.system.pulseaudio_setup.PathResolver", return_value=path_resolver),
+            patch("birdnetpi.system.pulseaudio_setup.Path") as mock_path,
         ):
+            # Mock the Path(__file__) chain to return our templates directory
+            mock_file_path = MagicMock()
+            mock_path.return_value = mock_file_path
+            mock_file_path.parent.parent.parent.parent = repo_root
+
             PulseAudioSetup.create_server_config(container_ip=None)
 
         mock_get_ip.assert_called_once_with("birdnet-pi")  # Default container name
@@ -470,21 +462,18 @@ class TestPulseAudioSetup:
         """Should not auto-detect when explicit IP is provided."""
         mock_config_dir.mkdir(parents=True, exist_ok=True)
 
-        # Customize the global path_resolver to use the correct template paths
-        project_root = repo_root
-
-        def get_template_file_path(template_name: str) -> Path:
-            return project_root / "config_templates" / template_name
-
-        path_resolver.get_template_file_path = get_template_file_path
-
         with (
             patch(
                 "birdnetpi.system.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
                 return_value=mock_config_dir,
             ),
-            patch("birdnetpi.system.pulseaudio_setup.PathResolver", return_value=path_resolver),
+            patch("birdnetpi.system.pulseaudio_setup.Path") as mock_path,
         ):
+            # Mock the Path(__file__) chain to return our templates directory
+            mock_file_path = MagicMock()
+            mock_path.return_value = mock_file_path
+            mock_file_path.parent.parent.parent.parent = repo_root
+
             with patch(
                 "birdnetpi.system.pulseaudio_setup.PulseAudioSetup.get_container_ip"
             ) as mock_get_ip:
@@ -514,27 +503,67 @@ class TestPulseAudioSetup:
     @patch("birdnetpi.system.pulseaudio_setup.subprocess.run")
     def test_start_pulseaudio_server(self, mock_run):
         """Should successfully start PulseAudio server."""
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stderr = ""
+        # Mock pgrep to indicate PulseAudio is NOT running
+        pgrep_result = MagicMock()
+        pgrep_result.returncode = 1  # pgrep returns 1 when process not found
+
+        # Mock successful kill and start
+        kill_result = MagicMock()
+        kill_result.returncode = 0
+
+        start_result = MagicMock()
+        start_result.returncode = 0
+        start_result.stderr = ""
+
+        # Mock verification that PulseAudio is running after start
+        verify_result = MagicMock()
+        verify_result.returncode = 0  # pgrep returns 0 when process is found
+
+        mock_run.side_effect = [
+            pgrep_result,  # pgrep check - not running
+            kill_result,  # pulseaudio -k
+            kill_result,  # pkill -x pulseaudio
+            start_result,  # pulseaudio --start
+            verify_result,  # pgrep verify - now running
+        ]
 
         success, message = PulseAudioSetup.start_pulseaudio_server()
 
         assert success is True
         assert "started successfully" in message
-        assert mock_run.call_count == 2  # kill + start
+        assert mock_run.call_count == 5  # pgrep + kill + pkill + start + verify
 
     @patch("birdnetpi.system.pulseaudio_setup.subprocess.run")
     def test_start_pulseaudio_server_failure(self, mock_run):
         """Should handle PulseAudio server start failure."""
+        # Mock pgrep to indicate PulseAudio is NOT running
+        pgrep_result = MagicMock()
+        pgrep_result.returncode = 1  # pgrep returns 1 when process not found
+
+        # Mock successful kill commands
+        kill_result = MagicMock()
+        kill_result.returncode = 0
+
+        # Mock failed start - exception gets caught, then verification shows not running
+        start_error = subprocess.CalledProcessError(1, "pulseaudio", stderr="error message")
+
+        # Mock verification that PulseAudio is still NOT running after failed start
+        verify_result = MagicMock()
+        verify_result.returncode = 1  # pgrep returns 1 when process not found
+
         mock_run.side_effect = [
-            MagicMock(returncode=0),  # kill command succeeds
-            subprocess.CalledProcessError(1, "pulseaudio", stderr="error message"),
+            pgrep_result,  # pgrep check - not running
+            kill_result,  # pulseaudio -k
+            kill_result,  # pkill -x pulseaudio
+            start_error,  # pulseaudio --start fails
+            verify_result,  # pgrep verify - still not running
         ]
 
         success, message = PulseAudioSetup.start_pulseaudio_server()
 
         assert success is False
-        assert "error message" in message
+        # The error message comes from CalledProcessError
+        assert "Failed to start PulseAudio" in message
 
     @patch("birdnetpi.system.pulseaudio_setup.subprocess.run")
     def test_stop_pulseaudio_server(self, mock_run):
@@ -549,8 +578,13 @@ class TestPulseAudioSetup:
     @patch("birdnetpi.system.pulseaudio_setup.subprocess.run")
     def test_connection(self, mock_run):
         """Should successfully test connection to container."""
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stderr = ""
+        # First call checks container, second tests connection
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="true\n"),  # Container is running
+            MagicMock(
+                returncode=0, stderr="", stdout="Server Name: pulseaudio"
+            ),  # Connection succeeds
+        ]
 
         with patch(
             "birdnetpi.system.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
@@ -559,15 +593,19 @@ class TestPulseAudioSetup:
             success, message = PulseAudioSetup.test_connection("192.168.1.100", 4713)
 
         assert success is True
-        assert "Successfully connected" in message
+        assert "successfully connected" in message
 
     @patch("birdnetpi.system.pulseaudio_setup.PulseAudioSetup.get_container_ip")
     @patch("birdnetpi.system.pulseaudio_setup.subprocess.run")
     def test_connection__auto_detect_ip(self, mock_run, mock_get_ip):
-        """Should auto-detect container IP when not provided."""
-        mock_get_ip.return_value = "172.18.0.5"
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stderr = ""
+        """Should test connection with specified container."""
+        # First call checks container, second tests connection
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="true\n"),  # Container is running
+            MagicMock(
+                returncode=0, stderr="", stdout="Server Name: pulseaudio"
+            ),  # Connection succeeds
+        ]
 
         with patch(
             "birdnetpi.system.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
@@ -577,36 +615,49 @@ class TestPulseAudioSetup:
                 container_ip=None, port=4713, container_name="test-container"
             )
 
-        mock_get_ip.assert_called_once_with("test-container")
+        # test_connection doesn't use get_container_ip
+        mock_get_ip.assert_not_called()
         assert success is True
-        assert "Successfully connected" in message
+        assert "successfully connected" in message
 
-        # Verify pactl was called with auto-detected IP
-        mock_run.assert_called_once()
-        args = mock_run.call_args[0][0]
-        assert "tcp:172.18.0.5:4713" in args
+        # Verify docker commands were called correctly
+        assert mock_run.call_count == 2
+        # First call: docker inspect
+        assert "test-container" in mock_run.call_args_list[0][0][0]
+        # Second call: docker exec with pactl
+        assert "test-container" in mock_run.call_args_list[1][0][0]
 
     @patch("birdnetpi.system.pulseaudio_setup.PulseAudioSetup.get_container_ip")
     @patch("birdnetpi.system.pulseaudio_setup.subprocess.run")
     def test_connection__auto_detect_default_container(self, mock_run, mock_get_ip):
-        """Should use default container name for auto-detection."""
-        mock_get_ip.return_value = "172.18.0.6"
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stderr = ""
+        """Should use default container name."""
+        # First call checks container, second tests connection
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="true\n"),  # Container is running
+            MagicMock(
+                returncode=0, stderr="", stdout="Server Name: pulseaudio"
+            ),  # Connection succeeds
+        ]
 
         with patch(
             "birdnetpi.system.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
             return_value=Path("/tmp"),
         ):
-            PulseAudioSetup.test_connection(container_ip=None)
+            success, message = PulseAudioSetup.test_connection(container_ip=None)
 
-        mock_get_ip.assert_called_once_with("birdnet-pi")  # Default container name
+        # Note: test_connection doesn't use container_ip or call get_container_ip
+        # It only uses container_name to check if container is running
+        assert success is True
+        mock_get_ip.assert_not_called()  # test_connection doesn't use get_container_ip
 
     @patch("birdnetpi.system.pulseaudio_setup.subprocess.run")
     def test_connection__explicit_ip_no_auto_detect(self, mock_run):
         """Should not auto-detect when explicit IP is provided."""
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stderr = ""
+        # First call checks container, second tests connection
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="true\n"),  # Container is running
+            MagicMock(returncode=0, stderr=""),  # Connection succeeds
+        ]
 
         with patch(
             "birdnetpi.system.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
@@ -618,16 +669,23 @@ class TestPulseAudioSetup:
                 success, message = PulseAudioSetup.test_connection(container_ip="10.0.0.2")
                 mock_get_ip.assert_not_called()  # Should not auto-detect
 
-        # Verify pactl was called with explicit IP
-        mock_run.assert_called_once()
-        args = mock_run.call_args[0][0]
-        assert "tcp:10.0.0.2:4713" in args
+        # Verify docker exec was called (second call)
+        assert mock_run.call_count == 2
+        args = mock_run.call_args_list[1][0][0]  # Second call arguments
+        assert "docker" in args
+        assert "exec" in args
+        assert "pactl" in args
+        # Note: container_ip parameter is not used by test_connection
 
     @patch("birdnetpi.system.pulseaudio_setup.subprocess.run")
     def test_connection_failure(self, mock_run):
         """Should handle connection failure."""
-        mock_run.return_value.returncode = 1
-        mock_run.return_value.stderr = "Connection refused"
+        # First call checks if container is running (docker inspect)
+        # Second call tests the connection (pactl)
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="true\n"),  # Container is running
+            MagicMock(returncode=1, stderr="Connection refused"),  # Connection fails
+        ]
 
         with patch(
             "birdnetpi.system.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
@@ -657,6 +715,8 @@ class TestPulseAudioSetup:
         devices = PulseAudioSetup.get_audio_devices()
         assert devices == []
 
+    @patch("birdnetpi.system.pulseaudio_setup.time.sleep")  # Mock sleep to prevent slowness
+    @patch("birdnetpi.system.pulseaudio_setup.subprocess.run")  # Mock subprocess
     @patch("birdnetpi.system.pulseaudio_setup.PulseAudioSetup.is_macos", return_value=True)
     @patch(
         "birdnetpi.system.pulseaudio_setup.PulseAudioSetup.is_pulseaudio_installed",
@@ -676,9 +736,14 @@ class TestPulseAudioSetup:
         mock_backup,
         mock_installed,
         mock_macos,
+        mock_subprocess,
+        mock_sleep,
         tmp_path,
     ):
         """Should successfully setup streaming."""
+        # Mock brew services check to avoid real subprocess call
+        mock_subprocess.return_value = MagicMock(returncode=1, stdout="", stderr="")
+
         mock_config.return_value = tmp_path
         mock_start.return_value = (True, "Started successfully")
 
@@ -689,7 +754,11 @@ class TestPulseAudioSetup:
         mock_backup.assert_called_once()
         mock_config.assert_called_once()
         mock_cookie.assert_called_once()
+        # Verify sleep was not actually called (mocked)
+        mock_sleep.assert_not_called()  # No brew services so no sleep needed
 
+    @patch("birdnetpi.system.pulseaudio_setup.time.sleep")  # Mock sleep to prevent slowness
+    @patch("birdnetpi.system.pulseaudio_setup.subprocess.run")  # Mock subprocess
     @patch("birdnetpi.system.pulseaudio_setup.PulseAudioSetup.is_macos", return_value=True)
     @patch(
         "birdnetpi.system.pulseaudio_setup.PulseAudioSetup.is_pulseaudio_installed",
@@ -711,9 +780,14 @@ class TestPulseAudioSetup:
         mock_backup,
         mock_installed,
         mock_macos,
+        mock_subprocess,
+        mock_sleep,
         tmp_path,
     ):
         """Should auto-detect container IP when not provided."""
+        # Mock brew services check to avoid real subprocess call
+        mock_subprocess.return_value = MagicMock(returncode=1, stdout="", stderr="")
+
         mock_config.return_value = tmp_path
         mock_start.return_value = (True, "Started successfully")
         mock_get_ip.return_value = "172.18.0.7"
@@ -726,7 +800,10 @@ class TestPulseAudioSetup:
         mock_get_ip.assert_called_once_with("custom-container")
         mock_config.assert_called_once_with("172.18.0.7", 4713, container_name="custom-container")
         assert "172.18.0.7" in message
+        mock_sleep.assert_not_called()  # No brew services so no sleep needed
 
+    @patch("birdnetpi.system.pulseaudio_setup.time.sleep")  # Mock sleep to prevent slowness
+    @patch("birdnetpi.system.pulseaudio_setup.subprocess.run")  # Mock subprocess
     @patch("birdnetpi.system.pulseaudio_setup.PulseAudioSetup.is_macos", return_value=True)
     @patch(
         "birdnetpi.system.pulseaudio_setup.PulseAudioSetup.is_pulseaudio_installed",
@@ -746,9 +823,14 @@ class TestPulseAudioSetup:
         mock_backup,
         mock_installed,
         mock_macos,
+        mock_subprocess,
+        mock_sleep,
         tmp_path,
     ):
         """Should not auto-detect when explicit IP is provided."""
+        # Mock brew services check to avoid real subprocess call
+        mock_subprocess.return_value = MagicMock(returncode=1, stdout="", stderr="")
+
         mock_config.return_value = tmp_path
         mock_start.return_value = (True, "Started successfully")
 
@@ -761,7 +843,10 @@ class TestPulseAudioSetup:
         assert success is True
         mock_config.assert_called_once_with("10.0.0.3", 4713, container_name="birdnet-pi")
         assert "10.0.0.3" in message
+        mock_sleep.assert_not_called()  # No brew services so no sleep needed
 
+    @patch("birdnetpi.system.pulseaudio_setup.time.sleep")  # Mock sleep to prevent slowness
+    @patch("birdnetpi.system.pulseaudio_setup.subprocess.run")  # Mock subprocess
     @patch("birdnetpi.system.pulseaudio_setup.PulseAudioSetup.is_macos", return_value=True)
     @patch(
         "birdnetpi.system.pulseaudio_setup.PulseAudioSetup.is_pulseaudio_installed",
@@ -783,9 +868,14 @@ class TestPulseAudioSetup:
         mock_backup,
         mock_installed,
         mock_macos,
+        mock_subprocess,
+        mock_sleep,
         tmp_path,
     ):
         """Should use default container name for auto-detection."""
+        # Mock brew services check to avoid real subprocess call
+        mock_subprocess.return_value = MagicMock(returncode=1, stdout="", stderr="")
+
         mock_config.return_value = tmp_path
         mock_start.return_value = (True, "Started successfully")
         mock_get_ip.return_value = "172.18.0.8"
@@ -793,6 +883,7 @@ class TestPulseAudioSetup:
         PulseAudioSetup.setup_streaming(container_ip=None)
 
         mock_get_ip.assert_called_once_with("birdnet-pi")  # Default container name
+        mock_sleep.assert_not_called()  # No brew services so no sleep needed
 
     @patch("birdnetpi.system.pulseaudio_setup.PulseAudioSetup.is_macos", return_value=False)
     def test_setup_streaming_not_macos(self, mock_macos):

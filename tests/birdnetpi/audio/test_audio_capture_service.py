@@ -38,7 +38,8 @@ class TestAudioCaptureService(unittest.TestCase):
         mock_input_stream.return_value.stopped = False  # Ensure it's not stopped initially
         self.service.start_capture()
         self.service.stop_capture()
-        mock_input_stream.return_value.stop.assert_called_once()
+        # Now using abort() for immediate stop instead of stop()
+        mock_input_stream.return_value.abort.assert_called_once()
         mock_input_stream.return_value.close.assert_called_once()
 
     @patch("sounddevice.InputStream", side_effect=Exception("Test Error"))

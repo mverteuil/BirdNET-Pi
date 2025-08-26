@@ -3,6 +3,8 @@ from dataclasses import dataclass
 
 import sounddevice as sd
 
+from birdnetpi.utils.cache import cached
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,9 +27,21 @@ class AudioDevice:
 class AudioDeviceService:
     """Service for discovering and managing audio devices."""
 
+    @cached(ttl=60, key_prefix="audio_devices")  # Cache for 60 seconds
     def discover_input_devices(self) -> list[AudioDevice]:
         """Discovers available audio input devices and returns them as AudioDevice instances."""
-        logger.info("Discovering audio input devices...")
+        logger.debug("Discovering audio input devices...")
+
+        # Force sounddevice to re-query devices instead of using cached results
+        # This is important when PulseAudio connection might not be ready at import time
+        try:
+            # Reset the internal state to force a fresh query
+            sd._terminate()
+            sd._initialize()
+        except Exception:
+            # If reset fails, continue with normal query
+            pass
+
         devices = sd.query_devices()
         input_devices: list[AudioDevice] = []
 
@@ -47,5 +61,5 @@ class AudioDeviceService:
                         default_samplerate=device["default_samplerate"],  # type: ignore[index]
                     )
                 )
-        logger.info(f"Found {len(input_devices)} input device(s).")
+        logger.debug(f"Found {len(input_devices)} input device(s).")
         return input_devices

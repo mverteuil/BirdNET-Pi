@@ -3,15 +3,11 @@ import math
 import operator
 
 import numpy as np
-
-try:
-    import tflite_runtime.interpreter as tflite  # type: ignore[import-untyped]
-except ImportError:
-    import tensorflow.lite as tflite  # type: ignore[import-untyped,attr-defined]
+from ai_edge_litert.interpreter import Interpreter
 
 from birdnetpi.config import BirdNETConfig
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class BirdDetectionService:
@@ -36,8 +32,8 @@ class BirdDetectionService:
                    and other detection parameters
         """
         self.config = config
-        self.interpreter: tflite.Interpreter | None = None  # type: ignore[name-defined]
-        self.metadata_interpreter: tflite.Interpreter | None = None  # type: ignore[name-defined]
+        self.interpreter: Interpreter | None = None  # type: ignore[name-defined]
+        self.metadata_interpreter: Interpreter | None = None  # type: ignore[name-defined]
         self.predicted_species_list = []  # This list is populated by the meta-model
         self.current_week = None
         self.model_name = None
@@ -80,7 +76,7 @@ class BirdDetectionService:
             ValueError: If the model path is not found
             RuntimeError: If the interpreter fails to initialize
         """
-        log.info("BirdDetectionService: LOADING TF LITE MODEL...")
+        logger.info("BirdDetectionService: LOADING TF LITE MODEL...")
 
         # Use PathResolver to get model path (filename-only approach)
         from birdnetpi.system.path_resolver import PathResolver
@@ -90,7 +86,7 @@ class BirdDetectionService:
         # case
         if model_path is None:
             raise ValueError(f"Model path not found for model: {self.model_name}")
-        self.interpreter = tflite.Interpreter(model_path=str(model_path), num_threads=2)  # type: ignore[attr-defined]
+        self.interpreter = Interpreter(model_path=str(model_path), num_threads=2)  # type: ignore[attr-defined]
         self.interpreter.allocate_tensors()  # type: ignore[union-attr]
 
         if self.interpreter is None:
@@ -107,13 +103,78 @@ class BirdDetectionService:
         # Get number of output classes from model
         output_shape = output_details[0]["shape"]
         num_classes = output_shape[-1]  # Last dimension is number of classes
-        log.info(f"BirdDetectionService: Model has {num_classes} output classes")
+        logger.info(f"BirdDetectionService: Model has {num_classes} output classes")
 
-        # TODO: Load actual species labels from IOC database or model metadata
-        # For now, create placeholder labels to enable testing
-        self.classes = [f"Species_{i:04d}" for i in range(num_classes)]
+        # Load species labels from labels file
+        self.classes = self._load_species_labels(num_classes)
 
-        log.info("BirdDetectionService: LOADING DONE!")
+        logger.info("BirdDetectionService: LOADING DONE!")
+
+    def _load_species_labels(self, expected_count: int) -> list[str]:
+        """Load species labels from the labels text file.
+
+        Args:
+            expected_count: Expected number of labels to match model output classes
+
+        Returns:
+            List of species labels in format "ScientificName_CommonName"
+
+        Notes:
+            Falls back to placeholder labels if file not found or count mismatch
+        """
+        # Ensure model_name is set
+        if not self.model_name:
+            raise ValueError("Model name is not set. Cannot load species labels.")
+
+        # Map model names to their corresponding label files
+        label_files = {
+            "BirdNET_GLOBAL_6K_V2.4_Model_FP16": "BirdNET_GLOBAL_6K_V2.4_Labels.txt",
+            "BirdNET_6K_GLOBAL_MODEL": "BirdNET_GLOBAL_6K_V2.4_Labels.txt",  # Use same labels
+        }
+
+        labels_filename = label_files.get(self.model_name)
+        if not labels_filename:
+            logger.warning(
+                "No labels file mapping for model %s, using placeholder labels", self.model_name
+            )
+            return [f"Species_{i:04d}" for i in range(expected_count)]
+
+        # Get the labels file path from models directory
+        from birdnetpi.system.path_resolver import PathResolver
+
+        path_resolver = PathResolver()
+        models_dir = path_resolver.get_models_dir()
+        labels_path = models_dir / labels_filename
+
+        if not labels_path.exists():
+            logger.warning("Labels file %s not found, using placeholder labels", labels_filename)
+            return [f"Species_{i:04d}" for i in range(expected_count)]
+
+        # Load the labels using Path.read_text()
+        try:
+            labels_text = labels_path.read_text(encoding="utf-8")
+            labels = [line.strip() for line in labels_text.splitlines() if line.strip()]
+
+            if len(labels) != expected_count:
+                logger.warning(
+                    "Labels count mismatch: file has %d, model expects %d. Using available labels.",
+                    len(labels),
+                    expected_count,
+                )
+                # Pad with placeholders if needed, or truncate
+                if len(labels) < expected_count:
+                    labels.extend([f"Species_{i:04d}" for i in range(len(labels), expected_count)])
+                else:
+                    labels = labels[:expected_count]
+
+            logger.info("Loaded %d species labels from %s", len(labels), labels_filename)
+            return labels
+
+        except Exception:
+            logger.exception(
+                "Error loading labels file %s, using placeholder labels", labels_filename
+            )
+            return [f"Species_{i:04d}" for i in range(expected_count)]
 
     def _load_meta_model(self) -> None:
         """Load the metadata model for location and temporal filtering.
@@ -136,7 +197,7 @@ class BirdDetectionService:
                 f"Model path not found for metadata model: {self.config.metadata_model}"
             )
 
-        self.metadata_interpreter = tflite.Interpreter(model_path=str(model_path))  # type: ignore[attr-defined]
+        self.metadata_interpreter = Interpreter(model_path=str(model_path))  # type: ignore[attr-defined]
         self.metadata_interpreter.allocate_tensors()  # type: ignore[union-attr]
 
         if self.metadata_interpreter is None:
@@ -148,7 +209,7 @@ class BirdDetectionService:
         self.metadata_input_layer_index = input_details[0]["index"]
         self.metadata_output_layer_index = output_details[0]["index"]
 
-        log.info("BirdDetectionService: loaded META model")
+        logger.info("BirdDetectionService: loaded META model")
 
     def _predict_filter_raw(self, latitude: float, longitude: float, week: int) -> np.ndarray:
         """Generate species occurrence probabilities for a location and time.
