@@ -131,8 +131,8 @@ class TestListVersions:
         assert "Available asset versions:" in result.output
         assert "Latest version: v2.1.1" in result.output
         assert "• v2.1.1" in result.output
+        assert "• v2.1.0" in result.output
         assert "• v2.0.0" in result.output
-        assert "• v1.9.0" in result.output
 
     @patch("birdnetpi.cli.install_assets.UpdateManager")
     def test_list_versions_empty(self, mock_update_manager_class, runner):

@@ -6,6 +6,7 @@ import numpy as np
 from ai_edge_litert.interpreter import Interpreter
 
 from birdnetpi.config import BirdNETConfig
+from birdnetpi.models.enums import MODEL_LABELS
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +97,7 @@ class BirdDetectionService:
         output_details = self.interpreter.get_output_details()
 
         self.input_layer_index = input_details[0]["index"]
-        if self.model_name == "BirdNET_6K_GLOBAL_MODEL":
+        if self.config.model == "BirdNET_6K_GLOBAL_MODEL":
             self.metadata_input_index = input_details[1]["index"]
         self.output_layer_index = output_details[0]["index"]
 
@@ -122,20 +123,11 @@ class BirdDetectionService:
         Notes:
             Falls back to placeholder labels if file not found or count mismatch
         """
-        # Ensure model_name is set
-        if not self.model_name:
-            raise ValueError("Model name is not set. Cannot load species labels.")
-
-        # Map model names to their corresponding label files
-        label_files = {
-            "BirdNET_GLOBAL_6K_V2.4_Model_FP16": "BirdNET_GLOBAL_6K_V2.4_Labels.txt",
-            "BirdNET_6K_GLOBAL_MODEL": "BirdNET_GLOBAL_6K_V2.4_Labels.txt",  # Use same labels
-        }
-
-        labels_filename = label_files.get(self.model_name)
-        if not labels_filename:
+        try:
+            labels_filename = MODEL_LABELS[self.config.model]
+        except KeyError:
             logger.warning(
-                "No labels file mapping for model %s, using placeholder labels", self.model_name
+                "No labels file mapping for model %s, using placeholder labels", self.config.model
             )
             return [f"Species_{i:04d}" for i in range(expected_count)]
 
@@ -261,7 +253,7 @@ class BirdDetectionService:
             - Results are cached per week to avoid redundant predictions
             - Only applies to certain model versions that support metadata filtering
         """
-        if self.model_name == "BirdNET_GLOBAL_6K_V2.4_Model_FP16":
+        if self.config.model == "BirdNET_GLOBAL_6K_V2.4_Model_FP16":
             if week != self.current_week or not self.predicted_species_list:
                 self.current_week = week
                 self.predicted_species_list = []  # Clear previous list
@@ -387,7 +379,7 @@ class BirdDetectionService:
             raise RuntimeError("Interpreter not initialized")
 
         self.interpreter.set_tensor(self.input_layer_index, np.array(sig, dtype="float32"))
-        if self.model_name == "BirdNET_6K_GLOBAL_MODEL":
+        if self.config.model == "BirdNET_6K_GLOBAL_MODEL":
             self.interpreter.set_tensor(
                 self.metadata_input_index, np.array(self.metadata, dtype="float32")
             )

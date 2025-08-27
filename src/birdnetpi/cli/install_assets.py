@@ -28,12 +28,31 @@ def cli(ctx: click.Context) -> None:
     ctx.obj["update_manager"] = UpdateManager(ctx.obj["path_resolver"])
 
 
-def _check_existing_assets(path_resolver: PathResolver) -> tuple[bool, list[str]]:
-    """Check if all required assets exist.
+def _check_existing_assets(
+    path_resolver: PathResolver, requested_version: str
+) -> tuple[bool, list[str]]:
+    """Check if all required assets exist and are the correct version.
 
     Returns:
         Tuple of (all_present, missing_assets)
     """
+    # First check version file
+    version_file = path_resolver.data_dir / ".birdnet-assets-version"
+
+    if version_file.exists():
+        try:
+            installed_version = version_file.read_text().strip()
+            if installed_version != requested_version:
+                msg = f"Version mismatch: installed={installed_version}, "
+                msg += f"requested={requested_version}"
+                click.echo(click.style(msg, fg="yellow"))
+                return False, ["Version mismatch - need to update"]
+        except Exception:
+            # If we can't read version, assume mismatch
+            return False, ["Cannot read version file"]
+    else:
+        # No version file means we need to install
+        return False, ["No version file - need to install"]
     required_checks = []
 
     for asset in AssetManifest.get_required_assets():
@@ -136,7 +155,7 @@ def install(
 
     if skip_existing:
         # Skip existing mode - check if all required assets exist, install only if missing
-        all_present, missing_assets = _check_existing_assets(path_resolver)
+        all_present, missing_assets = _check_existing_assets(path_resolver, version)
 
         if all_present:
             click.echo(click.style(f"✓ All assets present for version {version}", fg="green"))
@@ -151,6 +170,17 @@ def install(
 
     try:
         result = _perform_installation(update_manager, version)
+
+        # Write version file after successful installation
+        version_file = path_resolver.data_dir / ".birdnet-assets-version"
+        try:
+            version_file.write_text(version)
+            click.echo(f"  Version marker written: {version}")
+        except Exception as e:
+            click.echo(
+                click.style(f"Warning: Could not write version file: {e}", fg="yellow"), err=True
+            )
+
         _display_installation_results(result, output_json)
 
     except Exception as e:
