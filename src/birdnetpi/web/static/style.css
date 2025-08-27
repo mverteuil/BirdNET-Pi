@@ -1389,3 +1389,187 @@ h1 {
 .rule-body-template {
   font-size: 0.9rem;
 }
+
+/* ============================
+   YAML Editor Styles
+   ============================ */
+
+/* CodeMirror overrides to match site design */
+.CodeMirror {
+  height: 500px;
+  font-size: 0.9rem;
+  font-family: "Courier New", monospace;
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-hover);
+}
+
+.CodeMirror-gutters {
+  background: var(--color-bg-secondary);
+  border-right: 1px solid var(--color-border-tertiary);
+}
+
+.CodeMirror-linenumber {
+  color: var(--color-text-tertiary);
+  font-size: 0.8rem;
+}
+
+/* Editor container and layout */
+.editor-container {
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.editor-title {
+  font-size: 1.1rem;
+  font-weight: normal;
+  color: var(--color-text-emphasis);
+}
+
+.editor-status {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.editor-status.modified {
+  color: var(--color-status-warning);
+}
+
+.editor-status.saved {
+  color: var(--color-status-success);
+}
+
+.editor-status.error {
+  color: var(--color-status-critical);
+}
+
+/* Editor toolbar */
+.editor-toolbar {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px dotted var(--color-border-tertiary);
+}
+
+.editor-button {
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.9rem;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.editor-button:hover {
+  color: var(--color-text-emphasis);
+}
+
+.editor-button.primary {
+  color: var(--color-text-emphasis);
+  font-weight: normal;
+}
+
+.editor-button:disabled {
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  cursor: not-allowed;
+}
+
+/* Editor status bar */
+.editor-statusbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dotted var(--color-border-tertiary);
+  font-size: 0.8rem;
+  color: var(--color-text-tertiary);
+}
+
+.cursor-position {
+  font-family: "Courier New", monospace;
+}
+
+.shortcuts-hint {
+  font-style: italic;
+}
+
+/* Editor alert messages */
+.editor-alert {
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border-left: 3px solid var(--color-text-secondary);
+  background: var(--color-bg-hover-subtle);
+  font-size: 0.85rem;
+  display: none;
+}
+
+.editor-alert.show {
+  display: block;
+}
+
+.editor-alert.success {
+  border-color: var(--color-status-success);
+}
+
+.editor-alert.error {
+  border-color: var(--color-status-critical);
+}
+
+.editor-alert.warning {
+  border-color: var(--color-status-warning);
+}
+
+/* Editor loading state */
+.editor-container .loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(253, 252, 250, 0.9);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.editor-container .loading-overlay.show {
+  display: flex;
+}
+
+.loading-text {
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+
+/* Editor responsive adjustments */
+@media (max-width: 768px) {
+  .editor-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .shortcuts-hint {
+    display: none;
+  }
+
+  .CodeMirror {
+    height: 400px;
+  }
+}

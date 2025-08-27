@@ -3,9 +3,301 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>YAML Editor</title>
+    <title>Settings Editor - BirdNET-Pi</title>
+
+    <!-- Main site stylesheet (includes YAML editor styles) -->
+    <link rel="stylesheet" href="/static/style.css" />
+
+    <!-- CodeMirror CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.css"
+    />
   </head>
   <body>
-    <!-- YAML editor - to be implemented -->
+    <!-- Header -->
+    <header>
+      <h1>BirdNET-Pi</h1>
+      <p class="tagline">Configuration Editor</p>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="main-nav">
+      <a href="/" class="nav-item">Overview</a>
+      <a href="/admin/settings" class="nav-item">Settings</a>
+      <a href="/admin/advanced-settings" class="nav-item active"
+        >Advanced Settings</a
+      >
+      <a href="/livestream" class="nav-item">Livestream</a>
+    </nav>
+
+    <!-- Alert messages -->
+    <div class="editor-alert success" id="successAlert"></div>
+    <div class="editor-alert error" id="errorAlert"></div>
+    <div class="editor-alert warning" id="warningAlert"></div>
+
+    <!-- Editor container -->
+    <div class="editor-container">
+      <div class="editor-header">
+        <h2 class="editor-title">YAML Configuration</h2>
+        <span class="editor-status" id="editorStatus">Ready</span>
+      </div>
+
+      <div class="editor-toolbar">
+        <button class="editor-button primary" onclick="saveConfig()">
+          Save Configuration
+        </button>
+        <button class="editor-button" onclick="validateConfig()">
+          Validate
+        </button>
+        <button class="editor-button" onclick="resetToOriginal()">
+          Reset Changes
+        </button>
+        <button
+          class="editor-button"
+          onclick="window.location.href='/admin/settings'"
+        >
+          Basic Settings
+        </button>
+      </div>
+
+      <div class="loading-overlay" id="loadingOverlay">
+        <span class="loading-text">Processing...</span>
+      </div>
+
+      <textarea id="yamlEditor">{{ config_yaml }}</textarea>
+
+      <div class="editor-statusbar">
+        <span class="cursor-position">
+          Line <span id="lineNumber">1</span>, Column
+          <span id="columnNumber">1</span>
+        </span>
+        <span class="shortcuts-hint"> Ctrl+S save · Ctrl+Enter validate </span>
+      </div>
+    </div>
+
+    <!-- Annotations -->
+    <p class="annotation">
+      This editor provides direct access to the BirdNET-Pi configuration file.
+      Changes require a service restart to take effect. Use the Basic Settings
+      page for guided configuration.
+    </p>
+
+    <!-- CodeMirror JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/yaml/yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/edit/closebrackets.min.js"></script>
+
+    <script>
+      // Initialize CodeMirror editor
+      const editor = CodeMirror.fromTextArea(
+        document.getElementById("yamlEditor"),
+        {
+          mode: "yaml",
+          theme: "default",
+          lineNumbers: true,
+          lineWrapping: false,
+          matchBrackets: true,
+          autoCloseBrackets: true,
+          indentUnit: 2,
+          tabSize: 2,
+          indentWithTabs: false,
+          extraKeys: {
+            "Ctrl-S": function (cm) {
+              saveConfig();
+            },
+            "Cmd-S": function (cm) {
+              saveConfig();
+            },
+            "Ctrl-Enter": function (cm) {
+              validateConfig();
+            },
+            "Cmd-Enter": function (cm) {
+              validateConfig();
+            },
+          },
+        },
+      );
+
+      // Store original content for reset
+      let originalContent = editor.getValue();
+
+      // Update cursor position display
+      editor.on("cursorActivity", function () {
+        const cursor = editor.getCursor();
+        document.getElementById("lineNumber").textContent = cursor.line + 1;
+        document.getElementById("columnNumber").textContent = cursor.ch + 1;
+      });
+
+      // Track changes
+      let hasChanges = false;
+      editor.on("change", function () {
+        const currentContent = editor.getValue();
+        hasChanges = currentContent !== originalContent;
+        updateStatus(
+          hasChanges ? "Modified" : "Ready",
+          hasChanges ? "modified" : "ready",
+        );
+      });
+
+      function showAlert(type, message, duration = 5000) {
+        const alertMap = {
+          success: "successAlert",
+          error: "errorAlert",
+          warning: "warningAlert",
+        };
+
+        const alertEl = document.getElementById(alertMap[type]);
+        if (alertEl) {
+          alertEl.textContent = message;
+          alertEl.classList.add("show");
+
+          setTimeout(() => {
+            alertEl.classList.remove("show");
+          }, duration);
+        }
+      }
+
+      function updateStatus(text, type = "ready") {
+        const statusEl = document.getElementById("editorStatus");
+        statusEl.textContent = text;
+        statusEl.className = "editor-status";
+        if (type !== "ready") {
+          statusEl.classList.add(type);
+        }
+      }
+
+      function showLoading(show) {
+        const overlay = document.getElementById("loadingOverlay");
+        if (show) {
+          overlay.classList.add("show");
+        } else {
+          overlay.classList.remove("show");
+        }
+      }
+
+      async function validateConfig() {
+        const yamlContent = editor.getValue();
+
+        showLoading(true);
+        updateStatus("Validating...", "modified");
+
+        try {
+          const response = await fetch("/admin/config/validate", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ yaml_content: yamlContent }),
+          });
+
+          const result = await response.json();
+
+          if (result.valid) {
+            showAlert("success", "Configuration is valid");
+            updateStatus(
+              hasChanges ? "Modified (valid)" : "Ready",
+              hasChanges ? "modified" : "ready",
+            );
+          } else {
+            showAlert("error", "Validation failed: " + result.error);
+            updateStatus("Invalid", "error");
+
+            // If there's a line number in the error, jump to it
+            const lineMatch = result.error.match(/line (\d+)/i);
+            if (lineMatch) {
+              const lineNum = parseInt(lineMatch[1]) - 1;
+              editor.setCursor(lineNum, 0);
+              editor.focus();
+            }
+          }
+        } catch (error) {
+          showAlert("error", "Network error: " + error.message);
+          updateStatus("Error", "error");
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      async function saveConfig() {
+        const yamlContent = editor.getValue();
+
+        showLoading(true);
+        updateStatus("Saving...", "modified");
+
+        try {
+          // Validate first
+          const validateResponse = await fetch("/admin/config/validate", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ yaml_content: yamlContent }),
+          });
+
+          const validateResult = await validateResponse.json();
+
+          if (!validateResult.valid) {
+            showAlert("error", "Cannot save: " + validateResult.error);
+            updateStatus("Invalid", "error");
+            showLoading(false);
+            return;
+          }
+
+          // If valid, save
+          const saveResponse = await fetch("/admin/config/save", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ yaml_content: yamlContent }),
+          });
+
+          const saveResult = await saveResponse.json();
+
+          if (saveResult.success) {
+            showAlert(
+              "success",
+              "Configuration saved. Restart BirdNET-Pi services to apply changes.",
+            );
+            updateStatus("Saved", "saved");
+            hasChanges = false;
+            // Update original content to new saved content
+            originalContent = yamlContent;
+          } else {
+            showAlert("error", "Failed to save: " + saveResult.error);
+            updateStatus("Save failed", "error");
+          }
+        } catch (error) {
+          showAlert("error", "Network error: " + error.message);
+          updateStatus("Error", "error");
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      function resetToOriginal() {
+        if (hasChanges && !confirm("Discard all unsaved changes?")) {
+          return;
+        }
+
+        editor.setValue(originalContent);
+        hasChanges = false;
+        updateStatus("Ready", "ready");
+        showAlert("success", "Reset to saved configuration");
+      }
+
+      // Warn before leaving if there are unsaved changes
+      window.addEventListener("beforeunload", function (e) {
+        if (hasChanges) {
+          e.preventDefault();
+          e.returnValue = "You have unsaved changes.";
+        }
+      });
+
+      // Initial status
+      updateStatus("Ready", "ready");
+    </script>
   </body>
 </html>

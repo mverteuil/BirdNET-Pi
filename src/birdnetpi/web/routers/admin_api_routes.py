@@ -78,7 +78,7 @@ async def save_yaml_config(
 ) -> dict:
     """Save YAML configuration content."""
     try:
-        # First validate the YAML
+        # First validate the YAML (validate_yaml_config has its own injection)
         validation_result = await validate_yaml_config(config_request)
         if not validation_result["valid"]:
             return {"success": False, "error": validation_result["error"]}
