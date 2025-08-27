@@ -173,6 +173,7 @@ dependencies = [
     { name = "python-multipart" },
     { name = "python-systemd" },
     { name = "pytz" },
+    { name = "resampy" },
     { name = "seaborn" },
     { name = "setuptools" },
     { name = "sounddevice" },
@@ -199,6 +200,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
+    { name = "scipy-stubs" },
     { name = "types-decorator" },
     { name = "types-paho-mqtt" },
     { name = "types-pillow" },
@@ -240,6 +242,7 @@ requires-dist = [
     { name = "python-multipart" },
     { name = "python-systemd", specifier = ">=0.0.9" },
     { name = "pytz" },
+    { name = "resampy" },
     { name = "seaborn" },
     { name = "setuptools" },
     { name = "sounddevice", specifier = ">=0.5.2" },
@@ -266,6 +269,7 @@ dev = [
     { name = "pytest-cov", specifier = ">=6.2.1" },
     { name = "pytest-mock", specifier = "==3.7.0" },
     { name = "pytest-timeout", specifier = ">=2.4.0" },
+    { name = "scipy-stubs", specifier = ">=1.16.1.1" },
     { name = "types-decorator", specifier = ">=5.2.0.20250324" },
     { name = "types-paho-mqtt" },
     { name = "types-pillow", specifier = ">=10.2.0.20240822" },
@@ -825,6 +829,18 @@ wheels = [
 ]
 
 [[package]]
+name = "numpy-typing-compat"
+version = "20250818.1.25"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ff/a7/780dc00f4fed2f2b653f76a196b3a6807c7c667f30ae95a7fd082c1081d8/numpy_typing_compat-20250818.1.25.tar.gz", hash = "sha256:8ff461725af0b436e9b0445d07712f1e6e3a97540a3542810f65f936dcc587a5", size = 5027, upload-time = "2025-08-18T23:46:39.062Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1e/71/30e8d317b6896acbc347d3089764b6209ba299095550773e14d27dcf035f/numpy_typing_compat-20250818.1.25-py3-none-any.whl", hash = "sha256:4f91427369583074b236c804dd27559134f08ec4243485034c8e7d258cbd9cd3", size = 6355, upload-time = "2025-08-18T23:46:30.927Z" },
+]
+
+[[package]]
 name = "oauthlib"
 version = "3.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -843,6 +859,24 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/3d/f9/88d94a75de065ea32619465d2f77b29a0469500e99012523b91cc4141cd1/openpyxl-3.1.5.tar.gz", hash = "sha256:cf0e3cf56142039133628b5acffe8ef0c12bc902d2aadd3e0fe5878dc08d1050", size = 186464, upload-time = "2024-06-28T14:03:44.161Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c0/da/977ded879c29cbd04de313843e76868e6e13408a94ed6b987245dc7c8506/openpyxl-3.1.5-py2.py3-none-any.whl", hash = "sha256:5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2", size = 250910, upload-time = "2024-06-28T14:03:41.161Z" },
+]
+
+[[package]]
+name = "optype"
+version = "0.13.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/20/7f/daa32a35b2a6a564a79723da49c0ddc464c462e67a906fc2b66a0d64f28e/optype-0.13.4.tar.gz", hash = "sha256:131d8e0f1c12d8095d553e26b54598597133830983233a6a2208886e7a388432", size = 99547, upload-time = "2025-08-19T19:52:44.242Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/37/bb/b51940f2d91071325d5ae2044562aa698470a105474d9317b9dbdaad63df/optype-0.13.4-py3-none-any.whl", hash = "sha256:500c89cfac82e2f9448a54ce0a5d5c415b6976b039c2494403cd6395bd531979", size = 87919, upload-time = "2025-08-19T19:52:41.314Z" },
+]
+
+[package.optional-dependencies]
+numpy = [
+    { name = "numpy" },
+    { name = "numpy-typing-compat" },
 ]
 
 [[package]]
@@ -1263,6 +1297,19 @@ wheels = [
 ]
 
 [[package]]
+name = "resampy"
+version = "0.4.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numba" },
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/29/f1/34be702a69a5d272e844c98cee82351f880985cfbca0cc86378011078497/resampy-0.4.3.tar.gz", hash = "sha256:a0d1c28398f0e55994b739650afef4e3974115edbe96cd4bb81968425e916e47", size = 3080604, upload-time = "2024-03-05T20:36:08.119Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4d/b9/3b00ac340a1aab3389ebcc52c779914a44aadf7b0cb7a3bf053195735607/resampy-0.4.3-py3-none-any.whl", hash = "sha256:ad2ed64516b140a122d96704e32bc0f92b23f45419e8b8f478e5a05f83edcebd", size = 3076529, upload-time = "2024-03-05T20:36:02.439Z" },
+]
+
+[[package]]
 name = "rpds-py"
 version = "0.26.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1332,6 +1379,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/d3/30/e9eb0ad3d0858df35d6c703cba0a7e16a18a56a9e6b211d861fc6f261c5f/scipy-1.16.0-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:6c4abb4c11fc0b857474241b812ce69ffa6464b4bd8f4ecb786cf240367a36a7", size = 35608257, upload-time = "2025-06-22T16:18:49.09Z" },
     { url = "https://files.pythonhosted.org/packages/c8/ff/950ee3e0d612b375110d8cda211c1f787764b4c75e418a4b71f4a5b1e07f/scipy-1.16.0-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:b370f8f6ac6ef99815b0d5c9f02e7ade77b33007d74802efc8316c8db98fd11e", size = 38040541, upload-time = "2025-06-22T16:18:55.077Z" },
     { url = "https://files.pythonhosted.org/packages/8b/c9/750d34788288d64ffbc94fdb4562f40f609d3f5ef27ab4f3a4ad00c9033e/scipy-1.16.0-cp311-cp311-win_amd64.whl", hash = "sha256:a16ba90847249bedce8aa404a83fb8334b825ec4a8e742ce6012a7a5e639f95c", size = 38570814, upload-time = "2025-06-22T16:19:00.912Z" },
+]
+
+[[package]]
+name = "scipy-stubs"
+version = "1.16.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "optype", extra = ["numpy"] },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ab/7e/978c7cad40405cb927d065c31bfaefbc09b4f6cf1ce97e4af6625b1935ab/scipy_stubs-1.16.1.1.tar.gz", hash = "sha256:5b36fdcc1a66cc530c08917fa7c7499ec7a607487735419c677742dcf25803fb", size = 347578, upload-time = "2025-08-21T00:57:31.306Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fa/1b/8c2b4f0e957ad23d30419c01e9ef874284c09ceb942daf3a6546ffd51e6e/scipy_stubs-1.16.1.1-py3-none-any.whl", hash = "sha256:8c3e98a5a7def79570cbd6e2f4316da570d48b7945a630ac016b199d12c31918", size = 553763, upload-time = "2025-08-21T00:57:27.649Z" },
 ]
 
 [[package]]

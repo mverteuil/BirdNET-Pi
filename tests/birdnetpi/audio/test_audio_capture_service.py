@@ -20,21 +20,49 @@ class TestAudioCaptureService(unittest.TestCase):
             self.mock_config, analysis_fifo_fd=-1, livestream_fifo_fd=-1
         )
 
+    @patch("sounddevice.query_devices")
     @patch("sounddevice.InputStream")
-    def test_start_capture_initializes_stream(self, mock_input_stream):
+    def test_start_capture_initializes_stream(self, mock_input_stream, mock_query_devices):
         """Should initialize the sounddevice stream correctly."""
+        # Mock the device to return its default sample rate
+        mock_device_info = {"default_samplerate": 44100.0}
+        mock_query_devices.return_value = mock_device_info
+
+        # Mock the audio device service
+        mock_device = MagicMock()
+        mock_device.index = 1
+        mock_device.default_samplerate = 44100.0
+        mock_device.name = "Test Device"
+        self.service.audio_device_service.discover_input_devices = MagicMock(
+            return_value=[mock_device]
+        )
+
         self.service.start_capture()
+
+        # Should use device's native sample rate (44100) not config sample rate (48000)
         mock_input_stream.assert_called_once_with(
             device=self.mock_config.audio_device_index,
-            samplerate=self.mock_config.sample_rate,
+            samplerate=44100,  # Device's native rate
             channels=self.mock_config.audio_channels,
             callback=self.service._callback,
         )
         mock_input_stream.return_value.start.assert_called_once()
 
+    @patch("sounddevice.query_devices")
     @patch("sounddevice.InputStream")
-    def test_stop_capture_stops__closes_stream(self, mock_input_stream):
+    def test_stop_capture_stops__closes_stream(self, mock_input_stream, mock_query_devices):
         """Should stop and close the sounddevice stream."""
+        # Mock the device
+        mock_device_info = {"default_samplerate": 48000.0}
+        mock_query_devices.return_value = mock_device_info
+        mock_device = MagicMock()
+        mock_device.index = 1
+        mock_device.default_samplerate = 48000.0
+        mock_device.name = "Test Device"
+        self.service.audio_device_service.discover_input_devices = MagicMock(
+            return_value=[mock_device]
+        )
+
         mock_input_stream.return_value.stopped = False  # Ensure it's not stopped initially
         self.service.start_capture()
         self.service.stop_capture()
@@ -42,9 +70,21 @@ class TestAudioCaptureService(unittest.TestCase):
         mock_input_stream.return_value.abort.assert_called_once()
         mock_input_stream.return_value.close.assert_called_once()
 
+    @patch("sounddevice.query_devices")
     @patch("sounddevice.InputStream", side_effect=Exception("Test Error"))
-    def test_start_capture_handles_exceptions(self, mock_input_stream):
+    def test_start_capture_handles_exceptions(self, mock_input_stream, mock_query_devices):
         """Should handle exceptions during stream initialization."""
+        # Mock the device
+        mock_device_info = {"default_samplerate": 48000.0}
+        mock_query_devices.return_value = mock_device_info
+        mock_device = MagicMock()
+        mock_device.index = 1
+        mock_device.default_samplerate = 48000.0
+        mock_device.name = "Test Device"
+        self.service.audio_device_service.discover_input_devices = MagicMock(
+            return_value=[mock_device]
+        )
+
         mock_input_stream.side_effect = Exception("Test Error")
         with self.assertRaises(Exception) as cm:
             self.service.start_capture()
