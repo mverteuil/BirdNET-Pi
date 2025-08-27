@@ -6,7 +6,7 @@ import numpy as np
 from ai_edge_litert.interpreter import Interpreter
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.models.enums import MODEL_LABELS
+from birdnetpi.detections.constants import MODEL_LABELS, NON_BIRD_LABELS
 
 logger = logging.getLogger(__name__)
 
@@ -443,9 +443,18 @@ class BirdDetectionService:
             if self.species_frequency_threshold is not None
             else 0.03
         )
+
         filtered_results = []
         for species, confidence in raw_predictions:
             if confidence >= species_frequency_threshold:
-                filtered_results.append((species, confidence))
+                # Filter out non-bird sounds
+                if species not in NON_BIRD_LABELS:
+                    filtered_results.append((species, confidence))
+                else:
+                    logger.debug(
+                        "Filtered out non-bird detection: %s (confidence: %.3f)",
+                        species,
+                        confidence,
+                    )
 
         return filtered_results
