@@ -125,14 +125,14 @@ class TestStaticFilesIntegration:
         )
 
         with (
-            patch("birdnetpi.web.routers.admin_view_routes.ConfigManager") as MockConfigManager,
+            patch("birdnetpi.web.routers.admin_view_routes.ConfigManager") as mock_config_manager,
             patch(
                 "birdnetpi.web.routers.admin_view_routes.AudioDeviceService",
                 return_value=mock_audio_service,
             ),
             patch("birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin"),
         ):
-            MockConfigManager.return_value = mock_config_manager
+            mock_config_manager.return_value = mock_config_manager
             # Create the app using the factory
             app = create_app()
 

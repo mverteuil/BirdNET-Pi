@@ -183,6 +183,8 @@ async def async_in_memory_session():
         yield session
     finally:
         await session.close()
+        # IMPORTANT: Dispose the engine to prevent file descriptor leaks
+        await engine.dispose()
 
 
 @pytest.fixture

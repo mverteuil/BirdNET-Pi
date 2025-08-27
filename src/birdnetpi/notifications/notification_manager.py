@@ -61,11 +61,18 @@ class NotificationManager:
             except RuntimeError:
                 logger.debug("No event loop running, skipping WebSocket notifications")
 
-        # Send Apprise notifications (existing functionality)
-        if self.config.apprise_notify_each_detection:
-            logger.info(
-                f"Simulating sending Apprise notification for: {detection.get_display_name()}"
-            )
+        # Send Apprise notifications based on new notification rules
+        # TODO: Implement notification rule processing
+        # For now, check if any rules are configured for immediate detection notifications
+        if self.config.notification_rules:
+            for rule in self.config.notification_rules:
+                if rule.get("enabled") and rule.get("frequency", {}).get("when") == "immediate":
+                    rule_name = rule.get("name", "Unnamed")
+                    detection_name = detection.get_display_name()
+                    logger.info(
+                        f"Simulating sending notification for rule '{rule_name}': {detection_name}"
+                    )
+                    break
 
         # Send IoT notifications asynchronously (only if there's a running event loop)
         try:

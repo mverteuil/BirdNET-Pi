@@ -1,4 +1,7 @@
-"""Integration tests for settings functionality including config persistence and audio device discovery."""
+"""Integration tests for settings functionality.
+
+Tests config persistence and audio device discovery.
+"""
 
 import os
 import tempfile

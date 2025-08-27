@@ -31,8 +31,6 @@ def app_with_notification_rules(path_resolver, repo_root, mock_config_with_rules
             lambda: repo_root / "src" / "birdnetpi" / "web" / "templates"
         )
 
-        container = Container()
-
         # Mock ConfigManager
         mock_config_manager = MagicMock()
         mock_config_manager.load.return_value = mock_config_with_rules

@@ -122,10 +122,9 @@ class TestSettingsViewRendering:
         self, template_env, mock_request, sample_audio_devices
     ):
         """Test that template handles missing or None config fields gracefully."""
-        # Create config with some None/missing fields
+        # Create config with default values (0.0 for lat/lon)
         config = BirdNETConfig()
-        config.latitude = None  # Explicitly None
-        config.longitude = None
+        # latitude and longitude will default to 0.0, not None
 
         try:
             template = template_env.get_template("admin/settings.html.j2")

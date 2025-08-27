@@ -55,7 +55,9 @@ class ConfigVersion_2_0_0:  # noqa: N801
             "apprise_targets": {},
             "webhook_targets": {},
             "notification_title_default": "BirdNET-Pi: {{ common_name }}",
-            "notification_body_default": "Detected {{ common_name }} ({{ scientific_name }}) at {{ confidence }}% confidence",
+            "notification_body_default": (
+                "Detected {{ common_name }} ({{ scientific_name }}) at {{ confidence }}% confidence"
+            ),
             "notification_rules": [],
             "notify_quiet_hours_start": "",
             "notify_quiet_hours_end": "",
@@ -98,6 +100,34 @@ class ConfigVersion_2_0_0:  # noqa: N801
     def upgrade_from_previous(self, config: dict[str, Any]) -> dict[str, Any]:
         """Upgrade config from 1.9.0 to 2.0.0."""
         # Rename old field names
+        self._rename_old_fields(config)
+
+        # Add version if missing
+        if "config_version" not in config:
+            config["config_version"] = self.version
+
+        # Upgrade logging config structure
+        self._upgrade_logging_config(config)
+
+        # Migrate old apprise notification fields to new structure
+        self._migrate_notifications(config)
+
+        # Ensure new notification fields exist with defaults if missing
+        if "apprise_targets" not in config:
+            config["apprise_targets"] = {}
+        if "webhook_targets" not in config:
+            config["webhook_targets"] = {}
+        if "notification_rules" not in config:
+            config["notification_rules"] = []
+        if "notify_quiet_hours_start" not in config:
+            config["notify_quiet_hours_start"] = ""
+        if "notify_quiet_hours_end" not in config:
+            config["notify_quiet_hours_end"] = ""
+
+        return config
+
+    def _rename_old_fields(self, config: dict[str, Any]) -> None:
+        """Rename old field names to new ones."""
         if "sf_thresh" in config:
             config["species_confidence_threshold"] = config.pop("sf_thresh")
             print("  Renamed: sf_thresh → species_confidence_threshold")
@@ -106,23 +136,144 @@ class ConfigVersion_2_0_0:  # noqa: N801
             config["sensitivity_setting"] = config.pop("sensitivity")
             print("  Renamed: sensitivity → sensitivity_setting")
 
-        # Add version if missing
-        if "config_version" not in config:
-            config["config_version"] = self.version
+    def _upgrade_logging_config(self, config: dict[str, Any]) -> None:
+        """Upgrade logging config structure to include new fields."""
+        if "logging" in config and isinstance(config["logging"], dict):
+            # Ensure new fields exist with defaults
+            if "json_logs" not in config["logging"]:
+                config["logging"]["json_logs"] = None
+            if "include_caller" not in config["logging"]:
+                config["logging"]["include_caller"] = False
+            if "extra_fields" not in config["logging"]:
+                config["logging"]["extra_fields"] = {"service": "birdnet-pi"}
 
-        # Upgrade logging config structure
-        if "logging" in config:
-            if isinstance(config["logging"], dict):
-                # Ensure new fields exist with defaults
-                if "json_logs" not in config["logging"]:
-                    config["logging"]["json_logs"] = None
-                if "include_caller" not in config["logging"]:
-                    config["logging"]["include_caller"] = False
-                if "extra_fields" not in config["logging"]:
-                    config["logging"]["extra_fields"] = {"service": "birdnet-pi"}
+    def _migrate_notifications(self, config: dict[str, Any]) -> None:
+        """Migrate old apprise notification fields to new notification structure."""
+        rules = []
 
-        # Remove any remaining old apprise fields that shouldn't exist in 2.0.0
-        # These should have been removed by v1.9.0 migration, but ensure they're gone
+        # Convert old apprise_input to apprise_targets
+        if config.get("apprise_input"):
+            # Create single "default" target from old apprise_input
+            config["apprise_targets"] = {"default": config["apprise_input"]}
+
+            # Create notification rules from old boolean flags
+            rules.extend(self._create_notification_rules(config))
+
+            # Apply species filter if present
+            self._apply_species_filter(config, rules)
+
+        # Set notification rules
+        if rules:
+            config["notification_rules"] = rules
+
+        # Migrate notification templates
+        self._migrate_notification_templates(config)
+
+        # Remove old fields after migration
+        self._remove_old_notification_fields(config)
+
+    def _create_notification_rules(self, config: dict[str, Any]) -> list[dict[str, Any]]:
+        """Create notification rules based on old boolean flags."""
+        rules = []
+
+        if config.get("apprise_notify_each_detection"):
+            rules.append(
+                {
+                    "name": "All Detections",
+                    "enabled": True,
+                    "service": "apprise",
+                    "target": "default",
+                    "frequency": {"when": "immediate"},
+                    "scope": "all",
+                    "include_taxa": {},
+                    "exclude_taxa": {},
+                    "minimum_confidence": config.get("minimum_time_limit", 0),
+                    "title_template": "",
+                    "body_template": "",
+                }
+            )
+
+        if config.get("apprise_notify_new_species"):
+            rules.append(
+                {
+                    "name": "New Species Alert",
+                    "enabled": True,
+                    "service": "apprise",
+                    "target": "default",
+                    "frequency": {"when": "immediate"},
+                    "scope": "new_ever",
+                    "include_taxa": {},
+                    "exclude_taxa": {},
+                    "minimum_confidence": 0,
+                    "title_template": "",
+                    "body_template": "",
+                }
+            )
+
+        if config.get("apprise_notify_new_species_each_day"):
+            rules.append(
+                {
+                    "name": "Daily New Species",
+                    "enabled": True,
+                    "service": "apprise",
+                    "target": "default",
+                    "frequency": {"when": "immediate"},
+                    "scope": "new_today",
+                    "include_taxa": {},
+                    "exclude_taxa": {},
+                    "minimum_confidence": 0,
+                    "title_template": "",
+                    "body_template": "",
+                }
+            )
+
+        if config.get("apprise_weekly_report"):
+            rules.append(
+                {
+                    "name": "Weekly Report",
+                    "enabled": True,
+                    "service": "apprise",
+                    "target": "default",
+                    "frequency": {"when": "weekly", "day": 0},
+                    "scope": "all",
+                    "include_taxa": {},
+                    "exclude_taxa": {},
+                    "minimum_confidence": 0,
+                    "title_template": "",
+                    "body_template": "",
+                }
+            )
+
+        return rules
+
+    def _apply_species_filter(self, config: dict[str, Any], rules: list[dict[str, Any]]) -> None:
+        """Apply species filter to all rules if present."""
+        if config.get("apprise_only_notify_species_names"):
+            # Note: These are common names, will need translation to scientific names
+            species_list = [
+                s.strip() for s in config["apprise_only_notify_species_names"].split(",")
+            ]
+            for rule in rules:
+                # For now, store as species names
+                # notification manager will need to handle translation
+                rule["include_taxa"]["species"] = species_list
+
+    def _migrate_notification_templates(self, config: dict[str, Any]) -> None:
+        """Migrate notification templates from old fields."""
+        if config.get("apprise_notification_title"):
+            config["notification_title_default"] = config["apprise_notification_title"]
+        elif "notification_title_default" not in config:
+            config["notification_title_default"] = "BirdNET-Pi: {{ common_name }}"
+
+        if config.get("apprise_notification_body"):
+            config["notification_body_default"] = config["apprise_notification_body"]
+        elif "notification_body_default" not in config:
+            config["notification_body_default"] = (
+                "Detected {{ common_name }} ({{ scientific_name }}) at {{ confidence }}% confidence"
+            )
+
+    def _remove_old_notification_fields(self, config: dict[str, Any]) -> None:
+        """Remove old apprise notification fields after migration."""
         old_apprise_fields = [
             "apprise_input",
             "apprise_notification_title",
@@ -136,26 +287,6 @@ class ConfigVersion_2_0_0:  # noqa: N801
         ]
         for field in old_apprise_fields:
             config.pop(field, None)
-
-        # Ensure new notification fields exist with defaults if missing
-        if "apprise_targets" not in config:
-            config["apprise_targets"] = {}
-        if "webhook_targets" not in config:
-            config["webhook_targets"] = {}
-        if "notification_rules" not in config:
-            config["notification_rules"] = []
-        if "notification_title_default" not in config:
-            config["notification_title_default"] = "BirdNET-Pi: {{ common_name }}"
-        if "notification_body_default" not in config:
-            config["notification_body_default"] = (
-                "Detected {{ common_name }} ({{ scientific_name }}) at {{ confidence }}% confidence"
-            )
-        if "notify_quiet_hours_start" not in config:
-            config["notify_quiet_hours_start"] = ""
-        if "notify_quiet_hours_end" not in config:
-            config["notify_quiet_hours_end"] = ""
-
-        return config
 
     def validate(self, config: dict[str, Any]) -> list[str]:  # noqa: C901
         """Validate a version 2.0.0 config."""

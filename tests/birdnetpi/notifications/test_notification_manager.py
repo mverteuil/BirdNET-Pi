@@ -12,7 +12,7 @@ from birdnetpi.notifications.notification_manager import NotificationManager
 def mock_config():
     """Provide a mock BirdNETConfig instance for testing."""
     config = Mock(spec=BirdNETConfig)
-    config.apprise_notify_each_detection = False
+    config.notification_rules = []  # New notification structure
     return config
 
 
@@ -46,9 +46,17 @@ def test_handle_detection_event_basic(notification_manager, caplog):
         )
 
 
-def test_handle_detection_event__apprise_enabled(mock_config, notification_manager, caplog):
-    """Should log an Apprise notification message when enabled for detection event."""
-    mock_config.apprise_notify_each_detection = True  # Correctly set the nested attribute
+def test_handle_detection_event__notification_rules_enabled(
+    mock_config, notification_manager, caplog
+):
+    """Should log a notification message when rules are configured for detection event."""
+    mock_config.notification_rules = [
+        {
+            "name": "All Detections",
+            "enabled": True,
+            "frequency": {"when": "immediate"},
+        }
+    ]
     with caplog.at_level(logging.INFO):
         detection = Detection(
             species_tensor="Erithacus rubecula_European Robin",
@@ -61,3 +69,4 @@ def test_handle_detection_event__apprise_enabled(mock_config, notification_manag
         assert (
             f"NotificationManager received detection: {detection.get_display_name()}" in caplog.text
         )
+        assert "Simulating sending notification for rule 'All Detections'" in caplog.text

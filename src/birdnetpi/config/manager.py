@@ -154,7 +154,24 @@ class ConfigManager:
 
             raw_config["logging"] = LoggingConfig(**raw_config["logging"])
 
-        return BirdNETConfig(**raw_config)
+        # Filter out any unexpected fields that might remain from incomplete migrations
+        # Get the expected fields from BirdNETConfig
+        from dataclasses import fields
+
+        expected_fields = {field.name for field in fields(BirdNETConfig)}
+
+        # Only include fields that BirdNETConfig expects
+        filtered_config = {k: v for k, v in raw_config.items() if k in expected_fields}
+
+        # Log if any fields were filtered out (for debugging migration issues)
+        unexpected_fields = set(raw_config.keys()) - expected_fields
+        if unexpected_fields:
+            logger.warning(
+                "Filtered out unexpected config fields (likely from incomplete migration): %s",
+                unexpected_fields,
+            )
+
+        return BirdNETConfig(**filtered_config)
 
     def _config_to_dict(self, config: BirdNETConfig) -> dict[str, Any]:
         """Convert BirdNETConfig to dictionary for serialization.

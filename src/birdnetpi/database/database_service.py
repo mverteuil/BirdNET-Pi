@@ -239,3 +239,33 @@ class DatabaseService:
                 await session.rollback()
                 logger.error("Error clearing database: %s", e)
                 raise
+
+    async def dispose(self) -> None:
+        """Dispose of database engines to release resources.
+
+        This should be called when the DatabaseService is no longer needed,
+        especially in tests, to prevent file descriptor leaks.
+        """
+        # Dispose async engine if it exists
+        if hasattr(self, "async_engine") and self.async_engine:
+            await self.async_engine.dispose()
+            logger.debug("Async database engine disposed")
+
+        # Dispose sync engine if it exists and is different from async
+        if hasattr(self, "sync_engine") and self.sync_engine:
+            # Only dispose if it's not the same as async_engine.sync_engine
+            if (
+                not hasattr(self.async_engine, "sync_engine")
+                or self.sync_engine != self.async_engine.sync_engine
+            ):
+                self.sync_engine.dispose()
+                logger.debug("Sync database engine disposed")
+
+    def dispose_sync(self) -> None:
+        """Dispose database engines synchronously for non-async contexts.
+
+        Only disposes the sync engine. For full cleanup, use dispose() in an async context.
+        """
+        if hasattr(self, "sync_engine") and self.sync_engine:
+            self.sync_engine.dispose()
+            logger.debug("Sync database engine disposed")

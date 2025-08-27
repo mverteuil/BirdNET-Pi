@@ -169,9 +169,8 @@ async def test_database_with_data(tmp_path):
         # Return both db_service and the reference time
         yield (db_service, now)
     finally:
-        # Close async engine to prevent event loop warnings
-        if hasattr(db_service, "async_engine"):
-            await db_service.async_engine.dispose()
+        # Properly dispose all database resources
+        await db_service.dispose()
 
 
 @pytest.fixture

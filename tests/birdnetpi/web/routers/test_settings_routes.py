@@ -109,7 +109,7 @@ def app_with_settings_routes(path_resolver, repo_root, test_config, mock_audio_d
 
     # Patch ConfigManager and AudioDeviceService - keep patches active during tests
     with (
-        patch("birdnetpi.web.routers.admin_view_routes.ConfigManager") as MockConfigManager,
+        patch("birdnetpi.web.routers.admin_view_routes.ConfigManager") as mock_config_mgr_class,
         patch(
             "birdnetpi.web.routers.admin_view_routes.AudioDeviceService",
             return_value=mock_audio_service,
@@ -119,8 +119,8 @@ def app_with_settings_routes(path_resolver, repo_root, test_config, mock_audio_d
             side_effect=lambda app: Mock(),
         ),
     ):
-        # Make ConfigManager constructor return the mock instance
-        MockConfigManager.return_value = mock_config_manager
+        # Make ConfigManager constructor return our configured mock instance
+        mock_config_mgr_class.return_value = mock_config_manager
         app = create_app()
 
         yield app, mock_config_manager, mock_audio_service

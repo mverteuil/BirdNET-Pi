@@ -35,7 +35,12 @@ def temp_ioc_db():
 @pytest.fixture
 def bnp_database_service(temp_main_db):
     """Create main database service."""
-    return DatabaseService(temp_main_db)
+    db_service = DatabaseService(temp_main_db)
+    try:
+        yield db_service
+    finally:
+        # Dispose sync resources
+        db_service.dispose_sync()
 
 
 @pytest.fixture
