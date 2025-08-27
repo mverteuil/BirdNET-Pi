@@ -117,3 +117,6 @@ class BirdNETConfig:
     # Git Update settings
     git_remote: str = "origin"  # Git remote name for updates
     git_branch: str = "main"  # Git branch name for updates
+
+    # Detection Processing
+    detections_endpoint: str = "http://localhost:8000/api/detections/"  # Where to send detections

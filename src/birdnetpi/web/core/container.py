@@ -111,6 +111,8 @@ class Container(containers.DeclarativeContainer):
         database_service=bnp_database_service,
         multilingual_service=multilingual_database_service,
         species_display_service=species_display_service,
+        file_manager=file_manager,
+        path_resolver=path_resolver,
         detection_query_service=detection_query_service,
     )
 

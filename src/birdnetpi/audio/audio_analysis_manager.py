@@ -108,7 +108,7 @@ class AudioAnalysisManager:
             for detection_data in buffered_detections:
                 try:
                     response = await client.post(
-                        "http://127.0.0.1:8000/api/detections", json=detection_data
+                        self.config.detections_endpoint, json=detection_data
                     )
                     response.raise_for_status()
                     successful_sends += 1
@@ -117,14 +117,19 @@ class AudioAnalysisManager:
                         "Successfully flushed buffered detection", extra={"species": species_name}
                     )
                 except (httpx.RequestError, httpx.HTTPStatusError) as e:
+                    species_name = detection_data.get("species_tensor", "Unknown")
+                    confidence = detection_data.get("confidence", 0.0)
                     logger.debug(
                         "Failed to flush detection (will re-buffer)",
-                        extra={"error": str(e), "detection": detection_data},
+                        extra={"error": str(e), "species": species_name, "confidence": confidence},
                     )
                     failed_detections.append(detection_data)
                 except Exception:
+                    species_name = detection_data.get("species_tensor", "Unknown")
+                    confidence = detection_data.get("confidence", 0.0)
                     logger.exception(
-                        "Unexpected error flushing detection", extra={"detection": detection_data}
+                        "Unexpected error flushing detection",
+                        extra={"species": species_name, "confidence": confidence},
                     )
                     failed_detections.append(detection_data)
 
@@ -133,9 +138,17 @@ class AudioAnalysisManager:
             with self.buffer_lock:
                 for detection in failed_detections:
                     self.detection_buffer.append(detection)
+            # Log just the species and confidence of failed detections
+            failed_summary = [
+                {
+                    "species": d.get("species_tensor", "Unknown"),
+                    "confidence": d.get("confidence", 0.0),
+                }
+                for d in failed_detections
+            ]
             logger.warning(
                 "Re-buffered failed detections",
-                extra={"count": len(failed_detections), "failed_detections": failed_detections},
+                extra={"count": len(failed_detections), "failed_detections": failed_summary},
             )
 
         if successful_sends > 0:
@@ -225,29 +238,13 @@ class AudioAnalysisManager:
             confidence: Detection confidence score
             raw_audio_bytes: Raw audio data bytes
         """
-        # Get relative path for the audio file
         timestamp = datetime.datetime.now(UTC)
         current_week = timestamp.isocalendar()[1]
-        audio_file_path = self.path_resolver.get_detection_audio_path(
-            species_components.scientific_name, timestamp
-        )
 
-        # Save raw audio to disk using FileManager
-        try:
-            audio_file_instance = self.file_manager.save_detection_audio(
-                audio_file_path,
-                np.frombuffer(  # type: ignore[arg-type]
-                    raw_audio_bytes, dtype=np.int16
-                ),  # Ensure raw_audio_bytes is int16 numpy array
-                self.config.sample_rate,  # Get from config
-                self.config.audio_channels,  # Get from config
-            )
-            logger.info(
-                "Saved detection audio", extra={"file_path": str(audio_file_instance.file_path)}
-            )
-        except Exception:
-            logger.exception("Failed to save detection audio")
-            return  # Don't send detection if audio save fails
+        # Convert raw audio to base64 for transmission
+        import base64
+
+        audio_base64 = base64.b64encode(raw_audio_bytes).decode("utf-8")
 
         detection_data = {
             "species_tensor": species_components.scientific_name
@@ -256,13 +253,10 @@ class AudioAnalysisManager:
             "scientific_name": species_components.scientific_name,
             "common_name": species_components.common_name,
             "confidence": confidence,
-            "timestamp": timestamp.isoformat(),  # Use the same timestamp for consistency
-            "audio_file_path": str(
-                audio_file_instance.file_path
-            ),  # Convert Path to string for JSON serialization
-            "duration": audio_file_instance.duration,
-            "size_bytes": audio_file_instance.size_bytes,
-            "spectrogram_path": None,
+            "timestamp": timestamp.isoformat(),
+            "audio_data": audio_base64,  # Send audio data with detection
+            "sample_rate": self.config.sample_rate,
+            "channels": self.config.audio_channels,
             "latitude": self.config.latitude,
             "longitude": self.config.longitude,
             "species_confidence_threshold": self.config.species_confidence_threshold,
@@ -270,14 +264,11 @@ class AudioAnalysisManager:
             "sensitivity_setting": self.config.sensitivity_setting,
             "overlap": self.config.analysis_overlap,
         }
-        # Try to send detection event to FastAPI
+
+        # Try to send detection event to API
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                # FastAPI is assumed to be on the same Docker network
-                # and accessible via its service name
-                response = await client.post(
-                    "http://fastapi:8888/api/detections", json=detection_data
-                )
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(self.config.detections_endpoint, json=detection_data)
                 response.raise_for_status()  # Raise an exception for bad status codes
                 logger.info(
                     "Detection event sent", extra={"species": species_components.scientific_name}

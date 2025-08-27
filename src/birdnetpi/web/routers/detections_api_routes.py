@@ -25,16 +25,26 @@ async def create_detection(
         Provide[Container.data_manager]
     ),
 ) -> dict:
-    """Receive a new detection event and dispatch it."""
+    """Receive a new detection event and dispatch it.
+
+    DataManager handles both audio file saving and database persistence.
+    """
     logger.info(
         f"Received detection: {detection_event.species_tensor or 'Unknown'} "
         f"with confidence {detection_event.confidence}"
     )
 
-    # Create detection - the @emit_detection_event decorator handles event emission
-    saved_detection = await data_manager.create_detection(detection_event)
-
-    return {"message": "Detection received and dispatched", "detection_id": saved_detection.id}
+    # Create detection - DataManager handles audio saving and database persistence
+    # The @emit_detection_event decorator on create_detection handles event emission
+    try:
+        saved_detection = await data_manager.create_detection(detection_event)
+        return {"message": "Detection received and dispatched", "detection_id": saved_detection.id}
+    except Exception as e:
+        logger.error(f"Failed to create detection: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create detection: {e!s}",
+        ) from e
 
 
 @router.get("/recent")

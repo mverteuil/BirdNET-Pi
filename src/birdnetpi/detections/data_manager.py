@@ -6,12 +6,12 @@ species display service. It acts as a facade to simplify data access
 patterns while preserving the underlying service architecture.
 """
 
+import base64
 import datetime
 import functools
 import logging
 from collections.abc import Callable, Sequence
 from datetime import date
-from pathlib import Path
 from typing import Any, TypeVar, cast
 
 from sqlalchemy import desc, select
@@ -32,6 +32,8 @@ from birdnetpi.detections.models import (
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.notifications.signals import detection_signal
 from birdnetpi.species.display import SpeciesDisplayService
+from birdnetpi.system.file_manager import FileManager
+from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.web.models.detections import DetectionEvent
 
 logger = logging.getLogger(__name__)
@@ -81,6 +83,8 @@ class DataManager:
         database_service: DatabaseService,
         multilingual_service: MultilingualDatabaseService,
         species_display_service: SpeciesDisplayService,
+        file_manager: FileManager,
+        path_resolver: PathResolver,
         detection_query_service: DetectionQueryService | None = None,
     ) -> None:
         """Initialize the DataManager with required services.
@@ -89,11 +93,15 @@ class DataManager:
             database_service: Core database service for BirdNET-Pi data
             multilingual_service: Handles IOC, Avibase, PatLevin databases
             species_display_service: Complex display logic for species names
+            file_manager: Handles file operations for audio and spectrograms
+            path_resolver: Resolves paths for detection files
             detection_query_service: Legacy service for compatibility (will be absorbed)
         """
         self.database_service = database_service
         self.multilingual = multilingual_service
         self.species_display = species_display_service
+        self.file_manager = file_manager
+        self.path_resolver = path_resolver
         self.query_service = detection_query_service
 
     # ==================== Core CRUD Operations ====================
@@ -132,21 +140,44 @@ class DataManager:
     async def create_detection(self, detection_event: DetectionEvent) -> Detection:
         """Create a new detection record from a DetectionEvent.
 
-        This method creates a detection in the database and automatically
-        emits a detection event via the @emit_detection_event decorator.
+        This method handles both audio file saving and database persistence.
+        It creates a detection in the database and automatically emits a
+        detection event via the @emit_detection_event decorator.
         """
         async with self.database_service.get_async_db() as session:
             try:
-                # Create AudioFile if audio data provided
+                # Decode and save audio data if provided
                 audio_file = None
-                if detection_event.audio_file_path:
+                if detection_event.audio_data:
+                    # Decode base64 audio data
+                    audio_bytes = base64.b64decode(detection_event.audio_data)
+
+                    # Get the file path for this detection
+                    audio_file_path = self.path_resolver.get_detection_audio_path(
+                        detection_event.scientific_name, detection_event.timestamp
+                    )
+
+                    # Save audio file (convert numpy array back to bytes)
+                    audio_file_instance = self.file_manager.save_detection_audio(
+                        audio_file_path,
+                        audio_bytes,  # Use the decoded bytes directly
+                        detection_event.sample_rate,
+                        detection_event.channels,
+                    )
+
+                    # Create AudioFile record
                     audio_file = AudioFile(
-                        file_path=Path(detection_event.audio_file_path),
-                        duration=detection_event.duration,
-                        size_bytes=detection_event.size_bytes,
+                        file_path=audio_file_instance.file_path,
+                        duration=audio_file_instance.duration,
+                        size_bytes=audio_file_instance.size_bytes,
                     )
                     session.add(audio_file)
                     await session.flush()
+
+                    logger.info(
+                        "Saved detection audio",
+                        extra={"file_path": str(audio_file_instance.file_path)},
+                    )
 
                 # Create Detection
                 detection = Detection(

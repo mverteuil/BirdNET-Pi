@@ -20,9 +20,11 @@ class DetectionEvent(BaseModel):
     # Detection metadata
     confidence: float
     timestamp: datetime
-    audio_file_path: str
-    duration: float
-    size_bytes: int
+
+    # Audio data
+    audio_data: str  # Base64-encoded audio bytes
+    sample_rate: int
+    channels: int
 
     # Optional fields
     spectrogram_path: str | None = None
