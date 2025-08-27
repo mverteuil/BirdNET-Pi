@@ -61,11 +61,11 @@ async def liveness_probe() -> dict[str, str]:
     return {"status": "alive"}
 
 
-@router.get("/ready", status_code=200)
+@router.get("/ready", status_code=200, response_model=None)
 @inject
 async def readiness_probe(
+    response: Response,
     db_service: DatabaseService = Depends(Provide[Container.bnp_database_service]),  # noqa: B008
-    response: Response | None = None,
 ) -> dict[str, Any]:
     """Check if service is ready to handle requests (Kubernetes readiness probe).
 
@@ -98,7 +98,7 @@ async def readiness_probe(
     )
 
     # Set appropriate status code
-    if not is_ready and response:
+    if not is_ready:
         response.status_code = 503
 
     return {
@@ -108,11 +108,11 @@ async def readiness_probe(
     }
 
 
-@router.get("/detailed", status_code=200)
+@router.get("/detailed", status_code=200, response_model=None)
 @inject
 async def detailed_health_check(
+    response: Response,
     db_service: DatabaseService = Depends(Provide[Container.bnp_database_service]),  # noqa: B008
-    response: Response | None = None,
 ) -> dict[str, Any]:
     """Provide detailed health check with component status.
 
@@ -157,7 +157,7 @@ async def detailed_health_check(
         }
 
     # Set appropriate status code for degraded state
-    if health_status["status"] == "degraded" and response:
+    if health_status["status"] == "degraded":
         response.status_code = 503
 
     return health_status

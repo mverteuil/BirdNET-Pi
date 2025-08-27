@@ -73,7 +73,125 @@ class ConfigVersion_1_9_0:  # noqa: N801
         return deep_merge(self.defaults, config)
 
     def upgrade_from_previous(self, config: dict[str, Any]) -> dict[str, Any]:
-        """No upgrade needed as this is the oldest version."""
+        """No upgrade needed as this is the oldest version.
+
+        However, we handle migration from original BirdNET-Pi format here,
+        which uses different field names for notifications.
+        """
+        # Migrate notification fields to new structure
+        rules = []
+
+        # Convert old apprise_input to apprise_targets
+        if config.get("apprise_input"):
+            # Create single "default" target from old apprise_input
+            config["apprise_targets"] = {"default": config["apprise_input"]}
+
+            # Create notification rules based on old boolean flags
+            if config.get("apprise_notify_each_detection"):
+                rules.append(
+                    {
+                        "name": "All Detections",
+                        "enabled": True,
+                        "service": "apprise",
+                        "target": "default",
+                        "frequency": {"when": "immediate"},
+                        "scope": "all",
+                        "include_taxa": {},
+                        "exclude_taxa": {},
+                        "minimum_confidence": config.get("minimum_time_limit", 0),
+                        "title_template": "",
+                        "body_template": "",
+                    }
+                )
+
+            if config.get("apprise_notify_new_species"):
+                rules.append(
+                    {
+                        "name": "New Species Alert",
+                        "enabled": True,
+                        "service": "apprise",
+                        "target": "default",
+                        "frequency": {"when": "immediate"},
+                        "scope": "new_ever",
+                        "include_taxa": {},
+                        "exclude_taxa": {},
+                        "minimum_confidence": 0,
+                        "title_template": "",
+                        "body_template": "",
+                    }
+                )
+
+            if config.get("apprise_notify_new_species_each_day"):
+                rules.append(
+                    {
+                        "name": "Daily New Species",
+                        "enabled": True,
+                        "service": "apprise",
+                        "target": "default",
+                        "frequency": {"when": "immediate"},
+                        "scope": "new_today",
+                        "include_taxa": {},
+                        "exclude_taxa": {},
+                        "minimum_confidence": 0,
+                        "title_template": "",
+                        "body_template": "",
+                    }
+                )
+
+            if config.get("apprise_weekly_report"):
+                rules.append(
+                    {
+                        "name": "Weekly Summary",
+                        "enabled": True,
+                        "service": "apprise",
+                        "target": "default",
+                        "frequency": {"when": "weekly", "day": "sunday", "time": "09:00"},
+                        "scope": "all",
+                        "include_taxa": {},
+                        "exclude_taxa": {},
+                        "minimum_confidence": 0,
+                        "title_template": "",
+                        "body_template": "",
+                    }
+                )
+
+            # Handle species filter - convert to taxonomic filters
+            if config.get("apprise_only_notify_species_names"):
+                # Apply species filter to all rules as an include filter
+                # Note: These are common names, will need translation to scientific names
+                species_list = [
+                    s.strip() for s in config["apprise_only_notify_species_names"].split(",")
+                ]
+                for rule in rules:
+                    # For now, store as species names - notification manager will need to handle translation
+                    rule["include_taxa"]["species"] = species_list
+
+        # Set notification rules
+        config["notification_rules"] = rules
+
+        # Migrate notification templates
+        title = config.get("apprise_notification_title", "")
+        body = config.get("apprise_notification_body", "")
+        config["notification_title_default"] = title if title else "BirdNET-Pi: {{ common_name }}"
+        config["notification_body_default"] = (
+            body if body else "Detected {{ common_name }} at {{ confidence }}% confidence"
+        )
+
+        # Remove old notification fields
+        old_fields = [
+            "apprise_input",
+            "apprise_notification_title",
+            "apprise_notification_body",
+            "apprise_notify_each_detection",
+            "apprise_notify_new_species",
+            "apprise_notify_new_species_each_day",
+            "apprise_weekly_report",
+            "apprise_only_notify_species_names",
+            "minimum_time_limit",
+        ]
+        for field in old_fields:
+            config.pop(field, None)
+
         return config
 
     def validate(self, config: dict[str, Any]) -> list[str]:

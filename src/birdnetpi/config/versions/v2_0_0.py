@@ -51,16 +51,14 @@ class ConfigVersion_2_0_0:  # noqa: N801
             },
             # BirdWeather
             "birdweather_id": "",
-            # Notifications
-            "apprise_input": "",
-            "apprise_notification_body": "",
-            "apprise_notification_title": "",
-            "apprise_notify_each_detection": False,
-            "apprise_notify_new_species": False,
-            "apprise_notify_new_species_each_day": False,
-            "apprise_only_notify_species_names": "",
-            "apprise_weekly_report": False,
-            "minimum_time_limit": 0,
+            # Notification Configuration
+            "apprise_targets": {},
+            "webhook_targets": {},
+            "notification_title_default": "BirdNET-Pi: {{ common_name }}",
+            "notification_body_default": "Detected {{ common_name }} ({{ scientific_name }}) at {{ confidence }}% confidence",
+            "notification_rules": [],
+            "notify_quiet_hours_start": "",
+            "notify_quiet_hours_end": "",
             # Flickr
             "flickr_api_key": "",
             "flickr_filter_email": "",
@@ -122,6 +120,40 @@ class ConfigVersion_2_0_0:  # noqa: N801
                     config["logging"]["include_caller"] = False
                 if "extra_fields" not in config["logging"]:
                     config["logging"]["extra_fields"] = {"service": "birdnet-pi"}
+
+        # Remove any remaining old apprise fields that shouldn't exist in 2.0.0
+        # These should have been removed by v1.9.0 migration, but ensure they're gone
+        old_apprise_fields = [
+            "apprise_input",
+            "apprise_notification_title",
+            "apprise_notification_body",
+            "apprise_notify_each_detection",
+            "apprise_notify_new_species",
+            "apprise_notify_new_species_each_day",
+            "apprise_weekly_report",
+            "apprise_only_notify_species_names",
+            "minimum_time_limit",
+        ]
+        for field in old_apprise_fields:
+            config.pop(field, None)
+
+        # Ensure new notification fields exist with defaults if missing
+        if "apprise_targets" not in config:
+            config["apprise_targets"] = {}
+        if "webhook_targets" not in config:
+            config["webhook_targets"] = {}
+        if "notification_rules" not in config:
+            config["notification_rules"] = []
+        if "notification_title_default" not in config:
+            config["notification_title_default"] = "BirdNET-Pi: {{ common_name }}"
+        if "notification_body_default" not in config:
+            config["notification_body_default"] = (
+                "Detected {{ common_name }} ({{ scientific_name }}) at {{ confidence }}% confidence"
+            )
+        if "notify_quiet_hours_start" not in config:
+            config["notify_quiet_hours_start"] = ""
+        if "notify_quiet_hours_end" not in config:
+            config["notify_quiet_hours_end"] = ""
 
         return config
 

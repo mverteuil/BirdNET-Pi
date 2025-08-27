@@ -10,7 +10,7 @@ latitude: 0.0
 longitude: 0.0
 model: BirdNET_GLOBAL_6K_V2.4_Model_FP16.tflite
 metadata_model: BirdNET_GLOBAL_6K_V2.4_MData_Model_V2_FP16.tflite
-species_confidence_threshold: 0.03  # Minimum confidence threshold for species detection
+species_confidence_threshold: 0.70  # Minimum confidence threshold for species detection
 sensitivity_setting: 1.25
 audio_device_index: -1  # -1 for system default
 sample_rate: 48000
@@ -29,15 +29,96 @@ logging:
 # External Service Integration
 birdweather_id: ""
 
-# Notification Settings
-apprise_input: ""
-apprise_notification_title: ""
-apprise_notification_body: ""
-apprise_notify_each_detection: false
-apprise_notify_new_species: false
-apprise_notify_new_species_each_day: false
-apprise_weekly_report: false
-minimum_time_limit: 0
+# ============ NOTIFICATION CONFIGURATION ============
+
+# Named notification targets for different services
+# These are reusable across multiple notification rules
+
+# Apprise service URLs (supports 80+ notification services)
+# See: https://github.com/caronc/apprise/wiki
+apprise_targets:
+  # Examples:
+  # email: "mailto://username:password@gmail.com"
+  # discord: "discord://webhook_id/webhook_token"
+  # sms: "twilio://AccountSid:AuthToken@FromPhoneNo/ToPhoneNo"
+  # slack: "slack://TokenA/TokenB/TokenC"
+
+# Webhook endpoints for external integrations
+webhook_targets:
+  # Examples:
+  # home_assistant: "http://192.168.1.100:8123/api/webhook/birdnet"
+  # ifttt: "https://maker.ifttt.com/trigger/bird_detected/with/key/YOUR_KEY"
+
+# Default message templates (Jinja2 supported)
+# Available variables: {{ common_name }}, {{ scientific_name }}, {{ confidence }},
+# {{ timestamp }}, {{ audio_file }}, {{ detection_count }}, {{ species_count }}
+notification_title_default: "BirdNET-Pi: {{ common_name }}"
+notification_body_default: "Detected {{ common_name }} ({{ scientific_name }}) at {{ confidence }}% confidence"
+
+# Notification Rules - Define when and how to send notifications
+notification_rules: []
+  # Example rules (uncomment and modify as needed):
+
+  # - name: "Rare Bird Alerts"
+  #   enabled: true
+  #   service: "apprise"           # apprise, webhook, or mqtt
+  #   target: "discord"             # Target name from apprise_targets/webhook_targets, or MQTT topic
+  #   frequency:
+  #     when: "immediate"           # immediate, daily, or weekly
+  #   scope: "new_ever"             # all, new_ever, new_today, new_this_week
+  #   include_taxa: {}              # Taxonomic filters (orders, families, genera, species)
+  #   exclude_taxa:
+  #     species: ["Passer domesticus"]  # Exclude House Sparrows
+  #   minimum_confidence: 80        # Override detection threshold
+  #   title_template: "🦅 NEW SPECIES: {{ common_name }}!"
+  #   body_template: ""             # Empty = use default
+
+  # - name: "Daily Summary Email"
+  #   enabled: true
+  #   service: "apprise"
+  #   target: "email"
+  #   frequency:
+  #     when: "daily"
+  #     time: "08:00"               # 24-hour format
+  #   scope: "all"
+  #   include_taxa: {}
+  #   exclude_taxa: {}
+  #   minimum_confidence: 0         # 0 = use species threshold
+  #   title_template: ""
+  #   body_template: ""
+
+  # - name: "Weekly Owl Report"
+  #   enabled: false
+  #   service: "apprise"
+  #   target: "email"
+  #   frequency:
+  #     when: "weekly"
+  #     day: "sunday"               # monday through sunday
+  #     time: "20:00"
+  #   scope: "new_this_week"
+  #   include_taxa:
+  #     orders: ["Strigiformes"]    # All owls
+  #   exclude_taxa: {}
+  #   minimum_confidence: 60
+  #   title_template: "Weekly Owl Report"
+  #   body_template: "This week's owls: {{ species_list }}"
+
+  # - name: "MQTT All Detections"
+  #   enabled: true
+  #   service: "mqtt"
+  #   target: "birdnet/detections/all"  # MQTT topic
+  #   frequency:
+  #     when: "immediate"
+  #   scope: "all"
+  #   include_taxa: {}
+  #   exclude_taxa: {}
+  #   minimum_confidence: 0
+  #   title_template: ""
+  #   body_template: ""
+
+# Global notification settings
+notify_quiet_hours_start: ""    # e.g., "22:00" for 10 PM (empty = no quiet hours)
+notify_quiet_hours_end: ""      # e.g., "06:00" for 6 AM
 
 # Flickr Integration
 flickr_api_key: ""
@@ -47,9 +128,6 @@ flickr_filter_email: ""
 language: en  # Language code for UI and species name translation
 species_display_mode: full  # Options: "full" (Common Name (Scientific Name)), "common_name", "scientific_name"
 timezone: UTC
-
-# Species Filtering
-apprise_only_notify_species_names: ""
 
 # Field Mode and GPS Settings
 enable_gps: false

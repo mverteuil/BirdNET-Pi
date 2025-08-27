@@ -166,7 +166,7 @@ class AudioAnalysisManager:
             analysis_chunk = self.audio_buffer[: self.buffer_size_samples]
 
             # Remove processed samples from buffer (keep overlap for continuity)
-            overlap_samples = int(0.5 * self.config.sample_rate)  # 0.5 second overlap
+            overlap_samples = int(self.config.analysis_overlap * self.config.sample_rate)
             self.audio_buffer = self.audio_buffer[self.buffer_size_samples - overlap_samples :]
 
             # Convert int16 to float32 and normalize for BirdNET analysis
@@ -268,7 +268,7 @@ class AudioAnalysisManager:
             "species_confidence_threshold": self.config.species_confidence_threshold,
             "week": current_week,
             "sensitivity_setting": self.config.sensitivity_setting,
-            "overlap": 0.5,  # Fixed overlap from buffer processing
+            "overlap": self.config.analysis_overlap,
         }
         # Try to send detection event to FastAPI
         try:

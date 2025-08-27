@@ -1,5 +1,6 @@
 """Configuration management with version support."""
 
+import logging
 import shutil
 from typing import Any
 
@@ -8,6 +9,8 @@ import yaml
 from birdnetpi.config.models import BirdNETConfig
 from birdnetpi.config.versions import VersionRegistry
 from birdnetpi.system.path_resolver import PathResolver
+
+logger = logging.getLogger(__name__)
 
 
 class ConfigManager:
@@ -63,17 +66,27 @@ class ConfigManager:
 
         Args:
             config: Configuration to save
+
+        Raises:
+            PermissionError: If config file cannot be written
         """
+        # Ensure config directory exists
+        self.config_path.parent.mkdir(parents=True, exist_ok=True)
+
         # Backup existing config
         if self.config_path.exists():
             backup_path = self.config_path.with_suffix(".yaml.backup")
-            shutil.copy2(self.config_path, backup_path)
+            try:
+                shutil.copy2(self.config_path, backup_path)
+            except PermissionError:
+                logger.warning("Could not create backup at %s", backup_path)
 
         # Convert to dict and save
         config_dict = self._config_to_dict(config)
+        config_yaml = yaml.dump(config_dict, default_flow_style=False, sort_keys=False)
 
-        with open(self.config_path, "w") as f:
-            yaml.dump(config_dict, f, default_flow_style=False, sort_keys=False)
+        self.config_path.write_text(config_yaml)
+        logger.info("Configuration saved successfully to %s", self.config_path)
 
     def reload(self) -> BirdNETConfig:
         """Reload configuration from disk.
@@ -96,8 +109,8 @@ class ConfigManager:
             )
 
             # Save the config with defaults
-            with open(self.config_path, "w") as f:
-                yaml.dump(config_with_defaults, f, default_flow_style=False, sort_keys=False)
+            config_yaml = yaml.dump(config_with_defaults, default_flow_style=False, sort_keys=False)
+            self.config_path.write_text(config_yaml)
 
     def _read_yaml(self) -> dict[str, Any]:
         """Read YAML config file.
@@ -105,8 +118,8 @@ class ConfigManager:
         Returns:
             dict: Raw configuration dictionary
         """
-        with open(self.config_path) as f:
-            return yaml.safe_load(f) or {}
+        config_text = self.config_path.read_text()
+        return yaml.safe_load(config_text) or {}
 
     def _migrate_to_current(self, raw_config: dict[str, Any], from_version: str) -> dict[str, Any]:
         """Migrate config to current version.

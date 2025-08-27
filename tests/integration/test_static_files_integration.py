@@ -67,16 +67,76 @@ class TestStaticFilesIntegration:
     @pytest.fixture
     def app_with_static(self, test_resolver: PathResolver):
         """Create the app with static files properly mounted."""
+        from unittest.mock import MagicMock, patch
+
+        from birdnetpi.audio.audio_device_service import AudioDeviceService
+        from birdnetpi.config import BirdNETConfig, ConfigManager
+
+        # Create mock config and manager with all required fields
+        mock_config = MagicMock(spec=BirdNETConfig)
+        mock_config.site_name = "Test Site"
+        mock_config.latitude = 0.0
+        mock_config.longitude = 0.0
+        mock_config.model = "BirdNET_GLOBAL_6K_V2.4_Model_FP16"
+        mock_config.metadata_model = "BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16"
+        mock_config.species_confidence_threshold = 0.5
+        mock_config.sensitivity_setting = 1.25
+        mock_config.audio_device_index = 0
+        mock_config.sample_rate = 48000
+        mock_config.audio_channels = 1
+        mock_config.analysis_overlap = 0.5
+        mock_config.birdweather_id = ""
+        mock_config.apprise_targets = {}
+        mock_config.webhook_targets = {}
+        mock_config.notification_rules = []
+        mock_config.flickr_api_key = ""
+        mock_config.flickr_filter_email = ""
+        mock_config.language = "en"
+        mock_config.species_display_mode = "full"
+        mock_config.timezone = "UTC"
+        mock_config.enable_gps = False
+        mock_config.gps_update_interval = 5.0
+        mock_config.hardware_check_interval = 10.0
+        mock_config.enable_audio_device_check = True
+        mock_config.enable_system_resource_check = True
+        mock_config.enable_gps_check = False
+        mock_config.privacy_threshold = 10.0
+        mock_config.enable_mqtt = False
+        mock_config.mqtt_broker_host = "localhost"
+        mock_config.mqtt_broker_port = 1883
+        mock_config.mqtt_username = ""
+        mock_config.mqtt_password = ""
+        mock_config.mqtt_topic_prefix = "birdnet"
+        mock_config.mqtt_client_id = "birdnet-pi"
+        mock_config.enable_webhooks = False
+        mock_config.webhook_urls = []
+        mock_config.webhook_events = "detection,health,gps,system"
+        mock_config_manager = MagicMock(spec=ConfigManager)
+        mock_config_manager.load.return_value = mock_config
+
+        # Create mock audio service
+        mock_audio_service = MagicMock(spec=AudioDeviceService)
+        mock_audio_service.discover_input_devices.return_value = []
+
         # Override Container providers before creating app
         Container.path_resolver.override(providers.Singleton(lambda: test_resolver))
         Container.database_path.override(
             providers.Factory(lambda: test_resolver.get_database_path())
         )
 
-        # Create the app using the factory
-        app = create_app()
+        with (
+            patch("birdnetpi.web.routers.admin_view_routes.ConfigManager") as MockConfigManager,
+            patch(
+                "birdnetpi.web.routers.admin_view_routes.AudioDeviceService",
+                return_value=mock_audio_service,
+            ),
+            patch("birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin"),
+        ):
+            MockConfigManager.return_value = mock_config_manager
+            # Create the app using the factory
+            app = create_app()
 
-        yield app
+            yield app
 
         # Clean up overrides
         Container.path_resolver.reset_override()

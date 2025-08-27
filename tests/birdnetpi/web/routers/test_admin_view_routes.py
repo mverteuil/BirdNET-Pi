@@ -196,8 +196,26 @@ class TestAdminRouterIntegration:
         data = final_response.json()
         assert data["message"] == "Admin router is working!"
 
-    def test_settings_page_renders(self, client):
+    @patch("birdnetpi.web.routers.admin_view_routes.AudioDeviceService")
+    @patch("birdnetpi.web.routers.admin_view_routes.ConfigManager")
+    def test_settings_page_renders(self, mock_config_manager, mock_audio_service, client):
         """Should render settings page with configuration."""
+        from birdnetpi.config.models import BirdNETConfig
+
+        # Mock config with required notification fields
+        mock_config = BirdNETConfig(
+            site_name="Test Site",
+            apprise_targets={},
+            webhook_targets={},
+            notification_rules=[],
+            notification_title_default="Test Title",
+            notification_body_default="Test Body",
+        )
+        mock_config_manager.return_value.load.return_value = mock_config
+
+        # Mock audio devices
+        mock_audio_service.return_value.discover_input_devices.return_value = []
+
         response = client.get("/admin/settings")
 
         assert response.status_code == 200

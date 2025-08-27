@@ -13,17 +13,24 @@
     </header>
 
     <!-- Navigation -->
-    <nav class="nav" role="navigation" aria-label="Main navigation">
-        <a href="/">Dashboard</a>
-        <a href="/reports/detections">Detections</a>
-        <a href="/reports/best">Best Recordings</a>
-        <a href="/livestream">Livestream</a>
-        <a href="/reports">Analysis</a>
-        <a href="/field">Field Mode</a>
-        <a href="/admin/settings" class="active">Settings</a>
+    <nav class="main-nav" role="navigation" aria-label="Main navigation">
+        <a href="/" class="nav-item">Dashboard</a>
+        <a href="/reports/detections" class="nav-item">Detections</a>
+        <a href="/reports/best" class="nav-item">Best Recordings</a>
+        <a href="/livestream" class="nav-item">Livestream</a>
+        <a href="/reports" class="nav-item">Analysis</a>
+        <a href="/field" class="nav-item">Field Mode</a>
+        <a href="/admin/settings" class="nav-item active">Settings</a>
     </nav>
 
-    <form method="post" action="/admin/settings" role="form" aria-label="System settings">
+    <form method="post" action="/admin/settings" role="form" aria-label="System settings" id="settings-form">
+        <!-- Required hidden fields for all form data -->
+        <input type="hidden" name="site_name" value="{{ config.site_name }}">
+        <input type="hidden" name="model" value="{{ config.model }}">
+        <input type="hidden" name="metadata_model" value="{{ config.metadata_model }}">
+        <input type="hidden" name="species_confidence_threshold" value="{{ config.species_confidence_threshold }}">
+        <input type="hidden" name="sample_rate" value="{{ config.sample_rate }}">
+        <input type="hidden" name="audio_channels" value="{{ config.audio_channels }}">
         <!-- Core Detection Settings -->
         <section class="settings-section" aria-labelledby="detection-title">
             <h2 class="section-title" id="detection-title">Detection Parameters</h2>
@@ -35,15 +42,18 @@
                     <div class="label-description">Balance between catching everything and accuracy</div>
                 </div>
                 <div class="tradeoff-control" role="group" aria-labelledby="confidence-label">
+                    <input type="hidden" name="confidence" id="confidence" value="{{ config.species_confidence_threshold }}">
                     <div class="tradeoff-slider"
                          role="slider"
                          aria-label="Confidence threshold"
-                         aria-valuenow="70"
+                         aria-valuenow="{{ config.species_confidence_threshold * 100 }}"
                          aria-valuemin="50"
                          aria-valuemax="95"
-                         tabindex="0">
-                        <div class="slider-handle" data-position="40">
-                            <div class="slider-value">0.70</div>
+                         tabindex="0"
+                         data-input="confidence"
+                         data-scale="0.01">
+                        <div class="slider-handle" data-position="{{ ((config.species_confidence_threshold * 100 - 50) / 45) * 100 }}">
+                            <div class="slider-value">{{ "%.2f"|format(config.species_confidence_threshold) }}</div>
                         </div>
                     </div>
                     <div class="tradeoff-labels">
@@ -68,14 +78,16 @@
                     <div class="label-description">Adjust for your environment's noise level</div>
                 </div>
                 <div class="balance-control" role="group" aria-labelledby="sensitivity-label">
+                    <input type="hidden" name="sensitivity" id="sensitivity" value="{{ config.sensitivity_setting }}">
                     <span>Quiet</span>
                     <div class="balance-bar"
                          role="slider"
                          aria-label="Detection sensitivity"
-                         aria-valuenow="1.25"
+                         aria-valuenow="{{ config.sensitivity_setting }}"
                          aria-valuemin="0.5"
                          aria-valuemax="2.0"
-                         tabindex="0">
+                         tabindex="0"
+                         data-input="sensitivity">
                         <div class="balance-markers">
                             <div class="balance-marker"></div>
                             <div class="balance-marker"></div>
@@ -83,8 +95,8 @@
                             <div class="balance-marker"></div>
                             <div class="balance-marker"></div>
                         </div>
-                        <div class="balance-fill" data-width="50"></div>
-                        <div class="balance-value" data-position="50">1.25</div>
+                        <div class="balance-fill" data-width="{{ ((config.sensitivity_setting - 0.5) / 1.5) * 100 }}"></div>
+                        <div class="balance-value" data-position="{{ ((config.sensitivity_setting - 0.5) / 1.5) * 100 }}">{{ "%.2f"|format(config.sensitivity_setting) }}</div>
                     </div>
                     <span>Noisy</span>
                 </div>
@@ -100,7 +112,8 @@
                     <div class="numeric-input-group">
                         <input type="number"
                                class="numeric-input"
-                               value="1.5"
+                               name="analysis_overlap"
+                               value="{{ config.analysis_overlap }}"
                                min="0"
                                max="3.0"
                                step="0.5"
@@ -132,33 +145,42 @@
                     <div class="label-description">Recording device selection</div>
                 </div>
                 <div class="choice-matrix" role="radiogroup" aria-labelledby="audio-label">
-                    <div class="choice-option selected"
+                    <input type="hidden" name="audio_device_index" id="audio_device_index" value="{{ config.audio_device_index }}">
+
+                    <!-- System Default Option -->
+                    <div class="choice-option {% if config.audio_device_index == -1 %}selected{% endif %}"
                          role="radio"
-                         aria-checked="true"
+                         aria-checked="{% if config.audio_device_index == -1 %}true{% else %}false{% endif %}"
                          tabindex="0"
-                         onclick="selectOption(this)">
+                         onclick="selectAudioDevice(this, -1)">
                         <div class="choice-radio"></div>
-                        <div class="option-name">USB Audio Device</div>
-                        <div class="option-details">48 kHz · 16-bit · Low latency · Currently active</div>
+                        <div class="option-name">System Default</div>
+                        <div class="option-details">Auto-detect best available device</div>
                     </div>
-                    <div class="choice-option"
+
+                    <!-- Dynamic Device List -->
+                    {% for device in audio_devices %}
+                    <div class="choice-option {% if config.audio_device_index == device.index %}selected{% endif %}"
                          role="radio"
+                         aria-checked="{% if config.audio_device_index == device.index %}true{% else %}false{% endif %}"
+                         tabindex="0"
+                         onclick="selectAudioDevice(this, {{ device.index }})">
+                        <div class="choice-radio"></div>
+                        <div class="option-name">{{ device.name }}</div>
+                        <div class="option-details">{{ device.max_input_channels }} ch · {{ "%.0f"|format(device.default_samplerate) }} Hz{% if device.current_device %} · Currently active{% endif %}</div>
+                    </div>
+                    {% endfor %}
+
+                    {% if not audio_devices %}
+                    <div class="choice-option"
                          aria-checked="false"
                          tabindex="0"
                          onclick="selectOption(this)">
                         <div class="choice-radio"></div>
-                        <div class="option-name">Built-in BCM2835</div>
-                        <div class="option-details">44.1 kHz · 16-bit · Higher latency · Power efficient</div>
+                        <div class="option-name">No audio devices detected</div>
+                        <div class="option-details">Check your audio system configuration</div>
                     </div>
-                    <div class="choice-option"
-                         role="radio"
-                         aria-checked="false"
-                         tabindex="0"
-                         onclick="selectOption(this)">
-                        <div class="choice-radio"></div>
-                        <div class="option-name">I2S Microphone</div>
-                        <div class="option-details">48 kHz · 24-bit · Best quality · Requires HAT</div>
-                    </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -166,36 +188,65 @@
             <div class="setting-row">
                 <div class="setting-label">
                     <div class="label-text">Detection Model</div>
-                    <div class="label-description">AI model selection</div>
+                    <div class="label-description">AI model for bird detection</div>
                 </div>
                 <div class="choice-matrix" role="radiogroup" aria-labelledby="model-label">
-                    <div class="choice-option selected"
-                         role="radio"
-                         aria-checked="true"
-                         tabindex="0"
-                         onclick="selectOption(this)">
-                        <div class="choice-radio"></div>
-                        <div class="option-name">BirdNET_6K2_V2.4</div>
-                        <div class="option-details">Latest · 6000 species · 142ms/detection · Recommended</div>
-                    </div>
-                    <div class="choice-option"
-                         role="radio"
-                         aria-checked="false"
-                         tabindex="0"
-                         onclick="selectOption(this)">
-                        <div class="choice-radio"></div>
-                        <div class="option-name">BirdNET_GLOBAL_3K_V2.3</div>
-                        <div class="option-details">Stable · 3000 species · 98ms/detection · Faster</div>
-                    </div>
-                    <div class="choice-option"
-                         role="radio"
-                         aria-checked="false"
-                         tabindex="0"
-                         onclick="selectOption(this)">
-                        <div class="choice-radio"></div>
-                        <div class="option-name">Custom TFLite Model</div>
-                        <div class="option-details">Upload your own · Variable performance</div>
-                    </div>
+                    <input type="hidden" name="model" id="model" value="{{ config.model }}">
+
+                    {% if model_files %}
+                        {% for model_file in model_files %}
+                        <div class="choice-option {% if config.model == model_file %}selected{% endif %}"
+                             role="radio"
+                             aria-checked="{% if config.model == model_file %}true{% else %}false{% endif %}"
+                             tabindex="0"
+                             onclick="selectModel(this, '{{ model_file }}')">
+                            <div class="choice-radio"></div>
+                            <div class="option-name">{{ model_file.replace('.tflite', '').replace('_', ' ') }}</div>
+                            <div class="option-details">
+                                {% if 'FP16' in model_file %}Half precision{% else %}Full precision{% endif %} ·
+                                {% if '6K' in model_file %}6000+ species{% elif '3K' in model_file %}3000 species{% else %}TFLite model{% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="choice-option">
+                            <div class="option-name">No models found</div>
+                            <div class="option-details">Please install model files in the models directory</div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Metadata Model -->
+            <div class="setting-row">
+                <div class="setting-label">
+                    <div class="label-text">Metadata Model</div>
+                    <div class="label-description">Model for location-based filtering</div>
+                </div>
+                <div class="choice-matrix" role="radiogroup" aria-labelledby="metadata-model-label">
+                    <input type="hidden" name="metadata_model" id="metadata_model" value="{{ config.metadata_model }}">
+
+                    {% if metadata_model_files %}
+                        {% for model_file in metadata_model_files %}
+                        <div class="choice-option {% if config.metadata_model == model_file %}selected{% endif %}"
+                             role="radio"
+                             aria-checked="{% if config.metadata_model == model_file %}true{% else %}false{% endif %}"
+                             tabindex="0"
+                             onclick="selectMetadataModel(this, '{{ model_file }}')">
+                            <div class="choice-radio"></div>
+                            <div class="option-name">{{ model_file.replace('.tflite', '').replace('_', ' ') }}</div>
+                            <div class="option-details">
+                                {% if 'FP16' in model_file %}Half precision{% else %}Full precision{% endif %} ·
+                                Location-aware filtering
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="choice-option">
+                            <div class="option-name">No metadata models found</div>
+                            <div class="option-details">Metadata models enable location-based species filtering</div>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </section>
@@ -215,7 +266,8 @@
                         <input type="number"
                                class="coord-input"
                                id="latitude"
-                               value="42.9834"
+                               name="latitude"
+                               value="{{ config.latitude }}"
                                min="-90"
                                max="90"
                                step="0.0001"
@@ -226,7 +278,8 @@
                         <input type="number"
                                class="coord-input"
                                id="longitude"
-                               value="-79.0103"
+                               name="longitude"
+                               value="{{ config.longitude }}"
                                min="-180"
                                max="180"
                                step="0.0001"
@@ -241,25 +294,70 @@
                     <div class="label-text">Timezone</div>
                     <div class="label-description">For scheduling and timestamps</div>
                 </div>
-                <div class="text-choices" role="radiogroup" aria-label="Timezone selection">
-                    <button type="button" class="text-choice" onclick="selectTextOption(this)">
-                        America/Toronto
-                    </button>
-                    <button type="button" class="text-choice selected" onclick="selectTextOption(this)">
-                        America/New_York
-                    </button>
-                    <button type="button" class="text-choice" onclick="selectTextOption(this)">
-                        America/Chicago
-                    </button>
-                    <button type="button" class="text-choice" onclick="selectTextOption(this)">
-                        America/Denver
-                    </button>
-                    <button type="button" class="text-choice" onclick="selectTextOption(this)">
-                        America/Los_Angeles
-                    </button>
-                    <button type="button" class="text-choice" onclick="selectTextOption(this)">
-                        UTC
-                    </button>
+                <div class="timezone-control">
+                    <select id="timezone" name="timezone" class="timezone-select" aria-label="Timezone selection">
+                        <option value="">Select timezone...</option>
+                        <optgroup label="Americas">
+                            <option value="America/New_York" {% if config.timezone == "America/New_York" %}selected{% endif %}>Eastern Time - New York</option>
+                            <option value="America/Toronto" {% if config.timezone == "America/Toronto" %}selected{% endif %}>Eastern Time - Toronto</option>
+                            <option value="America/Chicago" {% if config.timezone == "America/Chicago" %}selected{% endif %}>Central Time - Chicago</option>
+                            <option value="America/Denver" {% if config.timezone == "America/Denver" %}selected{% endif %}>Mountain Time - Denver</option>
+                            <option value="America/Phoenix" {% if config.timezone == "America/Phoenix" %}selected{% endif %}>Mountain Time - Phoenix (no DST)</option>
+                            <option value="America/Los_Angeles" {% if config.timezone == "America/Los_Angeles" %}selected{% endif %}>Pacific Time - Los Angeles</option>
+                            <option value="America/Vancouver" {% if config.timezone == "America/Vancouver" %}selected{% endif %}>Pacific Time - Vancouver</option>
+                            <option value="America/Anchorage" {% if config.timezone == "America/Anchorage" %}selected{% endif %}>Alaska Time</option>
+                            <option value="America/Sao_Paulo" {% if config.timezone == "America/Sao_Paulo" %}selected{% endif %}>Brazil - São Paulo</option>
+                            <option value="America/Buenos_Aires" {% if config.timezone == "America/Buenos_Aires" %}selected{% endif %}>Argentina - Buenos Aires</option>
+                            <option value="America/Mexico_City" {% if config.timezone == "America/Mexico_City" %}selected{% endif %}>Mexico City</option>
+                        </optgroup>
+                        <optgroup label="Europe">
+                            <option value="Europe/London" {% if config.timezone == "Europe/London" %}selected{% endif %}>Western Europe - London</option>
+                            <option value="Europe/Paris" {% if config.timezone == "Europe/Paris" %}selected{% endif %}>Central Europe - Paris</option>
+                            <option value="Europe/Berlin" {% if config.timezone == "Europe/Berlin" %}selected{% endif %}>Central Europe - Berlin</option>
+                            <option value="Europe/Rome" {% if config.timezone == "Europe/Rome" %}selected{% endif %}>Central Europe - Rome</option>
+                            <option value="Europe/Madrid" {% if config.timezone == "Europe/Madrid" %}selected{% endif %}>Central Europe - Madrid</option>
+                            <option value="Europe/Amsterdam" {% if config.timezone == "Europe/Amsterdam" %}selected{% endif %}>Central Europe - Amsterdam</option>
+                            <option value="Europe/Stockholm" {% if config.timezone == "Europe/Stockholm" %}selected{% endif %}>Central Europe - Stockholm</option>
+                            <option value="Europe/Athens" {% if config.timezone == "Europe/Athens" %}selected{% endif %}>Eastern Europe - Athens</option>
+                            <option value="Europe/Helsinki" {% if config.timezone == "Europe/Helsinki" %}selected{% endif %}>Eastern Europe - Helsinki</option>
+                            <option value="Europe/Moscow" {% if config.timezone == "Europe/Moscow" %}selected{% endif %}>Moscow Time</option>
+                        </optgroup>
+                        <optgroup label="Asia">
+                            <option value="Asia/Dubai" {% if config.timezone == "Asia/Dubai" %}selected{% endif %}>Gulf Standard Time - Dubai</option>
+                            <option value="Asia/Kolkata" {% if config.timezone == "Asia/Kolkata" %}selected{% endif %}>India Standard Time</option>
+                            <option value="Asia/Shanghai" {% if config.timezone == "Asia/Shanghai" %}selected{% endif %}>China Standard Time - Shanghai</option>
+                            <option value="Asia/Hong_Kong" {% if config.timezone == "Asia/Hong_Kong" %}selected{% endif %}>Hong Kong Time</option>
+                            <option value="Asia/Singapore" {% if config.timezone == "Asia/Singapore" %}selected{% endif %}>Singapore Time</option>
+                            <option value="Asia/Tokyo" {% if config.timezone == "Asia/Tokyo" %}selected{% endif %}>Japan Standard Time</option>
+                            <option value="Asia/Seoul" {% if config.timezone == "Asia/Seoul" %}selected{% endif %}>Korea Standard Time</option>
+                            <option value="Asia/Bangkok" {% if config.timezone == "Asia/Bangkok" %}selected{% endif %}>Indochina Time - Bangkok</option>
+                            <option value="Asia/Jakarta" {% if config.timezone == "Asia/Jakarta" %}selected{% endif %}>Western Indonesia Time</option>
+                        </optgroup>
+                        <optgroup label="Oceania">
+                            <option value="Australia/Sydney" {% if config.timezone == "Australia/Sydney" %}selected{% endif %}>Australia Eastern - Sydney</option>
+                            <option value="Australia/Melbourne" {% if config.timezone == "Australia/Melbourne" %}selected{% endif %}>Australia Eastern - Melbourne</option>
+                            <option value="Australia/Brisbane" {% if config.timezone == "Australia/Brisbane" %}selected{% endif %}>Australia Eastern - Brisbane (no DST)</option>
+                            <option value="Australia/Adelaide" {% if config.timezone == "Australia/Adelaide" %}selected{% endif %}>Australia Central - Adelaide</option>
+                            <option value="Australia/Perth" {% if config.timezone == "Australia/Perth" %}selected{% endif %}>Australia Western - Perth</option>
+                            <option value="Pacific/Auckland" {% if config.timezone == "Pacific/Auckland" %}selected{% endif %}>New Zealand - Auckland</option>
+                            <option value="Pacific/Fiji" {% if config.timezone == "Pacific/Fiji" %}selected{% endif %}>Fiji Time</option>
+                        </optgroup>
+                        <optgroup label="Africa">
+                            <option value="Africa/Cairo" {% if config.timezone == "Africa/Cairo" %}selected{% endif %}>Eastern Africa - Cairo</option>
+                            <option value="Africa/Johannesburg" {% if config.timezone == "Africa/Johannesburg" %}selected{% endif %}>South Africa - Johannesburg</option>
+                            <option value="Africa/Lagos" {% if config.timezone == "Africa/Lagos" %}selected{% endif %}>West Africa - Lagos</option>
+                            <option value="Africa/Nairobi" {% if config.timezone == "Africa/Nairobi" %}selected{% endif %}>East Africa - Nairobi</option>
+                        </optgroup>
+                        <optgroup label="Other">
+                            <option value="UTC" {% if config.timezone == "UTC" %}selected{% endif %}>UTC (Coordinated Universal Time)</option>
+                            <option value="Atlantic/Reykjavik" {% if config.timezone == "Atlantic/Reykjavik" %}selected{% endif %}>Iceland - Reykjavik</option>
+                            <option value="Pacific/Honolulu" {% if config.timezone == "Pacific/Honolulu" %}selected{% endif %}>Hawaii Time</option>
+                        </optgroup>
+                    </select>
+                    <div class="timezone-info">
+                        <span class="current-time">Current time: <span id="current-time">--:--</span></span>
+                        <span class="utc-offset">UTC offset: <span id="utc-offset">--:--</span></span>
+                    </div>
                 </div>
             </div>
         </section>
@@ -268,32 +366,181 @@
         <section class="settings-section" aria-labelledby="notification-title">
             <h2 class="section-title" id="notification-title">Notifications</h2>
 
+            <!-- Service Targets -->
             <div class="setting-row">
                 <div class="setting-label">
-                    <div class="label-text">Notification Frequency</div>
-                    <div class="label-description">When to send alerts</div>
+                    <div class="label-text">Notification Services</div>
+                    <div class="label-description">Configure endpoints for different notification services</div>
                 </div>
-                <div class="choice-matrix" role="group" aria-labelledby="notification-freq-label">
-                    <label class="choice-option">
-                        <input type="checkbox" class="sr-only" name="notify_each" checked>
-                        <div class="choice-radio"></div>
-                        <div class="option-name">Each Detection</div>
-                        <div class="option-details">Every bird detected above threshold</div>
-                    </label>
-                    <label class="choice-option">
-                        <input type="checkbox" class="sr-only" name="notify_new_species" checked>
-                        <div class="choice-radio"></div>
-                        <div class="option-name">New Species</div>
-                        <div class="option-details">First time a species is detected</div>
-                    </label>
-                    <label class="choice-option">
-                        <input type="checkbox" class="sr-only" name="notify_daily_new">
-                        <div class="choice-radio"></div>
-                        <div class="option-name">Daily New Species</div>
-                        <div class="option-details">First detection of each species per day</div>
-                    </label>
+                <div class="targets-container">
+                    <!-- Apprise Targets -->
+                    <div class="target-section">
+                        <h3 class="target-title">Apprise Targets</h3>
+                        <div class="target-description">Define named Apprise service URLs (see <a href="https://github.com/caronc/apprise/wiki" target="_blank">Apprise docs</a>)</div>
+                        <div id="apprise-targets" class="targets-list">
+                            {% if config.apprise_targets %}
+                                {% for name, url in config.apprise_targets.items() %}
+                                <div class="target-item">
+                                    <input type="text" class="target-name" placeholder="Name (e.g., discord)" value="{{ name }}">
+                                    <input type="text" class="target-url" placeholder="Apprise URL (e.g., discord://webhook_id/token)" value="{{ url }}">
+                                    <button type="button" class="remove-btn" onclick="removeTarget(this)">✕</button>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <button type="button" class="add-target-btn" onclick="addAppriseTarget()">+ Add Apprise Target</button>
+                    </div>
+
+                    <!-- Webhook Targets -->
+                    <div class="target-section">
+                        <h3 class="target-title">Webhook Targets</h3>
+                        <div class="target-description">Define named webhook endpoints for external integrations</div>
+                        <div id="webhook-targets" class="targets-list">
+                            {% if config.webhook_targets %}
+                                {% for name, url in config.webhook_targets.items() %}
+                                <div class="target-item">
+                                    <input type="text" class="target-name" placeholder="Name (e.g., home_assistant)" value="{{ name }}">
+                                    <input type="text" class="target-url" placeholder="Webhook URL" value="{{ url }}">
+                                    <button type="button" class="remove-btn" onclick="removeTarget(this)">✕</button>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <button type="button" class="add-target-btn" onclick="addWebhookTarget()">+ Add Webhook Target</button>
+                    </div>
                 </div>
             </div>
+
+            <!-- Notification Rules -->
+            <div class="setting-row">
+                <div class="setting-label">
+                    <div class="label-text">Notification Rules</div>
+                    <div class="label-description">Define when and how to send notifications</div>
+                </div>
+                <div id="notification-rules" class="rules-container">
+                    {% if config.notification_rules %}
+                        {% for rule in config.notification_rules %}
+                    <div class="rule-card">
+                        <div class="rule-header">
+                            <input type="text" class="rule-name" placeholder="Rule name" value="{{ rule.name }}">
+                            <label class="rule-enabled">
+                                <input type="checkbox" {% if rule.enabled %}checked{% endif %}>
+                                <span>Enabled</span>
+                            </label>
+                            <button type="button" class="remove-rule-btn" onclick="removeRule(this)">✕</button>
+                        </div>
+
+                        <div class="rule-body">
+                            <!-- Service and Target -->
+                            <div class="rule-row">
+                                <div class="rule-field">
+                                    <label>Service</label>
+                                    <select class="rule-service" onchange="updateTargetField(this)">
+                                        <option value="apprise" {% if rule.service == "apprise" %}selected{% endif %}>Apprise</option>
+                                        <option value="webhook" {% if rule.service == "webhook" %}selected{% endif %}>Webhook</option>
+                                        <option value="mqtt" {% if rule.service == "mqtt" %}selected{% endif %}>MQTT</option>
+                                    </select>
+                                </div>
+                                <div class="rule-field">
+                                    <label>Target</label>
+                                    {% if rule.service == "mqtt" %}
+                                    <input type="text" class="rule-target-text" placeholder="MQTT topic" value="{{ rule.target }}">
+                                    {% else %}
+                                    <select class="rule-target-select">
+                                        <!-- Populated by JavaScript based on service -->
+                                    </select>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Frequency -->
+                            <div class="rule-row">
+                                <div class="rule-field">
+                                    <label>Frequency</label>
+                                    <select class="rule-frequency" onchange="updateFrequencyFields(this)">
+                                        <option value="immediate" {% if rule.frequency.when == "immediate" %}selected{% endif %}>Immediate</option>
+                                        <option value="daily" {% if rule.frequency.when == "daily" %}selected{% endif %}>Daily Summary</option>
+                                        <option value="weekly" {% if rule.frequency.when == "weekly" %}selected{% endif %}>Weekly Summary</option>
+                                    </select>
+                                </div>
+                                <div class="rule-field frequency-fields">
+                                    {% if rule.frequency.when == "daily" %}
+                                    <input type="time" class="rule-time" value="{{ rule.frequency.time|default('08:00') }}">
+                                    {% elif rule.frequency.when == "weekly" %}
+                                    <select class="rule-day">
+                                        <option value="monday" {% if rule.frequency.day == "monday" %}selected{% endif %}>Monday</option>
+                                        <option value="tuesday" {% if rule.frequency.day == "tuesday" %}selected{% endif %}>Tuesday</option>
+                                        <option value="wednesday" {% if rule.frequency.day == "wednesday" %}selected{% endif %}>Wednesday</option>
+                                        <option value="thursday" {% if rule.frequency.day == "thursday" %}selected{% endif %}>Thursday</option>
+                                        <option value="friday" {% if rule.frequency.day == "friday" %}selected{% endif %}>Friday</option>
+                                        <option value="saturday" {% if rule.frequency.day == "saturday" %}selected{% endif %}>Saturday</option>
+                                        <option value="sunday" {% if rule.frequency.day == "sunday" %}selected{% endif %}>Sunday</option>
+                                    </select>
+                                    <input type="time" class="rule-time" value="{{ rule.frequency.time|default('08:00') }}">
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Scope -->
+                            <div class="rule-row">
+                                <div class="rule-field">
+                                    <label>Scope</label>
+                                    <select class="rule-scope">
+                                        <option value="all" {% if rule.scope == "all" %}selected{% endif %}>All Detections</option>
+                                        <option value="new_ever" {% if rule.scope == "new_ever" %}selected{% endif %}>New Species (First Ever)</option>
+                                        <option value="new_today" {% if rule.scope == "new_today" %}selected{% endif %}>New Today</option>
+                                        <option value="new_this_week" {% if rule.scope == "new_this_week" %}selected{% endif %}>New This Week</option>
+                                    </select>
+                                </div>
+                                <div class="rule-field">
+                                    <label>Min Confidence</label>
+                                    <input type="number" class="rule-confidence" min="0" max="100" step="1"
+                                           placeholder="Use default" value="{{ rule.minimum_confidence|default('') }}">
+                                </div>
+                            </div>
+
+                            <!-- Taxonomic Filters -->
+                            <div class="rule-row">
+                                <div class="rule-field-full">
+                                    <label>Include Species (scientific names, comma-separated)</label>
+                                    <textarea class="rule-include-species" placeholder="e.g., Turdus migratorius, Cardinalis cardinalis">{{ rule.include_taxa.species|join(', ') if rule.include_taxa and rule.include_taxa.species else '' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="rule-row">
+                                <div class="rule-field-full">
+                                    <label>Exclude Species (scientific names, comma-separated)</label>
+                                    <textarea class="rule-exclude-species" placeholder="e.g., Passer domesticus, Sturnus vulgaris">{{ rule.exclude_taxa.species|join(', ') if rule.exclude_taxa and rule.exclude_taxa.species else '' }}</textarea>
+                                </div>
+                            </div>
+
+                            <!-- Custom Templates -->
+                            <div class="rule-row">
+                                <div class="rule-field-full">
+                                    <label>Title Template (optional, uses default if empty)</label>
+                                    <input type="text" class="rule-title-template"
+                                           placeholder="{% raw %}e.g., 🦅 NEW: {{ common_name }}!{% endraw %}"
+                                           value="{{ rule.title_template|default('') }}">
+                                </div>
+                            </div>
+                            <div class="rule-row">
+                                <div class="rule-field-full">
+                                    <label>Body Template (optional, uses default if empty)</label>
+                                    <textarea class="rule-body-template"
+                                              placeholder="{% raw %}e.g., Detected {{ common_name }} at {{ confidence }}% confidence{% endraw %}">{{ rule.body_template|default('') }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <button type="button" class="add-rule-btn" onclick="addNotificationRule()">+ Add Notification Rule</button>
+            </div>
+
+            <!-- Hidden fields to store JSON data -->
+            <input type="hidden" id="apprise_targets_json" name="apprise_targets_json" value="">
+            <input type="hidden" id="webhook_targets_json" name="webhook_targets_json" value="">
+            <input type="hidden" id="notification_rules_json" name="notification_rules_json" value="">
         </section>
 
         <!-- Form Controls -->
@@ -337,6 +584,24 @@
             element.setAttribute('aria-checked', 'true');
         }
 
+        // Handle audio device selection
+        function selectAudioDevice(element, deviceIndex) {
+            selectOption(element);
+            document.getElementById('audio_device_index').value = deviceIndex;
+        }
+
+        // Handle model selection
+        function selectModel(element, modelFile) {
+            selectOption(element);
+            document.getElementById('model').value = modelFile;
+        }
+
+        // Handle metadata model selection
+        function selectMetadataModel(element, modelFile) {
+            selectOption(element);
+            document.getElementById('metadata_model').value = modelFile;
+        }
+
         // Handle text option selection
         function selectTextOption(element) {
             const group = element.parentElement;
@@ -344,6 +609,50 @@
                 opt.classList.remove('selected');
             });
             element.classList.add('selected');
+        }
+
+        // Update timezone info when selection changes
+        const timezoneSelect = document.getElementById('timezone');
+        const currentTimeSpan = document.getElementById('current-time');
+        const utcOffsetSpan = document.getElementById('utc-offset');
+
+        function updateTimezoneInfo() {
+            const tz = timezoneSelect ? timezoneSelect.value : null;
+            if (tz && currentTimeSpan && utcOffsetSpan) {
+                try {
+                    // Get current time in selected timezone
+                    const now = new Date();
+                    currentTimeSpan.textContent = now.toLocaleTimeString('en-US', {
+                        timeZone: tz,
+                        hour12: false,
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    // Calculate UTC offset
+                    const tzDate = new Date(now.toLocaleString("en-US", {timeZone: tz}));
+                    const utcDate = new Date(now.toLocaleString("en-US", {timeZone: "UTC"}));
+                    const offset = (tzDate - utcDate) / (1000 * 60 * 60);
+                    const offsetHours = Math.floor(Math.abs(offset));
+                    const offsetMinutes = Math.abs(offset % 1) * 60;
+                    const sign = offset >= 0 ? '+' : '-';
+                    utcOffsetSpan.textContent = `${sign}${String(offsetHours).padStart(2, '0')}:${String(offsetMinutes).padStart(2, '0')}`;
+                } catch(e) {
+                    // Fallback if timezone is invalid
+                    currentTimeSpan.textContent = '--:--';
+                    utcOffsetSpan.textContent = '--:--';
+                }
+            }
+        }
+
+        if (timezoneSelect) {
+            timezoneSelect.addEventListener('change', updateTimezoneInfo);
+
+            // Initial update
+            updateTimezoneInfo();
+
+            // Update time every minute
+            setInterval(updateTimezoneInfo, 60000);
         }
 
         // Keyboard navigation for sliders
@@ -410,7 +719,300 @@
                 balanceValue.setAttribute('data-position', percent);
                 balanceValue.textContent = value.toFixed(2);
             }
+
+            // Update the associated hidden input if it exists
+            const inputId = slider.getAttribute('data-input');
+            if (inputId) {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    const scale = parseFloat(slider.getAttribute('data-scale') || '1');
+                    input.value = value * scale;
+                }
+            }
         }
+
+        // Notification Rules Management Functions
+        function collectTargets(containerId) {
+            const targets = {};
+            document.querySelectorAll(`#${containerId} .target-item`).forEach(item => {
+                const name = item.querySelector('.target-name').value.trim();
+                const url = item.querySelector('.target-url').value.trim();
+                if (name && url) {
+                    targets[name] = url;
+                }
+            });
+            return targets;
+        }
+
+        function addAppriseTarget() {
+            const container = document.getElementById('apprise-targets');
+            const targetItem = document.createElement('div');
+            targetItem.className = 'target-item';
+            targetItem.innerHTML = `
+                <input type="text" class="target-name" placeholder="Name (e.g., discord)">
+                <input type="text" class="target-url" placeholder="Apprise URL (e.g., discord://webhook_id/token)">
+                <button type="button" class="remove-btn" onclick="removeTarget(this)">✕</button>
+            `;
+            container.appendChild(targetItem);
+        }
+
+        function addWebhookTarget() {
+            const container = document.getElementById('webhook-targets');
+            const targetItem = document.createElement('div');
+            targetItem.className = 'target-item';
+            targetItem.innerHTML = `
+                <input type="text" class="target-name" placeholder="Name (e.g., home_assistant)">
+                <input type="text" class="target-url" placeholder="Webhook URL">
+                <button type="button" class="remove-btn" onclick="removeTarget(this)">✕</button>
+            `;
+            container.appendChild(targetItem);
+        }
+
+        function removeTarget(button) {
+            button.parentElement.remove();
+        }
+
+        function addNotificationRule() {
+            const container = document.getElementById('notification-rules');
+            const ruleCard = document.createElement('div');
+            ruleCard.className = 'rule-card';
+            ruleCard.innerHTML = `
+                <div class="rule-header">
+                    <input type="text" class="rule-name" placeholder="Rule name">
+                    <label class="rule-enabled">
+                        <input type="checkbox" checked>
+                        <span>Enabled</span>
+                    </label>
+                    <button type="button" class="remove-rule-btn" onclick="removeRule(this)">✕</button>
+                </div>
+
+                <div class="rule-body">
+                    <!-- Service and Target -->
+                    <div class="rule-row">
+                        <div class="rule-field">
+                            <label>Service</label>
+                            <select class="rule-service" onchange="updateTargetField(this)">
+                                <option value="apprise">Apprise</option>
+                                <option value="webhook">Webhook</option>
+                                <option value="mqtt">MQTT</option>
+                            </select>
+                        </div>
+                        <div class="rule-field">
+                            <label>Target</label>
+                            <select class="rule-target-select">
+                                <!-- Populated by updateTargetField -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Frequency -->
+                    <div class="rule-row">
+                        <div class="rule-field">
+                            <label>Frequency</label>
+                            <select class="rule-frequency" onchange="updateFrequencyFields(this)">
+                                <option value="immediate">Immediate</option>
+                                <option value="daily">Daily Summary</option>
+                                <option value="weekly">Weekly Summary</option>
+                            </select>
+                        </div>
+                        <div class="rule-field frequency-fields">
+                            <!-- Populated by updateFrequencyFields -->
+                        </div>
+                    </div>
+
+                    <!-- Scope -->
+                    <div class="rule-row">
+                        <div class="rule-field">
+                            <label>Scope</label>
+                            <select class="rule-scope">
+                                <option value="all">All Detections</option>
+                                <option value="new_ever">New Species (First Ever)</option>
+                                <option value="new_today">New Today</option>
+                                <option value="new_this_week">New This Week</option>
+                            </select>
+                        </div>
+                        <div class="rule-field">
+                            <label>Min Confidence</label>
+                            <input type="number" class="rule-confidence" min="0" max="100" step="1" placeholder="Use default">
+                        </div>
+                    </div>
+
+                    <!-- Taxonomic Filters -->
+                    <div class="rule-row">
+                        <div class="rule-field-full">
+                            <label>Include Species (scientific names, comma-separated)</label>
+                            <textarea class="rule-include-species" placeholder="e.g., Turdus migratorius, Cardinalis cardinalis"></textarea>
+                        </div>
+                    </div>
+                    <div class="rule-row">
+                        <div class="rule-field-full">
+                            <label>Exclude Species (scientific names, comma-separated)</label>
+                            <textarea class="rule-exclude-species" placeholder="e.g., Passer domesticus, Sturnus vulgaris"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Custom Templates -->
+                    <div class="rule-row">
+                        <div class="rule-field-full">
+                            <label>Title Template (optional, uses default if empty)</label>
+                            <input type="text" class="rule-title-template" placeholder="e.g., 🦅 NEW: {{ common_name }}!">
+                        </div>
+                    </div>
+                    <div class="rule-row">
+                        <div class="rule-field-full">
+                            <label>Body Template (optional, uses default if empty)</label>
+                            <textarea class="rule-body-template" placeholder="e.g., Detected {{ common_name }} at {{ confidence }}% confidence"></textarea>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(ruleCard);
+
+            // Initialize the target field for the new rule
+            const serviceSelect = ruleCard.querySelector('.rule-service');
+            updateTargetField(serviceSelect);
+        }
+
+        function removeRule(button) {
+            button.closest('.rule-card').remove();
+        }
+
+        function updateTargetField(serviceSelect) {
+            const ruleCard = serviceSelect.closest('.rule-card');
+            const targetField = ruleCard.querySelector('.rule-field:nth-child(2)');
+            const service = serviceSelect.value;
+
+            if (service === 'mqtt') {
+                targetField.innerHTML = `
+                    <label>Target</label>
+                    <input type="text" class="rule-target-text" placeholder="MQTT topic">
+                `;
+            } else {
+                const targets = service === 'apprise' ?
+                    collectTargets('apprise-targets') :
+                    collectTargets('webhook-targets');
+
+                let options = '<option value="">Select target...</option>';
+                for (const name in targets) {
+                    options += `<option value="${name}">${name}</option>`;
+                }
+
+                targetField.innerHTML = `
+                    <label>Target</label>
+                    <select class="rule-target-select">
+                        ${options}
+                    </select>
+                `;
+            }
+        }
+
+        function updateFrequencyFields(frequencySelect) {
+            const frequencyFields = frequencySelect.parentElement.nextElementSibling;
+            const frequency = frequencySelect.value;
+
+            if (frequency === 'immediate') {
+                frequencyFields.innerHTML = '';
+            } else if (frequency === 'daily') {
+                frequencyFields.innerHTML = '<input type="time" class="rule-time" value="08:00">';
+            } else if (frequency === 'weekly') {
+                frequencyFields.innerHTML = `
+                    <select class="rule-day">
+                        <option value="monday">Monday</option>
+                        <option value="tuesday">Tuesday</option>
+                        <option value="wednesday">Wednesday</option>
+                        <option value="thursday">Thursday</option>
+                        <option value="friday">Friday</option>
+                        <option value="saturday">Saturday</option>
+                        <option value="sunday">Sunday</option>
+                    </select>
+                    <input type="time" class="rule-time" value="08:00">
+                `;
+            }
+        }
+
+        // Collect all notification data before form submission
+        document.getElementById('settings-form').addEventListener('submit', function(e) {
+            // Collect apprise targets
+            const appriseTargets = collectTargets('apprise-targets');
+            document.getElementById('apprise_targets_json').value = JSON.stringify(appriseTargets);
+
+            // Collect webhook targets
+            const webhookTargets = collectTargets('webhook-targets');
+            document.getElementById('webhook_targets_json').value = JSON.stringify(webhookTargets);
+
+            // Collect notification rules
+            const rules = [];
+            document.querySelectorAll('.rule-card').forEach(card => {
+                const rule = {
+                    name: card.querySelector('.rule-name').value.trim(),
+                    enabled: card.querySelector('.rule-enabled input').checked,
+                    service: card.querySelector('.rule-service').value,
+                    target: '',
+                    frequency: {},
+                    scope: card.querySelector('.rule-scope').value,
+                    include_taxa: { species: [] },
+                    exclude_taxa: { species: [] }
+                };
+
+                // Get target based on service type
+                if (rule.service === 'mqtt') {
+                    rule.target = card.querySelector('.rule-target-text')?.value.trim() || '';
+                } else {
+                    rule.target = card.querySelector('.rule-target-select')?.value || '';
+                }
+
+                // Get frequency settings
+                const frequencyValue = card.querySelector('.rule-frequency').value;
+                rule.frequency.when = frequencyValue;
+                if (frequencyValue === 'daily') {
+                    rule.frequency.time = card.querySelector('.rule-time')?.value || '08:00';
+                } else if (frequencyValue === 'weekly') {
+                    rule.frequency.day = card.querySelector('.rule-day')?.value || 'monday';
+                    rule.frequency.time = card.querySelector('.rule-time')?.value || '08:00';
+                }
+
+                // Get confidence threshold
+                const confidence = card.querySelector('.rule-confidence').value;
+                if (confidence) {
+                    rule.minimum_confidence = parseInt(confidence);
+                }
+
+                // Get species filters
+                const includeSpecies = card.querySelector('.rule-include-species').value.trim();
+                if (includeSpecies) {
+                    rule.include_taxa.species = includeSpecies.split(',').map(s => s.trim()).filter(s => s);
+                }
+
+                const excludeSpecies = card.querySelector('.rule-exclude-species').value.trim();
+                if (excludeSpecies) {
+                    rule.exclude_taxa.species = excludeSpecies.split(',').map(s => s.trim()).filter(s => s);
+                }
+
+                // Get custom templates
+                const titleTemplate = card.querySelector('.rule-title-template').value.trim();
+                if (titleTemplate) {
+                    rule.title_template = titleTemplate;
+                }
+
+                const bodyTemplate = card.querySelector('.rule-body-template').value.trim();
+                if (bodyTemplate) {
+                    rule.body_template = bodyTemplate;
+                }
+
+                if (rule.name) {
+                    rules.push(rule);
+                }
+            });
+
+            document.getElementById('notification_rules_json').value = JSON.stringify(rules);
+        });
+
+        // Initialize target dropdowns for existing rules on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.rule-service').forEach(select => {
+                updateTargetField(select);
+            });
+        });
 
         // Make sliders draggable
         document.querySelectorAll('.slider-handle, .balance-bar').forEach(element => {

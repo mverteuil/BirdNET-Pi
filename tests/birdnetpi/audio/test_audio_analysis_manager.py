@@ -20,6 +20,7 @@ def test_config_data():
     return {
         "sample_rate": 48000,
         "audio_channels": 1,
+        "analysis_overlap": 0.5,
         "latitude": 40.7128,
         "longitude": -74.0060,
         "sensitivity": 1.25,

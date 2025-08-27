@@ -31,8 +31,8 @@ RUN cp -r /source/* . 2>/dev/null || true && \
     git config --add safe.directory /repo && \
     rm -f /tmp/remote_url
 
-# Stage 2: Main application
-FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
+# Stage 2: Main application (runtime)
+FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS runtime
 
 # Asset version for runtime downloads (can be overridden via environment variable)
 ARG BIRDNET_ASSETS_VERSION=v2.1.0
@@ -126,8 +126,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Configure git safe directory for the birdnetpi user
 RUN git config --global --add safe.directory /opt/birdnetpi
 
-# Copy the configuration template for BirdNET-Pi
-COPY --chown=birdnetpi:birdnetpi config_templates/birdnetpi.yaml /var/lib/birdnetpi/config/birdnetpi.yaml
+# Copy the configuration template to a location that won't be overlaid by volume mount
+# The init container will copy this to the volume
+COPY --chown=birdnetpi:birdnetpi config_templates/birdnetpi.yaml /opt/birdnetpi/config_templates/birdnetpi.yaml
 
 # Set the asset version as an environment variable for runtime use
 ENV BIRDNET_ASSETS_VERSION=${BIRDNET_ASSETS_VERSION}
@@ -145,5 +146,56 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Expose the port for Caddy (8000)
 EXPOSE 8000
 
-# Command to run supervisord
+# Default command to run supervisord
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf", "-u", "birdnetpi"]
+
+# ============================================================================
+# Init stage - for permission setup (runs as root)
+# ============================================================================
+FROM runtime AS init
+
+# Switch back to root for init operations
+USER root
+
+# Init container entrypoint script
+RUN cat << 'EOF' > /init.sh
+#!/bin/bash
+set -e
+
+echo "=== BirdNET-Pi Init Container ==="
+echo "Running as: $(whoami) (UID:$(id -u) GID:$(id -g))"
+
+# Install assets as birdnetpi user
+echo "Installing BirdNET assets..."
+cd /opt/birdnetpi
+# Use su without dash to preserve PATH environment variable
+su birdnetpi -c "install-assets install ${BIRDNET_ASSETS_VERSION:-v2.1.0} --skip-existing"
+
+# Set up config
+echo "Setting up configuration..."
+mkdir -p /var/lib/birdnetpi/config
+
+if [ ! -f /var/lib/birdnetpi/config/birdnetpi.yaml ]; then
+    echo "Creating initial config from template..."
+    cp /opt/birdnetpi/config_templates/birdnetpi.yaml /var/lib/birdnetpi/config/birdnetpi.yaml
+else
+    echo "Config exists - preserving user settings."
+fi
+
+# Fix permissions
+echo "Setting ownership to birdnetpi (UID:1000 GID:1000)..."
+chown -R 1000:1000 /var/lib/birdnetpi
+chmod 755 /var/lib/birdnetpi
+chmod 755 /var/lib/birdnetpi/config
+chmod 664 /var/lib/birdnetpi/config/birdnetpi.yaml
+
+echo "Permissions set:"
+ls -la /var/lib/birdnetpi/config/
+
+echo "=== Init Complete ==="
+EOF
+
+RUN chmod +x /init.sh
+
+# Use the init script as entrypoint
+ENTRYPOINT ["/init.sh"]

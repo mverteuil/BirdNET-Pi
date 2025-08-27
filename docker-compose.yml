@@ -1,32 +1,25 @@
 # WARNING: NEVER use 'docker-compose down -v' as it removes ALL volumes including production data!
 # For E2E tests, use: BIRDNET_DATA_VOLUME=birdnet-test-data docker-compose up/down
 # To remove test volume only: docker volume rm birdnet-test-data
+#
+# PERSISTENCE MODEL:
+# - Config and data are stored in Docker volume (birdnet-data) for persistence
+# - Init container ensures proper permissions and initial config setup
+# - User modifications to config are preserved across container restarts
+# - Home Assistant users: config persists in volume, survives container updates
+#
 services:
   # Init container to ensure assets are installed
   birdnet-pi-init:
     build:
       context: .
       dockerfile: Dockerfile
+      target: init  # Use the init stage which runs as root
     container_name: birdnet-pi-init
     environment:
       BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-v2.1.0}
     logging:
       driver: json-file
-    command: >
-      sh -c "
-      echo 'Checking and installing BirdNET assets if needed...' &&
-      uv run install-assets install $${BIRDNET_ASSETS_VERSION} --skip-existing &&
-      echo 'Assets ready!' &&
-      echo 'Ensuring config file exists...' &&
-      if [ ! -f /var/lib/birdnetpi/config/birdnetpi.yaml ]; then
-        echo 'Copying config template to volume...' &&
-        mkdir -p /var/lib/birdnetpi/config &&
-        cp /opt/birdnetpi/config_templates/birdnetpi.yaml /var/lib/birdnetpi/config/birdnetpi.yaml &&
-        echo 'Config template copied.';
-      else
-        echo 'Config file already exists.';
-      fi
-      "
     volumes:
       - ${BIRDNET_DATA_VOLUME:-birdnet-data}:/var/lib/birdnetpi # Shared data volume
     networks:
@@ -36,6 +29,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runtime  # Use the runtime stage, not init
     container_name: birdnet-pi
     restart: unless-stopped
     depends_on:

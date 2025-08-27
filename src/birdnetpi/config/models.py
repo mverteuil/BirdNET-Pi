@@ -37,8 +37,9 @@ class BirdNETConfig:
 
     # Audio Configuration
     audio_device_index: int = -1  # Default to -1 for system default or auto-detection
-    sample_rate: int = 48000  # Default sample rate
-    audio_channels: int = 1  # Default to mono
+    sample_rate: int = 48000  # Default sample rate (BirdNET expects 48kHz)
+    audio_channels: int = 1  # Default to mono (BirdNET processes mono audio)
+    analysis_overlap: float = 0.5  # Overlap in seconds between consecutive audio segments
 
     # Logging settings
     logging: LoggingConfig = field(default_factory=LoggingConfig)
@@ -46,16 +47,39 @@ class BirdNETConfig:
     # BirdWeather
     birdweather_id: str = ""
 
-    # Notifications
-    apprise_input: str = ""  # This will store the raw apprise config URLs
-    apprise_notification_body: str = ""
-    apprise_notification_title: str = ""
-    apprise_notify_each_detection: bool = False
-    apprise_notify_new_species: bool = False
-    apprise_notify_new_species_each_day: bool = False
-    apprise_only_notify_species_names: str = ""  # comma separated string
-    apprise_weekly_report: bool = False
-    minimum_time_limit: int = 0  # Assuming seconds, integer
+    # =========== NOTIFICATION CONFIGURATION ===========
+
+    # Service Endpoints (named targets)
+    apprise_targets: dict[str, str] = field(default_factory=dict)
+    # Example: {"email": "mailto://...", "discord": "discord://..."}
+
+    webhook_targets: dict[str, str] = field(default_factory=dict)
+    # Example: {"home_assistant": "http://...", "ifttt": "https://..."}
+
+    # Default Message Templates (Jinja2 supported)
+    notification_title_default: str = "BirdNET-Pi: {{ common_name }}"
+    notification_body_default: str = (
+        "Detected {{ common_name }} ({{ scientific_name }}) at {{ confidence }}% confidence"
+    )
+
+    # Notification Rules
+    notification_rules: list[dict] = field(default_factory=list)
+    # Each rule is a dict with:
+    # - name: str (user-friendly name)
+    # - enabled: bool (active/inactive)
+    # - service: str ("apprise", "webhook", "mqtt")
+    # - target: str (target name for apprise/webhook, topic for mqtt)
+    # - frequency: dict with "when", optional "time" and "day"
+    # - scope: str ("all", "new_ever", "new_today", "new_this_week")
+    # - include_taxa: dict with "orders", "families", "genera", "species" lists
+    # - exclude_taxa: dict with "orders", "families", "genera", "species" lists
+    # - minimum_confidence: int (0 = use detection threshold)
+    # - title_template: str (override title, empty = use default)
+    # - body_template: str (override body, empty = use default)
+
+    # Global Notification Settings
+    notify_quiet_hours_start: str = ""  # "HH:MM" or empty for no quiet hours
+    notify_quiet_hours_end: str = ""  # "HH:MM" or empty for no quiet hours
 
     # Flickr
     flickr_api_key: str = ""
