@@ -1,7 +1,7 @@
 """Tests for detections API routes that handle detection CRUD operations and spectrograms."""
 
 from datetime import datetime
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI
@@ -55,7 +55,7 @@ class TestDetectionsAPIRoutes:
         """Should create detection successfully."""
         mock_detection = MagicMock()
         mock_detection.id = 123
-        client.mock_data_manager.create_detection.return_value = mock_detection
+        client.mock_data_manager.create_detection = AsyncMock(return_value=mock_detection)
 
         detection_data = {
             "species_tensor": "Testus species_Test Bird",
@@ -104,7 +104,7 @@ class TestDetectionsAPIRoutes:
                 longitude=-74.1,
             ),
         ]
-        client.mock_data_manager.get_recent_detections.return_value = mock_detections
+        client.mock_data_manager.get_recent_detections = AsyncMock(return_value=mock_detections)
 
         response = client.get("/api/detections/recent?limit=10&include_l10n=false")
 
@@ -119,7 +119,7 @@ class TestDetectionsAPIRoutes:
         from datetime import UTC, datetime
 
         today = datetime.now(UTC).date()
-        client.mock_data_manager.count_by_date.return_value = {today: 5}
+        client.mock_data_manager.count_by_date = AsyncMock(return_value={today: 5})
 
         response = client.get("/api/detections/count")
 
@@ -142,7 +142,7 @@ class TestDetectionsAPIRoutes:
             sensitivity_setting=1.0,
             overlap=0.0,
         )
-        client.mock_data_manager.get_detection_by_id.return_value = mock_detection
+        client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=mock_detection)
 
         response = client.get("/api/detections/123?include_l10n=false")
 
@@ -153,7 +153,7 @@ class TestDetectionsAPIRoutes:
 
     def test_get_detection_by_id_not_found(self, client):
         """Should return 404 for non-existent detection."""
-        client.mock_data_manager.get_detection_by_id.return_value = None
+        client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=None)
 
         response = client.get("/api/detections/999?include_l10n=false")
 
@@ -162,9 +162,9 @@ class TestDetectionsAPIRoutes:
     def test_update_detection_location(self, client):
         """Should update detection location."""
         mock_detection = MagicMock(id=123)
-        client.mock_data_manager.get_detection_by_id.return_value = mock_detection
+        client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=mock_detection)
         updated_detection = MagicMock(id=123, latitude=40.1, longitude=-74.1)
-        client.mock_data_manager.update_detection.return_value = updated_detection
+        client.mock_data_manager.update_detection = AsyncMock(return_value=updated_detection)
 
         location_data = {"latitude": 41.0, "longitude": -75.0}
 

@@ -1,6 +1,6 @@
 """Tests for system API routes that handle hardware monitoring and system status."""
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -21,7 +21,7 @@ def app_with_system_router(app_with_temp_data):
 
         # Mock data manager for system overview endpoint
         mock_data_manager = MagicMock(spec=DataManager)
-        mock_data_manager.count_detections.return_value = 0
+        mock_data_manager.count_detections = AsyncMock(return_value=0)
         app.container.data_manager.override(mock_data_manager)  # type: ignore[attr-defined]
 
     return app
@@ -110,7 +110,7 @@ class TestHardwareEndpoints:
         )
 
         # Configure mock data manager
-        client.app.container.data_manager().count_detections.return_value = 1234  # type: ignore[attr-defined]
+        client.app.container.data_manager().count_detections = AsyncMock(return_value=1234)  # type: ignore[attr-defined]
 
         response = client.get("/api/system/overview")
 

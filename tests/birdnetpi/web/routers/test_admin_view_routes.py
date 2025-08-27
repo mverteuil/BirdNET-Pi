@@ -1,6 +1,6 @@
 """Integration tests for admin router that exercise expanded functionality."""
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -19,7 +19,7 @@ def app_with_admin_view_routes(path_resolver, repo_root):
 
     # Mock data manager for test_detection endpoint
     mock_data_manager = MagicMock(spec=DataManager)
-    mock_data_manager.create_detection.return_value = None
+    mock_data_manager.create_detection = AsyncMock(return_value=None)
 
     # Override Container providers BEFORE app creation
     Container.path_resolver.override(providers.Singleton(lambda: path_resolver))

@@ -93,6 +93,7 @@ def mock_dependencies(mocker, path_resolver):
         # Make process_audio_chunk an async coroutine that tracks calls
         async def mock_process_chunk(data):
             mock_audio_manager._process_calls.append(data)
+            return None  # Ensure we return something
 
         mock_audio_manager.process_audio_chunk = mock_process_chunk
         mock_audio_manager.start_buffer_flush_task = MagicMock()  # Mock the start method
@@ -366,11 +367,45 @@ class TestAudioAnalysisDaemon:
                 pass
 
         mock_session = MockSession()
-        mock_asyncio.run.side_effect = [
-            mock_session,  # First call for init_session()
-            Exception("Audio processing failed"),  # Second call for audio processing
-            None,  # Third call for cleanup (session.close())
-        ]
+
+        # Create a function that properly awaits coroutines before returning/raising
+        async def async_run_side_effect(coro):
+            # Await the coroutine to prevent warnings
+            result = await coro
+            return result
+
+        # Track call count in a closure variable
+        call_count = [0]
+
+        def mock_asyncio_run(coro):
+            """Mock asyncio.run that properly handles coroutines."""
+            import asyncio
+            import inspect
+
+            # If it's a coroutine, we need to run it
+            if inspect.iscoroutine(coro):
+                loop = asyncio.new_event_loop()
+                try:
+                    # Determine what to return based on call count
+                    if call_count[0] == 0:
+                        call_count[0] += 1
+                        # First call: init_session() - return the mock session
+                        loop.run_until_complete(coro)
+                        return mock_session
+                    elif call_count[0] == 1:
+                        call_count[0] += 1
+                        # Second call: process_audio_chunk() - raise exception
+                        loop.run_until_complete(coro)
+                        raise Exception("Audio processing failed")
+                    else:
+                        # Third call: cleanup (session.close())
+                        loop.run_until_complete(coro)
+                        return None
+                finally:
+                    loop.close()
+            return coro
+
+        mock_asyncio.run.side_effect = mock_asyncio_run
 
         mock_global_shutdown_flag = mocker.patch(
             "birdnetpi.daemons.audio_analysis_daemon._shutdown_flag", new_callable=MagicMock
