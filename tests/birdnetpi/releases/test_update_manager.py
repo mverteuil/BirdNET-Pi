@@ -100,12 +100,12 @@ class TestVersionResolution:
         mock_client_class.return_value.__enter__.return_value = mock_client
 
         mock_response = MagicMock()
-        mock_response.json.return_value = {"tag_name": "v2.1.0"}
+        mock_response.json.return_value = {"tag_name": "v2.1.1"}
         mock_client.get.return_value = mock_response
 
         result = update_manager._resolve_version("latest", "owner/repo")
 
-        assert result == "v2.1.0"
+        assert result == "v2.1.1"
         mock_client.get.assert_called_once_with(
             "https://api.github.com/repos/owner/repo/releases/latest"
         )
@@ -124,15 +124,15 @@ class TestVersionResolution:
 
         mock_response = MagicMock()
         mock_response.json.return_value = [
-            {"tag_name": "assets-v2.1.0"},
-            {"tag_name": "v2.1.0"},
+            {"tag_name": "assets-v2.1.1"},
+            {"tag_name": "v2.1.1"},
             {"tag_name": "assets-v2.0.0"},
         ]
         mock_client.get.return_value = mock_response
 
         result = update_manager._resolve_latest_asset_version("owner/repo")
 
-        assert result == "v2.1.0"  # Should remove 'assets-' prefix
+        assert result == "v2.1.1"  # Should remove 'assets-' prefix
         mock_client.get.assert_called_once_with("https://api.github.com/repos/owner/repo/releases")
 
     @patch("httpx.Client")
@@ -143,7 +143,7 @@ class TestVersionResolution:
 
         mock_response = MagicMock()
         mock_response.json.return_value = [
-            {"tag_name": "v2.1.0"},
+            {"tag_name": "v2.1.1"},
             {"tag_name": "v2.0.0"},
         ]
         mock_client.get.return_value = mock_response
@@ -424,8 +424,8 @@ class TestListVersions:
 
         mock_response = MagicMock()
         mock_response.json.return_value = [
-            {"tag_name": "v2.1.0"},
-            {"tag_name": "assets-v2.1.0"},  # Should be filtered out
+            {"tag_name": "v2.1.1"},
+            {"tag_name": "assets-v2.1.1"},  # Should be filtered out
             {"tag_name": "v2.0.0"},
             {"tag_name": "assets-v2.0.0"},  # Should be filtered out
         ]
@@ -433,7 +433,7 @@ class TestListVersions:
 
         result = update_manager.list_available_versions("owner/repo")
 
-        assert result == ["v2.1.0", "v2.0.0"]
+        assert result == ["v2.1.1", "v2.0.0"]
         mock_client.get.assert_called_once_with("https://api.github.com/repos/owner/repo/releases")
 
     @patch("httpx.Client")
@@ -444,8 +444,8 @@ class TestListVersions:
 
         mock_response = MagicMock()
         mock_response.json.return_value = [
-            {"tag_name": "v2.1.0"},  # Should be filtered out
-            {"tag_name": "assets-v2.1.0"},
+            {"tag_name": "v2.1.1"},  # Should be filtered out
+            {"tag_name": "assets-v2.1.1"},
             {"tag_name": "v2.0.0"},  # Should be filtered out
             {"tag_name": "assets-v2.0.0"},
         ]
@@ -453,7 +453,7 @@ class TestListVersions:
 
         result = update_manager.list_available_asset_versions("owner/repo")
 
-        assert result == ["v2.1.0", "v2.0.0"]  # 'assets-' prefix removed
+        assert result == ["v2.1.1", "v2.0.0"]  # 'assets-' prefix removed
         mock_client.get.assert_called_once_with("https://api.github.com/repos/owner/repo/releases")
 
     @patch("httpx.Client")

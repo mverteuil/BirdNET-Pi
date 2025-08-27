@@ -13,14 +13,14 @@ from birdnetpi.cli.install_assets import cli
 @pytest.fixture
 def test_version_data():
     """Test version data."""
-    return ["v2.1.0", "v2.0.0", "v1.9.0"]
+    return ["v2.1.1", "v2.1.0", "v2.0.0"]
 
 
 @pytest.fixture
 def test_download_result():
     """Test download result data."""
     return {
-        "version": "v2.1.0",
+        "version": "v2.1.1",
         "downloaded_assets": [
             "models/BirdNET_GLOBAL_3K_V2.4_Model_FP32.tflite",
             "data/ioc_db.sqlite",
@@ -46,17 +46,17 @@ class TestInstallAssets:
         mock_manager.download_release_assets.return_value = test_download_result
         mock_update_manager_class.return_value = mock_manager
 
-        result = runner.invoke(cli, ["install", "v2.1.0"])
+        result = runner.invoke(cli, ["install", "v2.1.1"])
 
         assert result.exit_code == 0
-        assert "Installing complete asset release: v2.1.0" in result.output
+        assert "Installing complete asset release: v2.1.1" in result.output
         assert "✓ Asset installation completed successfully!" in result.output
-        assert "Version: v2.1.0" in result.output
+        assert "Version: v2.1.1" in result.output
         assert "Downloaded assets: 4" in result.output
 
         # Verify all assets are always downloaded
         mock_manager.download_release_assets.assert_called_once_with(
-            version="v2.1.0",
+            version="v2.1.1",
             include_models=True,
             include_ioc_db=True,
             include_avibase_db=True,
@@ -75,7 +75,7 @@ class TestInstallAssets:
 
         output_file = tmp_path / "install.json"
 
-        result = runner.invoke(cli, ["install", "v2.1.0", "--output-json", str(output_file)])
+        result = runner.invoke(cli, ["install", "v2.1.1", "--output-json", str(output_file)])
 
         assert result.exit_code == 0
         assert f"Installation data written to: {output_file}" in result.output
@@ -92,7 +92,7 @@ class TestInstallAssets:
         mock_manager.download_release_assets.side_effect = Exception("Download failed")
         mock_update_manager_class.return_value = mock_manager
 
-        result = runner.invoke(cli, ["install", "v2.1.0"])
+        result = runner.invoke(cli, ["install", "v2.1.1"])
 
         assert result.exit_code == 1
         assert "✗ Error installing assets: Download failed" in result.output
@@ -106,13 +106,13 @@ class TestInstallAssets:
         )
         mock_update_manager_class.return_value = mock_manager
 
-        result = runner.invoke(cli, ["install", "v2.1.0"])
+        result = runner.invoke(cli, ["install", "v2.1.1"])
 
         assert result.exit_code == 1
         assert "✗ Error installing assets:" in result.output
         assert "LOCAL DEVELOPMENT SETUP REQUIRED" in result.output
         assert "export BIRDNETPI_DATA=./data" in result.output
-        assert "uv run asset-installer install v2.1.0" in result.output
+        assert "uv run asset-installer install v2.1.1" in result.output
 
 
 class TestListVersions:
@@ -129,8 +129,8 @@ class TestListVersions:
 
         assert result.exit_code == 0
         assert "Available asset versions:" in result.output
-        assert "Latest version: v2.1.0" in result.output
-        assert "• v2.1.0" in result.output
+        assert "Latest version: v2.1.1" in result.output
+        assert "• v2.1.1" in result.output
         assert "• v2.0.0" in result.output
         assert "• v1.9.0" in result.output
 

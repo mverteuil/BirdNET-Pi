@@ -124,10 +124,10 @@ def install(
       asset-installer install latest
 
       # Install specific version
-      asset-installer install v2.1.0
+      asset-installer install v2.1.1
 
       # Skip if assets already exist (for init containers)
-      asset-installer install v2.1.0 --skip-existing
+      asset-installer install v2.1.1 --skip-existing
 
       # Save installation info to JSON
       asset-installer install latest --output-json install.json
@@ -179,7 +179,7 @@ def install(
             click.echo("│" + " " * 78 + "│")
             click.echo("│  Run the asset installer with:" + " " * 44 + "│")
             click.echo("│    export BIRDNETPI_DATA=./data" + " " * 43 + "│")
-            click.echo("│    uv run asset-installer install v2.1.0" + " " * 34 + "│")
+            click.echo("│    uv run asset-installer install v2.1.1" + " " * 34 + "│")
             click.echo("│" + " " * 78 + "│")
             click.echo(
                 "│  Or set it permanently in your shell profile (e.g., ~/.bashrc):" + " " * 12 + "│"

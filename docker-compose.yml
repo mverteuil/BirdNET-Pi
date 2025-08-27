@@ -17,7 +17,7 @@ services:
       target: init  # Use the init stage which runs as root
     container_name: birdnet-pi-init
     environment:
-      BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-v2.1.0}
+      BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-v2.1.1}
     logging:
       driver: json-file
     volumes:
@@ -38,7 +38,7 @@ services:
     environment:
       PULSE_SERVER: host.docker.internal:4713
       DOCKER_CONTAINER: "true"
-      BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-v2.1.0}
+      BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-v2.1.1}
       # Force PortAudio to use PulseAudio backend instead of ALSA
       PA_ALSA_PLUGHW: 0
     ports:

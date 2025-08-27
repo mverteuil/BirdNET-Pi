@@ -35,7 +35,7 @@ RUN cp -r /source/* . 2>/dev/null || true && \
 FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS runtime
 
 # Asset version for runtime downloads (can be overridden via environment variable)
-ARG BIRDNET_ASSETS_VERSION=v2.1.0
+ARG BIRDNET_ASSETS_VERSION=v2.1.1
 
 # Combine ENV declarations for better layer efficiency
 ENV DNS_SERVER=8.8.8.8 \
@@ -170,7 +170,7 @@ echo "Running as: $(whoami) (UID:$(id -u) GID:$(id -g))"\n\
 echo "Installing BirdNET assets..."\n\
 cd /opt/birdnetpi\n\
 # Use su without dash to preserve PATH environment variable\n\
-su birdnetpi -c "install-assets install ${BIRDNET_ASSETS_VERSION:-v2.1.0} --skip-existing"\n\
+su birdnetpi -c "install-assets install ${BIRDNET_ASSETS_VERSION:-v2.1.1} --skip-existing"\n\
 \n\
 # Set up config\n\
 echo "Setting up configuration..."\n\
