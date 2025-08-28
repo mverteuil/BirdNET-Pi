@@ -1,6 +1,7 @@
 """Application factory for creating FastAPI application with dependency injection."""
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
 from birdnetpi.i18n.translation_manager import setup_jinja2_i18n
@@ -15,6 +16,7 @@ from birdnetpi.web.routers import (
     health_api_routes,
     multimedia_view_routes,
     overview_api_routes,
+    reports_view_routes,
     sqladmin_view_routes,
     system_api_routes,
     websocket_routes,
@@ -45,6 +47,16 @@ def create_app() -> FastAPI:
     # Set up translation manager in app state for middleware access
     app.state.translation_manager = container.translation_manager()
 
+    # Add CORS middleware for proper headers (including AudioWorklet support)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Allow all origins for development
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["*"],  # Expose all headers including Content-Type
+    )
+
     # Add LanguageMiddleware
     app.add_middleware(LanguageMiddleware)
 
@@ -65,6 +77,7 @@ def create_app() -> FastAPI:
             "birdnetpi.web.routers.health_api_routes",
             "birdnetpi.web.routers.multimedia_view_routes",
             "birdnetpi.web.routers.overview_api_routes",
+            "birdnetpi.web.routers.reports_view_routes",
             "birdnetpi.web.routers.sqladmin_view_routes",
             "birdnetpi.web.routers.system_api_routes",
             "birdnetpi.web.routers.websocket_routes",
@@ -85,6 +98,9 @@ def create_app() -> FastAPI:
 
     # Multimedia view routes (livestream, spectrogram)
     app.include_router(multimedia_view_routes.router, tags=["Multimedia Views"])
+
+    # Reports view routes (detection displays, analytics)
+    app.include_router(reports_view_routes.router, tags=["Reports Views"])
 
     # Core API routes (detections endpoints)
     app.include_router(

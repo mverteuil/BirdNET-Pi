@@ -55,7 +55,8 @@ async def get_settings(
     if models_path.exists():
         # Find all .tflite model files
         for model_file in models_path.glob("*.tflite"):
-            model_name = model_file.name
+            # Use stem (filename without extension) for config storage
+            model_name = model_file.stem
             # Separate metadata models from main models
             if "MData" in model_name or "metadata" in model_name.lower():
                 metadata_model_files.append(model_name)
@@ -66,11 +67,19 @@ async def get_settings(
     model_files.sort()
     metadata_model_files.sort()
 
+    # Normalize config model names by removing .tflite extension if present
+    # This ensures the comparison in the template works correctly
+    normalized_config = app_config.model_copy()
+    if normalized_config.model and normalized_config.model.endswith(".tflite"):
+        normalized_config.model = normalized_config.model[:-7]  # Remove .tflite
+    if normalized_config.metadata_model and normalized_config.metadata_model.endswith(".tflite"):
+        normalized_config.metadata_model = normalized_config.metadata_model[:-7]  # Remove .tflite
+
     return templates.TemplateResponse(
         request,
         "admin/settings.html.j2",
         {
-            "config": app_config,
+            "config": normalized_config,
             "audio_devices": audio_devices,
             "model_files": model_files,
             "metadata_model_files": metadata_model_files,
@@ -308,9 +317,6 @@ async def test_detection(
     species: str = "Test Bird",
     confidence: float = 0.99,
     timestamp: str | None = None,
-    audio_file_path: str = "test_audio/test_bird.wav",
-    duration: float = 3.0,
-    size_bytes: int = 1024,
     latitude: float = 0.0,
     longitude: float = 0.0,
     species_confidence_threshold: float = 0.0,
@@ -331,6 +337,12 @@ async def test_detection(
         scientific_name = "Testus species"
         common_name = species
 
+    # Create test audio data for the detection
+    import base64
+
+    test_audio_bytes = b"test audio data for detection"
+    encoded_audio = base64.b64encode(test_audio_bytes).decode("utf-8")
+
     detection_event_data = DetectionEvent(
         species_tensor=species_tensor,
         scientific_name=scientific_name,
@@ -339,9 +351,9 @@ async def test_detection(
         timestamp=datetime.datetime.fromisoformat(timestamp)
         if timestamp
         else datetime.datetime.now(UTC),
-        audio_file_path=audio_file_path,
-        duration=duration,
-        size_bytes=size_bytes,
+        audio_data=encoded_audio,  # Base64-encoded audio
+        sample_rate=48000,  # Standard sample rate
+        channels=1,  # Mono audio
         latitude=latitude,
         longitude=longitude,
         species_confidence_threshold=species_confidence_threshold,
@@ -369,5 +381,5 @@ async def get_advanced_settings(
     config_yaml = config_manager.config_path.read_text()
 
     return templates.TemplateResponse(
-        request, "admin/yaml_editor.html", {"config_yaml": config_yaml}
+        request, "admin/advanced_settings.html.j2", {"config_yaml": config_yaml}
     )

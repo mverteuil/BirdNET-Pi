@@ -1,0 +1,21 @@
+{# Navigation component - pass 'active_page' to highlight current page #}
+{# Usage: {% include 'includes/navigation.html.j2' with active_page='dashboard' %} #}
+
+<style>
+    /* Active navigation item with underline */
+    .nav-item.active {
+        font-weight: bold;
+        border-bottom: 2px solid var(--color-border-primary);
+    }
+</style>
+
+<!-- Navigation -->
+<nav class="main-nav" role="navigation" aria-label="Main navigation">
+    <a href="/" class="nav-item{% if active_page == 'dashboard' %} active{% endif %}">Dashboard</a>
+    <a href="/detections" class="nav-item{% if active_page == 'detections' %} active{% endif %}">Detections</a>
+    <a href="/reports/best" class="nav-item{% if active_page == 'best' %} active{% endif %}">Best Recordings</a>
+    <a href="/livestream" class="nav-item{% if active_page == 'livestream' %} active{% endif %}">Audio Stream</a>
+    <a href="/reports" class="nav-item{% if active_page == 'analysis' %} active{% endif %}">Analysis</a>
+    <a href="/admin/settings" class="nav-item{% if active_page == 'settings' %} active{% endif %}">Settings</a>
+    <a href="/api/system/overview" class="nav-item{% if active_page == 'api' %} active{% endif %}">API</a>
+</nav>

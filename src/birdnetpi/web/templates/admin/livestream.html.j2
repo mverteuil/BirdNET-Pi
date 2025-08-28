@@ -5,24 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BirdNET-Pi Livestream</title>
     <link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}">
+    <style>
+        /* Page-specific styles */
+        .page-title {
+            font-size: 1.8rem;
+            font-weight: normal;
+            margin-top: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--color-text-emphasis);
+        }
+        
+        /* Active navigation item */
+        .nav-item.active {
+            font-weight: bold;
+            border-bottom: 2px solid var(--color-border-primary);
+        }
+    </style>
 </head>
 <body>
 <header>
-    <h1>Live Audio Stream</h1>
-    <p class="subtitle">Real-time acoustic monitoring · 48 kHz sampling · 3-second
-        windows</p>
+    <h1>BirdNET-Pi <span class="live" title="System Active"></span></h1>
+    <p class="tagline">
+        Continuous acoustic monitoring · {{ location | default('Location not set') }}
+    </p>
 </header>
 
 <!-- Navigation -->
-<nav class="nav">
-    <a href="/">Dashboard</a>
-    <a href="/reports/detections">Detections</a>
-    <a href="/reports/best">Best Recordings</a>
-    <a href="#" class="active">Livestream</a>
-    <a href="/reports">Analysis</a>
-    <a href="/field">Field Mode</a>
-    <a href="/admin/settings">Settings</a>
+<nav class="main-nav">
+    <a href="/" class="nav-item">Dashboard</a>
+    <a href="/reports/detections" class="nav-item">Detections</a>
+    <a href="/reports/best" class="nav-item">Best Recordings</a>
+    <a href="/livestream" class="nav-item active">Audio Stream</a>
+    <a href="/reports" class="nav-item">Analysis</a>
+    <a href="/field" class="nav-item">Field Recording</a>
+    <a href="/admin/settings" class="nav-item">Settings</a>
+    <a href="/api/system/overview" class="nav-item">API</a>
 </nav>
+
+<!-- Page title -->
+<h1 class="page-title">Live Audio Stream</h1>
+<p class="subtitle">Real-time acoustic monitoring · 48 kHz sampling · 3-second windows</p>
 
 <!-- Connection status -->
 <div class="status-line">

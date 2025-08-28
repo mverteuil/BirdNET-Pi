@@ -325,15 +325,8 @@
     </header>
 
     <!-- Navigation -->
-    <nav class="nav">
-        <a href="/">Dashboard</a>
-        <a href="/reports/detections">Detections</a>
-        <a href="/reports/best" class="active">Best Recordings</a>
-        <a href="/livestream">Livestream</a>
-        <a href="/reports">Analysis</a>
-        <a href="/field">Field Mode</a>
-        <a href="/admin/settings">Settings</a>
-    </nav>
+    {% set active_page = 'best' %}
+    {% include 'includes/navigation.html.j2' %}
 
     <!-- Filter controls -->
     <div class="controls">

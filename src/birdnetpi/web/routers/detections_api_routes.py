@@ -1,13 +1,15 @@
 import logging
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
+from typing import Optional
 from uuid import UUID
 
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 
 # from birdnetpi.analytics.plotting_manager import PlottingManager  # Removed - analytics refactor
 # TODO: Re-implement spectrogram generation without PlottingManager
+from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.detections import DetectionEvent, LocationUpdate
@@ -35,12 +37,14 @@ async def create_detection(
     )
 
     # Create detection - DataManager handles audio saving and database persistence
+    # Store the raw data from BirdNET as-is
     # The @emit_detection_event decorator on create_detection handles event emission
     try:
         saved_detection = await data_manager.create_detection(detection_event)
         return {"message": "Detection received and dispatched", "detection_id": saved_detection.id}
     except Exception as e:
-        logger.error(f"Failed to create detection: {e}")
+        import traceback
+        logger.error(f"Failed to create detection: {e}\n{traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create detection: {e!s}",
@@ -72,7 +76,7 @@ async def get_recent_detections(
             )
             detection_list = [
                 {
-                    "id": detection.id,
+                    "id": str(detection.id),
                     "scientific_name": detection.scientific_name,
                     "common_name": (
                         data_manager.get_species_display_name(detection, True, language_code)
@@ -93,10 +97,15 @@ async def get_recent_detections(
             ]
         else:
             # Use regular detection data (fallback)
-            detections = await data_manager.get_recent_detections(limit)
+            detections = await data_manager.query_detections(
+                limit=limit,
+                offset=offset,
+                order_by="timestamp",
+                order_desc=True
+            )
             detection_list = [
                 {
-                    "id": detection.id,
+                    "id": str(detection.id),
                     "scientific_name": detection.scientific_name,
                     "common_name": detection.common_name,
                     "confidence": detection.confidence,
@@ -110,6 +119,96 @@ async def get_recent_detections(
     except Exception as e:
         logger.error("Error getting recent detections: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving recent detections") from e
+
+
+@router.get("/paginated")
+@inject
+async def get_paginated_detections(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(20, ge=10, le=200, description="Items per page"),
+    period: str = Query("day", description="Time period filter"),
+    search: Optional[str] = Query(None, description="Search species name"),
+    data_manager: DataManager = Depends(  # noqa: B008
+        Provide[Container.data_manager]
+    ),
+    config: BirdNETConfig = Depends(  # noqa: B008
+        Provide[Container.config]
+    ),
+) -> JSONResponse:
+    """Get paginated detections with filtering."""
+    try:
+        # Calculate date range based on period
+        end_time = datetime.now()
+        period_days = {
+            "day": 1,
+            "week": 7,
+            "month": 30,
+            "season": 90,
+            "year": 365,
+            "historical": 36500,  # ~100 years
+        }
+        days = period_days.get(period, 1)
+        start_time = end_time - timedelta(days=days)
+        
+        # Get detections with localization for proper display names
+        all_detections = await data_manager.query_detections(
+            start_date=start_time,
+            end_date=end_time,
+            include_localization=True,
+            language_code=config.language,
+            order_by="timestamp",
+            order_desc=True
+        )
+        
+        # Filter by search term if provided
+        if search:
+            search_lower = search.lower()
+            all_detections = [
+                d for d in all_detections
+                if search_lower in (d.common_name or "").lower()
+                or search_lower in (d.scientific_name or "").lower()
+            ]
+        
+        # Sort by timestamp descending
+        all_detections.sort(key=lambda d: d.timestamp, reverse=True)
+        
+        # Calculate pagination
+        total = len(all_detections)
+        total_pages = (total + per_page - 1) // per_page
+        offset = (page - 1) * per_page
+        
+        # Get page of detections
+        page_detections = all_detections[offset:offset + per_page]
+        
+        # Format response using proper display names
+        detection_list = []
+        for detection in page_detections:
+            # Always use the display name logic which handles localization properly
+            display_name = data_manager.get_species_display_name(detection, True, config.language)
+            
+            detection_list.append({
+                "id": str(detection.id),
+                "timestamp": detection.timestamp.strftime("%H:%M"),
+                "date": detection.timestamp.strftime("%Y-%m-%d"),
+                "species": display_name,
+                "scientific_name": detection.scientific_name,
+                "confidence": round(detection.confidence, 2),
+            })
+        
+        return JSONResponse({
+            "detections": detection_list,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_prev": page > 1,
+            }
+        })
+    except Exception as e:
+        logger.error("Error getting paginated detections: %s", e)
+        raise HTTPException(status_code=500, detail="Error retrieving detections") from e
 
 
 @router.get("/count")
@@ -192,12 +291,12 @@ async def get_detection(
         # Try to get localization-enhanced data first
         if include_l10n:
             try:
-                detection_with_l10n = await data_manager.get_detection_with_localization(
+                detection_with_l10n = await data_manager.query_service.get_detection_with_localization(
                     id_to_use, language_code
                 )
                 if detection_with_l10n:
                     detection_data = {
-                        "id": detection_with_l10n.id,
+                        "id": str(detection_with_l10n.id),
                         "scientific_name": detection_with_l10n.scientific_name,
                         "common_name": data_manager.get_species_display_name(
                             detection_with_l10n,
@@ -232,7 +331,7 @@ async def get_detection(
             raise HTTPException(status_code=404, detail="Detection not found")
 
         detection_data = {
-            "id": detection.id,
+            "id": str(detection.id),
             "scientific_name": detection.scientific_name,
             "common_name": detection.common_name,
             "confidence": detection.confidence,

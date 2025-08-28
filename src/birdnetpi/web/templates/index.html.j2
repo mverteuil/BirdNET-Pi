@@ -15,15 +15,8 @@
     </header>
 
     <!-- Navigation -->
-    <nav class="main-nav">
-      <a href="/reports/detections" class="nav-item">Detections</a>
-      <a href="/reports/best" class="nav-item">Best Recordings</a>
-      <a href="/livestream" class="nav-item">Audio Stream</a>
-      <a href="/reports" class="nav-item">Analysis</a>
-      <a href="/field" class="nav-item">Field Recording</a>
-      <a href="/admin/settings" class="nav-item">Settings</a>
-      <a href="/api/system/overview" class="nav-item">API</a>
-    </nav>
+    {% set active_page = 'dashboard' %}
+    {% include 'includes/navigation.html.j2' %}
 
     <!-- Hero Visualization -->
     <div class="hero-viz">

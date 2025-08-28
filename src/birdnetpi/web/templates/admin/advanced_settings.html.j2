@@ -6,7 +6,7 @@
     <title>Settings Editor - BirdNET-Pi</title>
 
     <!-- Main site stylesheet (includes YAML editor styles) -->
-    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}" />
 
     <!-- CodeMirror CSS -->
     <link
@@ -22,14 +22,8 @@
     </header>
 
     <!-- Navigation -->
-    <nav class="main-nav">
-      <a href="/" class="nav-item">Overview</a>
-      <a href="/admin/settings" class="nav-item">Settings</a>
-      <a href="/admin/advanced-settings" class="nav-item active"
-        >Advanced Settings</a
-      >
-      <a href="/livestream" class="nav-item">Livestream</a>
-    </nav>
+    {% set active_page = 'settings' %}
+    {% include 'includes/navigation.html.j2' %}
 
     <!-- Alert messages -->
     <div class="editor-alert success" id="successAlert"></div>

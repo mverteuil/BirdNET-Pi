@@ -478,15 +478,8 @@
     </header>
 
     <!-- Navigation -->
-    <nav class="nav">
-        <a href="/">Dashboard</a>
-        <a href="/reports/detections">Detections</a>
-        <a href="/reports/best">Best Recordings</a>
-        <a href="/livestream">Livestream</a>
-        <a href="/reports" class="active">Analysis</a>
-        <a href="/field">Field Mode</a>
-        <a href="/admin/settings">Settings</a>
-    </nav>
+    {% set active_page = 'analysis' %}
+    {% include 'includes/navigation.html.j2' %}
 
     <!-- Time period selector -->
     <div class="period-selector">

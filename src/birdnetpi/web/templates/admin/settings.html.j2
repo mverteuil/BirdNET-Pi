@@ -13,15 +13,8 @@
     </header>
 
     <!-- Navigation -->
-    <nav class="main-nav" role="navigation" aria-label="Main navigation">
-        <a href="/" class="nav-item">Dashboard</a>
-        <a href="/reports/detections" class="nav-item">Detections</a>
-        <a href="/reports/best" class="nav-item">Best Recordings</a>
-        <a href="/livestream" class="nav-item">Livestream</a>
-        <a href="/reports" class="nav-item">Analysis</a>
-        <a href="/field" class="nav-item">Field Mode</a>
-        <a href="/admin/settings" class="nav-item active">Settings</a>
-    </nav>
+    {% set active_page = 'settings' %}
+    {% include 'includes/navigation.html.j2' %}
 
     <form method="post" action="/admin/settings" role="form" aria-label="System settings" id="settings-form">
         <!-- Required hidden fields for all form data -->
@@ -203,7 +196,7 @@
                             <div class="choice-radio"></div>
                             <div class="option-name">{{ model_file.replace('.tflite', '').replace('_', ' ') }}</div>
                             <div class="option-details">
-                                {% if 'FP16' in model_file %}Half precision{% else %}Full precision{% endif %} ·
+                                {% if 'FP16' in model_file %}Half precision (recommended){% else %}Full precision (requires Select Ops){% endif %} ·
                                 {% if '6K' in model_file %}6000+ species{% elif '3K' in model_file %}3000 species{% else %}TFLite model{% endif %}
                             </div>
                         </div>
