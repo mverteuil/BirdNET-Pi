@@ -1,6 +1,5 @@
 """Tests for the DataManager - single source of truth for detection data access."""
 
-import uuid
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
@@ -25,12 +24,16 @@ def mock_services():
     mock_multilingual = MagicMock(spec=MultilingualDatabaseService)
     mock_species_display = MagicMock(spec=SpeciesDisplayService)
     mock_query_service = MagicMock(spec=DetectionQueryService)
+    mock_file_manager = MagicMock()
+    mock_path_resolver = MagicMock()
 
     return {
         "database_service": mock_db_service,
         "multilingual_service": mock_multilingual,
         "species_display_service": mock_species_display,
         "detection_query_service": mock_query_service,
+        "file_manager": mock_file_manager,
+        "path_resolver": mock_path_resolver,
     }
 
 
@@ -42,6 +45,8 @@ def data_manager(mock_services):
         multilingual_service=mock_services["multilingual_service"],
         species_display_service=mock_services["species_display_service"],
         detection_query_service=mock_services["detection_query_service"],
+        file_manager=mock_services["file_manager"],
+        path_resolver=mock_services["path_resolver"],
     )
 
 
@@ -96,15 +101,21 @@ class TestCoreOperations:
             "database_service"
         ].get_async_db.return_value.__aenter__.return_value = mock_session
 
+        # Create valid base64-encoded audio data (just a few bytes for testing)
+        import base64
+
+        test_audio_bytes = b"test audio data"
+        encoded_audio = base64.b64encode(test_audio_bytes).decode("utf-8")
+
         detection_event = DetectionEvent(
             species_tensor="Turdus migratorius_American Robin",
             scientific_name="Turdus migratorius",
             common_name="American Robin",
             confidence=0.95,
             timestamp=datetime(2023, 1, 1, 12, 0, 0),
-            audio_file_path="/path/to/audio.wav",
-            duration=10.0,
-            size_bytes=1024,
+            audio_data=encoded_audio,  # Valid base64-encoded audio
+            sample_rate=48000,
+            channels=1,
             latitude=45.5017,
             longitude=-73.5673,
             species_confidence_threshold=0.8,
@@ -176,18 +187,11 @@ class TestQueryMethods:
 
     @pytest.mark.asyncio
     async def test_query_detections_with_filters(self, data_manager, mock_services):
-        """Should query detections with multiple filters."""
-        mock_session = MagicMock()
-        mock_services[
-            "database_service"
-        ].get_async_db.return_value.__aenter__.return_value = mock_session
-
+        """Should delegate query detections to DetectionQueryService."""
         mock_detections = [MagicMock(spec=Detection)]
-        mock_scalars = MagicMock()
-        mock_scalars.__iter__ = lambda x: iter(mock_detections)
-        mock_result = MagicMock()
-        mock_result.scalars.return_value = mock_scalars
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_services["detection_query_service"].query_detections = AsyncMock(
+            return_value=mock_detections
+        )
 
         result = await data_manager.query_detections(
             species="Turdus migratorius",
@@ -200,13 +204,25 @@ class TestQueryMethods:
         )
 
         assert result == mock_detections
-        assert mock_session.execute.called
+        mock_services["detection_query_service"].query_detections.assert_called_once_with(
+            species="Turdus migratorius",
+            start_date=datetime(2023, 1, 1),
+            end_date=datetime(2023, 12, 31),
+            min_confidence=0.8,
+            max_confidence=None,
+            limit=10,
+            offset=None,
+            order_by="confidence",
+            order_desc=True,
+            include_localization=False,
+            language_code="en",
+        )
 
     @pytest.mark.asyncio
     async def test_query_detections_with_localization(self, data_manager, mock_services):
         """Should use DetectionQueryService when localization requested."""
         mock_detections = [MagicMock(spec=DetectionWithLocalization)]
-        mock_services["detection_query_service"].get_detections_with_localization = AsyncMock(
+        mock_services["detection_query_service"].query_detections = AsyncMock(
             return_value=mock_detections
         )
 
@@ -217,29 +233,7 @@ class TestQueryMethods:
         )
 
         assert result == mock_detections
-        mock_services[
-            "detection_query_service"
-        ].get_detections_with_localization.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_get_detections_with_localization(self, data_manager, mock_services):
-        """Should get detections with localized names."""
-        mock_detections = [MagicMock(spec=DetectionWithLocalization)]
-        mock_services["detection_query_service"].get_detections_with_localization = AsyncMock(
-            return_value=mock_detections
-        )
-
-        filters = {"species": "Turdus migratorius", "family": "Turdidae"}
-        result = await data_manager.get_detections_with_localization(
-            filters=filters,
-            limit=50,
-            language_code="fr",
-        )
-
-        assert result == mock_detections
-        mock_services[
-            "detection_query_service"
-        ].get_detections_with_localization.assert_called_once()
+        mock_services["detection_query_service"].query_detections.assert_called_once()
 
 
 class TestCountMethods:
@@ -348,93 +342,6 @@ class TestTranslationHelpers:
         assert result == "American Robin"
 
 
-class TestSpecializedQueries:
-    """Test specialized queries migrated from DetectionManager."""
-
-    @pytest.mark.asyncio
-    async def test_get_recent_detections(self, data_manager, mock_services):
-        """Should get recent detections using query_detections."""
-        mock_session = MagicMock()
-        mock_services[
-            "database_service"
-        ].get_async_db.return_value.__aenter__.return_value = mock_session
-
-        mock_detections = [MagicMock(spec=Detection)]
-        mock_scalars = MagicMock()
-        mock_scalars.__iter__ = lambda x: iter(mock_detections)
-        mock_result = MagicMock()
-        mock_result.scalars.return_value = mock_scalars
-        mock_session.execute = AsyncMock(return_value=mock_result)
-
-        result = await data_manager.get_recent_detections(limit=5)
-
-        assert result == mock_detections
-        assert mock_session.execute.called
-
-    @pytest.mark.asyncio
-    async def test_get_top_species_with_prior_counts(self, data_manager, mock_services):
-        """Should get top species with prior period counts."""
-        mock_session = AsyncMock()
-        mock_services[
-            "database_service"
-        ].get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Mock the complex query result - the method uses session.execute()
-        # Return Row-like objects with dictionary access
-        mock_row1 = MagicMock()
-        mock_row1.__getitem__ = lambda self, key: {
-            "scientific_name": "Turdus migratorius",
-            "common_name": "American Robin",
-            "current_count": 25,
-            "prior_count": 15,
-        }[key]
-
-        mock_row2 = MagicMock()
-        mock_row2.__getitem__ = lambda self, key: {
-            "scientific_name": "Cardinalis cardinalis",
-            "common_name": "Northern Cardinal",
-            "current_count": 20,
-            "prior_count": 10,
-        }[key]
-
-        mock_session.execute.return_value.__iter__ = lambda self: iter([mock_row1, mock_row2])
-
-        result = await data_manager.get_top_species_with_prior_counts(
-            datetime(2023, 1, 1),
-            datetime(2023, 1, 31),
-            datetime(2022, 12, 1),
-            datetime(2022, 12, 31),
-        )
-
-        assert len(result) == 2
-        assert result[0]["scientific_name"] == "Turdus migratorius"
-        assert result[0]["current_count"] == 25
-        assert result[0]["prior_count"] == 15
-
-    @pytest.mark.asyncio
-    async def test_get_best_detections(self, data_manager, mock_services):
-        """Should get best detection per species by confidence."""
-        mock_session = AsyncMock()
-        mock_services[
-            "database_service"
-        ].get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Mock the detection result
-        mock_detection = MagicMock(spec=Detection)
-        mock_detection.scientific_name = "Turdus migratorius"
-        mock_detection.confidence = 0.95
-
-        # The method uses session.scalars().all()
-        mock_scalars = MagicMock()
-        mock_scalars.all.return_value = [mock_detection]
-        mock_session.scalars.return_value = mock_scalars
-
-        result = await data_manager.get_best_detections(limit=5)
-
-        assert len(result) == 1
-        assert result[0] == mock_detection
-
-
 class TestErrorHandling:
     """Test error handling."""
 
@@ -452,14 +359,6 @@ class TestErrorHandling:
             await data_manager.get_detection_by_id(1)
 
         mock_session.rollback.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_no_query_service_for_localization(self, data_manager, mock_services):
-        """Should raise error when query service not available for localization."""
-        data_manager.query_service = None
-
-        with pytest.raises(RuntimeError, match="DetectionQueryService not available"):
-            await data_manager.get_detections_with_localization()
 
 
 class TestAnalyticsMethods:
@@ -619,49 +518,6 @@ class TestAnalyticsMethods:
         assert hourly_counts[2]["count"] == 20
 
     @pytest.mark.asyncio
-    async def test_get_detections_in_range(self, data_manager, mock_services):
-        """Should return all detections within time range."""
-        start_time = datetime(2024, 1, 1, 0, 0, 0)
-        end_time = datetime(2024, 1, 1, 23, 59, 59)
-
-        # Mock the database session and query result
-        mock_session = AsyncMock()
-        mock_result = MagicMock()
-
-        # Create mock detection objects
-        detection1 = Detection(
-            id=uuid.uuid4(),
-            species_tensor="Turdus migratorius_American Robin",
-            scientific_name="Turdus migratorius",
-            common_name="American Robin",
-            confidence=0.95,
-            timestamp=datetime(2024, 1, 1, 10, 0, 0),
-        )
-
-        detection2 = Detection(
-            id=uuid.uuid4(),
-            species_tensor="Cardinalis cardinalis_Northern Cardinal",
-            scientific_name="Cardinalis cardinalis",
-            common_name="Northern Cardinal",
-            confidence=0.88,
-            timestamp=datetime(2024, 1, 1, 11, 0, 0),
-        )
-
-        mock_result.scalars.return_value.all.return_value = [detection1, detection2]
-        mock_session.execute.return_value = mock_result
-        mock_services[
-            "database_service"
-        ].get_async_db.return_value.__aenter__.return_value = mock_session
-
-        detections = await data_manager.get_detections_in_range(start_time, end_time)
-
-        assert len(detections) == 2
-        assert detections[0].scientific_name == "Turdus migratorius"
-        assert detections[0].confidence == 0.95
-        assert detections[1].scientific_name == "Cardinalis cardinalis"
-        assert detections[1].confidence == 0.88
-
-    @pytest.mark.asyncio
     async def test_analytics_methods_handle_errors(self, data_manager, mock_services):
         """Should handle database errors gracefully in analytics methods."""
         from datetime import date
@@ -690,6 +546,3 @@ class TestAnalyticsMethods:
 
         with pytest.raises(SQLAlchemyError):
             await data_manager.get_hourly_counts(date.today())
-
-        with pytest.raises(SQLAlchemyError):
-            await data_manager.get_detections_in_range(datetime.now(), datetime.now())

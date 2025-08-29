@@ -1,6 +1,5 @@
 import logging
 from datetime import UTC, date, datetime, timedelta
-from typing import Optional
 from uuid import UUID
 
 from dependency_injector.wiring import Provide, inject
@@ -44,6 +43,7 @@ async def create_detection(
         return {"message": "Detection received and dispatched", "detection_id": saved_detection.id}
     except Exception as e:
         import traceback
+
         logger.error(f"Failed to create detection: {e}\n{traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -98,10 +98,7 @@ async def get_recent_detections(
         else:
             # Use regular detection data (fallback)
             detections = await data_manager.query_detections(
-                limit=limit,
-                offset=offset,
-                order_by="timestamp",
-                order_desc=True
+                limit=limit, offset=offset, order_by="timestamp", order_desc=True
             )
             detection_list = [
                 {
@@ -127,7 +124,7 @@ async def get_paginated_detections(
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(20, ge=10, le=200, description="Items per page"),
     period: str = Query("day", description="Time period filter"),
-    search: Optional[str] = Query(None, description="Search species name"),
+    search: str | None = Query(None, description="Search species name"),
     data_manager: DataManager = Depends(  # noqa: B008
         Provide[Container.data_manager]
     ),
@@ -149,7 +146,7 @@ async def get_paginated_detections(
         }
         days = period_days.get(period, 1)
         start_time = end_time - timedelta(days=days)
-        
+
         # Get detections with localization for proper display names
         all_detections = await data_manager.query_detections(
             start_date=start_time,
@@ -157,55 +154,60 @@ async def get_paginated_detections(
             include_localization=True,
             language_code=config.language,
             order_by="timestamp",
-            order_desc=True
+            order_desc=True,
         )
-        
+
         # Filter by search term if provided
         if search:
             search_lower = search.lower()
             all_detections = [
-                d for d in all_detections
+                d
+                for d in all_detections
                 if search_lower in (d.common_name or "").lower()
                 or search_lower in (d.scientific_name or "").lower()
             ]
-        
-        # Sort by timestamp descending
-        all_detections.sort(key=lambda d: d.timestamp, reverse=True)
-        
+
+        # Sort by timestamp descending (convert to list for sorting)
+        all_detections = sorted(all_detections, key=lambda d: d.timestamp, reverse=True)
+
         # Calculate pagination
         total = len(all_detections)
         total_pages = (total + per_page - 1) // per_page
         offset = (page - 1) * per_page
-        
+
         # Get page of detections
-        page_detections = all_detections[offset:offset + per_page]
-        
+        page_detections = all_detections[offset : offset + per_page]
+
         # Format response using proper display names
         detection_list = []
         for detection in page_detections:
             # Always use the display name logic which handles localization properly
             display_name = data_manager.get_species_display_name(detection, True, config.language)
-            
-            detection_list.append({
-                "id": str(detection.id),
-                "timestamp": detection.timestamp.strftime("%H:%M"),
-                "date": detection.timestamp.strftime("%Y-%m-%d"),
-                "species": display_name,
-                "scientific_name": detection.scientific_name,
-                "confidence": round(detection.confidence, 2),
-            })
-        
-        return JSONResponse({
-            "detections": detection_list,
-            "pagination": {
-                "page": page,
-                "per_page": per_page,
-                "total": total,
-                "total_pages": total_pages,
-                "has_next": page < total_pages,
-                "has_prev": page > 1,
+
+            detection_list.append(
+                {
+                    "id": str(detection.id),
+                    "timestamp": detection.timestamp.strftime("%H:%M"),
+                    "date": detection.timestamp.strftime("%Y-%m-%d"),
+                    "species": display_name,
+                    "scientific_name": detection.scientific_name,
+                    "confidence": round(detection.confidence, 2),
+                }
+            )
+
+        return JSONResponse(
+            {
+                "detections": detection_list,
+                "pagination": {
+                    "page": page,
+                    "per_page": per_page,
+                    "total": total,
+                    "total_pages": total_pages,
+                    "has_next": page < total_pages,
+                    "has_prev": page > 1,
+                },
             }
-        })
+        )
     except Exception as e:
         logger.error("Error getting paginated detections: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving detections") from e
@@ -289,10 +291,13 @@ async def get_detection(
         id_to_use = int(detection_id) if isinstance(detection_id, UUID) else detection_id
 
         # Try to get localization-enhanced data first
-        if include_l10n:
+        if include_l10n and data_manager.query_service and isinstance(detection_id, UUID):
             try:
-                detection_with_l10n = await data_manager.query_service.get_detection_with_localization(
-                    id_to_use, language_code
+                detection_with_l10n = (
+                    await data_manager.query_service.get_detection_with_localization(
+                        detection_id,
+                        language_code,
+                    )
                 )
                 if detection_with_l10n:
                     detection_data = {

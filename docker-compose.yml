@@ -55,6 +55,7 @@ services:
     volumes:
       - ${BIRDNET_DATA_VOLUME:-birdnet-data}:/var/lib/birdnetpi # Persistent data storage
       - ~/.config/pulse/cookie:/home/birdnetpi/.config/pulse/cookie:ro # PulseAudio auth cookie only (read-only)
+      - ./src:/opt/birdnetpi/src:ro # Source code bind mount for development
     networks:
       - birdnetpi-network
 

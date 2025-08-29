@@ -200,16 +200,23 @@ async def analytics_manager_with_db(
     mock_multilingual_service,
     mock_species_display_service,
     mock_detection_query_service,
+    mocker,
 ):
     """Create AnalyticsManager with real database."""
     db_service, _ = test_database_with_data  # Unpack tuple
     config = BirdNETConfig()
     config.species_confidence_threshold = 0.5
 
+    # Create mock file_manager and path_resolver
+    mock_file_manager = mocker.MagicMock()
+    mock_path_resolver = mocker.MagicMock()
+
     data_manager = DataManager(
         database_service=db_service,
         multilingual_service=mock_multilingual_service,
         species_display_service=mock_species_display_service,
+        file_manager=mock_file_manager,
+        path_resolver=mock_path_resolver,
         detection_query_service=mock_detection_query_service,
     )
 

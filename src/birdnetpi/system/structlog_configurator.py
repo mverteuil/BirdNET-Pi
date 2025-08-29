@@ -71,6 +71,7 @@ def _configure_processors(
         _add_static_context(extra_fields),
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="ISO"),
+        structlog.processors.dict_tracebacks,  # Format exceptions as readable dicts
     ]
 
     # Add caller info if requested
@@ -118,6 +119,7 @@ def _configure_handlers(
             structlog.stdlib.add_log_level,
             structlog.stdlib.add_logger_name,
             structlog.processors.TimeStamper(fmt="ISO"),
+            structlog.processors.dict_tracebacks,  # Format exceptions as readable dicts
             structlog.stdlib.ExtraAdder(),  # IMPORTANT: Extracts extra dict fields from stdlib logs
         ],
     )

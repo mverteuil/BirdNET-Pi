@@ -228,7 +228,7 @@ class TestScatterVisualization:
             ),
         ]
 
-        mock_data_manager.get_detections_in_range = AsyncMock(return_value=detections)
+        mock_data_manager.query_detections = AsyncMock(return_value=detections)
 
         scatter_data = await analytics_manager.get_detection_scatter_data(hours=24)
 

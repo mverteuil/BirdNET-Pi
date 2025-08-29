@@ -12,11 +12,10 @@ import functools
 import logging
 from collections.abc import Callable, Sequence
 from datetime import date
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar
 
 from sqlalchemy import desc, select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql import func
 
 from birdnetpi.database.database_service import DatabaseService
@@ -243,7 +242,7 @@ class DataManager:
 
     # ==================== Query Methods ====================
 
-    async def query_detections(  # noqa: C901
+    async def query_detections(
         self,
         species: str | list[str] | None = None,
         start_date: datetime.datetime | None = None,
@@ -259,107 +258,25 @@ class DataManager:
     ) -> Sequence[DetectionBase] | list[DetectionWithLocalization]:
         """Query detections with flexible filtering and optional localization.
 
-        This is the main query method that consolidates various filtering patterns.
-        """
-        if include_localization and self.query_service:
-            # Use DetectionQueryService for localization
-            return await self.query_service.get_detections_with_localization(
-                limit=limit or 100,
-                offset=offset or 0,
-                language_code=language_code,
-                since=start_date,
-                scientific_name_filter=species if isinstance(species, str) else None,
-            )
-
-        # Standard query without localization
-        async with self.database_service.get_async_db() as session:
-            try:
-                stmt = select(Detection)
-
-                # Apply filters
-                if species:
-                    if isinstance(species, list):
-                        stmt = stmt.where(
-                            cast(InstrumentedAttribute, Detection.scientific_name).in_(species)
-                        )
-                    else:
-                        stmt = stmt.where(Detection.scientific_name == species)
-
-                if start_date:
-                    stmt = stmt.where(Detection.timestamp >= start_date)
-                if end_date:
-                    stmt = stmt.where(Detection.timestamp <= end_date)
-                if min_confidence is not None:
-                    stmt = stmt.where(Detection.confidence >= min_confidence)
-                if max_confidence is not None:
-                    stmt = stmt.where(Detection.confidence <= max_confidence)
-
-                # Apply ordering
-                order_column = cast(
-                    InstrumentedAttribute, getattr(Detection, order_by, Detection.timestamp)
-                )
-                if order_desc:
-                    stmt = stmt.order_by(order_column.desc())
-                else:
-                    stmt = stmt.order_by(order_column)
-
-                # Apply pagination
-                if offset:
-                    stmt = stmt.offset(offset)
-                if limit:
-                    stmt = stmt.limit(limit)
-
-                result = await session.execute(stmt)
-                return list(result.scalars())
-            except SQLAlchemyError:
-                await session.rollback()
-                logger.exception("Error querying detections")
-                raise
-
-    async def get_detections_with_localization(
-        self,
-        filters: dict[str, Any] | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-        language_code: str = "en",
-    ) -> list[DetectionWithLocalization]:
-        """Get detections with localized names from multiple databases.
-
-        Priority: IOC → PatLevin → Avibase
+        All queries are delegated to DetectionQueryService for consistency.
         """
         if not self.query_service:
-            raise RuntimeError("DetectionQueryService not available for localization")
+            raise RuntimeError("DetectionQueryService not available")
 
-        # Convert filters to method parameters
-        kwargs = {
-            "limit": limit or 100,
-            "offset": offset or 0,
-            "language_code": language_code,
-        }
-
-        if filters:
-            kwargs.update(
-                {
-                    "since": filters.get("start_date"),
-                    "scientific_name_filter": filters.get("species"),
-                    "family_filter": filters.get("family"),
-                }
-            )
-
-        return await self.query_service.get_detections_with_localization(**kwargs)
-
-    async def get_detection_with_localization(
-        self,
-        detection_id: int,
-        language_code: str = "en",
-    ) -> DetectionWithLocalization | None:
-        """Get single detection with localized names."""
-        detections = await self.get_detections_with_localization(
-            filters={"detection_id": detection_id},
-            limit=1,
+        # Always use DetectionQueryService for all queries
+        return await self.query_service.query_detections(
+            species=species,
+            start_date=start_date,
+            end_date=end_date,
+            min_confidence=min_confidence,
+            max_confidence=max_confidence,
+            limit=limit,
+            offset=offset,
+            order_by=order_by,
+            order_desc=order_desc,
+            include_localization=include_localization,
             language_code=language_code,
         )
-        return detections[0] if detections else None
 
     # ==================== Count Methods ====================
 
@@ -470,204 +387,6 @@ class DataManager:
         scientific = detection.scientific_name
         common = detection.common_name
         return str(scientific) if scientific else str(common) if common else "Unknown"
-
-    # ==================== Specialized Queries ====================
-
-    async def get_recent_detections(self, limit: int = 10) -> Sequence[DetectionBase]:
-        """Get the most recent detections."""
-        # When include_localization is False (default), we get Sequence[DetectionBase]
-        result = await self.query_detections(limit=limit, order_by="timestamp", order_desc=True)
-        assert isinstance(result, list)
-        return result
-
-    async def get_detections_by_species(self, species_name: str) -> Sequence[DetectionBase]:
-        """Get all detections for a specific species."""
-        # When include_localization is False (default), we get Sequence[DetectionBase]
-        result = await self.query_detections(species=species_name)
-        assert isinstance(result, list)
-        return result
-
-    async def get_detection_counts_by_date_range(
-        self, start_date: datetime.datetime, end_date: datetime.datetime
-    ) -> dict[str, int]:
-        """Get total detection count and unique species count within a date range."""
-        async with self.database_service.get_async_db() as session:
-            try:
-                total_count = await session.scalar(
-                    select(func.count())
-                    .select_from(Detection)
-                    .where(Detection.timestamp >= start_date)
-                    .where(Detection.timestamp <= end_date)
-                )
-                unique_species_count = await session.scalar(
-                    select(func.count(func.distinct(Detection.scientific_name)))
-                    .where(Detection.timestamp >= start_date)
-                    .where(Detection.timestamp <= end_date)
-                )
-                return {
-                    "total_count": total_count,
-                    "unique_species": unique_species_count,
-                }
-            except SQLAlchemyError:
-                await session.rollback()
-                logger.exception("Error getting detection counts by date range")
-                raise
-
-    async def get_top_species_with_prior_counts(
-        self,
-        start_date: datetime.datetime,
-        end_date: datetime.datetime,
-        prior_start_date: datetime.datetime,
-        prior_end_date: datetime.datetime,
-    ) -> list[dict[str, Any]]:
-        """Get top 10 species for current and prior periods."""
-        async with self.database_service.get_async_db() as session:
-            try:
-                current_week_subquery = (
-                    select(
-                        cast(InstrumentedAttribute, Detection.scientific_name).label(
-                            "scientific_name"
-                        ),
-                        func.coalesce(
-                            Detection.common_name,
-                            Detection.scientific_name,
-                        ).label("common_name"),
-                        func.count(Detection.scientific_name).label("current_count"),
-                    )
-                    .where(Detection.timestamp >= start_date)
-                    .where(Detection.timestamp <= end_date)
-                    .group_by(Detection.scientific_name)
-                    .subquery()
-                )
-
-                prior_week_subquery = (
-                    select(
-                        cast(InstrumentedAttribute, Detection.scientific_name).label(
-                            "scientific_name"
-                        ),
-                        func.count(Detection.scientific_name).label("prior_count"),
-                    )
-                    .where(Detection.timestamp >= prior_start_date)
-                    .where(Detection.timestamp <= prior_end_date)
-                    .group_by(Detection.scientific_name)
-                    .subquery()
-                )
-
-                result = await session.execute(
-                    select(
-                        current_week_subquery.c.scientific_name,
-                        current_week_subquery.c.common_name,
-                        current_week_subquery.c.current_count,
-                        func.coalesce(prior_week_subquery.c.prior_count, 0).label("prior_count"),
-                    )
-                    .outerjoin(
-                        prior_week_subquery,
-                        current_week_subquery.c.scientific_name
-                        == prior_week_subquery.c.scientific_name,
-                    )
-                    .order_by(current_week_subquery.c.current_count.desc())
-                    .limit(10)
-                )
-                results = list(result)
-
-                return [
-                    {
-                        "scientific_name": row["scientific_name"],
-                        "common_name": row["common_name"],
-                        "current_count": row["current_count"],
-                        "prior_count": row["prior_count"],
-                    }
-                    for row in results
-                ]
-            except SQLAlchemyError:
-                await session.rollback()
-                logger.exception("Error getting top species with prior counts")
-                raise
-
-    async def get_new_species_data(
-        self, start_date: datetime.datetime, end_date: datetime.datetime
-    ) -> list[dict[str, Any]]:
-        """Get new species not present before the start date."""
-        async with self.database_service.get_async_db() as session:
-            try:
-                # Subquery to find all species detected before the start_date
-                prior_species_subquery = (
-                    select(Detection.scientific_name)
-                    .where(Detection.timestamp < start_date)
-                    .distinct()
-                )
-
-                # Query for new species in current range
-                result = await session.execute(
-                    select(
-                        Detection.scientific_name,
-                        func.coalesce(
-                            Detection.common_name,
-                            Detection.scientific_name,
-                        ).label("common_name"),
-                        func.count(Detection.scientific_name).label("count"),
-                    )
-                    .where(
-                        Detection.timestamp >= start_date,
-                        Detection.timestamp <= end_date,
-                        ~cast(InstrumentedAttribute, Detection.scientific_name).in_(
-                            prior_species_subquery
-                        ),
-                    )
-                    .group_by(Detection.scientific_name)
-                    .order_by(func.count(Detection.scientific_name).desc())
-                )
-                new_species_results = list(result)
-
-                return [
-                    {
-                        "species": row["scientific_name"],
-                        "common_name": row["common_name"],
-                        "count": row["count"],
-                    }
-                    for row in new_species_results
-                ]
-            except SQLAlchemyError:
-                await session.rollback()
-                logger.exception("Error getting new species data")
-                raise
-
-    async def get_best_detections(self, limit: int = 10) -> Sequence[DetectionBase]:
-        """Get the best detection for each species, sorted by confidence."""
-        async with self.database_service.get_async_db() as session:
-            try:
-                # Subquery to rank detections by confidence for each species
-                ranked_subquery = (
-                    select(
-                        Detection.id,
-                        func.row_number()
-                        .over(
-                            partition_by=Detection.scientific_name,
-                            order_by=cast(InstrumentedAttribute, Detection.confidence).desc(),
-                        )
-                        .label("rn"),
-                    )
-                ).subquery()
-
-                # Get the IDs of the top-ranked detection for each species
-                best_detection_ids_query = select(ranked_subquery.c.id).where(
-                    ranked_subquery.c.rn == 1
-                )
-
-                # Get the full detection objects for those IDs
-                result = await session.scalars(
-                    select(Detection)
-                    .where(cast(InstrumentedAttribute, Detection.id).in_(best_detection_ids_query))
-                    .order_by(cast(InstrumentedAttribute, Detection.confidence).desc())
-                    .limit(limit)
-                )
-                best_detections = result.all()
-
-                return best_detections
-            except SQLAlchemyError:
-                await session.rollback()
-                logger.exception("Error getting best detections")
-                raise
 
     # ==================== AudioFile Operations ====================
 
@@ -784,12 +503,12 @@ class DataManager:
                     select(
                         Detection.scientific_name,
                         Detection.common_name,
-                        func.count().label("count"),
+                        func.count(Detection.id).label("count"),
                     )
                     .where(Detection.timestamp >= start_time)
                     .where(Detection.timestamp <= end_time)
                     .group_by(Detection.scientific_name, Detection.common_name)
-                    .order_by(func.count().desc())
+                    .order_by(desc("count"))
                 )
 
                 return [
@@ -824,7 +543,7 @@ class DataManager:
                 result = await session.execute(
                     select(
                         func.strftime("%H", Detection.timestamp).label("hour"),
-                        func.count().label("count"),
+                        func.count(Detection.id).label("count"),
                     )
                     .where(Detection.timestamp >= start_time)
                     .where(Detection.timestamp <= end_time)
@@ -836,32 +555,6 @@ class DataManager:
             except SQLAlchemyError:
                 await session.rollback()
                 logger.exception("Error getting hourly counts")
-                raise
-
-    async def get_detections_in_range(
-        self, start_time: datetime.datetime, end_time: datetime.datetime
-    ) -> Sequence[Detection]:
-        """Get all detections within a time range.
-
-        Args:
-            start_time: Start of time range
-            end_time: End of time range
-
-        Returns:
-            List of Detection objects
-        """
-        async with self.database_service.get_async_db() as session:
-            try:
-                result = await session.execute(
-                    select(Detection)
-                    .where(Detection.timestamp >= start_time)
-                    .where(Detection.timestamp <= end_time)
-                    .order_by(desc(Detection.timestamp))
-                )
-                return result.scalars().all()
-            except SQLAlchemyError:
-                await session.rollback()
-                logger.exception("Error getting detections in range")
                 raise
 
     # ==================== Raw Query Escape Hatch ====================

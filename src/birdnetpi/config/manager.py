@@ -155,10 +155,8 @@ class ConfigManager:
             raw_config["logging"] = LoggingConfig(**raw_config["logging"])
 
         # Filter out any unexpected fields that might remain from incomplete migrations
-        # Get the expected fields from BirdNETConfig
-        from dataclasses import fields
-
-        expected_fields = {field.name for field in fields(BirdNETConfig)}
+        # Get the expected fields from BirdNETConfig using Pydantic's model_fields
+        expected_fields = set(BirdNETConfig.model_fields.keys())
 
         # Only include fields that BirdNETConfig expects
         filtered_config = {k: v for k, v in raw_config.items() if k in expected_fields}
@@ -182,6 +180,5 @@ class ConfigManager:
         Returns:
             dict: Configuration as dictionary
         """
-        from dataclasses import asdict
-
-        return asdict(config)
+        # Use Pydantic's model_dump() method for serialization
+        return config.model_dump()

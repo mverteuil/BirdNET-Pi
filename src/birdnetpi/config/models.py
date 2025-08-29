@@ -1,23 +1,21 @@
 """Configuration models for BirdNET-Pi.
 
-This module contains all configuration-related dataclasses used throughout the application.
+This module contains all configuration-related Pydantic models used throughout the application.
 """
 
-from dataclasses import dataclass, field
+from pydantic import BaseModel, Field
 
 
-@dataclass
-class LoggingConfig:
+class LoggingConfig(BaseModel):
     """Structlog-based logging configuration."""
 
     level: str = "INFO"
     json_logs: bool | None = None  # None = auto-detect based on environment
     include_caller: bool = False  # Include file:line info (useful for debugging)
-    extra_fields: dict[str, str] = field(default_factory=lambda: {"service": "birdnet-pi"})
+    extra_fields: dict[str, str] = Field(default_factory=lambda: {"service": "birdnet-pi"})
 
 
-@dataclass
-class BirdNETConfig:
+class BirdNETConfig(BaseModel):
     """Configuration settings for the BirdNET-Pi application."""
 
     # Version tracking
@@ -42,7 +40,7 @@ class BirdNETConfig:
     analysis_overlap: float = 0.5  # Overlap in seconds between consecutive audio segments
 
     # Logging settings
-    logging: LoggingConfig = field(default_factory=LoggingConfig)
+    logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
     # BirdWeather
     birdweather_id: str = ""
@@ -50,10 +48,10 @@ class BirdNETConfig:
     # =========== NOTIFICATION CONFIGURATION ===========
 
     # Service Endpoints (named targets)
-    apprise_targets: dict[str, str] = field(default_factory=dict)
+    apprise_targets: dict[str, str] = Field(default_factory=dict)
     # Example: {"email": "mailto://...", "discord": "discord://..."}
 
-    webhook_targets: dict[str, str] = field(default_factory=dict)
+    webhook_targets: dict[str, str] = Field(default_factory=dict)
     # Example: {"home_assistant": "http://...", "ifttt": "https://..."}
 
     # Default Message Templates (Jinja2 supported)
@@ -63,7 +61,7 @@ class BirdNETConfig:
     )
 
     # Notification Rules
-    notification_rules: list[dict] = field(default_factory=list)
+    notification_rules: list[dict] = Field(default_factory=list)
     # Each rule is a dict with:
     # - name: str (user-friendly name)
     # - enabled: bool (active/inactive)
@@ -111,7 +109,7 @@ class BirdNETConfig:
 
     # Webhook Integration settings
     enable_webhooks: bool = False  # Enable webhook notifications
-    webhook_urls: list[str] = field(default_factory=list)  # List of webhook URLs
+    webhook_urls: list[str] = Field(default_factory=list)  # List of webhook URLs
     webhook_events: str = "detection,health,gps,system"  # Events to send via webhooks
 
     # Git Update settings

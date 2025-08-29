@@ -58,8 +58,11 @@ async def generate_dummy_detections(
         species_tensor = random.choice(species_list)
         scientific_name, common_name = species_tensor.split("_", 1)
 
-        # Add random microseconds to ensure unique file paths
-        unique_suffix = random.randint(0, 999999)
+        # Generate dummy audio data (base64 encoded)
+        import base64
+
+        dummy_audio = b"\x00" * 1024  # 1KB of null bytes as dummy audio
+        audio_data_base64 = base64.b64encode(dummy_audio).decode("utf-8")
 
         detection_data = {
             "species_tensor": species_tensor,
@@ -67,17 +70,15 @@ async def generate_dummy_detections(
             "common_name": common_name,
             "confidence": round(random.uniform(0.5, 0.99), 2),
             "timestamp": timestamp,
-            "audio_file_path": (
-                f"/app/audio/{timestamp.strftime('%Y%m%d_%H%M%S')}_{unique_suffix:06d}.wav"
-            ),
+            "audio_data": audio_data_base64,  # Base64-encoded audio
+            "sample_rate": 48000,  # Standard sample rate
+            "channels": 1,  # Mono audio
             "latitude": round(random.uniform(30.0, 40.0), 4),
             "longitude": round(random.uniform(-80.0, -70.0), 4),
             "species_confidence_threshold": random.uniform(0.1, 0.5),
             "week": timestamp.isocalendar()[1],
             "sensitivity_setting": random.uniform(0.5, 0.9),
             "overlap": random.uniform(0.0, 0.5),
-            "duration": 5.0,  # Added for DetectionEvent
-            "size_bytes": 1024,  # Added for DetectionEvent
         }
         # Convert dict to DetectionEvent object
         detection_event = DetectionEvent(**detection_data)
@@ -92,6 +93,7 @@ if __name__ == "__main__":
     from birdnetpi.database.database_service import DatabaseService
     from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
     from birdnetpi.species.display import SpeciesDisplayService
+    from birdnetpi.system.file_manager import FileManager
     from birdnetpi.system.path_resolver import PathResolver
 
     async def run() -> None:
@@ -102,8 +104,13 @@ if __name__ == "__main__":
         bnp_database_service = DatabaseService(path_resolver.get_database_path())
         multilingual_service = MultilingualDatabaseService(path_resolver)
         species_display_service = SpeciesDisplayService(config)
+        file_manager = FileManager(path_resolver)
         data_manager = DataManager(
-            bnp_database_service, multilingual_service, species_display_service
+            bnp_database_service,
+            multilingual_service,
+            species_display_service,
+            file_manager,
+            path_resolver,
         )
         await generate_dummy_detections(data_manager)
 

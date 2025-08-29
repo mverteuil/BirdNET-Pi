@@ -216,12 +216,16 @@ async def data_manager_with_db(populated_database, mocker):
     mock_multilingual = mocker.MagicMock(spec=MultilingualDatabaseService)
     mock_species_display = mocker.MagicMock(spec=SpeciesDisplayService)
     mock_query_service = mocker.MagicMock(spec=DetectionQueryService)
+    mock_file_manager = mocker.MagicMock()
+    mock_path_resolver = mocker.MagicMock()
 
     return DataManager(
         database_service=populated_database,
         multilingual_service=mock_multilingual,
         species_display_service=mock_species_display,
         detection_query_service=mock_query_service,
+        file_manager=mock_file_manager,
+        path_resolver=mock_path_resolver,
     )
 
 
@@ -328,37 +332,6 @@ class TestAnalyticsIntegration:
         assert hourly_dict.get(18, 0) == 0
 
     @pytest.mark.asyncio
-    async def test_get_detections_in_range(self, data_manager_with_db):
-        """Test getting all detections within a time range."""
-        # Get all detections on Jan 1, 2024
-        start_time = datetime.datetime(2024, 1, 1, 0, 0, 0)
-        end_time = datetime.datetime(2024, 1, 1, 23, 59, 59)
-
-        detections = await data_manager_with_db.get_detections_in_range(start_time, end_time)
-
-        assert len(detections) == 8
-
-        # All detections should be within the time range
-        for detection in detections:
-            assert detection.timestamp >= start_time
-            assert detection.timestamp <= end_time
-
-        # Test narrower time range
-        morning_start = datetime.datetime(2024, 1, 1, 7, 0, 0)
-        morning_end = datetime.datetime(2024, 1, 1, 7, 59, 59)
-
-        morning_detections = await data_manager_with_db.get_detections_in_range(
-            morning_start, morning_end
-        )
-        assert len(morning_detections) == 3
-
-        # Check species in morning detections
-        morning_species = {d.scientific_name for d in morning_detections}
-        assert "Cardinalis cardinalis" in morning_species
-        assert "Cyanocitta cristata" in morning_species
-        assert "Turdus migratorius" in morning_species
-
-    @pytest.mark.asyncio
     async def test_empty_database_queries(
         self,
         test_database,
@@ -368,11 +341,18 @@ class TestAnalyticsIntegration:
     ):
         """Test analytics methods with empty database."""
         # Create DataManager with empty database
+        from unittest.mock import MagicMock
+
+        mock_file_manager = MagicMock()
+        mock_path_resolver = MagicMock()
+
         data_manager = DataManager(
             database_service=test_database,
             multilingual_service=mock_multilingual_service,
             species_display_service=mock_species_display_service,
             detection_query_service=mock_detection_query_service,
+            file_manager=mock_file_manager,
+            path_resolver=mock_path_resolver,
         )
 
         start_time = datetime.datetime(2024, 1, 1, 0, 0, 0)
@@ -388,4 +368,3 @@ class TestAnalyticsIntegration:
 
         assert await data_manager.get_species_counts(start_time, end_time) == []
         assert await data_manager.get_hourly_counts(date(2024, 1, 1)) == []
-        assert await data_manager.get_detections_in_range(start_time, end_time) == []

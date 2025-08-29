@@ -9,6 +9,7 @@ from birdnetpi.database.database_service import DatabaseService
 from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.species.display import SpeciesDisplayService
+from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.system_control_service import SystemControlService
 from birdnetpi.utils.dummy_data_generator import generate_dummy_detections
@@ -36,8 +37,13 @@ async def run(count: int = 100, days: int = 3) -> None:
             bnp_database_service = DatabaseService(db_path)
             multilingual_service = MultilingualDatabaseService(path_resolver)
             species_display_service = SpeciesDisplayService(config)
+            file_manager = FileManager(path_resolver)
             data_manager = DataManager(
-                bnp_database_service, multilingual_service, species_display_service
+                bnp_database_service,
+                multilingual_service,
+                species_display_service,
+                file_manager,
+                path_resolver,
             )
             detections = await data_manager.get_all_detections()
             if detections:
@@ -72,8 +78,13 @@ async def run(count: int = 100, days: int = 3) -> None:
         bnp_database_service = DatabaseService(db_path)
         multilingual_service = MultilingualDatabaseService(path_resolver)
         species_display_service = SpeciesDisplayService(config)
+        file_manager = FileManager(path_resolver)
         data_manager = DataManager(
-            bnp_database_service, multilingual_service, species_display_service
+            bnp_database_service,
+            multilingual_service,
+            species_display_service,
+            file_manager,
+            path_resolver,
         )
         await generate_dummy_detections(data_manager, num_detections=count, max_days_ago=days)
         print(f"Dummy data generation complete. Generated {count} detections.")

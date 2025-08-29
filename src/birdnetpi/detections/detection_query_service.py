@@ -6,17 +6,22 @@ ATTACH DATABASE functionality to efficiently join across databases while minimiz
 write operations to protect SD card longevity.
 """
 
+import logging
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 from uuid import UUID
 
 from dateutil import parser as date_parser
-from sqlalchemy import text
+from sqlalchemy import desc, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import Select
 
 from birdnetpi.database.database_service import DatabaseService
-from birdnetpi.detections.models import Detection, DetectionWithLocalization
+from birdnetpi.detections.models import Detection, DetectionBase, DetectionWithLocalization
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
+
+logger = logging.getLogger(__name__)
 
 
 class DetectionQueryService:
@@ -57,6 +62,98 @@ class DetectionQueryService:
         if isinstance(timestamp_value, str):
             return date_parser.parse(timestamp_value)
         return datetime.fromisoformat(str(timestamp_value))
+
+    def _apply_species_filter(self, stmt: Select, species: str | list[str] | None) -> Select:
+        """Apply species filter to query statement."""
+        if not species:
+            return stmt
+
+        if isinstance(species, list):
+            # Note: pyright doesn't recognize .in_() on SQLModel columns (known issue)
+            return stmt.where(Detection.scientific_name.in_(species))  # type: ignore[attr-defined]
+        else:
+            return stmt.where(Detection.scientific_name == species)
+
+    def _apply_date_filters(
+        self, stmt: Select, start_date: datetime | None, end_date: datetime | None
+    ) -> Select:
+        """Apply date range filters to query statement."""
+        if start_date:
+            stmt = stmt.where(Detection.timestamp >= start_date)
+        if end_date:
+            stmt = stmt.where(Detection.timestamp <= end_date)
+        return stmt
+
+    def _apply_confidence_filters(
+        self, stmt: Select, min_confidence: float | None, max_confidence: float | None
+    ) -> Select:
+        """Apply confidence range filters to query statement."""
+        if min_confidence is not None:
+            stmt = stmt.where(Detection.confidence >= min_confidence)
+        if max_confidence is not None:
+            stmt = stmt.where(Detection.confidence <= max_confidence)
+        return stmt
+
+    def _apply_ordering(self, stmt: Select, order_by: str, order_desc: bool) -> Select:
+        """Apply ordering to query statement."""
+        # Safely get the column attribute
+        if hasattr(Detection, order_by):
+            order_column = getattr(Detection, order_by)
+        else:
+            order_column = Detection.timestamp  # Default to timestamp
+
+        if order_desc:
+            return stmt.order_by(desc(order_column))
+        else:
+            return stmt.order_by(order_column)
+
+    async def query_detections(
+        self,
+        species: str | list[str] | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        min_confidence: float | None = None,
+        max_confidence: float | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+        order_by: str = "timestamp",
+        order_desc: bool = True,
+        include_localization: bool = False,
+        language_code: str = "en",
+    ) -> Sequence[DetectionBase] | list[DetectionWithLocalization]:
+        """Query detections with flexible filtering and optional localization.
+
+        This is the main query method that handles all detection queries.
+        """
+        if include_localization:
+            # Use localization-aware query
+            return await self.get_detections_with_localization(
+                limit=limit or 100,
+                offset=offset or 0,
+                language_code=language_code,
+                since=start_date,
+                scientific_name_filter=species if isinstance(species, str) else None,
+                # Note: min/max confidence and end_date filters not yet supported
+            )
+
+        # Standard query without localization
+        async with self.bnp_database_service.get_async_db() as session:
+            stmt = select(Detection)
+
+            # Apply filters using helper methods
+            stmt = self._apply_species_filter(stmt, species)
+            stmt = self._apply_date_filters(stmt, start_date, end_date)
+            stmt = self._apply_confidence_filters(stmt, min_confidence, max_confidence)
+            stmt = self._apply_ordering(stmt, order_by, order_desc)
+
+            # Apply pagination
+            if offset:
+                stmt = stmt.offset(offset)
+            if limit:
+                stmt = stmt.limit(limit)
+
+            result = await session.execute(stmt)
+            return list(result.scalars())
 
     async def get_detections_with_localization(
         self,
@@ -266,6 +363,33 @@ class DetectionQueryService:
 
                 result = await session.execute(query_sql, params)
                 results = result.fetchall()
+
+                # Debug logging
+                logger.info(
+                    f"Species summary query returned {len(results)} species "
+                    f"for period since {params.get('since')}"
+                )
+
+                # Additional debugging - check what's actually in the database
+                if len(results) == 0 and params.get("since"):
+                    # Query to check recent detections
+                    check_query = text("""
+                        SELECT
+                            COUNT(*) as total_detections,
+                            MIN(timestamp) as earliest,
+                            MAX(timestamp) as latest,
+                            COUNT(CASE WHEN timestamp >= :since THEN 1 END)
+                                as detections_after_since
+                        FROM detections
+                    """)
+                    check_result = await session.execute(check_query, {"since": params["since"]})
+                    check_row = check_result.fetchone()
+                    if check_row:
+                        logger.info(
+                            f"Database check - Total: {check_row.total_detections}, "
+                            f"Earliest: {check_row.earliest}, Latest: {check_row.latest}, "
+                            f"After {params['since']}: {check_row.detections_after_since}"
+                        )
 
                 species_summary = [
                     {

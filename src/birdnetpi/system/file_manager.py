@@ -64,11 +64,21 @@ class FileManager:
         channels: int,
     ) -> AudioFile:
         """Save raw audio bytes to a WAV file and return an in-memory AudioFile instance."""
+        import numpy as np
+
         full_path = self.base_path / relative_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Assuming raw_audio_bytes is int16 data
-        sf.write(str(full_path), raw_audio_bytes, sample_rate, subtype="PCM_16")
+        # Convert bytes to numpy array
+        audio_array = np.frombuffer(raw_audio_bytes, dtype=np.int16)
+
+        # Reshape for the correct number of channels
+        if channels > 1:
+            # Reshape to (samples, channels) for multi-channel audio
+            audio_array = audio_array.reshape(-1, channels)
+
+        # Write the audio file
+        sf.write(str(full_path), audio_array, sample_rate, subtype="PCM_16")
 
         duration = len(raw_audio_bytes) / (
             sample_rate * channels * 2

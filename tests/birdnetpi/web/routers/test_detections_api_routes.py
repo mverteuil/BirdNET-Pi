@@ -57,16 +57,19 @@ class TestDetectionsAPIRoutes:
         mock_detection.id = 123
         client.mock_data_manager.create_detection = AsyncMock(return_value=mock_detection)
 
+        import base64
+
+        test_audio = base64.b64encode(b"test audio data").decode("utf-8")
+
         detection_data = {
             "species_tensor": "Testus species_Test Bird",
             "scientific_name": "Testus species",
             "common_name": "Test Bird",
             "confidence": 0.95,
             "timestamp": "2025-01-15T10:30:00",
-            "audio_file_path": "/test/audio.wav",
-            "duration": 3.0,
-            "size_bytes": 1024,
-            "recording_start_time": "2025-01-15T10:30:00",
+            "audio_data": test_audio,  # Base64-encoded audio
+            "sample_rate": 48000,
+            "channels": 1,
             "latitude": 40.7128,
             "longitude": -74.0060,
             "species_confidence_threshold": 0.0,
@@ -104,7 +107,8 @@ class TestDetectionsAPIRoutes:
                 longitude=-74.1,
             ),
         ]
-        client.mock_data_manager.get_recent_detections = AsyncMock(return_value=mock_detections)
+        # Mock query_detections instead of get_recent_detections
+        client.mock_data_manager.query_detections = AsyncMock(return_value=mock_detections)
 
         response = client.get("/api/detections/recent?limit=10&include_l10n=false")
 
@@ -148,7 +152,7 @@ class TestDetectionsAPIRoutes:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == 123
+        assert data["id"] == "123"  # API returns ID as string
         assert data["common_name"] == "Test Bird"
 
     def test_get_detection_by_id_not_found(self, client):

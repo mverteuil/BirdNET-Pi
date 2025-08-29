@@ -35,9 +35,9 @@ class TestDummyDataGenerator:
             detection_event = call_args.args[0]
             assert isinstance(detection_event, DetectionEvent)
             assert isinstance(detection_event.timestamp, datetime.datetime)
-            assert isinstance(detection_event.audio_file_path, str)
-            assert isinstance(detection_event.duration, float)
-            assert isinstance(detection_event.size_bytes, int)
+            assert isinstance(detection_event.audio_data, str)  # Base64 encoded
+            assert isinstance(detection_event.sample_rate, int)
+            assert isinstance(detection_event.channels, int)
 
     def test_main_entry_point_via_subprocess(self, repo_root):
         """Test the __main__ block by running module as script."""

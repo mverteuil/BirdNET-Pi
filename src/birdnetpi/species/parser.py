@@ -12,10 +12,13 @@ Architecture:
 - i18n layer: IOC multilingual translations with English fallback
 """
 
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, NamedTuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
@@ -138,13 +141,21 @@ class SpeciesParser:
         if not scientific_name or not common_name:
             raise ValueError(f"Invalid species components in: '{tensor_output}'")
 
-        # Use IOC canonical name if available, otherwise fallback to tensor common name
-        ioc_common_name = None
+        # For now, use the tensor common name from BirdNET labels as the source of truth
+        # IOC taxonomy differs from BirdNET taxonomy (e.g., IOC has "Mangrove Warbler"
+        # for Setophaga petechia while BirdNET has "Yellow Warbler")
+        # TODO: Make this configurable - allow users to choose between BirdNET or IOC taxonomy
+        final_common_name = common_name
+
+        # Optionally check IOC for additional metadata but don't override common name
         if parser_instance := SpeciesParser._get_parser_instance():
             ioc_common_name = await parser_instance.get_ioc_common_name(scientific_name)
-
-        # Use IOC canonical name if available, otherwise use tensor common name
-        final_common_name = ioc_common_name or common_name
+            # Log if there's a mismatch for debugging
+            if ioc_common_name and ioc_common_name != common_name:
+                logger.debug(
+                    f"Taxonomy mismatch for {scientific_name}: "
+                    f"BirdNET='{common_name}', IOC='{ioc_common_name}'"
+                )
 
         # Construct the full species name using the best available common name
         full_species = f"{final_common_name} ({scientific_name})"
