@@ -183,7 +183,6 @@ class TestContainerIntegration:
             "location_service",
             "system_control_service",
             "audio_websocket_service",
-            "spectrogram_service",
             "gps_service",
             "mqtt_service",
             "webhook_service",

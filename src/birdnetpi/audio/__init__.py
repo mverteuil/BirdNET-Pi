@@ -5,7 +5,6 @@ This module handles all audio-related functionality including:
 - Audio device management
 - Audio file processing and storage
 - Audio filtering and processing pipelines
-- Spectrograms and visualizations
 """
 
 __all__ = []

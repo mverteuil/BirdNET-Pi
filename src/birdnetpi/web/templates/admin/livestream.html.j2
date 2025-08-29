@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BirdNET-Pi Livestream</title>
+    <title>BirdNET-Pi Livestream (Client FFT)</title>
     <link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}">
     <style>
         /* Page-specific styles */
@@ -14,11 +14,77 @@
             margin-bottom: 0.5rem;
             color: var(--color-text-emphasis);
         }
-        
-        /* Active navigation item */
-        .nav-item.active {
-            font-weight: bold;
-            border-bottom: 2px solid var(--color-border-primary);
+
+        /* Spectrogram layout */
+        .spectrogram-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 1rem;
+            position: relative;
+        }
+
+        .freq-axis-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 40px;
+            padding-right: 5px;
+            text-align: right;
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        .freq-axis-container span {
+            line-height: 1;
+        }
+
+        .canvas-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .time-axis {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        .gradient-legend {
+            width: 30px;
+            margin-left: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .gradient-bar {
+            flex: 1;
+            background: linear-gradient(to top,
+                #fffef0 0%,
+                #ffff64 20%,
+                #ffc832 40%,
+                #ff9b00 60%,
+                #ff0000 80%,
+                #9b0000 100%);
+            border: 1px solid #ccc;
+            border-radius: 2px;
+        }
+
+        .gradient-labels {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: #666;
+            padding-left: 5px;
+        }
+
+        #spectrogramCanvas {
+            border: 1px solid #ddd;
+            display: block;
+            width: 100%;
         }
     </style>
 </head>
@@ -31,46 +97,40 @@
 </header>
 
 <!-- Navigation -->
-<nav class="main-nav">
-    <a href="/" class="nav-item">Dashboard</a>
-    <a href="/reports/detections" class="nav-item">Detections</a>
-    <a href="/reports/best" class="nav-item">Best Recordings</a>
-    <a href="/livestream" class="nav-item active">Audio Stream</a>
-    <a href="/reports" class="nav-item">Analysis</a>
-    <a href="/field" class="nav-item">Field Recording</a>
-    <a href="/admin/settings" class="nav-item">Settings</a>
-    <a href="/api/system/overview" class="nav-item">API</a>
-</nav>
+{% set active_page = 'livestream' %}
+{% include 'includes/navigation.html.j2' %}
 
 <!-- Page title -->
-<h1 class="page-title">Live Audio Stream</h1>
-<p class="subtitle">Real-time acoustic monitoring · 48 kHz sampling · 3-second windows</p>
+<h1 class="page-title">Live Audio Stream (Client-Side FFT)</h1>
+<p class="subtitle">Real-time acoustic monitoring · 48 kHz sampling · Client-side processing</p>
 
 <!-- Connection status -->
 <div class="status-line">
     Audio: <span id="audioStatus" class="status-value status-inactive">Disconnected</span>
     ·
-    Spectrogram: <span id="spectrogramStatus" class="status-value status-inactive">Disconnected</span>
-    ·
+    Performance: <span id="performanceStatus" class="status-value">-- ms/frame</span> ·
     Updates: <span id="updateRate" class="status-value">0 Hz</span> ·
-    Latency: <span id="latency" class="status-value">-- ms</span> ·
-    Buffer: <span id="bufferSize" class="status-value">0 KB</span>
+    Buffer: <span id="bufferSize" class="status-value">0 KB</span> ·
+    <span style="color: var(--color-status-success);">● Single WebSocket</span>
 </div>
 
 <!-- Controls -->
 <div class="controls">
     <div class="control-row">
-        <button class="control-button" id="audioToggle" onclick="toggleAudio()">Connect
-            Audio
-        </button>
-        <button class="control-button" id="spectrogramToggle"
-                onclick="toggleSpectrogram()">Connect Spectrogram
-        </button>
+        <button class="control-button" id="audioToggle" onclick="toggleAudio()">Connect Audio</button>
         <span class="control-label">Volume:</span>
         <input type="range" min="0" max="100" value="60"
                class="volume-slider"
                onchange="setVolume(this.value)">
         <span id="volumeValue" class="status-value">60%</span>
+
+        <span class="control-label ml-2rem">FFT Size:</span>
+        <select id="fftSize" onchange="updateFFTSize(this.value)">
+            <option value="512">512</option>
+            <option value="1024">1024</option>
+            <option value="2048" selected>2048</option>
+            <option value="4096">4096</option>
+        </select>
     </div>
     <div class="control-row">
         <span class="control-label">Frequency max:</span>
@@ -80,7 +140,7 @@
         <input type="number" class="control-value" id="timeWindow" value="10" min="5"
                max="60" step="5" onchange="updateTimeWindow()"> s
         <span class="control-label ml-2rem">Gain:</span>
-        <input type="range" min="1" max="100" value="50"
+        <input type="range" min="1" max="100" value="25"
                class="gain-slider"
                onchange="updateGain(this.value)">
     </div>
@@ -92,31 +152,44 @@
     <div>
         <!-- Spectrogram -->
         <div class="spectrogram-section">
-            <h2 class="section-title">Spectrogram</h2>
-            <div class="freq-axis">
-                <span>0 Hz</span>
-                <span>3 kHz</span>
-                <span>6 kHz</span>
-                <span>9 kHz</span>
-                <span id="maxFreqLabel">12 kHz</span>
-            </div>
-            <canvas id="spectrogramCanvas"></canvas>
-            <div class="time-axis">
-                <span id="timeStart">-10s</span>
-                <span>-7.5s</span>
-                <span>-5s</span>
-                <span>-2.5s</span>
-                <span>now</span>
+            <h2 class="section-title">Spectrogram (Client-Side FFT)</h2>
+            <div class="spectrogram-container">
+                <div class="freq-axis-container">
+                    <span id="maxFreqLabel">12k</span>
+                    <span>9k</span>
+                    <span>6k</span>
+                    <span>3k</span>
+                    <span>0</span>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="spectrogramCanvas"></canvas>
+                    <div class="time-axis">
+                        <span id="timeStart">-10s</span>
+                        <span>-7.5s</span>
+                        <span>-5s</span>
+                        <span>-2.5s</span>
+                        <span>now</span>
+                    </div>
+                </div>
+                <div class="gradient-legend">
+                    <div style="font-size: 0.7rem; text-align: center; margin-bottom: 5px;">dB</div>
+                    <div class="gradient-bar"></div>
+                    <div class="gradient-labels">
+                        <span>0</span>
+                        <span>-20</span>
+                        <span>-40</span>
+                        <span>-60</span>
+                    </div>
+                </div>
             </div>
             <div class="inline-metrics">
-                <div class="metric-item">FFT size: <span class="metric-value">1024</span>
+                <div class="metric-item">FFT size: <span class="metric-value" id="fftSizeDisplay">2048</span>
                 </div>
-                <div class="metric-item">Overlap: <span class="metric-value">50%</span>
-                </div>
-                <div class="metric-item">Resolution: <span
-                        class="metric-value">46.9 Hz</span></div>
+                <div class="metric-item">Resolution: <span class="metric-value" id="freqResolution">46.9 Hz</span></div>
                 <div class="metric-item">Frame rate: <span class="metric-value"
                                                            id="frameRate">0 fps</span>
+                </div>
+                <div class="metric-item">Client CPU: <span class="metric-value" id="cpuUsage">0%</span>
                 </div>
             </div>
         </div>
@@ -156,8 +229,8 @@
 </div>
 
 <p class="annotation">
-    WebSocket protocol · Binary PCM streaming · Client-side FFT processing ·
-    Detection threshold ≥0.70 · Mel-scale spectrogram rendering
+    WebSocket protocol · Binary PCM streaming · <strong>Client-side FFT via Web Audio API</strong> ·
+    Detection threshold ≥0.70 · Zero server-side processing
 </p>
 
 <script>
@@ -166,30 +239,54 @@
         return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
     }
 
-    // WebSocket connections
+    // WebSocket connection (ONLY ONE!)
     let audioWs = null;
-    let spectrogramWs = null;
     let audioContext = null;
+    let analyser = null;
     let gainNode = null;
+    let oscillator = null;
+    let audioWorkletNode = null;
+    let useAudioWorklet = false; // Flag for AudioWorklet support
+    window.audioWorkletNode = null; // Expose globally for debugging
+    window.useAudioWorklet = false; // Expose globally for debugging
 
     // Canvas contexts
     const spectrogramCanvas = document.getElementById('spectrogramCanvas');
-    const spectrogramCtx = spectrogramCanvas.getContext('2d');
+    const spectrogramCtx = spectrogramCanvas.getContext('2d', { alpha: false });
     const waveformCanvas = document.getElementById('waveformCanvas');
-    const waveformCtx = waveformCanvas.getContext('2d');
+    const waveformCtx = waveformCanvas.getContext('2d', { alpha: false });
+
+    // Create offscreen canvas for double buffering
+    let offscreenCanvas = null;
+    let offscreenCtx = null;
 
     // Data storage
     let spectrogramHistory = [];
-    let waveformBuffer = [];
     let detections = [];
     let lastFrameTime = Date.now();
     let frameCount = 0;
+    let performanceStart = 0;
+    let animationFrameId = null;
+    let pendingFFTData = null;
+    let lastFFTTime = 0;
+    const MIN_FFT_INTERVAL = 20; // 50 Hz update rate for smooth visualization
 
     // Settings
-    let maxFrequency = 12000;
-    let timeWindow = 10;
-    let gain = 50;
+    let maxFrequency = 12000;  // Extended range for bird vocalizations
+    let timeWindow = 10;  // 10 seconds visible
+    let gain = 25;  // Lower gain reduces visual noise
     let volume = 60;
+    let fftSize = 2048;  // Higher resolution for smoother gradients
+
+    // Audio buffer for continuous playback
+    let audioQueue = [];
+    let isPlaying = false;
+    let nextStartTime = 0;
+
+    // Debug counters
+    let totalBytesReceived = 0;
+    let framesProcessed = 0;
+    let audioBuffersPlayed = 0;
 
     // Resize canvases
     function resizeCanvases() {
@@ -206,23 +303,35 @@
             audioWs.close();
             button.textContent = 'Connect Audio';
             button.classList.remove('active');
+
+            // Clean up AudioWorklet if used
+            if (useAudioWorklet && audioWorkletNode) {
+                audioWorkletNode.port.postMessage({ type: 'clear' });
+                audioWorkletNode.disconnect();
+                audioWorkletNode = null;
+            }
+
+            // Reset audio context to allow reconnection
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+                analyser = null;
+                gainNode = null;
+                useAudioWorklet = false;
+                window.useAudioWorklet = false;
+                window.audioWorkletNode = null;
+            }
+
+            // Reset timing
+            nextStartTime = 0;
+
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
         } else {
             connectAudio();
             button.textContent = 'Disconnect Audio';
-            button.classList.add('active');
-        }
-    }
-
-    // Toggle spectrogram connection
-    function toggleSpectrogram() {
-        const button = document.getElementById('spectrogramToggle');
-        if (spectrogramWs && spectrogramWs.readyState === WebSocket.OPEN) {
-            spectrogramWs.close();
-            button.textContent = 'Connect Spectrogram';
-            button.classList.remove('active');
-        } else {
-            connectSpectrogram();
-            button.textContent = 'Disconnect Spectrogram';
             button.classList.add('active');
         }
     }
@@ -231,10 +340,12 @@
     function connectAudio() {
         const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
         audioWs = new WebSocket(`${wsProtocol}//${location.host}/ws/audio`);
+        audioWs.binaryType = 'arraybuffer'; // Ensure binary data is received as ArrayBuffer
 
         audioWs.onopen = () => {
             updateStatus('audioStatus', 'Connected', true);
-            addMessage('Audio connected');
+            addMessage('✅ Audio connected');
+            window.audioWs = audioWs; // Make available for debugging
             initAudioContext();
         };
 
@@ -247,156 +358,394 @@
         audioWs.onclose = () => {
             updateStatus('audioStatus', 'Disconnected', false);
             addMessage('Audio disconnected');
-        };
-    }
 
-    // Connect spectrogram WebSocket
-    function connectSpectrogram() {
-        const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        spectrogramWs = new WebSocket(`${wsProtocol}//${location.host}/ws/spectrogram`);
+            // Clean up oscillator (for fallback mode)
+            if (oscillator) {
+                oscillator.stop();
+                oscillator.disconnect();
+                oscillator = null;
+            }
 
-        spectrogramWs.onopen = () => {
-            updateStatus('spectrogramStatus', 'Connected', true);
-            addMessage('Spectrogram connected');
-        };
+            // Clean up AudioWorklet
+            if (audioWorkletNode) {
+                audioWorkletNode.disconnect();
+                audioWorkletNode = null;
+            }
 
-        spectrogramWs.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                if (data.type === 'spectrogram') {
-                    handleSpectrogramData(data);
-                } else if (data.type === 'detection') {
-                    handleDetection(data);
-                }
-            } catch (e) {
-                console.error('Parse error:', e);
+            // Close audio context to free resources
+            if (audioContext && audioContext.state !== 'closed') {
+                audioContext.close();
+                audioContext = null;
+                analyser = null;
+                gainNode = null;
+            }
+
+            // Reset state
+            useAudioWorklet = false;
+            window.useAudioWorklet = false;
+            window.audioWorkletNode = null;
+            nextStartTime = 0;
+
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
             }
         };
 
-        spectrogramWs.onclose = () => {
-            updateStatus('spectrogramStatus', 'Disconnected', false);
-            addMessage('Spectrogram disconnected');
+        audioWs.onerror = (error) => {
+            addMessage('WebSocket error: ' + error);
         };
     }
 
-    // Initialize audio context
+    // Initialize audio context with Web Audio API FFT
     async function initAudioContext() {
         if (!audioContext) {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                sampleRate: 48000
+            });
+
+            // Create analyser node for FFT
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = fftSize;
+            analyser.smoothingTimeConstant = 0;
+
+            // Create gain node for volume control
             gainNode = audioContext.createGain();
-            gainNode.connect(audioContext.destination);
             gainNode.gain.value = volume / 100;
+
+            // Try to use AudioWorklet if available
+            if (typeof AudioWorkletNode !== 'undefined' && audioContext.audioWorklet) {
+                try {
+                    const moduleUrl = '{{ request.url_for("static", path="js/audio-processor.js") }}';
+
+                    // Load the AudioWorklet processor directly
+                    await audioContext.audioWorklet.addModule(moduleUrl);
+
+                    // Create AudioWorklet node with explicit output configuration
+                    audioWorkletNode = new AudioWorkletNode(audioContext, 'pcm-audio-processor', {
+                        numberOfInputs: 0,  // We're not using inputs
+                        numberOfOutputs: 1,  // We need one output
+                        outputChannelCount: [2]  // Stereo output
+                    });
+
+                    // Connect audio graph: worklet -> analyser -> gain -> destination
+                    // This matches the BufferSource path that was working
+                    audioWorkletNode.connect(analyser);
+                    analyser.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+
+                    // Set up message handling
+                    audioWorkletNode.port.onmessage = (event) => {
+                        if (event.data.type === 'underrun') {
+                            console.warn('Audio buffer underrun');
+                        } else if (event.data.type === 'metrics') {
+                            console.log('AudioWorklet metrics:', event.data);
+                        }
+                        // Removed bufferReady logging - too noisy
+                    };
+
+                    // Configure the worklet with balanced threshold
+                    audioWorkletNode.port.postMessage({
+                        type: 'config',
+                        sampleRate: 48000,
+                        bufferThreshold: 512  // Balance between latency and smooth playback
+                    });
+
+                    useAudioWorklet = true;
+                    window.useAudioWorklet = true; // Expose globally
+                    window.audioWorkletNode = audioWorkletNode; // Expose globally
+                    addMessage('✅ AudioWorklet initialized - low-latency mode active');
+                } catch (error) {
+                    console.error('❌ AudioWorklet initialization failed:', error);
+                    console.error('Error details:', {
+                        name: error.name,
+                        message: error.message,
+                        stack: error.stack
+                    });
+                    useAudioWorklet = false;
+                    addMessage(`⚠️ AudioWorklet failed: ${error.message} - using fallback`);
+                }
+            }
+
+            // Fallback: Create a silent oscillator for the analyser if not using AudioWorklet
+            if (!useAudioWorklet) {
+                gainNode.connect(audioContext.destination);
+
+                // Create a constant tone source for the analyser (silent)
+                oscillator = audioContext.createOscillator();
+                oscillator.frequency.value = 0; // Silent
+                oscillator.connect(analyser);
+                oscillator.start();
+
+                console.log('Using BufferSource fallback for audio processing');
+            }
+
+            // Use requestAnimationFrame for smoother rendering
+            startVisualization();
         }
+
         if (audioContext.state === 'suspended') {
             await audioContext.resume();
         }
     }
 
-    // Handle audio data
+    // Handle audio data from WebSocket
     function handleAudioData(arrayBuffer) {
-        if (!audioContext) return;
+        totalBytesReceived += arrayBuffer.byteLength;
+        window.totalBytesReceived = totalBytesReceived; // For debugging
 
-        const dataView = new DataView(arrayBuffer);
-        const dataLength = dataView.getUint32(0, true);
-        const pcmData = new Int16Array(arrayBuffer, 4, dataLength / 2);
+        if (!audioContext || !analyser) return;
 
-        // Update waveform
-        updateWaveform(pcmData);
+        try {
+            const dataView = new DataView(arrayBuffer);
+            const dataLength = dataView.getUint32(0, true);
+            const pcmData = new Int16Array(arrayBuffer, 4, dataLength / 2);
 
-        // Play audio
-        const audioBuffer = audioContext.createBuffer(1, pcmData.length, 48000);
-        const channelData = audioBuffer.getChannelData(0);
-        for (let i = 0; i < pcmData.length; i++) {
-            channelData[i] = pcmData[i] / 32768.0;
-        }
+            framesProcessed++;
+            window.framesProcessed = framesProcessed; // For debugging
 
-        const source = audioContext.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(gainNode);
-        source.start(0);
 
-        // Update buffer size
-        document.getElementById('bufferSize').textContent = (arrayBuffer.byteLength / 1024).toFixed(1) + ' KB';
-    }
+            if (useAudioWorklet && audioWorkletNode) {
+                // Send PCM data directly to AudioWorklet as ArrayBuffer
+                // The worklet will handle conversion and buffering
+                const audioData = arrayBuffer.slice(4);
+                audioWorkletNode.port.postMessage(audioData);
+            } else {
+                // Fallback: Use BufferSource approach
+                // Convert to float32 for Web Audio API
+                const audioBuffer = audioContext.createBuffer(1, pcmData.length, 48000);
+                const channelData = audioBuffer.getChannelData(0);
+                for (let i = 0; i < pcmData.length; i++) {
+                    channelData[i] = pcmData[i] / 32768.0;
+                }
 
-    // Handle spectrogram data
-    function handleSpectrogramData(data) {
-        if (data.data && data.shape) {
-            spectrogramHistory.push({
-                data: data.data,
-                timestamp: Date.now()
-            });
-
-            // Limit history
-            const maxSlices = Math.ceil(timeWindow * 15); // 15 Hz update rate
-            if (spectrogramHistory.length > maxSlices) {
-                spectrogramHistory = spectrogramHistory.slice(-maxSlices);
+                // Schedule audio playback with proper timing
+                scheduleAudioBuffer(audioBuffer);
             }
 
-            drawSpectrogram();
-            updateMetrics();
+            // Update buffer size
+            document.getElementById('bufferSize').textContent = (arrayBuffer.byteLength / 1024).toFixed(1) + ' KB';
+
+        } catch (e) {
+            console.error('Audio processing error:', e);
+            addMessage('Audio processing error: ' + e.message);
         }
     }
 
-    // Handle detection
-    function handleDetection(data) {
-        const time = new Date().toTimeString().slice(0, 5);
-        detections.unshift({
-            time: time,
-            species: data.species || 'Unknown',
-            confidence: Math.round(data.confidence * 100)
+    // Schedule audio buffer for continuous playback
+    function scheduleAudioBuffer(audioBuffer) {
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+
+        // Connect through analyser for FFT, then to gain for output
+        source.connect(analyser);
+        analyser.connect(gainNode);
+
+        // Calculate when to start this buffer
+        const now = audioContext.currentTime;
+        const bufferDuration = audioBuffer.duration;
+
+        if (nextStartTime < now) {
+            // If we're behind, start immediately
+            nextStartTime = now;
+        }
+
+        // Schedule this buffer
+        source.start(nextStartTime);
+
+        // Update next start time for seamless playback
+        nextStartTime += bufferDuration;
+
+        audioBuffersPlayed++;
+
+        // Clean up old start times to prevent drift
+        if (nextStartTime < now - 5) {
+            nextStartTime = now;
+        }
+    }
+
+    // Start visualization loop using requestAnimationFrame
+    function startVisualization() {
+        function visualize() {
+            animationFrameId = requestAnimationFrame(visualize);
+
+            const now = performance.now();
+
+            // Update FFT more frequently - every animation frame
+            if (analyser) {
+                performanceStart = now;
+
+                // Get frequency data from analyser
+                const freqData = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(freqData);
+
+                // Check if we have actual data (not silence)
+                const hasData = freqData.some(val => val > 0);
+
+                if (hasData) {
+                    // Get time domain data for waveform
+                    const timeData = new Uint8Array(analyser.frequencyBinCount * 2);
+                    analyser.getByteTimeDomainData(timeData);
+
+                    // Store FFT data for processing
+                    pendingFFTData = {
+                        freqData: freqData,
+                        timeData: timeData,
+                        timestamp: Date.now()
+                    };
+
+                    // Process immediately
+                    processFFTData();
+                }
+
+                // Track performance
+                const elapsed = now - performanceStart;
+                document.getElementById('performanceStatus').textContent = elapsed.toFixed(1) + ' ms/frame';
+                const frameRate = 1000 / Math.max(1, now - lastFFTTime);
+                document.getElementById('frameRate').textContent = frameRate.toFixed(1) + ' fps';
+                lastFFTTime = now;
+            }
+        }
+        visualize();
+    }
+
+    // Process FFT data without blocking
+    function processFFTData() {
+        if (!pendingFFTData) return;
+
+        const { freqData, timeData, timestamp } = pendingFFTData;
+        pendingFFTData = null;
+
+        // Interpolate to fill gaps if needed
+        if (spectrogramHistory.length > 0) {
+            const lastFrame = spectrogramHistory[spectrogramHistory.length - 1];
+            const timeDiff = timestamp - lastFrame.timestamp;
+
+            // If there's a gap, interpolate frames
+            if (timeDiff > 100) { // More than 100ms gap
+                const interpolatedFrames = Math.min(3, Math.floor(timeDiff / 50));
+                for (let i = 1; i <= interpolatedFrames; i++) {
+                    const alpha = i / (interpolatedFrames + 1);
+                    const interpolatedData = lastFrame.data.map((val, idx) =>
+                        Math.round(val * (1 - alpha) + freqData[idx] * alpha)
+                    );
+                    spectrogramHistory.push({
+                        data: interpolatedData,
+                        timestamp: lastFrame.timestamp + (timeDiff * alpha),
+                        interpolated: true
+                    });
+                }
+            }
+        }
+
+        // Store actual FFT frame
+        spectrogramHistory.push({
+            data: Array.from(freqData),
+            timestamp: timestamp,
+            interpolated: false
         });
 
-        // Limit to 20 detections
-        if (detections.length > 20) {
-            detections = detections.slice(0, 20);
+        // Limit history based on time window for high resolution
+        const maxSlices = Math.ceil(timeWindow * 50); // 50 Hz for smooth continuous display
+        if (spectrogramHistory.length > maxSlices) {
+            spectrogramHistory = spectrogramHistory.slice(-maxSlices);
         }
 
-        updateDetectionList();
-        addMessage(`Detection: ${data.species} (${Math.round(data.confidence * 100)}%)`);
+        // Update waveform
+        updateWaveformFromTimeData(timeData);
+
+        // Draw updates
+        drawSpectrogram();
+        updateMetrics();
     }
 
-    // Draw spectrogram
+    // Draw spectrogram from client-side FFT data with rolling buffer
     function drawSpectrogram() {
         const width = spectrogramCanvas.width;
         const height = spectrogramCanvas.height;
 
-        // Clear with theme background
-        spectrogramCtx.fillStyle = getCSSVariable('--color-bg-hover') || '#ffffff';
-        spectrogramCtx.fillRect(0, 0, width, height);
+        // Initialize offscreen canvas if needed
+        if (!offscreenCanvas || offscreenCanvas.width !== width || offscreenCanvas.height !== height) {
+            offscreenCanvas = document.createElement('canvas');
+            offscreenCanvas.width = width;
+            offscreenCanvas.height = height;
+            offscreenCtx = offscreenCanvas.getContext('2d', { alpha: false });
+            // Initial clear with background
+            offscreenCtx.fillStyle = '#fffef0';  // Light warm yellow
+            offscreenCtx.fillRect(0, 0, width, height);
+        }
 
-        if (spectrogramHistory.length === 0) return;
+        if (spectrogramHistory.length === 0) {
+            return;
+        }
 
-        const sliceWidth = width / spectrogramHistory.length;
+        // Rolling buffer approach - shift existing content left and draw only new data
+        const pixelsPerFrame = 2; // How many pixels to shift per update
 
-        spectrogramHistory.forEach((item, timeIndex) => {
-            if (!item.data || !Array.isArray(item.data[0])) return;
+        // Get the last (newest) FFT frame
+        const lastItem = spectrogramHistory[spectrogramHistory.length - 1];
+        if (!lastItem || !lastItem.data) return;
 
-            const freqData = item.data[0]; // First time slice
-            const freqBins = freqData.length;
-            const maxFreqBin = Math.floor((maxFrequency / 24000) * freqBins);
+        // Shift existing content to the left
+        offscreenCtx.drawImage(offscreenCanvas, pixelsPerFrame, 0, width - pixelsPerFrame, height, 0, 0, width - pixelsPerFrame, height);
 
-            for (let freqIndex = 0; freqIndex < maxFreqBin; freqIndex++) {
-                const magnitude = freqData[freqIndex];
-                const normalized = Math.max(0, Math.min(1, (magnitude + 60) / 60 * (gain / 50)));
+        // Clear the rightmost strip
+        offscreenCtx.fillStyle = '#fffef0';
+        offscreenCtx.fillRect(width - pixelsPerFrame, 0, pixelsPerFrame, height);
 
-                // Black on white
-                const gray = Math.floor(255 * (1 - normalized));
-                spectrogramCtx.fillStyle = `rgb(${gray},${gray},${gray})`;
+        // Draw new FFT data in the rightmost strip
+        const nyquist = audioContext.sampleRate / 2;
+        const maxFreqBin = Math.floor((maxFrequency / nyquist) * analyser.frequencyBinCount);
+        const freqData = lastItem.data;
 
-                const x = timeIndex * sliceWidth;
+        for (let freqIndex = 0; freqIndex < maxFreqBin; freqIndex++) {
+            const magnitude = freqData[freqIndex];
+            const normalized = (magnitude / 255) * (gain / 50);
+            const intensity = Math.max(0, Math.min(1, normalized));
+
+            if (intensity > 0.001) {  // Lower threshold for more detail
+                // Create vibrant gradient from yellow to orange to red to dark red
+                let r, g, b;
+                if (intensity < 0.33) {
+                    // Yellow to orange (low intensity)
+                    const t = intensity * 3;
+                    r = 255;
+                    g = 255 - (100 * t);  // 255 -> 155
+                    b = 100 * (1 - t);     // 100 -> 0
+                } else if (intensity < 0.66) {
+                    // Orange to red (medium intensity)
+                    const t = (intensity - 0.33) * 3;
+                    r = 255;
+                    g = 155 - (155 * t);   // 155 -> 0
+                    b = 0;
+                } else {
+                    // Red to dark red (high intensity)
+                    const t = (intensity - 0.66) * 3;
+                    r = 255 - (100 * t);   // 255 -> 155
+                    g = 0;
+                    b = 0;
+                }
+
+                // Use full opacity for vibrant colors
+                const alpha = lastItem.interpolated ? 0.95 : 1.0;
+                offscreenCtx.fillStyle = `rgba(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)},${alpha})`;
+
                 const y = height - (freqIndex / maxFreqBin) * height;
-                const h = Math.ceil(height / maxFreqBin);
+                const h = Math.ceil(height / maxFreqBin) + 1;
 
-                spectrogramCtx.fillRect(x, y - h, Math.ceil(sliceWidth), h);
+                offscreenCtx.fillRect(width - pixelsPerFrame, y - h, pixelsPerFrame + 1, h);
             }
-        });
+        }
+
+        // Copy offscreen buffer to main canvas
+        spectrogramCtx.drawImage(offscreenCanvas, 0, 0);
 
         frameCount++;
     }
 
-    // Update waveform
-    function updateWaveform(pcmData) {
+    // Update waveform from time domain data
+    function updateWaveformFromTimeData(timeData) {
         const width = waveformCanvas.width;
         const height = waveformCanvas.height;
 
@@ -417,13 +766,13 @@
         waveformCtx.lineWidth = 1;
         waveformCtx.beginPath();
 
-        const step = Math.ceil(pcmData.length / width);
+        const step = Math.ceil(timeData.length / width);
         let peak = 0;
         let rms = 0;
 
         for (let i = 0; i < width; i++) {
-            const index = i * step;
-            const value = pcmData[index] / 32768;
+            const index = Math.floor(i * timeData.length / width);
+            const value = (timeData[index] - 128) / 128; // Convert from 0-255 to -1 to 1
             const y = (1 - value) * height / 2;
 
             if (i === 0) {
@@ -442,25 +791,7 @@
         rms = Math.sqrt(rms / width);
         document.getElementById('peakLevel').textContent = peak > 0 ? (20 * Math.log10(peak)).toFixed(1) + ' dB' : '-∞ dB';
         document.getElementById('rmsLevel').textContent = rms > 0 ? (20 * Math.log10(rms)).toFixed(1) + ' dB' : '-∞ dB';
-        document.getElementById('sampleCount').textContent = pcmData.length.toLocaleString();
-    }
-
-    // Update detection list
-    function updateDetectionList() {
-        const container = document.getElementById('detectionList');
-
-        if (detections.length === 0) {
-            container.innerHTML = '<div class="no-data">No detections yet</div>';
-            return;
-        }
-
-        container.innerHTML = detections.map(d => `
-                <div class="log-entry">
-                    <span class="time">${d.time}</span>
-                    <span>${d.species}</span>
-                    <span class="confidence">${d.confidence}%</span>
-                </div>
-            `).join('');
+        document.getElementById('sampleCount').textContent = timeData.length.toLocaleString();
     }
 
     // Update metrics
@@ -475,12 +806,6 @@
 
             frameCount = 0;
             lastFrameTime = now;
-        }
-
-        // Update latency
-        if (spectrogramHistory.length > 0) {
-            const latency = now - spectrogramHistory[spectrogramHistory.length - 1].timestamp;
-            document.getElementById('latency').textContent = Math.round(latency) + ' ms';
         }
     }
 
@@ -516,9 +841,33 @@
         }
     }
 
+    function updateFFTSize(value) {
+        fftSize = parseInt(value);
+        document.getElementById('fftSizeDisplay').textContent = value;
+
+        if (analyser) {
+            analyser.fftSize = fftSize;
+            const resolution = audioContext.sampleRate / fftSize;
+            document.getElementById('freqResolution').textContent = resolution.toFixed(1) + ' Hz';
+        }
+
+        // Clear history for clean redraw
+        spectrogramHistory = [];
+    }
+
     function updateFrequencyRange() {
         maxFrequency = parseInt(document.getElementById('maxFreq').value);
-        document.getElementById('maxFreqLabel').textContent = (maxFrequency / 1000).toFixed(1) + ' kHz';
+        // Update frequency labels dynamically (reversed order: high to low)
+        const labels = document.querySelectorAll('.freq-axis-container span');
+        const step = maxFrequency / (labels.length - 1);
+        labels.forEach((label, i) => {
+            if (label.id !== 'maxFreqLabel') {
+                // Reverse the frequency calculation since labels go from top to bottom
+                const freq = maxFrequency - (i * step);
+                label.textContent = freq >= 1000 ? (freq/1000).toFixed(1) + 'k' : freq.toFixed(0);
+            }
+        });
+        document.getElementById('maxFreqLabel').textContent = maxFrequency >= 1000 ? (maxFrequency / 1000).toFixed(1) + 'k' : maxFrequency;
     }
 
     function updateTimeWindow() {
@@ -533,18 +882,19 @@
     // Initialize
     window.addEventListener('load', () => {
         resizeCanvases();
-        addMessage('System ready');
+        addMessage('System ready - Client-side FFT mode');
+
+        // Update initial FFT resolution display
+        const resolution = 48000 / fftSize;
+        document.getElementById('freqResolution').textContent = resolution.toFixed(1) + ' Hz';
     });
 
     window.addEventListener('resize', resizeCanvases);
 
-    // Keep connections alive
+    // Keep connection alive
     setInterval(() => {
         if (audioWs && audioWs.readyState === WebSocket.OPEN) {
             audioWs.send('ping');
-        }
-        if (spectrogramWs && spectrogramWs.readyState === WebSocket.OPEN) {
-            spectrogramWs.send('ping');
         }
     }, 30000);
 </script>

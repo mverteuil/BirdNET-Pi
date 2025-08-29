@@ -104,9 +104,6 @@ class AudioWebSocketService:
 
         if path == "/ws/audio":
             await self._handle_audio_websocket(websocket)
-        elif path == "/ws/spectrogram":
-            logger.info("Spectrogram request redirected - handled by separate service on port 9002")
-            await websocket.close(code=4003, reason="Spectrogram moved to dedicated service")
         else:
             logger.warning("Unknown WebSocket endpoint: %s", path)
             await websocket.close(code=4004, reason="Unknown endpoint")

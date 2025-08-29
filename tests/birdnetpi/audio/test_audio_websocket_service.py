@@ -60,19 +60,6 @@ class TestAudioWebSocketService:
         assert mock_websocket not in audio_websocket_service._audio_clients
 
     @pytest.mark.asyncio
-    async def test_websocket_handler_spectrogram_path(self, audio_websocket_service):
-        """Should close spectrogram websocket connections with redirect message."""
-        mock_websocket = MagicMock()
-        mock_websocket.request.path = "/ws/spectrogram"
-        mock_websocket.close = AsyncMock()
-
-        await audio_websocket_service._websocket_handler(mock_websocket)
-
-        mock_websocket.close.assert_called_once_with(
-            code=4003, reason="Spectrogram moved to dedicated service"
-        )
-
-    @pytest.mark.asyncio
     async def test_websocket_handler_unknown_path(self, audio_websocket_service):
         """Should close unknown websocket connections."""
         mock_websocket = MagicMock()

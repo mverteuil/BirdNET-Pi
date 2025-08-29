@@ -43,7 +43,7 @@ async def websocket_endpoint(
         notification_manager.remove_websocket(websocket)
 
 
-# Audio and spectrogram WebSocket endpoints are now handled by the standalone
-# audio_websocket_daemon for better service independence and performance.
-# These routes have been moved to the daemon running on port 9001 and are
-# proxied by Caddy at /ws/audio and /ws/spectrogram.
+# Audio WebSocket endpoint is handled by the standalone audio_websocket_daemon
+# for better service independence and performance.
+# This route has been moved to the daemon running on port 9001 and is
+# proxied by Caddy at /ws/audio.

@@ -55,13 +55,6 @@ def setup_systemd_services(venv_path: Path) -> None:
             "exec_start": f"{python_exec} -m birdnetpi.daemons.audio_websocket_daemon",
             "environment": "PYTHONPATH=/opt/birdnetpi/src",
         },
-        {
-            "name": "birdnet_spectrogram_websocket.service",
-            "description": "BirdNET Spectrogram Websocket",
-            "after": "network-online.target",
-            "exec_start": f"{python_exec} -m birdnetpi.daemons.spectrogram_websocket_daemon",
-            "environment": "PYTHONPATH=/opt/birdnetpi/src",
-        },
     ]
 
     for service_config in services:

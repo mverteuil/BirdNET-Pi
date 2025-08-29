@@ -1,11 +1,7 @@
 :8000 {
-	# Audio/Spectrogram WebSocket routes - proxy to standalone daemon (preserve path)
+	# Audio WebSocket route - proxy to standalone daemon (preserve path)
 	handle /ws/audio {
 		reverse_proxy localhost:9001
-	}
-
-	handle /ws/spectrogram {
-		reverse_proxy localhost:9002
 	}
 
 	# Notifications WebSocket - proxy to FastAPI

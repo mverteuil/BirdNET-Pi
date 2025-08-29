@@ -6,7 +6,6 @@ from fastapi.templating import Jinja2Templates
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.audio.audio_websocket_service import AudioWebSocketService
-from birdnetpi.audio.spectrogram_service import SpectrogramService
 from birdnetpi.database.database_service import DatabaseService
 from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.detections.detection_query_service import DetectionQueryService
@@ -129,15 +128,6 @@ class Container(containers.DeclarativeContainer):
     audio_websocket_service = providers.Singleton(
         AudioWebSocketService,
         path_resolver=path_resolver,
-    )
-
-    spectrogram_service = providers.Singleton(
-        SpectrogramService,
-        sample_rate=providers.Factory(lambda c: c.sample_rate, c=config),
-        channels=providers.Factory(lambda c: c.audio_channels, c=config),
-        window_size=1024,  # Good balance of frequency/time resolution
-        overlap=0.75,  # High overlap for smooth visualization
-        update_rate=15.0,  # 15 FPS for smooth real-time display
     )
 
     # GPS service - singleton
