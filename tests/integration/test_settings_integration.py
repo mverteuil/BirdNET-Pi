@@ -14,6 +14,15 @@ import yaml
 from birdnetpi.audio.audio_device_service import AudioDevice, AudioDeviceService
 from birdnetpi.config import BirdNETConfig, ConfigManager
 from birdnetpi.system.path_resolver import PathResolver
+from birdnetpi.utils.cache import clear_all_cache
+
+
+@pytest.fixture(autouse=True)
+def clear_cache():
+    """Clear cache before each test to ensure test isolation."""
+    clear_all_cache()
+    yield
+    clear_all_cache()
 
 
 class TestSettingsConfigIntegration:

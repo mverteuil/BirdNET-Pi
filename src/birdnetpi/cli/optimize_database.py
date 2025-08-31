@@ -8,6 +8,7 @@ This script provides database optimization capabilities including:
 - Monitoring database health
 """
 
+import asyncio
 import json
 import logging
 import sys
@@ -87,7 +88,7 @@ def print_query_performance(performance_data: list, title: str) -> None:
             click.echo(f"{name:<40} {time_ms:<12} {rows:<8} {index_ops:<8} {scan_ops:<8}")
 
 
-def analyze_performance(optimizer: DatabaseOptimizer) -> None:
+async def analyze_performance(optimizer: DatabaseOptimizer) -> None:
     """Analyze current database performance.
 
     Args:
@@ -97,7 +98,7 @@ def analyze_performance(optimizer: DatabaseOptimizer) -> None:
 
     # Get current index status
     click.echo("\n📊 Current Index Status:")
-    current_indexes = optimizer.get_current_indexes()
+    current_indexes = await optimizer.get_current_indexes()
     if current_indexes:
         for table, indexes in current_indexes.items():
             if indexes:
@@ -109,7 +110,7 @@ def analyze_performance(optimizer: DatabaseOptimizer) -> None:
 
     # Analyze table statistics
     click.echo("\n📈 Database Statistics:")
-    stats = optimizer.analyze_table_statistics()
+    stats = await optimizer.analyze_table_statistics()
     if "detections" in stats:
         det_stats = stats["detections"]
         click.echo(f"  • Total detections: {det_stats.get('row_count', 0):,}")
@@ -169,7 +170,7 @@ def _display_optimization_summary(created_indexes: list[str], result: dict[str, 
         click.echo("  ℹ️  Database was already optimized")  # noqa: RUF001
 
 
-def optimize_database(optimizer: DatabaseOptimizer, dry_run: bool = False) -> None:
+async def optimize_database(optimizer: DatabaseOptimizer, dry_run: bool = False) -> None:
     """Run database optimization.
 
     Args:
@@ -184,17 +185,17 @@ def optimize_database(optimizer: DatabaseOptimizer, dry_run: bool = False) -> No
 
     # Create optimized indexes
     click.echo("\n🔧 Creating Optimized Indexes...")
-    created_indexes = optimizer.create_optimized_indexes(dry_run=dry_run)
+    created_indexes = await optimizer.create_optimized_indexes(dry_run=dry_run)
     _display_created_indexes(created_indexes, dry_run)
 
     if not dry_run:
         # Run full optimization
         click.echo("\n⚙️  Running Full Optimization...")
-        result = optimizer.optimize_database()
+        result = await optimizer.optimize_database()
         _display_optimization_summary(created_indexes, result)
 
 
-def export_report(optimizer: DatabaseOptimizer, export_path: Path) -> None:
+async def export_report(optimizer: DatabaseOptimizer, export_path: Path) -> None:
     """Export optimization report to JSON file.
 
     Args:
@@ -208,8 +209,8 @@ def export_report(optimizer: DatabaseOptimizer, export_path: Path) -> None:
 
         report = {
             "timestamp": datetime.now().isoformat(),
-            "database_statistics": optimizer.analyze_table_statistics(),
-            "existing_indexes": optimizer.get_current_indexes(),
+            "database_statistics": await optimizer.analyze_table_statistics(),
+            "existing_indexes": await optimizer.get_current_indexes(),
             "optimization_available": {
                 "create_indexes": True,
                 "vacuum_database": True,
@@ -274,15 +275,18 @@ def cli(
 
         print_section("BirdNET-Pi Database Optimizer", "Optimizing database for analytics queries")
 
-        # Run requested actions
-        if analyze:
-            analyze_performance(optimizer)
+        # Run requested actions asynchronously
+        async def run_actions() -> None:
+            if analyze:
+                await analyze_performance(optimizer)
 
-        if optimize:
-            optimize_database(optimizer, dry_run=dry_run)
+            if optimize:
+                await optimize_database(optimizer, dry_run=dry_run)
 
-        if export:
-            export_report(optimizer, export)
+            if export:
+                await export_report(optimizer, export)
+
+        asyncio.run(run_actions())
 
         click.echo("\n✨ Done!")
         return 0

@@ -125,6 +125,10 @@ def test_directory_exists_false(file_manager):
 
 def test_save_detection_audio(file_manager):
     """Should save audio bytes to a WAV file and return AudioFile instance (covers lines 79-90)"""
+    from unittest.mock import ANY
+
+    import numpy as np
+
     # Mock soundfile.write
     with patch("birdnetpi.system.file_manager.sf.write") as mock_sf_write:
         # Prepare test data
@@ -143,9 +147,17 @@ def test_save_detection_audio(file_manager):
 
         # Verify soundfile.write was called correctly
         expected_full_path = file_manager.base_path / relative_path
+        # The second argument will be a numpy array, so we use ANY
         mock_sf_write.assert_called_once_with(
-            str(expected_full_path), raw_audio_bytes, sample_rate, subtype="PCM_16"
+            str(expected_full_path), ANY, sample_rate, subtype="PCM_16"
         )
+
+        # Verify the numpy array conversion is correct
+        call_args = mock_sf_write.call_args[0]
+        audio_array_arg = call_args[1]
+        assert isinstance(audio_array_arg, np.ndarray)
+        assert audio_array_arg.dtype == np.int16
+        assert len(audio_array_arg) == 1000  # 2000 bytes / 2 bytes per int16
 
         # Verify the directory was created
         assert (file_manager.base_path / "detections").exists()

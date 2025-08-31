@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import inspect, text
+from sqlalchemy.engine import Connection
 
 from birdnetpi.database.database_service import DatabaseService
 
@@ -28,7 +29,9 @@ class QueryPerformanceMonitor:
         self.database_service = database_service
         self.query_stats: list[dict[str, Any]] = []
 
-    def explain_query(self, query: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def explain_query(
+        self, query: str, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Analyze query execution plan using EXPLAIN QUERY PLAN.
 
         Args:
@@ -38,10 +41,10 @@ class QueryPerformanceMonitor:
         Returns:
             Dictionary containing query plan analysis
         """
-        with self.database_service.get_db() as session:
+        async with self.database_service.get_async_db() as session:
             # Get query plan
             explain_query = f"EXPLAIN QUERY PLAN {query}"
-            result = session.execute(text(explain_query), params or {})
+            result = await session.execute(text(explain_query), params or {})
             plan_rows = result.fetchall()
 
             # Analyze plan for optimization opportunities
@@ -67,7 +70,7 @@ class QueryPerformanceMonitor:
 
             return plan_analysis
 
-    def measure_query_time(
+    async def measure_query_time(
         self, query: str, params: dict[str, Any] | None = None, iterations: int = 3
     ) -> tuple[float, int]:
         """Measure average query execution time.
@@ -83,21 +86,23 @@ class QueryPerformanceMonitor:
         total_time = 0
         row_count = 0
 
-        with self.database_service.get_db() as session:
+        async with self.database_service.get_async_db() as session:
             # Warm up cache
-            session.execute(text(query), params or {}).fetchall()
+            result = await session.execute(text(query), params or {})
+            result.fetchall()
 
             # Measure execution time
             for _ in range(iterations):
                 start = time.perf_counter()
-                result = session.execute(text(query), params or {}).fetchall()
+                result = await session.execute(text(query), params or {})
+                result = result.fetchall()
                 elapsed = (time.perf_counter() - start) * 1000  # Convert to ms
                 total_time += elapsed
                 row_count = len(result)
 
         return total_time / iterations, row_count
 
-    def analyze_common_queries(self) -> list[dict[str, Any]]:
+    async def analyze_common_queries(self) -> list[dict[str, Any]]:
         """Analyze performance of common analytics queries.
 
         Returns:
@@ -179,10 +184,10 @@ class QueryPerformanceMonitor:
         for query_info in common_queries:
             try:
                 # Analyze query plan
-                plan = self.explain_query(query_info["query"], query_info["params"])
+                plan = await self.explain_query(query_info["query"], query_info["params"])
 
                 # Measure execution time
-                exec_time, row_count = self.measure_query_time(
+                exec_time, row_count = await self.measure_query_time(
                     query_info["query"], query_info["params"]
                 )
 
@@ -222,27 +227,34 @@ class DatabaseOptimizer:
         self.database_service = database_service
         self.monitor = QueryPerformanceMonitor(database_service)
 
-    def get_current_indexes(self) -> dict[str, list[str]]:
+    async def get_current_indexes(self) -> dict[str, list[str]]:
         """Get current indexes for all tables.
 
         Returns:
             Dictionary mapping table names to list of index names
         """
-        with self.database_service.get_db() as session:
-            inspector = inspect(session.bind)
-            indexes = {}
+        async with self.database_service.get_async_db() as session:
+            # Use connection.run_sync for inspection with async engine
+            conn = await session.connection()
 
-            for table_name in ["detections", "audio_files"]:
-                try:
-                    table_indexes = inspector.get_indexes(table_name)
-                    indexes[table_name] = [idx["name"] for idx in table_indexes if idx["name"]]
-                except Exception as e:
-                    logger.error(f"Error getting indexes for {table_name}: {e}")
-                    indexes[table_name] = []
+            def _inspect_indexes(sync_conn: Connection) -> dict[str, list[str]]:
+                inspector = inspect(sync_conn)
+                indexes = {}
 
+                for table_name in ["detections", "audio_files"]:
+                    try:
+                        table_indexes = inspector.get_indexes(table_name)
+                        indexes[table_name] = [idx["name"] for idx in table_indexes if idx["name"]]
+                    except Exception as e:
+                        logger.error(f"Error getting indexes for {table_name}: {e}")
+                        indexes[table_name] = []
+
+                return indexes
+
+            indexes = await conn.run_sync(_inspect_indexes)
             return indexes
 
-    def create_optimized_indexes(self, dry_run: bool = False) -> list[str]:
+    async def create_optimized_indexes(self, dry_run: bool = False) -> list[str]:
         """Create optimized indexes for analytics queries.
 
         Args:
@@ -302,20 +314,20 @@ class DatabaseOptimizer:
             return optimized_indexes
 
         # Execute index creation
-        with self.database_service.get_db() as session:
+        async with self.database_service.get_async_db() as session:
             for sql in optimized_indexes:
                 try:
-                    session.execute(text(sql))
-                    session.commit()
+                    await session.execute(text(sql))
+                    await session.commit()
                     sql_statements.append(sql)
                     logger.info(f"Created index: {sql}")
                 except Exception as e:
                     logger.error(f"Error creating index: {e}")
-                    session.rollback()
+                    await session.rollback()
 
         return sql_statements
 
-    def analyze_table_statistics(self) -> dict[str, Any]:
+    async def analyze_table_statistics(self) -> dict[str, Any]:
         """Analyze table statistics for optimization insights.
 
         Returns:
@@ -323,20 +335,22 @@ class DatabaseOptimizer:
         """
         stats = {}
 
-        with self.database_service.get_db() as session:
+        async with self.database_service.get_async_db() as session:
             # Get table sizes
             tables_info = {}
             for table_name in ["detections", "audio_files"]:
                 try:
-                    count_result = session.execute(
+                    count_result = await session.execute(
                         text(f"SELECT COUNT(*) as count FROM {table_name}")
-                    ).fetchone()
+                    )
+                    count_result = count_result.fetchone()
                     count = count_result[0] if count_result else 0
 
                     # Get table size in pages (SQLite specific)
-                    page_count_result = session.execute(
+                    page_count_result = await session.execute(
                         text(f"SELECT COUNT(*) FROM pragma_table_info('{table_name}')")
-                    ).fetchone()
+                    )
+                    page_count_result = page_count_result.fetchone()
 
                     tables_info[table_name] = {
                         "row_count": count,
@@ -351,7 +365,7 @@ class DatabaseOptimizer:
             # Analyze data distribution for optimization hints
             try:
                 # Species distribution
-                species_dist = session.execute(
+                species_dist = await session.execute(
                     text("""
                         SELECT scientific_name, COUNT(*) as count
                         FROM detections
@@ -359,13 +373,14 @@ class DatabaseOptimizer:
                         ORDER BY count DESC
                         LIMIT 10
                     """)
-                ).fetchall()
+                )
+                species_dist = species_dist.fetchall()
                 stats["top_species"] = [
                     {"species": row[0], "count": row[1]} for row in species_dist
                 ]
 
                 # Date range
-                date_range = session.execute(
+                date_range = await session.execute(
                     text("""
                         SELECT
                             MIN(timestamp) as earliest,
@@ -373,7 +388,8 @@ class DatabaseOptimizer:
                             julianday(MAX(timestamp)) - julianday(MIN(timestamp)) as days_span
                         FROM detections
                     """)
-                ).fetchone()
+                )
+                date_range = date_range.fetchone()
                 if date_range:
                     earliest, latest, days_span_raw = date_range
                     stats["date_range"] = {
@@ -385,7 +401,7 @@ class DatabaseOptimizer:
                     }
 
                 # Confidence distribution
-                conf_dist = session.execute(
+                conf_dist = await session.execute(
                     text("""
                         SELECT
                             MIN(confidence) as min_conf,
@@ -394,7 +410,8 @@ class DatabaseOptimizer:
                             COUNT(CASE WHEN confidence > 0.8 THEN 1 END) as high_conf_count
                         FROM detections
                     """)
-                ).fetchone()
+                )
+                conf_dist = conf_dist.fetchone()
                 if conf_dist:
                     min_conf, max_conf, avg_conf, high_conf_count = conf_dist
                     stats["confidence_distribution"] = {
@@ -410,7 +427,7 @@ class DatabaseOptimizer:
 
         return stats
 
-    def optimize_database(self) -> dict[str, Any]:
+    async def optimize_database(self) -> dict[str, Any]:
         """Run complete database optimization.
 
         Returns:
@@ -428,26 +445,26 @@ class DatabaseOptimizer:
 
         try:
             # Get current state
-            results["current_indexes"] = self.get_current_indexes()
-            results["table_statistics"] = self.analyze_table_statistics()
+            results["current_indexes"] = await self.get_current_indexes()
+            results["table_statistics"] = await self.analyze_table_statistics()
 
             # Analyze query performance before optimization
             logger.info("Analyzing query performance before optimization...")
-            results["query_performance_before"] = self.monitor.analyze_common_queries()
+            results["query_performance_before"] = await self.monitor.analyze_common_queries()
 
             # Create optimized indexes
             logger.info("Creating optimized indexes...")
-            results["created_indexes"] = self.create_optimized_indexes()
+            results["created_indexes"] = await self.create_optimized_indexes()
 
             # Run VACUUM to optimize database file
             logger.info("Running VACUUM to optimize database...")
-            with self.database_service.get_db() as session:
-                session.execute(text("VACUUM"))
-                session.commit()
+            async with self.database_service.get_async_db() as session:
+                await session.execute(text("VACUUM"))
+                await session.commit()
 
             # Analyze query performance after optimization
             logger.info("Analyzing query performance after optimization...")
-            results["query_performance_after"] = self.monitor.analyze_common_queries()
+            results["query_performance_after"] = await self.monitor.analyze_common_queries()
 
             # Generate recommendations
             results["recommendations"] = self._generate_recommendations(results)

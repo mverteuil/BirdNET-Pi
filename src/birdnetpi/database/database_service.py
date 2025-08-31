@@ -1,6 +1,6 @@
 import contextlib
 import logging
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +11,8 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,  # type: ignore[attr-defined]
     create_async_engine,
 )
-from sqlalchemy.orm import Session, sessionmaker
+
+# Removed sync imports - now async-only
 from sqlmodel import SQLModel
 
 logger = logging.getLogger(__name__)
@@ -39,64 +40,7 @@ class DatabaseService:
             autocommit=False, autoflush=False, bind=self.async_engine, class_=AsyncSession
         )
 
-        # Create sync engine and sessionmaker for backward compatibility with utilities
-        # Note: aiosqlite doesn't have a sync_engine attribute, so we create one separately
-        from sqlalchemy import create_engine, event
-
-        if self.db_url.startswith("sqlite"):
-            # For SQLite, create a separate sync engine
-            sync_url = self.db_url.replace("+aiosqlite", "")
-            self.sync_engine = create_engine(sync_url, echo=False)
-        else:
-            # For other databases that support both sync and async
-            self.sync_engine = getattr(self.async_engine, "sync_engine", None)
-            if self.sync_engine is None:
-                # Create a sync version of the URL
-                sync_url = self.db_url.replace("postgresql+asyncpg", "postgresql")
-                self.sync_engine = create_engine(sync_url, echo=False)
-
-        # Apply SD card optimizations on every connection to the sync engine
-        @event.listens_for(self.sync_engine, "connect")
-        def set_sqlite_pragma(
-            dbapi_connection: Any,  # noqa: ANN401
-            connection_record: Any,  # noqa: ANN401
-        ) -> None:
-            """Configure SQLite pragmas optimized for SD card longevity."""
-            cursor = dbapi_connection.cursor()
-
-            # WAL mode for better concurrency and reduced write amplification
-            cursor.execute("PRAGMA journal_mode = WAL")
-
-            # Reduce fsync calls (trade durability for SD card longevity)
-            cursor.execute("PRAGMA synchronous = NORMAL")
-
-            # Use memory for temporary storage (avoid SD card writes)
-            cursor.execute("PRAGMA temp_store = MEMORY")
-
-            # Set reasonable checkpoint interval (64MB)
-            cursor.execute("PRAGMA wal_autocheckpoint = 16384")  # 16384 pages * 4KB = 64MB
-
-            # Optimize page cache for SBC memory constraints
-            cursor.execute("PRAGMA cache_size = -32000")  # 32MB cache
-
-            # Enable memory-mapped I/O for better read performance
-            cursor.execute("PRAGMA mmap_size = 268435456")  # 256MB
-
-            # Don't use exclusive locking since we have both sync and async engines
-            # cursor.execute("PRAGMA locking_mode = EXCLUSIVE")
-
-            # Faster query planning (less CPU overhead)
-            cursor.execute("PRAGMA optimize")
-
-            cursor.close()
-
-        self.session_local = sessionmaker(autocommit=False, autoflush=False, bind=self.sync_engine)
-
-        # Provide alias for backward compatibility
-        self.engine = self.sync_engine
-
-        # For CLI utilities, initialize tables synchronously in constructor
-        SQLModel.metadata.create_all(self.sync_engine)
+        # Initialize tables asynchronously - must call initialize() after creation
 
     async def initialize(self) -> None:
         """Initialize the database asynchronously."""
@@ -113,19 +57,18 @@ class DatabaseService:
         async with self.async_session_local() as session:
             yield session
 
-    @contextlib.contextmanager
-    def get_db(self) -> Generator[Session, Any, None]:
-        """Provide a sync database session for CLI utilities and backward compatibility."""
-        db = self.session_local()
-        try:
-            yield db
-        finally:
-            db.close()
-
     async def _apply_startup_optimizations(self) -> None:
         """Apply one-time startup optimizations for SD card longevity."""
         async with self.get_async_db() as session:
             try:
+                # Apply SQLite pragmas for SD card optimization
+                await session.execute(text("PRAGMA journal_mode = WAL"))
+                await session.execute(text("PRAGMA synchronous = NORMAL"))
+                await session.execute(text("PRAGMA temp_store = MEMORY"))
+                await session.execute(text("PRAGMA wal_autocheckpoint = 16384"))
+                await session.execute(text("PRAGMA cache_size = -32000"))
+                await session.execute(text("PRAGMA mmap_size = 268435456"))
+
                 # Analyze tables for optimal query planning
                 await session.execute(text("ANALYZE"))
 
@@ -250,22 +193,3 @@ class DatabaseService:
         if hasattr(self, "async_engine") and self.async_engine:
             await self.async_engine.dispose()
             logger.debug("Async database engine disposed")
-
-        # Dispose sync engine if it exists and is different from async
-        if hasattr(self, "sync_engine") and self.sync_engine:
-            # Only dispose if it's not the same as async_engine.sync_engine
-            if (
-                not hasattr(self.async_engine, "sync_engine")
-                or self.sync_engine != self.async_engine.sync_engine
-            ):
-                self.sync_engine.dispose()
-                logger.debug("Sync database engine disposed")
-
-    def dispose_sync(self) -> None:
-        """Dispose database engines synchronously for non-async contexts.
-
-        Only disposes the sync engine. For full cleanup, use dispose() in an async context.
-        """
-        if hasattr(self, "sync_engine") and self.sync_engine:
-            self.sync_engine.dispose()
-            logger.debug("Sync database engine disposed")

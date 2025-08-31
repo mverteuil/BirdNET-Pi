@@ -33,14 +33,16 @@ def temp_ioc_db():
 
 
 @pytest.fixture
-def bnp_database_service(temp_main_db):
+async def bnp_database_service(temp_main_db):
     """Create main database service."""
     db_service = DatabaseService(temp_main_db)
+    await db_service.initialize()
     try:
         yield db_service
     finally:
-        # Dispose sync resources
-        db_service.dispose_sync()
+        # Dispose async engine to prevent file descriptor leaks
+        if hasattr(db_service, "async_engine") and db_service.async_engine:
+            await db_service.async_engine.dispose()
 
 
 @pytest.fixture
@@ -48,7 +50,13 @@ def ioc_database_service(temp_ioc_db):
     """Create IOC database service."""
     from birdnetpi.utils.ioc_database_service import IOCDatabaseService
 
-    return IOCDatabaseService(temp_ioc_db)
+    service = IOCDatabaseService(temp_ioc_db)
+    try:
+        yield service
+    finally:
+        # Dispose the engine to prevent file descriptor leaks
+        if hasattr(service, "engine"):
+            service.engine.dispose()
 
 
 @pytest.fixture
@@ -166,12 +174,12 @@ def populated_ioc_db(ioc_database_service):
 
 
 @pytest.fixture
-def sample_detections(bnp_database_service):
+async def sample_detections(bnp_database_service):
     """Create sample detections in main database."""
     detections = []
     base_time = datetime.now()
 
-    with bnp_database_service.get_db() as session:
+    async with bnp_database_service.get_async_db() as session:
         test_detections = [
             Detection(
                 id=uuid4(),
@@ -234,11 +242,11 @@ def sample_detections(bnp_database_service):
         for detection in test_detections:
             session.add(detection)
 
-        session.commit()
+        await session.commit()
 
         # Refresh objects to ensure all attributes are loaded before session closes
         for detection in test_detections:
-            session.refresh(detection)
+            await session.refresh(detection)
             detections.append(detection)
 
     return detections

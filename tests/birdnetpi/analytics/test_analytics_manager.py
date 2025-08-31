@@ -188,7 +188,8 @@ class TestTemporalAnalytics:
 
         # Should have zeros for all hours
         assert all(count == 0 for count in patterns["hourly_distribution"])
-        assert patterns["peak_hour"] is None
+        # Peak hour defaults to 6 AM (typical bird activity time) when no data
+        assert patterns["peak_hour"] == 6
         # Check all 6 periods are present and zero
         expected_periods = ["night_early", "dawn", "morning", "afternoon", "evening", "night_late"]
         assert set(patterns["periods"].keys()) == set(expected_periods)

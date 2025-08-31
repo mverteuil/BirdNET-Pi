@@ -83,8 +83,8 @@ async def readiness_probe(
     # Check database connectivity
     try:
         # Simple query to verify database is accessible
-        with db_service.get_db() as session:
-            session.execute(text("SELECT 1"))
+        async with db_service.get_async_db() as session:
+            await session.execute(text("SELECT 1"))
         checks["database"] = True
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
@@ -129,9 +129,9 @@ async def detailed_health_check(
 
     # Check database
     try:
-        with db_service.get_db() as session:
+        async with db_service.get_async_db() as session:
             # Try a simple query
-            session.execute(text("SELECT 1"))
+            await session.execute(text("SELECT 1"))
         health_status["components"]["database"] = {
             "status": "healthy",
             "type": "sqlite",

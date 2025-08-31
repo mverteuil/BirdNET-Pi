@@ -300,7 +300,7 @@ class TestLandingPageIntegration:
         """Test that detection log shows recent detections."""
         # Only get recent detections, not the entire landing page
         analytics = presentation_manager.analytics_manager
-        recent = await analytics.data_manager.get_recent_detections(10)
+        recent = await analytics.data_manager.query_detections(limit=10)
 
         # Format it the same way as the presentation manager would
         detection_log = presentation_manager._format_detection_log(recent)

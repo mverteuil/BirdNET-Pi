@@ -80,7 +80,30 @@ def temp_db():
 @pytest.fixture
 def database_service(temp_db):
     """Create a DatabaseService instance with test database."""
-    return DatabaseService(Path(temp_db))
+    service = DatabaseService(Path(temp_db))
+    try:
+        yield service
+    finally:
+        # Dispose async engine to prevent file descriptor leaks
+        if hasattr(service, "async_engine") and service.async_engine:
+            import asyncio
+
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    task = loop.create_task(service.async_engine.dispose())
+                    # Store reference to avoid garbage collection
+                    _ = task
+                else:
+                    loop.run_until_complete(service.async_engine.dispose())
+            except RuntimeError:
+                # No event loop, create one just for cleanup
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(service.async_engine.dispose())
+                finally:
+                    loop.close()
 
 
 @pytest.fixture
@@ -98,12 +121,13 @@ def monitor(database_service):
 class TestQueryPerformanceMonitor:
     """Test QueryPerformanceMonitor functionality."""
 
-    def test_explain_query(self, monitor):
+    @pytest.mark.asyncio
+    async def test_explain_query(self, monitor):
         """Test query plan analysis."""
         query = "SELECT * FROM detections WHERE scientific_name = :species"
         params = {"species": "Turdus migratorius"}
 
-        result = monitor.explain_query(query, params)
+        result = await monitor.explain_query(query, params)
 
         assert "query" in result
         assert "plan" in result
@@ -112,18 +136,20 @@ class TestQueryPerformanceMonitor:
         assert "full_table_scan" in result
         assert "temp_b_tree" in result
 
-    def test_measure_query_time(self, monitor):
+    @pytest.mark.asyncio
+    async def test_measure_query_time(self, monitor):
         """Test query execution time measurement."""
         query = "SELECT COUNT(*) FROM detections"
 
-        exec_time, row_count = monitor.measure_query_time(query)
+        exec_time, row_count = await monitor.measure_query_time(query)
 
         assert exec_time > 0
         assert row_count == 1  # COUNT query returns one row
 
-    def test_analyze_common_queries(self, monitor):
+    @pytest.mark.asyncio
+    async def test_analyze_common_queries(self, monitor):
         """Test analysis of common query patterns."""
-        results = monitor.analyze_common_queries()
+        results = await monitor.analyze_common_queries()
 
         assert isinstance(results, list)
         assert len(results) > 0
@@ -141,9 +167,10 @@ class TestQueryPerformanceMonitor:
 class TestDatabaseOptimizer:
     """Test DatabaseOptimizer functionality."""
 
-    def test_get_current_indexes(self, optimizer):
+    @pytest.mark.asyncio
+    async def test_get_current_indexes(self, optimizer):
         """Test retrieving current database indexes."""
-        indexes = optimizer.get_current_indexes()
+        indexes = await optimizer.get_current_indexes()
 
         assert isinstance(indexes, dict)
         assert "detections" in indexes
@@ -151,43 +178,46 @@ class TestDatabaseOptimizer:
         assert isinstance(indexes["detections"], list)
         assert isinstance(indexes["audio_files"], list)
 
-    def test_create_optimized_indexes_dry_run(self, optimizer):
+    @pytest.mark.asyncio
+    async def test_create_optimized_indexes_dry_run(self, optimizer):
         """Test index creation in dry-run mode."""
-        sql_statements = optimizer.create_optimized_indexes(dry_run=True)
+        sql_statements = await optimizer.create_optimized_indexes(dry_run=True)
 
         assert isinstance(sql_statements, list)
         assert len(sql_statements) > 0
         assert all("CREATE INDEX" in sql for sql in sql_statements)
 
         # Verify no actual indexes were created
-        indexes_before = optimizer.get_current_indexes()
-        sql_statements = optimizer.create_optimized_indexes(dry_run=True)
-        indexes_after = optimizer.get_current_indexes()
+        indexes_before = await optimizer.get_current_indexes()
+        sql_statements = await optimizer.create_optimized_indexes(dry_run=True)
+        indexes_after = await optimizer.get_current_indexes()
 
         assert indexes_before == indexes_after
 
-    def test_create_optimized_indexes(self, optimizer):
+    @pytest.mark.asyncio
+    async def test_create_optimized_indexes(self, optimizer):
         """Test actual index creation."""
         # Get initial indexes
-        indexes_before = optimizer.get_current_indexes()
+        indexes_before = await optimizer.get_current_indexes()
         initial_count = sum(len(idx_list) for idx_list in indexes_before.values())
 
         # Create indexes
-        sql_statements = optimizer.create_optimized_indexes(dry_run=False)
+        sql_statements = await optimizer.create_optimized_indexes(dry_run=False)
 
         assert isinstance(sql_statements, list)
         assert len(sql_statements) > 0
 
         # Verify indexes were created
-        indexes_after = optimizer.get_current_indexes()
+        indexes_after = await optimizer.get_current_indexes()
         final_count = sum(len(idx_list) for idx_list in indexes_after.values())
 
         # Note: Some indexes might already exist, so we check for >= instead of >
         assert final_count >= initial_count
 
-    def test_analyze_table_statistics(self, optimizer):
+    @pytest.mark.asyncio
+    async def test_analyze_table_statistics(self, optimizer):
         """Test table statistics analysis."""
-        stats = optimizer.analyze_table_statistics()
+        stats = await optimizer.analyze_table_statistics()
 
         assert isinstance(stats, dict)
         assert "tables" in stats
@@ -221,9 +251,10 @@ class TestDatabaseOptimizer:
             assert "average" in stats["confidence_distribution"]
             assert "high_confidence_count" in stats["confidence_distribution"]
 
-    def test_optimize_database(self, optimizer):
+    @pytest.mark.asyncio
+    async def test_optimize_database(self, optimizer):
         """Test complete database optimization."""
-        results = optimizer.optimize_database()
+        results = await optimizer.optimize_database()
 
         assert isinstance(results, dict)
         assert "timestamp" in results
@@ -238,7 +269,8 @@ class TestDatabaseOptimizer:
         assert isinstance(results["recommendations"], list)
         assert len(results["recommendations"]) > 0
 
-    def test_generate_recommendations(self, optimizer):
+    @pytest.mark.asyncio
+    async def test_generate_recommendations(self, optimizer):
         """Test recommendation generation."""
         # Create mock results
         results = {
@@ -278,21 +310,22 @@ class TestDatabaseOptimizer:
 class TestOptimizationPerformance:
     """Test optimization performance improvements."""
 
-    def test_query_performance_improvement(self, optimizer):
+    @pytest.mark.asyncio
+    async def test_query_performance_improvement(self, optimizer):
         """Test that optimization improves query performance."""
         # Measure performance before optimization
         monitor = optimizer.monitor
-        before_results = monitor.analyze_common_queries()
+        before_results = await monitor.analyze_common_queries()
 
         # Calculate average time before
         before_times = [r["execution_time_ms"] for r in before_results if "execution_time_ms" in r]
         avg_before = sum(before_times) / len(before_times) if before_times else 0
 
         # Run optimization
-        optimizer.create_optimized_indexes(dry_run=False)
+        await optimizer.create_optimized_indexes(dry_run=False)
 
         # Measure performance after optimization
-        after_results = monitor.analyze_common_queries()
+        after_results = await monitor.analyze_common_queries()
 
         # Calculate average time after
         after_times = [r["execution_time_ms"] for r in after_results if "execution_time_ms" in r]

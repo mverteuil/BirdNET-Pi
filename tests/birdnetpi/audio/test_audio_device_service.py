@@ -3,10 +3,18 @@ from unittest.mock import patch
 import pytest
 
 from birdnetpi.audio.audio_device_service import AudioDevice, AudioDeviceService
+from birdnetpi.utils.cache import clear_all_cache
 
 
 class TestAudioDeviceService:
     """Should test the AudioDeviceService class."""
+
+    @pytest.fixture(autouse=True)
+    def clear_cache(self):
+        """Clear cache before each test to ensure test isolation."""
+        clear_all_cache()
+        yield
+        clear_all_cache()
 
     @pytest.fixture(autouse=True)
     def audio_device_service(self):

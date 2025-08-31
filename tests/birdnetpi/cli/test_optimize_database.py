@@ -1,7 +1,7 @@
 """Tests for the optimize_database CLI command."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from click.testing import CliRunner
@@ -26,7 +26,7 @@ class TestSetupDatabaseService:
         mocker.patch("birdnetpi.cli.optimize_database.PathResolver", return_value=path_resolver)
 
         # Mock DatabaseService
-        mock_db_service = mocker.MagicMock()
+        mock_db_service = mocker.AsyncMock()
         mock_db_service_class = mocker.patch(
             "birdnetpi.cli.optimize_database.DatabaseService", return_value=mock_db_service
         )
@@ -105,9 +105,10 @@ class TestPrintFunctions:
 class TestAnalyzePerformance:
     """Test analyze_performance function."""
 
-    def test_analyze_performance_with_indexes(self, mocker, capsys):
+    @pytest.mark.asyncio
+    async def test_analyze_performance_with_indexes(self, mocker, capsys):
         """Test analyze_performance with existing indexes."""
-        mock_optimizer = mocker.MagicMock()
+        mock_optimizer = mocker.AsyncMock()
         mock_optimizer.get_current_indexes.return_value = {
             "detections": ["idx_date", "idx_species"]
         }
@@ -121,7 +122,7 @@ class TestAnalyzePerformance:
             }
         }
 
-        analyze_performance(mock_optimizer)
+        await analyze_performance(mock_optimizer)
 
         captured = capsys.readouterr()
         assert "Analyzing Database Performance" in captured.out
@@ -131,13 +132,14 @@ class TestAnalyzePerformance:
         assert "Total detections: 1,000" in captured.out
         assert "2024-01-01 to 2024-12-31" in captured.out
 
-    def test_analyze_performance_no_indexes(self, mocker, capsys):
+    @pytest.mark.asyncio
+    async def test_analyze_performance_no_indexes(self, mocker, capsys):
         """Test analyze_performance with no indexes."""
-        mock_optimizer = mocker.MagicMock()
+        mock_optimizer = mocker.AsyncMock()
         mock_optimizer.get_current_indexes.return_value = {}
         mock_optimizer.analyze_table_statistics.return_value = {"detections": {"row_count": 0}}
 
-        analyze_performance(mock_optimizer)
+        await analyze_performance(mock_optimizer)
 
         captured = capsys.readouterr()
         assert "No custom indexes found" in captured.out
@@ -147,15 +149,16 @@ class TestAnalyzePerformance:
 class TestOptimizeDatabase:
     """Test optimize_database function."""
 
-    def test_optimize_database_dry_run(self, mocker, capsys):
+    @pytest.mark.asyncio
+    async def test_optimize_database_dry_run(self, mocker, capsys):
         """Test optimize_database in dry run mode."""
-        mock_optimizer = mocker.MagicMock()
+        mock_optimizer = mocker.AsyncMock()
         mock_optimizer.create_optimized_indexes.return_value = [
             "CREATE INDEX idx_test ON detections(date)",
             "CREATE INDEX idx_species ON detections(species)",
         ]
 
-        optimize_database(mock_optimizer, dry_run=True)
+        await optimize_database(mock_optimizer, dry_run=True)
 
         captured = capsys.readouterr()
         assert "Optimization Plan (Dry Run)" in captured.out
@@ -163,9 +166,10 @@ class TestOptimizeDatabase:
         mock_optimizer.create_optimized_indexes.assert_called_once_with(dry_run=True)
         mock_optimizer.optimize_database.assert_not_called()
 
-    def test_optimize_database_real_run(self, mocker, capsys):
+    @pytest.mark.asyncio
+    async def test_optimize_database_real_run(self, mocker, capsys):
         """Test optimize_database in real mode."""
-        mock_optimizer = mocker.MagicMock()
+        mock_optimizer = mocker.AsyncMock()
         mock_optimizer.create_optimized_indexes.return_value = [
             "CREATE INDEX idx_test ON detections(date)",
         ]
@@ -174,7 +178,7 @@ class TestOptimizeDatabase:
             "analyze_result": True,
         }
 
-        optimize_database(mock_optimizer, dry_run=False)
+        await optimize_database(mock_optimizer, dry_run=False)
 
         captured = capsys.readouterr()
         assert "Running Database Optimization" in captured.out
@@ -184,26 +188,32 @@ class TestOptimizeDatabase:
         mock_optimizer.create_optimized_indexes.assert_called_once_with(dry_run=False)
         mock_optimizer.optimize_database.assert_called_once()
 
-    def test_optimize_database_no_changes_needed(self, mocker, capsys):
+    @pytest.mark.asyncio
+    async def test_optimize_database_no_changes_needed(self, mocker, capsys):
         """Test optimize_database when no changes are needed."""
-        mock_optimizer = mocker.MagicMock()
+        mock_optimizer = mocker.AsyncMock()
+        # Configure the mock to return empty results
         mock_optimizer.create_optimized_indexes.return_value = []
         mock_optimizer.optimize_database.return_value = {}
 
-        optimize_database(mock_optimizer, dry_run=False)
+        await optimize_database(mock_optimizer, dry_run=False)
 
         captured = capsys.readouterr()
         assert "No new indexes needed" in captured.out
         assert "Database was already optimized" in captured.out
 
-    def test_optimize_database_many_indexes(self, mocker, capsys):
+    @pytest.mark.asyncio
+    async def test_optimize_database_many_indexes(self, mocker, capsys):
         """Test optimize_database with more than 5 indexes."""
-        mock_optimizer = mocker.MagicMock()
+        mock_optimizer = mocker.AsyncMock()
         indexes = [f"CREATE INDEX idx_{i} ON table(col{i})" for i in range(10)]
         mock_optimizer.create_optimized_indexes.return_value = indexes
-        mock_optimizer.optimize_database.return_value = {}
+        mock_optimizer.optimize_database.return_value = {
+            "vacuum_result": True,
+            "analyze_result": True,
+        }
 
-        optimize_database(mock_optimizer, dry_run=False)
+        await optimize_database(mock_optimizer, dry_run=False)
 
         captured = capsys.readouterr()
         assert "Created 10 indexes" in captured.out
@@ -213,14 +223,15 @@ class TestOptimizeDatabase:
 class TestExportReport:
     """Test export_report function."""
 
-    def test_export_report_success(self, mocker, tmp_path, capsys):
+    @pytest.mark.asyncio
+    async def test_export_report_success(self, mocker, tmp_path, capsys):
         """Test successful report export."""
-        mock_optimizer = mocker.MagicMock()
+        mock_optimizer = mocker.AsyncMock()
         mock_optimizer.analyze_table_statistics.return_value = {"test": "stats"}
         mock_optimizer.get_current_indexes.return_value = {"test": ["idx1"]}
 
         export_path = tmp_path / "report.json"
-        export_report(mock_optimizer, export_path)
+        await export_report(mock_optimizer, export_path)
 
         captured = capsys.readouterr()
         assert "Report exported to" in captured.out
@@ -236,13 +247,14 @@ class TestExportReport:
             assert report["database_statistics"] == {"test": "stats"}
             assert report["existing_indexes"] == {"test": ["idx1"]}
 
-    def test_export_report_failure(self, mocker, capsys):
+    @pytest.mark.asyncio
+    async def test_export_report_failure(self, mocker, capsys):
         """Test report export failure."""
-        mock_optimizer = mocker.MagicMock()
+        mock_optimizer = mocker.AsyncMock()
         mock_optimizer.analyze_table_statistics.side_effect = Exception("Test error")
 
         export_path = Path("/invalid/path/report.json")
-        export_report(mock_optimizer, export_path)
+        await export_report(mock_optimizer, export_path)
 
         captured = capsys.readouterr()
         assert "Export failed" in captured.err  # Error messages go to stderr
@@ -267,9 +279,12 @@ class TestCLI:
         mock_setup_db.return_value = mock_db_service
 
         mock_optimizer = MagicMock()
+        # Make async methods return coroutines
+        mock_optimizer.get_current_indexes = AsyncMock(return_value={})
+        mock_optimizer.analyze_table_statistics = AsyncMock(return_value={})
+        mock_optimizer.create_optimized_indexes = AsyncMock(return_value=[])
+        mock_optimizer.optimize_database = AsyncMock(return_value={})
         mock_optimizer_class.return_value = mock_optimizer
-        mock_optimizer.get_current_indexes.return_value = {}
-        mock_optimizer.analyze_table_statistics.return_value = {}
 
         runner = CliRunner()
         result = runner.invoke(cli, ["--analyze"])
@@ -287,9 +302,12 @@ class TestCLI:
         mock_setup_db.return_value = mock_db_service
 
         mock_optimizer = MagicMock()
+        # Make async methods return coroutines
+        mock_optimizer.get_current_indexes = AsyncMock(return_value={})
+        mock_optimizer.analyze_table_statistics = AsyncMock(return_value={})
+        mock_optimizer.create_optimized_indexes = AsyncMock(return_value=[])
+        mock_optimizer.optimize_database = AsyncMock(return_value={})
         mock_optimizer_class.return_value = mock_optimizer
-        mock_optimizer.create_optimized_indexes.return_value = []
-        mock_optimizer.optimize_database.return_value = {}
 
         runner = CliRunner()
         result = runner.invoke(cli, ["--optimize"])
@@ -307,8 +325,12 @@ class TestCLI:
         mock_setup_db.return_value = mock_db_service
 
         mock_optimizer = MagicMock()
+        # Make async methods return coroutines
+        mock_optimizer.get_current_indexes = AsyncMock(return_value={})
+        mock_optimizer.analyze_table_statistics = AsyncMock(return_value={})
+        mock_optimizer.create_optimized_indexes = AsyncMock(return_value=[])
+        mock_optimizer.optimize_database = AsyncMock(return_value={})
         mock_optimizer_class.return_value = mock_optimizer
-        mock_optimizer.create_optimized_indexes.return_value = []
 
         runner = CliRunner()
         result = runner.invoke(cli, ["--optimize", "--dry-run"])
@@ -326,9 +348,12 @@ class TestCLI:
         mock_setup_db.return_value = mock_db_service
 
         mock_optimizer = MagicMock()
+        # Make async methods return coroutines
+        mock_optimizer.get_current_indexes = AsyncMock(return_value={})
+        mock_optimizer.analyze_table_statistics = AsyncMock(return_value={})
+        mock_optimizer.create_optimized_indexes = AsyncMock(return_value=[])
+        mock_optimizer.optimize_database = AsyncMock(return_value={})
         mock_optimizer_class.return_value = mock_optimizer
-        mock_optimizer.analyze_table_statistics.return_value = {}
-        mock_optimizer.get_current_indexes.return_value = {}
 
         export_path = tmp_path / "test_report.json"
         runner = CliRunner()
@@ -346,9 +371,12 @@ class TestCLI:
         mock_setup_db.return_value = mock_db_service
 
         mock_optimizer = MagicMock()
+        # Make async methods return coroutines
+        mock_optimizer.get_current_indexes = AsyncMock(return_value={})
+        mock_optimizer.analyze_table_statistics = AsyncMock(return_value={})
+        mock_optimizer.create_optimized_indexes = AsyncMock(return_value=[])
+        mock_optimizer.optimize_database = AsyncMock(return_value={})
         mock_optimizer_class.return_value = mock_optimizer
-        mock_optimizer.get_current_indexes.return_value = {}
-        mock_optimizer.analyze_table_statistics.return_value = {}
 
         runner = CliRunner()
         with patch("logging.getLogger") as mock_get_logger:
@@ -368,11 +396,12 @@ class TestCLI:
         mock_setup_db.return_value = mock_db_service
 
         mock_optimizer = MagicMock()
+        # Make async methods return coroutines
+        mock_optimizer.get_current_indexes = AsyncMock(return_value={})
+        mock_optimizer.analyze_table_statistics = AsyncMock(return_value={})
+        mock_optimizer.create_optimized_indexes = AsyncMock(return_value=[])
+        mock_optimizer.optimize_database = AsyncMock(return_value={})
         mock_optimizer_class.return_value = mock_optimizer
-        mock_optimizer.get_current_indexes.return_value = {}
-        mock_optimizer.analyze_table_statistics.return_value = {}
-        mock_optimizer.create_optimized_indexes.return_value = []
-        mock_optimizer.optimize_database.return_value = {}
 
         runner = CliRunner()
         result = runner.invoke(cli, ["--analyze", "--optimize"])

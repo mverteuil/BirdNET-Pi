@@ -151,11 +151,9 @@ class TestContainerIntegration:
             assert isinstance(db_service, DatabaseService)
             assert str(test_paths) in str(db_service.db_path)
         finally:
-            # Explicitly close database connections to prevent SQLite locking
-            if hasattr(db_service, "sync_engine") and db_service.sync_engine:
-                db_service.sync_engine.dispose()
             # Note: async_engine.dispose() is async and can't be called here
             # The container cleanup will handle it via reset_singleton()
+            pass
 
     def test_multilingual_database_service_provider(self, container_with_overrides: Container):
         """Test that multilingual_database_service can be instantiated."""

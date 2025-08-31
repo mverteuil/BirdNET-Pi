@@ -13,17 +13,22 @@ from birdnetpi.database.database_service import DatabaseService
 
 
 @pytest.fixture
-def temp_db():
+async def temp_db():
     """Create a temporary database for testing."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as temp_file:
         db_path = Path(temp_file.name)
 
     # Initialize the database
-    DatabaseService(db_path)
-    yield db_path
-
-    # Cleanup
-    db_path.unlink(missing_ok=True)
+    db_service = DatabaseService(db_path)
+    await db_service.initialize()
+    try:
+        yield db_path
+    finally:
+        # Dispose async engine
+        if hasattr(db_service, "async_engine") and db_service.async_engine:
+            await db_service.async_engine.dispose()
+        # Cleanup file
+        db_path.unlink(missing_ok=True)
 
 
 @pytest.fixture

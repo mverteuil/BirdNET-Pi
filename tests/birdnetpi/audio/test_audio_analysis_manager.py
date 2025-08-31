@@ -23,10 +23,9 @@ def test_config_data():
         "analysis_overlap": 0.5,
         "latitude": 40.7128,
         "longitude": -74.0060,
-        "sensitivity": 1.25,
+        "sensitivity_setting": 1.25,
         "species_confidence_threshold": 0.7,
-        "detection_threshold": 0.7,
-        "buffer_size_seconds": 3,
+        "detections_endpoint": "http://localhost:8000/api/v1/detections/",
     }
 
 
@@ -165,7 +164,7 @@ def mock_detection_data(test_config_data, test_detection_result):
         "longitude": test_config_data["longitude"],
         "species_confidence_threshold": test_config_data["species_confidence_threshold"],
         "week": 1,
-        "sensitivity_setting": test_config_data["sensitivity"],
+        "sensitivity_setting": test_config_data["sensitivity_setting"],
         "overlap": 0.5,
     }
 
@@ -291,41 +290,22 @@ class TestAudioAnalysisManager:
             species_components, confidence, raw_audio_bytes
         )
 
-        mock_path_resolver.get_detection_audio_path.assert_called_once()
-        mock_file_manager.save_detection_audio.assert_called_once()
-        mock_async_client.assert_called_once()
+        # Verify the HTTP POST was made with correct endpoint
         mock_post.assert_called_once()
+        call_args = mock_post.call_args
+        assert call_args[0][0] == "http://localhost:8000/api/v1/detections/"
+
+        # Verify the detection data structure
+        detection_data = call_args[1]["json"]
+        assert detection_data["scientific_name"] == "Turdus migratorius"
+        assert detection_data["common_name"] == "American Robin"
+        assert detection_data["confidence"] == 0.85
+        assert "audio_data" in detection_data  # Base64 encoded audio
+
         assert "Detection event sent" in caplog.text
 
-    @pytest.mark.asyncio
-    @patch("httpx.AsyncClient")
-    async def test_send_detection_event_audio_save_failure(
-        self,
-        mock_async_client,
-        audio_analysis_service,
-        mock_file_manager,
-        test_species_data,
-        caplog,
-    ):
-        """Should log an error and not send HTTP request if audio save fails."""
-        mock_file_manager.save_detection_audio.side_effect = Exception("Audio save error")
-
-        # Use test data for consistent species information
-        species, confidence = test_species_data["confident"][1]  # Crow, 0.75
-        raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
-
-        # Parse species tensor to get proper components
-        from birdnetpi.species.parser import SpeciesParser
-
-        species_components = await SpeciesParser.parse_tensor_species(species)
-        await audio_analysis_service._send_detection_event(
-            species_components, confidence, raw_audio_bytes
-        )
-
-        mock_async_client.assert_not_called()
-        assert "Failed to save detection audio" in caplog.text
-        # The exception details appear in the traceback
-        assert "Audio save error" in caplog.text
+    # Note: test_send_detection_event_audio_save_failure was removed because
+    # _send_detection_event no longer saves audio files - it sends raw bytes directly
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient")

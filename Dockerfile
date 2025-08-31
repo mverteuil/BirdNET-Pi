@@ -155,11 +155,13 @@ CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf", "-u", "bi
 FROM runtime AS init
 
 # Switch back to root for init operations
+# hadolint ignore=DL3002
 USER root
 
 # Init container entrypoint script
 # Create init script using printf to avoid heredoc issues with hadolint
-# hadolint ignore=DL3059
+# Consolidate RUN commands and use shellcheck ignore for variable expansion
+# hadolint ignore=DL3059,SC2016
 RUN printf '#!/bin/bash\n\
 set -e\n\
 \n\
@@ -170,6 +172,7 @@ echo "Running as: $(whoami) (UID:$(id -u) GID:$(id -g))"\n\
 echo "Installing BirdNET assets..."\n\
 cd /opt/birdnetpi\n\
 # Use su without dash to preserve PATH environment variable\n\
+# shellcheck disable=SC2016\n\
 su birdnetpi -c "install-assets install ${BIRDNET_ASSETS_VERSION:-v2.1.1} --skip-existing"\n\
 \n\
 # Set up config\n\
@@ -194,9 +197,8 @@ echo "Permissions set:"\n\
 ls -la /var/lib/birdnetpi/config/\n\
 \n\
 echo "=== Init Complete ==="\n\
-' > /init.sh
-
-RUN chmod +x /init.sh
+' > /init.sh && \
+    chmod +x /init.sh
 
 # Use the init script as entrypoint
 ENTRYPOINT ["/init.sh"]

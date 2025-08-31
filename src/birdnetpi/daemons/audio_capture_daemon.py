@@ -111,12 +111,12 @@ def main() -> None:
         logger.exception("An error occurred in the audio capture wrapper")
     finally:
         # Stop audio capture first (stops writing to FIFOs)
-        if audio_capture_service:
-            try:
+        try:
+            if audio_capture_service is not None:
                 audio_capture_service.stop_capture()
                 logger.info("AudioCaptureService stopped.")
-            except Exception:
-                logger.exception("Error stopping audio capture service")
+        except Exception:
+            logger.exception("Error stopping audio capture service")
 
         # Then cleanup FIFOs
         _cleanup_fifos()

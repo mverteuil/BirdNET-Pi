@@ -30,6 +30,8 @@ def mock_config():
     mock.longitude = -74.0060
     mock.sensitivity_setting = 1.25
     mock.species_confidence_threshold = 0.7
+    mock.analysis_overlap = 0.5
+    mock.detections_endpoint = "http://localhost:8000/api/v1/detections/"
     return mock
 
 

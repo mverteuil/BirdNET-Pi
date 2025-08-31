@@ -1,6 +1,6 @@
 """Tests for SQLAdmin configuration and setup."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi import FastAPI
 
@@ -47,8 +47,8 @@ class TestSQLAdminViewRoutes:
         app = FastAPI()
         mock_container = MagicMock()
         mock_db_service = MagicMock()
-        mock_engine = MagicMock()
-        mock_db_service.engine = mock_engine
+        mock_async_engine = AsyncMock()
+        mock_db_service.async_engine = mock_async_engine
         mock_container.bnp_database_service.return_value = mock_db_service
         app.container = mock_container  # type: ignore[attr-defined]
 
@@ -60,7 +60,7 @@ class TestSQLAdminViewRoutes:
         result = setup_sqladmin(app)
 
         # Verify Admin was instantiated with correct parameters
-        mock_admin_class.assert_called_once_with(app, mock_engine, base_url="/admin/database")
+        mock_admin_class.assert_called_once_with(app, mock_async_engine, base_url="/admin/database")
 
         # Verify model views were added
         assert mock_admin_instance.add_view.call_count == 2

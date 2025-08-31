@@ -73,10 +73,25 @@ class TestAudioWebsocketDaemon:
 
     def test_main_keyboard_interrupt(self):
         """Should handle keyboard interrupt gracefully."""
+        import asyncio
+
+        async def consume_coro(coro):
+            """Properly consume the coroutine."""
+            # Actually await the coroutine to prevent warnings
+            try:
+                await coro
+            except Exception:
+                pass  # Ignore exceptions from the coroutine
 
         def mock_run(coro):
-            # Consume the coroutine to avoid warning
-            coro.close()
+            # Create a new event loop to run the coroutine
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                # Properly consume the coroutine
+                loop.run_until_complete(consume_coro(coro))
+            finally:
+                loop.close()
             raise KeyboardInterrupt
 
         with patch("birdnetpi.daemons.audio_websocket_daemon.asyncio.run", side_effect=mock_run):
@@ -85,10 +100,25 @@ class TestAudioWebsocketDaemon:
 
     def test_main_general_exception(self):
         """Should handle general exceptions gracefully."""
+        import asyncio
+
+        async def consume_coro(coro):
+            """Properly consume the coroutine."""
+            # Actually await the coroutine to prevent warnings
+            try:
+                await coro
+            except Exception:
+                pass  # Ignore exceptions from the coroutine
 
         def mock_run(coro):
-            # Consume the coroutine to avoid warning
-            coro.close()
+            # Create a new event loop to run the coroutine
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                # Properly consume the coroutine
+                loop.run_until_complete(consume_coro(coro))
+            finally:
+                loop.close()
             raise Exception("General error")
 
         with patch(

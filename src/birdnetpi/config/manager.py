@@ -169,6 +169,13 @@ class ConfigManager:
                 unexpected_fields,
             )
 
+        # Handle None values for dict fields that have default factories
+        dict_fields_with_defaults = {"apprise_targets", "webhook_targets"}
+        for field in dict_fields_with_defaults:
+            if field in filtered_config and filtered_config[field] is None:
+                # Remove the None value so the default factory is used
+                del filtered_config[field]
+
         return BirdNETConfig(**filtered_config)
 
     def _config_to_dict(self, config: BirdNETConfig) -> dict[str, Any]:

@@ -415,5 +415,6 @@ class TestDashboardAnalyticsIntegration:
 
         # Should have all zeros
         assert all(count == 0 for count in patterns["hourly_distribution"])
-        assert patterns["peak_hour"] is None
+        # Peak hour defaults to 6 AM (typical bird activity time) when no data
+        assert patterns["peak_hour"] == 6
         assert all(patterns["periods"][period] == 0 for period in patterns["periods"])

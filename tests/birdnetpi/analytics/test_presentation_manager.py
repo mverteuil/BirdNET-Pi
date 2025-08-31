@@ -164,7 +164,11 @@ class TestLandingPageData:
             }
         )
 
+        # Mock data_manager methods
         mock_analytics_manager.data_manager.get_recent_detections = AsyncMock(
+            return_value=sample_detections
+        )
+        mock_analytics_manager.data_manager.query_detections = AsyncMock(
             return_value=sample_detections
         )
 

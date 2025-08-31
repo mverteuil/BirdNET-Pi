@@ -2,7 +2,6 @@ from pathlib import Path
 
 import matplotlib
 import pytest
-from fastapi import FastAPI
 
 from birdnetpi.system.path_resolver import PathResolver
 
@@ -94,7 +93,7 @@ def path_resolver(tmp_path: Path, repo_root: Path) -> PathResolver:
 
 
 @pytest.fixture
-def app_with_temp_data(path_resolver) -> FastAPI:
+async def app_with_temp_data(path_resolver):
     """Create FastAPI app with properly isolated paths.
 
     This fixture uses the path_resolver fixture from tests/conftest.py
@@ -125,6 +124,10 @@ def app_with_temp_data(path_resolver) -> FastAPI:
 
     # Create a test database service with the temp path
     temp_db_service = DatabaseService(path_resolver.get_database_path())
+
+    # Initialize the database (create tables) - await it properly
+    await temp_db_service.initialize()
+
     Container.bnp_database_service.override(providers.Singleton(lambda: temp_db_service))
 
     # Now create the app with our overridden providers
@@ -135,19 +138,18 @@ def app_with_temp_data(path_resolver) -> FastAPI:
     # Store a reference to the temp_db_service to prevent garbage collection
     app._test_db_service = temp_db_service  # type: ignore[attr-defined]
 
-    # Clean up overrides after the test
-    import weakref
+    yield app
 
-    def cleanup():
-        Container.path_resolver.reset_override()
-        Container.database_path.reset_override()
-        Container.config.reset_override()
-        Container.bnp_database_service.reset_override()
+    # Clean up after the test
+    # Dispose the async engine properly
+    if hasattr(temp_db_service, "async_engine") and temp_db_service.async_engine:
+        await temp_db_service.async_engine.dispose()
 
-    # Register cleanup to happen when app is garbage collected
-    weakref.finalize(app, cleanup)
-
-    return app
+    # Reset container overrides
+    Container.path_resolver.reset_override()
+    Container.database_path.reset_override()
+    Container.config.reset_override()
+    Container.bnp_database_service.reset_override()
 
 
 @pytest.fixture

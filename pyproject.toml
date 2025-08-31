@@ -96,7 +96,9 @@ omit = [
   "*/dependency_injector/*",
   "/private/var/folders/*",
   "/tmp/*",
-  "*/pytest-of-*/*"
+  "*/pytest-of-*/*",
+  # Exclude daemon entry points - they're thin wrappers and coverage causes unawaited coroutine warnings
+  "src/birdnetpi/daemons/*_daemon.py"
 ]
 
 [tool.pyright]

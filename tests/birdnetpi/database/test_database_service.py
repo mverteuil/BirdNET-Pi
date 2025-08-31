@@ -8,25 +8,29 @@ from birdnetpi.database.database_service import DatabaseService
 
 
 @pytest_asyncio.fixture
-async def bnp_database_service(tmp_path) -> DatabaseService:
+async def bnp_database_service(tmp_path):
     """Provide a DatabaseService instance for testing."""
     db_path = tmp_path / "test.db"
 
     # Patch problematic parts during initialization
     with patch("birdnetpi.database.database_service.SQLModel.metadata.create_all"):
-        # Patch the event listener and create_engine that are imported inside __init__
-        with patch("sqlalchemy.event.listens_for"):
-            with patch("sqlalchemy.create_engine") as mock_create_engine:
-                # Mock the sync engine
-                mock_sync_engine = MagicMock()
-                mock_create_engine.return_value = mock_sync_engine
-                service = DatabaseService(db_path)
+        service = DatabaseService(db_path)
 
     # The service is now created without trying to initialize the database
     # The methods we're testing will be properly mocked in each test
-    return service
+    try:
+        yield service
+    finally:
+        # Dispose resources to prevent file descriptor leaks
+        if (
+            hasattr(service, "async_engine")
+            and service.async_engine
+            and not isinstance(service.async_engine, MagicMock)
+        ):
+            await service.async_engine.dispose()
 
 
+@pytest.mark.no_leaks
 @pytest.mark.asyncio
 async def test_clear_database(bnp_database_service):
     """Should clear all data from the database tables successfully"""
@@ -51,6 +55,7 @@ async def test_clear_database(bnp_database_service):
         mock_session.commit.assert_called_once()
 
 
+@pytest.mark.no_leaks
 @pytest.mark.asyncio
 async def test_clear_database_failure(bnp_database_service):
     """Should handle clear database failure and rollback"""
@@ -77,6 +82,7 @@ async def test_clear_database_failure(bnp_database_service):
             mock_session.rollback.assert_called_once()
 
 
+@pytest.mark.no_leaks
 @pytest.mark.asyncio
 async def test_checkpoint_wal(bnp_database_service):
     """Should successfully checkpoint WAL file"""
@@ -99,6 +105,7 @@ async def test_checkpoint_wal(bnp_database_service):
         mock_session.commit.assert_called_once()
 
 
+@pytest.mark.no_leaks
 @pytest.mark.asyncio
 async def test_checkpoint_wal_failure(bnp_database_service):
     """Should handle WAL checkpoint failure gracefully"""
@@ -115,6 +122,7 @@ async def test_checkpoint_wal_failure(bnp_database_service):
         mock_session.execute.assert_called_once()
 
 
+@pytest.mark.no_leaks
 @pytest.mark.asyncio
 async def test_get_database_stats(bnp_database_service, tmp_path):
     """Should return database statistics"""
@@ -161,6 +169,7 @@ async def test_get_database_stats(bnp_database_service, tmp_path):
         assert stats["journal_mode"] == "wal"
 
 
+@pytest.mark.no_leaks
 @pytest.mark.asyncio
 async def test_vacuum_database(bnp_database_service):
     """Should successfully vacuum database"""
@@ -176,6 +185,7 @@ async def test_vacuum_database(bnp_database_service):
         mock_session.commit.assert_called_once()
 
 
+@pytest.mark.no_leaks
 @pytest.mark.asyncio
 async def test_vacuum_database_failure(bnp_database_service):
     """Should handle vacuum database failure"""
