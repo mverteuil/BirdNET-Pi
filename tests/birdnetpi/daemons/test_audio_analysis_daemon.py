@@ -27,28 +27,28 @@ class TestAudioAnalysisDaemon:
     def test_signal_handler(self, mocker):
         """Should set the shutdown flag when a signal is received."""
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.logger")
-        mocker.patch("birdnetpi.daemons.audio_analysis_daemon._shutdown_flag", False)
+        mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.shutdown_flag", False)
         daemon._signal_handler(signal.SIGTERM, MagicMock())
-        assert daemon._shutdown_flag is True
+        assert daemon.DaemonState.shutdown_flag is True
 
     def test_signal_handler__different_signals(self, mocker):
         """Should handle different signal types correctly."""
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.logger")
 
         # Test SIGTERM
-        mocker.patch("birdnetpi.daemons.audio_analysis_daemon._shutdown_flag", False)
+        mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.shutdown_flag", False)
         daemon._signal_handler(signal.SIGTERM, MagicMock())
-        assert daemon._shutdown_flag is True
+        assert daemon.DaemonState.shutdown_flag is True
 
         # Reset and test SIGINT
-        mocker.patch("birdnetpi.daemons.audio_analysis_daemon._shutdown_flag", False)
+        mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.shutdown_flag", False)
         daemon._signal_handler(signal.SIGINT, MagicMock())
-        assert daemon._shutdown_flag is True
+        assert daemon.DaemonState.shutdown_flag is True
 
         # Reset and test other signal (should still work)
-        mocker.patch("birdnetpi.daemons.audio_analysis_daemon._shutdown_flag", False)
+        mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.shutdown_flag", False)
         daemon._signal_handler(signal.SIGUSR1, MagicMock())
-        assert daemon._shutdown_flag is True
+        assert daemon.DaemonState.shutdown_flag is True
 
     def test_main_creates_event_loop(self, mocker):
         """Should create and run an event loop."""
@@ -73,16 +73,17 @@ class TestAudioAnalysisDaemon:
     def test_cleanup_fifo(self, mocker, caplog):
         """Should close the FIFO file descriptor and event loop."""
         mock_os = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.os")
-        mocker.patch("birdnetpi.daemons.audio_analysis_daemon._fifo_analysis_fd", 456)
+        mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.fifo_analysis_fd", 456)
         mocker.patch(
-            "birdnetpi.daemons.audio_analysis_daemon._fifo_analysis_path", "/tmp/test_fifo.fifo"
+            "birdnetpi.daemons.audio_analysis_daemon.DaemonState.fifo_analysis_path",
+            "/tmp/test_fifo.fifo",
         )
 
         # Mock event loop
         mock_loop = MagicMock()
         mock_loop.is_closed.return_value = False
-        mocker.patch("birdnetpi.daemons.audio_analysis_daemon._event_loop", mock_loop)
-        mocker.patch("birdnetpi.daemons.audio_analysis_daemon._session", None)
+        mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.event_loop", mock_loop)
+        mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.session", None)
 
         daemon._cleanup_fifo()
         mock_os.close.assert_called_once_with(456)

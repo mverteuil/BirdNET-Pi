@@ -7,8 +7,12 @@ import time
 from types import FrameType
 from typing import TYPE_CHECKING
 
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+
 from birdnetpi.audio.audio_analysis_manager import AudioAnalysisManager
 from birdnetpi.config import ConfigManager
+from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.structlog_configurator import configure_structlog
@@ -18,29 +22,40 @@ if TYPE_CHECKING:
 
     from birdnetpi.config import BirdNETConfig
 
-# Logger will be configured when main runs
 logger = logging.getLogger(__name__)
 
-_shutdown_flag = False
-_fifo_analysis_path = None
-_fifo_analysis_fd = None
-_session = None
-_event_loop = None  # Persistent event loop
+
+class DaemonState:
+    """Encapsulates daemon state to avoid module-level globals."""
+
+    shutdown_flag: bool = False
+    fifo_analysis_path: str | None = None
+    fifo_analysis_fd: int | None = None
+    session: "AsyncSession | None" = None
+    event_loop: asyncio.AbstractEventLoop | None = None
+    audio_analysis_service: AudioAnalysisManager | None = None
+
+    @classmethod
+    def reset(cls) -> None:
+        """Reset state to initial values (useful for testing)."""
+        cls.shutdown_flag = False
+        cls.fifo_analysis_path = None
+        cls.fifo_analysis_fd = None
+        cls.session = None
+        cls.event_loop = None
+        cls.audio_analysis_service = None
 
 
 def _signal_handler(signum: int, frame: FrameType | None) -> None:
-    global _shutdown_flag
     logger.info("Signal %s received, initiating graceful shutdown...", signum)
-    _shutdown_flag = True
+    DaemonState.shutdown_flag = True
 
 
 def _cleanup_fifo() -> None:
-    global _fifo_analysis_fd, _fifo_analysis_path, _session, _audio_analysis_service, _event_loop
-
     # Stop audio analysis manager first to ensure no ongoing processing
-    if "_audio_analysis_service" in globals() and _audio_analysis_service:
+    if DaemonState.audio_analysis_service:
         try:
-            _audio_analysis_service.stop_buffer_flush_task()
+            DaemonState.audio_analysis_service.stop_buffer_flush_task()
             logger.info("Stopped audio analysis buffer flush task")
             # Give a moment for threads to finish
             time.sleep(0.2)
@@ -48,30 +63,25 @@ def _cleanup_fifo() -> None:
             logger.debug("Error stopping buffer flush task: %s", e)
 
     # Close FIFO
-    if _fifo_analysis_fd:
-        os.close(_fifo_analysis_fd)
-        logger.info("Closed FIFO: %s", _fifo_analysis_path)
-        _fifo_analysis_fd = None
+    if DaemonState.fifo_analysis_fd:
+        os.close(DaemonState.fifo_analysis_fd)
+        logger.info("Closed FIFO: %s", DaemonState.fifo_analysis_path)
+        DaemonState.fifo_analysis_fd = None
 
     # Clean up database session and event loop
-    if _event_loop and not _event_loop.is_closed():
-        if "_session" in globals() and _session:
+    if DaemonState.event_loop and not DaemonState.event_loop.is_closed():
+        if DaemonState.session:
             try:
-                _event_loop.run_until_complete(_session.close())
+                DaemonState.event_loop.run_until_complete(DaemonState.session.close())
             except Exception as e:
                 logger.debug("Error closing session: %s", e)
-        _event_loop.close()
+        DaemonState.event_loop.close()
 
 
 async def init_session_and_service(
     path_resolver: PathResolver, config: "BirdNETConfig"
 ) -> tuple["AsyncSession", AudioAnalysisManager]:
     """Initialize async session and audio analysis service."""
-    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-    from sqlalchemy.orm import sessionmaker
-
-    from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
-
     # Create multilingual database service
     multilingual_service = MultilingualDatabaseService(path_resolver)
     logger.info("Multilingual database service initialized")
@@ -97,8 +107,6 @@ async def init_session_and_service(
 
 async def async_main() -> None:
     """Async main function that runs in a single event loop."""
-    global _fifo_analysis_path, _fifo_analysis_fd, _session, _audio_analysis_service
-
     # Configure structlog
     path_resolver = PathResolver()
     config_manager = ConfigManager(path_resolver)
@@ -114,28 +122,32 @@ async def async_main() -> None:
 
     # Set up FIFO path
     fifo_base_path = path_resolver.get_fifo_base_path()
-    _fifo_analysis_path = os.path.join(fifo_base_path, "birdnet_audio_analysis.fifo")
+    DaemonState.fifo_analysis_path = os.path.join(fifo_base_path, "birdnet_audio_analysis.fifo")
 
     # Initialize session and service
-    _session, _audio_analysis_service = await init_session_and_service(path_resolver, config)
+    DaemonState.session, DaemonState.audio_analysis_service = await init_session_and_service(
+        path_resolver, config
+    )
 
     # Start the buffer flush task
-    _audio_analysis_service.start_buffer_flush_task()
+    DaemonState.audio_analysis_service.start_buffer_flush_task()
 
     try:
         # Open FIFO for reading (non-blocking)
-        _fifo_analysis_fd = os.open(_fifo_analysis_path, os.O_RDONLY | os.O_NONBLOCK)
-        logger.info("Opened FIFO for reading: %s", _fifo_analysis_path)
+        DaemonState.fifo_analysis_fd = os.open(
+            DaemonState.fifo_analysis_path, os.O_RDONLY | os.O_NONBLOCK
+        )
+        logger.info("Opened FIFO for reading: %s", DaemonState.fifo_analysis_path)
 
         # Main processing loop
-        while not _shutdown_flag:
+        while not DaemonState.shutdown_flag:
             try:
                 buffer_size = 4096  # Must match producer's write size
-                audio_data_bytes = os.read(_fifo_analysis_fd, buffer_size)
+                audio_data_bytes = os.read(DaemonState.fifo_analysis_fd, buffer_size)
 
                 if audio_data_bytes:
                     # Process audio chunk asynchronously without creating a new event loop
-                    await _audio_analysis_service.process_audio_chunk(audio_data_bytes)
+                    await DaemonState.audio_analysis_service.process_audio_chunk(audio_data_bytes)
                 else:
                     # No data available, sleep briefly
                     await asyncio.sleep(0.01)
@@ -150,7 +162,7 @@ async def async_main() -> None:
     except FileNotFoundError:
         logger.error(
             "FIFO not found at %s. Ensure audio_capture is running and creating it.",
-            _fifo_analysis_path,
+            DaemonState.fifo_analysis_path,
         )
     except Exception as e:
         logger.error("An error occurred in the audio analysis wrapper: %s", e, exc_info=True)
@@ -158,14 +170,12 @@ async def async_main() -> None:
 
 def main() -> None:
     """Run the audio analysis wrapper with a single persistent event loop."""
-    global _event_loop
-
     # Create and run the event loop
-    _event_loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(_event_loop)
+    DaemonState.event_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(DaemonState.event_loop)
 
     try:
-        _event_loop.run_until_complete(async_main())
+        DaemonState.event_loop.run_until_complete(async_main())
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt received")
     finally:

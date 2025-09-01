@@ -6,7 +6,6 @@ from birdnetpi.config import ConfigManager
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.structlog_configurator import configure_structlog
 
-# Logger will be configured when main runs
 logger = logging.getLogger(__name__)
 
 
