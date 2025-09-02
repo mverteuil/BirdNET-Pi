@@ -83,6 +83,7 @@ dependencies = [
 audio-analysis-daemon = "birdnetpi.daemons.audio_analysis_daemon:main"
 audio-capture-daemon = "birdnetpi.daemons.audio_capture_daemon:main"
 audio-websocket-daemon = "birdnetpi.daemons.audio_websocket_daemon:main"
+backfill-weather = "birdnetpi.cli.backfill_weather:backfill_weather"
 configure-pulseaudio = "birdnetpi.cli.configure_pulseaudio:main"
 generate-dummy-data = "birdnetpi.cli.generate_dummy_data:main"
 install-assets = "birdnetpi.cli.install_assets:main"

@@ -8,12 +8,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Column, Index, String
+from sqlalchemy.orm import relationship
 from sqlmodel import Field, Relationship, SQLModel
 
 from birdnetpi.utils.field_type_annotations import PathType
 
 if TYPE_CHECKING:
-    pass
+    from birdnetpi.location.models import Weather
 
 
 class AudioFile(SQLModel, table=True):
@@ -56,14 +57,30 @@ class DetectionBase(SQLModel):
         None  # Audio analysis window overlap (0.0-1.0) for signal processing continuity
     )
 
+    # Weather at detection time (references composite key)
+    weather_timestamp: datetime | None = Field(default=None, foreign_key="weather.timestamp")
+    weather_latitude: float | None = Field(default=None, foreign_key="weather.latitude")
+    weather_longitude: float | None = Field(default=None, foreign_key="weather.longitude")
+
 
 class Detection(DetectionBase, table=True):
     """Represents a bird detection record in the database."""
 
     __tablename__: str = "detections"  # type: ignore[assignment]
 
-    # Relationship - One-to-one (unique foreign key)
+    # Relationships
     audio_file: AudioFile = Relationship()  # type: ignore[assignment]
+    weather: Weather | None = Relationship(
+        sa_relationship=relationship(
+            "Weather",
+            back_populates="detections",
+            primaryjoin=(
+                "and_(Detection.weather_timestamp == Weather.timestamp, "
+                "Detection.weather_latitude == Weather.latitude, "
+                "Detection.weather_longitude == Weather.longitude)"
+            ),
+        )
+    )  # type: ignore[assignment]
 
     def get_display_name(self) -> str:
         """Get the best available species display name."""
