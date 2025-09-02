@@ -121,7 +121,7 @@ markers = [
 ]
 testpaths = ["tests"]
 norecursedirs = ["docs", "*.egg-info", ".git", ".venv", "data"]
-addopts = ["--cov=src", "--cov-config=pyproject.toml"]
+addopts = ["--cov=src", "--cov-branch", "--cov-config=pyproject.toml"]
 asyncio_mode = "auto"
 
 [tool.ruff]

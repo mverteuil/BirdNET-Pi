@@ -85,8 +85,8 @@ class TestGPSService:
         # Create a recent location
         now = datetime.now(UTC)
         test_location = GPSCoordinates(
-            latitude=40.7128,
-            longitude=-74.0060,
+            latitude=63.4591,
+            longitude=-19.3647,
             altitude=10.0,
             accuracy=5.0,
             timestamp=now,
@@ -96,8 +96,8 @@ class TestGPSService:
 
         location = service.get_current_location()
         assert location is not None
-        assert location.latitude == 40.7128
-        assert location.longitude == -74.0060
+        assert location.latitude == 63.4591
+        assert location.longitude == -19.3647
         assert location.altitude == 10.0
         assert location.accuracy == 5.0
         assert location.satellite_count == 8
@@ -107,8 +107,8 @@ class TestGPSService:
         service = enabled_gps_service
 
         test_location = GPSCoordinates(
-            latitude=40.7128,
-            longitude=-74.0060,
+            latitude=63.4591,
+            longitude=-19.3647,
             altitude=10.0,
             accuracy=5.0,
             timestamp=datetime.now(UTC),
@@ -118,8 +118,8 @@ class TestGPSService:
 
         location = service.get_last_known_location()
         assert location is not None
-        assert location.latitude == 40.7128
-        assert location.longitude == -74.0060
+        assert location.latitude == 63.4591
+        assert location.longitude == -19.3647
 
     def test_get_location_at_time(self, enabled_gps_service):
         """Test getting location at a specific time."""
@@ -196,8 +196,8 @@ class TestGPSService:
         service.is_running = True
 
         test_location = GPSCoordinates(
-            latitude=40.7128,
-            longitude=-74.0060,
+            latitude=63.4591,
+            longitude=-19.3647,
             altitude=10.0,
             accuracy=5.0,
             timestamp=datetime.now(UTC),
@@ -209,8 +209,8 @@ class TestGPSService:
         assert status["enabled"] is True
         assert status["running"] is True
         assert status["has_fix"] is True
-        assert status["coordinates"]["latitude"] == 40.7128
-        assert status["coordinates"]["longitude"] == -74.0060
+        assert status["coordinates"]["latitude"] == 63.4591
+        assert status["coordinates"]["longitude"] == -19.3647
         assert status["accuracy"] == 5.0
         assert status["satellite_count"] == 8
 
@@ -245,8 +245,8 @@ class TestGPSService:
         # Mock GPS packet with valid fix
         mock_packet = MagicMock()
         mock_packet.mode = 3  # 3D fix
-        mock_packet.lat = 40.7128
-        mock_packet.lon = -74.0060
+        mock_packet.lat = 63.4591
+        mock_packet.lon = -19.3647
         mock_packet.alt = 10.0
         mock_packet.eps = 5.0
         mock_packet.sats = 8
@@ -255,8 +255,8 @@ class TestGPSService:
         await service._update_location()
 
         assert service.current_location is not None
-        assert service.current_location.latitude == 40.7128
-        assert service.current_location.longitude == -74.0060
+        assert service.current_location.latitude == 63.4591
+        assert service.current_location.longitude == -19.3647
         assert service.current_location.altitude == 10.0
         assert service.current_location.accuracy == 5.0
         assert service.current_location.satellite_count == 8

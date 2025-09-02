@@ -70,8 +70,8 @@ class TestDetectionsAPIRoutes:
             "audio_data": test_audio,  # Base64-encoded audio
             "sample_rate": 48000,
             "channels": 1,
-            "latitude": 40.7128,
-            "longitude": -74.0060,
+            "latitude": 63.4591,
+            "longitude": -19.3647,
             "species_confidence_threshold": 0.0,
             "week": 3,
             "sensitivity_setting": 1.0,

@@ -71,6 +71,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Register notification listeners
     notification_manager.register_listeners()
 
+    # Register weather signal handler
+    weather_handler = container.weather_signal_handler()
+    weather_handler.register()
+
     logger.info("Starting application services...")
 
     # Start all services in proper order

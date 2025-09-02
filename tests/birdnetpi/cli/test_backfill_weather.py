@@ -54,7 +54,7 @@ def test_backfill_weather_days_option(mock_config, mock_db, mock_weather_manager
     # Setup mocks
     mock_config_instance = MagicMock(spec=ConfigManager)
     mock_config_instance.load.return_value = MagicMock(
-        spec=BirdNETConfig, latitude=40.7128, longitude=-74.0060
+        spec=BirdNETConfig, latitude=63.4591, longitude=-19.3647
     )
     mock_config.return_value = mock_config_instance
 
@@ -99,7 +99,7 @@ def test_backfill_weather_date_range(mock_config, mock_db, mock_weather_manager,
     # Setup mocks
     mock_config_instance = MagicMock(spec=ConfigManager)
     mock_config_instance.load.return_value = MagicMock(
-        spec=BirdNETConfig, latitude=40.7128, longitude=-74.0060
+        spec=BirdNETConfig, latitude=63.4591, longitude=-19.3647
     )
     mock_config.return_value = mock_config_instance
 
@@ -148,7 +148,7 @@ def test_backfill_weather_smart_mode(mock_config, mock_db, mock_weather_manager,
     # Setup mocks
     mock_config_instance = MagicMock(spec=ConfigManager)
     mock_config_instance.load.return_value = MagicMock(
-        spec=BirdNETConfig, latitude=40.7128, longitude=-74.0060
+        spec=BirdNETConfig, latitude=63.4591, longitude=-19.3647
     )
     mock_config.return_value = mock_config_instance
 
@@ -195,7 +195,7 @@ def test_backfill_weather_smart_no_detections(
     # Setup mocks
     mock_config_instance = MagicMock(spec=ConfigManager)
     mock_config_instance.load.return_value = MagicMock(
-        spec=BirdNETConfig, latitude=40.7128, longitude=-74.0060
+        spec=BirdNETConfig, latitude=63.4591, longitude=-19.3647
     )
     mock_config.return_value = mock_config_instance
 
@@ -233,7 +233,7 @@ def test_backfill_weather_force_option(mock_config, mock_db, mock_weather_manage
     # Setup mocks
     mock_config_instance = MagicMock(spec=ConfigManager)
     mock_config_instance.load.return_value = MagicMock(
-        spec=BirdNETConfig, latitude=40.7128, longitude=-74.0060
+        spec=BirdNETConfig, latitude=63.4591, longitude=-19.3647
     )
     mock_config.return_value = mock_config_instance
 
@@ -281,7 +281,7 @@ def test_backfill_weather_no_bulk_option(mock_config, mock_db, mock_weather_mana
     # Setup mocks
     mock_config_instance = MagicMock(spec=ConfigManager)
     mock_config_instance.load.return_value = MagicMock(
-        spec=BirdNETConfig, latitude=40.7128, longitude=-74.0060
+        spec=BirdNETConfig, latitude=63.4591, longitude=-19.3647
     )
     mock_config.return_value = mock_config_instance
 

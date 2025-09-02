@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from birdnetpi.web.routers.sqladmin_view_routes import (
     AudioFileAdmin,
     DetectionAdmin,
+    WeatherAdmin,
     setup_sqladmin,
 )
 
@@ -40,6 +41,26 @@ class TestSQLAdminViewRoutes:
         for expected_col in expected_columns:
             assert expected_col in column_names
 
+    def test_weather_admin_model_configuration(self):
+        """Test WeatherAdmin model view configuration."""
+        # Verify the model view is properly configured
+        assert hasattr(WeatherAdmin, "column_list")
+        assert WeatherAdmin.column_list is not None
+
+        # Check that expected columns are configured
+        column_names = WeatherAdmin.column_list  # Already strings
+        expected_columns = [
+            "timestamp",
+            "latitude",
+            "longitude",
+            "temperature",
+            "humidity",
+            "wind_speed",
+        ]
+
+        for expected_col in expected_columns:
+            assert expected_col in column_names
+
     @patch("birdnetpi.web.routers.sqladmin_view_routes.Admin")
     def test_setup_sqladmin_creates_admin_instance(self, mock_admin_class):
         """Test that setup_sqladmin creates and configures Admin instance."""
@@ -63,12 +84,13 @@ class TestSQLAdminViewRoutes:
         mock_admin_class.assert_called_once_with(app, mock_async_engine, base_url="/admin/database")
 
         # Verify model views were added
-        assert mock_admin_instance.add_view.call_count == 2
+        assert mock_admin_instance.add_view.call_count == 3
 
         # Verify the correct model views were added
         call_args = [call.args[0] for call in mock_admin_instance.add_view.call_args_list]
         assert DetectionAdmin in call_args
         assert AudioFileAdmin in call_args
+        assert WeatherAdmin in call_args
 
         # Verify return value
         assert result == mock_admin_instance
@@ -101,4 +123,10 @@ class TestSQLAdminViewRoutes:
         """Test that AudioFileAdmin properly inherits from ModelView."""
         # Check that AudioFileAdmin has the expected base classes
         base_class_names = [cls.__name__ for cls in AudioFileAdmin.__mro__]
+        assert "ModelView" in base_class_names
+
+    def test_weather_admin_inherits_from_model_view(self):
+        """Test that WeatherAdmin properly inherits from ModelView."""
+        # Check that WeatherAdmin has the expected base classes
+        base_class_names = [cls.__name__ for cls in WeatherAdmin.__mro__]
         assert "ModelView" in base_class_names

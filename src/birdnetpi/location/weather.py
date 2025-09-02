@@ -1,8 +1,9 @@
 """Weather data management and fetching."""
 
 import asyncio
+import logging
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 from sqlalchemy import func, select, update
@@ -10,6 +11,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from birdnetpi.detections.models import Detection
 from birdnetpi.location.models import Weather
+from birdnetpi.notifications.signals import detection_signal
+
+if TYPE_CHECKING:
+    from birdnetpi.config.models import BirdNETConfig
+    from birdnetpi.database.database_service import DatabaseService
+
+logger = logging.getLogger(__name__)
 
 
 class WeatherManager:
@@ -24,11 +32,17 @@ class WeatherManager:
         """Fetch weather data for a specific timestamp and store it.
 
         Args:
-            timestamp: Datetime for which to fetch weather
+            timestamp: Datetime for which to fetch weather (should be in UTC)
 
         Returns:
             Weather object that was created
         """
+        # Ensure timestamp is in UTC
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=UTC)
+        elif timestamp.tzinfo != UTC:
+            timestamp = timestamp.astimezone(UTC)
+
         # Fetch weather data for single hour
         weather_data = await self.fetch_weather_range(timestamp, timestamp + timedelta(hours=1))
 
@@ -148,7 +162,11 @@ class WeatherManager:
                 .where(Weather.longitude == self.longitude)
             )
             result = await self.session.execute(stmt)
-            existing_hours = set(result.scalars().all())
+            # Normalize timestamps to remove timezone info for comparison
+            # SQLite doesn't preserve timezone, so we normalize to naive datetimes
+            existing_hours = {
+                ts.replace(tzinfo=None) if ts.tzinfo else ts for ts in result.scalars().all()
+            }
         else:
             existing_hours = set()
 
@@ -174,8 +192,24 @@ class WeatherManager:
                 weather_data = await self.fetch_weather_range(current_start, current_end)
                 stats["api_calls"] += 1
 
-                # Store the data
+                # Store the data - only for hours we need
                 for hour_data in weather_data:
+                    # Round timestamp to hour for comparison
+                    hour_timestamp = hour_data["timestamp"].replace(
+                        minute=0, second=0, microsecond=0
+                    )
+
+                    # Normalize for comparison (remove timezone info)
+                    hour_timestamp_normalized = (
+                        hour_timestamp.replace(tzinfo=None)
+                        if hour_timestamp.tzinfo
+                        else hour_timestamp
+                    )
+
+                    # Skip if we already have this hour (check existing_hours set)
+                    if skip_existing and hour_timestamp_normalized in existing_hours:
+                        continue
+
                     # Add location to weather data
                     hour_data["latitude"] = self.latitude
                     hour_data["longitude"] = self.longitude
@@ -230,9 +264,14 @@ class WeatherManager:
         # Parse response into hourly records
         hourly_data = []
         for i, timestamp_str in enumerate(data["hourly"]["time"]):
+            # Parse timestamp and ensure it's in UTC
+            timestamp = datetime.fromisoformat(timestamp_str)
+            if timestamp.tzinfo is None:
+                # If no timezone info, assume UTC (as we requested UTC from API)
+                timestamp = timestamp.replace(tzinfo=UTC)
             hourly_data.append(
                 {
-                    "timestamp": datetime.fromisoformat(timestamp_str),
+                    "timestamp": timestamp,
                     "temperature": data["hourly"]["temperature_2m"][i],
                     "humidity": data["hourly"]["relative_humidity_2m"][i],
                     "pressure": data["hourly"]["pressure_msl"][i],
@@ -272,6 +311,87 @@ class WeatherManager:
         await self.session.commit()
         return result.rowcount  # type: ignore[attr-defined]
 
+    async def get_or_create_and_link_weather(self, detection_id: str) -> Weather | None:
+        """Get existing or create new weather and link it to a detection.
+
+        This method handles the complete weather linking logic for a detection:
+        1. Gets the detection from the database
+        2. Checks if it already has weather linked (returns None if so)
+        3. Rounds timestamp to the hour
+        4. Looks for existing weather at that hour
+        5. Creates new weather by fetching from API if needed
+        6. Links the weather to the detection
+
+        Args:
+            detection_id: ID of the detection to process
+
+        Returns:
+            The Weather record that was linked, or None if failed or already linked
+        """
+        # Get the detection
+        stmt = select(Detection).where(Detection.id == detection_id)
+        result = await self.session.execute(stmt)
+        detection = result.scalars().first()
+
+        if not detection:
+            logger.warning(f"Detection {detection_id} not found")
+            return None
+
+        # Check if already has weather
+        if detection.weather_timestamp is not None:
+            logger.debug(f"Detection {detection_id} already has weather data")
+            return None
+
+        # Round to the hour
+        detection_hour = detection.timestamp.replace(minute=0, second=0, microsecond=0)
+
+        # Check for existing weather
+        stmt = (
+            select(Weather)
+            .where(Weather.timestamp == detection_hour)
+            .where(Weather.latitude == self.latitude)
+            .where(Weather.longitude == self.longitude)
+        )
+        result = await self.session.execute(stmt)
+        weather = result.scalars().first()
+
+        if weather:
+            logger.debug(
+                f"Using existing weather for {detection_hour}: "
+                f"{weather.temperature}°C, {weather.humidity}% humidity"
+            )
+        else:
+            # Fetch new weather
+            try:
+                weather = await self.fetch_and_store_weather(detection_hour)
+                logger.info(
+                    f"Fetched new weather for {detection_hour}: "
+                    f"{weather.temperature}°C, {weather.humidity}% humidity"
+                )
+            except Exception as e:
+                logger.error(f"Failed to fetch weather data: {e}")
+                return None
+
+        # Link weather to detection
+        stmt = (
+            update(Detection)
+            .where(Detection.id == detection_id)
+            .values(
+                weather_timestamp=weather.timestamp,
+                weather_latitude=weather.latitude,
+                weather_longitude=weather.longitude,
+            )
+        )
+        await self.session.execute(stmt)
+        await self.session.commit()
+
+        logger.info(
+            f"Successfully linked weather to detection {detection_id}: "
+            f"{weather.temperature}°C at {weather.timestamp}"
+        )
+
+        return weather
+
     async def smart_backfill(self) -> dict[str, Any]:
         """Intelligently backfill weather based on what's needed."""
         # Find date range of detections without weather
@@ -302,3 +422,107 @@ class WeatherManager:
 
         # Backfill in chunks
         return await self.backfill_weather_bulk(min_date, max_date)
+
+
+class WeatherSignalHandler:
+    """Handle weather data fetching for new detections."""
+
+    def __init__(
+        self,
+        database_service: "DatabaseService",
+        latitude: float,
+        longitude: float,
+    ):
+        """Initialize the weather signal handler.
+
+        Args:
+            database_service: Database service for creating sessions
+            latitude: Latitude for weather fetching (required)
+            longitude: Longitude for weather fetching (required)
+        """
+        self.database_service = database_service
+        self.latitude = latitude
+        self.longitude = longitude
+        self._background_tasks: set = set()
+
+    def register(self) -> None:
+        """Register the weather handler with the detection signal."""
+        detection_signal.connect(self._handle_detection_event)
+        logger.info("WeatherSignalHandler registered for detection events")
+
+    def unregister(self) -> None:
+        """Unregister the weather handler from the detection signal."""
+        detection_signal.disconnect(self._handle_detection_event)
+        logger.info("WeatherSignalHandler unregistered from detection events")
+
+    def _handle_detection_event(
+        self, sender: object, detection: Detection, **kwargs: object
+    ) -> None:
+        """Handle detection event by fetching and linking weather data.
+
+        This method is called synchronously by the signal system, but spawns
+        an async task to handle the weather fetching without blocking.
+
+        Args:
+            sender: The sender of the signal
+            detection: The Detection object that was created
+            **kwargs: Additional keyword arguments from the signal
+        """
+        if not detection or not isinstance(detection, Detection):
+            return
+
+        # Check if detection already has weather data
+        if detection.weather_timestamp is not None:
+            logger.debug(f"Detection {detection.id} already has weather data, skipping")
+            return
+
+        # Try to get the running event loop
+        try:
+            loop = asyncio.get_running_loop()
+            # Create task to fetch and link weather
+            task = loop.create_task(self._fetch_and_link_weather(detection))
+            # Track task to prevent garbage collection
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
+            logger.debug(f"Scheduled weather fetch for detection {detection.id}")
+        except RuntimeError:
+            # No event loop running, log and skip
+            logger.debug("No event loop running, skipping weather fetch for detection")
+
+    async def _fetch_and_link_weather(self, detection: Detection) -> None:
+        """Fetch and link weather data for a detection.
+
+        Args:
+            detection: The Detection to link weather to
+        """
+        try:
+            async with self.database_service.get_async_db() as session:
+                # Create weather manager for this session
+                weather_manager = WeatherManager(session, self.latitude, self.longitude)
+
+                # Use the manager's method to handle all the logic
+                await weather_manager.get_or_create_and_link_weather(str(detection.id))
+
+        except Exception as e:
+            logger.error(f"Error fetching weather for detection {detection.id}: {e}")
+
+
+def create_and_register_weather_handler(
+    database_service: "DatabaseService",
+    config: "BirdNETConfig",
+) -> WeatherSignalHandler:
+    """Create and register a weather signal handler.
+
+    This is a convenience function to create and immediately register
+    a weather signal handler.
+
+    Args:
+        database_service: Database service for persistence
+        config: BirdNET configuration containing location data
+
+    Returns:
+        The registered WeatherSignalHandler instance
+    """
+    handler = WeatherSignalHandler(database_service, config.latitude, config.longitude)
+    handler.register()
+    return handler

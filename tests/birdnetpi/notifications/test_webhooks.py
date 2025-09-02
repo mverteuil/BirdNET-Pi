@@ -218,8 +218,8 @@ class TestWebhookService:
             common_name="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
-            latitude=40.7128,
-            longitude=-74.0060,
+            latitude=63.4591,
+            longitude=-19.3647,
             species_confidence_threshold=0.03,
             week=15,
             sensitivity_setting=1.25,
@@ -245,8 +245,8 @@ class TestWebhookService:
             common_name="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
-            latitude=40.7128,
-            longitude=-74.0060,
+            latitude=63.4591,
+            longitude=-19.3647,
             species_confidence_threshold=0.03,
             week=15,
             sensitivity_setting=1.25,
@@ -265,7 +265,7 @@ class TestWebhookService:
             assert payload["event_type"] == "detection"
             assert payload["detection"]["species"] == "Test Bird"
             assert payload["detection"]["confidence"] == 0.85
-            assert payload["detection"]["location"]["latitude"] == 40.7128
+            assert payload["detection"]["location"]["latitude"] == 63.4591
 
     @pytest.mark.asyncio
     async def test_send_health_webhook(self, enabled_webhook_service):
@@ -299,15 +299,15 @@ class TestWebhookService:
         service.add_webhook(config)
 
         with patch.object(service, "_send_webhook_request", return_value=True) as mock_send:
-            await service.send_gps_webhook(40.7128, -74.0060, 5.0)
+            await service.send_gps_webhook(63.4591, -19.3647, 5.0)
 
             mock_send.assert_called_once()
             call_args = mock_send.call_args
             payload = call_args[0][1]
 
             assert payload["event_type"] == "gps"
-            assert payload["location"]["latitude"] == 40.7128
-            assert payload["location"]["longitude"] == -74.0060
+            assert payload["location"]["latitude"] == 63.4591
+            assert payload["location"]["longitude"] == -19.3647
             assert payload["location"]["accuracy"] == 5.0
 
     @pytest.mark.asyncio
@@ -623,7 +623,7 @@ class TestWebhookService:
         service.enabled = False
 
         with patch.object(service, "_send_webhook_request") as mock_send:
-            await service.send_gps_webhook(40.7128, -74.0060, 10.0)
+            await service.send_gps_webhook(63.4591, -19.3647, 10.0)
             # Should not call _send_webhook_request (covers line 219)
             mock_send.assert_not_called()
 

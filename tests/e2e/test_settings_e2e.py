@@ -99,8 +99,8 @@ class TestSettingsE2E:
         config_manager = ConfigManager(path_resolver)
         initial_config = BirdNETConfig(
             site_name="E2E Test Site",
-            latitude=40.7128,
-            longitude=-74.0060,
+            latitude=63.4591,
+            longitude=-19.3647,
             sensitivity_setting=1.0,
             species_confidence_threshold=0.5,
             audio_device_index=-1,
@@ -149,9 +149,9 @@ class TestSettingsE2E:
 
             # Check that current config values are displayed
             assert "E2E Test Site" in response.text
-            assert "40.7128" in response.text  # latitude
+            assert "63.4591" in response.text  # latitude
             assert (
-                "-74.006" in response.text or "-74.0060" in response.text
+                "-19.364" in response.text or "-19.3647" in response.text
             )  # longitude (may be formatted)
 
             # Audio devices may not be rendered in E2E test since AudioDeviceService is mocked

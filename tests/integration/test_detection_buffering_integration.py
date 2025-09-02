@@ -26,8 +26,8 @@ def mock_config():
     mock = MagicMock(spec=BirdNETConfig)
     mock.sample_rate = 48000
     mock.audio_channels = 1
-    mock.latitude = 40.7128
-    mock.longitude = -74.0060
+    mock.latitude = 63.4591
+    mock.longitude = -19.3647
     mock.sensitivity_setting = 1.25
     mock.species_confidence_threshold = 0.7
     mock.analysis_overlap = 0.5

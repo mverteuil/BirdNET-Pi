@@ -16,6 +16,11 @@ from birdnetpi.utils.field_type_annotations import PathType
 if TYPE_CHECKING:
     from birdnetpi.location.models import Weather
 
+# Import Weather at module level for SQLAlchemy relationship resolution
+# This is needed because the relationship primaryjoin uses string references
+# that SQLAlchemy needs to resolve at runtime
+from birdnetpi.location.models import Weather
+
 
 class AudioFile(SQLModel, table=True):
     """Represents an audio file record in the database."""

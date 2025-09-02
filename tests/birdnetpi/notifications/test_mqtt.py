@@ -177,8 +177,8 @@ class TestMQTTService:
             common_name="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
-            latitude=40.7128,
-            longitude=-74.0060,
+            latitude=63.4591,
+            longitude=-19.3647,
             species_confidence_threshold=0.03,
             week=15,
             sensitivity_setting=1.25,
@@ -206,8 +206,8 @@ class TestMQTTService:
             common_name="Test Bird",
             confidence=0.85,
             timestamp=datetime.now(UTC),
-            latitude=40.7128,
-            longitude=-74.0060,
+            latitude=63.4591,
+            longitude=-19.3647,
             species_confidence_threshold=0.03,
             week=15,
             sensitivity_setting=1.25,
@@ -225,8 +225,8 @@ class TestMQTTService:
         payload = json.loads(call_args[0][1])
         assert payload["species"] == "Test Bird"
         assert payload["confidence"] == 0.85
-        assert payload["location"]["latitude"] == 40.7128
-        assert payload["location"]["longitude"] == -74.0060
+        assert payload["location"]["latitude"] == 63.4591
+        assert payload["location"]["longitude"] == -19.3647
 
     @pytest.mark.asyncio
     async def test_publish_gps_location(self, enabled_mqtt_service):
@@ -239,7 +239,7 @@ class TestMQTTService:
         mock_result.rc = 0
         service.client.publish.return_value = mock_result
 
-        result = await service.publish_gps_location(40.7128, -74.0060, 5.0)
+        result = await service.publish_gps_location(63.4591, -19.3647, 5.0)
 
         assert result is True
         service.client.publish.assert_called_once()
@@ -248,8 +248,8 @@ class TestMQTTService:
         assert call_args[1]["retain"] is True  # GPS should be retained
 
         payload = json.loads(call_args[0][1])
-        assert payload["latitude"] == 40.7128
-        assert payload["longitude"] == -74.0060
+        assert payload["latitude"] == 63.4591
+        assert payload["longitude"] == -19.3647
         assert payload["accuracy"] == 5.0
 
     @pytest.mark.asyncio

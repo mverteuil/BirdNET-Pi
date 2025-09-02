@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from sqladmin import Admin, ModelView
 
 from birdnetpi.detections.models import AudioFile, Detection
+from birdnetpi.location.models import Weather
 
 
 class DetectionAdmin(ModelView, model=Detection):
@@ -30,6 +31,19 @@ class AudioFileAdmin(ModelView, model=AudioFile):
     ]
 
 
+class WeatherAdmin(ModelView, model=Weather):
+    """Admin interface for Weather model."""
+
+    column_list: ClassVar[list[str]] = [  # type: ignore[assignment]
+        "timestamp",
+        "latitude",
+        "longitude",
+        "temperature",
+        "humidity",
+        "wind_speed",
+    ]
+
+
 def setup_sqladmin(app: FastAPI) -> Admin:
     """Set up SQLAdmin interface with all model views.
 
@@ -49,5 +63,6 @@ def setup_sqladmin(app: FastAPI) -> Admin:
     # Register model views
     admin.add_view(DetectionAdmin)
     admin.add_view(AudioFileAdmin)
+    admin.add_view(WeatherAdmin)
 
     return admin

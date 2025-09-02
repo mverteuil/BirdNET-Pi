@@ -13,6 +13,7 @@ from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseSer
 from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.location.gps_service import GPSService
 from birdnetpi.location.location_service import LocationService
+from birdnetpi.location.weather import WeatherSignalHandler
 from birdnetpi.notifications.mqtt import MQTTService
 from birdnetpi.notifications.notification_manager import NotificationManager
 from birdnetpi.notifications.webhooks import WebhookService
@@ -117,6 +118,14 @@ class Container(containers.DeclarativeContainer):
 
     location_service = providers.Singleton(
         LocationService,
+        latitude=providers.Factory(lambda c: c.latitude, c=config),
+        longitude=providers.Factory(lambda c: c.longitude, c=config),
+    )
+
+    # Weather signal handler - singleton
+    weather_signal_handler = providers.Singleton(
+        WeatherSignalHandler,
+        database_service=bnp_database_service,
         latitude=providers.Factory(lambda c: c.latitude, c=config),
         longitude=providers.Factory(lambda c: c.longitude, c=config),
     )

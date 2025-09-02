@@ -54,8 +54,8 @@ class TestAdminAPIRoutes:
 
         valid_yaml = """
 site_name: "Test BirdNET-Pi"
-latitude: 40.7128
-longitude: -74.0060
+latitude: 63.4591
+longitude: -19.3647
 species_confidence_threshold: 0.03
         """
 

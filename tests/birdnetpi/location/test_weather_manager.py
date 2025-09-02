@@ -34,7 +34,7 @@ async def session(engine):
 @pytest.fixture
 def weather_manager(session):
     """Create a WeatherManager instance."""
-    return WeatherManager(session, latitude=40.7128, longitude=-74.0060)
+    return WeatherManager(session, latitude=63.4591, longitude=-19.3647)
 
 
 @pytest.fixture
@@ -65,8 +65,8 @@ def mock_weather_response():
 
 def test_weather_manager_initialization(weather_manager):
     """Test WeatherManager initialization."""
-    assert weather_manager.latitude == 40.7128
-    assert weather_manager.longitude == -74.0060
+    assert weather_manager.latitude == 63.4591
+    assert weather_manager.longitude == -19.3647
     assert weather_manager.session is not None
 
 
@@ -185,8 +185,8 @@ async def test_link_detections_to_weather(weather_manager, session):
     # Create weather record
     weather = Weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
-        latitude=40.7128,
-        longitude=-74.0060,
+        latitude=63.4591,
+        longitude=-19.3647,
         temperature=20.0,
         humidity=65.0,
     )
@@ -222,11 +222,16 @@ async def test_link_detections_to_weather(weather_manager, session):
     assert updated == 3
 
     # Verify correct detections were linked
-    stmt = select(Detection).where(Detection.weather_timestamp == weather.timestamp)
+    stmt = select(Detection).where(Detection.weather_timestamp.isnot(None))  # type: ignore[attr-defined]
     result = await session.execute(stmt)
     linked = result.scalars().all()
     assert len(linked) == 3
-    assert all(d.weather_timestamp == weather.timestamp for d in linked)
+    # SQLite doesn't preserve timezone, so we compare after ensuring timezone
+    for d in linked:
+        detection_ts = d.weather_timestamp
+        if detection_ts.tzinfo is None:
+            detection_ts = detection_ts.replace(tzinfo=UTC)
+        assert detection_ts == weather.timestamp
     assert all(d.weather_latitude == weather.latitude for d in linked)
     assert all(d.weather_longitude == weather.longitude for d in linked)
 
@@ -241,14 +246,14 @@ async def test_link_detections_skips_already_linked(weather_manager, session):
     # Create two weather records
     weather1 = Weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
-        latitude=40.7128,
-        longitude=-74.0060,
+        latitude=63.4591,
+        longitude=-19.3647,
         temperature=20.0,
     )
     weather2 = Weather(
-        timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
-        latitude=40.7128,
-        longitude=-74.0060,
+        timestamp=datetime(2024, 1, 1, 13, tzinfo=UTC),
+        latitude=63.4591,
+        longitude=-19.3647,
         temperature=22.0,
     )
     session.add_all([weather1, weather2])
@@ -274,7 +279,11 @@ async def test_link_detections_skips_already_linked(weather_manager, session):
 
     # Verify detection still linked to weather1
     await session.refresh(detection)
-    assert detection.weather_timestamp == weather1.timestamp
+    # Handle timezone comparison for SQLite
+    detection_ts = detection.weather_timestamp
+    if detection_ts and detection_ts.tzinfo is None:
+        detection_ts = detection_ts.replace(tzinfo=UTC)
+    assert detection_ts == weather1.timestamp
 
 
 @pytest.mark.asyncio
@@ -285,8 +294,8 @@ async def test_backfill_weather(weather_manager, session):
         async def create_weather(timestamp):
             weather = Weather(
                 timestamp=timestamp,
-                latitude=40.7128,
-                longitude=-74.0060,
+                latitude=63.4591,
+                longitude=-19.3647,
                 temperature=20.0,
                 humidity=65.0,
             )
@@ -326,8 +335,8 @@ async def test_backfill_weather_skip_existing(weather_manager, session):
     # Create existing weather
     existing_weather = Weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
-        latitude=40.7128,
-        longitude=-74.0060,
+        latitude=63.4591,
+        longitude=-19.3647,
         temperature=15.0,
         humidity=60.0,
     )
@@ -403,8 +412,8 @@ async def test_backfill_weather_bulk_skip_existing(weather_manager, session):
     for hour in [0, 6, 12, 18]:
         weather = Weather(
             timestamp=datetime(2024, 1, 1, hour, tzinfo=UTC),
-            latitude=40.7128,
-            longitude=-74.0060,
+            latitude=63.4591,
+            longitude=-19.3647,
             temperature=15.0,
             humidity=60.0,
         )
@@ -432,14 +441,14 @@ async def test_backfill_weather_bulk_skip_existing(weather_manager, session):
         )
 
         assert stats["total_days"] == 1  # Jan 1 to Jan 2 is 1 day
-        # Should only create records for missing hours
-        assert stats["records_created"] == 24  # But fetch returns all
+        # Should only create records for missing hours (24 - 4 existing = 20)
+        assert stats["records_created"] == 20
 
-        # Verify total records (4 existing + 24 new)
+        # Verify total records (4 existing + 20 new)
         stmt = select(func.count(Weather.timestamp))
         result = await session.execute(stmt)
         count = result.scalar()
-        assert count == 28
+        assert count == 24
 
 
 @pytest.mark.asyncio
@@ -488,8 +497,8 @@ async def test_smart_backfill_no_detections(weather_manager, session):
     # Create detection with weather already linked
     weather = Weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
-        latitude=40.7128,
-        longitude=-74.0060,
+        latitude=63.4591,
+        longitude=-19.3647,
         temperature=20.0,
     )
     session.add(weather)
@@ -537,6 +546,12 @@ async def test_backfill_weather_bulk_multi_day(weather_manager, session):
         assert stats["total_days"] == 3  # Should be 3 days, not 14 or 42
         assert stats["api_calls"] == 1
         assert stats["records_created"] == 72  # 3 days * 24 hours
+
+    # Clean up previous weather records to avoid conflicts
+    from sqlalchemy import delete
+
+    await session.execute(delete(Weather))
+    await session.commit()
 
     # Test partial day (less than 24 hours)
     with patch.object(weather_manager, "fetch_weather_range") as mock_fetch:
@@ -587,8 +602,8 @@ async def test_weather_manager_session_handling(session):
     # Create a weather record
     weather = Weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
-        latitude=40.7128,
-        longitude=-74.0060,
+        latitude=63.4591,
+        longitude=-19.3647,
         temperature=20.0,
     )
     session.add(weather)
@@ -613,4 +628,8 @@ async def test_weather_manager_session_handling(session):
 
     # Verify the update persisted
     await session.refresh(detection)
-    assert detection.weather_timestamp == weather.timestamp
+    # Handle timezone comparison for SQLite (doesn't preserve timezone)
+    detection_ts = detection.weather_timestamp
+    if detection_ts and detection_ts.tzinfo is None:
+        detection_ts = detection_ts.replace(tzinfo=UTC)
+    assert detection_ts == weather.timestamp
