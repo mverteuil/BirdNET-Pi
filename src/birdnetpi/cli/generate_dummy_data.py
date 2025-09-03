@@ -6,7 +6,7 @@ import click
 
 from birdnetpi.config import ConfigManager
 from birdnetpi.database.database_service import DatabaseService
-from birdnetpi.detections.data_manager import DataManager
+from birdnetpi.detections.manager import DataManager
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager

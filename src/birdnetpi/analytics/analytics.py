@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 from typing import TypedDict
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.detections.data_manager import DataManager
+from birdnetpi.detections.manager import DataManager
 
 
 class DashboardSummaryDict(TypedDict):

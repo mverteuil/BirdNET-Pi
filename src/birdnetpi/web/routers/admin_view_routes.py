@@ -13,7 +13,7 @@ from starlette.status import HTTP_303_SEE_OTHER
 
 from birdnetpi.audio.audio_device_service import AudioDeviceService
 from birdnetpi.config import BirdNETConfig, ConfigManager
-from birdnetpi.detections.data_manager import DataManager
+from birdnetpi.detections.manager import DataManager
 from birdnetpi.system.log_service import LogService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.web.core.container import Container

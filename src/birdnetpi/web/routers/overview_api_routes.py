@@ -1,7 +1,7 @@
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends
 
-from birdnetpi.detections.data_manager import DataManager
+from birdnetpi.detections.manager import DataManager
 from birdnetpi.system.status import SystemInspector
 from birdnetpi.web.core.container import Container
 

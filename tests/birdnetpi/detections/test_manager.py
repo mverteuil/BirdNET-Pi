@@ -7,10 +7,10 @@ import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from birdnetpi.database.database_service import DatabaseService
-from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.detections.detection_query_service import (
     DetectionQueryService,
 )
+from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import AudioFile, Detection, DetectionWithLocalization
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.species.display import SpeciesDisplayService

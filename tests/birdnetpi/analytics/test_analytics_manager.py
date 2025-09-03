@@ -7,7 +7,7 @@ import pytest
 
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.detections.data_manager import DataManager
+from birdnetpi.detections.manager import DataManager
 
 
 @pytest.fixture

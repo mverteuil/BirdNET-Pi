@@ -2,7 +2,7 @@ import datetime
 import random
 from datetime import UTC
 
-from birdnetpi.detections.data_manager import DataManager
+from birdnetpi.detections.manager import DataManager
 from birdnetpi.web.models.detections import DetectionEvent
 
 

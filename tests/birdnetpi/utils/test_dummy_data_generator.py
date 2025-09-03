@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from birdnetpi.detections.data_manager import DataManager
+from birdnetpi.detections.manager import DataManager
 from birdnetpi.utils.dummy_data_generator import generate_dummy_detections
 from birdnetpi.web.models.detections import DetectionEvent
 

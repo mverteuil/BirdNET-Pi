@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from birdnetpi.detections.data_manager import DataManager
+from birdnetpi.detections.manager import DataManager
 
 # Note: HardwareMonitorManager has been replaced with SystemInspector static methods
 

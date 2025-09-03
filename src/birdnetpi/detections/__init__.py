@@ -3,5 +3,5 @@
 # Note: Imports are not done at module level to avoid circular dependencies.
 # Import directly from submodules when needed:
 #   from birdnetpi.detections.models import Detection, DetectionWithLocalization
-#   from birdnetpi.detections.data_manager import DataManager
+#   from birdnetpi.detections.manager import DataManager
 #   etc.

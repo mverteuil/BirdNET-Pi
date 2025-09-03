@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 # from birdnetpi.analytics.plotting_manager import PlottingManager  # Removed - analytics refactor
 # TODO: Re-implement spectrogram generation without PlottingManager
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.detections.data_manager import DataManager
+from birdnetpi.detections.manager import DataManager
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.detections import DetectionEvent, LocationUpdate
 

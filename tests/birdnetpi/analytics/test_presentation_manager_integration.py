@@ -10,8 +10,8 @@ from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.database.database_service import DatabaseService
-from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.detections.detection_query_service import DetectionQueryService
+from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import AudioFile, Detection
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.species.display import SpeciesDisplayService

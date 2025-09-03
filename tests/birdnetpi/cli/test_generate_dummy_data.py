@@ -4,7 +4,7 @@ import pytest
 
 import birdnetpi.cli.generate_dummy_data as gdd
 from birdnetpi.database.database_service import DatabaseService
-from birdnetpi.detections.data_manager import DataManager
+from birdnetpi.detections.manager import DataManager
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.system_control_service import SystemControlService
