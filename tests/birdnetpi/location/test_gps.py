@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from birdnetpi.location.gps_service import GPSCoordinates, GPSService
+from birdnetpi.location.gps import GPSCoordinates, GPSService
 
 
 @pytest.fixture

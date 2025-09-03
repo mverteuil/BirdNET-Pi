@@ -11,7 +11,7 @@ from birdnetpi.detections.data_manager import DataManager
 from birdnetpi.detections.detection_query_service import DetectionQueryService
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.i18n.translation_manager import TranslationManager
-from birdnetpi.location.gps_service import GPSService
+from birdnetpi.location.gps import GPSService
 from birdnetpi.location.location_service import LocationService
 from birdnetpi.location.weather import WeatherSignalHandler
 from birdnetpi.notifications.mqtt import MQTTService
