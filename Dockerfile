@@ -46,7 +46,10 @@ ENV DNS_SERVER=8.8.8.8 \
     MPLCONFIGDIR=/var/lib/birdnetpi/config \
     BIRDNETPI_APP=/opt/birdnetpi \
     BIRDNETPI_DATA=/var/lib/birdnetpi \
-    BIRDNETPI_CONFIG=/var/lib/birdnetpi/config/birdnetpi.yaml
+    BIRDNETPI_CONFIG=/var/lib/birdnetpi/config/birdnetpi.yaml \
+    SYSLOG_SERVER=localhost \
+    SYSLOG_PORT=514 \
+    SYSLOG_PROTO=udp
 
 # Set shell for pipefail
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -97,6 +100,7 @@ RUN apt-get update && \
 COPY --chmod=644 config_templates/Caddyfile /etc/caddy/Caddyfile
 COPY --chmod=644 config_templates/supervisord.conf /etc/supervisor/supervisord.conf
 COPY --chmod=644 config_templates/journald.conf /etc/systemd/journald.conf
+COPY --chmod=744 config_templates/supervisor-wrapper.py /usr/local/bin/supervisor-wrapper.py
 
 # Create birdnetpi user and set up necessary directories
 RUN useradd -m -s /bin/bash birdnetpi && \
@@ -146,8 +150,11 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Expose the port for Caddy (8000)
 EXPOSE 8000
 
-# Default command to run supervisord
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf", "-u", "birdnetpi"]
+# Configure Docker to use JSON logging
+LABEL logging=json
+
+# Run supervisord with the wrapper script for emitting JSON logs
+CMD ["/usr/local/bin/supervisor-wrapper.py"]
 
 # ============================================================================
 # Init stage - for permission setup (runs as root)
@@ -159,46 +166,7 @@ FROM runtime AS init
 USER root
 
 # Init container entrypoint script
-# Create init script using printf to avoid heredoc issues with hadolint
-# Consolidate RUN commands and use shellcheck ignore for variable expansion
-# hadolint ignore=DL3059,SC2016
-RUN printf '#!/bin/bash\n\
-set -e\n\
-\n\
-echo "=== BirdNET-Pi Init Container ==="\n\
-echo "Running as: $(whoami) (UID:$(id -u) GID:$(id -g))"\n\
-\n\
-# Install assets as birdnetpi user\n\
-echo "Installing BirdNET assets..."\n\
-cd /opt/birdnetpi\n\
-# Use su without dash to preserve PATH environment variable\n\
-# shellcheck disable=SC2016\n\
-su birdnetpi -c "install-assets install ${BIRDNET_ASSETS_VERSION:-v2.1.1} --skip-existing"\n\
-\n\
-# Set up config\n\
-echo "Setting up configuration..."\n\
-mkdir -p /var/lib/birdnetpi/config\n\
-\n\
-if [ ! -f /var/lib/birdnetpi/config/birdnetpi.yaml ]; then\n\
-    echo "Creating initial config from template..."\n\
-    cp /opt/birdnetpi/config_templates/birdnetpi.yaml /var/lib/birdnetpi/config/birdnetpi.yaml\n\
-else\n\
-    echo "Config exists - preserving user settings."\n\
-fi\n\
-\n\
-# Fix permissions\n\
-echo "Setting ownership to birdnetpi (UID:1000 GID:1000)..."\n\
-chown -R 1000:1000 /var/lib/birdnetpi\n\
-chmod 755 /var/lib/birdnetpi\n\
-chmod 755 /var/lib/birdnetpi/config\n\
-chmod 664 /var/lib/birdnetpi/config/birdnetpi.yaml\n\
-\n\
-echo "Permissions set:"\n\
-ls -la /var/lib/birdnetpi/config/\n\
-\n\
-echo "=== Init Complete ==="\n\
-' > /init.sh && \
-    chmod +x /init.sh
+COPY --chmod=700 config_templates/container-init.sh /init.sh
 
 # Use the init script as entrypoint
 ENTRYPOINT ["/init.sh"]

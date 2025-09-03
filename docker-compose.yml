@@ -51,7 +51,6 @@ services:
       start_period: 60s
     logging:
       driver: json-file
-    command: /usr/bin/supervisord -c /etc/supervisor/supervisord.conf -u birdnetpi
     volumes:
       - ${BIRDNET_DATA_VOLUME:-birdnet-data}:/var/lib/birdnetpi # Persistent data storage
       - ~/.config/pulse/cookie:/home/birdnetpi/.config/pulse/cookie:ro # PulseAudio auth cookie only (read-only)
