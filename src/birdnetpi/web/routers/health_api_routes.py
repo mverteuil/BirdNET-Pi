@@ -10,7 +10,7 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy import text
 
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ async def liveness_probe() -> dict[str, str]:
 @inject
 async def readiness_probe(
     response: Response,
-    db_service: DatabaseService = Depends(Provide[Container.bnp_database_service]),  # noqa: B008
+    db_service: CoreDatabaseService = Depends(Provide[Container.core_database]),  # noqa: B008
 ) -> dict[str, Any]:
     """Check if service is ready to handle requests (Kubernetes readiness probe).
 
@@ -112,7 +112,7 @@ async def readiness_probe(
 @inject
 async def detailed_health_check(
     response: Response,
-    db_service: DatabaseService = Depends(Provide[Container.bnp_database_service]),  # noqa: B008
+    db_service: CoreDatabaseService = Depends(Provide[Container.core_database]),  # noqa: B008
 ) -> dict[str, Any]:
     """Provide detailed health check with component status.
 

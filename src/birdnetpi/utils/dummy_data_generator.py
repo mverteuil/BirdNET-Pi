@@ -2,6 +2,8 @@ import datetime
 import random
 from datetime import UTC
 
+from birdnetpi.database.core import CoreDatabaseService
+from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.web.models.detections import DetectionEvent
 
@@ -90,8 +92,6 @@ if __name__ == "__main__":
     import asyncio
 
     from birdnetpi.config import ConfigManager
-    from birdnetpi.database.core import DatabaseService
-    from birdnetpi.database.species import SpeciesDatabaseService
     from birdnetpi.species.display import SpeciesDisplayService
     from birdnetpi.system.file_manager import FileManager
     from birdnetpi.system.path_resolver import PathResolver
@@ -101,13 +101,13 @@ if __name__ == "__main__":
         path_resolver = PathResolver()
         config_manager = ConfigManager(path_resolver)
         config = config_manager.load()
-        bnp_database_service = DatabaseService(path_resolver.get_database_path())
-        multilingual_service = SpeciesDatabaseService(path_resolver)
+        core_database = CoreDatabaseService(path_resolver.get_database_path())
+        species_database = SpeciesDatabaseService(path_resolver)
         species_display_service = SpeciesDisplayService(config)
         file_manager = FileManager(path_resolver)
         data_manager = DataManager(
-            bnp_database_service,
-            multilingual_service,
+            core_database,
+            species_database,
             species_display_service,
             file_manager,
             path_resolver,

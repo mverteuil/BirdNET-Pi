@@ -152,11 +152,11 @@ The MultilingualDatabaseService integrates seamlessly with BirdNET-Pi's main det
 def process_detection_with_translation(detection, language_code="en"):
     with get_database_session() as session:
         # Attach multilingual databases
-        multilingual_service.attach_all_to_session(session)
+        species_database.attach_all_to_session(session)
 
         try:
             # Get best translation for detected species
-            translation = multilingual_service.get_best_common_name(
+            translation = species_database.get_best_common_name(
                 session,
                 detection.scientific_name,
                 language_code
@@ -167,7 +167,7 @@ def process_detection_with_translation(detection, language_code="en"):
 
         finally:
             # Clean up database attachments
-            multilingual_service.detach_all_from_session(session)
+            species_database.detach_all_from_session(session)
 ```
 
 ## Performance Considerations
@@ -213,17 +213,17 @@ def detach_all_from_session(self, session: Session) -> None:
 ### Basic Translation Lookup
 
 ```python
-from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
+from birdnetpi.services.species_database import MultilingualDatabaseService
 
 # Initialize service
-multilingual_service = MultilingualDatabaseService(path_resolver)
+species_database = MultilingualDatabaseService(path_resolver)
 
 # Get best available translation
 with session as db_session:
-    multilingual_service.attach_all_to_session(db_session)
+    species_database.attach_all_to_session(db_session)
 
     try:
-        result = multilingual_service.get_best_common_name(
+        result = species_database.get_best_common_name(
             db_session,
             scientific_name="Turdus migratorius",
             language_code="es"
@@ -233,14 +233,14 @@ with session as db_session:
         print(f"Source: {result['source']}")     # "IOC"
 
     finally:
-        multilingual_service.detach_all_from_session(db_session)
+        species_database.detach_all_from_session(db_session)
 ```
 
 ### Comprehensive Translation Retrieval
 
 ```python
 # Get all available translations for a species
-translations = multilingual_service.get_all_translations(
+translations = species_database.get_all_translations(
     db_session,
     "Turdus migratorius"
 )
@@ -261,7 +261,7 @@ translations = multilingual_service.get_all_translations(
 
 ```python
 # Get proper attribution strings for legal compliance
-attributions = multilingual_service.get_attribution()
+attributions = species_database.get_attribution()
 
 # Example output:
 # [

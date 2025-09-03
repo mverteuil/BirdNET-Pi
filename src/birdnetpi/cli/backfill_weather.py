@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 import click
 
 from birdnetpi.config import ConfigManager
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.location.weather import WeatherManager
 from birdnetpi.system.path_resolver import PathResolver
 
@@ -98,7 +98,7 @@ async def _backfill_weather_async(
         return
 
     # Initialize database
-    db_service = DatabaseService(path_resolver.get_database_path())
+    db_service = CoreDatabaseService(path_resolver.get_database_path())
     await db_service.initialize()
 
     async with db_service.get_async_db() as session:

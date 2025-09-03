@@ -9,11 +9,11 @@ import pytest
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
-from birdnetpi.detections.detection_query_service import DetectionQueryService
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import AudioFile, Detection
+from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.species.display import SpeciesDisplayService
 
 
@@ -21,7 +21,7 @@ from birdnetpi.species.display import SpeciesDisplayService
 async def test_database_with_data(tmp_path):
     """Create a test database with sample data for presentation testing."""
     db_path = tmp_path / "test.db"
-    db_service = DatabaseService(db_path)
+    db_service = CoreDatabaseService(db_path)
 
     # Initialize the database
     await db_service.initialize()
@@ -128,7 +128,7 @@ async def test_database_with_data(tmp_path):
 
 
 @pytest.fixture
-def mock_multilingual_service():
+def mock_species_database():
     """Create a mock SpeciesDatabaseService."""
     mock_service = MagicMock(spec=SpeciesDatabaseService)
     return mock_service
@@ -142,15 +142,15 @@ def mock_species_display_service():
 
 
 @pytest.fixture
-def mock_detection_query_service(test_database_with_data, mock_multilingual_service):
+def mock_detection_query_service(test_database_with_data, mock_species_database):
     """Create a DetectionQueryService with mocks."""
-    return DetectionQueryService(test_database_with_data, mock_multilingual_service)
+    return DetectionQueryService(test_database_with_data, mock_species_database)
 
 
 @pytest.fixture
 async def presentation_manager(
     test_database_with_data,
-    mock_multilingual_service,
+    mock_species_database,
     mock_species_display_service,
     mock_detection_query_service,
     mocker,
@@ -168,7 +168,7 @@ async def presentation_manager(
 
     data_manager = DataManager(
         database_service=db_service,
-        multilingual_service=mock_multilingual_service,
+        species_database=mock_species_database,
         species_display_service=mock_species_display_service,
         file_manager=mock_file_manager,
         path_resolver=mock_path_resolver,

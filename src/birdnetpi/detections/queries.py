@@ -17,7 +17,7 @@ from sqlalchemy import desc, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
 
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.models import Detection, DetectionBase, DetectionWithTaxa
 
@@ -36,7 +36,7 @@ class DetectionQueryService:
 
     def __init__(
         self,
-        core_database: DatabaseService,
+        core_database: CoreDatabaseService,
         species_database: SpeciesDatabaseService,
     ):
         """Initialize detection query service.

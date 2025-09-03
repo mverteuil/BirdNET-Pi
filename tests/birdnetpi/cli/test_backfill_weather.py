@@ -7,7 +7,7 @@ from click.testing import CliRunner
 from birdnetpi.cli.backfill_weather import _display_stats, backfill_weather
 from birdnetpi.config.manager import ConfigManager
 from birdnetpi.config.models import BirdNETConfig
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.location.weather import WeatherManager
 
 
@@ -70,7 +70,7 @@ def test_backfill_weather_days_option(mock_config, mock_db, mock_weather_manager
     mock_weather_manager.return_value = mock_weather_instance
 
     # Mock database service methods
-    mock_db_instance = MagicMock(spec=DatabaseService)
+    mock_db_instance = MagicMock(spec=CoreDatabaseService)
     mock_db_instance.initialize = AsyncMock()
     mock_db_instance.get_async_db = MagicMock()
     mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock()
@@ -115,7 +115,7 @@ def test_backfill_weather_date_range(mock_config, mock_db, mock_weather_manager,
     mock_weather_manager.return_value = mock_weather_instance
 
     # Mock database service methods
-    mock_db_instance = MagicMock(spec=DatabaseService)
+    mock_db_instance = MagicMock(spec=CoreDatabaseService)
     mock_db_instance.initialize = AsyncMock()
     mock_db_instance.get_async_db = MagicMock()
     mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock()
@@ -164,7 +164,7 @@ def test_backfill_weather_smart_mode(mock_config, mock_db, mock_weather_manager,
     mock_weather_manager.return_value = mock_weather_instance
 
     # Mock database service methods
-    mock_db_instance = MagicMock(spec=DatabaseService)
+    mock_db_instance = MagicMock(spec=CoreDatabaseService)
     mock_db_instance.initialize = AsyncMock()
     mock_db_instance.get_async_db = MagicMock()
     mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock()
@@ -206,7 +206,7 @@ def test_backfill_weather_smart_no_detections(
     mock_weather_manager.return_value = mock_weather_instance
 
     # Mock database service methods
-    mock_db_instance = MagicMock(spec=DatabaseService)
+    mock_db_instance = MagicMock(spec=CoreDatabaseService)
     mock_db_instance.initialize = AsyncMock()
     mock_db_instance.get_async_db = MagicMock()
     mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock()
@@ -249,7 +249,7 @@ def test_backfill_weather_force_option(mock_config, mock_db, mock_weather_manage
     mock_weather_manager.return_value = mock_weather_instance
 
     # Mock database service methods
-    mock_db_instance = MagicMock(spec=DatabaseService)
+    mock_db_instance = MagicMock(spec=CoreDatabaseService)
     mock_db_instance.initialize = AsyncMock()
     mock_db_instance.get_async_db = MagicMock()
     mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock()
@@ -299,7 +299,7 @@ def test_backfill_weather_no_bulk_option(mock_config, mock_db, mock_weather_mana
     mock_weather_manager.return_value = mock_weather_instance
 
     # Mock database service methods
-    mock_db_instance = MagicMock(spec=DatabaseService)
+    mock_db_instance = MagicMock(spec=CoreDatabaseService)
     mock_db_instance.initialize = AsyncMock()
     mock_db_instance.get_async_db = MagicMock()
     mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock()

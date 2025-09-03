@@ -8,16 +8,16 @@ from unittest.mock import MagicMock
 import pytest
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
-from birdnetpi.detections.detection_query_service import DetectionQueryService
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import AudioFile, Detection
+from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.species.display import SpeciesDisplayService
 
 
 @pytest.fixture
-def mock_multilingual_service():
+def mock_species_database():
     """Create a mock SpeciesDatabaseService."""
     mock_service = MagicMock(spec=SpeciesDatabaseService)
     # Configure any needed mock behaviors
@@ -32,16 +32,16 @@ def mock_species_display_service():
 
 
 @pytest.fixture
-def mock_detection_query_service(test_database, mock_multilingual_service):
+def mock_detection_query_service(test_database, mock_species_database):
     """Create a DetectionQueryService with mocks."""
-    return DetectionQueryService(test_database, mock_multilingual_service)
+    return DetectionQueryService(test_database, mock_species_database)
 
 
 @pytest.fixture
 async def test_database(tmp_path):
     """Create a test database with DatabaseService."""
     db_path = tmp_path / "test.db"
-    db_service = DatabaseService(db_path)
+    db_service = CoreDatabaseService(db_path)
 
     # Initialize the database
     await db_service.initialize()
@@ -221,7 +221,7 @@ async def data_manager_with_db(populated_database, mocker):
 
     return DataManager(
         database_service=populated_database,
-        multilingual_service=mock_multilingual,
+        species_database=mock_multilingual,
         species_display_service=mock_species_display,
         detection_query_service=mock_query_service,
         file_manager=mock_file_manager,
@@ -335,7 +335,7 @@ class TestAnalyticsIntegration:
     async def test_empty_database_queries(
         self,
         test_database,
-        mock_multilingual_service,
+        mock_species_database,
         mock_species_display_service,
         mock_detection_query_service,
     ):
@@ -348,7 +348,7 @@ class TestAnalyticsIntegration:
 
         data_manager = DataManager(
             database_service=test_database,
-            multilingual_service=mock_multilingual_service,
+            species_database=mock_species_database,
             species_display_service=mock_species_display_service,
             detection_query_service=mock_detection_query_service,
             file_manager=mock_file_manager,

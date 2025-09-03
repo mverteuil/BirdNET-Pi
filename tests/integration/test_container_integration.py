@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from dependency_injector import providers
 
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.web.core.container import Container
 
@@ -88,10 +88,10 @@ class TestContainerIntegration:
 
         # Clean up singleton instances to prevent resource leaks
         # Reset all singleton providers to ensure clean state
-        if container.bnp_database_service.provided:
-            container.bnp_database_service.reset()
-        if container.multilingual_database_service.provided:
-            container.multilingual_database_service.reset()
+        if container.core_database.provided:
+            container.core_database.reset()
+        if container.species_database.provided:
+            container.species_database.reset()
         if container.cache_service.provided:
             container.cache_service.reset()
 
@@ -110,7 +110,7 @@ class TestContainerIntegration:
         assert container is not None
         assert hasattr(container, "path_resolver")
         assert hasattr(container, "config")
-        assert hasattr(container, "bnp_database_service")
+        assert hasattr(container, "core_database")
 
     def test_container_wiring(self, container_with_overrides: Container):
         """Test that Container can be wired with all modules."""
@@ -145,20 +145,20 @@ class TestContainerIntegration:
         assert hasattr(config, "site_name")
 
     def test_database_service_provider(self, container_with_overrides: Container, test_paths: Path):
-        """Test that bnp_database_service provider uses test paths."""
-        db_service = container_with_overrides.bnp_database_service()
+        """Test that core_database provider uses test paths."""
+        db_service = container_with_overrides.core_database()
         try:
-            assert isinstance(db_service, DatabaseService)
+            assert isinstance(db_service, CoreDatabaseService)
             assert str(test_paths) in str(db_service.db_path)
         finally:
             # Note: async_engine.dispose() is async and can't be called here
             # The container cleanup will handle it via reset_singleton()
             pass
 
-    def test_multilingual_database_service_provider(self, container_with_overrides: Container):
-        """Test that multilingual_database_service can be instantiated."""
-        multilingual_service = container_with_overrides.multilingual_database_service()
-        assert multilingual_service is not None
+    def test_species_database_provider(self, container_with_overrides: Container):
+        """Test that species_database can be instantiated."""
+        species_database = container_with_overrides.species_database()
+        assert species_database is not None
 
     def test_cache_service_provider(self, container_with_overrides: Container):
         """Test that cache_service can be instantiated (falls back to in-memory)."""
@@ -172,8 +172,8 @@ class TestContainerIntegration:
             "config",
             "translation_manager",
             "templates",
-            "bnp_database_service",
-            "multilingual_database_service",
+            "core_database",
+            "species_database",
             "detection_query_service",
             "file_manager",
             "species_display_service",
@@ -198,8 +198,8 @@ class TestContainerIntegration:
     def test_provider_singleton_behavior(self, container_with_overrides: Container):
         """Test that singleton providers return the same instance."""
         # Get two instances of a singleton provider
-        db_service1 = container_with_overrides.bnp_database_service()
-        db_service2 = container_with_overrides.bnp_database_service()
+        db_service1 = container_with_overrides.core_database()
+        db_service2 = container_with_overrides.core_database()
 
         # They should be the same instance
         assert db_service1 is db_service2

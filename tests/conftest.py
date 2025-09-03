@@ -3,6 +3,7 @@ from pathlib import Path
 import matplotlib
 import pytest
 
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.system.path_resolver import PathResolver
 
 # Configure matplotlib to use non-GUI backend for testing
@@ -101,18 +102,17 @@ async def app_with_temp_data(path_resolver):
     data (database, config, logs) to prevent test pollution.
 
     IMPORTANT: We must override the Container providers BEFORE creating the app
-    because sqladmin_view_routes.setup_sqladmin() calls container.bnp_database_service()
+    because sqladmin_view_routes.setup_sqladmin() calls container.core_database()
     during app creation, which would instantiate DatabaseService with the default
     /var/lib/birdnetpi path and cause a PermissionError.
     """
     from dependency_injector import providers
 
     from birdnetpi.config import ConfigManager
-    from birdnetpi.database.core import DatabaseService
     from birdnetpi.web.core.container import Container
 
     # Override the Container's providers at the class level BEFORE app creation
-    # This ensures that when sqladmin calls container.bnp_database_service(),
+    # This ensures that when sqladmin calls container.core_database(),
     # it gets our test version with the temp path
     Container.path_resolver.override(providers.Singleton(lambda: path_resolver))
     Container.database_path.override(providers.Factory(lambda: path_resolver.get_database_path()))
@@ -123,12 +123,12 @@ async def app_with_temp_data(path_resolver):
     Container.config.override(providers.Singleton(lambda: test_config))
 
     # Create a test database service with the temp path
-    temp_db_service = DatabaseService(path_resolver.get_database_path())
+    temp_db_service = CoreDatabaseService(path_resolver.get_database_path())
 
     # Initialize the database (create tables) - await it properly
     await temp_db_service.initialize()
 
-    Container.bnp_database_service.override(providers.Singleton(lambda: temp_db_service))
+    Container.core_database.override(providers.Singleton(lambda: temp_db_service))
 
     # Now create the app with our overridden providers
     from birdnetpi.web.core.factory import create_app
@@ -149,7 +149,7 @@ async def app_with_temp_data(path_resolver):
     Container.path_resolver.reset_override()
     Container.database_path.reset_override()
     Container.config.reset_override()
-    Container.bnp_database_service.reset_override()
+    Container.core_database.reset_override()
 
 
 @pytest.fixture

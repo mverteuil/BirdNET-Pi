@@ -70,7 +70,7 @@ class TestSQLAdminViewRoutes:
         mock_db_service = MagicMock()
         mock_async_engine = AsyncMock()
         mock_db_service.async_engine = mock_async_engine
-        mock_container.bnp_database_service.return_value = mock_db_service
+        mock_container.core_database.return_value = mock_db_service
         app.container = mock_container  # type: ignore[attr-defined]
 
         # Create mock Admin instance
@@ -103,7 +103,7 @@ class TestSQLAdminViewRoutes:
         mock_db_service = MagicMock()
         mock_engine = MagicMock()
         mock_db_service.engine = mock_engine
-        mock_container.bnp_database_service.return_value = mock_db_service
+        mock_container.core_database.return_value = mock_db_service
         app.container = mock_container  # type: ignore[attr-defined]
 
         mock_admin_instance = MagicMock()

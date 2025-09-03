@@ -18,7 +18,7 @@ from birdnetpi.detections.models import DetectionBase
 from birdnetpi.system.status import SystemInspector
 
 if TYPE_CHECKING:
-    from birdnetpi.detections.detection_query_service import DetectionQueryService
+    from birdnetpi.detections.queries import DetectionQueryService
 
 logger = logging.getLogger(__name__)
 

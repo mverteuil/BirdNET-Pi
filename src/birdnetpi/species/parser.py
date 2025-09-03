@@ -51,19 +51,19 @@ class SpeciesParser:
     # Class-level session for database queries
     _session: "AsyncSession | None" = None
 
-    def __init__(self, multilingual_service: "SpeciesDatabaseService"):
+    def __init__(self, species_database: "SpeciesDatabaseService"):
         """Initialize parser with required multilingual database service.
 
         Args:
-            multilingual_service: Service for multilingual species lookup (required)
+            species_database: Service for multilingual species lookup (required)
 
         Raises:
-            TypeError: If multilingual_service is None
+            TypeError: If species_database is None
         """
-        if multilingual_service is None:
+        if species_database is None:
             raise TypeError("SpeciesDatabaseService is required for SpeciesParser")
 
-        self.multilingual_service = multilingual_service
+        self.species_database = species_database
         # Set as global instance if none exists
         if SpeciesParser._instance is None:
             SpeciesParser._instance = self
@@ -98,7 +98,7 @@ class SpeciesParser:
             return None
 
         # Get best common name with English preference (IOC priority)
-        result = await self.multilingual_service.get_best_common_name(
+        result = await self.species_database.get_best_common_name(
             self._session, scientific_name, language_code="en"
         )
         return result.get("common_name")

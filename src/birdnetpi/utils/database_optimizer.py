@@ -12,7 +12,7 @@ from typing import Any
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
 
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class QueryPerformanceMonitor:
     """Monitor and analyze query performance for optimization recommendations."""
 
-    def __init__(self, database_service: DatabaseService):
+    def __init__(self, database_service: CoreDatabaseService):
         """Initialize the query performance monitor.
 
         Args:
@@ -218,7 +218,7 @@ class QueryPerformanceMonitor:
 class DatabaseOptimizer:
     """Optimize database schema and indexes for analytics performance."""
 
-    def __init__(self, database_service: DatabaseService):
+    def __init__(self, database_service: CoreDatabaseService):
         """Initialize the database optimizer.
 
         Args:

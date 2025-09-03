@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 
 from birdnetpi.config.models import BirdNETConfig
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.detections.models import Detection
 from birdnetpi.location.models import Weather
 from birdnetpi.location.weather import WeatherSignalHandler
@@ -46,7 +46,7 @@ def config():
 @pytest.fixture
 def database_service(session):
     """Create a mock database service."""
-    mock_service = MagicMock(spec=DatabaseService)
+    mock_service = MagicMock(spec=CoreDatabaseService)
     mock_service.get_async_db.return_value.__aenter__.return_value = session
     mock_service.get_async_db.return_value.__aexit__.return_value = None
     return mock_service
@@ -83,7 +83,7 @@ def test_weather_handler_register(weather_handler):
 
 def test_weather_handler_requires_location():
     """Test that handler requires location coordinates."""
-    mock_db = MagicMock(spec=DatabaseService)
+    mock_db = MagicMock(spec=CoreDatabaseService)
 
     # Should be able to create with valid coordinates
     handler = WeatherSignalHandler(mock_db, 63.4591, -19.3647)

@@ -6,13 +6,13 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
-from birdnetpi.detections.detection_query_service import (
-    DetectionQueryService,
-)
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import AudioFile, Detection, DetectionWithTaxa
+from birdnetpi.detections.queries import (
+    DetectionQueryService,
+)
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.web.models.detections import DetectionEvent
 
@@ -20,7 +20,7 @@ from birdnetpi.web.models.detections import DetectionEvent
 @pytest.fixture
 def mock_services():
     """Create mock services for DataManager."""
-    mock_db_service = MagicMock(spec=DatabaseService)
+    mock_db_service = MagicMock(spec=CoreDatabaseService)
     mock_multilingual = MagicMock(spec=SpeciesDatabaseService)
     mock_species_display = MagicMock(spec=SpeciesDisplayService)
     mock_query_service = MagicMock(spec=DetectionQueryService)
@@ -29,7 +29,7 @@ def mock_services():
 
     return {
         "database_service": mock_db_service,
-        "multilingual_service": mock_multilingual,
+        "species_database": mock_multilingual,
         "species_display_service": mock_species_display,
         "detection_query_service": mock_query_service,
         "file_manager": mock_file_manager,
@@ -42,7 +42,7 @@ def data_manager(mock_services):
     """Create a DataManager instance with mocked services."""
     return DataManager(
         database_service=mock_services["database_service"],
-        multilingual_service=mock_services["multilingual_service"],
+        species_database=mock_services["species_database"],
         species_display_service=mock_services["species_display_service"],
         detection_query_service=mock_services["detection_query_service"],
         file_manager=mock_services["file_manager"],

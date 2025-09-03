@@ -5,7 +5,7 @@ import time
 import click
 
 from birdnetpi.config import ConfigManager
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.species.display import SpeciesDisplayService
@@ -34,13 +34,13 @@ async def run(count: int = 100, days: int = 3) -> None:
     if db_path.exists() and db_path.stat().st_size > 0:
         print(f"Database file exists and is {db_path.stat().st_size} bytes.")
         try:
-            bnp_database_service = DatabaseService(db_path)
-            multilingual_service = SpeciesDatabaseService(path_resolver)
+            core_database = CoreDatabaseService(db_path)
+            species_database = SpeciesDatabaseService(path_resolver)
             species_display_service = SpeciesDisplayService(config)
             file_manager = FileManager(path_resolver)
             data_manager = DataManager(
-                bnp_database_service,
-                multilingual_service,
+                core_database,
+                species_database,
                 species_display_service,
                 file_manager,
                 path_resolver,
@@ -75,13 +75,13 @@ async def run(count: int = 100, days: int = 3) -> None:
     try:
         # Generate dummy data with exclusive database access
         print("Generating dummy data...")
-        bnp_database_service = DatabaseService(db_path)
-        multilingual_service = SpeciesDatabaseService(path_resolver)
+        core_database = CoreDatabaseService(db_path)
+        species_database = SpeciesDatabaseService(path_resolver)
         species_display_service = SpeciesDisplayService(config)
         file_manager = FileManager(path_resolver)
         data_manager = DataManager(
-            bnp_database_service,
-            multilingual_service,
+            core_database,
+            species_database,
             species_display_service,
             file_manager,
             path_resolver,

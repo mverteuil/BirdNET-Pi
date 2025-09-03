@@ -11,10 +11,10 @@ from sqlalchemy.exc import OperationalError
 
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
-from birdnetpi.detections.detection_query_service import (
+from birdnetpi.detections.models import Detection, DetectionWithTaxa
+from birdnetpi.detections.queries import (
     DetectionQueryService,
 )
-from birdnetpi.detections.models import Detection, DetectionWithTaxa
 from birdnetpi.utils.ioc_models import IOCSpecies, IOCTranslation
 
 
@@ -60,7 +60,7 @@ def ioc_database_service(temp_ioc_db):
 
 
 @pytest.fixture
-def multilingual_service(temp_ioc_db, path_resolver):
+def species_database(temp_ioc_db, path_resolver):
     """Create multilingual database service."""
     # Create empty tables for PatLevin and Avibase in the test database
     # In production, all three databases are always present thanks to the asset downloader
@@ -98,9 +98,9 @@ def multilingual_service(temp_ioc_db, path_resolver):
 
 
 @pytest.fixture
-def query_service(core_database_service, multilingual_service):
+def query_service(core_database_service, species_database):
     """Create detection query service with multilingual support."""
-    return DetectionQueryService(core_database_service, multilingual_service)
+    return DetectionQueryService(core_database_service, species_database)
 
 
 @pytest.fixture
@@ -442,12 +442,12 @@ class TestDetectionQueryServiceInitialization:
     """Test service initialization."""
 
     @pytest.mark.asyncio
-    async def test_service_initialization(self, core_database_service, multilingual_service):
+    async def test_service_initialization(self, core_database_service, species_database):
         """Should initialize with required services."""
-        service = DetectionQueryService(core_database_service, multilingual_service)
+        service = DetectionQueryService(core_database_service, species_database)
 
         assert service.core_database == core_database_service
-        assert service.species_database == multilingual_service
+        assert service.species_database == species_database
 
 
 class TestGetSingleDetectionWithLocalization:

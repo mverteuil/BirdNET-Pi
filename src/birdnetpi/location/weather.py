@@ -9,13 +9,13 @@ import httpx
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.detections.models import Detection
 from birdnetpi.location.models import Weather
 from birdnetpi.notifications.signals import detection_signal
 
 if TYPE_CHECKING:
     from birdnetpi.config.models import BirdNETConfig
-    from birdnetpi.database.core import DatabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -429,7 +429,7 @@ class WeatherSignalHandler:
 
     def __init__(
         self,
-        database_service: "DatabaseService",
+        database_service: "CoreDatabaseService",
         latitude: float,
         longitude: float,
     ):
@@ -508,7 +508,7 @@ class WeatherSignalHandler:
 
 
 def create_and_register_weather_handler(
-    database_service: "DatabaseService",
+    database_service: "CoreDatabaseService",
     config: "BirdNETConfig",
 ) -> WeatherSignalHandler:
     """Create and register a weather signal handler.

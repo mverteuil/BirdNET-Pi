@@ -6,10 +6,10 @@ from fastapi.templating import Jinja2Templates
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.audio.websocket import AudioWebSocketService
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
-from birdnetpi.detections.detection_query_service import DetectionQueryService
 from birdnetpi.detections.manager import DataManager
+from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.location.gps import GPSService
 from birdnetpi.location.sun import SunService
@@ -65,13 +65,13 @@ class Container(containers.DeclarativeContainer):
         resolver=path_resolver,
     )
 
-    bnp_database_service = providers.Singleton(
-        DatabaseService,
+    core_database = providers.Singleton(
+        CoreDatabaseService,
         db_path=database_path,
     )
 
     # Multilingual database service with all three bird name databases
-    multilingual_database_service = providers.Singleton(
+    species_database = providers.Singleton(
         SpeciesDatabaseService,
         path_resolver=path_resolver,
     )
@@ -79,8 +79,8 @@ class Container(containers.DeclarativeContainer):
     # Detection query service - now uses multilingual service
     detection_query_service = providers.Factory(
         DetectionQueryService,
-        bnp_database_service=bnp_database_service,
-        multilingual_service=multilingual_database_service,
+        core_database=core_database,
+        species_database=species_database,
     )
 
     # Cache service - singleton for analytics performance
@@ -108,8 +108,8 @@ class Container(containers.DeclarativeContainer):
     # Data Manager - single source of truth for detection data access and event emission
     data_manager = providers.Singleton(
         DataManager,
-        database_service=bnp_database_service,
-        multilingual_service=multilingual_database_service,
+        database_service=core_database,
+        species_database=species_database,
         species_display_service=species_display_service,
         file_manager=file_manager,
         path_resolver=path_resolver,
@@ -125,7 +125,7 @@ class Container(containers.DeclarativeContainer):
     # Weather signal handler - singleton
     weather_signal_handler = providers.Singleton(
         WeatherSignalHandler,
-        database_service=bnp_database_service,
+        database_service=core_database,
         latitude=providers.Factory(lambda c: c.latitude, c=config),
         longitude=providers.Factory(lambda c: c.longitude, c=config),
     )

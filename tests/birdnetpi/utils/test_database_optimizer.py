@@ -9,7 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.detections.models import AudioFile, Detection
 from birdnetpi.utils.database_optimizer import DatabaseOptimizer, QueryPerformanceMonitor
 
@@ -80,7 +80,7 @@ def temp_db():
 @pytest.fixture
 def database_service(temp_db):
     """Create a DatabaseService instance with test database."""
-    service = DatabaseService(Path(temp_db))
+    service = CoreDatabaseService(Path(temp_db))
     try:
         yield service
     finally:

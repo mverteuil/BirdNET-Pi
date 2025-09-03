@@ -75,9 +75,9 @@ def audio_analysis_service_integration(
         mock_analysis_client_class.return_value = mock_analysis_client
 
         # Mock SpeciesDatabaseService and AsyncSession
-        mock_multilingual_service = MagicMock()
+        mock_species_database = MagicMock()
         # Make get_best_common_name async and return a dict with common_name
-        mock_multilingual_service.get_best_common_name = AsyncMock(
+        mock_species_database.get_best_common_name = AsyncMock(
             return_value={"common_name": "Test Bird"}
         )
         mock_session = MagicMock()
@@ -86,13 +86,13 @@ def audio_analysis_service_integration(
         from birdnetpi.species.parser import SpeciesParser
 
         SpeciesParser._instance = None  # Reset singleton
-        SpeciesParser(mock_multilingual_service)  # Initialize with mock
+        SpeciesParser(mock_species_database)  # Initialize with mock
 
         service = AudioAnalysisManager(
             mock_file_manager,
             mock_path_resolver,
             mock_config,
-            mock_multilingual_service,
+            mock_species_database,
             mock_session,
             detection_buffer_max_size=50,  # Reasonable size for integration tests
             buffer_flush_interval=0.1,  # Fast interval for testing
@@ -246,9 +246,9 @@ class TestDetectionBufferingEndToEnd:
         mock_analysis_client_class.return_value = mock_analysis_client
 
         # Mock SpeciesDatabaseService and AsyncSession
-        mock_multilingual_service = MagicMock()
+        mock_species_database = MagicMock()
         # Make get_best_common_name async and return a dict with common_name
-        mock_multilingual_service.get_best_common_name = AsyncMock(
+        mock_species_database.get_best_common_name = AsyncMock(
             return_value={"common_name": "Test Bird"}
         )
         mock_session = MagicMock()
@@ -257,14 +257,14 @@ class TestDetectionBufferingEndToEnd:
         from birdnetpi.species.parser import SpeciesParser
 
         SpeciesParser._instance = None  # Reset singleton
-        SpeciesParser(mock_multilingual_service)  # Initialize with mock
+        SpeciesParser(mock_species_database)  # Initialize with mock
 
         # Create service with small buffer for testing overflow
         service = AudioAnalysisManager(
             audio_analysis_service_integration.file_manager,
             audio_analysis_service_integration.path_resolver,
             audio_analysis_service_integration.config,
-            mock_multilingual_service,
+            mock_species_database,
             mock_session,
             detection_buffer_max_size=3,  # Small buffer to trigger overflow
             buffer_flush_interval=0.1,

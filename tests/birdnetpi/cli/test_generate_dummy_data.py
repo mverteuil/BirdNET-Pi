@@ -3,7 +3,7 @@ from unittest.mock import DEFAULT, AsyncMock, MagicMock, patch
 import pytest
 
 import birdnetpi.cli.generate_dummy_data as gdd
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.species.display import SpeciesDisplayService
@@ -48,7 +48,7 @@ def mock_dependencies(mocker, tmp_path):
         mocks["PathResolver"].return_value.get_database_path.return_value = mock_db_path
         mocks["PathResolver"].return_value.get_birdnetpi_config_path.return_value = config_path
         mocks["ConfigManager"].return_value.load_config.return_value = MagicMock()
-        mocks["DatabaseService"].return_value = MagicMock(spec=DatabaseService)
+        mocks["CoreDatabaseService"].return_value = MagicMock(spec=CoreDatabaseService)
         mock_data_manager = MagicMock(spec=DataManager)
         mock_data_manager.get_all_detections = AsyncMock(return_value=[])
         mock_data_manager.create_detection = AsyncMock(return_value=None)

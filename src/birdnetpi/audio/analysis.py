@@ -31,7 +31,7 @@ class AudioAnalysisManager:
         file_manager: FileManager,
         path_resolver: PathResolver,
         config: BirdNETConfig,
-        multilingual_service: "SpeciesDatabaseService",
+        species_database: "SpeciesDatabaseService",
         session: "AsyncSession",
         detection_buffer_max_size: int = 1000,
         buffer_flush_interval: float = 5.0,
@@ -43,7 +43,7 @@ class AudioAnalysisManager:
         self.analysis_client = BirdDetectionService(config)
 
         # Initialize SpeciesParser with multilingual database service for canonical name lookups
-        self.species_parser = SpeciesParser(multilingual_service)
+        self.species_parser = SpeciesParser(species_database)
         # Set the session for database queries
         SpeciesParser.set_session(session)
 

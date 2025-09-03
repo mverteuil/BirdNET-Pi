@@ -80,7 +80,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Start all services in proper order
     try:
         # Initialize database service (creates tables and applies optimizations)
-        database_service = container.bnp_database_service()
+        database_service = container.core_database()
         await database_service.initialize()
         logger.info("Database initialized successfully")
 

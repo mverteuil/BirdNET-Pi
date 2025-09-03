@@ -95,7 +95,7 @@ class TestAppStartupIntegration:
         # Check that it has the expected Container attributes rather than exact type
         assert hasattr(container, "config")
         assert hasattr(container, "path_resolver")
-        assert hasattr(container, "bnp_database_service")
+        assert hasattr(container, "core_database")
 
     def test_app_has_routes(self, app_with_real_container: FastAPI):
         """Test that the app has routes registered."""

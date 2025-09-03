@@ -55,10 +55,10 @@ def setup_sqladmin(app: FastAPI) -> Admin:
     """
     # Get database engine from the DI container
     container = app.container  # type: ignore[attr-defined]
-    bnp_database_service = container.core_database()
+    core_database = container.core_database()
 
     # SQLAdmin supports async engines
-    admin = Admin(app, bnp_database_service.async_engine, base_url="/admin/database")
+    admin = Admin(app, core_database.async_engine, base_url="/admin/database")
 
     # Register model views
     admin.add_view(DetectionAdmin)

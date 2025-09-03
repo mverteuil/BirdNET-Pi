@@ -18,16 +18,16 @@ from sqlalchemy import desc, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import func
 
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
-from birdnetpi.detections.detection_query_service import (
-    DetectionQueryService,
-)
 from birdnetpi.detections.models import (
     AudioFile,
     Detection,
     DetectionBase,
     DetectionWithTaxa,
+)
+from birdnetpi.detections.queries import (
+    DetectionQueryService,
 )
 from birdnetpi.notifications.signals import detection_signal
 from birdnetpi.species.display import SpeciesDisplayService
@@ -79,8 +79,8 @@ class DataManager:
 
     def __init__(
         self,
-        database_service: DatabaseService,
-        multilingual_service: SpeciesDatabaseService,
+        database_service: CoreDatabaseService,
+        species_database: SpeciesDatabaseService,
         species_display_service: SpeciesDisplayService,
         file_manager: FileManager,
         path_resolver: PathResolver,
@@ -90,14 +90,14 @@ class DataManager:
 
         Args:
             database_service: Core database service for BirdNET-Pi data
-            multilingual_service: Handles IOC, Avibase, PatLevin databases
+            species_database: Handles IOC, Avibase, PatLevin databases
             species_display_service: Complex display logic for species names
             file_manager: Handles file operations for audio and spectrograms
             path_resolver: Resolves paths for detection files
             detection_query_service: Legacy service for compatibility (will be absorbed)
         """
         self.database_service = database_service
-        self.multilingual = multilingual_service
+        self.multilingual = species_database
         self.species_display = species_display_service
         self.file_manager = file_manager
         self.path_resolver = path_resolver

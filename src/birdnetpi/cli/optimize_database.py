@@ -17,7 +17,7 @@ from typing import Any
 
 import click
 
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.utils.database_optimizer import DatabaseOptimizer
 
@@ -29,7 +29,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def setup_database_service() -> DatabaseService:
+def setup_database_service() -> CoreDatabaseService:
     """Set up database service with proper configuration.
 
     Returns:
@@ -41,7 +41,7 @@ def setup_database_service() -> DatabaseService:
     # Ensure database directory exists
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
-    return DatabaseService(db_path)
+    return CoreDatabaseService(db_path)
 
 
 def print_section(title: str, content: str = "") -> None:

@@ -83,7 +83,7 @@ async def init_session_and_service(
 ) -> tuple["AsyncSession", AudioAnalysisManager]:
     """Initialize async session and audio analysis service."""
     # Create multilingual database service
-    multilingual_service = SpeciesDatabaseService(path_resolver)
+    species_database = SpeciesDatabaseService(path_resolver)
     logger.info("Multilingual database service initialized")
 
     # Create async session for database queries
@@ -92,14 +92,14 @@ async def init_session_and_service(
 
     # Initialize session with attached databases
     session: AsyncSession = async_session_maker()  # type: ignore[assignment]
-    await multilingual_service.attach_all_to_session(session)
+    await species_database.attach_all_to_session(session)
 
     # Create file manager
     file_manager = FileManager(path_resolver)
 
     # Create audio analysis service
     audio_analysis_service = AudioAnalysisManager(
-        file_manager, path_resolver, config, multilingual_service, session
+        file_manager, path_resolver, config, species_database, session
     )
 
     return session, audio_analysis_service

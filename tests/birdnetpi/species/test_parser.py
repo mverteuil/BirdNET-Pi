@@ -240,10 +240,10 @@ class TestSpeciesParserWithIOC:
         from birdnetpi.database.species import SpeciesDatabaseService
 
         # Mock SpeciesDatabaseService since SpeciesParser now requires it
-        mock_multilingual_service = MagicMock(spec=SpeciesDatabaseService)
-        parser = SpeciesParser(mock_multilingual_service)
+        mock_species_database = MagicMock(spec=SpeciesDatabaseService)
+        parser = SpeciesParser(mock_species_database)
 
-        assert parser.multilingual_service is mock_multilingual_service
+        assert parser.species_database is mock_species_database
 
     def test_format_species_display_fallback_to_common_name(self):
         """Test format_species_for_display fallback when both display options are disabled."""

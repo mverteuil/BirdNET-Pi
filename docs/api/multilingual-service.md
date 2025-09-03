@@ -7,7 +7,7 @@ The `MultilingualDatabaseService` provides programmatic access to multilingual b
 ## Class Definition
 
 ```python
-from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
+from birdnetpi.services.species_database import MultilingualDatabaseService
 ```
 
 ### Constructor
@@ -302,11 +302,11 @@ print(f"PatLevin database: {service.patlevin_db_path}")
 
 ```python
 from sqlalchemy.orm import sessionmaker
-from birdnetpi.services.multilingual_database_service import MultilingualDatabaseService
+from birdnetpi.services.species_database import MultilingualDatabaseService
 
 # Initialize service
 path_resolver = PathResolver()
-multilingual_service = MultilingualDatabaseService(path_resolver)
+species_database = MultilingualDatabaseService(path_resolver)
 
 # Create database session
 session_factory = sessionmaker(bind=engine)
@@ -314,17 +314,17 @@ session_factory = sessionmaker(bind=engine)
 def translate_species(scientific_name: str, language_code: str = "en") -> dict:
     """Translate a species name with proper resource management."""
     with session_factory() as session:
-        multilingual_service.attach_all_to_session(session)
+        species_database.attach_all_to_session(session)
 
         try:
-            result = multilingual_service.get_best_common_name(
+            result = species_database.get_best_common_name(
                 session,
                 scientific_name,
                 language_code
             )
             return result
         finally:
-            multilingual_service.detach_all_from_session(session)
+            species_database.detach_all_from_session(session)
 
 # Usage
 translation = translate_species("Turdus migratorius", "es")
@@ -340,11 +340,11 @@ def translate_species_list(species_list: list[str], language_code: str) -> list[
     results = []
 
     with session_factory() as session:
-        multilingual_service.attach_all_to_session(session)
+        species_database.attach_all_to_session(session)
 
         try:
             for scientific_name in species_list:
-                result = multilingual_service.get_best_common_name(
+                result = species_database.get_best_common_name(
                     session,
                     scientific_name,
                     language_code
@@ -355,7 +355,7 @@ def translate_species_list(species_list: list[str], language_code: str) -> list[
                     "source": result["source"]
                 })
         finally:
-            multilingual_service.detach_all_from_session(session)
+            species_database.detach_all_from_session(session)
 
     return results
 
@@ -373,24 +373,24 @@ for t in translations:
 def analyze_species_coverage(scientific_name: str) -> dict:
     """Analyze translation coverage across all databases and languages."""
     with session_factory() as session:
-        multilingual_service.attach_all_to_session(session)
+        species_database.attach_all_to_session(session)
 
         try:
             # Get all translations
-            all_translations = multilingual_service.get_all_translations(
+            all_translations = species_database.get_all_translations(
                 session,
                 scientific_name
             )
 
             # Get attribution info
-            attributions = multilingual_service.get_attribution()
+            attributions = species_database.get_attribution()
 
             # Analyze coverage
             analysis = {
                 "scientific_name": scientific_name,
                 "total_languages": len(all_translations),
                 "translations_by_language": all_translations,
-                "available_databases": multilingual_service.databases_available,
+                "available_databases": species_database.databases_available,
                 "attributions": attributions
             }
 
@@ -405,7 +405,7 @@ def analyze_species_coverage(scientific_name: str) -> dict:
             return analysis
 
         finally:
-            multilingual_service.detach_all_from_session(session)
+            species_database.detach_all_from_session(session)
 
 # Usage
 coverage = analyze_species_coverage("Turdus migratorius")
@@ -422,10 +422,10 @@ def get_species_name_with_fallback(scientific_name: str, language_code: str) -> 
     """Get species name with graceful fallback to scientific name."""
     try:
         with session_factory() as session:
-            multilingual_service.attach_all_to_session(session)
+            species_database.attach_all_to_session(session)
 
             try:
-                result = multilingual_service.get_best_common_name(
+                result = species_database.get_best_common_name(
                     session,
                     scientific_name,
                     language_code
@@ -435,7 +435,7 @@ def get_species_name_with_fallback(scientific_name: str, language_code: str) -> 
                 return result["common_name"] or scientific_name
 
             finally:
-                multilingual_service.detach_all_from_session(session)
+                species_database.detach_all_from_session(session)
 
     except Exception as e:
         # Log error and return scientific name as ultimate fallback
@@ -495,7 +495,7 @@ else:
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
-multilingual_service = MultilingualDatabaseService(path_resolver)
+species_database = MultilingualDatabaseService(path_resolver)
 
 @app.route('/api/translate')
 def translate_species():
@@ -507,10 +507,10 @@ def translate_species():
 
     try:
         with session_factory() as session:
-            multilingual_service.attach_all_to_session(session)
+            species_database.attach_all_to_session(session)
 
             try:
-                result = multilingual_service.get_best_common_name(
+                result = species_database.get_best_common_name(
                     session,
                     scientific_name,
                     language_code
@@ -518,7 +518,7 @@ def translate_species():
                 return jsonify(result)
 
             finally:
-                multilingual_service.detach_all_from_session(session)
+                species_database.detach_all_from_session(session)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -538,11 +538,11 @@ async def translate_detection_batch(detections: list, language_code: str):
         def translate_batch():
             results = []
             with session_factory() as session:
-                multilingual_service.attach_all_to_session(session)
+                species_database.attach_all_to_session(session)
 
                 try:
                     for detection in detections:
-                        result = multilingual_service.get_best_common_name(
+                        result = species_database.get_best_common_name(
                             session,
                             detection.scientific_name,
                             language_code
@@ -551,7 +551,7 @@ async def translate_detection_batch(detections: list, language_code: str):
                         detection.translation_source = result["source"]
                         results.append(detection)
                 finally:
-                    multilingual_service.detach_all_from_session(session)
+                    species_database.detach_all_from_session(session)
 
             return results
 

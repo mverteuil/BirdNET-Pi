@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 
 from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.detections.detection_query_service import DetectionQueryService
+from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.system.status import SystemInspector
 from birdnetpi.web.core.container import Container
 

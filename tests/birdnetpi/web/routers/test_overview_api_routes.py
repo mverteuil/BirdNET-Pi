@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 
 # Note: HardwareMonitorManager has been replaced with SystemInspector static methods
 
@@ -19,7 +19,7 @@ async def temp_db():
         db_path = Path(temp_file.name)
 
     # Initialize the database
-    db_service = DatabaseService(db_path)
+    db_service = CoreDatabaseService(db_path)
     await db_service.initialize()
     try:
         yield db_path

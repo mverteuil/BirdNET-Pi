@@ -87,7 +87,7 @@ When using the API, the language configuration is automatically applied:
 config = BirdNETConfig(language="es")
 
 # Services use the configured language
-multilingual_service.get_best_common_name(
+species_database.get_best_common_name(
     session,
     "Turdus merula",
     config.language  # Uses "es" from config
