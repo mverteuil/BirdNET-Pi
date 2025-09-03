@@ -223,7 +223,7 @@ class TestAdminRouterIntegration:
         # Settings page is a placeholder - just check it renders
         assert "Settings" in response.text
 
-    @patch("birdnetpi.web.routers.admin_view_routes.LogService")
+    @patch("birdnetpi.web.routers.admin_view_routes.LogReaderService")
     def test_log_endpoint_returns_logs(self, mock_log_service, client):
         """Should return system logs as plain text."""
         # Mock log service

@@ -453,7 +453,7 @@ class TestDetectionBufferingWithAdminOperations:
             with (
                 patch("birdnetpi.cli.generate_dummy_data.PathResolver") as mock_path_resolver,
                 patch(
-                    "birdnetpi.cli.generate_dummy_data.DatabaseService"
+                    "birdnetpi.cli.generate_dummy_data.CoreDatabaseService"
                 ) as _mock_database_service,
                 patch("birdnetpi.cli.generate_dummy_data.DataManager") as mock_data_manager,
                 patch(

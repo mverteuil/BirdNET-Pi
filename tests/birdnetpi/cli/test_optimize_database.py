@@ -25,10 +25,10 @@ class TestSetupDatabaseService:
         # Use the global path_resolver fixture (from conftest.py)
         mocker.patch("birdnetpi.cli.optimize_database.PathResolver", return_value=path_resolver)
 
-        # Mock DatabaseService
+        # Mock CoreDatabaseService
         mock_db_service = mocker.AsyncMock()
         mock_db_service_class = mocker.patch(
-            "birdnetpi.cli.optimize_database.DatabaseService", return_value=mock_db_service
+            "birdnetpi.cli.optimize_database.CoreDatabaseService", return_value=mock_db_service
         )
 
         # Call the function
@@ -36,7 +36,7 @@ class TestSetupDatabaseService:
 
         # Verify
         assert result == mock_db_service
-        # Verify DatabaseService was called with the correct path
+        # Verify CoreDatabaseService was called with the correct path
         db_path = path_resolver.get_database_path()
         mock_db_service_class.assert_called_once_with(db_path)
         # Verify the directory was created

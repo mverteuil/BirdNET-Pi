@@ -23,7 +23,7 @@ def mock_dependencies(mocker, tmp_path):
         "birdnetpi.cli.generate_dummy_data",
         PathResolver=DEFAULT,
         ConfigManager=DEFAULT,
-        DatabaseService=DEFAULT,
+        CoreDatabaseService=DEFAULT,
         DataManager=DEFAULT,
         SpeciesDatabaseService=DEFAULT,
         SpeciesDisplayService=DEFAULT,

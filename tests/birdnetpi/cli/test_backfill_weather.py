@@ -24,7 +24,7 @@ def test_backfill_weather_help():
     assert "--smart" in result.output
 
 
-@patch("birdnetpi.cli.backfill_weather.DatabaseService")
+@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
 @patch("birdnetpi.cli.backfill_weather.ConfigManager")
 def test_backfill_weather_no_location(mock_config, mock_db, path_resolver):
     """Test error when location is not configured."""
@@ -47,7 +47,7 @@ def test_backfill_weather_no_location(mock_config, mock_db, path_resolver):
 
 
 @patch("birdnetpi.cli.backfill_weather.WeatherManager")
-@patch("birdnetpi.cli.backfill_weather.DatabaseService")
+@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
 @patch("birdnetpi.cli.backfill_weather.ConfigManager")
 def test_backfill_weather_days_option(mock_config, mock_db, mock_weather_manager, path_resolver):
     """Test backfilling with --days option."""
@@ -92,7 +92,7 @@ def test_backfill_weather_days_option(mock_config, mock_db, mock_weather_manager
 
 
 @patch("birdnetpi.cli.backfill_weather.WeatherManager")
-@patch("birdnetpi.cli.backfill_weather.DatabaseService")
+@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
 @patch("birdnetpi.cli.backfill_weather.ConfigManager")
 def test_backfill_weather_date_range(mock_config, mock_db, mock_weather_manager, path_resolver):
     """Test backfilling with specific date range."""
@@ -141,7 +141,7 @@ def test_backfill_weather_date_range(mock_config, mock_db, mock_weather_manager,
 
 
 @patch("birdnetpi.cli.backfill_weather.WeatherManager")
-@patch("birdnetpi.cli.backfill_weather.DatabaseService")
+@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
 @patch("birdnetpi.cli.backfill_weather.ConfigManager")
 def test_backfill_weather_smart_mode(mock_config, mock_db, mock_weather_manager, path_resolver):
     """Test smart backfill mode."""
@@ -186,7 +186,7 @@ def test_backfill_weather_smart_mode(mock_config, mock_db, mock_weather_manager,
 
 
 @patch("birdnetpi.cli.backfill_weather.WeatherManager")
-@patch("birdnetpi.cli.backfill_weather.DatabaseService")
+@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
 @patch("birdnetpi.cli.backfill_weather.ConfigManager")
 def test_backfill_weather_smart_no_detections(
     mock_config, mock_db, mock_weather_manager, path_resolver
@@ -226,7 +226,7 @@ def test_backfill_weather_smart_no_detections(
 
 
 @patch("birdnetpi.cli.backfill_weather.WeatherManager")
-@patch("birdnetpi.cli.backfill_weather.DatabaseService")
+@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
 @patch("birdnetpi.cli.backfill_weather.ConfigManager")
 def test_backfill_weather_force_option(mock_config, mock_db, mock_weather_manager, path_resolver):
     """Test force re-fetch option."""
@@ -274,7 +274,7 @@ def test_backfill_weather_force_option(mock_config, mock_db, mock_weather_manage
 
 
 @patch("birdnetpi.cli.backfill_weather.WeatherManager")
-@patch("birdnetpi.cli.backfill_weather.DatabaseService")
+@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
 @patch("birdnetpi.cli.backfill_weather.ConfigManager")
 def test_backfill_weather_no_bulk_option(mock_config, mock_db, mock_weather_manager, path_resolver):
     """Test non-bulk backfill mode."""
