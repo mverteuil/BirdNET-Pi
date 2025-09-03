@@ -9,7 +9,7 @@ import httpx
 import numpy as np
 import pytest
 
-from birdnetpi.audio.audio_analysis_manager import AudioAnalysisManager
+from birdnetpi.audio.analysis import AudioAnalysisManager
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.system.file_manager import FileManager
 
@@ -95,7 +95,7 @@ def mock_config(test_config_data):
 
 
 @pytest.fixture
-@patch("birdnetpi.audio.audio_analysis_manager.BirdDetectionService")
+@patch("birdnetpi.audio.analysis.BirdDetectionService")
 def audio_analysis_service(
     mock_analysis_client_class, mock_file_manager, mock_path_resolver, mock_config
 ):
@@ -172,7 +172,7 @@ def mock_detection_data(test_config_data, test_detection_result):
 @pytest.fixture(autouse=True)
 def caplog_for_audio_analysis_service(caplog):
     """Fixture to capture logs from audio_analysis_service.py."""
-    caplog.set_level(logging.INFO, logger="birdnetpi.audio.audio_analysis_manager")
+    caplog.set_level(logging.INFO, logger="birdnetpi.audio.analysis")
     yield
 
 
@@ -205,7 +205,7 @@ class TestAudioAnalysisManager:
 
     @pytest.mark.asyncio
     @patch(
-        "birdnetpi.audio.audio_analysis_manager.AudioAnalysisManager._analyze_audio_chunk",
+        "birdnetpi.audio.analysis.AudioAnalysisManager._analyze_audio_chunk",
         new_callable=AsyncMock,
     )
     async def test_process_audio_chunk_calls_analyze__buffer_full(
@@ -230,7 +230,7 @@ class TestAudioAnalysisManager:
 
     @pytest.mark.asyncio
     @patch(
-        "birdnetpi.audio.audio_analysis_manager.AudioAnalysisManager._send_detection_event",
+        "birdnetpi.audio.analysis.AudioAnalysisManager._send_detection_event",
         new_callable=AsyncMock,
     )
     async def test_analyze_audio_chunk__detections(
@@ -794,7 +794,7 @@ class TestDetectionBuffering:
             assert "Unexpected error flushing detection" in caplog.text
             assert "Re-buffered failed detections" in caplog.text
 
-    @patch("birdnetpi.audio.audio_analysis_manager.BirdDetectionService")
+    @patch("birdnetpi.audio.analysis.BirdDetectionService")
     async def test_detection_buffer_max_size_enforcement(
         self, mock_analysis_client_class, audio_analysis_service
     ):

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from birdnetpi.audio.audio_analysis_manager import AudioAnalysisManager
+from birdnetpi.audio.analysis import AudioAnalysisManager
 from birdnetpi.config import ConfigManager
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.system.file_manager import FileManager
