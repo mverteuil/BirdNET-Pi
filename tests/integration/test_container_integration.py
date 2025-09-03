@@ -178,7 +178,7 @@ class TestContainerIntegration:
             "file_manager",
             "species_display_service",
             "data_manager",
-            "location_service",
+            "sun_service",
             "system_control_service",
             "audio_websocket_service",
             "gps_service",

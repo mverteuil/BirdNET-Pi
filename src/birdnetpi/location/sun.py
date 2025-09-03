@@ -4,8 +4,8 @@ from astral import LocationInfo
 from astral.sun import sun
 
 
-class LocationService:
-    """Provides location-based services, such as sunrise and sunset times."""
+class SunService:
+    """Provides sun-related services, such as sunrise and sunset times."""
 
     def __init__(self, latitude: float, longitude: float) -> None:
         self.location = LocationInfo(

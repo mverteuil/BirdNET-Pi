@@ -12,7 +12,7 @@ from birdnetpi.detections.manager import DataManager
 from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.location.gps import GPSService
-from birdnetpi.location.location_service import LocationService
+from birdnetpi.location.sun import SunService
 from birdnetpi.location.weather import WeatherSignalHandler
 from birdnetpi.notifications.mqtt import MQTTService
 from birdnetpi.notifications.notification_manager import NotificationManager
@@ -116,8 +116,8 @@ class Container(containers.DeclarativeContainer):
         detection_query_service=detection_query_service,
     )
 
-    location_service = providers.Singleton(
-        LocationService,
+    sun_service = providers.Singleton(
+        SunService,
         latitude=providers.Factory(lambda c: c.latitude, c=config),
         longitude=providers.Factory(lambda c: c.longitude, c=config),
     )

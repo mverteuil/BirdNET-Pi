@@ -1,6 +1,6 @@
 """Location domain for GPS and geospatial services."""
 
 from birdnetpi.location.gps import GPSCoordinates, GPSService
-from birdnetpi.location.location_service import LocationService
+from birdnetpi.location.sun import SunService
 
-__all__ = ["GPSCoordinates", "GPSService", "LocationService"]
+__all__ = ["GPSCoordinates", "GPSService", "SunService"]
