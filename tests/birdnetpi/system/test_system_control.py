@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from birdnetpi.system.service_strategies import ServiceStrategySelector
-from birdnetpi.system.system_control_service import SystemControlService
+from birdnetpi.system.system_control import SystemControlService
 
 
 class TestSystemControlService:

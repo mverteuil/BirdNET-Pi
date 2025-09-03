@@ -20,7 +20,7 @@ from birdnetpi.notifications.webhooks import WebhookService
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
-from birdnetpi.system.system_control_service import SystemControlService
+from birdnetpi.system.system_control import SystemControlService
 from birdnetpi.utils.cache import Cache
 from birdnetpi.web.core.config import get_config
 

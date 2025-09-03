@@ -11,7 +11,7 @@ from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseSer
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
-from birdnetpi.system.system_control_service import SystemControlService
+from birdnetpi.system.system_control import SystemControlService
 from birdnetpi.utils.dummy_data_generator import generate_dummy_detections
 
 

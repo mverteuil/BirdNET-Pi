@@ -11,7 +11,7 @@ from tqdm import tqdm
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.releases.asset_manifest import AssetManifest, AssetType
 from birdnetpi.system.path_resolver import PathResolver
-from birdnetpi.system.system_control_service import SystemControlService
+from birdnetpi.system.system_control import SystemControlService
 
 
 class UpdateManager:
