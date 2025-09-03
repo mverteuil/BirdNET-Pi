@@ -48,7 +48,7 @@ async def bnp_database_service(temp_main_db):
 @pytest.fixture
 def ioc_database_service(temp_ioc_db):
     """Create IOC database service."""
-    from birdnetpi.utils.ioc_database_service import IOCDatabaseService
+    from birdnetpi.database.ioc import IOCDatabaseService
 
     service = IOCDatabaseService(temp_ioc_db)
     try:
@@ -376,7 +376,6 @@ class TestGetDetectionsWithLocalization:
 
         if results:  # If we have matching results
             robin_result = results[0]
-            assert robin_result.translated_name == "Petirrojo Americano"
             # Test that translated name is properly available in the object
             assert robin_result.translated_name == "Petirrojo Americano"
 

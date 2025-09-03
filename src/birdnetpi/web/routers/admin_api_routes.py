@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from birdnetpi.config import ConfigManager
+from birdnetpi.database.ioc import IOCDatabaseService
 from birdnetpi.system.path_resolver import PathResolver
-from birdnetpi.utils.ioc_database_service import IOCDatabaseService
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.admin import YAMLConfigRequest
 
