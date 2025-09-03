@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import websockets
 
-from birdnetpi.audio.audio_websocket_service import AudioWebSocketService
+from birdnetpi.audio.websocket import AudioWebSocketService
 
 
 @pytest.fixture
@@ -111,10 +111,10 @@ class TestAudioWebSocketService:
     async def test_start(self, audio_websocket_service, mock_config):
         """Should start service successfully."""
         with (
-            patch("birdnetpi.audio.audio_websocket_service.os.open", return_value=123) as mock_open,
-            patch("birdnetpi.audio.audio_websocket_service.serve") as mock_serve,
-            patch("birdnetpi.audio.audio_websocket_service.signal"),
-            patch("birdnetpi.audio.audio_websocket_service.atexit"),
+            patch("birdnetpi.audio.websocket.os.open", return_value=123) as mock_open,
+            patch("birdnetpi.audio.websocket.serve") as mock_serve,
+            patch("birdnetpi.audio.websocket.signal"),
+            patch("birdnetpi.audio.websocket.atexit"),
         ):
             mock_server = MagicMock()  # Regular mock, not AsyncMock
 
@@ -145,9 +145,7 @@ class TestAudioWebSocketService:
     @pytest.mark.asyncio
     async def test_start_fifo_not_found(self, audio_websocket_service, mock_config):
         """Should raise exception when FIFO not found."""
-        with patch(
-            "birdnetpi.audio.audio_websocket_service.os.open", side_effect=FileNotFoundError
-        ):
+        with patch("birdnetpi.audio.websocket.os.open", side_effect=FileNotFoundError):
             with pytest.raises(FileNotFoundError):
                 await audio_websocket_service.start()
 
@@ -166,7 +164,7 @@ class TestAudioWebSocketService:
         task = asyncio.create_task(dummy_fifo_loop())
         audio_websocket_service._fifo_task = task
 
-        with patch("birdnetpi.audio.audio_websocket_service.os.close") as mock_close:
+        with patch("birdnetpi.audio.websocket.os.close") as mock_close:
             await audio_websocket_service.stop()
 
             # Verify shutdown flag is set

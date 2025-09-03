@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from birdnetpi.audio.audio_websocket_service import AudioWebSocketService
+from birdnetpi.audio.websocket import AudioWebSocketService
 from birdnetpi.config import ConfigManager
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.structlog_configurator import configure_structlog

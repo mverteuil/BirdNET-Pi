@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
-from birdnetpi.audio.audio_websocket_service import AudioWebSocketService
+from birdnetpi.audio.websocket import AudioWebSocketService
 from birdnetpi.database.database_service import DatabaseService
 from birdnetpi.detections.detection_query_service import DetectionQueryService
 from birdnetpi.detections.manager import DataManager
