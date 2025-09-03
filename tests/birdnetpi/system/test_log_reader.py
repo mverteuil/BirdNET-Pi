@@ -2,16 +2,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from birdnetpi.system.log_service import LogService
+from birdnetpi.system.log_reader import LogReaderService
 
 
 @pytest.fixture
 def log_service():
-    """Provide a LogService instance for testing."""
-    return LogService()
+    """Provide a LogReaderService instance for testing."""
+    return LogReaderService()
 
 
-@patch("birdnetpi.system.log_service.subprocess.Popen")
+@patch("birdnetpi.system.log_reader.subprocess.Popen")
 def test_get_logs(mock_popen, log_service):
     """Should return the logs as a string."""
     mock_process = MagicMock()
@@ -24,7 +24,7 @@ def test_get_logs(mock_popen, log_service):
     mock_popen.assert_called()
 
 
-@patch("birdnetpi.system.log_service.subprocess.Popen")
+@patch("birdnetpi.system.log_reader.subprocess.Popen")
 def test_get_logs_file_not_found(mock_popen, log_service):
     """Should return an error message if journalctl or sed is not found."""
     mock_popen.side_effect = FileNotFoundError

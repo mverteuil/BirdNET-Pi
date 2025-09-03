@@ -14,7 +14,7 @@ from starlette.status import HTTP_303_SEE_OTHER
 from birdnetpi.audio.devices import AudioDeviceService
 from birdnetpi.config import BirdNETConfig, ConfigManager
 from birdnetpi.detections.manager import DataManager
-from birdnetpi.system.log_service import LogService
+from birdnetpi.system.log_reader import LogReaderService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.detections import DetectionEvent
@@ -289,7 +289,7 @@ async def post_settings(
 async def get_log_content() -> PlainTextResponse:
     """Retrieve the BirdNET-Pi service logs."""
     try:
-        log_service = LogService()
+        log_service = LogReaderService()
         logs = log_service.get_logs()
         return PlainTextResponse(logs)
     except Exception as e:

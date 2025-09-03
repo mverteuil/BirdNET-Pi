@@ -2,7 +2,7 @@ import os
 import subprocess
 
 
-class LogService:
+class LogReaderService:
     """Service for retrieving and processing system logs related to BirdNET-Pi services."""
 
     def __init__(self) -> None:

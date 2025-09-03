@@ -9,13 +9,13 @@ This package contains system-level management components:
 - SystemInspector: System status inspection utilities
   (replaces HardwareMonitorManager and SystemMonitorService)
 - SystemUtils: System utility functions
-- LogService: Logging service
+- LogReaderService: Logging service
 - StructlogConfigurator: Structured logging configuration
 """
 
 from birdnetpi.system import structlog_configurator
 from birdnetpi.system.file_manager import FileManager
-from birdnetpi.system.log_service import LogService
+from birdnetpi.system.log_reader import LogReaderService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.pulseaudio_setup import PulseAudioSetup
 from birdnetpi.system.service_strategies import ServiceManagementStrategy
@@ -26,7 +26,7 @@ from birdnetpi.system.system_utils import SystemUtils
 __all__ = [
     "FileManager",
     "HealthStatus",
-    "LogService",
+    "LogReaderService",
     "PathResolver",
     "PulseAudioSetup",
     "ServiceManagementStrategy",
