@@ -14,8 +14,8 @@ from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.location.gps import GPSService
 from birdnetpi.location.sun import SunService
 from birdnetpi.location.weather import WeatherSignalHandler
+from birdnetpi.notifications.manager import NotificationManager
 from birdnetpi.notifications.mqtt import MQTTService
-from birdnetpi.notifications.notification_manager import NotificationManager
 from birdnetpi.notifications.webhooks import WebhookService
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager

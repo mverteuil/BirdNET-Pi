@@ -5,7 +5,7 @@ import pytest
 
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.models import Detection
-from birdnetpi.notifications.notification_manager import NotificationManager
+from birdnetpi.notifications.manager import NotificationManager
 
 
 @pytest.fixture
