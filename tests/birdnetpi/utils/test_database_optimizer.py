@@ -9,7 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 
-from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.core import DatabaseService
 from birdnetpi.detections.models import AudioFile, Detection
 from birdnetpi.utils.database_optimizer import DatabaseOptimizer, QueryPerformanceMonitor
 

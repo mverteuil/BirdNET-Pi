@@ -5,7 +5,7 @@ import time
 import click
 
 from birdnetpi.config import ConfigManager
-from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.core import DatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.species.display import SpeciesDisplayService

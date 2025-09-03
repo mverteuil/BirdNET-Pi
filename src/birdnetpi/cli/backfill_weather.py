@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 import click
 
 from birdnetpi.config import ConfigManager
-from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.core import DatabaseService
 from birdnetpi.location.weather import WeatherManager
 from birdnetpi.system.path_resolver import PathResolver
 

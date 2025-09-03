@@ -6,13 +6,13 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
-from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.core import DatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.detection_query_service import (
     DetectionQueryService,
 )
 from birdnetpi.detections.manager import DataManager
-from birdnetpi.detections.models import AudioFile, Detection, DetectionWithLocalization
+from birdnetpi.detections.models import AudioFile, Detection, DetectionWithTaxa
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.web.models.detections import DetectionEvent
 
@@ -221,7 +221,7 @@ class TestQueryMethods:
     @pytest.mark.asyncio
     async def test_query_detections_with_localization(self, data_manager, mock_services):
         """Should use DetectionQueryService when localization requested."""
-        mock_detections = [MagicMock(spec=DetectionWithLocalization)]
+        mock_detections = [MagicMock(spec=DetectionWithTaxa)]
         mock_services["detection_query_service"].query_detections = AsyncMock(
             return_value=mock_detections
         )
@@ -311,7 +311,7 @@ class TestTranslationHelpers:
     @pytest.mark.asyncio
     async def test_get_species_display_name_with_localization(self, data_manager, mock_services):
         """Should use species display service for DetectionWithLocalization."""
-        mock_detection = MagicMock(spec=DetectionWithLocalization)
+        mock_detection = MagicMock(spec=DetectionWithTaxa)
         mock_services[
             "species_display_service"
         ].format_species_display.return_value = "Merle d'Amérique"

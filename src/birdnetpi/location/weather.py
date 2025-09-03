@@ -15,7 +15,7 @@ from birdnetpi.notifications.signals import detection_signal
 
 if TYPE_CHECKING:
     from birdnetpi.config.models import BirdNETConfig
-    from birdnetpi.database.database_service import DatabaseService
+    from birdnetpi.database.core import DatabaseService
 
 logger = logging.getLogger(__name__)
 

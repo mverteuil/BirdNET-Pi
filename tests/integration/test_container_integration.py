@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from dependency_injector import providers
 
-from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.core import DatabaseService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.web.core.container import Container
 

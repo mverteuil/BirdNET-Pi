@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from birdnetpi.config import BirdNETConfig
 
 if TYPE_CHECKING:
-    from birdnetpi.detections.models import DetectionWithLocalization
+    from birdnetpi.detections.models import DetectionWithTaxa
 
 
 class SpeciesDisplayService:
@@ -24,7 +24,7 @@ class SpeciesDisplayService:
         self.config = config
 
     def format_species_display(
-        self, detection: "DetectionWithLocalization", prefer_translation: bool = False
+        self, detection: "DetectionWithTaxa", prefer_translation: bool = False
     ) -> str:
         """Format species name based on configuration and preferences.
 
@@ -57,7 +57,7 @@ class SpeciesDisplayService:
         return detection.common_name or detection.scientific_name
 
     def format_full_species_display(
-        self, detection: "DetectionWithLocalization", prefer_translation: bool = False
+        self, detection: "DetectionWithTaxa", prefer_translation: bool = False
     ) -> str:
         """Format full species display based on configuration.
 

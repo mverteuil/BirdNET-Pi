@@ -135,7 +135,7 @@ class TestAppStartupIntegration:
         path_resolver = container.path_resolver()
         assert path_resolver is not None
 
-        db_service = container.bnp_database_service()
+        db_service = container.core_database()
         assert db_service is not None
 
     def test_multiple_requests_work(self, app_with_real_container: FastAPI):

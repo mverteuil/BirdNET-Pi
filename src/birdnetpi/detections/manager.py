@@ -18,7 +18,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import func
 
-from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.core import DatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.detection_query_service import (
     DetectionQueryService,
@@ -27,7 +27,7 @@ from birdnetpi.detections.models import (
     AudioFile,
     Detection,
     DetectionBase,
-    DetectionWithLocalization,
+    DetectionWithTaxa,
 )
 from birdnetpi.notifications.signals import detection_signal
 from birdnetpi.species.display import SpeciesDisplayService
@@ -255,7 +255,7 @@ class DataManager:
         order_desc: bool = True,
         include_localization: bool = False,
         language_code: str = "en",
-    ) -> Sequence[DetectionBase] | list[DetectionWithLocalization]:
+    ) -> Sequence[DetectionBase] | list[DetectionWithTaxa]:
         """Query detections with flexible filtering and optional localization.
 
         All queries are delegated to DetectionQueryService for consistency.
@@ -371,13 +371,13 @@ class DataManager:
 
     def get_species_display_name(
         self,
-        detection: DetectionBase | DetectionWithLocalization,
+        detection: DetectionBase | DetectionWithTaxa,
         prefer_translation: bool = True,
         language_code: str = "en",
     ) -> str:
         """Get display name respecting user preferences and database priority."""
         # If it's already a DetectionWithLocalization, use species display service
-        if isinstance(detection, DetectionWithLocalization):
+        if isinstance(detection, DetectionWithTaxa):
             return self.species_display.format_species_display(detection, prefer_translation)
 
         # For plain Detection, return basic name

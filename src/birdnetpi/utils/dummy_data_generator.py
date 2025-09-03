@@ -90,7 +90,7 @@ if __name__ == "__main__":
     import asyncio
 
     from birdnetpi.config import ConfigManager
-    from birdnetpi.database.database_service import DatabaseService
+    from birdnetpi.database.core import DatabaseService
     from birdnetpi.database.species import SpeciesDatabaseService
     from birdnetpi.species.display import SpeciesDisplayService
     from birdnetpi.system.file_manager import FileManager

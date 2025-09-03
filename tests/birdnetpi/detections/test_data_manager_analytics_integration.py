@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.core import DatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.detection_query_service import DetectionQueryService
 from birdnetpi.detections.manager import DataManager

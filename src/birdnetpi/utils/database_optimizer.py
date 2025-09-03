@@ -12,7 +12,7 @@ from typing import Any
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
 
-from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.core import DatabaseService
 
 logger = logging.getLogger(__name__)
 

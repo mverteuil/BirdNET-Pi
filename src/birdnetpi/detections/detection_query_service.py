@@ -17,9 +17,9 @@ from sqlalchemy import desc, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
 
-from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.core import DatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
-from birdnetpi.detections.models import Detection, DetectionBase, DetectionWithLocalization
+from birdnetpi.detections.models import Detection, DetectionBase, DetectionWithTaxa
 
 logger = logging.getLogger(__name__)
 
@@ -36,17 +36,17 @@ class DetectionQueryService:
 
     def __init__(
         self,
-        bnp_database_service: DatabaseService,
-        multilingual_service: SpeciesDatabaseService,
+        core_database: DatabaseService,
+        species_database: SpeciesDatabaseService,
     ):
         """Initialize detection query service.
 
         Args:
-            bnp_database_service: Main database service for detections
-            multilingual_service: Multilingual database service (IOC/Avibase/PatLevin)
+            core_database: Main database service for detections
+            species_database: Species database service (IOC/Avibase/PatLevin)
         """
-        self.bnp_database_service = bnp_database_service
-        self.multilingual_service = multilingual_service
+        self.core_database = core_database
+        self.species_database = species_database
 
     def _parse_timestamp(self, timestamp_value: datetime | str | int | float) -> datetime:
         """Parse timestamp from various formats.
@@ -120,14 +120,14 @@ class DetectionQueryService:
         order_desc: bool = True,
         include_localization: bool = False,
         language_code: str = "en",
-    ) -> Sequence[DetectionBase] | list[DetectionWithLocalization]:
+    ) -> Sequence[DetectionBase] | list[DetectionWithTaxa]:
         """Query detections with flexible filtering and optional localization.
 
         This is the main query method that handles all detection queries.
         """
         if include_localization:
             # Use localization-aware query
-            return await self.get_detections_with_localization(
+            return await self.get_detections_with_taxa(
                 limit=limit or 100,
                 offset=offset or 0,
                 language_code=language_code,
@@ -137,7 +137,7 @@ class DetectionQueryService:
             )
 
         # Standard query without localization
-        async with self.bnp_database_service.get_async_db() as session:
+        async with self.core_database.get_async_db() as session:
             stmt = select(Detection)
 
             # Apply filters using helper methods
@@ -155,7 +155,7 @@ class DetectionQueryService:
             result = await session.execute(stmt)
             return list(result.scalars())
 
-    async def get_detections_with_localization(
+    async def get_detections_with_taxa(
         self,
         limit: int = 100,
         offset: int = 0,
@@ -163,8 +163,8 @@ class DetectionQueryService:
         since: datetime | None = None,
         scientific_name_filter: str | None = None,
         family_filter: str | None = None,
-    ) -> list[DetectionWithLocalization]:
-        """Get detections with translation data.
+    ) -> list[DetectionWithTaxa]:
+        """Get detections with taxonomy data.
 
         Args:
             limit: Maximum number of results
@@ -175,10 +175,10 @@ class DetectionQueryService:
             family_filter: Filter by taxonomic family
 
         Returns:
-            List of DetectionWithLocalization objects
+            List of DetectionWithTaxa objects
         """
-        async with self.bnp_database_service.get_async_db() as session:
-            await self.multilingual_service.attach_all_to_session(session)
+        async with self.core_database.get_async_db() as session:
+            await self.species_database.attach_all_to_session(session)
             try:
                 return await self._execute_join_query(
                     session=session,
@@ -190,22 +190,22 @@ class DetectionQueryService:
                     family_filter=family_filter,
                 )
             finally:
-                await self.multilingual_service.detach_all_from_session(session)
+                await self.species_database.detach_all_from_session(session)
 
-    async def get_detection_with_localization(
+    async def get_detection_with_taxa(
         self, detection_id: UUID, language_code: str = "en"
-    ) -> DetectionWithLocalization | None:
-        """Get single detection with translation data by ID.
+    ) -> DetectionWithTaxa | None:
+        """Get single detection with taxonomy data by ID.
 
         Args:
             detection_id: Detection UUID
             language_code: Language for translations
 
         Returns:
-            DetectionWithLocalization object or None if not found
+            DetectionWithTaxa object or None if not found
         """
-        async with self.bnp_database_service.get_async_db() as session:
-            await self.multilingual_service.attach_all_to_session(session)
+        async with self.core_database.get_async_db() as session:
+            await self.species_database.attach_all_to_session(session)
             try:
                 # Updated query to use COALESCE across all three databases
                 # Priority: IOC → PatLevin → Avibase
@@ -283,7 +283,7 @@ class DetectionQueryService:
                     overlap=result.overlap,  # type: ignore[attr-defined]
                 )
 
-                detection_with_l10n = DetectionWithLocalization(
+                detection_with_l10n = DetectionWithTaxa(
                     detection=detection,
                     ioc_english_name=result.ioc_english_name,  # type: ignore[attr-defined]
                     translated_name=result.translated_name,  # type: ignore[attr-defined]
@@ -295,7 +295,7 @@ class DetectionQueryService:
                 return detection_with_l10n
 
             finally:
-                await self.multilingual_service.detach_all_from_session(session)
+                await self.species_database.detach_all_from_session(session)
 
     async def get_species_summary(
         self,
@@ -313,8 +313,8 @@ class DetectionQueryService:
         Returns:
             List of species summary dictionaries
         """
-        async with self.bnp_database_service.get_async_db() as session:
-            await self.multilingual_service.attach_all_to_session(session)
+        async with self.core_database.get_async_db() as session:
+            await self.species_database.attach_all_to_session(session)
             try:
                 where_clause = "WHERE 1=1"
                 params: dict[str, Any] = {"language_code": language_code}
@@ -412,7 +412,7 @@ class DetectionQueryService:
                 return species_summary
 
             finally:
-                await self.multilingual_service.detach_all_from_session(session)
+                await self.species_database.detach_all_from_session(session)
 
     async def get_family_summary(
         self, language_code: str = "en", since: datetime | None = None
@@ -426,8 +426,8 @@ class DetectionQueryService:
         Returns:
             List of family summary dictionaries
         """
-        async with self.bnp_database_service.get_async_db() as session:
-            await self.multilingual_service.attach_all_to_session(session)
+        async with self.core_database.get_async_db() as session:
+            await self.species_database.attach_all_to_session(session)
             try:
                 where_clause = "WHERE s.family IS NOT NULL"
                 params: dict[str, Any] = {"language_code": language_code}
@@ -471,7 +471,7 @@ class DetectionQueryService:
                 return family_summary
 
             finally:
-                await self.multilingual_service.detach_all_from_session(session)
+                await self.species_database.detach_all_from_session(session)
 
     async def _execute_join_query(
         self,
@@ -482,7 +482,7 @@ class DetectionQueryService:
         since: datetime | None = None,
         scientific_name_filter: str | None = None,
         family_filter: str | None = None,
-    ) -> list[DetectionWithLocalization]:
+    ) -> list[DetectionWithTaxa]:
         """Execute the main JOIN query with filters."""
         where_clause = "WHERE 1=1"
         params: dict[str, Any] = {"language_code": language_code, "limit": limit, "offset": offset}
@@ -565,7 +565,7 @@ class DetectionQueryService:
             )
 
             detection_data_list.append(
-                DetectionWithLocalization(
+                DetectionWithTaxa(
                     detection=detection,
                     ioc_english_name=result.ioc_english_name,  # type: ignore[attr-defined]
                     translated_name=result.translated_name,  # type: ignore[attr-defined]

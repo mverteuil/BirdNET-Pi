@@ -7,6 +7,6 @@ This package contains all database-related functionality including:
 """
 
 # Database components should be imported directly from their modules:
-# from birdnetpi.database.database_service import DatabaseService
+# from birdnetpi.database.core import DatabaseService
 # from birdnetpi.database.database_optimizer import DatabaseOptimizer
 # from birdnetpi.database.model_utils import Base, PathType

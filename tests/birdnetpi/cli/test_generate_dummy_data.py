@@ -3,7 +3,7 @@ from unittest.mock import DEFAULT, AsyncMock, MagicMock, patch
 import pytest
 
 import birdnetpi.cli.generate_dummy_data as gdd
-from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.core import DatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.species.display import SpeciesDisplayService

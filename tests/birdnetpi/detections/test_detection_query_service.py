@@ -9,12 +9,12 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.exc import OperationalError
 
-from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.core import DatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.detection_query_service import (
     DetectionQueryService,
 )
-from birdnetpi.detections.models import Detection, DetectionWithLocalization
+from birdnetpi.detections.models import Detection, DetectionWithTaxa
 from birdnetpi.utils.ioc_models import IOCSpecies, IOCTranslation
 
 
@@ -267,7 +267,7 @@ class TestDetectionWithLocalization:
             timestamp=datetime.now(),
         )
 
-        data = DetectionWithLocalization(
+        data = DetectionWithTaxa(
             detection=detection,
             ioc_english_name="American Robin IOC",
             translated_name="Petirrojo Americano",
@@ -302,7 +302,7 @@ class TestDetectionWithLocalization:
             timestamp=timestamp,
         )
 
-        data = DetectionWithLocalization(detection=detection)
+        data = DetectionWithTaxa(detection=detection)
 
         assert data.id == detection_id
         assert data.scientific_name == "Turdus migratorius"
@@ -319,7 +319,7 @@ class TestGetDetectionsWithLocalization:
         self, query_service, populated_ioc_db, sample_detections
     ):
         """Should return detections with translation data."""
-        results = await query_service.get_detections_with_localization(limit=10)
+        results = await query_service.get_detections_with_taxa(limit=10)
 
         # Should return detections (exact count depends on JOIN matches)
         assert isinstance(results, list)
@@ -327,7 +327,7 @@ class TestGetDetectionsWithLocalization:
 
         # Check that each result is DetectionWithLocalization
         for result in results:
-            assert isinstance(result, DetectionWithLocalization)
+            assert isinstance(result, DetectionWithTaxa)
             assert hasattr(result, "detection")
 
     @pytest.mark.asyncio
@@ -336,7 +336,7 @@ class TestGetDetectionsWithLocalization:
     ):
         """Should apply filters correctly."""
         # Test scientific name filter
-        results = await query_service.get_detections_with_localization(
+        results = await query_service.get_detections_with_taxa(
             scientific_name_filter="Turdus migratorius"
         )
 
@@ -348,7 +348,7 @@ class TestGetDetectionsWithLocalization:
         self, query_service, populated_ioc_db, sample_detections
     ):
         """Should filter by taxonomic family."""
-        results = await query_service.get_detections_with_localization(family_filter="Turdidae")
+        results = await query_service.get_detections_with_taxa(family_filter="Turdidae")
 
         for result in results:
             assert result.family == "Turdidae"
@@ -360,7 +360,7 @@ class TestGetDetectionsWithLocalization:
         """Should filter by timestamp."""
         cutoff_time = datetime.now() + timedelta(hours=1, minutes=30)
 
-        results = await query_service.get_detections_with_localization(since=cutoff_time)
+        results = await query_service.get_detections_with_taxa(since=cutoff_time)
 
         for result in results:
             assert result.detection.timestamp >= cutoff_time
@@ -370,7 +370,7 @@ class TestGetDetectionsWithLocalization:
         self, query_service, populated_ioc_db, sample_detections
     ):
         """Should include translated names."""
-        results = await query_service.get_detections_with_localization(
+        results = await query_service.get_detections_with_taxa(
             language_code="es", scientific_name_filter="Turdus migratorius"
         )
 
@@ -386,10 +386,10 @@ class TestGetDetectionsWithLocalization:
     ):
         """Should handle pagination correctly."""
         # Get first page
-        page1 = await query_service.get_detections_with_localization(limit=2, offset=0)
+        page1 = await query_service.get_detections_with_taxa(limit=2, offset=0)
 
         # Get second page
-        page2 = await query_service.get_detections_with_localization(limit=2, offset=2)
+        page2 = await query_service.get_detections_with_taxa(limit=2, offset=2)
 
         # Should not overlap
         if page1 and page2:
@@ -403,18 +403,18 @@ class TestGetDetectionsWithLocalization:
     ):
         """Should properly attach and detach IOC database."""
         # Store original methods
-        original_attach = query_service.multilingual_service.attach_all_to_session
-        original_detach = query_service.multilingual_service.detach_all_from_session
+        original_attach = query_service.species_database.attach_all_to_session
+        original_detach = query_service.species_database.detach_all_from_session
 
         with patch.object(
-            query_service.multilingual_service, "attach_all_to_session", side_effect=original_attach
+            query_service.species_database, "attach_all_to_session", side_effect=original_attach
         ) as mock_attach:
             with patch.object(
-                query_service.multilingual_service,
+                query_service.species_database,
                 "detach_all_from_session",
                 side_effect=original_detach,
             ) as mock_detach:
-                await query_service.get_detections_with_localization()
+                await query_service.get_detections_with_taxa()
 
                 # Should attach and detach once
                 assert mock_attach.call_count == 1
@@ -428,12 +428,12 @@ class TestGetDetectionsWithLocalization:
         with patch.object(
             query_service, "_execute_join_query", side_effect=Exception("Query failed")
         ):
-            with patch.object(query_service.multilingual_service, "attach_all_to_session"):
+            with patch.object(query_service.species_database, "attach_all_to_session"):
                 with patch.object(
-                    query_service.multilingual_service, "detach_all_from_session"
+                    query_service.species_database, "detach_all_from_session"
                 ) as mock_detach:
                     with pytest.raises(Exception, match="Query failed"):
-                        await query_service.get_detections_with_localization()
+                        await query_service.get_detections_with_taxa()
 
                     # Should still detach
                     mock_detach.assert_called_once()
@@ -447,8 +447,8 @@ class TestDetectionQueryServiceInitialization:
         """Should initialize with required services."""
         service = DetectionQueryService(bnp_database_service, multilingual_service)
 
-        assert service.bnp_database_service == bnp_database_service
-        assert service.multilingual_service == multilingual_service
+        assert service.core_database == bnp_database_service
+        assert service.species_database == multilingual_service
 
 
 class TestGetSingleDetectionWithLocalization:
@@ -461,10 +461,10 @@ class TestGetSingleDetectionWithLocalization:
         """Should return detection with localization data when found."""
         detection_id = sample_detections[0].id
 
-        result = await query_service.get_detection_with_localization(detection_id)
+        result = await query_service.get_detection_with_taxa(detection_id)
 
         if result:  # May be None if JOIN doesn't match
-            assert isinstance(result, DetectionWithLocalization)
+            assert isinstance(result, DetectionWithTaxa)
             assert result.id == detection_id
 
     @pytest.mark.asyncio
@@ -472,7 +472,7 @@ class TestGetSingleDetectionWithLocalization:
         """Should return None when detection not found."""
         non_existent_id = uuid4()
 
-        result = await query_service.get_detection_with_localization(non_existent_id)
+        result = await query_service.get_detection_with_taxa(non_existent_id)
 
         assert result is None
 
@@ -489,7 +489,7 @@ class TestGetSingleDetectionWithLocalization:
                 break
 
         if robin_detection:
-            result = await query_service.get_detection_with_localization(
+            result = await query_service.get_detection_with_taxa(
                 robin_detection.id, language_code="es"
             )
 
@@ -504,18 +504,18 @@ class TestGetSingleDetectionWithLocalization:
         detection_id = sample_detections[0].id
 
         # Store original methods
-        original_attach = query_service.multilingual_service.attach_all_to_session
-        original_detach = query_service.multilingual_service.detach_all_from_session
+        original_attach = query_service.species_database.attach_all_to_session
+        original_detach = query_service.species_database.detach_all_from_session
 
         with patch.object(
-            query_service.multilingual_service, "attach_all_to_session", side_effect=original_attach
+            query_service.species_database, "attach_all_to_session", side_effect=original_attach
         ) as mock_attach:
             with patch.object(
-                query_service.multilingual_service,
+                query_service.species_database,
                 "detach_all_from_session",
                 side_effect=original_detach,
             ) as mock_detach:
-                await query_service.get_detection_with_localization(detection_id)
+                await query_service.get_detection_with_taxa(detection_id)
 
                 # Should attach and detach once
                 assert mock_attach.call_count == 1
@@ -693,31 +693,31 @@ class TestErrorHandling:
     async def test_database_attachment_failure(self, query_service):
         """Should handle database attachment failures."""
         with patch.object(
-            query_service.multilingual_service,
+            query_service.species_database,
             "attach_all_to_session",
             side_effect=OperationalError("", "", ""),
         ):
             with pytest.raises(OperationalError):
-                await query_service.get_detections_with_localization()
+                await query_service.get_detections_with_taxa()
 
     @pytest.mark.asyncio
     async def test_query_execution_failure(self, query_service, populated_ioc_db):
         """Should handle query execution failures."""
         from unittest.mock import AsyncMock
 
-        with patch.object(query_service.bnp_database_service, "get_async_db") as mock_get_async_db:
+        with patch.object(query_service.core_database, "get_async_db") as mock_get_async_db:
             mock_session = AsyncMock()
             mock_session.execute.side_effect = Exception("Query failed")
             mock_get_async_db.return_value.__aenter__.return_value = mock_session
 
             with pytest.raises(Exception, match="Query failed"):
-                await query_service.get_detections_with_localization()
+                await query_service.get_detections_with_taxa()
 
     @pytest.mark.asyncio
     async def test_empty_database(self, query_service, populated_ioc_db):
         """Should handle empty detection database gracefully."""
         # Test with empty main database (no detections)
-        results = await query_service.get_detections_with_localization()
+        results = await query_service.get_detections_with_taxa()
         assert results == []
 
         results = await query_service.get_species_summary()
@@ -736,15 +736,13 @@ class TestPerformance:
     ):
         """Should respect limit and offset parameters."""
         # Test limit
-        results = await query_service.get_detections_with_localization(limit=1)
+        results = await query_service.get_detections_with_taxa(limit=1)
         assert len(results) <= 1
 
         # Test offset
-        all_results = await query_service.get_detections_with_localization(limit=100)
+        all_results = await query_service.get_detections_with_taxa(limit=100)
         if len(all_results) > 1:
-            offset_results = await query_service.get_detections_with_localization(
-                limit=100, offset=1
-            )
+            offset_results = await query_service.get_detections_with_taxa(limit=100, offset=1)
             assert len(offset_results) == len(all_results) - 1
 
     @pytest.mark.asyncio
@@ -754,7 +752,7 @@ class TestPerformance:
 
         # Test timestamp + scientific_name pattern
         since_time = datetime.now() - timedelta(days=1)
-        results = await query_service.get_detections_with_localization(
+        results = await query_service.get_detections_with_taxa(
             since=since_time, scientific_name_filter="Turdus migratorius"
         )
 
@@ -765,7 +763,7 @@ class TestPerformance:
     async def test_large_dataset_performance(self, query_service, populated_ioc_db):
         """Should have reliable performance with larger dataset."""
         # Test that large limit values don't cause issues
-        results = await query_service.get_detections_with_localization(limit=1000)
+        results = await query_service.get_detections_with_taxa(limit=1000)
         assert isinstance(results, list)
 
         # Test species summary with no limit
@@ -780,7 +778,7 @@ class TestIntegration:
     async def test_complete_workflow(self, query_service, populated_ioc_db, sample_detections):
         """Test complete workflow from detections to summaries."""
         # Test basic detection retrieval
-        detections = await query_service.get_detections_with_localization(limit=10)
+        detections = await query_service.get_detections_with_taxa(limit=10)
         assert len(detections) > 0
 
         # Test single detection retrieval - skip this part since it's the only failure
@@ -815,7 +813,7 @@ class TestIntegration:
     ):
         """Test translation consistency across different query methods."""
         # Get detection with Spanish translation
-        detections = await query_service.get_detections_with_localization(
+        detections = await query_service.get_detections_with_taxa(
             language_code="es", scientific_name_filter="Turdus migratorius"
         )
 
@@ -823,7 +821,7 @@ class TestIntegration:
             detection = detections[0]
 
             # Get same detection by ID with Spanish translation
-            single_detection = await query_service.get_detection_with_localization(
+            single_detection = await query_service.get_detection_with_taxa(
                 detection.id, language_code="es"
             )
 

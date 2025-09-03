@@ -7,7 +7,7 @@ from click.testing import CliRunner
 from birdnetpi.cli.backfill_weather import _display_stats, backfill_weather
 from birdnetpi.config.manager import ConfigManager
 from birdnetpi.config.models import BirdNETConfig
-from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.core import DatabaseService
 from birdnetpi.location.weather import WeatherManager
 
 

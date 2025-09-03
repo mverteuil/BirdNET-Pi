@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 
 from birdnetpi.config.models import BirdNETConfig
-from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.core import DatabaseService
 from birdnetpi.detections.models import Detection
 from birdnetpi.location.models import Weather
 from birdnetpi.location.weather import WeatherSignalHandler

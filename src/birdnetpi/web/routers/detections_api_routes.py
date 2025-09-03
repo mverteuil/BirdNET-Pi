@@ -293,11 +293,9 @@ async def get_detection(
         # Try to get localization-enhanced data first
         if include_l10n and data_manager.query_service and isinstance(detection_id, UUID):
             try:
-                detection_with_l10n = (
-                    await data_manager.query_service.get_detection_with_localization(
-                        detection_id,
-                        language_code,
-                    )
+                detection_with_l10n = await data_manager.query_service.get_detection_with_taxa(
+                    detection_id,
+                    language_code,
                 )
                 if detection_with_l10n:
                     detection_data = {

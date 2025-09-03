@@ -102,8 +102,8 @@ class Detection(DetectionBase, table=True):
     )
 
 
-class DetectionWithLocalization(DetectionBase):
-    """Detection with additional localization information.
+class DetectionWithTaxa(DetectionBase):
+    """Detection with additional taxonomy information.
 
     This is a non-table model that extends DetectionBase with IOC taxonomy data.
     It's used for runtime data enrichment without persisting to database.
@@ -166,7 +166,7 @@ class DetectionWithLocalization(DetectionBase):
 
     def __eq__(self, other: object) -> bool:
         """Compare DetectionWithLocalization objects for equality."""
-        if not isinstance(other, DetectionWithLocalization):
+        if not isinstance(other, DetectionWithTaxa):
             return False
 
         # Compare all detection base fields

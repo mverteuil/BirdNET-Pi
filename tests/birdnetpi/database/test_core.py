@@ -4,7 +4,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.exc import SQLAlchemyError
 
-from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.core import DatabaseService
 
 
 @pytest_asyncio.fixture
@@ -13,7 +13,7 @@ async def bnp_database_service(tmp_path):
     db_path = tmp_path / "test.db"
 
     # Patch problematic parts during initialization
-    with patch("birdnetpi.database.database_service.SQLModel.metadata.create_all"):
+    with patch("birdnetpi.database.core.SQLModel.metadata.create_all"):
         service = DatabaseService(db_path)
 
     # The service is now created without trying to initialize the database
@@ -46,7 +46,7 @@ async def test_clear_database(bnp_database_service):
         mock_table.delete.return_value = MagicMock()
 
         with patch(
-            "birdnetpi.database.database_service.SQLModel.metadata", new_callable=PropertyMock
+            "birdnetpi.database.core.SQLModel.metadata", new_callable=PropertyMock
         ) as mock_metadata:
             mock_metadata.return_value.sorted_tables = [mock_table]
             await bnp_database_service.clear_database()
@@ -72,7 +72,7 @@ async def test_clear_database_failure(bnp_database_service):
         mock_table.delete.return_value = MagicMock()
 
         with patch(
-            "birdnetpi.database.database_service.SQLModel.metadata", new_callable=PropertyMock
+            "birdnetpi.database.core.SQLModel.metadata", new_callable=PropertyMock
         ) as mock_metadata:
             mock_metadata.return_value.sorted_tables = [mock_table]
 
