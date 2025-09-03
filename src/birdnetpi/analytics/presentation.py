@@ -12,7 +12,7 @@ from birdnetpi.analytics.analytics import (
     ScatterDataDict,
     SpeciesFrequencyDict,
 )
-from birdnetpi.audio.audio_device_service import AudioDeviceService
+from birdnetpi.audio.devices import AudioDeviceService
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.models import DetectionBase
 from birdnetpi.system.status import SystemInspector

@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from birdnetpi.audio.audio_device_service import AudioDevice, AudioDeviceService
+from birdnetpi.audio.devices import AudioDevice, AudioDeviceService
 from birdnetpi.config import BirdNETConfig, ConfigManager
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.utils.cache import clear_all_cache

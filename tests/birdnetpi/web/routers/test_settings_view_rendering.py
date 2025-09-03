@@ -6,7 +6,7 @@ import pytest
 from jinja2 import Environment, FileSystemLoader, TemplateSyntaxError
 from jinja2.exceptions import UndefinedError
 
-from birdnetpi.audio.audio_device_service import AudioDevice
+from birdnetpi.audio.devices import AudioDevice
 from birdnetpi.config import BirdNETConfig
 
 

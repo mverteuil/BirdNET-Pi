@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.status import HTTP_303_SEE_OTHER
 
-from birdnetpi.audio.audio_device_service import AudioDeviceService
+from birdnetpi.audio.devices import AudioDeviceService
 from birdnetpi.config import BirdNETConfig, ConfigManager
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.system.log_service import LogService

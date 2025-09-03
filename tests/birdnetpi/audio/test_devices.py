@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from birdnetpi.audio.audio_device_service import AudioDevice, AudioDeviceService
+from birdnetpi.audio.devices import AudioDevice, AudioDeviceService
 from birdnetpi.utils.cache import clear_all_cache
 
 

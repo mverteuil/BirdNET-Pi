@@ -4,7 +4,7 @@ import os
 import numpy as np
 import sounddevice as sd
 
-from birdnetpi.audio.audio_device_service import AudioDeviceService
+from birdnetpi.audio.devices import AudioDeviceService
 from birdnetpi.audio.filters import FilterChain, ResampleFilter
 from birdnetpi.config import BirdNETConfig
 

@@ -9,7 +9,7 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from birdnetpi.audio.audio_device_service import AudioDevice, AudioDeviceService
+from birdnetpi.audio.devices import AudioDevice, AudioDeviceService
 from birdnetpi.config import BirdNETConfig, ConfigManager
 from birdnetpi.system.path_resolver import PathResolver
 

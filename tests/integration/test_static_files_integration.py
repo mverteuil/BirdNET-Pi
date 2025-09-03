@@ -69,7 +69,7 @@ class TestStaticFilesIntegration:
         """Create the app with static files properly mounted."""
         from unittest.mock import MagicMock, patch
 
-        from birdnetpi.audio.audio_device_service import AudioDeviceService
+        from birdnetpi.audio.devices import AudioDeviceService
         from birdnetpi.config import BirdNETConfig, ConfigManager
 
         # Create mock config and manager with all required fields
