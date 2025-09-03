@@ -6,7 +6,7 @@ from unittest.mock import DEFAULT, MagicMock, patch
 import pytest
 
 import birdnetpi.daemons.audio_capture_daemon as daemon
-from birdnetpi.audio.audio_capture_service import AudioCaptureService
+from birdnetpi.audio.capture import AudioCaptureService
 
 
 @pytest.fixture(autouse=True)

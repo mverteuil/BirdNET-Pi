@@ -164,7 +164,7 @@ class AudioAnalysisManager:
 
     async def process_audio_chunk(self, audio_data_bytes: bytes) -> None:
         """Process a chunk of audio data for analysis."""
-        # Convert bytes to numpy array (assuming int16 from AudioCaptureService)
+        # Convert bytes to numpy array (assuming int16 from audio capture)
         audio_data = np.frombuffer(audio_data_bytes, dtype=np.int16)
         logger.debug("AudioAnalysisService received chunk", extra={"shape": audio_data.shape})
 

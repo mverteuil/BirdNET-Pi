@@ -2,7 +2,7 @@ import unittest
 from multiprocessing import Queue
 from unittest.mock import MagicMock, patch
 
-from birdnetpi.audio.audio_capture_service import AudioCaptureService
+from birdnetpi.audio.capture import AudioCaptureService
 from birdnetpi.config import BirdNETConfig
 
 
@@ -90,7 +90,7 @@ class TestAudioCaptureService(unittest.TestCase):
             self.service.start_capture()
         self.assertEqual(str(cm.exception), "Test Error")
         # Verify error is logged
-        with patch("birdnetpi.audio.audio_capture_service.logger") as mock_logger:
+        with patch("birdnetpi.audio.capture.logger") as mock_logger:
             try:
                 self.service.start_capture()
             except Exception:
