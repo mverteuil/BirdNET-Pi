@@ -21,7 +21,6 @@
         <input type="hidden" name="site_name" value="{{ config.site_name }}">
         <input type="hidden" name="model" value="{{ config.model }}">
         <input type="hidden" name="metadata_model" value="{{ config.metadata_model }}">
-        <input type="hidden" name="species_confidence_threshold" value="{{ config.species_confidence_threshold }}">
         <input type="hidden" name="sample_rate" value="{{ config.sample_rate }}">
         <input type="hidden" name="audio_channels" value="{{ config.audio_channels }}">
         <!-- Core Detection Settings -->
@@ -35,7 +34,7 @@
                     <div class="label-description">Balance between catching everything and accuracy</div>
                 </div>
                 <div class="tradeoff-control" role="group" aria-labelledby="confidence-label">
-                    <input type="hidden" name="confidence" id="confidence" value="{{ config.species_confidence_threshold }}">
+                    <input type="hidden" name="species_confidence_threshold" id="species_confidence_threshold" value="{{ config.species_confidence_threshold }}">
                     <div class="tradeoff-slider"
                          role="slider"
                          aria-label="Confidence threshold"
@@ -43,7 +42,7 @@
                          aria-valuemin="50"
                          aria-valuemax="95"
                          tabindex="0"
-                         data-input="confidence"
+                         data-input="species_confidence_threshold"
                          data-scale="0.01">
                         <div class="slider-handle" data-position="{{ ((config.species_confidence_threshold * 100 - 50) / 45) * 100 }}">
                             <div class="slider-value">{{ "%.2f"|format(config.species_confidence_threshold) }}</div>
