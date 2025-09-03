@@ -9,7 +9,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.exc import OperationalError
 
-from birdnetpi.database.core import DatabaseService
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.detection_query_service import (
     DetectionQueryService,
@@ -33,9 +33,9 @@ def temp_ioc_db():
 
 
 @pytest.fixture
-async def bnp_database_service(temp_main_db):
+async def core_database_service(temp_main_db):
     """Create main database service."""
-    db_service = DatabaseService(temp_main_db)
+    db_service = CoreDatabaseService(temp_main_db)
     await db_service.initialize()
     try:
         yield db_service
@@ -98,9 +98,9 @@ def multilingual_service(temp_ioc_db, path_resolver):
 
 
 @pytest.fixture
-def query_service(bnp_database_service, multilingual_service):
+def query_service(core_database_service, multilingual_service):
     """Create detection query service with multilingual support."""
-    return DetectionQueryService(bnp_database_service, multilingual_service)
+    return DetectionQueryService(core_database_service, multilingual_service)
 
 
 @pytest.fixture
@@ -174,12 +174,12 @@ def populated_ioc_db(ioc_database_service):
 
 
 @pytest.fixture
-async def sample_detections(bnp_database_service):
+async def sample_detections(core_database_service):
     """Create sample detections in main database."""
     detections = []
     base_time = datetime.now()
 
-    async with bnp_database_service.get_async_db() as session:
+    async with core_database_service.get_async_db() as session:
         test_detections = [
             Detection(
                 id=uuid4(),
@@ -442,11 +442,11 @@ class TestDetectionQueryServiceInitialization:
     """Test service initialization."""
 
     @pytest.mark.asyncio
-    async def test_service_initialization(self, bnp_database_service, multilingual_service):
+    async def test_service_initialization(self, core_database_service, multilingual_service):
         """Should initialize with required services."""
-        service = DetectionQueryService(bnp_database_service, multilingual_service)
+        service = DetectionQueryService(core_database_service, multilingual_service)
 
-        assert service.core_database == bnp_database_service
+        assert service.core_database == core_database_service
         assert service.species_database == multilingual_service
 
 

@@ -18,7 +18,7 @@ from sqlmodel import SQLModel
 logger = logging.getLogger(__name__)
 
 
-class DatabaseService:
+class CoreDatabaseService:
     """Provides an interface for database operations, including initialization."""
 
     def __init__(self, db_path: Path):
