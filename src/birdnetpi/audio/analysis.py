@@ -12,7 +12,7 @@ import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.detections.bird_detection_service import BirdDetectionService
+from birdnetpi.detections.birdnet import BirdDetectionService
 from birdnetpi.species.parser import SpeciesComponents, SpeciesParser
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
