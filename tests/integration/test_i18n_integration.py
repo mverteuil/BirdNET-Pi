@@ -262,7 +262,7 @@ class TestSpeciesTranslation:
         import pytest
         from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-        from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
+        from birdnetpi.database.species import SpeciesDatabaseService
 
         # The path_resolver fixture already points to data/database/ for the databases
         # Check if databases exist - skip test if not available
@@ -284,7 +284,7 @@ class TestSpeciesTranslation:
             )
 
         # Create service with real databases
-        service = MultilingualDatabaseService(path_resolver)
+        service = SpeciesDatabaseService(path_resolver)
 
         # Create an async SQLite session
         engine = create_async_engine("sqlite+aiosqlite:///:memory:")

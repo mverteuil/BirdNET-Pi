@@ -10,11 +10,11 @@ import pytest
 from sqlalchemy.exc import OperationalError
 
 from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.detection_query_service import (
     DetectionQueryService,
 )
 from birdnetpi.detections.models import Detection, DetectionWithLocalization
-from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.utils.ioc_models import IOCSpecies, IOCTranslation
 
 
@@ -94,7 +94,7 @@ def multilingual_service(temp_ioc_db, path_resolver):
     path_resolver.get_ioc_database_path = lambda: temp_ioc_db
     path_resolver.get_avibase_database_path = lambda: temp_ioc_db  # Use same DB for testing
     path_resolver.get_patlevin_database_path = lambda: temp_ioc_db  # Use same DB for testing
-    return MultilingualDatabaseService(path_resolver)
+    return SpeciesDatabaseService(path_resolver)
 
 
 @pytest.fixture

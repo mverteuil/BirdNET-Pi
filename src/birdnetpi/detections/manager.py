@@ -19,6 +19,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import func
 
 from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.detection_query_service import (
     DetectionQueryService,
 )
@@ -28,7 +29,6 @@ from birdnetpi.detections.models import (
     DetectionBase,
     DetectionWithLocalization,
 )
-from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.notifications.signals import detection_signal
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager
@@ -80,7 +80,7 @@ class DataManager:
     def __init__(
         self,
         database_service: DatabaseService,
-        multilingual_service: MultilingualDatabaseService,
+        multilingual_service: SpeciesDatabaseService,
         species_display_service: SpeciesDisplayService,
         file_manager: FileManager,
         path_resolver: PathResolver,

@@ -6,8 +6,8 @@ import click
 
 from birdnetpi.config import ConfigManager
 from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.manager import DataManager
-from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
@@ -35,7 +35,7 @@ async def run(count: int = 100, days: int = 3) -> None:
         print(f"Database file exists and is {db_path.stat().st_size} bytes.")
         try:
             bnp_database_service = DatabaseService(db_path)
-            multilingual_service = MultilingualDatabaseService(path_resolver)
+            multilingual_service = SpeciesDatabaseService(path_resolver)
             species_display_service = SpeciesDisplayService(config)
             file_manager = FileManager(path_resolver)
             data_manager = DataManager(
@@ -76,7 +76,7 @@ async def run(count: int = 100, days: int = 3) -> None:
         # Generate dummy data with exclusive database access
         print("Generating dummy data...")
         bnp_database_service = DatabaseService(db_path)
-        multilingual_service = MultilingualDatabaseService(path_resolver)
+        multilingual_service = SpeciesDatabaseService(path_resolver)
         species_display_service = SpeciesDisplayService(config)
         file_manager = FileManager(path_resolver)
         data_manager = DataManager(

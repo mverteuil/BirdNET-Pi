@@ -7,9 +7,9 @@ from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.audio.websocket import AudioWebSocketService
 from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.detection_query_service import DetectionQueryService
 from birdnetpi.detections.manager import DataManager
-from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.location.gps import GPSService
 from birdnetpi.location.sun import SunService
@@ -72,7 +72,7 @@ class Container(containers.DeclarativeContainer):
 
     # Multilingual database service with all three bird name databases
     multilingual_database_service = providers.Singleton(
-        MultilingualDatabaseService,
+        SpeciesDatabaseService,
         path_resolver=path_resolver,
     )
 

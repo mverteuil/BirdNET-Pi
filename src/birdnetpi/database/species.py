@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from birdnetpi.system.path_resolver import PathResolver
 
 
-class MultilingualDatabaseService:
+class SpeciesDatabaseService:
     """Service for multilingual bird name lookups across three databases."""
 
     def __init__(self, path_resolver: PathResolver):

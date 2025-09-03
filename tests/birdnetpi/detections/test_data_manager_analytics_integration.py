@@ -9,17 +9,17 @@ import pytest
 
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.detection_query_service import DetectionQueryService
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import AudioFile, Detection
-from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.species.display import SpeciesDisplayService
 
 
 @pytest.fixture
 def mock_multilingual_service():
-    """Create a mock MultilingualDatabaseService."""
-    mock_service = MagicMock(spec=MultilingualDatabaseService)
+    """Create a mock SpeciesDatabaseService."""
+    mock_service = MagicMock(spec=SpeciesDatabaseService)
     # Configure any needed mock behaviors
     return mock_service
 
@@ -213,7 +213,7 @@ async def populated_database(test_database):
 async def data_manager_with_db(populated_database, mocker):
     """Create DataManager with real populated database."""
     # Mock the other services that DataManager needs
-    mock_multilingual = mocker.MagicMock(spec=MultilingualDatabaseService)
+    mock_multilingual = mocker.MagicMock(spec=SpeciesDatabaseService)
     mock_species_display = mocker.MagicMock(spec=SpeciesDisplayService)
     mock_query_service = mocker.MagicMock(spec=DetectionQueryService)
     mock_file_manager = mocker.MagicMock()

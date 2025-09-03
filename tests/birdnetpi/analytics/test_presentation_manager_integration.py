@@ -10,10 +10,10 @@ from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.detection_query_service import DetectionQueryService
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import AudioFile, Detection
-from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.species.display import SpeciesDisplayService
 
 
@@ -129,8 +129,8 @@ async def test_database_with_data(tmp_path):
 
 @pytest.fixture
 def mock_multilingual_service():
-    """Create a mock MultilingualDatabaseService."""
-    mock_service = MagicMock(spec=MultilingualDatabaseService)
+    """Create a mock SpeciesDatabaseService."""
+    mock_service = MagicMock(spec=SpeciesDatabaseService)
     return mock_service
 
 

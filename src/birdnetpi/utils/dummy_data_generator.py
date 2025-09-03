@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
     from birdnetpi.config import ConfigManager
     from birdnetpi.database.database_service import DatabaseService
-    from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
+    from birdnetpi.database.species import SpeciesDatabaseService
     from birdnetpi.species.display import SpeciesDisplayService
     from birdnetpi.system.file_manager import FileManager
     from birdnetpi.system.path_resolver import PathResolver
@@ -102,7 +102,7 @@ if __name__ == "__main__":
         config_manager = ConfigManager(path_resolver)
         config = config_manager.load()
         bnp_database_service = DatabaseService(path_resolver.get_database_path())
-        multilingual_service = MultilingualDatabaseService(path_resolver)
+        multilingual_service = SpeciesDatabaseService(path_resolver)
         species_display_service = SpeciesDisplayService(config)
         file_manager = FileManager(path_resolver)
         data_manager = DataManager(

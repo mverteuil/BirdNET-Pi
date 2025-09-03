@@ -463,5 +463,5 @@ class IocDatabaseBuilder:
             "uk": "Ukrainian",
         }
 
-    # Query methods removed - use MultilingualDatabaseService for runtime queries
+    # Query methods removed - use SpeciesDatabaseService for runtime queries
     # This builder is only responsible for creating the database from source files

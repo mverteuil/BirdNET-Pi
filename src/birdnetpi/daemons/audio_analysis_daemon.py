@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 
 from birdnetpi.audio.analysis import AudioAnalysisManager
 from birdnetpi.config import ConfigManager
-from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
+from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.structlog_configurator import configure_structlog
@@ -83,7 +83,7 @@ async def init_session_and_service(
 ) -> tuple["AsyncSession", AudioAnalysisManager]:
     """Initialize async session and audio analysis service."""
     # Create multilingual database service
-    multilingual_service = MultilingualDatabaseService(path_resolver)
+    multilingual_service = SpeciesDatabaseService(path_resolver)
     logger.info("Multilingual database service initialized")
 
     # Create async session for database queries

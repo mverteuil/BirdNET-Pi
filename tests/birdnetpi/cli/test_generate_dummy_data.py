@@ -4,8 +4,8 @@ import pytest
 
 import birdnetpi.cli.generate_dummy_data as gdd
 from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.manager import DataManager
-from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.system_control import SystemControlService
 
@@ -25,7 +25,7 @@ def mock_dependencies(mocker, tmp_path):
         ConfigManager=DEFAULT,
         DatabaseService=DEFAULT,
         DataManager=DEFAULT,
-        MultilingualDatabaseService=DEFAULT,
+        SpeciesDatabaseService=DEFAULT,
         SpeciesDisplayService=DEFAULT,
         SystemControlService=DEFAULT,
         time=DEFAULT,
@@ -53,9 +53,7 @@ def mock_dependencies(mocker, tmp_path):
         mock_data_manager.get_all_detections = AsyncMock(return_value=[])
         mock_data_manager.create_detection = AsyncMock(return_value=None)
         mocks["DataManager"].return_value = mock_data_manager
-        mocks["MultilingualDatabaseService"].return_value = MagicMock(
-            spec=MultilingualDatabaseService
-        )
+        mocks["SpeciesDatabaseService"].return_value = MagicMock(spec=SpeciesDatabaseService)
         mocks["SpeciesDisplayService"].return_value = MagicMock(spec=SpeciesDisplayService)
         mocks["SystemControlService"].return_value = MagicMock(spec=SystemControlService)
         mocks["time"].sleep = MagicMock()

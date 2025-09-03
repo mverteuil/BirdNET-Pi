@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
-from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
+from birdnetpi.database.species import SpeciesDatabaseService
 
 
 @pytest.fixture
@@ -36,7 +36,7 @@ def mock_path_resolver(path_resolver, tmp_path):
 @pytest.fixture
 def multilingual_service(mock_path_resolver):
     """Create multilingual database service with mocked paths."""
-    service = MultilingualDatabaseService(mock_path_resolver)
+    service = SpeciesDatabaseService(mock_path_resolver)
     return service
 
 
@@ -60,12 +60,12 @@ async def in_memory_session(async_in_memory_session):
     return async_in_memory_session
 
 
-class TestMultilingualDatabaseServiceInitialization:
+class TestSpeciesDatabaseServiceInitialization:
     """Test multilingual database service initialization."""
 
     def test_service_initialization_all_databases_available(self, mock_path_resolver):
         """Should initialize service with all databases paths set."""
-        service = MultilingualDatabaseService(mock_path_resolver)
+        service = SpeciesDatabaseService(mock_path_resolver)
 
         assert service.path_resolver == mock_path_resolver
         # Check that paths match what the fixture provides
@@ -492,7 +492,7 @@ class TestErrorHandling:
 
         # Should re-raise the exception from file resolver
         with pytest.raises(Exception, match="File resolver error"):
-            MultilingualDatabaseService(path_resolver)
+            SpeciesDatabaseService(path_resolver)
 
 
 class TestIntegrationWithRealSession:

@@ -74,7 +74,7 @@ def audio_analysis_service_integration(
         mock_analysis_client = MagicMock()
         mock_analysis_client_class.return_value = mock_analysis_client
 
-        # Mock MultilingualDatabaseService and AsyncSession
+        # Mock SpeciesDatabaseService and AsyncSession
         mock_multilingual_service = MagicMock()
         # Make get_best_common_name async and return a dict with common_name
         mock_multilingual_service.get_best_common_name = AsyncMock(
@@ -245,7 +245,7 @@ class TestDetectionBufferingEndToEnd:
         mock_analysis_client = MagicMock()
         mock_analysis_client_class.return_value = mock_analysis_client
 
-        # Mock MultilingualDatabaseService and AsyncSession
+        # Mock SpeciesDatabaseService and AsyncSession
         mock_multilingual_service = MagicMock()
         # Make get_best_common_name async and return a dict with common_name
         mock_multilingual_service.get_best_common_name = AsyncMock(

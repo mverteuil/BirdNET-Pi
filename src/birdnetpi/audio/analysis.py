@@ -18,7 +18,7 @@ from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
 
 if TYPE_CHECKING:
-    from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
+    from birdnetpi.database.species import SpeciesDatabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class AudioAnalysisManager:
         file_manager: FileManager,
         path_resolver: PathResolver,
         config: BirdNETConfig,
-        multilingual_service: "MultilingualDatabaseService",
+        multilingual_service: "SpeciesDatabaseService",
         session: "AsyncSession",
         detection_buffer_max_size: int = 1000,
         buffer_flush_interval: float = 5.0,

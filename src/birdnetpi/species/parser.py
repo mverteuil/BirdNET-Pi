@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
+    from birdnetpi.database.species import SpeciesDatabaseService
 
 
 class SpeciesComponents(NamedTuple):
@@ -51,7 +51,7 @@ class SpeciesParser:
     # Class-level session for database queries
     _session: "AsyncSession | None" = None
 
-    def __init__(self, multilingual_service: "MultilingualDatabaseService"):
+    def __init__(self, multilingual_service: "SpeciesDatabaseService"):
         """Initialize parser with required multilingual database service.
 
         Args:
@@ -61,7 +61,7 @@ class SpeciesParser:
             TypeError: If multilingual_service is None
         """
         if multilingual_service is None:
-            raise TypeError("MultilingualDatabaseService is required for SpeciesParser")
+            raise TypeError("SpeciesDatabaseService is required for SpeciesParser")
 
         self.multilingual_service = multilingual_service
         # Set as global instance if none exists

@@ -18,8 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
 
 from birdnetpi.database.database_service import DatabaseService
+from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.models import Detection, DetectionBase, DetectionWithLocalization
-from birdnetpi.i18n.multilingual_database_service import MultilingualDatabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class DetectionQueryService:
     def __init__(
         self,
         bnp_database_service: DatabaseService,
-        multilingual_service: MultilingualDatabaseService,
+        multilingual_service: SpeciesDatabaseService,
     ):
         """Initialize detection query service.
 
