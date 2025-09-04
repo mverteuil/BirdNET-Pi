@@ -8,7 +8,6 @@ write operations to protect SD card longevity.
 
 import datetime
 import logging
-from collections.abc import Sequence
 from datetime import datetime as dt
 from typing import Any
 from uuid import UUID
@@ -124,42 +123,22 @@ class DetectionQueryService:
         offset: int | None = None,
         order_by: str = "timestamp",
         order_desc: bool = True,
-        include_localization: bool = False,
         language_code: str = "en",
-    ) -> Sequence[DetectionBase] | list[DetectionWithTaxa]:
-        """Query detections with flexible filtering and optional localization.
+    ) -> list[DetectionWithTaxa]:
+        """Query detections with flexible filtering and taxa enrichment.
 
         This is the main query method that handles all detection queries.
+        Always returns DetectionWithTaxa for consistent taxonomy data access.
         """
-        if include_localization:
-            # Use localization-aware query
-            return await self.get_detections_with_taxa(
-                limit=limit or 100,
-                offset=offset or 0,
-                language_code=language_code,
-                since=start_date,
-                scientific_name_filter=species if isinstance(species, str) else None,
-                # Note: min/max confidence and end_date filters not yet supported
-            )
-
-        # Standard query without localization
-        async with self.core_database.get_async_db() as session:
-            stmt = select(Detection)
-
-            # Apply filters using helper methods
-            stmt = self._apply_species_filter(stmt, species)
-            stmt = self._apply_date_filters(stmt, start_date, end_date)
-            stmt = self._apply_confidence_filters(stmt, min_confidence, max_confidence)
-            stmt = self._apply_ordering(stmt, order_by, order_desc)
-
-            # Apply pagination
-            if offset:
-                stmt = stmt.offset(offset)
-            if limit:
-                stmt = stmt.limit(limit)
-
-            result = await session.execute(stmt)
-            return list(result.scalars())
+        # Always use taxa-enriched query
+        return await self.get_detections_with_taxa(
+            limit=limit or 100,
+            offset=offset or 0,
+            language_code=language_code,
+            since=start_date,
+            scientific_name_filter=species if isinstance(species, str) else None,
+            # Note: min/max confidence and end_date filters not yet supported in taxa query
+        )
 
     async def get_detections_with_taxa(
         self,

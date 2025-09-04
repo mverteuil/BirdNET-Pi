@@ -58,7 +58,6 @@ async def get_recent_detections(
     limit: int = 10,
     offset: int = 0,  # Added for compatibility with old endpoint
     language_code: str = "en",
-    include_l10n: bool = True,
     data_manager: DataManager = Depends(  # noqa: B008
         Provide[Container.data_manager]
     ),
@@ -66,58 +65,35 @@ async def get_recent_detections(
         Provide[Container.detection_query_service]
     ),
 ) -> JSONResponse:
-    """Get recent bird detections with optional translation data."""
+    """Get recent bird detections with taxa and translation data."""
     try:
-        if include_l10n:
-            # Use DetectionQueryService for localization-enhanced data
-            detections = await detection_query_service.query_detections(
-                limit=limit,
-                offset=offset,
-                order_by="timestamp",
-                order_desc=True,
-                include_localization=True,
-                language_code=language_code,
-            )
-            detection_list = [
-                {
-                    "id": str(detection.id),
-                    "scientific_name": detection.scientific_name,
-                    "common_name": (
-                        detection_query_service.get_species_display_name(
-                            detection, True, language_code
-                        )
-                        if hasattr(detection, "ioc_english_name")
-                        else detection.common_name
-                    ),
-                    "confidence": detection.confidence,
-                    "timestamp": detection.timestamp.isoformat(),
-                    "latitude": getattr(detection, "latitude", None),
-                    "longitude": getattr(detection, "longitude", None),
-                    "ioc_english_name": getattr(detection, "ioc_english_name", None),
-                    "translated_name": getattr(detection, "translated_name", None),
-                    "family": getattr(detection, "family", None),
-                    "genus": getattr(detection, "genus", None),
-                    "order_name": getattr(detection, "order_name", None),
-                }
-                for detection in detections
-            ]
-        else:
-            # Use regular detection data (fallback)
-            detections = await detection_query_service.query_detections(
-                limit=limit, offset=offset, order_by="timestamp", order_desc=True
-            )
-            detection_list = [
-                {
-                    "id": str(detection.id),
-                    "scientific_name": detection.scientific_name,
-                    "common_name": detection.common_name,
-                    "confidence": detection.confidence,
-                    "timestamp": detection.timestamp.isoformat(),
-                    "latitude": detection.latitude,
-                    "longitude": detection.longitude,
-                }
-                for detection in detections
-            ]
+        # Always get detections with taxa enrichment
+        detections = await detection_query_service.query_detections(
+            limit=limit,
+            offset=offset,
+            order_by="timestamp",
+            order_desc=True,
+            language_code=language_code,
+        )
+        detection_list = [
+            {
+                "id": str(detection.id),
+                "scientific_name": detection.scientific_name,
+                "common_name": detection_query_service.get_species_display_name(
+                    detection, True, language_code
+                ),
+                "confidence": detection.confidence,
+                "timestamp": detection.timestamp.isoformat(),
+                "latitude": detection.latitude,
+                "longitude": detection.longitude,
+                "ioc_english_name": detection.ioc_english_name,
+                "translated_name": detection.translated_name,
+                "family": detection.family,
+                "genus": detection.genus,
+                "order_name": detection.order_name,
+            }
+            for detection in detections
+        ]
         return JSONResponse({"detections": detection_list, "count": len(detection_list)})
     except Exception as e:
         logger.error("Error getting recent detections: %s", e)
@@ -156,11 +132,10 @@ async def get_paginated_detections(
         days = period_days.get(period, 1)
         start_time = end_time - timedelta(days=days)
 
-        # Get detections with localization for proper display names
+        # Get detections with taxa enrichment for proper display names
         all_detections = await detection_query_service.query_detections(
             start_date=start_time,
             end_date=end_time,
-            include_localization=True,
             language_code=config.language,
             order_by="timestamp",
             order_desc=True,
@@ -291,7 +266,6 @@ async def update_detection_location(
 async def get_detection(
     detection_id: UUID | int,
     language_code: str = "en",
-    include_l10n: bool = True,
     data_manager: DataManager = Depends(  # noqa: B008
         Provide[Container.data_manager]
     ),
@@ -299,50 +273,43 @@ async def get_detection(
         Provide[Container.detection_query_service]
     ),
 ) -> JSONResponse:
-    """Get a specific detection by ID with optional translation data."""
+    """Get a specific detection by ID with taxa and translation data."""
     try:
-        # Convert UUID to int if needed
+        # Always get detection with taxa enrichment
+        if isinstance(detection_id, UUID):
+            detection_with_taxa = await detection_query_service.get_detection_with_taxa(
+                detection_id,
+                language_code,
+            )
+            if detection_with_taxa:
+                detection_data = {
+                    "id": str(detection_with_taxa.id),
+                    "scientific_name": detection_with_taxa.scientific_name,
+                    "common_name": detection_query_service.get_species_display_name(
+                        detection_with_taxa,
+                        prefer_translation=True,
+                        language_code=language_code,
+                    ),
+                    "confidence": detection_with_taxa.confidence,
+                    "timestamp": detection_with_taxa.timestamp.isoformat(),
+                    "latitude": detection_with_taxa.latitude,
+                    "longitude": detection_with_taxa.longitude,
+                    "species_confidence_threshold": (
+                        detection_with_taxa.species_confidence_threshold
+                    ),
+                    "week": detection_with_taxa.week,
+                    "sensitivity_setting": detection_with_taxa.sensitivity_setting,
+                    "overlap": detection_with_taxa.overlap,
+                    "ioc_english_name": detection_with_taxa.ioc_english_name,
+                    "translated_name": detection_with_taxa.translated_name,
+                    "family": detection_with_taxa.family,
+                    "genus": detection_with_taxa.genus,
+                    "order_name": detection_with_taxa.order_name,
+                }
+                return JSONResponse(detection_data)
+
+        # Fallback for integer IDs - get basic detection
         id_to_use = int(detection_id) if isinstance(detection_id, UUID) else detection_id
-
-        # Try to get localization-enhanced data first
-        if include_l10n and isinstance(detection_id, UUID):
-            try:
-                detection_with_l10n = await detection_query_service.get_detection_with_taxa(
-                    detection_id,
-                    language_code,
-                )
-                if detection_with_l10n:
-                    detection_data = {
-                        "id": str(detection_with_l10n.id),
-                        "scientific_name": detection_with_l10n.scientific_name,
-                        "common_name": detection_query_service.get_species_display_name(
-                            detection_with_l10n,
-                            prefer_translation=True,
-                            language_code=language_code,
-                        ),
-                        "confidence": detection_with_l10n.confidence,
-                        "timestamp": detection_with_l10n.timestamp.isoformat(),
-                        "latitude": detection_with_l10n.latitude,
-                        "longitude": detection_with_l10n.longitude,
-                        "species_confidence_threshold": (
-                            detection_with_l10n.species_confidence_threshold
-                        ),
-                        "week": detection_with_l10n.week,
-                        "sensitivity_setting": detection_with_l10n.sensitivity_setting,
-                        "overlap": detection_with_l10n.overlap,
-                        "ioc_english_name": detection_with_l10n.ioc_english_name,
-                        "translated_name": detection_with_l10n.translated_name,
-                        "family": detection_with_l10n.family,
-                        "genus": detection_with_l10n.genus,
-                        "order_name": detection_with_l10n.order_name,
-                    }
-                    return JSONResponse(detection_data)
-            except Exception as ioc_error:
-                logger.warning(
-                    "Failed to get localization data for detection %s: %s", detection_id, ioc_error
-                )
-
-        # Fallback to regular detection
         detection = await data_manager.get_detection_by_id(id_to_use)
         if not detection:
             raise HTTPException(status_code=404, detail="Detection not found")

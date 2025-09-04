@@ -91,6 +91,7 @@ class TestDetectionsAPIRoutes:
 
     def test_get_recent_detections(self, client):
         """Should return recent detections."""
+        # Mock DetectionWithTaxa objects with required attributes
         mock_detections = [
             MagicMock(
                 id=1,
@@ -100,6 +101,12 @@ class TestDetectionsAPIRoutes:
                 timestamp=datetime(2025, 1, 15, 10, 30),
                 latitude=40.0,
                 longitude=-74.0,
+                # DetectionWithTaxa specific attributes
+                ioc_english_name="American Robin",
+                translated_name="Robin",
+                family="Turdidae",
+                genus="Turdus",
+                order_name="Passeriformes",
             ),
             MagicMock(
                 id=2,
@@ -109,12 +116,22 @@ class TestDetectionsAPIRoutes:
                 timestamp=datetime(2025, 1, 15, 11, 0),
                 latitude=40.1,
                 longitude=-74.1,
+                # DetectionWithTaxa specific attributes
+                ioc_english_name="House Sparrow",
+                translated_name="Sparrow",
+                family="Passeridae",
+                genus="Passer",
+                order_name="Passeriformes",
             ),
         ]
         # Mock query_detections on DetectionQueryService (not DataManager)
         client.mock_query_service.query_detections = AsyncMock(return_value=mock_detections)
+        # Mock get_species_display_name to return the common name
+        client.mock_query_service.get_species_display_name = MagicMock(
+            side_effect=lambda d, *args: d.common_name
+        )
 
-        response = client.get("/api/detections/recent?limit=10&include_l10n=false")
+        response = client.get("/api/detections/recent?limit=10")
 
         assert response.status_code == 200
         data = response.json()
@@ -152,7 +169,7 @@ class TestDetectionsAPIRoutes:
         )
         client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=mock_detection)
 
-        response = client.get("/api/detections/123?include_l10n=false")
+        response = client.get("/api/detections/123")
 
         assert response.status_code == 200
         data = response.json()
@@ -163,7 +180,7 @@ class TestDetectionsAPIRoutes:
         """Should return 404 for non-existent detection."""
         client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=None)
 
-        response = client.get("/api/detections/999?include_l10n=false")
+        response = client.get("/api/detections/999")
 
         assert response.status_code == 404
 

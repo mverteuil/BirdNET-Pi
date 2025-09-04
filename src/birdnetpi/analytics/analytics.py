@@ -142,7 +142,7 @@ class AnalyticsManager:
         end_time = datetime.now()
         start_time = end_time - timedelta(hours=hours)
 
-        # Get detections in time range from DataManager
+        # Get detections in time range - always returns DetectionWithTaxa
         detections = await self.detection_query_service.query_detections(
             start_date=start_time, end_date=end_time, order_by="timestamp", order_desc=True
         )
@@ -150,7 +150,10 @@ class AnalyticsManager:
         # Group by species for frequency classification
         species_counts = {}
         for d in detections:
-            species_name = d.common_name or d.scientific_name
+            # Use translated name if available, otherwise IOC name, otherwise common/scientific
+            species_name = (
+                d.translated_name or d.ioc_english_name or d.common_name or d.scientific_name
+            )
             if species_name:
                 species_counts[species_name] = species_counts.get(species_name, 0) + 1
 
@@ -158,9 +161,18 @@ class AnalyticsManager:
             {
                 "time": d.timestamp.hour + (d.timestamp.minute / 60),
                 "confidence": d.confidence,
-                "species": d.common_name or d.scientific_name,
+                "species": d.translated_name
+                or d.ioc_english_name
+                or d.common_name
+                or d.scientific_name,
                 "frequency_category": self._categorize_frequency(
-                    species_counts.get(d.common_name or d.scientific_name, 0)
+                    species_counts.get(
+                        d.translated_name
+                        or d.ioc_english_name
+                        or d.common_name
+                        or d.scientific_name,
+                        0,
+                    )
                 ),
             }
             for d in detections
@@ -336,14 +348,20 @@ class AnalyticsManager:
         end_time = datetime.now()
         start_time = end_time - timedelta(days=days)
 
-        # Get all detections for this species in the range
+        # Get all detections for this species in the range - always returns DetectionWithTaxa
         detections = await self.detection_query_service.query_detections(
             start_date=start_time, end_date=end_time, order_by="timestamp", order_desc=True
         )
 
         # Filter for the species and aggregate by hour
         for d in detections:
-            if d.scientific_name == species_name or d.common_name == species_name:
+            # Check against all name variants (scientific, common, IOC, translated)
+            if (
+                d.scientific_name == species_name
+                or d.common_name == species_name
+                or d.ioc_english_name == species_name
+                or d.translated_name == species_name
+            ):
                 hour = d.timestamp.hour if d.timestamp else 0
                 hourly_totals[hour] += 1
 
