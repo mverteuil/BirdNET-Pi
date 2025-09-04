@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -130,6 +130,9 @@ async def test_database_with_data(tmp_path):
 def mock_species_database():
     """Create a mock SpeciesDatabaseService."""
     mock_service = MagicMock(spec=SpeciesDatabaseService)
+    # Mock the async methods used during query execution
+    mock_service.attach_all_to_session = AsyncMock()
+    mock_service.detach_all_from_session = AsyncMock()
     return mock_service
 
 

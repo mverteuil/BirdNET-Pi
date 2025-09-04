@@ -7,6 +7,7 @@ import pytest
 
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.config import BirdNETConfig
+from birdnetpi.detections.models import Detection, DetectionWithTaxa
 from birdnetpi.detections.queries import DetectionQueryService
 
 
@@ -216,30 +217,49 @@ class TestScatterVisualization:
         self, analytics_manager, mock_detection_query_service
     ):
         """Test scatter plot data preparation."""
-        from birdnetpi.detections.models import Detection
-
-        # Create mock detections
+        # Create mock detections with taxa
         detections = [
-            Detection(
-                species_tensor="Turdus migratorius_American Robin",
-                scientific_name="Turdus migratorius",
-                common_name="American Robin",
-                confidence=0.95,
-                timestamp=datetime(2024, 1, 1, 6, 15, 0),
+            DetectionWithTaxa(
+                detection=Detection(
+                    species_tensor="Turdus migratorius_American Robin",
+                    scientific_name="Turdus migratorius",
+                    common_name="American Robin",
+                    confidence=0.95,
+                    timestamp=datetime(2024, 1, 1, 6, 15, 0),
+                ),
+                ioc_english_name="American Robin",
+                translated_name="American Robin",
+                family="Turdidae",
+                genus="Turdus",
+                order_name="Passeriformes",
             ),
-            Detection(
-                species_tensor="Cardinalis cardinalis_Northern Cardinal",
-                scientific_name="Cardinalis cardinalis",
-                common_name="Northern Cardinal",
-                confidence=0.88,
-                timestamp=datetime(2024, 1, 1, 7, 30, 0),
+            DetectionWithTaxa(
+                detection=Detection(
+                    species_tensor="Cardinalis cardinalis_Northern Cardinal",
+                    scientific_name="Cardinalis cardinalis",
+                    common_name="Northern Cardinal",
+                    confidence=0.88,
+                    timestamp=datetime(2024, 1, 1, 7, 30, 0),
+                ),
+                ioc_english_name="Northern Cardinal",
+                translated_name="Northern Cardinal",
+                family="Cardinalidae",
+                genus="Cardinalis",
+                order_name="Passeriformes",
             ),
-            Detection(
-                species_tensor="Cyanocitta cristata_Blue Jay",
-                scientific_name="Cyanocitta cristata",
-                common_name="Blue Jay",
-                confidence=0.75,
-                timestamp=datetime(2024, 1, 1, 8, 45, 0),
+            DetectionWithTaxa(
+                detection=Detection(
+                    species_tensor="Cyanocitta cristata_Blue Jay",
+                    scientific_name="Cyanocitta cristata",
+                    common_name="Blue Jay",
+                    confidence=0.75,
+                    timestamp=datetime(2024, 1, 1, 8, 45, 0),
+                ),
+                ioc_english_name="Blue Jay",
+                translated_name="Blue Jay",
+                family="Corvidae",
+                genus="Cyanocitta",
+                order_name="Passeriformes",
             ),
         ]
 
