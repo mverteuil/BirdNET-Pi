@@ -34,7 +34,7 @@ async def generate_dummy_detections(
         "Agelaius phoeniceus_Red-winged Blackbird",
     ]
 
-    for _ in range(num_detections):
+    for i in range(num_detections):
         # Generate timestamps with more weight on recent times
         if max_days_ago == 0:
             # All detections today
@@ -48,6 +48,8 @@ async def generate_dummy_detections(
             hours=random.randint(0, 23),
             minutes=random.randint(0, 59),
             seconds=random.randint(0, 59),
+            # Add microseconds to ensure uniqueness for same species/second combinations
+            microseconds=i * 1000,  # Increment by 1ms per detection
         )
 
         # Parse species components

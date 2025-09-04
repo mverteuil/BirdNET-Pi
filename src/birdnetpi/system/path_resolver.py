@@ -82,8 +82,8 @@ class PathResolver:
         # Create a safe filename from scientific name
         safe_name = scientific_name.replace(" ", "_")
 
-        # Generate filename with timestamp
-        filename = f"{timestamp.strftime('%Y%m%d_%H%M%S')}.wav"
+        # Generate filename with timestamp including microseconds for uniqueness
+        filename = f"{timestamp.strftime('%Y%m%d_%H%M%S')}_{timestamp.microsecond:06d}.wav"
 
         # Get the recordings directory and make it relative to data_dir
         recordings_dir = self.get_recordings_dir()
