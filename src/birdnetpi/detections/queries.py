@@ -130,14 +130,18 @@ class DetectionQueryService:
         This is the main query method that handles all detection queries.
         Always returns DetectionWithTaxa for consistent taxonomy data access.
         """
-        # Always use taxa-enriched query
+        # Always use taxa-enriched query with all filters
         return await self.get_detections_with_taxa(
             limit=limit or 100,
             offset=offset or 0,
             language_code=language_code,
-            since=start_date,
-            scientific_name_filter=species if isinstance(species, str) else None,
-            # Note: min/max confidence and end_date filters not yet supported in taxa query
+            start_date=start_date,
+            end_date=end_date,
+            scientific_name_filter=species,
+            min_confidence=min_confidence,
+            max_confidence=max_confidence,
+            order_by=order_by,
+            order_desc=order_desc,
         )
 
     async def get_detections_with_taxa(
@@ -145,9 +149,16 @@ class DetectionQueryService:
         limit: int = 100,
         offset: int = 0,
         language_code: str = "en",
-        since: dt | None = None,
-        scientific_name_filter: str | None = None,
+        start_date: dt | None = None,
+        end_date: dt | None = None,
+        scientific_name_filter: str | list[str] | None = None,
         family_filter: str | None = None,
+        min_confidence: float | None = None,
+        max_confidence: float | None = None,
+        order_by: str = "timestamp",
+        order_desc: bool = True,
+        # Legacy parameter name support
+        since: dt | None = None,
     ) -> list[DetectionWithTaxa]:
         """Get detections with taxonomy data.
 
@@ -155,13 +166,23 @@ class DetectionQueryService:
             limit: Maximum number of results
             offset: Number of results to skip
             language_code: Language for translations (default: en)
-            since: Only return detections after this timestamp
-            scientific_name_filter: Filter by specific scientific name
+            start_date: Only return detections after this timestamp
+            end_date: Only return detections before this timestamp
+            scientific_name_filter: Filter by scientific name(s) - string or list
             family_filter: Filter by taxonomic family
+            min_confidence: Minimum confidence threshold
+            max_confidence: Maximum confidence threshold
+            order_by: Field to order by (default: timestamp)
+            order_desc: Whether to order descending (default: True)
+            since: Deprecated - use start_date instead
 
         Returns:
             List of DetectionWithTaxa objects
         """
+        # Support legacy parameter name
+        if since and not start_date:
+            start_date = since
+
         async with self.core_database.get_async_db() as session:
             await self.species_database.attach_all_to_session(session)
             try:
@@ -170,9 +191,14 @@ class DetectionQueryService:
                     limit=limit,
                     offset=offset,
                     language_code=language_code,
-                    since=since,
+                    start_date=start_date,
+                    end_date=end_date,
                     scientific_name_filter=scientific_name_filter,
                     family_filter=family_filter,
+                    min_confidence=min_confidence,
+                    max_confidence=max_confidence,
+                    order_by=order_by,
+                    order_desc=order_desc,
                 )
             finally:
                 await self.species_database.detach_all_from_session(session)
@@ -458,31 +484,103 @@ class DetectionQueryService:
             finally:
                 await self.species_database.detach_all_from_session(session)
 
+    def _build_where_clause_and_params(
+        self,
+        language_code: str,
+        limit: int,
+        offset: int,
+        start_date: dt | None = None,
+        end_date: dt | None = None,
+        scientific_name_filter: str | list[str] | None = None,
+        family_filter: str | None = None,
+        min_confidence: float | None = None,
+        max_confidence: float | None = None,
+    ) -> tuple[str, dict[str, Any]]:
+        """Build WHERE clause and parameters for the query."""
+        where_clause = "WHERE 1=1"
+        params: dict[str, Any] = {"language_code": language_code, "limit": limit, "offset": offset}
+
+        # Date filters
+        if start_date:
+            where_clause += " AND d.timestamp >= :start_date"
+            params["start_date"] = start_date
+
+        if end_date:
+            where_clause += " AND d.timestamp <= :end_date"
+            params["end_date"] = end_date
+
+        # Scientific name filter - supports both single string and list
+        if scientific_name_filter:
+            if isinstance(scientific_name_filter, list):
+                # Create parameterized IN clause
+                species_params = [f":species_{i}" for i in range(len(scientific_name_filter))]
+                where_clause += f" AND d.scientific_name IN ({','.join(species_params)})"
+                for i, species in enumerate(scientific_name_filter):
+                    params[f"species_{i}"] = species
+            else:
+                where_clause += " AND d.scientific_name = :scientific_name"
+                params["scientific_name"] = scientific_name_filter
+
+        # Family filter
+        if family_filter:
+            where_clause += " AND s.family = :family"
+            params["family"] = family_filter
+
+        # Confidence filters
+        if min_confidence is not None:
+            where_clause += " AND d.confidence >= :min_confidence"
+            params["min_confidence"] = min_confidence
+
+        if max_confidence is not None:
+            where_clause += " AND d.confidence <= :max_confidence"
+            params["max_confidence"] = max_confidence
+
+        return where_clause, params
+
+    def _build_order_clause(self, order_by: str = "timestamp", order_desc: bool = True) -> str:
+        """Build ORDER BY clause for the query."""
+        # Map common field names to actual columns
+        order_map = {
+            "timestamp": "d.timestamp",
+            "confidence": "d.confidence",
+            "scientific_name": "d.scientific_name",
+            "common_name": "d.common_name",
+            "family": "s.family",
+        }
+        order_column = order_map.get(order_by, "d.timestamp")
+        return f"ORDER BY {order_column} {'DESC' if order_desc else 'ASC'}"
+
     async def _execute_join_query(
         self,
         session: AsyncSession,
         limit: int,
         offset: int,
         language_code: str,
-        since: dt | None = None,
-        scientific_name_filter: str | None = None,
+        start_date: dt | None = None,
+        end_date: dt | None = None,
+        scientific_name_filter: str | list[str] | None = None,
         family_filter: str | None = None,
+        min_confidence: float | None = None,
+        max_confidence: float | None = None,
+        order_by: str = "timestamp",
+        order_desc: bool = True,
     ) -> list[DetectionWithTaxa]:
         """Execute the main JOIN query with filters."""
-        where_clause = "WHERE 1=1"
-        params: dict[str, Any] = {"language_code": language_code, "limit": limit, "offset": offset}
+        # Build WHERE clause and parameters
+        where_clause, params = self._build_where_clause_and_params(
+            language_code=language_code,
+            limit=limit,
+            offset=offset,
+            start_date=start_date,
+            end_date=end_date,
+            scientific_name_filter=scientific_name_filter,
+            family_filter=family_filter,
+            min_confidence=min_confidence,
+            max_confidence=max_confidence,
+        )
 
-        if since:
-            where_clause += " AND d.timestamp >= :since"
-            params["since"] = since
-
-        if scientific_name_filter:
-            where_clause += " AND d.scientific_name = :scientific_name"
-            params["scientific_name"] = scientific_name_filter
-
-        if family_filter:
-            where_clause += " AND s.family = :family"
-            params["family"] = family_filter
+        # Build ORDER BY clause
+        order_clause = self._build_order_clause(order_by, order_desc)
 
         # Updated query with COALESCE across all three databases
         # Priority: IOC → PatLevin → Avibase
@@ -523,7 +621,7 @@ class DetectionQueryService:
                 ON LOWER(a.scientific_name) = LOWER(d.scientific_name)
                 AND a.language_code = :language_code
             {where_clause}
-            ORDER BY d.timestamp DESC
+            {order_clause}
             LIMIT :limit OFFSET :offset
         """)
 
