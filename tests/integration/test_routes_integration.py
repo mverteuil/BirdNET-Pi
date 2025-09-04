@@ -159,8 +159,8 @@ class TestDependencyInjectionValidation:
         # Verify they're not the same instance
         # assert data_manager is not reporting_manager  # ReportingManager removed
 
-        # Verify DataManager has the expected methods that were being called
+        # Verify DataManager has the expected CRUD methods
         assert hasattr(data_manager, "get_all_detections")
-        assert hasattr(data_manager, "count_detections")
+        assert hasattr(data_manager, "create_detection")
         assert callable(data_manager.get_all_detections)
-        assert callable(data_manager.count_detections)
+        assert callable(data_manager.create_detection)

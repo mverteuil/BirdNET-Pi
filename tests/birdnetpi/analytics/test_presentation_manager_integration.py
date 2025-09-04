@@ -11,7 +11,6 @@ from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
-from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import AudioFile, Detection
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.species.display import SpeciesDisplayService
@@ -151,9 +150,6 @@ def mock_detection_query_service(test_database_with_data, mock_species_database)
 async def presentation_manager(
     test_database_with_data,
     mock_species_database,
-    mock_species_display_service,
-    mock_detection_query_service,
-    mocker,
 ):
     """Create PresentationManager with real components."""
     db_service = test_database_with_data
@@ -162,21 +158,16 @@ async def presentation_manager(
     config = BirdNETConfig()
     config.species_confidence_threshold = 0.5
 
-    # Create mock file_manager and path_resolver
-    mock_file_manager = mocker.MagicMock()
-    mock_path_resolver = mocker.MagicMock()
-
-    data_manager = DataManager(
-        database_service=db_service,
+    # Create DetectionQueryService
+    detection_query_service = DetectionQueryService(
+        core_database=db_service,
         species_database=mock_species_database,
-        species_display_service=mock_species_display_service,
-        file_manager=mock_file_manager,
-        path_resolver=mock_path_resolver,
-        detection_query_service=mock_detection_query_service,
     )
-    analytics_manager = AnalyticsManager(data_manager, config)
 
-    return PresentationManager(analytics_manager, config)
+    # Create AnalyticsManager with DetectionQueryService
+    analytics_manager = AnalyticsManager(detection_query_service, config)
+
+    return PresentationManager(analytics_manager, detection_query_service, config)
 
 
 class TestLandingPageIntegration:
@@ -299,8 +290,7 @@ class TestLandingPageIntegration:
     async def test_detection_log_recent(self, presentation_manager):
         """Test that detection log shows recent detections."""
         # Only get recent detections, not the entire landing page
-        analytics = presentation_manager.analytics_manager
-        recent = await analytics.data_manager.query_detections(limit=10)
+        recent = await presentation_manager.detection_query_service.query_detections(limit=10)
 
         # Format it the same way as the presentation manager would
         detection_log = presentation_manager._format_detection_log(recent)

@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from birdnetpi.detections.manager import DataManager
+from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.routers.detections_api_routes import router
 
@@ -23,12 +24,14 @@ def client():
 
     # Override services with mocks
     mock_data_manager = MagicMock(spec=DataManager)
+    mock_query_service = MagicMock(spec=DetectionQueryService)
     # PlottingManager has been removed from the codebase
 
     # Add query_service attribute to the mock data manager
     mock_data_manager.query_service = None
 
     container.data_manager.override(mock_data_manager)
+    container.detection_query_service.override(mock_query_service)
     # container.plotting_manager.override() - removed as PlottingManager no longer exists
 
     # Wire the container
@@ -43,6 +46,7 @@ def client():
 
     # Store the mocks for access in tests
     client.mock_data_manager = mock_data_manager  # type: ignore[attr-defined]
+    client.mock_query_service = mock_query_service  # type: ignore[attr-defined]
     # client.mock_plotting_manager removed - PlottingManager no longer exists
 
     return client
@@ -107,8 +111,8 @@ class TestDetectionsAPIRoutes:
                 longitude=-74.1,
             ),
         ]
-        # Mock query_detections instead of get_recent_detections
-        client.mock_data_manager.query_detections = AsyncMock(return_value=mock_detections)
+        # Mock query_detections on DetectionQueryService (not DataManager)
+        client.mock_query_service.query_detections = AsyncMock(return_value=mock_detections)
 
         response = client.get("/api/detections/recent?limit=10&include_l10n=false")
 
@@ -123,7 +127,7 @@ class TestDetectionsAPIRoutes:
         from datetime import UTC, datetime
 
         today = datetime.now(UTC).date()
-        client.mock_data_manager.count_by_date = AsyncMock(return_value={today: 5})
+        client.mock_query_service.count_by_date = AsyncMock(return_value={today: 5})
 
         response = client.get("/api/detections/count")
 

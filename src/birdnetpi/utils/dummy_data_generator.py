@@ -18,13 +18,7 @@ async def generate_dummy_detections(
         num_detections: Number of detections to generate
         max_days_ago: Maximum days in the past for detections (0 = today only)
     """
-    # Ensure database tables exist
-    try:
-        # This will create tables if they don't exist
-        await data_manager.count_detections()
-    except Exception:
-        # If count fails, tables might not exist yet - that's okay
-        pass
+    # Database tables will be created automatically when we create the first detection
 
     # Updated to use tensor format: "Scientific_name_Common Name"
     species_list = [

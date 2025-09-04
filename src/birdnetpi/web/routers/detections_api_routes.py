@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 # TODO: Re-implement spectrogram generation without PlottingManager
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.manager import DataManager
+from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.detections import DetectionEvent, LocationUpdate
 
@@ -61,12 +62,15 @@ async def get_recent_detections(
     data_manager: DataManager = Depends(  # noqa: B008
         Provide[Container.data_manager]
     ),
+    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
+        Provide[Container.detection_query_service]
+    ),
 ) -> JSONResponse:
     """Get recent bird detections with optional translation data."""
     try:
         if include_l10n:
-            # Use DataManager for localization-enhanced data
-            detections = await data_manager.query_detections(
+            # Use DetectionQueryService for localization-enhanced data
+            detections = await detection_query_service.query_detections(
                 limit=limit,
                 offset=offset,
                 order_by="timestamp",
@@ -79,7 +83,9 @@ async def get_recent_detections(
                     "id": str(detection.id),
                     "scientific_name": detection.scientific_name,
                     "common_name": (
-                        data_manager.get_species_display_name(detection, True, language_code)
+                        detection_query_service.get_species_display_name(
+                            detection, True, language_code
+                        )
                         if hasattr(detection, "ioc_english_name")
                         else detection.common_name
                     ),
@@ -97,7 +103,7 @@ async def get_recent_detections(
             ]
         else:
             # Use regular detection data (fallback)
-            detections = await data_manager.query_detections(
+            detections = await detection_query_service.query_detections(
                 limit=limit, offset=offset, order_by="timestamp", order_desc=True
             )
             detection_list = [
@@ -128,6 +134,9 @@ async def get_paginated_detections(
     data_manager: DataManager = Depends(  # noqa: B008
         Provide[Container.data_manager]
     ),
+    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
+        Provide[Container.detection_query_service]
+    ),
     config: BirdNETConfig = Depends(  # noqa: B008
         Provide[Container.config]
     ),
@@ -148,7 +157,7 @@ async def get_paginated_detections(
         start_time = end_time - timedelta(days=days)
 
         # Get detections with localization for proper display names
-        all_detections = await data_manager.query_detections(
+        all_detections = await detection_query_service.query_detections(
             start_date=start_time,
             end_date=end_time,
             include_localization=True,
@@ -182,7 +191,9 @@ async def get_paginated_detections(
         detection_list = []
         for detection in page_detections:
             # Always use the display name logic which handles localization properly
-            display_name = data_manager.get_species_display_name(detection, True, config.language)
+            display_name = detection_query_service.get_species_display_name(
+                detection, True, config.language
+            )
 
             detection_list.append(
                 {
@@ -217,8 +228,8 @@ async def get_paginated_detections(
 @inject
 async def get_detection_count(
     target_date: date | None = None,
-    data_manager: DataManager = Depends(  # noqa: B008
-        Provide[Container.data_manager]
+    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
+        Provide[Container.detection_query_service]
     ),
 ) -> JSONResponse:
     """Get detection count for a specific date (defaults to today)."""
@@ -226,8 +237,8 @@ async def get_detection_count(
         if target_date is None:
             target_date = datetime.now(UTC).date()
 
-        # Use DataManager for counting
-        counts = await data_manager.count_by_date()
+        # Use DetectionQueryService for counting
+        counts = await detection_query_service.count_by_date()
         count = counts.get(target_date, 0)
 
         return JSONResponse({"date": target_date.isoformat(), "count": count})
@@ -284,6 +295,9 @@ async def get_detection(
     data_manager: DataManager = Depends(  # noqa: B008
         Provide[Container.data_manager]
     ),
+    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
+        Provide[Container.detection_query_service]
+    ),
 ) -> JSONResponse:
     """Get a specific detection by ID with optional translation data."""
     try:
@@ -291,9 +305,9 @@ async def get_detection(
         id_to_use = int(detection_id) if isinstance(detection_id, UUID) else detection_id
 
         # Try to get localization-enhanced data first
-        if include_l10n and data_manager.query_service and isinstance(detection_id, UUID):
+        if include_l10n and isinstance(detection_id, UUID):
             try:
-                detection_with_l10n = await data_manager.query_service.get_detection_with_taxa(
+                detection_with_l10n = await detection_query_service.get_detection_with_taxa(
                     detection_id,
                     language_code,
                 )
@@ -301,7 +315,7 @@ async def get_detection(
                     detection_data = {
                         "id": str(detection_with_l10n.id),
                         "scientific_name": detection_with_l10n.scientific_name,
-                        "common_name": data_manager.get_species_display_name(
+                        "common_name": detection_query_service.get_species_display_name(
                             detection_with_l10n,
                             prefer_translation=True,
                             language_code=language_code,
@@ -379,16 +393,16 @@ async def get_species_summary(
     language_code: str = "en",
     since: datetime | None = None,
     family_filter: str | None = None,
-    data_manager: DataManager = Depends(  # noqa: B008
-        Provide[Container.data_manager]
+    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
+        Provide[Container.detection_query_service]
     ),
 ) -> JSONResponse:
     """Get detection count summary by species with translation data."""
     try:
-        species_summary = await data_manager.count_by_species(
-            start_date=since,
-            include_localized_names=True,
+        # Use get_species_summary which returns list of dicts with localized names
+        species_summary = await detection_query_service.get_species_summary(
             language_code=language_code,
+            since=since,
         )
 
         # Filter by family if requested
@@ -406,17 +420,16 @@ async def get_species_summary(
 async def get_family_summary(
     language_code: str = "en",
     since: datetime | None = None,
-    data_manager: DataManager = Depends(  # noqa: B008
-        Provide[Container.data_manager]
+    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
+        Provide[Container.detection_query_service]
     ),
 ) -> JSONResponse:
     """Get detection count summary by taxonomic family with translation data."""
     try:
         # Get species summary with family information
-        species_summary = await data_manager.count_by_species(
-            start_date=since,
-            include_localized_names=True,
+        species_summary = await detection_query_service.get_species_summary(
             language_code=language_code,
+            since=since,
         )
 
         # Aggregate by family

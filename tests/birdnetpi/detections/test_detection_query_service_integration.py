@@ -1,4 +1,4 @@
-"""Integration tests for DataManager analytics methods with real database."""
+"""Integration tests for DetectionQueryService with real database."""
 
 import datetime
 from datetime import date
@@ -7,13 +7,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from birdnetpi.config import BirdNETConfig
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
-from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import AudioFile, Detection
 from birdnetpi.detections.queries import DetectionQueryService
-from birdnetpi.species.display import SpeciesDisplayService
 
 
 @pytest.fixture
@@ -22,19 +19,6 @@ def mock_species_database():
     mock_service = MagicMock(spec=SpeciesDatabaseService)
     # Configure any needed mock behaviors
     return mock_service
-
-
-@pytest.fixture
-def mock_species_display_service():
-    """Create a mock SpeciesDisplayService."""
-    config = BirdNETConfig()
-    return SpeciesDisplayService(config)
-
-
-@pytest.fixture
-def mock_detection_query_service(test_database, mock_species_database):
-    """Create a DetectionQueryService with mocks."""
-    return DetectionQueryService(test_database, mock_species_database)
 
 
 @pytest.fixture
@@ -210,22 +194,15 @@ async def populated_database(test_database):
 
 
 @pytest.fixture
-async def data_manager_with_db(populated_database, mocker):
-    """Create DataManager with real populated database."""
-    # Mock the other services that DataManager needs
+async def query_service_with_db(populated_database, mocker):
+    """Create DetectionQueryService with real populated database."""
+    # Mock the species database that DetectionQueryService needs
     mock_multilingual = mocker.MagicMock(spec=SpeciesDatabaseService)
-    mock_species_display = mocker.MagicMock(spec=SpeciesDisplayService)
-    mock_query_service = mocker.MagicMock(spec=DetectionQueryService)
-    mock_file_manager = mocker.MagicMock()
-    mock_path_resolver = mocker.MagicMock()
 
-    return DataManager(
-        database_service=populated_database,
+    # Create a DetectionQueryService with the real database
+    return DetectionQueryService(
+        core_database=populated_database,
         species_database=mock_multilingual,
-        species_display_service=mock_species_display,
-        detection_query_service=mock_query_service,
-        file_manager=mock_file_manager,
-        path_resolver=mock_path_resolver,
     )
 
 
@@ -233,52 +210,52 @@ class TestAnalyticsIntegration:
     """Integration tests for analytics methods with real database."""
 
     @pytest.mark.asyncio
-    async def test_get_detection_count(self, data_manager_with_db):
+    async def test_get_detection_count(self, query_service_with_db):
         """Test counting detections in time range."""
         # Count all detections on Jan 1, 2024
         start_time = datetime.datetime(2024, 1, 1, 0, 0, 0)
         end_time = datetime.datetime(2024, 1, 1, 23, 59, 59)
 
-        count = await data_manager_with_db.get_detection_count(start_time, end_time)
+        count = await query_service_with_db.get_detection_count(start_time, end_time)
         assert count == 8  # 8 detections on Jan 1
 
         # Count detections in morning only (6-7 AM)
         morning_start = datetime.datetime(2024, 1, 1, 6, 0, 0)
         morning_end = datetime.datetime(2024, 1, 1, 6, 59, 59)
 
-        morning_count = await data_manager_with_db.get_detection_count(morning_start, morning_end)
+        morning_count = await query_service_with_db.get_detection_count(morning_start, morning_end)
         assert morning_count == 3  # 3 detections in 6 AM hour
 
         # Count detections on Dec 31, 2023
         prev_day_start = datetime.datetime(2023, 12, 31, 0, 0, 0)
         prev_day_end = datetime.datetime(2023, 12, 31, 23, 59, 59)
 
-        prev_count = await data_manager_with_db.get_detection_count(prev_day_start, prev_day_end)
+        prev_count = await query_service_with_db.get_detection_count(prev_day_start, prev_day_end)
         assert prev_count == 1  # 1 detection on Dec 31
 
     @pytest.mark.asyncio
-    async def test_get_unique_species_count(self, data_manager_with_db):
+    async def test_get_unique_species_count(self, query_service_with_db):
         """Test counting unique species in time range."""
         # Count unique species on Jan 1, 2024
         start_time = datetime.datetime(2024, 1, 1, 0, 0, 0)
         end_time = datetime.datetime(2024, 1, 1, 23, 59, 59)
 
-        species_count = await data_manager_with_db.get_unique_species_count(start_time, end_time)
+        species_count = await query_service_with_db.get_unique_species_count(start_time, end_time)
         assert species_count == 4  # American Robin, Northern Cardinal, Blue Jay, Carolina Chickadee
 
         # Count unique species in morning only
         morning_start = datetime.datetime(2024, 1, 1, 6, 0, 0)
         morning_end = datetime.datetime(2024, 1, 1, 6, 59, 59)
 
-        morning_species = await data_manager_with_db.get_unique_species_count(
+        morning_species = await query_service_with_db.get_unique_species_count(
             morning_start, morning_end
         )
         assert morning_species == 2  # American Robin, Northern Cardinal
 
     @pytest.mark.asyncio
-    async def test_get_storage_metrics(self, data_manager_with_db):
+    async def test_get_storage_metrics(self, query_service_with_db):
         """Test getting storage metrics for audio files."""
-        metrics = await data_manager_with_db.get_storage_metrics()
+        metrics = await query_service_with_db.get_storage_metrics()
 
         # Total size: 9 files * 48000 bytes = 432000 bytes
         expected_bytes = 9 * 48000
@@ -289,12 +266,12 @@ class TestAnalyticsIntegration:
         assert metrics["total_duration"] == expected_duration
 
     @pytest.mark.asyncio
-    async def test_get_species_counts(self, data_manager_with_db):
+    async def test_get_species_counts(self, query_service_with_db):
         """Test getting species with their detection counts."""
         start_time = datetime.datetime(2024, 1, 1, 0, 0, 0)
         end_time = datetime.datetime(2024, 1, 1, 23, 59, 59)
 
-        species_counts = await data_manager_with_db.get_species_counts(start_time, end_time)
+        species_counts = await query_service_with_db.get_species_counts(start_time, end_time)
 
         # Should be sorted by count descending
         assert len(species_counts) == 4
@@ -312,11 +289,11 @@ class TestAnalyticsIntegration:
         assert species_dict["Cardinalis cardinalis"]["common_name"] == "Northern Cardinal"
 
     @pytest.mark.asyncio
-    async def test_get_hourly_counts(self, data_manager_with_db):
+    async def test_get_hourly_counts(self, query_service_with_db):
         """Test getting hourly detection counts for a date."""
         target_date = date(2024, 1, 1)
 
-        hourly_counts = await data_manager_with_db.get_hourly_counts(target_date)
+        hourly_counts = await query_service_with_db.get_hourly_counts(target_date)
 
         # Convert to dict for easier testing
         hourly_dict = {h["hour"]: h["count"] for h in hourly_counts}
@@ -336,35 +313,24 @@ class TestAnalyticsIntegration:
         self,
         test_database,
         mock_species_database,
-        mock_species_display_service,
-        mock_detection_query_service,
     ):
         """Test analytics methods with empty database."""
-        # Create DataManager with empty database
-        from unittest.mock import MagicMock
-
-        mock_file_manager = MagicMock()
-        mock_path_resolver = MagicMock()
-
-        data_manager = DataManager(
-            database_service=test_database,
+        # Create DetectionQueryService with empty database
+        query_service = DetectionQueryService(
+            core_database=test_database,
             species_database=mock_species_database,
-            species_display_service=mock_species_display_service,
-            detection_query_service=mock_detection_query_service,
-            file_manager=mock_file_manager,
-            path_resolver=mock_path_resolver,
         )
 
         start_time = datetime.datetime(2024, 1, 1, 0, 0, 0)
         end_time = datetime.datetime(2024, 1, 1, 23, 59, 59)
 
         # All methods should return appropriate empty values
-        assert await data_manager.get_detection_count(start_time, end_time) == 0
-        assert await data_manager.get_unique_species_count(start_time, end_time) == 0
+        assert await query_service.get_detection_count(start_time, end_time) == 0
+        assert await query_service.get_unique_species_count(start_time, end_time) == 0
 
-        metrics = await data_manager.get_storage_metrics()
+        metrics = await query_service.get_storage_metrics()
         assert metrics["total_bytes"] == 0
         assert metrics["total_duration"] == 0
 
-        assert await data_manager.get_species_counts(start_time, end_time) == []
-        assert await data_manager.get_hourly_counts(date(2024, 1, 1)) == []
+        assert await query_service.get_species_counts(start_time, end_time) == []
+        assert await query_service.get_hourly_counts(date(2024, 1, 1)) == []

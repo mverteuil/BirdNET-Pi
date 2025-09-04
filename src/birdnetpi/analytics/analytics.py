@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 from typing import TypedDict
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.detections.manager import DataManager
+from birdnetpi.detections.queries import DetectionQueryService
 
 
 class DashboardSummaryDict(TypedDict):
@@ -43,10 +43,10 @@ class ScatterDataDict(TypedDict):
 
 
 class AnalyticsManager:
-    """Performs calculations and analysis on raw data using DataManager methods."""
+    """Performs calculations and analysis on raw data using DetectionQueryService methods."""
 
-    def __init__(self, data_manager: DataManager, config: BirdNETConfig):
-        self.data_manager = data_manager
+    def __init__(self, detection_query_service: DetectionQueryService, config: BirdNETConfig):
+        self.detection_query_service = detection_query_service
         self.config = config
 
     # --- Dashboard Analytics ---
@@ -58,14 +58,14 @@ class AnalyticsManager:
         week_ago = now - timedelta(days=7)
 
         # Get counts using the new DataManager methods
-        detections_today = await self.data_manager.get_detection_count(today_start, now)
-        species_total = await self.data_manager.get_unique_species_count(
+        detections_today = await self.detection_query_service.get_detection_count(today_start, now)
+        species_total = await self.detection_query_service.get_unique_species_count(
             datetime.min.replace(tzinfo=None), now
         )
-        species_week = await self.data_manager.get_unique_species_count(week_ago, now)
+        species_week = await self.detection_query_service.get_unique_species_count(week_ago, now)
 
         # Get storage metrics
-        storage = await self.data_manager.get_storage_metrics()
+        storage = await self.detection_query_service.get_storage_metrics()
 
         return {
             "species_total": species_total,
@@ -82,7 +82,7 @@ class AnalyticsManager:
         start_time = end_time - timedelta(hours=hours)
 
         # Get species counts from DataManager
-        species_counts = await self.data_manager.get_species_counts(start_time, end_time)
+        species_counts = await self.detection_query_service.get_species_counts(start_time, end_time)
 
         # Calculate total for percentages
         total = sum(s["count"] for s in species_counts)
@@ -103,7 +103,7 @@ class AnalyticsManager:
             date = datetime.now().date()
 
         # Get hourly counts from DataManager
-        hourly_data = await self.data_manager.get_hourly_counts(date)
+        hourly_data = await self.detection_query_service.get_hourly_counts(date)
 
         # Create 24-hour array with counts
         hourly_dist = [0] * 24
@@ -143,7 +143,7 @@ class AnalyticsManager:
         start_time = end_time - timedelta(hours=hours)
 
         # Get detections in time range from DataManager
-        detections = await self.data_manager.query_detections(
+        detections = await self.detection_query_service.query_detections(
             start_date=start_time, end_date=end_time, order_by="timestamp", order_desc=True
         )
 
@@ -191,7 +191,7 @@ class AnalyticsManager:
         current_date = start_date
         while current_date <= end_date:
             # Get hourly counts for this day
-            hourly_data = await self.data_manager.get_hourly_counts(current_date)
+            hourly_data = await self.detection_query_service.get_hourly_counts(current_date)
 
             # Get day of week (0=Monday, 6=Sunday in Python)
             # Convert to 0=Sunday, 6=Saturday for display
@@ -218,7 +218,7 @@ class AnalyticsManager:
 
         for day_offset in range(days):
             target_date = end_date - timedelta(days=day_offset)
-            hourly_data = await self.data_manager.get_hourly_counts(target_date)
+            hourly_data = await self.detection_query_service.get_hourly_counts(target_date)
 
             # Create 24-hour array with counts
             day_counts = [0] * 24
@@ -251,7 +251,7 @@ class AnalyticsManager:
             target_date = end_date - timedelta(days=day_offset)
             weekday = target_date.weekday()  # 0=Monday, 6=Sunday
 
-            hourly_data = await self.data_manager.get_hourly_counts(target_date)
+            hourly_data = await self.detection_query_service.get_hourly_counts(target_date)
             weekday_counts[weekday] += 1
 
             for item in hourly_data:
@@ -299,7 +299,7 @@ class AnalyticsManager:
 
         for day_offset in range(days):
             target_date = end_date - timedelta(days=day_offset)
-            hourly_data = await self.data_manager.get_hourly_counts(target_date)
+            hourly_data = await self.detection_query_service.get_hourly_counts(target_date)
 
             for item in hourly_data:
                 if item["count"] > 0:
@@ -337,7 +337,7 @@ class AnalyticsManager:
         start_time = end_time - timedelta(days=days)
 
         # Get all detections for this species in the range
-        detections = await self.data_manager.query_detections(
+        detections = await self.detection_query_service.query_detections(
             start_date=start_time, end_date=end_time, order_by="timestamp", order_desc=True
         )
 

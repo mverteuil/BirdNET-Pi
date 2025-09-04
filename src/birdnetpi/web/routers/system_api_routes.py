@@ -3,7 +3,7 @@
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends
 
-from birdnetpi.detections.manager import DataManager
+from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.system.status import SystemInspector
 from birdnetpi.web.core.container import Container
 
@@ -37,14 +37,14 @@ async def get_hardware_component(component_name: str) -> dict:
 @router.get("/overview")
 @inject
 async def get_system_overview(
-    data_manager: DataManager = Depends(  # noqa: B008
-        Provide[Container.data_manager]
+    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
+        Provide[Container.detection_query_service]
     ),
 ) -> dict:
     """Get system overview data including disk usage, system info, and total detections."""
     disk_usage = SystemInspector.get_disk_usage()
     system_info = SystemInspector.get_system_info()
-    total_detections = await data_manager.count_detections()
+    total_detections = await detection_query_service.count_detections()
 
     return {
         "disk_usage": disk_usage,

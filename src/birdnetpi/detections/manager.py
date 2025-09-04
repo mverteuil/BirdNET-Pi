@@ -7,16 +7,13 @@ patterns while preserving the underlying service architecture.
 """
 
 import base64
-import datetime
 import functools
 import logging
 from collections.abc import Callable, Sequence
-from datetime import date
 from typing import Any, TypeVar
 
-from sqlalchemy import desc, select
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.sql import func
 
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
@@ -24,7 +21,6 @@ from birdnetpi.detections.models import (
     AudioFile,
     Detection,
     DetectionBase,
-    DetectionWithTaxa,
 )
 from birdnetpi.detections.queries import (
     DetectionQueryService,
@@ -241,152 +237,12 @@ class DataManager:
                 raise
 
     # ==================== Query Methods ====================
-
-    async def query_detections(
-        self,
-        species: str | list[str] | None = None,
-        start_date: datetime.datetime | None = None,
-        end_date: datetime.datetime | None = None,
-        min_confidence: float | None = None,
-        max_confidence: float | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-        order_by: str = "timestamp",
-        order_desc: bool = True,
-        include_localization: bool = False,
-        language_code: str = "en",
-    ) -> Sequence[DetectionBase] | list[DetectionWithTaxa]:
-        """Query detections with flexible filtering and optional localization.
-
-        All queries are delegated to DetectionQueryService for consistency.
-        """
-        if not self.query_service:
-            raise RuntimeError("DetectionQueryService not available")
-
-        # Always use DetectionQueryService for all queries
-        return await self.query_service.query_detections(
-            species=species,
-            start_date=start_date,
-            end_date=end_date,
-            min_confidence=min_confidence,
-            max_confidence=max_confidence,
-            limit=limit,
-            offset=offset,
-            order_by=order_by,
-            order_desc=order_desc,
-            include_localization=include_localization,
-            language_code=language_code,
-        )
-
-    # ==================== Count Methods ====================
-
-    async def count_detections(self, filters: dict[str, Any] | None = None) -> int:
-        """Count detections with optional filters."""
-        async with self.database_service.get_async_db() as session:
-            try:
-                stmt = select(func.count(Detection.id))
-
-                if filters:
-                    if "species" in filters:
-                        stmt = stmt.where(Detection.scientific_name == filters["species"])
-                    if "start_date" in filters:
-                        stmt = stmt.where(Detection.timestamp >= filters["start_date"])
-                    if "end_date" in filters:
-                        stmt = stmt.where(Detection.timestamp <= filters["end_date"])
-                    if "min_confidence" in filters:
-                        stmt = stmt.where(Detection.confidence >= filters["min_confidence"])
-
-                result = await session.scalar(stmt)
-                return result or 0
-            except SQLAlchemyError:
-                await session.rollback()
-                logger.exception("Error counting detections")
-                raise
-
-    async def count_by_species(
-        self,
-        start_date: datetime.datetime | None = None,
-        end_date: datetime.datetime | None = None,
-        include_localized_names: bool = False,
-        language_code: str = "en",
-    ) -> dict[str, int] | list[dict[str, Any]]:
-        """Count detections by species with optional localized names."""
-        if include_localized_names and self.query_service:
-            # Returns list of dicts with species summary info
-            return await self.query_service.get_species_summary(
-                language_code=language_code,
-                since=start_date,
-            )
-
-        async with self.database_service.get_async_db() as session:
-            try:
-                stmt = select(Detection.scientific_name, func.count(Detection.id).label("count"))
-
-                if start_date:
-                    stmt = stmt.where(Detection.timestamp >= start_date)
-                if end_date:
-                    stmt = stmt.where(Detection.timestamp <= end_date)
-
-                stmt = stmt.group_by(Detection.scientific_name)
-                stmt = stmt.order_by(func.count(Detection.id).desc())
-
-                result = await session.execute(stmt)
-                results = list(result)
-                # Row objects support dictionary access in SQLAlchemy 2.0
-                if not results:
-                    return {}
-                return {str(row["scientific_name"]): int(row["count"]) for row in results}
-            except SQLAlchemyError:
-                await session.rollback()
-                logger.exception("Error counting by species")
-                raise
-
-    async def count_by_date(self, species: str | None = None) -> dict[date, int]:
-        """Count detections by date with optional species filter."""
-        async with self.database_service.get_async_db() as session:
-            try:
-                stmt = select(
-                    func.date(Detection.timestamp).label("date"),
-                    func.count(Detection.id).label("count"),
-                )
-
-                if species:
-                    stmt = stmt.where(Detection.scientific_name == species)
-
-                stmt = stmt.group_by(func.date(Detection.timestamp))
-                stmt = stmt.order_by(func.date(Detection.timestamp))
-
-                result = await session.execute(stmt)
-                results = list(result)
-                # Row objects support dictionary access in SQLAlchemy 2.0
-                if not results:
-                    return {}
-                return {row["date"]: int(row["count"]) for row in results}
-            except SQLAlchemyError:
-                await session.rollback()
-                logger.exception("Error counting by date")
-                raise
+    # NOTE: Query methods have been moved to DetectionQueryService.
+    # Use DetectionQueryService directly for all query operations.
 
     # ==================== Translation Helpers ====================
-
-    def get_species_display_name(
-        self,
-        detection: DetectionBase | DetectionWithTaxa,
-        prefer_translation: bool = True,
-        language_code: str = "en",
-    ) -> str:
-        """Get display name respecting user preferences and database priority."""
-        # If it's already a DetectionWithLocalization, use species display service
-        if isinstance(detection, DetectionWithTaxa):
-            return self.species_display.format_species_display(detection, prefer_translation)
-
-        # For plain Detection, return basic name
-        if prefer_translation and detection.common_name:
-            return str(detection.common_name)
-        # Ensure we return a string
-        scientific = detection.scientific_name
-        common = detection.common_name
-        return str(scientific) if scientific else str(common) if common else "Unknown"
+    # NOTE: Translation helper methods have been moved to DetectionQueryService.
+    # Use DetectionQueryService directly for display name formatting.
 
     # ==================== AudioFile Operations ====================
 
@@ -401,173 +257,4 @@ class DataManager:
             except SQLAlchemyError:
                 await session.rollback()
                 logger.exception("Error retrieving audio file")
-                raise
-
-    # ==================== Analytics Methods ====================
-    # Methods needed by AnalyticsManager for dashboard and visualizations
-
-    async def get_detection_count(
-        self, start_time: datetime.datetime, end_time: datetime.datetime
-    ) -> int:
-        """Get count of detections in a time range.
-
-        Args:
-            start_time: Start of time range
-            end_time: End of time range
-
-        Returns:
-            Number of detections in the time range
-        """
-        async with self.database_service.get_async_db() as session:
-            try:
-                count = await session.scalar(
-                    select(func.count())
-                    .select_from(Detection)
-                    .where(Detection.timestamp >= start_time)
-                    .where(Detection.timestamp <= end_time)
-                )
-                return count or 0
-            except SQLAlchemyError:
-                await session.rollback()
-                logger.exception("Error getting detection count")
-                raise
-
-    async def get_unique_species_count(
-        self, start_time: datetime.datetime, end_time: datetime.datetime
-    ) -> int:
-        """Get count of unique species detected in a time range.
-
-        Args:
-            start_time: Start of time range
-            end_time: End of time range
-
-        Returns:
-            Number of unique species detected
-        """
-        async with self.database_service.get_async_db() as session:
-            try:
-                count = await session.scalar(
-                    select(func.count(func.distinct(Detection.scientific_name)))
-                    .where(Detection.timestamp >= start_time)
-                    .where(Detection.timestamp <= end_time)
-                )
-                return count or 0
-            except SQLAlchemyError:
-                await session.rollback()
-                logger.exception("Error getting unique species count")
-                raise
-
-    async def get_storage_metrics(self) -> dict[str, Any]:
-        """Get storage metrics for audio files.
-
-        Returns:
-            Dictionary with total_bytes and total_duration
-        """
-        async with self.database_service.get_async_db() as session:
-            try:
-                # Get total file size and duration
-                result = await session.execute(
-                    select(
-                        func.sum(AudioFile.size_bytes).label("total_bytes"),
-                        func.sum(AudioFile.duration).label("total_duration"),
-                    )
-                )
-                row = result.first()
-
-                if row:
-                    return {
-                        "total_bytes": row.total_bytes or 0,
-                        "total_duration": row.total_duration or 0,
-                    }
-                return {"total_bytes": 0, "total_duration": 0}
-            except SQLAlchemyError:
-                await session.rollback()
-                logger.exception("Error getting storage metrics")
-                raise
-
-    async def get_species_counts(
-        self, start_time: datetime.datetime, end_time: datetime.datetime
-    ) -> list[dict[str, Any]]:
-        """Get species with their detection counts in a time range.
-
-        Args:
-            start_time: Start of time range
-            end_time: End of time range
-
-        Returns:
-            List of dicts with scientific_name, common_name, and count
-        """
-        async with self.database_service.get_async_db() as session:
-            try:
-                result = await session.execute(
-                    select(
-                        Detection.scientific_name,
-                        Detection.common_name,
-                        func.count(Detection.id).label("count"),
-                    )
-                    .where(Detection.timestamp >= start_time)
-                    .where(Detection.timestamp <= end_time)
-                    .group_by(Detection.scientific_name, Detection.common_name)
-                    .order_by(desc("count"))
-                )
-
-                return [
-                    {
-                        "scientific_name": row.scientific_name,
-                        "common_name": row.common_name,
-                        "count": row.count,
-                    }
-                    for row in result
-                ]
-            except SQLAlchemyError:
-                await session.rollback()
-                logger.exception("Error getting species counts")
-                raise
-
-    async def get_hourly_counts(self, target_date: date) -> list[dict[str, Any]]:
-        """Get hourly detection counts for a specific date.
-
-        Args:
-            target_date: Date to get hourly counts for
-
-        Returns:
-            List of dicts with hour and count
-        """
-        async with self.database_service.get_async_db() as session:
-            try:
-                # Convert date to datetime range
-                start_time = datetime.datetime.combine(target_date, datetime.time.min)
-                end_time = datetime.datetime.combine(target_date, datetime.time.max)
-
-                # SQLite-specific hour extraction
-                result = await session.execute(
-                    select(
-                        func.strftime("%H", Detection.timestamp).label("hour"),
-                        func.count(Detection.id).label("count"),
-                    )
-                    .where(Detection.timestamp >= start_time)
-                    .where(Detection.timestamp <= end_time)
-                    .group_by(func.strftime("%H", Detection.timestamp))
-                    .order_by("hour")
-                )
-
-                return [{"hour": int(row.hour), "count": row.count} for row in result]
-            except SQLAlchemyError:
-                await session.rollback()
-                logger.exception("Error getting hourly counts")
-                raise
-
-    # ==================== Raw Query Escape Hatch ====================
-
-    async def execute_raw_query(
-        self, query: str, params: dict[str, Any] | None = None
-    ) -> list[dict[str, Any]]:
-        """Execute a raw SQL query. Use only for complex queries."""
-        async with self.database_service.get_async_db() as session:
-            try:
-                result = await session.execute(query, params or {})
-                return [dict(row) for row in result]
-            except SQLAlchemyError:
-                await session.rollback()
-                logger.exception("Error executing raw query")
                 raise

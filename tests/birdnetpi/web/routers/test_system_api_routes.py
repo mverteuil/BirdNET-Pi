@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from birdnetpi.detections.manager import DataManager
+from birdnetpi.detections.queries import DetectionQueryService
 
 # Note: HardwareMonitorManager has been replaced with SystemInspector static methods
 
@@ -19,10 +19,10 @@ def app_with_system_router(app_with_temp_data):
         # Note: SystemInspector uses static methods, no mocking needed at container level
         # Previously mocked hardware_monitor_manager is no longer needed
 
-        # Mock data manager for system overview endpoint
-        mock_data_manager = MagicMock(spec=DataManager)
-        mock_data_manager.count_detections = AsyncMock(return_value=0)
-        app.container.data_manager.override(mock_data_manager)  # type: ignore[attr-defined]
+        # Mock detection query service for system overview endpoint
+        mock_query_service = MagicMock(spec=DetectionQueryService)
+        mock_query_service.count_detections = AsyncMock(return_value=0)
+        app.container.detection_query_service.override(mock_query_service)  # type: ignore[attr-defined]
 
     return app
 
@@ -109,8 +109,10 @@ class TestHardwareEndpoints:
             },
         )
 
-        # Configure mock data manager
-        client.app.container.data_manager().count_detections = AsyncMock(return_value=1234)  # type: ignore[attr-defined]
+        # Configure mock detection query service
+        client.app.container.detection_query_service().count_detections = AsyncMock(
+            return_value=1234
+        )  # type: ignore[attr-defined]
 
         response = client.get("/api/system/overview")
 
@@ -123,5 +125,5 @@ class TestHardwareEndpoints:
         assert "total_detections" in data
         assert data["total_detections"] == 1234
 
-        # Verify the data manager method was called correctly
-        client.app.container.data_manager().count_detections.assert_called_once()  # type: ignore[attr-defined]
+        # Verify the detection query service method was called correctly
+        client.app.container.detection_query_service().count_detections.assert_called_once()  # type: ignore[attr-defined]

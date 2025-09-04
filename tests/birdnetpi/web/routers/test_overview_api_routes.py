@@ -48,13 +48,13 @@ def app_with_overview_services(app_with_temp_data):
         }
         # hardware_monitor_manager no longer exists in container - SystemInspector is used directly
 
-        # Mock data_manager to return detection count
-        from birdnetpi.detections.manager import DataManager
+        # Mock detection_query_service to return detection count
+        from birdnetpi.detections.queries import DetectionQueryService
 
-        mock_data_manager = MagicMock(spec=DataManager)
+        mock_query_service = MagicMock(spec=DetectionQueryService)
         # count_detections is async, so use AsyncMock
-        mock_data_manager.count_detections = AsyncMock(return_value=0)
-        app.container.data_manager.override(mock_data_manager)  # type: ignore[attr-defined]
+        mock_query_service.count_detections = AsyncMock(return_value=0)
+        app.container.detection_query_service.override(mock_query_service)  # type: ignore[attr-defined]
 
     return app
 

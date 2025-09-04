@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel
 
@@ -15,10 +15,8 @@ from birdnetpi.analytics.analytics import (
 from birdnetpi.audio.devices import AudioDeviceService
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.models import DetectionBase
+from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.system.status import SystemInspector
-
-if TYPE_CHECKING:
-    from birdnetpi.detections.queries import DetectionQueryService
 
 logger = logging.getLogger(__name__)
 
@@ -153,8 +151,14 @@ class TemporalPatterns(BaseModel):
 class PresentationManager:
     """Formats data for presentation in UI/API responses."""
 
-    def __init__(self, analytics_manager: AnalyticsManager, config: BirdNETConfig):
+    def __init__(
+        self,
+        analytics_manager: AnalyticsManager,
+        detection_query_service: DetectionQueryService,
+        config: BirdNETConfig,
+    ):
         self.analytics_manager = analytics_manager
+        self.detection_query_service = detection_query_service
         self.config = config
 
     # --- Landing Page ---
@@ -194,7 +198,7 @@ class PresentationManager:
         summary = await self.analytics_manager.get_dashboard_summary()
         frequency = await self.analytics_manager.get_species_frequency_analysis()
         temporal = await self.analytics_manager.get_temporal_patterns()
-        recent = await self.analytics_manager.data_manager.query_detections(
+        recent = await self.detection_query_service.query_detections(
             limit=10, order_by="timestamp", order_desc=True
         )
         scatter = await self.analytics_manager.get_detection_scatter_data()
@@ -370,7 +374,7 @@ class PresentationManager:
             end_time = datetime.now(UTC)
             # For historical data, use a very old date with timezone
             default_start = datetime(1970, 1, 1, tzinfo=UTC) if start_date is None else start_date
-            return await self.analytics_manager.data_manager.get_species_counts(
+            return await self.detection_query_service.get_species_counts(
                 start_time=default_start, end_time=end_time
             )
 

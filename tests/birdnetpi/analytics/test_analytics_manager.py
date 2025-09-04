@@ -7,13 +7,13 @@ import pytest
 
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.detections.manager import DataManager
+from birdnetpi.detections.queries import DetectionQueryService
 
 
 @pytest.fixture
-def mock_data_manager():
-    """Create a mock DataManager."""
-    return MagicMock(spec=DataManager)
+def mock_detection_query_service():
+    """Create a mock DetectionQueryService."""
+    return MagicMock(spec=DetectionQueryService)
 
 
 @pytest.fixture
@@ -25,21 +25,25 @@ def mock_config():
 
 
 @pytest.fixture
-def analytics_manager(mock_data_manager, mock_config):
+def analytics_manager(mock_detection_query_service, mock_config):
     """Create an AnalyticsManager with mocked dependencies."""
-    return AnalyticsManager(mock_data_manager, mock_config)
+    return AnalyticsManager(mock_detection_query_service, mock_config)
 
 
 class TestDashboardAnalytics:
     """Test dashboard analytics methods."""
 
     @pytest.mark.asyncio
-    async def test_get_dashboard_summary(self, analytics_manager, mock_data_manager, mock_config):
+    async def test_get_dashboard_summary(
+        self, analytics_manager, mock_detection_query_service, mock_config
+    ):
         """Test dashboard summary calculation."""
-        # Mock DataManager methods
-        mock_data_manager.get_detection_count = AsyncMock(return_value=150)
-        mock_data_manager.get_unique_species_count = AsyncMock(side_effect=[50, 25])  # total, week
-        mock_data_manager.get_storage_metrics = AsyncMock(
+        # Mock DetectionQueryService methods
+        mock_detection_query_service.get_detection_count = AsyncMock(return_value=150)
+        mock_detection_query_service.get_unique_species_count = AsyncMock(
+            side_effect=[50, 25]
+        )  # total, week
+        mock_detection_query_service.get_storage_metrics = AsyncMock(
             return_value={
                 "total_bytes": 1024 * 1024 * 1024 * 5,  # 5GB
                 "total_duration": 3600 * 24,  # 24 hours
@@ -56,14 +60,16 @@ class TestDashboardAnalytics:
         assert summary["confidence_threshold"] == 0.5
 
         # Verify correct time ranges were used
-        assert mock_data_manager.get_detection_count.call_count == 1
-        assert mock_data_manager.get_unique_species_count.call_count == 2
+        assert mock_detection_query_service.get_detection_count.call_count == 1
+        assert mock_detection_query_service.get_unique_species_count.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_get_species_frequency_analysis(self, analytics_manager, mock_data_manager):
+    async def test_get_species_frequency_analysis(
+        self, analytics_manager, mock_detection_query_service
+    ):
         """Test species frequency analysis."""
         # Mock species counts from DataManager
-        mock_data_manager.get_species_counts = AsyncMock(
+        mock_detection_query_service.get_species_counts = AsyncMock(
             return_value=[
                 {
                     "scientific_name": "Turdus migratorius",
@@ -102,9 +108,11 @@ class TestDashboardAnalytics:
         assert analysis[2]["category"] == "uncommon"
 
     @pytest.mark.asyncio
-    async def test_get_species_frequency_analysis_empty(self, analytics_manager, mock_data_manager):
+    async def test_get_species_frequency_analysis_empty(
+        self, analytics_manager, mock_detection_query_service
+    ):
         """Test species frequency analysis with no data."""
-        mock_data_manager.get_species_counts = AsyncMock(return_value=[])
+        mock_detection_query_service.get_species_counts = AsyncMock(return_value=[])
 
         analysis = await analytics_manager.get_species_frequency_analysis(hours=24)
 
@@ -112,10 +120,10 @@ class TestDashboardAnalytics:
 
     @pytest.mark.asyncio
     async def test_get_species_frequency_analysis_no_common_name(
-        self, analytics_manager, mock_data_manager
+        self, analytics_manager, mock_detection_query_service
     ):
         """Test species frequency analysis when common name is missing."""
-        mock_data_manager.get_species_counts = AsyncMock(
+        mock_detection_query_service.get_species_counts = AsyncMock(
             return_value=[
                 {"scientific_name": "Rare species", "common_name": None, "count": 5},
             ]
@@ -131,10 +139,10 @@ class TestTemporalAnalytics:
     """Test temporal pattern analytics."""
 
     @pytest.mark.asyncio
-    async def test_get_temporal_patterns(self, analytics_manager, mock_data_manager):
+    async def test_get_temporal_patterns(self, analytics_manager, mock_detection_query_service):
         """Test temporal pattern analysis."""
         # Mock hourly counts from DataManager
-        mock_data_manager.get_hourly_counts = AsyncMock(
+        mock_detection_query_service.get_hourly_counts = AsyncMock(
             return_value=[
                 {"hour": 6, "count": 15},
                 {"hour": 7, "count": 25},
@@ -169,20 +177,24 @@ class TestTemporalAnalytics:
         assert patterns["periods"]["night_late"] == 5  # 8pm-12am: 5+0+0+0 = 5 (hours 20,21,22,23)
 
     @pytest.mark.asyncio
-    async def test_get_temporal_patterns_no_date(self, analytics_manager, mock_data_manager):
+    async def test_get_temporal_patterns_no_date(
+        self, analytics_manager, mock_detection_query_service
+    ):
         """Test temporal patterns uses today when no date provided."""
-        mock_data_manager.get_hourly_counts = AsyncMock(return_value=[])
+        mock_detection_query_service.get_hourly_counts = AsyncMock(return_value=[])
 
         await analytics_manager.get_temporal_patterns()
 
         # Should call with today's date
-        called_date = mock_data_manager.get_hourly_counts.call_args[0][0]
+        called_date = mock_detection_query_service.get_hourly_counts.call_args[0][0]
         assert called_date == datetime.now().date()
 
     @pytest.mark.asyncio
-    async def test_get_temporal_patterns_empty(self, analytics_manager, mock_data_manager):
+    async def test_get_temporal_patterns_empty(
+        self, analytics_manager, mock_detection_query_service
+    ):
         """Test temporal patterns with no data."""
-        mock_data_manager.get_hourly_counts = AsyncMock(return_value=[])
+        mock_detection_query_service.get_hourly_counts = AsyncMock(return_value=[])
 
         patterns = await analytics_manager.get_temporal_patterns(date(2024, 1, 1))
 
@@ -200,7 +212,9 @@ class TestScatterVisualization:
     """Test detection scatter data preparation."""
 
     @pytest.mark.asyncio
-    async def test_get_detection_scatter_data(self, analytics_manager, mock_data_manager):
+    async def test_get_detection_scatter_data(
+        self, analytics_manager, mock_detection_query_service
+    ):
         """Test scatter plot data preparation."""
         from birdnetpi.detections.models import Detection
 
@@ -229,7 +243,7 @@ class TestScatterVisualization:
             ),
         ]
 
-        mock_data_manager.query_detections = AsyncMock(return_value=detections)
+        mock_detection_query_service.query_detections = AsyncMock(return_value=detections)
 
         scatter_data = await analytics_manager.get_detection_scatter_data(hours=24)
 
@@ -252,9 +266,11 @@ class TestScatterVisualization:
         assert scatter_data[2]["species"] == "Blue Jay"
 
     @pytest.mark.asyncio
-    async def test_get_detection_scatter_data_empty(self, analytics_manager, mock_data_manager):
+    async def test_get_detection_scatter_data_empty(
+        self, analytics_manager, mock_detection_query_service
+    ):
         """Test scatter data with no detections."""
-        mock_data_manager.get_detections_in_range = AsyncMock(return_value=[])
+        mock_detection_query_service.get_detections_in_range = AsyncMock(return_value=[])
 
         scatter_data = await analytics_manager.get_detection_scatter_data(hours=24)
 

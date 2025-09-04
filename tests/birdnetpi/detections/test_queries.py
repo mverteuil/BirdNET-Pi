@@ -837,3 +837,90 @@ class TestIntegration:
             if robin_summary:
                 # Should have same translation
                 assert detection.translated_name == robin_summary["translated_name"]
+
+
+class TestSpeciesDisplayName:
+    """Test get_species_display_name method."""
+
+    @pytest.mark.asyncio
+    async def test_get_species_display_name_with_taxa(self, query_service, populated_ioc_db):
+        """Should use species display service for DetectionWithTaxa."""
+        from unittest.mock import MagicMock
+
+        mock_detection = MagicMock(spec=DetectionWithTaxa)
+        mock_detection.scientific_name = "Turdus migratorius"
+        mock_detection.common_name = "American Robin"
+        mock_detection.ioc_english_name = "American Robin"
+        mock_detection.translated_name = "Merle d'Amérique"
+
+        # Mock the species display service
+        if query_service.species_display:
+            query_service.species_display.format_species_display = MagicMock(
+                return_value="Merle d'Amérique"
+            )
+
+        result = query_service.get_species_display_name(
+            mock_detection,
+            prefer_translation=True,
+            language_code="fr",
+        )
+
+        if query_service.species_display:
+            assert result == "Merle d'Amérique"
+            query_service.species_display.format_species_display.assert_called_once_with(
+                mock_detection, True
+            )
+        else:
+            # Fallback behavior when no species_display service
+            assert result == "American Robin"
+
+    @pytest.mark.asyncio
+    async def test_get_species_display_name_plain_detection(self, query_service, populated_ioc_db):
+        """Should handle plain Detection objects."""
+        from unittest.mock import MagicMock
+
+        mock_detection = MagicMock(spec=Detection)
+        mock_detection.scientific_name = "Turdus migratorius"
+        mock_detection.common_name = "American Robin"
+
+        result = query_service.get_species_display_name(
+            mock_detection,
+            prefer_translation=True,
+        )
+
+        # For plain Detection, should return common name when prefer_translation is True
+        assert result == "American Robin"
+
+    @pytest.mark.asyncio
+    async def test_get_species_display_name_no_common_name(self, query_service, populated_ioc_db):
+        """Should fall back to scientific name when no common name available."""
+        from unittest.mock import MagicMock
+
+        mock_detection = MagicMock(spec=Detection)
+        mock_detection.scientific_name = "Turdus migratorius"
+        mock_detection.common_name = None
+
+        result = query_service.get_species_display_name(
+            mock_detection,
+            prefer_translation=True,
+        )
+
+        assert result == "Turdus migratorius"
+
+    @pytest.mark.asyncio
+    async def test_get_species_display_name_prefer_scientific(
+        self, query_service, populated_ioc_db
+    ):
+        """Should return scientific name when prefer_translation is False."""
+        from unittest.mock import MagicMock
+
+        mock_detection = MagicMock(spec=Detection)
+        mock_detection.scientific_name = "Turdus migratorius"
+        mock_detection.common_name = "American Robin"
+
+        result = query_service.get_species_display_name(
+            mock_detection,
+            prefer_translation=False,
+        )
+
+        assert result == "Turdus migratorius"

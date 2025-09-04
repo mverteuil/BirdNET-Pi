@@ -76,11 +76,18 @@ class Container(containers.DeclarativeContainer):
         path_resolver=path_resolver,
     )
 
-    # Detection query service - now uses multilingual service
+    # Species display service - singleton
+    species_display_service = providers.Singleton(
+        SpeciesDisplayService,
+        config=config,
+    )
+
+    # Detection query service - now uses multilingual service and species display
     detection_query_service = providers.Factory(
         DetectionQueryService,
         core_database=core_database,
         species_database=species_database,
+        species_display_service=species_display_service,
     )
 
     # Cache service - singleton for analytics performance
@@ -97,12 +104,6 @@ class Container(containers.DeclarativeContainer):
     file_manager = providers.Singleton(
         FileManager,
         path_resolver=path_resolver,
-    )
-
-    # Species display service - singleton
-    species_display_service = providers.Singleton(
-        SpeciesDisplayService,
-        config=config,
     )
 
     # Data Manager - single source of truth for detection data access and event emission
@@ -178,12 +179,13 @@ class Container(containers.DeclarativeContainer):
     # Analytics and Presentation services
     analytics_manager = providers.Singleton(
         AnalyticsManager,
-        data_manager=data_manager,
+        detection_query_service=detection_query_service,
         config=config,
     )
 
     presentation_manager = providers.Singleton(
         PresentationManager,
         analytics_manager=analytics_manager,
+        detection_query_service=detection_query_service,
         config=config,
     )

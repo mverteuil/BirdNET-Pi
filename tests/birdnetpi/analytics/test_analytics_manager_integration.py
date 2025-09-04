@@ -11,7 +11,6 @@ from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
-from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import AudioFile, Detection
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.species.display import SpeciesDisplayService
@@ -198,29 +197,18 @@ def mock_detection_query_service(test_database_with_data, mock_species_database)
 async def analytics_manager_with_db(
     test_database_with_data,
     mock_species_database,
-    mock_species_display_service,
-    mock_detection_query_service,
-    mocker,
 ):
     """Create AnalyticsManager with real database."""
     db_service, _ = test_database_with_data  # Unpack tuple
     config = BirdNETConfig()
     config.species_confidence_threshold = 0.5
 
-    # Create mock file_manager and path_resolver
-    mock_file_manager = mocker.MagicMock()
-    mock_path_resolver = mocker.MagicMock()
-
-    data_manager = DataManager(
-        database_service=db_service,
+    detection_query_service = DetectionQueryService(
+        core_database=db_service,
         species_database=mock_species_database,
-        species_display_service=mock_species_display_service,
-        file_manager=mock_file_manager,
-        path_resolver=mock_path_resolver,
-        detection_query_service=mock_detection_query_service,
     )
 
-    return AnalyticsManager(data_manager, config)
+    return AnalyticsManager(detection_query_service, config)
 
 
 class TestDashboardAnalyticsIntegration:

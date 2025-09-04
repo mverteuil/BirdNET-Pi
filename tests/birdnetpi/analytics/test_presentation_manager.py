@@ -9,14 +9,13 @@ from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.models import Detection
+from birdnetpi.detections.queries import DetectionQueryService
 
 
 @pytest.fixture
 def mock_analytics_manager():
     """Create a mock AnalyticsManager."""
-    manager = MagicMock(spec=AnalyticsManager)
-    manager.data_manager = MagicMock()
-    return manager
+    return MagicMock(spec=AnalyticsManager)
 
 
 @pytest.fixture
@@ -28,9 +27,15 @@ def mock_config():
 
 
 @pytest.fixture
-def presentation_manager(mock_analytics_manager, mock_config):
+def mock_detection_query_service():
+    """Create a mock DetectionQueryService."""
+    return MagicMock(spec=DetectionQueryService)
+
+
+@pytest.fixture
+def presentation_manager(mock_analytics_manager, mock_detection_query_service, mock_config):
     """Create a PresentationManager with mocked dependencies."""
-    return PresentationManager(mock_analytics_manager, mock_config)
+    return PresentationManager(mock_analytics_manager, mock_detection_query_service, mock_config)
 
 
 @pytest.fixture
@@ -73,6 +78,7 @@ class TestLandingPageData:
         mock_audio_service,
         presentation_manager,
         mock_analytics_manager,
+        mock_detection_query_service,
         sample_detections,
     ):
         """Test complete landing page data assembly."""
@@ -164,13 +170,8 @@ class TestLandingPageData:
             }
         )
 
-        # Mock data_manager methods
-        mock_analytics_manager.data_manager.get_recent_detections = AsyncMock(
-            return_value=sample_detections
-        )
-        mock_analytics_manager.data_manager.query_detections = AsyncMock(
-            return_value=sample_detections
-        )
+        # Mock detection query service method
+        mock_detection_query_service.query_detections = AsyncMock(return_value=sample_detections)
 
         mock_analytics_manager.get_detection_scatter_data = AsyncMock(
             return_value=[
