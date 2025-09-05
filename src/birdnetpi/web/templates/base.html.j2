@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BirdNET-Pi{% endblock %}</title>
+
+    {# Core styles - always included #}
+    <link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}">
+
+    {# Block for additional styles #}
+    {% block styles %}{% endblock %}
+
+    {# Block for head content (meta tags, etc.) #}
+    {% block head %}{% endblock %}
+</head>
+<body>
+    {# Header section - consistent across all pages #}
+    <header>
+        {% block header %}
+        <h1>{{ site_name|default('BirdNET-Pi') }} <span class="live" title="System Active"></span></h1>
+        <p class="tagline">
+            Continuous acoustic monitoring ·
+            {% if system_status and system_status.device_name %}{{ system_status.device_name }}{% else %}Docker Container{% endif %} ·
+            {% if location %}{{ location }}{% else %}{{ config.latitude|default(0.0, true) }}, {{ config.longitude|default(0.0, true) }}{% endif %}
+        </p>
+        {% endblock %}
+    </header>
+
+    {# Navigation - can be overridden but usually included #}
+    {% block navigation %}
+        {% set active_page = active_page|default('') %}
+        {% include 'includes/navigation.html.j2' %}
+    {% endblock %}
+
+    {# Main content area #}
+    <main>
+        {% block content %}
+        {# Page-specific content goes here #}
+        {% endblock %}
+    </main>
+
+    {# Footer section - optional #}
+    {% block footer %}
+    {% endblock %}
+
+    {# Scripts section #}
+    {% block scripts %}
+    {# Only include script.js if it exists - child templates can override #}
+    {% endblock %}
+</body>
+</html>

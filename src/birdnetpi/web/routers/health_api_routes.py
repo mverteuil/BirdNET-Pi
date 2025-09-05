@@ -16,7 +16,7 @@ from birdnetpi.web.core.container import Container
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    tags=["health"],
+    tags=["Health API"],
 )
 
 

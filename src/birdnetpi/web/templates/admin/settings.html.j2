@@ -1,20 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings</title>
-    <link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}">
-</head>
-<body>
-    <header>
-        <h1>System Configuration</h1>
-        <p class="subtitle">BirdNET-Pi detection parameters and integration settings</p>
-    </header>
+{% extends "base.html.j2" %}
 
-    <!-- Navigation -->
-    {% set active_page = 'settings' %}
-    {% include 'includes/navigation.html.j2' %}
+{% block title %}Settings - BirdNET-Pi{% endblock %}
+
+{% set active_page = 'settings' %}
+
+{% block content %}
 
     <form method="post" action="/admin/settings" role="form" aria-label="System settings" id="settings-form">
         <!-- Required hidden fields for all form data -->
@@ -542,7 +532,10 @@
             <span class="action-link ml-auto">Last saved: 2025-01-15 14:32:18</span>
         </div>
     </form>
+{% endblock %}
 
+{% block scripts %}
+    <script src="{{ request.url_for('static', path='script.js') }}"></script>
     <script>
         // Initialize dynamic positioning from data attributes
         document.addEventListener('DOMContentLoaded', function() {
@@ -1034,5 +1027,4 @@
             });
         });
     </script>
-</body>
-</html>
+{% endblock %}

@@ -38,8 +38,17 @@ def create_app() -> FastAPI:
     # Create container
     container = Container()
 
-    # Create app with lifespan
-    app = FastAPI(lifespan=lifespan)
+    # Create app with lifespan and documentation configuration
+    # Note: We disable the default /docs endpoint as we'll provide a custom one
+    app = FastAPI(
+        lifespan=lifespan,
+        title="BirdNET-Pi API",
+        description="API for BirdNET-Pi bird detection and analysis system",
+        version="1.0.0",
+        docs_url=None,  # Disable default docs - we'll provide custom
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
+    )
 
     # Attach container to app (ignore type error - runtime dynamic attribute)
     app.container = container  # type: ignore[attr-defined]
@@ -85,22 +94,19 @@ def create_app() -> FastAPI:
     )
 
     # Include routers with proper prefixes and consistent tagging
-    # Health check routes (no authentication required)
-    app.include_router(health_api_routes.router, prefix="/api/health", tags=["Health"])
 
-    # Admin routes (consolidated under /admin prefix)
-    app.include_router(admin_view_routes.router, prefix="/admin", tags=["Admin Views"])
+    # === API Routes (included in documentation) ===
+
+    # Health check routes (no authentication required)
+    # Note: health router already has tags=["health"] defined internally
+    app.include_router(health_api_routes.router, prefix="/api/health")
+
+    # Admin API routes
     app.include_router(admin_api_routes.router, prefix="/admin/config", tags=["Admin API"])
 
-    # System API routes (consolidated under /api/system prefix)
+    # System API routes
     app.include_router(system_api_routes.router, prefix="/api/system", tags=["System API"])
     app.include_router(overview_api_routes.router, prefix="/api", tags=["Overview API"])
-
-    # Multimedia view routes (livestream, spectrogram)
-    app.include_router(multimedia_view_routes.router, tags=["Multimedia Views"])
-
-    # Reports view routes (detection displays, analytics)
-    app.include_router(reports_view_routes.router, tags=["Reports Views"])
 
     # Core API routes (detections endpoints)
     app.include_router(
@@ -110,11 +116,35 @@ def create_app() -> FastAPI:
     # Real-time communication
     app.include_router(websocket_routes.router, prefix="/ws", tags=["WebSocket"])
 
+    # === View Routes (excluded from API documentation) ===
+
+    # Admin view routes (HTML pages)
+    app.include_router(
+        admin_view_routes.router,
+        prefix="/admin",
+        tags=["Admin Views"],
+        include_in_schema=False,  # Exclude from API docs
+    )
+
+    # Multimedia view routes (livestream, spectrogram HTML pages)
+    app.include_router(
+        multimedia_view_routes.router,
+        tags=["Multimedia Views"],
+        include_in_schema=False,  # Exclude from API docs
+    )
+
+    # Reports view routes (detection displays, analytics HTML pages)
+    app.include_router(
+        reports_view_routes.router,
+        tags=["Reports Views"],
+        include_in_schema=False,  # Exclude from API docs
+    )
+
     # Database administration interface
     sqladmin_view_routes.setup_sqladmin(app)
 
-    # Root route
-    @app.get("/", response_class=HTMLResponse)
+    # Root route (excluded from API documentation)
+    @app.get("/", response_class=HTMLResponse, include_in_schema=False)
     async def read_root(request: Request) -> HTMLResponse:
         """Render the main index page."""
         # Get instances directly from the container to avoid DI issues
@@ -133,6 +163,23 @@ def create_app() -> FastAPI:
                 "location": f"{config.latitude:.4f}, {config.longitude:.4f}",
                 "websocket_url": f"ws://{request.url.hostname}:8000/ws/notifications",
                 **landing_data.model_dump(),
+            },
+        )
+
+    # Custom API documentation route with site styling
+    @app.get("/docs", response_class=HTMLResponse, include_in_schema=False)
+    async def custom_api_docs(request: Request) -> HTMLResponse:
+        """Render custom API documentation page with site styling."""
+        config = container.config()
+        templates = container.templates()
+
+        return templates.TemplateResponse(
+            request,
+            "api_docs.html.j2",
+            {
+                "config": config,
+                "openapi_url": app.openapi_url,
+                "title": app.title,
             },
         )
 
