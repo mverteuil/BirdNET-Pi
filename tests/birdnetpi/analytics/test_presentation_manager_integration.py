@@ -186,20 +186,22 @@ class TestLandingPageIntegration:
         # Configure system mocks
         mock_time.return_value = 1704240000.0  # Fixed time for testing
 
-        mock_inspector.get_cpu_usage.return_value = 45.5
-        mock_inspector.get_cpu_temperature.return_value = 55.0
-        mock_inspector.get_memory_usage.return_value = {
-            "percent": 60.0,
-            "used": 4 * 1024**3,  # 4GB
-            "total": 8 * 1024**3,  # 8GB
-        }
-        mock_inspector.get_disk_usage.return_value = {
-            "percent": 75.0,
-            "used": 75 * 1024**3,  # 75GB
-            "total": 100 * 1024**3,  # 100GB
-        }
+        # Only need to mock get_system_info since that's what the code calls
         mock_inspector.get_system_info.return_value = {
             "boot_time": 1704067200.0,  # 2 days ago
+            "cpu_percent": 45.5,
+            "cpu_temperature": 55.0,
+            "memory": {
+                "percent": 60.0,
+                "used": 4 * 1024**3,  # 4GB
+                "total": 8 * 1024**3,  # 8GB
+            },
+            "disk": {
+                "percent": 75.0,
+                "used": 75 * 1024**3,  # 75GB
+                "total": 100 * 1024**3,  # 100GB
+            },
+            "device_name": "Test Device",
         }
 
         # Get landing page data

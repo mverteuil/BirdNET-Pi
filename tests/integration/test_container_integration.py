@@ -121,8 +121,6 @@ class TestContainerIntegration:
                 "birdnetpi.web.routers.admin_view_routes",
                 "birdnetpi.web.routers.detections_api_routes",
                 "birdnetpi.web.routers.multimedia_view_routes",
-                "birdnetpi.web.routers.overview_api_routes",
-                # "birdnetpi.web.routers.reporting_view_routes",  # Removed from codebase
                 "birdnetpi.web.routers.sqladmin_view_routes",
                 "birdnetpi.web.routers.system_api_routes",
                 "birdnetpi.web.routers.websocket_routes",

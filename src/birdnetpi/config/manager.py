@@ -1,6 +1,7 @@
 """Configuration management with version support."""
 
 import logging
+import os
 import shutil
 from typing import Any
 
@@ -17,6 +18,42 @@ class ConfigManager:
     """Manages configuration loading, saving, and migration."""
 
     CURRENT_VERSION = "2.0.0"
+
+    @staticmethod
+    def _is_profiling_enabled() -> bool:
+        """Check if profiling is enabled via environment variable.
+
+        Returns:
+            bool: True if ENABLE_PROFILING is set to a truthy value
+        """
+        return os.getenv("ENABLE_PROFILING", "").lower() in ("true", "1", "yes")
+
+    @staticmethod
+    def _is_pyinstrument_available() -> bool:
+        """Check if pyinstrument module is available for import.
+
+        Returns:
+            bool: True if pyinstrument can be imported
+        """
+        try:
+            import pyinstrument  # noqa: F401
+
+            return True
+        except ImportError:
+            return False
+
+    @classmethod
+    def should_enable_profiling(cls) -> bool:
+        """Check if profiling should be enabled.
+
+        Profiling is enabled only if:
+        1. ENABLE_PROFILING environment variable is truthy
+        2. pyinstrument module is available
+
+        Returns:
+            bool: True if profiling should be enabled
+        """
+        return cls._is_profiling_enabled() and cls._is_pyinstrument_available()
 
     def __init__(self, path_resolver: PathResolver | None = None):
         """Initialize ConfigManager.

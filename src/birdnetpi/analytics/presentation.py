@@ -265,11 +265,14 @@ class PresentationManager:
 
     def _get_system_status(self) -> SystemStatusDict:
         """Get runtime system metrics."""
-        cpu_percent = SystemInspector.get_cpu_usage()
-        cpu_temp = SystemInspector.get_cpu_temperature()
-        memory_info = SystemInspector.get_memory_usage()
-        disk_info = SystemInspector.get_disk_usage("/")
+        # Get system info first - it includes CPU usage, memory, disk, and temperature
         system_info = SystemInspector.get_system_info()
+
+        # Extract metrics from system_info to avoid duplicate calls
+        cpu_percent = system_info.get("cpu_percent", 0.0)
+        cpu_temp = system_info.get("cpu_temperature")
+        memory_info = system_info.get("memory", {})
+        disk_info = system_info.get("disk", {})
 
         # Calculate uptime from boot time
         boot_time = system_info.get("boot_time", time.time())

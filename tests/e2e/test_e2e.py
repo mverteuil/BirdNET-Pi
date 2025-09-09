@@ -43,3 +43,21 @@ def test_sqladmin_detection_list_e2e(docker_compose_up_down) -> None:
     assert "scientific_name" in response.text or "common_name" in response.text
     assert "confidence" in response.text
     assert "timestamp" in response.text
+
+
+@pytest.mark.expensive
+def test_profiling_disabled_by_default(docker_compose_up_down) -> None:
+    """Test that profiling does NOT work when ENABLE_PROFILING is not set.
+
+    This test is in the main e2e file because it needs the regular Docker
+    environment without profiling enabled.
+    """
+    # Request the root page with ?profile=1
+    response = httpx.get("http://localhost:8000/?profile=1")
+    assert response.status_code == 200
+
+    # Should return the normal page, not profiling output
+    assert "BirdNET-Pi" in response.text
+    assert "pyinstrument" not in response.text.lower()
+    assert "flame" not in response.text.lower()
+    assert "cpu utilization" not in response.text.lower()

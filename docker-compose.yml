@@ -1,6 +1,16 @@
-# WARNING: NEVER use 'docker-compose down -v' as it removes ALL volumes including production data!
-# For E2E tests, use: BIRDNET_DATA_VOLUME=birdnet-test-data docker-compose up/down
+# WARNING: NEVER use 'docker compose down -v' as it removes ALL volumes including production data!
+# For E2E tests, use: BIRDNET_DATA_VOLUME=birdnet-test-data docker compose up/down
 # To remove test volume only: docker volume rm birdnet-test-data
+#
+# PROFILING:
+# - Production image (default): Lean image without profiling tools
+# - Profiling image: Includes pyinstrument for performance analysis
+#
+# To run with profiling enabled:
+#   docker compose --profile profiling up
+# Or explicitly:
+#   docker compose up birdnet-pi-profiling
+# Then access any endpoint with ?profile=1 to see flame graphs
 #
 # PERSISTENCE MODEL:
 # - Config and data are stored in Docker volume (birdnet-data) for persistence
@@ -41,6 +51,47 @@ services:
       BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-v2.1.1}
       # Force PortAudio to use PulseAudio backend instead of ALSA
       PA_ALSA_PLUGHW: 0
+      # Profiling is explicitly disabled in production (pyinstrument not included)
+      ENABLE_PROFILING: 0
+    ports:
+      - "8000:8000"   # Caddy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+    volumes:
+      - ${BIRDNET_DATA_VOLUME:-birdnet-data}:/var/lib/birdnetpi # Persistent data storage
+      - ~/.config/pulse/cookie:/home/birdnetpi/.config/pulse/cookie:ro # PulseAudio auth cookie only (read-only)
+      - ./src:/opt/birdnetpi/src:ro # Source code bind mount for development
+    networks:
+      - birdnetpi-network
+
+  # Profiling variant of birdnet-pi service
+  # Start with: docker compose --profile profiling up
+  # Or: docker compose up birdnet-pi-profiling
+  birdnet-pi-profiling:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: profiling  # Use the profiling stage with pyinstrument
+    container_name: birdnet-pi-profiling
+    profiles: ["profiling"]  # Only starts when explicitly requested
+    restart: unless-stopped
+    depends_on:
+      birdnet-pi-init:
+        condition: service_completed_successfully
+    environment:
+      PULSE_SERVER: host.docker.internal:4713
+      DOCKER_CONTAINER: "true"
+      BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-v2.1.1}
+      # Force PortAudio to use PulseAudio backend instead of ALSA
+      PA_ALSA_PLUGHW: 0
+      # Profiling is always enabled for this service
+      ENABLE_PROFILING: 1
     ports:
       - "8000:8000"   # Caddy
     healthcheck:

@@ -157,6 +157,17 @@ LABEL logging=json
 CMD ["/usr/local/bin/supervisor-wrapper.py"]
 
 # ============================================================================
+# Profiling stage - extends runtime with profiling tools
+# ============================================================================
+FROM runtime AS profiling
+
+# Install pyinstrument for profiling capabilities
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-install-project --group profiling
+
+# ============================================================================
 # Init stage - for permission setup (runs as root)
 # ============================================================================
 FROM runtime AS init

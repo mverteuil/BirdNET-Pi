@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [dependency-groups]
 dev = [
+  {include-group = "profiling"},
   "httpx>=0.28.1",
   "pandas-stubs",
   "pyleak>=0.1.14",
@@ -24,6 +25,9 @@ dev = [
   "types-tqdm",
   "types-tzlocal",
   "types-urllib3>=1.26.25.14"
+]
+profiling = [
+  "pyinstrument>=5.1.1"
 ]
 
 [project]
@@ -89,6 +93,7 @@ generate-dummy-data = "birdnetpi.cli.generate_dummy_data:main"
 install-assets = "birdnetpi.cli.install_assets:main"
 manage-releases = "birdnetpi.cli.manage_releases:main"
 manage-translations = "birdnetpi.cli.manage_translations:main"
+profile-landing-page = "birdnetpi.cli.profile_landing_page:main"
 
 [tool.coverage.run]
 source = ["src/birdnetpi"]

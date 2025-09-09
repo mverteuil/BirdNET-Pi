@@ -39,6 +39,27 @@ def presentation_manager(mock_analytics_manager, mock_detection_query_service, m
 
 
 @pytest.fixture
+def mock_system_info_base():
+    """Create a base mock system info response with all metrics."""
+    return {
+        "boot_time": 1703980800.0,  # 2023-12-31 00:00:00
+        "cpu_percent": 35.7,
+        "cpu_temperature": 48.5,
+        "memory": {
+            "percent": 72.3,
+            "used": 8589934592,  # 8GB
+            "total": 17179869184,  # 16GB
+        },
+        "disk": {
+            "percent": 45.0,
+            "used": 53687091200,  # 50GB
+            "total": 107374182400,  # 100GB
+        },
+        "device_name": "Test Device",
+    }
+
+
+@pytest.fixture
 def sample_detections():
     """Create sample detection objects for testing."""
     return [
@@ -80,24 +101,12 @@ class TestLandingPageData:
         mock_analytics_manager,
         mock_detection_query_service,
         sample_detections,
+        mock_system_info_base,
     ):
         """Test complete landing page data assembly."""
-        # Configure SystemInspector mocks
-        mock_inspector.get_cpu_usage.return_value = 45.5
-        mock_inspector.get_cpu_temperature.return_value = 55.2
-        mock_inspector.get_memory_usage.return_value = {
-            "percent": 65.0,
-            "used": 2147483648,  # 2GB
-            "total": 3221225472,  # 3GB
-        }
-        mock_inspector.get_disk_usage.return_value = {
-            "percent": 80.0,
-            "used": 107374182400,  # 100GB
-            "total": 134217728000,  # 125GB
-        }
-        mock_inspector.get_system_info.return_value = {
-            "boot_time": 1704067200.0,  # 2024-01-01 00:00:00
-        }
+        # Configure SystemInspector mock - use the base fixture
+        mock_system_info_base["boot_time"] = 1704067200.0  # Override boot time for this test
+        mock_inspector.get_system_info.return_value = mock_system_info_base
 
         # Configure AudioDeviceService mock
         mock_audio_device = MagicMock()
@@ -256,10 +265,10 @@ class TestLandingPageData:
         assert data.visualization_data[0].y == 0.95
         assert data.visualization_data[0].color == "#2e7d32"  # common = green
 
-        # Verify system status
-        assert data.system_status.cpu.percent == 45.5
-        assert data.system_status.cpu.temp == 55.2
-        assert data.system_status.memory.percent == 65.0
+        # Verify system status matches the mocked values
+        assert data.system_status.cpu.percent == mock_system_info_base["cpu_percent"]
+        assert data.system_status.cpu.temp == mock_system_info_base["cpu_temperature"]
+        assert data.system_status.memory.percent == mock_system_info_base["memory"]["percent"]
         assert data.system_status.uptime == "1"  # Numeric value only
 
 
@@ -381,28 +390,19 @@ class TestSystemStatus:
     @patch("birdnetpi.analytics.presentation.SystemInspector")
     @patch("time.time")
     def test_get_system_status(
-        self, mock_time, mock_inspector, mock_audio_service, presentation_manager
+        self,
+        mock_time,
+        mock_inspector,
+        mock_audio_service,
+        presentation_manager,
+        mock_system_info_base,
     ):
         """Test system status retrieval and formatting."""
         # Configure time mock
         mock_time.return_value = 1704240000.0  # 2024-01-03 00:00:00
 
-        # Configure SystemInspector mocks
-        mock_inspector.get_cpu_usage.return_value = 35.7
-        mock_inspector.get_cpu_temperature.return_value = 48.5
-        mock_inspector.get_memory_usage.return_value = {
-            "percent": 72.3,
-            "used": 8589934592,  # 8GB
-            "total": 17179869184,  # 16GB
-        }
-        mock_inspector.get_disk_usage.return_value = {
-            "percent": 45.0,
-            "used": 53687091200,  # 50GB
-            "total": 107374182400,  # 100GB
-        }
-        mock_inspector.get_system_info.return_value = {
-            "boot_time": 1703980800.0,  # 2023-12-31 00:00:00 (3 days ago)
-        }
+        # Only need to mock get_system_info since that's all we call now
+        mock_inspector.get_system_info.return_value = mock_system_info_base
 
         # Configure AudioDeviceService mock
         mock_audio_device = MagicMock()
@@ -413,18 +413,26 @@ class TestSystemStatus:
         status = presentation_manager._get_system_status()
 
         # Verify CPU metrics
-        assert status.cpu.percent == 35.7
-        assert status.cpu.temp == 48.5
+        assert status.cpu.percent == mock_system_info_base["cpu_percent"]
+        assert status.cpu.temp == mock_system_info_base["cpu_temperature"]
 
         # Verify memory metrics
-        assert status.memory.percent == 72.3
-        assert status.memory.used_gb == pytest.approx(8.0, rel=0.01)
-        assert status.memory.total_gb == pytest.approx(16.0, rel=0.01)
+        assert status.memory.percent == mock_system_info_base["memory"]["percent"]
+        assert status.memory.used_gb == pytest.approx(
+            mock_system_info_base["memory"]["used"] / (1024**3), rel=0.01
+        )
+        assert status.memory.total_gb == pytest.approx(
+            mock_system_info_base["memory"]["total"] / (1024**3), rel=0.01
+        )
 
         # Verify disk metrics
-        assert status.disk.percent == 45.0
-        assert status.disk.used_gb == pytest.approx(50.0, rel=0.01)
-        assert status.disk.total_gb == pytest.approx(100.0, rel=0.01)
+        assert status.disk.percent == mock_system_info_base["disk"]["percent"]
+        assert status.disk.used_gb == pytest.approx(
+            mock_system_info_base["disk"]["used"] / (1024**3), rel=0.01
+        )
+        assert status.disk.total_gb == pytest.approx(
+            mock_system_info_base["disk"]["total"] / (1024**3), rel=0.01
+        )
 
         # Verify audio device is retrieved from AudioDeviceService
         assert status.audio.level_db == -60  # Silence/no signal
@@ -437,25 +445,20 @@ class TestSystemStatus:
     @patch("birdnetpi.analytics.presentation.SystemInspector")
     @patch("time.time")
     def test_get_system_status_no_temperature(
-        self, mock_time, mock_inspector, mock_audio_service, presentation_manager
+        self,
+        mock_time,
+        mock_inspector,
+        mock_audio_service,
+        presentation_manager,
+        mock_system_info_base,
     ):
         """Test system status when temperature is not available."""
         mock_time.return_value = 1704240000.0
 
-        # Configure mocks with no temperature
-        mock_inspector.get_cpu_usage.return_value = 50.0
-        mock_inspector.get_cpu_temperature.return_value = None  # No temperature sensor
-        mock_inspector.get_memory_usage.return_value = {
-            "percent": 50,
-            "used": 1073741824,
-            "total": 2147483648,
-        }
-        mock_inspector.get_disk_usage.return_value = {
-            "percent": 50,
-            "used": 5368709120,
-            "total": 10737418240,
-        }
-        mock_inspector.get_system_info.return_value = {"boot_time": 1704153600.0}
+        # Create a copy of the fixture and remove temperature field
+        system_info_no_temp = mock_system_info_base.copy()
+        del system_info_no_temp["cpu_temperature"]
+        mock_inspector.get_system_info.return_value = system_info_no_temp
 
         # Configure AudioDeviceService mock with no devices
         mock_audio_service_instance = mock_audio_service.return_value

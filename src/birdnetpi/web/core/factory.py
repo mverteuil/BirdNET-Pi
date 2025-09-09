@@ -15,7 +15,6 @@ from birdnetpi.web.routers import (
     detections_api_routes,
     health_api_routes,
     multimedia_view_routes,
-    overview_api_routes,
     reports_view_routes,
     sqladmin_view_routes,
     system_api_routes,
@@ -72,6 +71,15 @@ def create_app() -> FastAPI:
     # Add structured request logging middleware
     app.add_middleware(StructuredRequestLoggingMiddleware)
 
+    # Add pyinstrument profiling middleware (only in development)
+    # Access any endpoint with ?profile=1 to see profiling output
+    from birdnetpi.config.manager import ConfigManager
+
+    if ConfigManager.should_enable_profiling():
+        from birdnetpi.web.middleware.pyinstrument_profiling import PyInstrumentProfilerMiddleware
+
+        app.add_middleware(PyInstrumentProfilerMiddleware, html_output=True)
+
     # Configure Jinja2 templates with i18n support
     templates = container.templates()
     setup_jinja2_i18n(templates)
@@ -85,7 +93,6 @@ def create_app() -> FastAPI:
             "birdnetpi.web.routers.detections_api_routes",
             "birdnetpi.web.routers.health_api_routes",
             "birdnetpi.web.routers.multimedia_view_routes",
-            "birdnetpi.web.routers.overview_api_routes",
             "birdnetpi.web.routers.reports_view_routes",
             "birdnetpi.web.routers.sqladmin_view_routes",
             "birdnetpi.web.routers.system_api_routes",
@@ -106,7 +113,6 @@ def create_app() -> FastAPI:
 
     # System API routes
     app.include_router(system_api_routes.router, prefix="/api/system", tags=["System API"])
-    app.include_router(overview_api_routes.router, prefix="/api", tags=["Overview API"])
 
     # Core API routes (detections endpoints)
     app.include_router(
