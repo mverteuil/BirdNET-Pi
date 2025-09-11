@@ -383,3 +383,90 @@ class AnalyticsManager:
             return "regular"
         else:
             return "uncommon"
+
+    # === NEW METHODS - Delegating to DetectionQueryService ===
+
+    async def calculate_diversity_timeline(
+        self, start_date: datetime, end_date: datetime, temporal_resolution: str = "daily"
+    ) -> list[dict]:
+        """Get diversity metrics over time from DetectionQueryService."""
+        return await self.detection_query_service.get_diversity_metrics(
+            start_date=start_date, end_date=end_date, temporal_resolution=temporal_resolution
+        )
+
+    async def calculate_species_accumulation(
+        self, start_date: datetime, end_date: datetime, method: str = "collector"
+    ) -> dict:
+        """Get species accumulation curve from DetectionQueryService."""
+        return await self.detection_query_service.get_species_accumulation_curve(
+            start_date=start_date, end_date=end_date, method=method
+        )
+
+    async def calculate_community_similarity(
+        self, periods: list[tuple[datetime, datetime]], index_type: str = "jaccard"
+    ) -> dict:
+        """Calculate community similarity using DetectionQueryService."""
+        matrix = await self.detection_query_service.get_community_similarity_matrix(
+            periods=periods, index_type=index_type
+        )
+
+        # Format for display with period labels
+        period_labels = [f"Period {i + 1}" for i in range(len(periods))]
+        return {"labels": period_labels, "matrix": matrix.tolist(), "index_type": index_type}
+
+    async def calculate_beta_diversity(
+        self, start_date: datetime, end_date: datetime, window_size: timedelta
+    ) -> list[dict]:
+        """Get temporal beta diversity from DetectionQueryService."""
+        return await self.detection_query_service.get_temporal_beta_diversity(
+            start_date=start_date, end_date=end_date, window_size=window_size
+        )
+
+    async def get_weather_correlation_data(self, start_date: datetime, end_date: datetime) -> dict:
+        """Get weather correlation data from DetectionQueryService."""
+        return await self.detection_query_service.get_weather_correlations(
+            start_date=start_date, end_date=end_date
+        )
+
+    # === COMPARISON AND ANALYSIS METHODS ===
+
+    async def compare_period_diversity(
+        self, period1: tuple[datetime, datetime], period2: tuple[datetime, datetime]
+    ) -> dict:
+        """Compare diversity metrics between two periods."""
+        # Get metrics for both periods
+        metrics1 = await self.detection_query_service.get_diversity_metrics(
+            start_date=period1[0], end_date=period1[1], temporal_resolution="daily"
+        )
+
+        metrics2 = await self.detection_query_service.get_diversity_metrics(
+            start_date=period2[0], end_date=period2[1], temporal_resolution="daily"
+        )
+
+        # Calculate averages and differences
+        def avg_metric(metrics: list[dict], key: str) -> float:
+            values = [m[key] for m in metrics if key in m]
+            return sum(values) / len(values) if values else 0
+
+        return {
+            "period1": {
+                "avg_shannon": avg_metric(metrics1, "shannon"),
+                "avg_simpson": avg_metric(metrics1, "simpson"),
+                "avg_richness": avg_metric(metrics1, "richness"),
+                "avg_evenness": avg_metric(metrics1, "evenness"),
+            },
+            "period2": {
+                "avg_shannon": avg_metric(metrics2, "shannon"),
+                "avg_simpson": avg_metric(metrics2, "simpson"),
+                "avg_richness": avg_metric(metrics2, "richness"),
+                "avg_evenness": avg_metric(metrics2, "evenness"),
+            },
+            "changes": {
+                "shannon_change": avg_metric(metrics2, "shannon") - avg_metric(metrics1, "shannon"),
+                "simpson_change": avg_metric(metrics2, "simpson") - avg_metric(metrics1, "simpson"),
+                "richness_change": avg_metric(metrics2, "richness")
+                - avg_metric(metrics1, "richness"),
+                "evenness_change": avg_metric(metrics2, "evenness")
+                - avg_metric(metrics1, "evenness"),
+            },
+        }
