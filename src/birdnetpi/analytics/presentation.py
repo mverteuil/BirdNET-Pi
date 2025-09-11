@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Generic, TypeVar
 
 from pydantic import BaseModel
@@ -567,3 +567,310 @@ class PresentationManager:
     def format_api_response(self, data: T, status: str = "success") -> APIResponse[T]:
         """Format data for API response."""
         return APIResponse(status=status, timestamp=datetime.now().isoformat(), data=data)
+
+    # === NEW ANALYSIS PAGE METHODS ===
+
+    async def get_analysis_page_data(
+        self,
+        primary_period: str,
+        comparison_period: str | None = None,
+        analysis_types: list[str] | None = None,
+    ) -> dict:
+        """Format comprehensive analysis page data.
+
+        Args:
+            primary_period: Main period to analyze ("day", "week", "month", "season", "year")
+            comparison_period: Optional comparison period
+            analysis_types: Which analyses to include
+
+        Returns:
+            Formatted data for analysis template
+        """
+        analysis_types = analysis_types or [
+            "diversity",
+            "accumulation",
+            "similarity",
+            "beta",
+            "weather",
+            "patterns",
+        ]
+
+        # Calculate date ranges
+        primary_dates = self._calculate_analysis_period_dates(primary_period)
+        comparison_dates = (
+            self._calculate_analysis_period_dates(comparison_period) if comparison_period else None
+        )
+
+        result = {"period": primary_period, "comparison_period": comparison_period, "analyses": {}}
+
+        # Get diversity timeline
+        if "diversity" in analysis_types:
+            diversity_data = await self.analytics_manager.calculate_diversity_timeline(
+                start_date=primary_dates[0],
+                end_date=primary_dates[1],
+                temporal_resolution=self._get_resolution_for_period(primary_period),
+            )
+            result["analyses"]["diversity"] = self._format_diversity_timeline(diversity_data)
+
+            # Add comparison if requested
+            if comparison_dates:
+                comparison_diversity = await self.analytics_manager.compare_period_diversity(
+                    period1=primary_dates, period2=comparison_dates
+                )
+                result["analyses"]["diversity_comparison"] = self._format_diversity_comparison(
+                    comparison_diversity
+                )
+
+        # Get species accumulation
+        if "accumulation" in analysis_types:
+            accumulation_data = await self.analytics_manager.calculate_species_accumulation(
+                start_date=primary_dates[0], end_date=primary_dates[1], method="collector"
+            )
+            result["analyses"]["accumulation"] = self._format_accumulation_curve(accumulation_data)
+
+        # Get community similarity matrix
+        if "similarity" in analysis_types:
+            # Create time windows for similarity analysis
+            periods = self._generate_similarity_periods(primary_dates[0], primary_dates[1])
+            similarity_data = await self.analytics_manager.calculate_community_similarity(
+                periods=periods, index_type="jaccard"
+            )
+            result["analyses"]["similarity"] = self._format_similarity_matrix(similarity_data)
+
+        # Get beta diversity
+        if "beta" in analysis_types:
+            window_size = self._get_window_size_for_period(primary_period)
+            beta_data = await self.analytics_manager.calculate_beta_diversity(
+                start_date=primary_dates[0], end_date=primary_dates[1], window_size=window_size
+            )
+            result["analyses"]["beta_diversity"] = self._format_beta_diversity(beta_data)
+
+        # Get weather correlations
+        if "weather" in analysis_types:
+            weather_data = await self.analytics_manager.get_weather_correlation_data(
+                start_date=primary_dates[0], end_date=primary_dates[1]
+            )
+            result["analyses"]["weather"] = self._format_weather_correlations(weather_data)
+
+        # Get existing pattern analyses
+        if "patterns" in analysis_types:
+            # Use existing methods for temporal patterns
+            temporal = await self.analytics_manager.get_temporal_patterns()
+            heatmap = await self.analytics_manager.get_aggregate_hourly_pattern(
+                days=self._get_days_for_period(primary_period)
+            )
+
+            result["analyses"]["temporal_patterns"] = {
+                "hourly": temporal["hourly_distribution"],
+                "peak_hour": temporal["peak_hour"],
+                "periods": temporal["periods"],
+                "heatmap": heatmap,
+            }
+
+        # Add summary statistics
+        result["summary"] = await self._generate_analysis_summary(primary_dates, comparison_dates)
+
+        return result
+
+    # === FORMATTING METHODS ===
+
+    def _format_diversity_timeline(self, data: list[dict]) -> dict:
+        """Format diversity metrics for timeline visualization."""
+        return {
+            "periods": [d["period"] for d in data],
+            "shannon": [d["shannon"] for d in data],
+            "simpson": [d["simpson"] for d in data],
+            "richness": [d["richness"] for d in data],
+            "evenness": [d["evenness"] for d in data],
+            "total_detections": [d["total_detections"] for d in data],
+        }
+
+    def _format_diversity_comparison(self, data: dict) -> dict:
+        """Format diversity comparison for display."""
+
+        def format_change(value: float) -> dict:
+            return {
+                "value": round(value, 3),
+                "trend": "up" if value > 0 else "down" if value < 0 else "stable",
+                "significant": abs(value) > 0.1,  # Threshold for significance
+            }
+
+        return {
+            "period1_metrics": data["period1"],
+            "period2_metrics": data["period2"],
+            "changes": {key: format_change(value) for key, value in data["changes"].items()},
+        }
+
+    def _format_accumulation_curve(self, data: dict) -> dict:
+        """Format accumulation curve for visualization."""
+        return {
+            "samples": data["samples"],
+            "species_counts": data["species_counts"],
+            "method": data["method"],
+            "total_samples": len(data["samples"]),
+            "total_species": max(data["species_counts"]) if data["species_counts"] else 0,
+        }
+
+    def _format_similarity_matrix(self, data: dict) -> dict:
+        """Format similarity matrix for heatmap display."""
+        matrix = data["matrix"]
+        labels = data["labels"]
+
+        # Convert to percentage and threshold for display
+        formatted_matrix = []
+        for row in matrix:
+            formatted_row = [
+                {
+                    "value": round(val * 100, 1),
+                    "display": f"{round(val * 100)}" if val > 0.5 else "",
+                    "intensity": self._get_intensity_class(val),
+                }
+                for val in row
+            ]
+            formatted_matrix.append(formatted_row)
+
+        return {"labels": labels, "matrix": formatted_matrix, "index_type": data["index_type"]}
+
+    def _format_beta_diversity(self, data: list[dict]) -> dict:
+        """Format beta diversity for visualization."""
+        return {
+            "periods": [d["period_start"] for d in data],
+            "turnover_rates": [d["turnover_rate"] for d in data],
+            "species_gained": [d["species_gained"] for d in data],
+            "species_lost": [d["species_lost"] for d in data],
+            "total_species": [d["total_species"] for d in data],
+        }
+
+    def _format_weather_correlations(self, data: dict) -> dict:
+        """Format weather correlation data for scatter plots."""
+        # Calculate correlation coefficients if data available
+        correlations = {}
+        if data["detection_counts"] and data["temperature"]:
+            # Use AnalyticsManager for correlation calculations
+            correlations = {
+                "temperature": self.analytics_manager.calculate_correlation(
+                    data["detection_counts"], data["temperature"]
+                ),
+                "humidity": self.analytics_manager.calculate_correlation(
+                    data["detection_counts"], data["humidity"]
+                ),
+                "wind_speed": self.analytics_manager.calculate_correlation(
+                    data["detection_counts"], data["wind_speed"]
+                ),
+            }
+
+        return {
+            "hours": data["hours"],
+            "detection_counts": data["detection_counts"],
+            "weather_variables": {
+                "temperature": data["temperature"],
+                "humidity": data["humidity"],
+                "wind_speed": data["wind_speed"],
+                "precipitation": data["precipitation"],
+            },
+            "correlations": correlations,
+        }
+
+    # === HELPER METHODS ===
+
+    def _calculate_analysis_period_dates(self, period: str) -> tuple[datetime, datetime]:
+        """Calculate start and end dates for analysis period."""
+        now = datetime.now(UTC)
+
+        periods = {
+            "day": (now - timedelta(days=1), now),
+            "week": (now - timedelta(days=7), now),
+            "month": (now - timedelta(days=30), now),
+            "season": (now - timedelta(days=90), now),
+            "year": (now - timedelta(days=365), now),
+        }
+
+        return periods.get(period, periods["day"])
+
+    def _get_resolution_for_period(self, period: str) -> str:
+        """Get appropriate temporal resolution for period."""
+        resolutions = {
+            "day": "hourly",
+            "week": "daily",
+            "month": "daily",
+            "season": "weekly",
+            "year": "weekly",
+        }
+        return resolutions.get(period, "daily")
+
+    def _get_window_size_for_period(self, period: str) -> timedelta:
+        """Get appropriate window size for beta diversity."""
+        windows = {
+            "day": timedelta(hours=6),
+            "week": timedelta(days=1),
+            "month": timedelta(days=7),
+            "season": timedelta(days=14),
+            "year": timedelta(days=30),
+        }
+        return windows.get(period, timedelta(days=1))
+
+    def _get_days_for_period(self, period: str) -> int:
+        """Get number of days for the period."""
+        days = {"day": 1, "week": 7, "month": 30, "season": 90, "year": 365}
+        return days.get(period, 7)
+
+    def _get_intensity_class(self, value: float) -> str:
+        """Get CSS class for intensity coloring."""
+        if value >= 0.8:
+            return "very-high"
+        elif value >= 0.6:
+            return "high"
+        elif value >= 0.4:
+            return "medium"
+        elif value >= 0.2:
+            return "low"
+        else:
+            return "very-low"
+
+    def _generate_similarity_periods(
+        self, start_date: datetime, end_date: datetime
+    ) -> list[tuple[datetime, datetime]]:
+        """Generate time periods for similarity analysis."""
+        total_duration = end_date - start_date
+        n_periods = min(6, max(2, int(total_duration.days / 7)))  # 2-6 periods
+
+        period_duration = total_duration / n_periods
+        periods = []
+
+        for i in range(n_periods):
+            period_start = start_date + (period_duration * i)
+            period_end = start_date + (period_duration * (i + 1))
+            periods.append((period_start, period_end))
+
+        return periods
+
+    async def _generate_analysis_summary(
+        self,
+        primary_dates: tuple[datetime, datetime],
+        comparison_dates: tuple[datetime, datetime] | None,
+    ) -> dict:
+        """Generate summary statistics for the analysis page."""
+        # Get basic metrics for primary period
+        primary_summary = await self.analytics_manager.get_dashboard_summary()
+
+        summary = {
+            "primary_period": {
+                "start": primary_dates[0].isoformat(),
+                "end": primary_dates[1].isoformat(),
+                "total_species": primary_summary["species_total"],
+                "total_detections": primary_summary[
+                    "detections_today"
+                ],  # Would need period-specific
+            }
+        }
+
+        if comparison_dates:
+            # Would need to implement period-specific summary
+            summary["comparison_period"] = {
+                "start": comparison_dates[0].isoformat(),
+                "end": comparison_dates[1].isoformat(),
+                "total_species": 0,  # Placeholder
+                "total_detections": 0,  # Placeholder
+            }
+
+        return summary

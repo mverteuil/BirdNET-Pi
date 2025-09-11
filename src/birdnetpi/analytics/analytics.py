@@ -647,6 +647,42 @@ class AnalyticsManager:
             start_date=start_date, end_date=end_date
         )
 
+    def calculate_correlation(self, x: list, y: list) -> float:
+        """Calculate Pearson correlation coefficient between two variables.
+
+        Args:
+            x: First variable values
+            y: Second variable values
+
+        Returns:
+            Correlation coefficient between -1 and 1
+        """
+        # Remove None values
+        pairs = [
+            (xi, yi) for xi, yi in zip(x, y, strict=False) if xi is not None and yi is not None
+        ]
+        if len(pairs) < 2:
+            return 0.0
+
+        x_vals = [p[0] for p in pairs]
+        y_vals = [p[1] for p in pairs]
+
+        n = len(x_vals)
+        if n == 0:
+            return 0.0
+
+        x_mean = sum(x_vals) / n
+        y_mean = sum(y_vals) / n
+
+        numerator = sum(
+            (xi - x_mean) * (yi - y_mean) for xi, yi in zip(x_vals, y_vals, strict=False)
+        )
+        denominator = (
+            sum((xi - x_mean) ** 2 for xi in x_vals) * sum((yi - y_mean) ** 2 for yi in y_vals)
+        ) ** 0.5
+
+        return round(numerator / denominator, 3) if denominator != 0 else 0.0
+
     # === COMPARISON AND ANALYSIS METHODS ===
 
     async def compare_period_diversity(
