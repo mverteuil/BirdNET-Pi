@@ -1,5 +1,10 @@
+import math
+import random
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 from typing import TypedDict
+
+import numpy as np
 
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.queries import DetectionQueryService
@@ -384,43 +389,257 @@ class AnalyticsManager:
         else:
             return "uncommon"
 
-    # === NEW METHODS - Delegating to DetectionQueryService ===
+    # === ECOLOGICAL ANALYSIS METHODS ===
 
     async def calculate_diversity_timeline(
         self, start_date: datetime, end_date: datetime, temporal_resolution: str = "daily"
     ) -> list[dict]:
-        """Get diversity metrics over time from DetectionQueryService."""
-        return await self.detection_query_service.get_diversity_metrics(
+        """Calculate diversity metrics over time.
+
+        Includes Shannon diversity, Simpson diversity, species richness, and Pielou's evenness.
+        """
+        # Get raw species counts by period
+        period_data = await self.detection_query_service.get_species_counts_by_period(
             start_date=start_date, end_date=end_date, temporal_resolution=temporal_resolution
         )
 
-    async def calculate_species_accumulation(
+        metrics = []
+        for period_info in period_data:
+            species_counts = period_info["species_counts"]
+            total = sum(species_counts.values())
+            richness = len(species_counts)
+
+            if total > 0:
+                # Shannon diversity index: H' = -Σ(pi * ln(pi))
+                shannon = -sum(
+                    (count / total) * math.log(count / total)
+                    for count in species_counts.values()
+                    if count > 0
+                )
+
+                # Simpson diversity index: D = 1 - Σ(pi²)
+                simpson = 1 - sum((count / total) ** 2 for count in species_counts.values())
+
+                # Pielou's evenness: J = H' / ln(S)
+                evenness = shannon / math.log(richness) if richness > 1 else 1.0
+            else:
+                shannon = simpson = evenness = 0.0
+
+            metrics.append(
+                {
+                    "period": period_info["period"],
+                    "richness": richness,
+                    "shannon": round(shannon, 4),
+                    "simpson": round(simpson, 4),
+                    "evenness": round(evenness, 4),
+                    "total_detections": total,
+                }
+            )
+
+        return metrics
+
+    async def calculate_species_accumulation(  # noqa: C901
         self, start_date: datetime, end_date: datetime, method: str = "collector"
     ) -> dict:
-        """Get species accumulation curve from DetectionQueryService."""
-        return await self.detection_query_service.get_species_accumulation_curve(
-            start_date=start_date, end_date=end_date, method=method
+        """Generate species accumulation curve.
+
+        Methods:
+        - collector: Actual order of observation
+        - random: Average over multiple random permutations
+        - rarefaction: Expected species for given sample sizes
+        """
+        # Get raw detection data
+        detections = await self.detection_query_service.get_detections_for_accumulation(
+            start_date=start_date, end_date=end_date
         )
+
+        if not detections:
+            return {"samples": [], "species_counts": [], "method": method}
+
+        if method == "collector":
+            # Collector's curve - actual order of observation
+            species_seen = set()
+            accumulation = []
+
+            for i, (_, species) in enumerate(detections, 1):
+                species_seen.add(species)
+                accumulation.append({"sample": i, "species_count": len(species_seen)})
+
+            return {
+                "samples": [a["sample"] for a in accumulation],
+                "species_counts": [a["species_count"] for a in accumulation],
+                "method": method,
+            }
+
+        elif method == "random":
+            # Random accumulation - average over multiple permutations
+            n_permutations = min(100, len(detections))
+            all_species = [d[1] for d in detections]
+            max_samples = len(all_species)
+
+            accumulation_curves = []
+            for _ in range(n_permutations):
+                random.shuffle(all_species)
+                species_seen = set()
+                curve = []
+
+                for species in all_species:
+                    species_seen.add(species)
+                    curve.append(len(species_seen))
+
+                accumulation_curves.append(curve)
+
+            # Average across permutations
+            mean_curve = np.mean(accumulation_curves, axis=0)
+
+            return {
+                "samples": list(range(1, max_samples + 1)),
+                "species_counts": mean_curve.tolist(),
+                "method": method,
+            }
+
+        else:  # rarefaction
+            # Rarefaction curve - expected species for given sample sizes
+            all_species = [d[1] for d in detections]
+            species_counts = defaultdict(int)
+            for species in all_species:
+                species_counts[species] += 1
+
+            total_individuals = len(all_species)
+            max_sample_size = min(total_individuals, 1000)
+
+            rarefaction_curve = []
+            for sample_size in range(1, max_sample_size + 1, max(1, max_sample_size // 100)):
+                # Calculate expected species richness
+                expected_species = 0
+                for _species, count in species_counts.items():
+                    # Probability that species is NOT in sample
+                    prob_absent = 1.0
+                    for i in range(sample_size):
+                        prob_absent *= (total_individuals - count - i) / (total_individuals - i)
+                        if prob_absent <= 0:
+                            break
+                    expected_species += 1 - max(0, prob_absent)
+
+                rarefaction_curve.append(
+                    {
+                        "sample_size": sample_size,
+                        "expected_species": expected_species,
+                    }
+                )
+
+            return {
+                "samples": [r["sample_size"] for r in rarefaction_curve],
+                "species_counts": [r["expected_species"] for r in rarefaction_curve],
+                "method": method,
+            }
 
     async def calculate_community_similarity(
         self, periods: list[tuple[datetime, datetime]], index_type: str = "jaccard"
     ) -> dict:
-        """Calculate community similarity using DetectionQueryService."""
-        matrix = await self.detection_query_service.get_community_similarity_matrix(
-            periods=periods, index_type=index_type
-        )
+        """Calculate community similarity between time periods.
+
+        Index types:
+        - jaccard: |A ∩ B| / |A U B|
+        - sorensen: 2|A ∩ B| / (|A| + |B|)
+        - bray_curtis: 2 * min_abundances / total_abundances
+        """
+        # Get species counts for each period
+        period_data = await self.detection_query_service.get_species_counts_for_periods(periods)
+
+        n_periods = len(periods)
+        similarity_matrix = np.zeros((n_periods, n_periods))
+
+        for i in range(n_periods):
+            for j in range(n_periods):
+                if i == j:
+                    similarity_matrix[i, j] = 1.0
+                elif j > i:
+                    similarity = self._calculate_similarity(
+                        period_data[i], period_data[j], index_type
+                    )
+                    similarity_matrix[i, j] = similarity
+                    similarity_matrix[j, i] = similarity
 
         # Format for display with period labels
         period_labels = [f"Period {i + 1}" for i in range(len(periods))]
-        return {"labels": period_labels, "matrix": matrix.tolist(), "index_type": index_type}
+        return {
+            "labels": period_labels,
+            "matrix": similarity_matrix.tolist(),
+            "index_type": index_type,
+        }
+
+    def _calculate_similarity(
+        self,
+        community1: dict[str, int],
+        community2: dict[str, int],
+        index_type: str,
+    ) -> float:
+        """Calculate similarity index between two communities."""
+        species1 = set(community1.keys())
+        species2 = set(community2.keys())
+
+        if index_type == "jaccard":
+            # Jaccard index: |A ∩ B| / |A U B|
+            intersection = len(species1 & species2)
+            union = len(species1 | species2)
+            return intersection / union if union > 0 else 0.0
+
+        elif index_type == "sorensen":
+            # Sørensen-Dice index: 2|A ∩ B| / (|A| + |B|)
+            intersection = len(species1 & species2)
+            total = len(species1) + len(species2)
+            return 2 * intersection / total if total > 0 else 0.0
+
+        else:  # bray_curtis
+            # Bray-Curtis similarity: 2 * min_abundances / total_abundances
+            all_species = species1 | species2
+            min_sum = sum(min(community1.get(sp, 0), community2.get(sp, 0)) for sp in all_species)
+            total_sum = sum(community1.values()) + sum(community2.values())
+            return 2 * min_sum / total_sum if total_sum > 0 else 0.0
 
     async def calculate_beta_diversity(
         self, start_date: datetime, end_date: datetime, window_size: timedelta
     ) -> list[dict]:
-        """Get temporal beta diversity from DetectionQueryService."""
-        return await self.detection_query_service.get_temporal_beta_diversity(
+        """Calculate temporal beta diversity (species turnover).
+
+        Beta diversity measures how species composition changes over time.
+        Turnover rate = (species gained + species lost) / (2 * total species)
+        """
+        # Get species sets for sliding windows
+        windows = await self.detection_query_service.get_species_sets_by_window(
             start_date=start_date, end_date=end_date, window_size=window_size
         )
+
+        beta_diversity = []
+        for i in range(len(windows) - 1):
+            current_window = windows[i]
+            next_window = windows[i + 1]
+
+            current_species = set(current_window["species"])
+            next_species = set(next_window["species"])
+
+            # Calculate turnover
+            gained = next_species - current_species
+            lost = current_species - next_species
+            total_species = len(current_species | next_species)
+
+            turnover_rate = (
+                (len(gained) + len(lost)) / (2 * total_species) if total_species > 0 else 0
+            )
+
+            beta_diversity.append(
+                {
+                    "period_start": current_window["period_start"],
+                    "period_end": current_window["period_end"],
+                    "turnover_rate": round(turnover_rate, 4),
+                    "species_gained": len(gained),
+                    "species_lost": len(lost),
+                    "total_species": len(current_species),
+                }
+            )
+
+        return beta_diversity
 
     async def get_weather_correlation_data(self, start_date: datetime, end_date: datetime) -> dict:
         """Get weather correlation data from DetectionQueryService."""
@@ -434,12 +653,12 @@ class AnalyticsManager:
         self, period1: tuple[datetime, datetime], period2: tuple[datetime, datetime]
     ) -> dict:
         """Compare diversity metrics between two periods."""
-        # Get metrics for both periods
-        metrics1 = await self.detection_query_service.get_diversity_metrics(
+        # Get metrics for both periods using our calculate method
+        metrics1 = await self.calculate_diversity_timeline(
             start_date=period1[0], end_date=period1[1], temporal_resolution="daily"
         )
 
-        metrics2 = await self.detection_query_service.get_diversity_metrics(
+        metrics2 = await self.calculate_diversity_timeline(
             start_date=period2[0], end_date=period2[1], temporal_resolution="daily"
         )
 

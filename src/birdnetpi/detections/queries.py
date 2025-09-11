@@ -8,14 +8,12 @@ write operations to protect SD card longevity.
 
 import datetime
 import logging
-import math
 from collections import defaultdict
 from datetime import datetime as dt
 from datetime import timedelta
 from typing import Any
 from uuid import UUID
 
-import numpy as np
 from dateutil import parser as date_parser
 from sqlalchemy import and_, desc, func, select, text
 from sqlalchemy.exc import SQLAlchemyError
@@ -983,13 +981,13 @@ class DetectionQueryService:
 
     # Ecological Analysis Methods
 
-    async def get_diversity_metrics(
+    async def get_species_counts_by_period(
         self,
         start_date: datetime.datetime,
         end_date: datetime.datetime,
         temporal_resolution: str = "daily",  # "hourly", "daily", "weekly"
     ) -> list[dict]:
-        """Calculate diversity indices over time.
+        """Get species counts grouped by time period.
 
         Args:
             start_date: Start of analysis period
@@ -997,7 +995,7 @@ class DetectionQueryService:
             temporal_resolution: Time grouping - "hourly", "daily", or "weekly"
 
         Returns:
-            List of dicts with period, richness, shannon, simpson, and evenness indices
+            List of dicts with period and species_counts (dict of species->count)
         """
         async with self.core_database.get_async_db() as session:
             # Determine grouping based on resolution
@@ -1036,61 +1034,32 @@ class DetectionQueryService:
             for row in rows:
                 periods[row.period][row.scientific_name] = row.count
 
-            # Calculate diversity metrics for each period
-            metrics = []
-            for period, species_counts in periods.items():
-                total = sum(species_counts.values())
-                richness = len(species_counts)
+            # Return raw data for calculation in AnalyticsManager
+            return [
+                {
+                    "period": period.strftime(period_format)
+                    if hasattr(period, "strftime")
+                    else str(period),
+                    "species_counts": dict(species_counts),
+                }
+                for period, species_counts in periods.items()
+            ]
 
-                if total > 0:
-                    # Shannon diversity index
-                    shannon = -sum(
-                        (count / total) * math.log(count / total)
-                        for count in species_counts.values()
-                        if count > 0
-                    )
-
-                    # Simpson diversity index
-                    simpson = 1 - sum((count / total) ** 2 for count in species_counts.values())
-
-                    # Pielou's evenness
-                    evenness = shannon / math.log(richness) if richness > 1 else 1.0
-                else:
-                    shannon = simpson = evenness = 0.0
-
-                metrics.append(
-                    {
-                        "period": period.strftime(period_format)
-                        if hasattr(period, "strftime")
-                        else str(period),
-                        "richness": richness,
-                        "shannon": round(shannon, 4),
-                        "simpson": round(simpson, 4),
-                        "evenness": round(evenness, 4),
-                        "total_detections": total,
-                    }
-                )
-
-            return metrics
-
-    async def get_species_accumulation_curve(  # noqa: C901
+    async def get_detections_for_accumulation(
         self,
         start_date: datetime.datetime,
         end_date: datetime.datetime,
-        method: str = "random",  # "random", "collector", "rarefaction"
-    ) -> dict:
-        """Generate species accumulation curve data.
+    ) -> list[tuple[datetime.datetime, str]]:
+        """Get detection data for species accumulation analysis.
 
         Args:
             start_date: Start of analysis period
             end_date: End of analysis period
-            method: Accumulation method - "random", "collector", or "rarefaction"
 
         Returns:
-            Dictionary with samples and cumulative species counts
+            List of (timestamp, scientific_name) tuples in chronological order
         """
         async with self.core_database.get_async_db() as session:
-            # Get all detections in chronological order
             query = (
                 select(Detection.timestamp, Detection.scientific_name)
                 .where(
@@ -1103,110 +1072,21 @@ class DetectionQueryService:
             )
 
             result = await session.execute(query)
-            detections = result.all()
+            return result.all()
 
-            if not detections:
-                return {"samples": [], "species_counts": [], "method": method}
-
-            if method == "collector":
-                # Collector's curve - actual order of observation
-                species_seen = set()
-                accumulation = []
-
-                for i, (_, species) in enumerate(detections, 1):
-                    species_seen.add(species)
-                    accumulation.append(
-                        {
-                            "sample": i,
-                            "species_count": len(species_seen),
-                        }
-                    )
-
-                return {
-                    "samples": [a["sample"] for a in accumulation],
-                    "species_counts": [a["species_count"] for a in accumulation],
-                    "method": method,
-                }
-
-            elif method == "random":
-                # Random accumulation - average over multiple permutations
-                n_permutations = min(100, len(detections))
-                all_species = [d[1] for d in detections]
-                max_samples = len(all_species)
-
-                accumulation_curves = []
-                for _ in range(n_permutations):
-                    np.random.shuffle(all_species)
-                    species_seen = set()
-                    curve = []
-
-                    for _i, species in enumerate(all_species, 1):
-                        species_seen.add(species)
-                        curve.append(len(species_seen))
-
-                    accumulation_curves.append(curve)
-
-                # Average across permutations
-                mean_curve = np.mean(accumulation_curves, axis=0)
-
-                return {
-                    "samples": list(range(1, max_samples + 1)),
-                    "species_counts": mean_curve.tolist(),
-                    "method": method,
-                }
-
-            else:  # rarefaction
-                # Rarefaction curve - expected species for given sample sizes
-                all_species = [d[1] for d in detections]
-                species_counts = defaultdict(int)
-                for species in all_species:
-                    species_counts[species] += 1
-
-                total_individuals = len(all_species)
-                max_sample_size = min(total_individuals, 1000)  # Limit for performance
-
-                rarefaction_curve = []
-                for sample_size in range(1, max_sample_size + 1, max(1, max_sample_size // 100)):
-                    # Calculate expected species richness for this sample size
-                    expected_species = 0
-                    for _species, count in species_counts.items():
-                        # Probability that species is NOT in sample
-                        prob_absent = 1.0
-                        for i in range(sample_size):
-                            prob_absent *= (total_individuals - count - i) / (total_individuals - i)
-                            if prob_absent <= 0:
-                                break
-                        expected_species += 1 - max(0, prob_absent)
-
-                    rarefaction_curve.append(
-                        {
-                            "sample_size": sample_size,
-                            "expected_species": expected_species,
-                        }
-                    )
-
-                return {
-                    "samples": [r["sample_size"] for r in rarefaction_curve],
-                    "species_counts": [r["expected_species"] for r in rarefaction_curve],
-                    "method": method,
-                }
-
-    async def get_community_similarity_matrix(
+    async def get_species_counts_for_periods(
         self,
         periods: list[tuple[datetime.datetime, datetime.datetime]],
-        index_type: str = "jaccard",  # "jaccard", "sorensen", "bray_curtis"
-    ) -> np.ndarray:
-        """Calculate similarity indices between time periods.
+    ) -> list[dict[str, int]]:
+        """Get species counts for multiple time periods.
 
         Args:
-            periods: List of (start_date, end_date) tuples to compare
-            index_type: Type of similarity index to calculate
+            periods: List of (start_date, end_date) tuples
 
         Returns:
-            Similarity matrix as numpy array
+            List of dicts mapping species name to count for each period
         """
         async with self.core_database.get_async_db() as session:
-            # Get species sets/abundances for each period
             period_data = []
 
             for start_date, end_date in periods:
@@ -1228,58 +1108,15 @@ class DetectionQueryService:
                 species_counts = {row[0]: row[1] for row in result}
                 period_data.append(species_counts)
 
-            n_periods = len(periods)
-            similarity_matrix = np.zeros((n_periods, n_periods))
+            return period_data
 
-            for i in range(n_periods):
-                for j in range(n_periods):
-                    if i == j:
-                        similarity_matrix[i, j] = 1.0
-                    elif j > i:
-                        similarity = self._calculate_similarity(
-                            period_data[i], period_data[j], index_type
-                        )
-                        similarity_matrix[i, j] = similarity
-                        similarity_matrix[j, i] = similarity
-
-            return similarity_matrix
-
-    def _calculate_similarity(
-        self,
-        community1: dict[str, int],
-        community2: dict[str, int],
-        index_type: str,
-    ) -> float:
-        """Calculate similarity index between two communities."""
-        species1 = set(community1.keys())
-        species2 = set(community2.keys())
-
-        if index_type == "jaccard":
-            # Jaccard index: |A ∩ B| / |A U B|
-            intersection = len(species1 & species2)
-            union = len(species1 | species2)
-            return intersection / union if union > 0 else 0.0
-
-        elif index_type == "sorensen":
-            # Sørensen-Dice index: 2|A ∩ B| / (|A| + |B|)
-            intersection = len(species1 & species2)
-            total = len(species1) + len(species2)
-            return 2 * intersection / total if total > 0 else 0.0
-
-        else:  # bray_curtis
-            # Bray-Curtis dissimilarity: 1 - (2 * min_abundances) / total_abundances
-            all_species = species1 | species2
-            min_sum = sum(min(community1.get(sp, 0), community2.get(sp, 0)) for sp in all_species)
-            total_sum = sum(community1.values()) + sum(community2.values())
-            return 2 * min_sum / total_sum if total_sum > 0 else 0.0
-
-    async def get_temporal_beta_diversity(
+    async def get_species_sets_by_window(
         self,
         start_date: datetime.datetime,
         end_date: datetime.datetime,
         window_size: timedelta,
     ) -> list[dict]:
-        """Calculate turnover rates over sliding windows.
+        """Get species sets for sliding time windows.
 
         Args:
             start_date: Start of analysis period
@@ -1287,17 +1124,16 @@ class DetectionQueryService:
             window_size: Size of sliding window
 
         Returns:
-            List of dicts with period, turnover rate, species gained/lost
+            List of dicts with period_start, period_end, and species set
         """
         async with self.core_database.get_async_db() as session:
-            beta_diversity = []
+            windows = []
             current_date = start_date
 
             while current_date + window_size <= end_date:
-                # Get species in current window
                 window_end = current_date + window_size
 
-                current_query = (
+                query = (
                     select(Detection.scientific_name)
                     .distinct()
                     .where(
@@ -1308,51 +1144,20 @@ class DetectionQueryService:
                     )
                 )
 
-                current_result = await session.execute(current_query)
-                current_species = {row[0] for row in current_result}
+                result = await session.execute(query)
+                species = {row[0] for row in result}
 
-                # Get species in next window
-                next_start = current_date + window_size
-                next_end = next_start + window_size
-
-                if next_end <= end_date:
-                    next_query = (
-                        select(Detection.scientific_name)
-                        .distinct()
-                        .where(
-                            and_(
-                                Detection.timestamp >= next_start,
-                                Detection.timestamp < next_end,
-                            )
-                        )
-                    )
-
-                    next_result = await session.execute(next_query)
-                    next_species = {row[0] for row in next_result}
-
-                    # Calculate turnover
-                    gained = next_species - current_species
-                    lost = current_species - next_species
-                    total_species = len(current_species | next_species)
-
-                    turnover_rate = (
-                        (len(gained) + len(lost)) / (2 * total_species) if total_species > 0 else 0
-                    )
-
-                    beta_diversity.append(
-                        {
-                            "period_start": current_date.isoformat(),
-                            "period_end": window_end.isoformat(),
-                            "turnover_rate": round(turnover_rate, 4),
-                            "species_gained": len(gained),
-                            "species_lost": len(lost),
-                            "total_species": len(current_species),
-                        }
-                    )
+                windows.append(
+                    {
+                        "period_start": current_date.isoformat(),
+                        "period_end": window_end.isoformat(),
+                        "species": list(species),
+                    }
+                )
 
                 current_date += window_size
 
-            return beta_diversity
+            return windows
 
     async def get_weather_correlations(
         self,
