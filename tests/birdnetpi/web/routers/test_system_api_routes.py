@@ -37,76 +37,42 @@ class TestHardwareEndpoints:
     """Test hardware monitoring API endpoints."""
 
     def test_get_hardware_status(self, client, mocker):
-        """Should return system hardware status."""
-        mock_status = {
+        """Should return comprehensive system hardware status."""
+        mock_health = {
             "components": {"cpu": {"status": "healthy"}},
             "overall_status": "healthy",
         }
-        mocker.patch(
-            "birdnetpi.web.routers.system_api_routes.SystemInspector.get_health_summary",
-            return_value=mock_status,
-        )
-
-        response = client.get("/api/system/hardware/status")
-
-        assert response.status_code == 200
-        assert response.json() == mock_status
-
-    def test_get_hardware_component(self, client, mocker):
-        """Should return specific component status."""
-        mock_summary = {
-            "components": {"cpu": {"status": "healthy", "message": "CPU usage normal: 25%"}},
-            "overall_status": "healthy",
-        }
-        mocker.patch(
-            "birdnetpi.web.routers.system_api_routes.SystemInspector.get_health_summary",
-            return_value=mock_summary,
-        )
-
-        response = client.get("/api/system/hardware/component/cpu")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["component"] == "cpu"
-        assert data["status"] == {"status": "healthy", "message": "CPU usage normal: 25%"}
-
-    def test_get_hardware_component_not_found(self, client, mocker):
-        """Should return status for unknown component."""
-        mock_summary = {
-            "components": {"cpu": {"status": "healthy"}},
-            "overall_status": "healthy",
-        }
-        mocker.patch(
-            "birdnetpi.web.routers.system_api_routes.SystemInspector.get_health_summary",
-            return_value=mock_summary,
-        )
-
-        response = client.get("/api/system/hardware/component/unknown")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["component"] == "unknown"
-        assert data["status"]["status"] == "unknown"
-        assert "not monitored" in data["status"]["message"]
-
-    def test_get_system_overview(self, client, mocker):
-        """Should return system overview data including disk usage and total detections."""
-        # Mock SystemInspector static methods
-        mocker.patch(
-            "birdnetpi.web.routers.system_api_routes.SystemInspector.get_disk_usage",
-            return_value={
-                "total": 100000000,
-                "used": 50000000,
-                "free": 50000000,
+        mock_info = {
+            "device_name": "Test Device",
+            "platform": "Linux",
+            "cpu_count": 4,
+            "boot_time": 1000000,
+            "cpu_percent": 25.0,
+            "cpu_temperature": 45.0,
+            "memory": {
+                "total": 8000000000,
+                "used": 4000000000,
+                "free": 4000000000,
                 "percent": 50.0,
             },
+            "disk": {
+                "total": 100000000000,
+                "used": 50000000000,
+                "free": 50000000000,
+                "percent": 50.0,
+            },
+        }
+
+        mocker.patch(
+            "birdnetpi.web.routers.system_api_routes.time.time", return_value=1086400
+        )  # 10 days after boot
+        mocker.patch(
+            "birdnetpi.web.routers.system_api_routes.SystemInspector.get_health_summary",
+            return_value=mock_health,
         )
         mocker.patch(
             "birdnetpi.web.routers.system_api_routes.SystemInspector.get_system_info",
-            return_value={
-                "uptime": "2 days",
-                "load_average": [0.5, 0.6, 0.7],
-            },
+            return_value=mock_info,
         )
 
         # Configure mock detection query service
@@ -114,16 +80,12 @@ class TestHardwareEndpoints:
             return_value=1234
         )  # type: ignore[attr-defined]
 
-        response = client.get("/api/system/overview")
+        response = client.get("/api/system/hardware/status")
 
         assert response.status_code == 200
         data = response.json()
-        assert "disk_usage" in data
-        assert data["disk_usage"]["percent"] == 50.0
-        assert "system_info" in data
-        assert data["system_info"]["uptime"] == "2 days"
-        assert "total_detections" in data
+        assert data["overall_status"] == "healthy"
+        assert data["system_info"]["device_name"] == "Test Device"
+        assert data["system_info"]["uptime_days"] == 1  # (1086400 - 1000000) / 86400
+        assert data["resources"]["cpu"]["percent"] == 25.0
         assert data["total_detections"] == 1234
-
-        # Verify the detection query service method was called correctly
-        client.app.container.detection_query_service().count_detections.assert_called_once()  # type: ignore[attr-defined]

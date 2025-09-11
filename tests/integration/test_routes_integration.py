@@ -53,89 +53,44 @@ def integration_client(integration_app):
 class TestSystemRoutesIntegration:
     """Integration tests for system API routes."""
 
-    def test_system_overview_endpoint_integration(self, integration_client, mocker):
-        """Test the /overview endpoint with real dependency injection.
-
-        This test would have caught the type mismatch and missing method issues.
-        """
-        # Mock SystemInspector static methods (hardware-specific)
-        mocker.patch(
-            "birdnetpi.web.routers.system_api_routes.SystemInspector.get_disk_usage",
-            return_value={
-                "total": 100000000,
-                "used": 50000000,
-                "free": 50000000,
-                "percent": 50.0,
-            },
-        )
-        mocker.patch(
-            "birdnetpi.web.routers.system_api_routes.SystemInspector.get_system_info",
-            return_value={
-                "uptime": "1 day",
-                "load_average": [0.5, 0.6, 0.7],
-            },
-        )
-
-        # Make the actual request
-        response = integration_client.get("/api/system/overview")
-
-        # Verify response structure
-        assert response.status_code == 200
-        data = response.json()
-
-        # Verify all expected fields are present
-        assert "disk_usage" in data
-        assert "system_info" in data
-        assert "total_detections" in data
-
-        # Verify data types
-        assert isinstance(data["disk_usage"], dict)
-        assert isinstance(data["system_info"], dict)
-        assert isinstance(data["total_detections"], int)
-
-        # Verify the count_detections method works
-        assert data["total_detections"] >= 0
-
     def test_hardware_status_endpoint_integration(self, integration_client):
-        """Test hardware status endpoint with real DI."""
+        """Test enhanced hardware status endpoint with real DI."""
         response = integration_client.get("/api/system/hardware/status")
 
         assert response.status_code == 200
         data = response.json()
+
+        # Check health summary fields
         assert "components" in data
         assert "overall_status" in data
 
-    def test_hardware_component_endpoint_integration(self, integration_client):
-        """Test hardware component endpoint with real DI."""
-        response = integration_client.get("/api/system/hardware/component/cpu")
+        # Check new comprehensive fields
+        assert "system_info" in data
+        assert "resources" in data
+        assert "total_detections" in data
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["component"] == "cpu"
-        assert "status" in data["status"]
+        # Verify system_info structure
+        assert "device_name" in data["system_info"]
+        assert "uptime_days" in data["system_info"]
 
-    def test_hardware_component_not_found_integration(self, integration_client):
-        """Test hardware component not found with real DI."""
-        # No mocking needed - SystemInspector returns unknown status for unknown components
-        response = integration_client.get("/api/system/hardware/component/unknown")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["component"] == "unknown"
-        assert data["status"]["status"] == "unknown"
-        assert "not monitored" in data["status"]["message"]
+        # Verify resources structure
+        assert "cpu" in data["resources"]
+        assert "memory" in data["resources"]
+        assert "disk" in data["resources"]
 
 
 class TestDependencyInjectionValidation:
     """Tests to validate dependency injection is configured correctly."""
 
-    def test_data_manager_is_directly_injected(self, integration_client):
-        """Ensure DataManager is directly injected, not accessed through other managers."""
+    def test_detection_query_service_is_directly_injected(self, integration_client):
+        """Ensure DetectionQueryService is properly injected."""
         # This is a meta-test that verifies our architecture
 
-        # The /api/system/overview endpoint should use DataManager directly
-        response = integration_client.get("/api/system/overview")
+        # The /api/system/hardware/status endpoint should use DetectionQueryService directly
+        response = integration_client.get("/api/system/hardware/status")
         assert response.status_code == 200
+        data = response.json()
+        assert "total_detections" in data
 
     def test_correct_types_are_injected(self, integration_app):
         """Verify that the correct types are being injected.

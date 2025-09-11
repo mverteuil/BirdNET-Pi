@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -177,33 +177,8 @@ class TestLandingPageIntegration:
     """Test landing page data with real database."""
 
     @pytest.mark.asyncio
-    @patch("birdnetpi.analytics.presentation.SystemInspector")
-    @patch("time.time")
-    async def test_get_landing_page_data_integration(
-        self, mock_time, mock_inspector, presentation_manager
-    ):
+    async def test_get_landing_page_data_integration(self, presentation_manager):
         """Test complete landing page data retrieval with real data."""
-        # Configure system mocks
-        mock_time.return_value = 1704240000.0  # Fixed time for testing
-
-        # Only need to mock get_system_info since that's what the code calls
-        mock_inspector.get_system_info.return_value = {
-            "boot_time": 1704067200.0,  # 2 days ago
-            "cpu_percent": 45.5,
-            "cpu_temperature": 55.0,
-            "memory": {
-                "percent": 60.0,
-                "used": 4 * 1024**3,  # 4GB
-                "total": 8 * 1024**3,  # 8GB
-            },
-            "disk": {
-                "percent": 75.0,
-                "used": 75 * 1024**3,  # 75GB
-                "total": 100 * 1024**3,  # 100GB
-            },
-            "device_name": "Test Device",
-        }
-
         # Get landing page data
         data = await presentation_manager.get_landing_page_data()
 
@@ -213,7 +188,6 @@ class TestLandingPageIntegration:
         assert hasattr(data, "species_frequency")
         assert hasattr(data, "hourly_distribution")
         assert hasattr(data, "visualization_data")
-        assert hasattr(data, "system_status")
 
         # Verify metrics contain data
         metrics = data.metrics
@@ -250,15 +224,6 @@ class TestLandingPageIntegration:
             # Check color values are valid
             valid_colors = ["#2e7d32", "#f57c00", "#c62828", "#666"]
             assert all(v.color in valid_colors for v in data.visualization_data)
-
-        # Verify system status
-        sys_status = data.system_status
-        assert sys_status.cpu.percent == 45.5
-        assert sys_status.cpu.temp == 55.0
-        assert sys_status.memory.percent == 60.0
-        assert sys_status.memory.used_gb == pytest.approx(4.0, rel=0.01)
-        assert sys_status.disk.percent == 75.0
-        assert sys_status.uptime == "2"  # Numeric value, suffix added in template
 
     @pytest.mark.asyncio
     async def test_temporal_patterns_integration(self, presentation_manager):
