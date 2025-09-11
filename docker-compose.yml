@@ -93,7 +93,7 @@ services:
       # Profiling is always enabled for this service
       ENABLE_PROFILING: 1
     ports:
-      - "8000:8000"   # Caddy
+      - "8001:8000"   # Caddy (profiling on different port to avoid conflicts)
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/ready"]
       interval: 30s

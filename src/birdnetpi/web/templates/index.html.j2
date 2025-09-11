@@ -10,7 +10,7 @@
     <header>
       <h1>{{ site_name | default('BirdNET-Pi') }} <span class="live" title="System Active"></span></h1>
       <p class="tagline">
-        Continuous acoustic monitoring · {{ system_status.device_name | default('Unknown Device') }} · {{ location | default('Location not set') }}
+        Continuous acoustic monitoring · <span id="device-name">Loading...</span> · {{ location | default('Location not set') }}
       </p>
     </header>
 
@@ -36,43 +36,41 @@
       <span class="metric">{{ metrics.threshold }}</span>
     </div>
 
-    <!-- System status bar -->
-    <div class="system-status">
+    <!-- System status bar (progressively loaded) -->
+    <div class="system-status" id="system-status">
       <div class="status-segment">
-        <span class="status-tooltip">CPU Temperature: {{ system_status.cpu.temp }}°C</span>
+        <span class="status-tooltip" id="cpu-tooltip">Loading...</span>
         <span class="status-label">CPU</span>
-        <span class="status-value">{{ system_status.cpu.percent | round | int }}%</span>
-        <span class="status-indicator" style="width: {{ system_status.cpu.percent }}%"></span>
+        <span class="status-value" id="cpu-value">--</span>
+        <span class="status-indicator" id="cpu-indicator" style="width: 0%"></span>
       </div>
 
       <div class="status-segment">
-        <span class="status-tooltip">{{ system_status.memory.used_gb | round(1) }} GB / {{ system_status.memory.total_gb | round(1) }} GB used</span>
+        <span class="status-tooltip" id="memory-tooltip">Loading...</span>
         <span class="status-label">Mem</span>
-        <span class="status-value">{{ system_status.memory.percent | round | int }}%</span>
-        <span class="status-indicator" style="width: {{ system_status.memory.percent }}%"></span>
+        <span class="status-value" id="memory-value">--</span>
+        <span class="status-indicator" id="memory-indicator" style="width: 0%"></span>
       </div>
 
       <div class="status-segment">
-        <span class="status-tooltip">{{ system_status.disk.used_gb | round(1) }} GB / {{ system_status.disk.total_gb | round(1) }} GB used</span>
+        <span class="status-tooltip" id="disk-tooltip">Loading...</span>
         <span class="status-label">Disk</span>
-        <span class="status-value">{{ system_status.disk.percent | round | int }}%</span>
-        <span class="status-indicator {% if system_status.disk.percent > 80 %}warning{% elif system_status.disk.percent > 90 %}critical{% endif %}" style="width: {{ system_status.disk.percent }}%"></span>
+        <span class="status-value" id="disk-value">--</span>
+        <span class="status-indicator" id="disk-indicator" style="width: 0%"></span>
       </div>
 
       <div class="status-segment">
-        <span class="status-tooltip">{{ system_status.audio.device }} · 48 kHz</span>
+        <span class="status-tooltip" id="audio-tooltip">Loading...</span>
         <span class="status-label">Audio</span>
-        <span class="status-value"
-          >{{ system_status.audio.level_db }}<span class="status-detail">dB</span></span
-        >
-        <span class="status-indicator" style="width: {{ system_status.audio.level_percent }}%"></span>
+        <span class="status-value" id="audio-value">--</span>
+        <span class="status-indicator" id="audio-indicator" style="width: 0%"></span>
       </div>
 
       <div class="status-segment">
-        <span class="status-tooltip">System uptime</span>
+        <span class="status-tooltip" id="uptime-tooltip">System uptime</span>
         <span class="status-label">Up</span>
-        <span class="status-value">{{ system_status.uptime }}d</span>
-        <span class="status-indicator" style="width: 100%"></span>
+        <span class="status-value" id="uptime-value">--</span>
+        <span class="status-indicator" id="uptime-indicator" style="width: 100%"></span>
       </div>
     </div>
 
@@ -283,13 +281,87 @@
         });
       }
 
+      // Load system status via API
+      async function loadSystemStatus() {
+        try {
+          const response = await fetch('/api/system/hardware/status');
+          if (!response.ok) throw new Error('Failed to fetch system status');
+
+          const data = await response.json();
+
+          // Update device name
+          const deviceName = document.getElementById('device-name');
+          if (deviceName && data.system_info?.device_name) {
+            deviceName.textContent = data.system_info.device_name;
+          }
+
+          // Update CPU status
+          const cpuPercent = data.resources?.cpu?.percent || 0;
+          const cpuTemp = data.resources?.cpu?.temperature;
+          document.getElementById('cpu-value').textContent = `${Math.round(cpuPercent)}%`;
+          document.getElementById('cpu-indicator').style.width = `${cpuPercent}%`;
+          document.getElementById('cpu-tooltip').textContent = cpuTemp !== null ?
+            `CPU Temperature: ${cpuTemp}°C` : 'CPU Temperature: N/A';
+
+          // Update Memory status
+          const memory = data.resources?.memory || {};
+          const memPercent = memory.percent || 0;
+          const memUsedGB = (memory.used / (1024**3)).toFixed(1);
+          const memTotalGB = (memory.total / (1024**3)).toFixed(1);
+          document.getElementById('memory-value').textContent = `${Math.round(memPercent)}%`;
+          document.getElementById('memory-indicator').style.width = `${memPercent}%`;
+          document.getElementById('memory-tooltip').textContent =
+            `${memUsedGB} GB / ${memTotalGB} GB used`;
+
+          // Update Disk status
+          const disk = data.resources?.disk || {};
+          const diskPercent = disk.percent || 0;
+          const diskUsedGB = (disk.used / (1024**3)).toFixed(1);
+          const diskTotalGB = (disk.total / (1024**3)).toFixed(1);
+          document.getElementById('disk-value').textContent = `${Math.round(diskPercent)}%`;
+          const diskIndicator = document.getElementById('disk-indicator');
+          diskIndicator.style.width = `${diskPercent}%`;
+          // Add warning/critical classes based on disk usage
+          diskIndicator.classList.remove('warning', 'critical');
+          if (diskPercent > 90) {
+            diskIndicator.classList.add('critical');
+          } else if (diskPercent > 80) {
+            diskIndicator.classList.add('warning');
+          }
+          document.getElementById('disk-tooltip').textContent =
+            `${diskUsedGB} GB / ${diskTotalGB} GB used`;
+
+          // Update Audio status (placeholder for now)
+          document.getElementById('audio-value').innerHTML = '-60<span class="status-detail">dB</span>';
+          document.getElementById('audio-indicator').style.width = '0%';
+          document.getElementById('audio-tooltip').textContent = 'Audio monitoring not available';
+
+          // Update Uptime
+          const uptimeDays = data.system_info?.uptime_days || 0;
+          document.getElementById('uptime-value').textContent = `${uptimeDays}d`;
+          document.getElementById('uptime-tooltip').textContent = `System uptime: ${uptimeDays} days`;
+
+        } catch (error) {
+          console.error('Failed to load system status:', error);
+          // Set error state for all indicators
+          document.getElementById('device-name').textContent = 'Unknown Device';
+          document.querySelectorAll('.status-value').forEach(el => {
+            if (!el.textContent.includes('d')) el.textContent = 'ERR';
+          });
+        }
+      }
+
       // Initialize
       document.addEventListener("DOMContentLoaded", () => {
         drawVisualization();
         updateTimes();
+        loadSystemStatus();  // Load system status on page load
 
         // Update times every minute
         setInterval(updateTimes, 60000);
+
+        // Refresh system status every 30 seconds
+        setInterval(loadSystemStatus, 30000);
 
         // Simulate live updates
         setInterval(() => {
@@ -301,9 +373,6 @@
             }, 1000);
           }
         }, 10000);
-
-        // TODO: Replace with WebSocket connection for real-time system updates
-        // For now, the values from the backend are displayed statically
       });
     </script>
   </body>

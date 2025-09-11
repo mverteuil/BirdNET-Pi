@@ -1,5 +1,4 @@
 import logging
-import time
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Generic, TypeVar
@@ -12,11 +11,9 @@ from birdnetpi.analytics.analytics import (
     ScatterDataDict,
     SpeciesFrequencyDict,
 )
-from birdnetpi.audio.devices import AudioDeviceService
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.models import DetectionBase
 from birdnetpi.detections.queries import DetectionQueryService
-from birdnetpi.system.status import SystemInspector
 
 logger = logging.getLogger(__name__)
 
@@ -59,57 +56,14 @@ class ScatterDataPoint(BaseModel):
     color: str
 
 
-class CPUStatus(BaseModel):
-    """CPU status metrics."""
-
-    percent: float
-    temp: float
-
-
-class MemoryStatus(BaseModel):
-    """Memory status metrics."""
-
-    percent: float
-    used_gb: float
-    total_gb: float
-
-
-class DiskStatus(BaseModel):
-    """Disk status metrics."""
-
-    percent: float
-    used_gb: float
-    total_gb: float
-
-
-class AudioStatus(BaseModel):
-    """Audio device status."""
-
-    level_db: int
-    device: str
-    level_percent: float  # Pre-calculated percentage for display
-
-
-class SystemStatusDict(BaseModel):
-    """System status data."""
-
-    cpu: CPUStatus
-    memory: MemoryStatus
-    disk: DiskStatus
-    audio: AudioStatus
-    uptime: str
-    device_name: str
-
-
 class LandingPageData(BaseModel):
-    """Complete landing page data."""
+    """Complete landing page data (without system status - fetched client-side)."""
 
     metrics: MetricsDict
     detection_log: list[DetectionLogEntry]
     species_frequency: list[SpeciesListEntry]
     hourly_distribution: list[int]
     visualization_data: list[ScatterDataPoint]
-    system_status: SystemStatusDict
 
 
 class APIResponse(BaseModel, Generic[T]):
@@ -183,14 +137,6 @@ class PresentationManager:
                 species_frequency=[],
                 hourly_distribution=[0] * 24,
                 visualization_data=[],
-                system_status=SystemStatusDict(
-                    cpu=CPUStatus(percent=0, temp=0),
-                    memory=MemoryStatus(percent=0, used_gb=0, total_gb=0),
-                    disk=DiskStatus(percent=0, used_gb=0, total_gb=0),
-                    audio=AudioStatus(level_db=-60, device="", level_percent=0),
-                    uptime="0",  # Numeric value only
-                    device_name="",
-                ),
             )
 
     async def get_landing_page_data(self) -> LandingPageData:
@@ -209,7 +155,6 @@ class PresentationManager:
             species_frequency=self._format_species_list(frequency[:12]),
             hourly_distribution=temporal["hourly_distribution"],
             visualization_data=self._format_scatter_data(scatter),
-            system_status=self._get_system_status(),  # Runtime data
         )
 
     def _format_metrics(self, summary: DashboardSummaryDict) -> MetricsDict:
@@ -262,61 +207,6 @@ class PresentationManager:
             )
             for d in scatter_data
         ]
-
-    def _get_system_status(self) -> SystemStatusDict:
-        """Get runtime system metrics."""
-        # Get system info first - it includes CPU usage, memory, disk, and temperature
-        system_info = SystemInspector.get_system_info()
-
-        # Extract metrics from system_info to avoid duplicate calls
-        cpu_percent = system_info.get("cpu_percent", 0.0)
-        cpu_temp = system_info.get("cpu_temperature")
-        memory_info = system_info.get("memory", {})
-        disk_info = system_info.get("disk", {})
-
-        # Calculate uptime from boot time
-        boot_time = system_info.get("boot_time", time.time())
-        uptime_seconds = time.time() - boot_time
-        uptime_days = int(uptime_seconds // 86400)
-
-        # Get audio device information
-        audio_device_name = "No audio device"
-        try:
-            audio_service = AudioDeviceService()
-            input_devices = audio_service.discover_input_devices()
-            if input_devices:
-                # Use the first available input device
-                audio_device_name = input_devices[0].name
-        except Exception:
-            logger.exception("Failed to get audio device information")
-            audio_device_name = "Unknown audio device"
-
-        # Audio level monitoring would require real-time audio analysis
-        # For now, using a placeholder that represents "no signal"
-        # Real implementation would need integration with audio monitoring daemon
-        audio_level_db = -60  # Represents silence/no signal
-        audio_level_percent = max(0, min(100, (60 + audio_level_db) * 1.67))
-
-        return SystemStatusDict(
-            cpu=CPUStatus(percent=cpu_percent, temp=cpu_temp if cpu_temp is not None else 0),
-            memory=MemoryStatus(
-                percent=memory_info["percent"],
-                used_gb=memory_info["used"] / (1024**3),
-                total_gb=memory_info["total"] / (1024**3),
-            ),
-            disk=DiskStatus(
-                percent=disk_info["percent"],
-                used_gb=disk_info["used"] / (1024**3),
-                total_gb=disk_info["total"] / (1024**3),
-            ),
-            audio=AudioStatus(
-                level_db=audio_level_db,
-                device=audio_device_name,
-                level_percent=audio_level_percent,
-            ),
-            uptime=str(uptime_days),  # Return numeric value as string
-            device_name=system_info.get("device_name", ""),
-        )
 
     # --- Detection Display Page ---
 

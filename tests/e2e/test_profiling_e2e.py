@@ -33,13 +33,13 @@ def docker_compose_with_profiling() -> Generator[None, None, None]:
 
     # Bring up the profiling container using the profile
     subprocess.run(
-        compose_cmd + ["--profile", "profiling", "up", "-d", "--build"], env=env, check=True
+        [*compose_cmd, "--profile", "profiling", "up", "-d", "--build"], env=env, check=True
     )
 
     # Wait for services to be ready
-    for attempt in range(30):
+    for _attempt in range(30):
         try:
-            response = httpx.get("http://localhost:8000/api/health/ready", timeout=3)
+            response = httpx.get("http://localhost:8001/api/health/ready", timeout=3)
             if response.status_code == 200:
                 break
         except Exception:
@@ -47,20 +47,20 @@ def docker_compose_with_profiling() -> Generator[None, None, None]:
         time.sleep(2)
     else:
         # Clean up on failure
-        subprocess.run(compose_cmd + ["--profile", "profiling", "down"], env=env, check=False)
+        subprocess.run([*compose_cmd, "--profile", "profiling", "down"], env=env, check=False)
         pytest.fail("Services did not become ready in time")
 
     yield
 
     # Tear down services (preserves test volume)
-    subprocess.run(compose_cmd + ["--profile", "profiling", "down"], env=env, check=True)
+    subprocess.run([*compose_cmd, "--profile", "profiling", "down"], env=env, check=True)
 
 
 @pytest.mark.expensive
 def test_profiling_enabled_root_page(docker_compose_with_profiling) -> None:
     """Test that profiling works on the root page when enabled."""
     # Request the root page with ?profile=1
-    response = httpx.get("http://localhost:8000/?profile=1")
+    response = httpx.get("http://localhost:8001/?profile=1")
     assert response.status_code == 200
 
     # Should contain pyinstrument profiling output
@@ -85,7 +85,7 @@ def test_profiling_enabled_settings_page(docker_compose_with_profiling) -> None:
     inherent delays, providing a cleaner profiling output.
     """
     # Request the settings page with ?profile=1
-    response = httpx.get("http://localhost:8000/admin/settings?profile=1")
+    response = httpx.get("http://localhost:8001/admin/settings?profile=1")
     assert response.status_code == 200
 
     # Should contain pyinstrument profiling output
@@ -102,7 +102,7 @@ def test_profiling_enabled_settings_page(docker_compose_with_profiling) -> None:
 def test_profiling_shows_system_calls(docker_compose_with_profiling) -> None:
     """Test that profiling output shows expected system calls for dashboard."""
     # Request the root page (dashboard) with profiling
-    response = httpx.get("http://localhost:8000/?profile=1")
+    response = httpx.get("http://localhost:8001/?profile=1")
     assert response.status_code == 200
 
     # Should show our optimized get_system_info call
@@ -121,7 +121,7 @@ def test_profiling_shows_system_calls(docker_compose_with_profiling) -> None:
 def test_profiling_normal_request_unaffected(docker_compose_with_profiling) -> None:
     """Test that requests without ?profile=1 work normally when profiling is enabled."""
     # Request without profiling parameter
-    response = httpx.get("http://localhost:8000/")
+    response = httpx.get("http://localhost:8001/")
     assert response.status_code == 200
 
     # Should return normal page content
@@ -139,7 +139,7 @@ def test_profiling_normal_request_unaffected(docker_compose_with_profiling) -> N
 def test_profiling_api_endpoints(docker_compose_with_profiling) -> None:
     """Test that profiling works on API endpoints."""
     # Test a simple API endpoint with profiling
-    response = httpx.get("http://localhost:8000/api/health/ready?profile=1")
+    response = httpx.get("http://localhost:8001/api/health/ready?profile=1")
     assert response.status_code == 200
 
     # Should contain profiling output instead of JSON
