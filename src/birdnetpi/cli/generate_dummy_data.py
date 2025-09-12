@@ -15,7 +15,7 @@ from birdnetpi.system.system_control import SystemControlService
 from birdnetpi.utils.dummy_data_generator import generate_dummy_detections
 
 
-async def run(count: int = 100, days: int = 3) -> None:
+async def run(count: int = 100, days: int = 3, ioc_species_ratio: float = 0.2) -> None:
     """Generate dummy data for the application."""
     path_resolver = PathResolver()
     db_path = path_resolver.get_database_path()
@@ -32,7 +32,7 @@ async def run(count: int = 100, days: int = 3) -> None:
 
     # Check if database exists
     if db_path.exists() and db_path.stat().st_size > 0:
-        print(f"Database file exists and is {db_path.stat().st_size} bytes.")
+        click.echo(f"Database file exists and is {db_path.stat().st_size} bytes.")
         try:
             core_database = CoreDatabaseService(db_path)
             species_database = SpeciesDatabaseService(path_resolver)
@@ -47,14 +47,20 @@ async def run(count: int = 100, days: int = 3) -> None:
             )
             detections = await data_manager.get_all_detections()
             if detections:
-                print(f"Database already contains {len(detections)} detections.")
-                print("Adding more dummy data...")
+                click.echo(f"Database already contains {len(detections)} detections.")
+                click.echo("Adding more dummy data...")
         except Exception as e:
-            print(f"Warning: Could not check existing data due to database lock: {e}")
-            print("Database appears to be in use. Attempting to stop services automatically...")
+            click.echo(
+                click.style(
+                    f"Warning: Could not check existing data due to database lock: {e}", fg="yellow"
+                )
+            )
+            click.echo(
+                "Database appears to be in use. Attempting to stop services automatically..."
+            )
             # Continue to service management instead of exiting early
     else:
-        print("Database is empty or does not exist. Generating dummy data...")
+        click.echo("Database is empty or does not exist. Generating dummy data...")
 
     # Check if FastAPI is running
     fastapi_was_running = False
@@ -62,19 +68,21 @@ async def run(count: int = 100, days: int = 3) -> None:
         status = system_control.get_service_status(fastapi_service_name)
         fastapi_was_running = status == "active"
         if fastapi_was_running:
-            print(
+            click.echo(
                 f"FastAPI service ({fastapi_service_name}) is running. Stopping it temporarily..."
             )
             system_control.stop_service(fastapi_service_name)
             # Wait a moment for the service to stop and release database locks
             time.sleep(3)
     except Exception as e:
-        print(f"Warning: Could not check FastAPI service status: {e}")
-        print("Proceeding with dummy data generation...")
+        click.echo(
+            click.style(f"Warning: Could not check FastAPI service status: {e}", fg="yellow")
+        )
+        click.echo("Proceeding with dummy data generation...")
 
     try:
         # Generate dummy data with exclusive database access
-        print("Generating dummy data...")
+        click.echo("Generating dummy data...")
         core_database = CoreDatabaseService(db_path)
         species_database = SpeciesDatabaseService(path_resolver)
         species_display_service = SpeciesDisplayService(config)
@@ -86,19 +94,35 @@ async def run(count: int = 100, days: int = 3) -> None:
             file_manager,
             path_resolver,
         )
-        await generate_dummy_detections(data_manager, num_detections=count, max_days_ago=days)
-        print(f"Dummy data generation complete. Generated {count} detections.")
+        await generate_dummy_detections(
+            data_manager,
+            num_detections=count,
+            max_days_ago=days,
+            ioc_species_ratio=ioc_species_ratio,
+        )
+        click.echo(
+            click.style(
+                f"Dummy data generation complete. Generated {count} detections.", fg="green"
+            )
+        )
+        if ioc_species_ratio > 0:
+            ioc_count = int(count * ioc_species_ratio)
+            common_count = int(count * (1 - ioc_species_ratio))
+            click.echo(f"  - Approximately {ioc_count} detections are infrequent IOC species")
+            click.echo(f"  - Approximately {common_count} detections are common species")
 
     finally:
         # Restart FastAPI if it was running before
         if fastapi_was_running:
-            print(f"Restarting FastAPI service ({fastapi_service_name})...")
+            click.echo(f"Restarting FastAPI service ({fastapi_service_name})...")
             try:
                 system_control.start_service(fastapi_service_name)
-                print("FastAPI service restarted successfully.")
+                click.echo(click.style("FastAPI service restarted successfully.", fg="green"))
             except Exception as e:
-                print(f"Warning: Could not restart FastAPI service: {e}")
-                print("You may need to manually restart the service.")
+                click.echo(
+                    click.style(f"Warning: Could not restart FastAPI service: {e}", fg="yellow")
+                )
+                click.echo("You may need to manually restart the service.")
 
 
 def _get_fastapi_service_name() -> str:
@@ -123,12 +147,20 @@ def _get_fastapi_service_name() -> str:
     type=int,
     help="Maximum days in the past for detections (0=today only, default: 1)",
 )
+@click.option(
+    "--ioc-species-ratio",
+    "-i",
+    default=0.2,
+    type=float,
+    help="Ratio of detections that are random IOC species (0=disabled, 0.2=20%, default: 0.2)",
+)
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
-def main(count: int, days: int, verbose: bool) -> None:
+def main(count: int, days: int, ioc_species_ratio: float, verbose: bool) -> None:
     """Generate dummy detection data for testing BirdNET-Pi.
 
     This command creates realistic bird detection data for testing and development.
-    By default, it generates 100 detections within the last 24 hours.
+    By default, it generates 100 detections within the last 24 hours, with 20% being
+    random IOC species as infrequent visitors.
 
     Examples:
         # Generate 100 detections from today only
@@ -137,13 +169,19 @@ def main(count: int, days: int, verbose: bool) -> None:
         # Generate 500 detections from the last week
         generate-dummy-data --count 500 --days 7
 
-        # Generate 50 detections from the last 24 hours (default)
-        generate-dummy-data --count 50
+        # Generate 50 detections with no IOC species
+        generate-dummy-data --count 50 --ioc-species-ratio 0
+
+        # Generate 200 detections with 40% IOC species
+        generate-dummy-data --count 200 --ioc-species-ratio 0.4
     """
     if verbose:
-        print(f"Generating {count} detections from the last {days} day(s)...")
+        click.echo(f"Generating {count} detections from the last {days} day(s)...")
+        if ioc_species_ratio > 0:
+            pct = int(ioc_species_ratio * 100)
+            click.echo(f"Including {pct}% random IOC species as infrequent visitors")
 
-    asyncio.run(run(count, days))
+    asyncio.run(run(count, days, ioc_species_ratio))
 
 
 if __name__ == "__main__":
