@@ -117,7 +117,7 @@ class WeatherManager:
                 stats["detections_updated"] += updated
 
             except Exception as e:
-                print(f"Error fetching weather for {current_hour}: {e}")
+                logger.error(f"Error fetching weather for {current_hour}: {e}")
                 stats["errors"] += 1
 
             current_hour += timedelta(hours=1)
@@ -129,6 +129,75 @@ class WeatherManager:
         await self.session.commit()
         return stats
 
+    async def _get_existing_weather_hours(
+        self, start_date: datetime, end_date: datetime
+    ) -> set[datetime]:
+        """Get set of existing weather hours in the given range."""
+        stmt = (
+            select(Weather.timestamp)
+            .where(Weather.timestamp >= start_date)
+            .where(Weather.timestamp <= end_date)
+            .where(Weather.latitude == self.latitude)
+            .where(Weather.longitude == self.longitude)
+        )
+        result = await self.session.execute(stmt)
+        # Normalize timestamps to remove timezone info for comparison
+        # SQLite doesn't preserve timezone, so we normalize to naive datetimes
+        return {ts.replace(tzinfo=None) if ts.tzinfo else ts for ts in result.scalars().all()}
+
+    def _determine_chunk_size(self, start_date: datetime) -> timedelta:
+        """Determine optimal chunk size based on API type."""
+        # Ensure start_date is timezone-aware for comparison
+        start_date_aware = (
+            start_date.replace(tzinfo=UTC) if start_date.tzinfo is None else start_date
+        )
+
+        if start_date_aware < datetime.now(UTC) - timedelta(days=5):
+            # Historical API - use smaller chunks to avoid timeouts
+            chunk_size = timedelta(days=7)
+            logger.info(f"Using historical API with {chunk_size.days}-day chunks")
+        else:
+            # Forecast API - can handle larger chunks
+            chunk_size = timedelta(days=14)
+            logger.info(f"Using forecast API with {chunk_size.days}-day chunks")
+
+        return chunk_size
+
+    async def _process_weather_hour(self, hour_data: dict[str, Any], stats: dict[str, int]) -> bool:
+        """Process a single hour of weather data.
+
+        Returns True if successfully processed, False if skipped.
+        """
+        # Add location to weather data
+        hour_data["latitude"] = self.latitude
+        hour_data["longitude"] = self.longitude
+
+        try:
+            weather = Weather(**hour_data)
+            self.session.add(weather)
+            await self.session.flush()
+            stats["records_created"] += 1
+
+            # Link detections
+            updated = await self.link_detections_to_weather(
+                hour_data["timestamp"],
+                hour_data["timestamp"] + timedelta(hours=1),
+                weather,
+            )
+            stats["detections_updated"] += updated
+            return True
+
+        except Exception as e:
+            # Check if it's a unique constraint violation
+            if "UNIQUE constraint failed" in str(e):
+                # Weather already exists, rollback and continue
+                await self.session.rollback()
+                logger.debug(f"Weather already exists for {hour_data['timestamp']}, skipping")
+                return False
+            else:
+                # Re-raise other exceptions
+                raise
+
     async def backfill_weather_bulk(
         self, start_date: datetime, end_date: datetime, skip_existing: bool = True
     ) -> dict[str, int]:
@@ -137,7 +206,6 @@ class WeatherManager:
         Open-Meteo allows fetching multiple days at once.
         """
         # Calculate total days upfront
-        # This gives us the actual number of days in the range
         time_diff = end_date - start_date
         total_days = max(
             1,
@@ -153,31 +221,18 @@ class WeatherManager:
         }
 
         # Check what we already have
+        existing_hours = set()
         if skip_existing:
-            stmt = (
-                select(Weather.timestamp)
-                .where(Weather.timestamp >= start_date)
-                .where(Weather.timestamp <= end_date)
-                .where(Weather.latitude == self.latitude)
-                .where(Weather.longitude == self.longitude)
-            )
-            result = await self.session.execute(stmt)
-            # Normalize timestamps to remove timezone info for comparison
-            # SQLite doesn't preserve timezone, so we normalize to naive datetimes
-            existing_hours = {
-                ts.replace(tzinfo=None) if ts.tzinfo else ts for ts in result.scalars().all()
-            }
-        else:
-            existing_hours = set()
+            existing_hours = await self._get_existing_weather_hours(start_date, end_date)
 
-        # Fetch in chunks (Open-Meteo allows up to 16 days per request)
-        chunk_size = timedelta(days=14)
+        # Determine chunk size based on API type
+        chunk_size = self._determine_chunk_size(start_date)
         current_start = start_date
 
         while current_start < end_date:
             current_end = min(current_start + chunk_size, end_date)
 
-            # Skip if we have all data for this chunk
+            # Check which hours we need in this chunk
             hours_in_chunk = int((current_end - current_start).total_seconds() // 3600)
             hours_needed = []
 
@@ -192,7 +247,7 @@ class WeatherManager:
                 weather_data = await self.fetch_weather_range(current_start, current_end)
                 stats["api_calls"] += 1
 
-                # Store the data - only for hours we need
+                # Process each hour of weather data
                 for hour_data in weather_data:
                     # Round timestamp to hour for comparison
                     hour_timestamp = hour_data["timestamp"].replace(
@@ -206,25 +261,11 @@ class WeatherManager:
                         else hour_timestamp
                     )
 
-                    # Skip if we already have this hour (check existing_hours set)
+                    # Skip if we already have this hour
                     if skip_existing and hour_timestamp_normalized in existing_hours:
                         continue
 
-                    # Add location to weather data
-                    hour_data["latitude"] = self.latitude
-                    hour_data["longitude"] = self.longitude
-                    weather = Weather(**hour_data)
-                    self.session.add(weather)
-                    await self.session.flush()
-                    stats["records_created"] += 1
-
-                    # Link detections
-                    updated = await self.link_detections_to_weather(
-                        hour_data["timestamp"],
-                        hour_data["timestamp"] + timedelta(hours=1),
-                        weather,
-                    )
-                    stats["detections_updated"] += updated
+                    await self._process_weather_hour(hour_data, stats)
 
             current_start = current_end
 
@@ -238,6 +279,10 @@ class WeatherManager:
 
         Returns hourly weather data.
         """
+        # Ensure start_date is timezone-aware for comparison
+        if start_date.tzinfo is None:
+            start_date = start_date.replace(tzinfo=UTC)
+
         if start_date < datetime.now(UTC) - timedelta(days=5):
             # Use historical API
             url = "https://archive-api.open-meteo.com/v1/era5"
@@ -417,8 +462,8 @@ class WeatherManager:
         result = await self.session.execute(missing_stmt)
         missing_weather = result.scalar()
 
-        print(f"Backfilling weather for {missing_weather}/{total_detections} detections")
-        print(f"Date range: {min_date} to {max_date}")
+        logger.info(f"Backfilling weather for {missing_weather}/{total_detections} detections")
+        logger.info(f"Date range: {min_date} to {max_date}")
 
         # Backfill in chunks
         return await self.backfill_weather_bulk(min_date, max_date)
