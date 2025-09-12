@@ -777,6 +777,23 @@ class PresentationManager:
         """Calculate start and end dates for analysis period."""
         now = datetime.now(UTC)
 
+        # Handle both formats: "7d" style and "week" style
+        period_mapping = {
+            "24h": "day",  # Handle 24-hour format
+            "1d": "day",
+            "7d": "week",
+            "30d": "month",
+            "90d": "season",
+            "365d": "year",
+            "day": "day",
+            "week": "week",
+            "month": "month",
+            "season": "season",
+            "year": "year",
+        }
+
+        normalized_period = period_mapping.get(period, "day")
+
         periods = {
             "day": (now - timedelta(days=1), now),
             "week": (now - timedelta(days=7), now),
@@ -785,10 +802,26 @@ class PresentationManager:
             "year": (now - timedelta(days=365), now),
         }
 
-        return periods.get(period, periods["day"])
+        return periods.get(normalized_period, periods["day"])
 
     def _get_resolution_for_period(self, period: str) -> str:
         """Get appropriate temporal resolution for period."""
+        # Normalize period format
+        period_mapping = {
+            "24h": "day",
+            "1d": "day",
+            "7d": "week",
+            "30d": "month",
+            "90d": "season",
+            "365d": "year",
+            "day": "day",
+            "week": "week",
+            "month": "month",
+            "season": "season",
+            "year": "year",
+        }
+        normalized_period = period_mapping.get(period, "day")
+
         resolutions = {
             "day": "hourly",
             "week": "daily",
@@ -796,10 +829,26 @@ class PresentationManager:
             "season": "weekly",
             "year": "weekly",
         }
-        return resolutions.get(period, "daily")
+        return resolutions.get(normalized_period, "daily")
 
     def _get_window_size_for_period(self, period: str) -> timedelta:
         """Get appropriate window size for beta diversity."""
+        # Normalize period format
+        period_mapping = {
+            "24h": "day",
+            "1d": "day",
+            "7d": "week",
+            "30d": "month",
+            "90d": "season",
+            "365d": "year",
+            "day": "day",
+            "week": "week",
+            "month": "month",
+            "season": "season",
+            "year": "year",
+        }
+        normalized_period = period_mapping.get(period, "day")
+
         windows = {
             "day": timedelta(hours=6),
             "week": timedelta(days=1),
@@ -807,12 +856,28 @@ class PresentationManager:
             "season": timedelta(days=14),
             "year": timedelta(days=30),
         }
-        return windows.get(period, timedelta(days=1))
+        return windows.get(normalized_period, timedelta(days=1))
 
     def _get_days_for_period(self, period: str) -> int:
         """Get number of days for the period."""
+        # Normalize period format
+        period_mapping = {
+            "24h": "day",
+            "1d": "day",
+            "7d": "week",
+            "30d": "month",
+            "90d": "season",
+            "365d": "year",
+            "day": "day",
+            "week": "week",
+            "month": "month",
+            "season": "season",
+            "year": "year",
+        }
+        normalized_period = period_mapping.get(period, "day")
+
         days = {"day": 1, "week": 7, "month": 30, "season": 90, "year": 365}
-        return days.get(period, 7)
+        return days.get(normalized_period, 7)
 
     def _get_intensity_class(self, value: float) -> str:
         """Get CSS class for intensity coloring."""

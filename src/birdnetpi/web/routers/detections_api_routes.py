@@ -222,6 +222,215 @@ async def get_detection_count(
         raise HTTPException(status_code=500, detail="Error retrieving detection count") from e
 
 
+@router.get("/best-recordings")
+@inject
+async def get_best_recordings(
+    family: str | None = Query(None, description="Filter by taxonomic family"),
+    genus: str | None = Query(None, description="Filter by genus"),
+    species: str | None = Query(None, description="Filter by species scientific name"),
+    min_confidence: float = Query(0.7, ge=0.0, le=1.0, description="Minimum confidence threshold"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of recordings to return"),
+    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
+        Provide[Container.detection_query_service]
+    ),
+) -> JSONResponse:
+    """Get best recordings with optional taxonomic filtering.
+
+    This endpoint supports hierarchical filtering:
+    - Filter by family to get best recordings for all species in that family
+    - Filter by genus to get best recordings for all species in that genus
+    - Filter by species to get best recordings for a specific species
+    """
+    try:
+        # Build filters for query
+        filters = {}
+
+        # Apply taxonomic filters - most specific takes precedence
+        if species:
+            filters["species"] = species
+        elif genus:
+            filters["genus"] = genus
+        elif family:
+            filters["family"] = family
+
+        # Query detections with filters
+        detections = await detection_query_service.query_detections(
+            min_confidence=min_confidence,
+            limit=limit,
+            order_by="confidence",
+            order_desc=True,
+            **filters,
+        )
+
+        # Format response
+        recordings = []
+        for detection in detections:
+            recordings.append(
+                {
+                    "id": str(detection.id),
+                    "scientific_name": detection.scientific_name,
+                    "common_name": detection.common_name or detection.ioc_english_name,
+                    "family": detection.family,
+                    "genus": detection.genus,
+                    "confidence": round(detection.confidence * 100, 1),
+                    "timestamp": detection.timestamp.isoformat(),
+                    "date": detection.timestamp.strftime("%Y-%m-%d"),
+                    "time": detection.timestamp.strftime("%H:%M:%S"),
+                }
+            )
+
+        # Calculate summary stats
+        if recordings:
+            avg_confidence = sum(r["confidence"] for r in recordings) / len(recordings)
+            dates = [d.timestamp for d in detections]
+            date_range = f"{min(dates).strftime('%Y-%m-%d')} to {max(dates).strftime('%Y-%m-%d')}"
+            unique_species = len({r["scientific_name"] for r in recordings})
+        else:
+            avg_confidence = 0
+            date_range = "No recordings"
+            unique_species = 0
+
+        return JSONResponse(
+            {
+                "recordings": recordings,
+                "count": len(recordings),
+                "avg_confidence": round(avg_confidence, 1),
+                "date_range": date_range,
+                "unique_species": unique_species,
+                "filters": {
+                    "family": family,
+                    "genus": genus,
+                    "species": species,
+                    "min_confidence": min_confidence,
+                },
+            }
+        )
+    except Exception as e:
+        logger.error("Error getting best recordings: %s", e)
+        raise HTTPException(status_code=500, detail="Error retrieving best recordings") from e
+
+
+@router.get("/taxonomy/families")
+@inject
+async def get_taxonomy_families(
+    has_detections: bool = Query(True, description="Only return families with detections"),
+    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
+        Provide[Container.detection_query_service]
+    ),
+) -> JSONResponse:
+    """Get list of all taxonomic families, optionally filtered to those with detections."""
+    try:
+        if has_detections:
+            # Get families from actual detections
+            species_summary = await detection_query_service.get_species_summary()
+            families = set()
+            if isinstance(species_summary, list):
+                for species in species_summary:
+                    if family := species.get("family"):
+                        families.add(family)
+            family_list = sorted(families)
+        else:
+            # Would need to query IOC database for all families
+            # For now, just return families with detections
+            species_summary = await detection_query_service.get_species_summary()
+            families = set()
+            if isinstance(species_summary, list):
+                for species in species_summary:
+                    if family := species.get("family"):
+                        families.add(family)
+            family_list = sorted(families)
+
+        return JSONResponse({"families": family_list, "count": len(family_list)})
+    except Exception as e:
+        logger.error("Error getting families: %s", e)
+        raise HTTPException(status_code=500, detail="Error retrieving families") from e
+
+
+@router.get("/taxonomy/genera")
+@inject
+async def get_taxonomy_genera(
+    family: str = Query(..., description="Family to get genera for"),
+    has_detections: bool = Query(True, description="Only return genera with detections"),
+    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
+        Provide[Container.detection_query_service]
+    ),
+) -> JSONResponse:
+    """Get list of genera within a family, optionally filtered to those with detections."""
+    try:
+        if has_detections:
+            # Get genera from actual detections in this family
+            species_summary = await detection_query_service.get_species_summary()
+            genera = set()
+            if isinstance(species_summary, list):
+                for species in species_summary:
+                    if species.get("family") == family and (genus := species.get("genus")):
+                        genera.add(genus)
+            genus_list = sorted(genera)
+        else:
+            # Would need to query IOC database for all genera in family
+            # For now, just return genera with detections
+            species_summary = await detection_query_service.get_species_summary()
+            genera = set()
+            if isinstance(species_summary, list):
+                for species in species_summary:
+                    if species.get("family") == family and (genus := species.get("genus")):
+                        genera.add(genus)
+            genus_list = sorted(genera)
+
+        return JSONResponse({"genera": genus_list, "family": family, "count": len(genus_list)})
+    except Exception as e:
+        logger.error("Error getting genera: %s", e)
+        raise HTTPException(status_code=500, detail="Error retrieving genera") from e
+
+
+@router.get("/taxonomy/species")
+@inject
+async def get_taxonomy_species(
+    genus: str = Query(..., description="Genus to get species for"),
+    family: str | None = Query(None, description="Optional family filter"),
+    has_detections: bool = Query(True, description="Only return species with detections"),
+    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
+        Provide[Container.detection_query_service]
+    ),
+) -> JSONResponse:
+    """Get list of species within a genus, optionally filtered to those with detections."""
+    try:
+        # For now, always get species from actual detections
+        # TODO: Query IOC database directly when has_detections=False
+        species_summary = await detection_query_service.get_species_summary()
+        species_list = []
+
+        # Debug logging
+        species_count = len(species_summary) if species_summary else 0
+        logger.info(f"Species summary for genus {genus}: {species_count} total species")
+
+        if isinstance(species_summary, list):
+            for species in species_summary:
+                if species.get("genus") == genus:
+                    if not family or species.get("family") == family:
+                        # Debug: log the species data
+                        if species.get("scientific_name") == "Cyanocitta cristata":
+                            logger.info(f"Found Cyanocitta cristata data: {species}")
+                        species_list.append(
+                            {
+                                "scientific_name": species.get("scientific_name"),
+                                "common_name": species.get("best_common_name")
+                                or species.get("ioc_english_name"),
+                                "count": species.get("detection_count", 0),
+                            }
+                        )
+
+        # Sort by count descending
+        species_list.sort(key=lambda x: x["count"], reverse=True)
+
+        return JSONResponse(
+            {"species": species_list, "genus": genus, "family": family, "count": len(species_list)}
+        )
+    except Exception as e:
+        logger.error("Error getting species: %s", e)
+        raise HTTPException(status_code=500, detail="Error retrieving species") from e
+
+
 @router.post("/{detection_id}/location")
 @inject
 async def update_detection_location(

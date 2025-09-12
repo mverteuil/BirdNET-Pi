@@ -119,6 +119,8 @@ class DetectionQueryService:
         self,
         *,  # All parameters are keyword-only for clarity
         species: str | list[str] | None = None,
+        family: str | None = None,
+        genus: str | None = None,
         start_date: dt | None = None,
         end_date: dt | None = None,
         min_confidence: float | None = None,
@@ -142,6 +144,8 @@ class DetectionQueryService:
             start_date=start_date,
             end_date=end_date,
             scientific_name_filter=species,
+            family_filter=family,
+            genus_filter=genus,
             min_confidence=min_confidence,
             max_confidence=max_confidence,
             order_by=order_by,
@@ -158,6 +162,7 @@ class DetectionQueryService:
         end_date: dt | None = None,
         scientific_name_filter: str | list[str] | None = None,
         family_filter: str | None = None,
+        genus_filter: str | None = None,
         min_confidence: float | None = None,
         max_confidence: float | None = None,
         order_by: str = "timestamp",
@@ -175,6 +180,7 @@ class DetectionQueryService:
             end_date: Only return detections before this timestamp
             scientific_name_filter: Filter by scientific name(s) - string or list
             family_filter: Filter by taxonomic family
+            genus_filter: Filter by taxonomic genus
             min_confidence: Minimum confidence threshold
             max_confidence: Maximum confidence threshold
             order_by: Field to order by (default: timestamp)
@@ -200,6 +206,7 @@ class DetectionQueryService:
                     end_date=end_date,
                     scientific_name_filter=scientific_name_filter,
                     family_filter=family_filter,
+                    genus_filter=genus_filter,
                     min_confidence=min_confidence,
                     max_confidence=max_confidence,
                     order_by=order_by,
@@ -499,6 +506,7 @@ class DetectionQueryService:
         end_date: dt | None = None,
         scientific_name_filter: str | list[str] | None = None,
         family_filter: str | None = None,
+        genus_filter: str | None = None,
         min_confidence: float | None = None,
         max_confidence: float | None = None,
     ) -> tuple[str, dict[str, Any]]:
@@ -531,6 +539,11 @@ class DetectionQueryService:
         if family_filter:
             where_clause += " AND s.family = :family"
             params["family"] = family_filter
+
+        # Genus filter
+        if genus_filter:
+            where_clause += " AND s.genus = :genus"
+            params["genus"] = genus_filter
 
         # Confidence filters
         if min_confidence is not None:
@@ -567,6 +580,7 @@ class DetectionQueryService:
         end_date: dt | None = None,
         scientific_name_filter: str | list[str] | None = None,
         family_filter: str | None = None,
+        genus_filter: str | None = None,
         min_confidence: float | None = None,
         max_confidence: float | None = None,
         order_by: str = "timestamp",
@@ -582,6 +596,7 @@ class DetectionQueryService:
             end_date=end_date,
             scientific_name_filter=scientific_name_filter,
             family_filter=family_filter,
+            genus_filter=genus_filter,
             min_confidence=min_confidence,
             max_confidence=max_confidence,
         )
@@ -1189,8 +1204,8 @@ class DetectionQueryService:
                 .select_from(Detection)
                 .outerjoin(
                     Weather,
-                    func.datetime(Detection.timestamp, "start of hour")
-                    == func.datetime(Weather.timestamp, "start of hour"),
+                    func.strftime("%Y-%m-%d %H:00:00", Detection.timestamp)
+                    == func.strftime("%Y-%m-%d %H:00:00", Weather.timestamp),
                 )
                 .where(
                     and_(
