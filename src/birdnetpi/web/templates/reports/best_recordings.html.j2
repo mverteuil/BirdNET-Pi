@@ -1,783 +1,602 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Best Recordings</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+{% extends "base.html.j2" %}
+{% set active_page = 'best' %}
 
-        body {
-            font-family: Georgia, 'Times New Roman', serif;
-            background: #fdfcfa;
-            color: #2c2c2c;
-            line-height: 1.5;
-            padding: 20px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
+{% block title %}Best Recordings - {{ site_name }}{% endblock %}
 
-        /* Header */
-        header {
-            margin-bottom: 1.5rem;
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid #111;
-        }
+{% block styles %}
+<style>
+    /* Detection entry styles */
+    .detection-entry {
+        display: grid;
+        grid-template-columns: 40px 1fr 120px 80px 80px 100px;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px dotted var(--color-border-tertiary);
+        align-items: center;
+        font-size: 0.85rem;
+    }
 
-        h1 {
-            font-size: 1.3rem;
-            font-weight: normal;
-            margin-bottom: 0.25rem;
-        }
+    .detection-entry:hover {
+        background: var(--color-bg-hover-subtle);
+    }
 
-        .subtitle {
-            font-size: 0.85rem;
-            color: #666;
-            font-style: italic;
-        }
+    /* Play button states */
+    .play-button {
+        width: 30px;
+        height: 30px;
+        border: 1px solid var(--color-border-primary);
+        background: transparent;
+        cursor: pointer;
+        position: relative;
+        padding: 0;
+    }
 
-        /* Navigation */
-        .nav {
-            display: flex;
-            gap: 0;
-            margin-bottom: 1.5rem;
-            border-bottom: 2px solid #111;
-            border-top: 1px solid #111;
-            background: #f8f8f8;
-        }
+    .play-button:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
 
-        .nav a {
-            padding: 0.4rem 1rem;
-            color: #111;
-            text-decoration: none;
-            font-size: 0.85rem;
-            border-right: 1px solid #ddd;
-        }
+    .play-button.loading::after {
+        content: '';
+        position: absolute;
+        left: 12px;
+        top: 12px;
+        width: 6px;
+        height: 6px;
+        background: var(--color-text-secondary);
+        animation: pulse 1s infinite;
+    }
 
-        .nav a:hover {
-            background: #fff;
-            text-decoration: underline;
-        }
+    .play-button.playing::before {
+        content: '■';
+        font-size: 12px;
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
 
-        .nav a.active {
-            background: #fff;
-            font-weight: bold;
-        }
+    .play-button:not(.playing):not(.loading)::before {
+        content: '▶';
+        font-size: 10px;
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-40%, -50%);
+    }
 
-        /* Filter controls */
-        .controls {
-            margin-bottom: 1.5rem;
-            font-size: 0.85rem;
-            padding-bottom: 0.75rem;
-            border-bottom: 1px dotted #ccc;
-        }
+    /* Audio availability indicator */
+    .audio-status {
+        width: 30px;
+        text-align: center;
+        font-size: 0.7rem;
+        color: var(--color-text-tertiary);
+    }
 
-        .control-item {
-            display: inline-block;
-            margin-right: 2rem;
-        }
+    .audio-available {
+        color: var(--color-text-secondary);
+    }
 
-        .control-label {
-            color: #666;
-            margin-right: 0.5rem;
-        }
+    .audio-missing {
+        color: var(--color-text-tertiary);
+        font-style: italic;
+    }
 
-        .control-input {
-            width: 120px;
-            padding: 0.2rem 0.4rem;
-            border: 1px solid #ccc;
-            background: #fff;
-            font-family: inherit;
-            font-size: 0.8rem;
-        }
+    /* Recording stats */
+    .recording-stats {
+        padding: 0.75rem 0;
+        font-size: 0.85rem;
+        color: var(--color-text-secondary);
+        border-bottom: 1px solid var(--color-border-secondary);
+        margin-bottom: 1rem;
+    }
 
-        /* Recording entries */
-        .recording-entry {
-            margin-bottom: 2rem;
-            padding-bottom: 1.5rem;
-            border-bottom: 1px solid #111;
-        }
+    .stat-value {
+        font-weight: 500;
+        color: var(--color-text-primary);
+    }
 
-        .recording-entry:last-child {
-            border-bottom: none;
-        }
+    /* Recording controls */
+    .recording-controls {
+        padding: 1rem 0;
+        display: flex;
+        gap: 2rem;
+        flex-wrap: wrap;
+        align-items: center;
+        border-bottom: 1px solid var(--color-border-secondary);
+        margin-bottom: 1rem;
+    }
 
-        /* Recording header */
-        .recording-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            margin-bottom: 1rem;
-        }
+    .filter-section {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 200px;
+    }
 
-        .species-info {
-            flex: 1;
-        }
+    .filter-label {
+        font-size: 0.85rem;
+        color: var(--color-text-secondary);
+        font-weight: 500;
+    }
 
-        .species-name {
-            font-size: 1.1rem;
-            margin-bottom: 0.25rem;
-        }
+    .filter-selector {
+        background: var(--color-bg-secondary);
+        border: 1px solid var(--color-border-primary);
+        border-radius: 4px;
+        padding: 0.5rem;
+        font-size: 0.85rem;
+        width: 100%;
+        cursor: pointer;
+    }
 
-        .scientific-name {
-            font-style: italic;
-            color: #666;
-            font-size: 0.9rem;
-        }
+    .filter-selector:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
 
-        .confidence-display {
-            font-size: 1.2rem;
-            font-weight: bold;
-        }
+    .filter-clear {
+        font-size: 0.75rem;
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        text-decoration: underline;
+    }
 
-        /* Recording content grid */
-        .recording-content {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 2rem;
-            align-items: start;
-        }
+    .filter-clear:hover {
+        color: var(--color-text-primary);
+    }
 
-        /* Spectrogram with proper scale */
-        .spectrogram-wrapper {
-            display: grid;
-            grid-template-columns: 30px auto;
-            grid-template-rows: auto 20px;
-            gap: 5px;
-            font-size: 0.7rem;
-            color: #666;
-        }
+    /* Loading indicator */
+    .loading-indicator {
+        text-align: center;
+        padding: 2rem;
+        color: var(--color-text-secondary);
+        font-size: 0.9rem;
+    }
 
-        .freq-scale {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            text-align: right;
-            padding-right: 3px;
-        }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+    }
 
-        .spectrogram-container {
-            background: #fff;
-            border: 1px solid #999;
-            grid-column: 2;
-            grid-row: 1;
-        }
+    /* No results message */
+    .no-results {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--color-text-tertiary);
+        font-size: 0.9rem;
+    }
 
-        .spectrogram {
-            width: 300px;
-            height: 150px;
-            display: block;
-        }
+    /* Active filters display */
+    .active-filters {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+        font-size: 0.8rem;
+    }
 
-        .time-scale {
-            grid-column: 2;
-            grid-row: 2;
-            display: flex;
-            justify-content: space-between;
-        }
+    .filter-tag {
+        background: var(--color-bg-secondary);
+        border: 1px solid var(--color-border-primary);
+        border-radius: 3px;
+        padding: 0.25rem 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
 
-        /* Recording details */
-        .recording-details {
-            font-size: 0.85rem;
-        }
+    .filter-tag-remove {
+        cursor: pointer;
+        color: var(--color-text-tertiary);
+        font-weight: bold;
+    }
 
-        .detail-row {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 2rem;
-            margin-bottom: 0.75rem;
-        }
+    .filter-tag-remove:hover {
+        color: var(--color-error);
+    }
+</style>
+{% endblock %}
 
-        .detail-item {
-            display: flex;
-            gap: 0.5rem;
-        }
+{% block content %}
+<h2>Best Recordings</h2>
 
-        .detail-label {
-            color: #666;
-        }
+<div class="recording-stats" id="stats">
+    <span>Loading statistics...</span>
+</div>
 
-        .detail-value {
-            color: #111;
-        }
-
-        /* Audio controls */
-        .audio-controls {
-            margin-top: 1rem;
-            padding-top: 0.75rem;
-            border-top: 1px dotted #ccc;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-        }
-
-        .play-button {
-            color: #666;
-            text-decoration: underline;
-            cursor: pointer;
-            background: none;
-            border: none;
-            font-family: inherit;
-            font-size: inherit;
-            padding: 0;
-        }
-
-        .play-button:hover {
-            color: #111;
-        }
-
-        .download-link {
-            color: #666;
-            text-decoration: underline;
-        }
-
-        .download-link:hover {
-            color: #111;
-        }
-
-        /* Mini waveform */
-        .waveform {
-            display: flex;
-            align-items: flex-end;
-            height: 20px;
-            gap: 1px;
-            flex: 1;
-            max-width: 200px;
-        }
-
-        .waveform-bar {
-            width: 2px;
-            background: #ccc;
-            flex-shrink: 0;
-        }
-        .summary-table {
-            width: 100%;
-            font-size: 0.85rem;
-            border-collapse: collapse;
-            margin-bottom: 2rem;
-        }
-
-        .summary-table th {
-            text-align: left;
-            font-weight: normal;
-            padding: 0.5rem 0.25rem;
-            border-bottom: 1px solid #111;
-            font-size: 0.8rem;
-        }
-
-        .summary-table td {
-            padding: 0.3rem 0.25rem;
-            border-bottom: 1px dotted #ddd;
-        }
-
-        .summary-table tr:hover {
-            background: #f8f8f8;
-        }
-
-        .table-number {
-            text-align: right;
-            font-variant-numeric: tabular-nums;
-        }
-
-        /* No data message */
-        .no-data {
-            text-align: center;
-            color: #999;
-            font-style: italic;
-            padding: 3rem;
-        }
-
-        /* Annotations */
-        .annotation {
-            font-size: 0.75rem;
-            color: #666;
-            font-style: italic;
-            margin-top: 0.5rem;
-        }
-
-        /* Inline audio waveform */
-        .waveform {
-            display: inline-block;
-            width: 100px;
-            height: 20px;
-            vertical-align: middle;
-            margin-left: 0.5rem;
-        }
-
-        .waveform-bar {
-            display: inline-block;
-            width: 2px;
-            background: #999;
-            vertical-align: middle;
-            margin-right: 1px;
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <h1>Best Recordings</h1>
-        <p class="subtitle">Highest confidence detection per species · Sorted by confidence · Spectrograms at 48 kHz sampling rate</p>
-    </header>
-
-    <!-- Navigation -->
-    {% set active_page = 'best' %}
-    {% include 'includes/navigation.html.j2' %}
-
-    <!-- Filter controls -->
-    <div class="controls">
-        <span class="control-item">
-            <span class="control-label">Min confidence:</span>
-            <input type="number" class="control-input" id="minConfidence" value="70" min="0" max="100" step="5" onchange="filterRecordings()"> %
-        </span>
-        <span class="control-item">
-            <span class="control-label">Date range:</span>
-            <input type="date" class="control-input" id="startDate" onchange="filterRecordings()">
-            <span style="margin: 0 0.5rem;">to</span>
-            <input type="date" class="control-input" id="endDate" onchange="filterRecordings()">
-        </span>
-        <span class="control-item">
-            <span class="control-label">Sort by:</span>
-            <select class="control-input" onchange="sortRecordings(this.value)">
-                <option value="confidence">Confidence</option>
-                <option value="date">Date</option>
-                <option value="species">Species</option>
-                <option value="duration">Duration</option>
-            </select>
-        </span>
+<div class="recording-controls">
+    <!-- Hierarchical taxonomic filters -->
+    <div class="filter-section">
+        <label class="filter-label">Family</label>
+        <select class="filter-selector" id="family-filter" onchange="onFamilyChange()">
+            <option value="">All families</option>
+        </select>
     </div>
 
-    <!-- Summary statistics table -->
-    <table class="summary-table">
-        <thead>
-            <tr>
-                <th>Species</th>
-                <th>Scientific Name</th>
-                <th class="table-number">Best Conf.</th>
-                <th class="table-number">Avg Conf.</th>
-                <th class="table-number">Count</th>
-                <th>Latest</th>
-                <th>Recording</th>
-            </tr>
-        </thead>
-        <tbody id="summaryTable">
-            <tr>
-                <td>American Robin</td>
-                <td style="font-style: italic; color: #666;">Turdus migratorius</td>
-                <td class="table-number">98.7%</td>
-                <td class="table-number">84.2%</td>
-                <td class="table-number">342</td>
-                <td>2025-01-15 14:32</td>
-                <td><a href="#robin" class="download-link">View</a></td>
-            </tr>
-            <tr>
-                <td>Blue Jay</td>
-                <td style="font-style: italic; color: #666;">Cyanocitta cristata</td>
-                <td class="table-number">97.3%</td>
-                <td class="table-number">81.5%</td>
-                <td class="table-number">287</td>
-                <td>2025-01-15 11:45</td>
-                <td><a href="#bluejay" class="download-link">View</a></td>
-            </tr>
-            <tr>
-                <td>Northern Cardinal</td>
-                <td style="font-style: italic; color: #666;">Cardinalis cardinalis</td>
-                <td class="table-number">96.8%</td>
-                <td class="table-number">86.7%</td>
-                <td class="table-number">198</td>
-                <td>2025-01-15 07:23</td>
-                <td><a href="#cardinal" class="download-link">View</a></td>
-            </tr>
-        </tbody>
-    </table>
-
-    <!-- Recording entries -->
-    <div id="recordings">
-        <div class="recording-entry" id="robin">
-            <div class="recording-header">
-                <div class="species-info">
-                    <div class="species-name">American Robin</div>
-                    <div class="scientific-name">Turdus migratorius</div>
-                </div>
-                <div class="confidence-display">98.7%</div>
-            </div>
-
-            <div class="recording-content">
-                <div class="spectrogram-wrapper">
-                    <div class="freq-scale">
-                        <span>12 kHz</span>
-                        <span>8</span>
-                        <span>4</span>
-                        <span>0</span>
-                    </div>
-                    <div class="spectrogram-container">
-                        <canvas class="spectrogram" id="spectrogram-1"></canvas>
-                    </div>
-                    <div></div>
-                    <div class="time-scale">
-                        <span>0</span>
-                        <span>0.5</span>
-                        <span>1.0</span>
-                        <span>1.5</span>
-                        <span>2.0</span>
-                        <span>2.5</span>
-                        <span>3.0 s</span>
-                    </div>
-                </div>
-
-                <div class="recording-details">
-                    <div class="detail-row">
-                        <div class="detail-item">
-                            <span class="detail-label">Date:</span>
-                            <span class="detail-value">2025-01-15</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Time:</span>
-                            <span class="detail-value">14:32:18</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Duration:</span>
-                            <span class="detail-value">3.0 s</span>
-                        </div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-item">
-                            <span class="detail-label">Freq range:</span>
-                            <span class="detail-value">2.1-8.4 kHz</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Peak freq:</span>
-                            <span class="detail-value">4.2 kHz</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">SNR:</span>
-                            <span class="detail-value">18.3 dB</span>
-                        </div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-item">
-                            <span class="detail-label">Location:</span>
-                            <span class="detail-value">42.9834°N, 79.0103°W</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Model:</span>
-                            <span class="detail-value">BirdNET_V2.4</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Processing:</span>
-                            <span class="detail-value">142 ms</span>
-                        </div>
-                    </div>
-
-                    <div class="audio-controls">
-                        <button class="play-button" onclick="playAudio('robin.mp3')">▶ Play</button>
-                        <a href="/recordings/robin.mp3" class="download-link">MP3</a>
-                        <a href="/recordings/robin.wav" class="download-link">WAV</a>
-                        <div class="waveform" id="waveform-1"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="recording-entry" id="bluejay">
-            <div class="recording-header">
-                <div class="species-info">
-                    <div class="species-name">Blue Jay</div>
-                    <div class="scientific-name">Cyanocitta cristata</div>
-                </div>
-                <div class="confidence-display">97.3%</div>
-            </div>
-
-            <div class="recording-content">
-                <div class="spectrogram-wrapper">
-                    <div class="freq-scale">
-                        <span>12 kHz</span>
-                        <span>8</span>
-                        <span>4</span>
-                        <span>0</span>
-                    </div>
-                    <div class="spectrogram-container">
-                        <canvas class="spectrogram" id="spectrogram-2"></canvas>
-                    </div>
-                    <div></div>
-                    <div class="time-scale">
-                        <span>0</span>
-                        <span>0.5</span>
-                        <span>1.0</span>
-                        <span>1.5</span>
-                        <span>2.0</span>
-                        <span>2.5</span>
-                        <span>3.0 s</span>
-                    </div>
-                </div>
-
-                <div class="recording-details">
-                    <div class="detail-row">
-                        <div class="detail-item">
-                            <span class="detail-label">Date:</span>
-                            <span class="detail-value">2025-01-15</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Time:</span>
-                            <span class="detail-value">11:45:32</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Duration:</span>
-                            <span class="detail-value">3.0 s</span>
-                        </div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-item">
-                            <span class="detail-label">Freq range:</span>
-                            <span class="detail-value">1.8-6.2 kHz</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Peak freq:</span>
-                            <span class="detail-value">3.8 kHz</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">SNR:</span>
-                            <span class="detail-value">22.1 dB</span>
-                        </div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-item">
-                            <span class="detail-label">Location:</span>
-                            <span class="detail-value">42.9834°N, 79.0103°W</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Model:</span>
-                            <span class="detail-value">BirdNET_V2.4</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Processing:</span>
-                            <span class="detail-value">138 ms</span>
-                        </div>
-                    </div>
-
-                    <div class="audio-controls">
-                        <button class="play-button" onclick="playAudio('bluejay.mp3')">▶ Play</button>
-                        <a href="/recordings/bluejay.mp3" class="download-link">MP3</a>
-                        <a href="/recordings/bluejay.wav" class="download-link">WAV</a>
-                        <div class="waveform" id="waveform-2"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="recording-entry" id="cardinal">
-            <div class="recording-header">
-                <div class="species-info">
-                    <div class="species-name">Northern Cardinal</div>
-                    <div class="scientific-name">Cardinalis cardinalis</div>
-                </div>
-                <div class="confidence-display">96.8%</div>
-            </div>
-
-            <div class="recording-content">
-                <div class="spectrogram-wrapper">
-                    <div class="freq-scale">
-                        <span>12 kHz</span>
-                        <span>8</span>
-                        <span>4</span>
-                        <span>0</span>
-                    </div>
-                    <div class="spectrogram-container">
-                        <canvas class="spectrogram" id="spectrogram-3"></canvas>
-                    </div>
-                    <div></div>
-                    <div class="time-scale">
-                        <span>0</span>
-                        <span>0.5</span>
-                        <span>1.0</span>
-                        <span>1.5</span>
-                        <span>2.0</span>
-                        <span>2.5</span>
-                        <span>3.0 s</span>
-                    </div>
-                </div>
-
-                <div class="recording-details">
-                    <div class="detail-row">
-                        <div class="detail-item">
-                            <span class="detail-label">Date:</span>
-                            <span class="detail-value">2025-01-15</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Time:</span>
-                            <span class="detail-value">07:23:45</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Duration:</span>
-                            <span class="detail-value">3.0 s</span>
-                        </div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-item">
-                            <span class="detail-label">Freq range:</span>
-                            <span class="detail-value">1.5-7.8 kHz</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Peak freq:</span>
-                            <span class="detail-value">3.2 kHz</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">SNR:</span>
-                            <span class="detail-value">19.7 dB</span>
-                        </div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-item">
-                            <span class="detail-label">Location:</span>
-                            <span class="detail-value">42.9834°N, 79.0103°W</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Model:</span>
-                            <span class="detail-value">BirdNET_V2.4</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Processing:</span>
-                            <span class="detail-value">155 ms</span>
-                        </div>
-                    </div>
-
-                    <div class="audio-controls">
-                        <button class="play-button" onclick="playAudio('cardinal.mp3')">▶ Play</button>
-                        <a href="/recordings/cardinal.mp3" class="download-link">MP3</a>
-                        <a href="/recordings/cardinal.wav" class="download-link">WAV</a>
-                        <div class="waveform" id="waveform-3"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="filter-section">
+        <label class="filter-label">Genus</label>
+        <select class="filter-selector" id="genus-filter" onchange="onGenusChange()" disabled>
+            <option value="">Select family first</option>
+        </select>
     </div>
 
-    <script>
-        // Generate spectrograms for each recording
-        function generateSpectrogram(canvasId, birdType) {
-            const canvas = document.getElementById(canvasId);
-            if (!canvas) return;
+    <div class="filter-section">
+        <label class="filter-label">Species</label>
+        <select class="filter-selector" id="species-filter" onchange="onSpeciesChange()" disabled>
+            <option value="">Select genus first</option>
+        </select>
+    </div>
 
-            const ctx = canvas.getContext('2d');
-            canvas.width = 300;
-            canvas.height = 150;
+    <div class="filter-section">
+        <label class="filter-label">Min Confidence</label>
+        <select class="filter-selector" id="confidence-filter" onchange="loadRecordings()">
+            <option value="0.7">70%</option>
+            <option value="0.8">80%</option>
+            <option value="0.9">90%</option>
+            <option value="0.95">95%</option>
+        </select>
+    </div>
 
-            // Clear with white background
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+    <div class="filter-section">
+        <a class="filter-clear" onclick="clearAllFilters()">Clear all filters</a>
+    </div>
+</div>
 
-            // Generate bird-specific patterns
-            const patterns = {
-                'spectrogram-1': { // Robin - sweeping tones
-                    baseFreq: 0.4,
-                    sweepRange: 0.3,
-                    harmonics: 3,
-                    tempo: 8
-                },
-                'spectrogram-2': { // Blue Jay - harsh calls
-                    baseFreq: 0.3,
-                    sweepRange: 0.2,
-                    harmonics: 5,
-                    tempo: 6
-                },
-                'spectrogram-3': { // Cardinal - clear whistles
-                    baseFreq: 0.25,
-                    sweepRange: 0.4,
-                    harmonics: 2,
-                    tempo: 4
-                }
-            };
+<div class="active-filters" id="active-filters" style="display: none;">
+</div>
 
-            const pattern = patterns[canvasId] || patterns['spectrogram-1'];
+<div id="detections-container">
+    <div class="loading-indicator">Loading recordings...</div>
+</div>
 
-            // Draw spectrogram pattern
-            for (let x = 0; x < canvas.width; x++) {
-                for (let y = 0; y < canvas.height; y++) {
-                    // Create bird call pattern
-                    const time = x / canvas.width;
-                    const freq = 1 - (y / canvas.height);
+<script>
+// State management
+let currentFilters = {
+    family: null,
+    genus: null,
+    species: null,
+    minConfidence: 0.7
+};
 
-                    let intensity = 0;
+let currentRecordings = [];
 
-                    // Add harmonics
-                    for (let h = 1; h <= pattern.harmonics; h++) {
-                        const harmFreq = pattern.baseFreq * h;
-                        const sweep = Math.sin(time * pattern.tempo * Math.PI) * pattern.sweepRange;
-                        const targetFreq = harmFreq + sweep;
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadFamilies();
+    loadRecordings();
+});
 
-                        const distance = Math.abs(freq - targetFreq);
-                        if (distance < 0.05) {
-                            intensity += Math.exp(-distance * 100) / h;
-                        }
-                    }
+// Load available families
+async function loadFamilies() {
+    try {
+        const response = await fetch('/api/detections/taxonomy/families?has_detections=true');
+        const data = await response.json();
 
-                    // Add some noise
-                    intensity += Math.random() * 0.1;
+        const select = document.getElementById('family-filter');
+        select.innerHTML = '<option value="">All families</option>';
 
-                    // Clamp and convert to grayscale
-                    intensity = Math.min(1, Math.max(0, intensity));
-                    const gray = Math.floor(255 * (1 - intensity));
-
-                    ctx.fillStyle = `rgb(${gray},${gray},${gray})`;
-                    ctx.fillRect(x, y, 1, 1);
-                }
-            }
-        }
-
-        // Generate waveforms
-        function generateWaveform(containerId) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-
-            container.innerHTML = '';
-            for (let i = 0; i < 60; i++) {
-                const bar = document.createElement('div');
-                bar.className = 'waveform-bar';
-                const height = Math.random() * 15 + 5;
-                bar.style.height = height + 'px';
-                container.appendChild(bar);
-            }
-        }
-
-        // Play audio function
-        function playAudio(file) {
-            console.log('Playing:', file);
-            // In real implementation, this would play the audio file
-        }
-
-        // Filter recordings
-        function filterRecordings() {
-            const minConf = document.getElementById('minConfidence').value;
-            console.log('Filtering by confidence:', minConf);
-        }
-
-        // Sort recordings
-        function sortRecordings(sortBy) {
-            console.log('Sorting by:', sortBy);
-        }
-
-        // Initialize on load
-        document.addEventListener('DOMContentLoaded', () => {
-            // Generate all spectrograms
-            generateSpectrogram('spectrogram-1', 'robin');
-            generateSpectrogram('spectrogram-2', 'bluejay');
-            generateSpectrogram('spectrogram-3', 'cardinal');
-
-            // Generate waveforms
-            generateWaveform('waveform-1');
-            generateWaveform('waveform-2');
-            generateWaveform('waveform-3');
-
-            // Set default dates
-            const today = new Date().toISOString().split('T')[0];
-            const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-            document.getElementById('startDate').value = weekAgo;
-            document.getElementById('endDate').value = today;
+        data.families.forEach(family => {
+            const option = document.createElement('option');
+            option.value = family;
+            option.textContent = family;
+            select.appendChild(option);
         });
-    </script>
-</body>
-</html>
+    } catch (error) {
+        console.error('Error loading families:', error);
+    }
+}
+
+// Handle family selection
+async function onFamilyChange() {
+    const familySelect = document.getElementById('family-filter');
+    const genusSelect = document.getElementById('genus-filter');
+    const speciesSelect = document.getElementById('species-filter');
+
+    currentFilters.family = familySelect.value || null;
+    currentFilters.genus = null;
+    currentFilters.species = null;
+
+    if (currentFilters.family) {
+        // Load genera for selected family
+        genusSelect.disabled = false;
+        genusSelect.innerHTML = '<option value="">Loading...</option>';
+
+        try {
+            const response = await fetch(`/api/detections/taxonomy/genera?family=${encodeURIComponent(currentFilters.family)}&has_detections=true`);
+            const data = await response.json();
+
+            genusSelect.innerHTML = '<option value="">All genera</option>';
+            data.genera.forEach(genus => {
+                const option = document.createElement('option');
+                option.value = genus;
+                option.textContent = genus;
+                genusSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading genera:', error);
+            genusSelect.innerHTML = '<option value="">Error loading genera</option>';
+        }
+
+        // Reset species selector
+        speciesSelect.disabled = true;
+        speciesSelect.innerHTML = '<option value="">Select genus first</option>';
+    } else {
+        // Reset both selectors
+        genusSelect.disabled = true;
+        genusSelect.innerHTML = '<option value="">Select family first</option>';
+        speciesSelect.disabled = true;
+        speciesSelect.innerHTML = '<option value="">Select genus first</option>';
+    }
+
+    loadRecordings();
+}
+
+// Handle genus selection
+async function onGenusChange() {
+    const genusSelect = document.getElementById('genus-filter');
+    const speciesSelect = document.getElementById('species-filter');
+
+    currentFilters.genus = genusSelect.value || null;
+    currentFilters.species = null;
+
+    if (currentFilters.genus) {
+        // Load species for selected genus
+        speciesSelect.disabled = false;
+        speciesSelect.innerHTML = '<option value="">Loading...</option>';
+
+        try {
+            const params = new URLSearchParams({
+                genus: currentFilters.genus,
+                has_detections: true
+            });
+            if (currentFilters.family) {
+                params.append('family', currentFilters.family);
+            }
+
+            const response = await fetch(`/api/detections/taxonomy/species?${params}`);
+            const data = await response.json();
+
+            speciesSelect.innerHTML = '<option value="">All species</option>';
+            data.species.forEach(species => {
+                const option = document.createElement('option');
+                option.value = species.scientific_name;
+                option.textContent = `${species.common_name} (${species.scientific_name})`;
+                if (species.count) {
+                    option.textContent += ` - ${species.count} detections`;
+                }
+                speciesSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading species:', error);
+            speciesSelect.innerHTML = '<option value="">Error loading species</option>';
+        }
+    } else {
+        // Reset species selector
+        speciesSelect.disabled = true;
+        speciesSelect.innerHTML = '<option value="">Select genus first</option>';
+    }
+
+    loadRecordings();
+}
+
+// Handle species selection
+function onSpeciesChange() {
+    const speciesSelect = document.getElementById('species-filter');
+    currentFilters.species = speciesSelect.value || null;
+    loadRecordings();
+}
+
+// Load recordings with current filters
+async function loadRecordings() {
+    const container = document.getElementById('detections-container');
+    container.innerHTML = '<div class="loading-indicator">Loading recordings...</div>';
+
+    // Update confidence filter
+    const confidenceSelect = document.getElementById('confidence-filter');
+    currentFilters.minConfidence = parseFloat(confidenceSelect.value);
+
+    // Build query parameters
+    const params = new URLSearchParams({
+        min_confidence: currentFilters.minConfidence,
+        limit: 100
+    });
+
+    if (currentFilters.species) {
+        params.append('species', currentFilters.species);
+    } else if (currentFilters.genus) {
+        params.append('genus', currentFilters.genus);
+    } else if (currentFilters.family) {
+        params.append('family', currentFilters.family);
+    }
+
+    try {
+        const response = await fetch(`/api/detections/best-recordings?${params}`);
+        const data = await response.json();
+
+        currentRecordings = data.recordings;
+
+        // Update statistics
+        updateStatistics(data);
+
+        // Update active filters display
+        updateActiveFilters();
+
+        // Display recordings
+        if (currentRecordings.length > 0) {
+            displayRecordings(currentRecordings);
+        } else {
+            container.innerHTML = '<div class="no-results">No recordings found matching the selected filters.</div>';
+        }
+    } catch (error) {
+        console.error('Error loading recordings:', error);
+        container.innerHTML = '<div class="no-results">Error loading recordings. Please try again.</div>';
+    }
+}
+
+// Update statistics display
+function updateStatistics(data) {
+    const statsDiv = document.getElementById('stats');
+    statsDiv.innerHTML = `
+        <span><span class="stat-value">${data.count}</span> recordings</span> ·
+        <span><span class="stat-value">${data.unique_species}</span> species</span> ·
+        <span>Average confidence: <span class="stat-value">${data.avg_confidence}%</span></span> ·
+        <span>Date range: <span class="stat-value">${data.date_range}</span></span>
+    `;
+}
+
+// Update active filters display
+function updateActiveFilters() {
+    const container = document.getElementById('active-filters');
+    const filters = [];
+
+    if (currentFilters.family) {
+        filters.push(`<div class="filter-tag">
+            Family: ${currentFilters.family}
+            <span class="filter-tag-remove" onclick="removeFilter('family')">×</span>
+        </div>`);
+    }
+
+    if (currentFilters.genus) {
+        filters.push(`<div class="filter-tag">
+            Genus: ${currentFilters.genus}
+            <span class="filter-tag-remove" onclick="removeFilter('genus')">×</span>
+        </div>`);
+    }
+
+    if (currentFilters.species) {
+        filters.push(`<div class="filter-tag">
+            Species: ${currentFilters.species}
+            <span class="filter-tag-remove" onclick="removeFilter('species')">×</span>
+        </div>`);
+    }
+
+    if (filters.length > 0) {
+        container.style.display = 'flex';
+        container.innerHTML = filters.join('');
+    } else {
+        container.style.display = 'none';
+    }
+}
+
+// Display recordings
+function displayRecordings(recordings) {
+    const container = document.getElementById('detections-container');
+
+    const html = recordings.map(recording => `
+        <div class="detection-entry">
+            <button class="play-button" onclick="playAudio('${recording.id}', this)" title="Play recording"></button>
+            <div>
+                <div style="font-weight: 500;">${recording.common_name || recording.scientific_name}</div>
+                <div style="font-size: 0.8rem; color: var(--color-text-tertiary);">
+                    <em>${recording.scientific_name}</em>
+                </div>
+                <div style="font-size: 0.7rem; color: var(--color-text-tertiary);">
+                    ${recording.family} · ${recording.genus}
+                </div>
+            </div>
+            <div>${recording.date}</div>
+            <div>${recording.time}</div>
+            <div style="text-align: right;">${recording.confidence}%</div>
+            <div class="audio-status" id="audio-status-${recording.id}"></div>
+        </div>
+    `).join('');
+
+    container.innerHTML = html;
+}
+
+// Remove a specific filter
+function removeFilter(filterType) {
+    if (filterType === 'family') {
+        currentFilters.family = null;
+        currentFilters.genus = null;
+        currentFilters.species = null;
+        document.getElementById('family-filter').value = '';
+        onFamilyChange();
+    } else if (filterType === 'genus') {
+        currentFilters.genus = null;
+        currentFilters.species = null;
+        document.getElementById('genus-filter').value = '';
+        onGenusChange();
+    } else if (filterType === 'species') {
+        currentFilters.species = null;
+        document.getElementById('species-filter').value = '';
+        loadRecordings();
+    }
+}
+
+// Clear all filters
+function clearAllFilters() {
+    currentFilters = {
+        family: null,
+        genus: null,
+        species: null,
+        minConfidence: 0.7
+    };
+
+    document.getElementById('family-filter').value = '';
+    document.getElementById('genus-filter').value = '';
+    document.getElementById('genus-filter').disabled = true;
+    document.getElementById('genus-filter').innerHTML = '<option value="">Select family first</option>';
+    document.getElementById('species-filter').value = '';
+    document.getElementById('species-filter').disabled = true;
+    document.getElementById('species-filter').innerHTML = '<option value="">Select genus first</option>';
+    document.getElementById('confidence-filter').value = '0.7';
+
+    loadRecordings();
+}
+
+// Audio playback functionality
+let currentAudio = null;
+let currentButton = null;
+
+function playAudio(detectionId, button) {
+    // Stop current audio if playing
+    if (currentAudio && currentButton) {
+        currentAudio.pause();
+        currentButton.classList.remove('playing');
+    }
+
+    // If clicking the same button, just stop
+    if (currentButton === button) {
+        currentAudio = null;
+        currentButton = null;
+        return;
+    }
+
+    // Start loading
+    button.classList.add('loading');
+    button.disabled = true;
+
+    // Create audio element
+    const audio = new Audio(`/audio/${detectionId}`);
+
+    audio.addEventListener('canplay', () => {
+        button.classList.remove('loading');
+        button.classList.add('playing');
+        button.disabled = false;
+        audio.play();
+    });
+
+    audio.addEventListener('ended', () => {
+        button.classList.remove('playing');
+        currentAudio = null;
+        currentButton = null;
+    });
+
+    audio.addEventListener('error', () => {
+        button.classList.remove('loading');
+        button.disabled = false;
+        const statusDiv = document.getElementById(`audio-status-${detectionId}`);
+        if (statusDiv) {
+            statusDiv.classList.add('audio-missing');
+            statusDiv.textContent = 'N/A';
+        }
+        alert('Audio file not available');
+    });
+
+    currentAudio = audio;
+    currentButton = button;
+}
+</script>
+{% endblock %}
