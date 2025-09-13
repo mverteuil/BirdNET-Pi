@@ -758,3 +758,189 @@ class TestSpeciesFrequencyFormatting:
         assert formatted[0]["count"] == 150
         assert formatted[0]["common_name"] == "Robin"
         assert formatted[0]["id"] == "species-0"
+
+
+class TestChartFormattingMethods:
+    """Test chart-specific formatting methods."""
+
+    def test_format_diversity_timeline(self, presentation_manager):
+        """Should format diversity timeline data for charts."""
+        timeline_data = [
+            {
+                "period": "2024-01-01",
+                "shannon": 2.3,
+                "simpson": 0.85,
+                "richness": 10,
+                "evenness": 0.75,
+                "total_detections": 50,
+            },
+            {
+                "period": "2024-01-02",
+                "shannon": 2.5,
+                "simpson": 0.88,
+                "richness": 12,
+                "evenness": 0.78,
+                "total_detections": 60,
+            },
+            {
+                "period": "2024-01-03",
+                "shannon": 2.7,
+                "simpson": 0.90,
+                "richness": 15,
+                "evenness": 0.80,
+                "total_detections": 75,
+            },
+        ]
+
+        result = presentation_manager._format_diversity_timeline(timeline_data)
+
+        assert "periods" in result
+        assert "shannon" in result
+        assert "simpson" in result
+        assert "richness" in result
+        assert "evenness" in result
+        assert "total_detections" in result
+        assert len(result["periods"]) == 3
+        assert result["shannon"] == [2.3, 2.5, 2.7]
+        assert result["richness"] == [10, 12, 15]
+
+    def test_format_diversity_comparison(self, presentation_manager):
+        """Should format diversity comparison data."""
+        comparison_data = {
+            "period1": {"shannon": 2.9, "simpson": 0.85, "richness": 20},
+            "period2": {"shannon": 3.2, "simpson": 0.90, "richness": 25},
+            "changes": {"shannon": 0.3, "simpson": 0.05, "richness": 5},
+        }
+
+        result = presentation_manager._format_diversity_comparison(comparison_data)
+
+        assert "period1_metrics" in result
+        assert "period2_metrics" in result
+        assert "changes" in result
+        assert result["period1_metrics"]["shannon"] == 2.9
+        assert result["period2_metrics"]["richness"] == 25
+
+    def test_format_accumulation_curve(self, presentation_manager):
+        """Should format species accumulation curve data."""
+        accumulation_data = {
+            "samples": ["2024-01-01", "2024-01-02", "2024-01-03"],
+            "species_counts": [5, 8, 10],
+            "method": "rarefaction",
+        }
+
+        result = presentation_manager._format_accumulation_curve(accumulation_data)
+
+        assert "samples" in result
+        assert "species_counts" in result
+        assert "method" in result
+        assert "total_samples" in result
+        assert "total_species" in result
+        assert result["total_samples"] == 3
+        assert result["total_species"] == 10
+
+    def test_format_similarity_matrix(self, presentation_manager):
+        """Should format similarity matrix data."""
+        matrix_data = {
+            "labels": ["Week 1", "Week 2", "Week 3"],
+            "matrix": [[1.0, 0.8, 0.6], [0.8, 1.0, 0.7], [0.6, 0.7, 1.0]],
+            "index_type": "jaccard",
+        }
+
+        result = presentation_manager._format_similarity_matrix(matrix_data)
+
+        assert "labels" in result
+        assert "matrix" in result
+        assert "index_type" in result
+        assert len(result["labels"]) == 3
+        assert len(result["matrix"]) == 3
+        # Check formatted matrix structure
+        assert "value" in result["matrix"][0][0]
+        assert result["matrix"][0][0]["value"] == 100.0  # 1.0 * 100
+
+    def test_format_beta_diversity(self, presentation_manager):
+        """Should format beta diversity data."""
+        beta_data = [
+            {
+                "period_start": "2024-01-01",
+                "turnover_rate": 0.3,
+                "species_gained": 5,
+                "species_lost": 2,
+                "total_species": 25,
+            },
+            {
+                "period_start": "2024-02-01",
+                "turnover_rate": 0.4,
+                "species_gained": 7,
+                "species_lost": 3,
+                "total_species": 29,
+            },
+        ]
+
+        result = presentation_manager._format_beta_diversity(beta_data)
+
+        assert "periods" in result
+        assert "turnover_rates" in result
+        assert "species_gained" in result
+        assert "species_lost" in result
+        assert "total_species" in result
+        assert len(result["periods"]) == 2
+        assert result["turnover_rates"] == [0.3, 0.4]
+        assert result["species_gained"] == [5, 7]
+
+    def test_format_weather_correlations(self, presentation_manager, mocker):
+        """Should format weather correlation data."""
+        # Mock analytics manager's calculate_correlation method
+        mock_calculate = mocker.patch.object(
+            presentation_manager.analytics_manager, "calculate_correlation"
+        )
+        mock_calculate.side_effect = [0.65, -0.45, -0.20]  # Return values for each call
+
+        weather_data = {
+            "hours": [0, 6, 12, 18, 24],
+            "detection_counts": [10, 15, 20, 25, 30],
+            "temperature": [15, 18, 20, 22, 25],
+            "humidity": [60, 65, 70, 75, 80],
+            "wind_speed": [5, 10, 15, 20, 25],
+            "precipitation": [0, 0.1, 0.2, 0.5, 1.0],
+        }
+
+        result = presentation_manager._format_weather_correlations(weather_data)
+
+        assert "hours" in result
+        assert "detection_counts" in result
+        assert "weather_variables" in result
+        assert "correlations" in result
+
+        # Check weather variables structure
+        assert "temperature" in result["weather_variables"]
+        assert "humidity" in result["weather_variables"]
+        assert "wind_speed" in result["weather_variables"]
+        assert "precipitation" in result["weather_variables"]
+
+        # Check correlations were calculated
+        assert mock_calculate.call_count == 3
+        assert result["correlations"]["temperature"] == 0.65
+        assert result["correlations"]["humidity"] == -0.45
+        assert result["correlations"]["wind_speed"] == -0.20
+
+
+class TestUtilityMethods:
+    """Test utility methods for date and period calculations."""
+
+    def test_calculate_analysis_period_dates(self, presentation_manager):
+        """Should calculate correct date ranges for analysis periods."""
+        # Test day period
+        start, end = presentation_manager._calculate_analysis_period_dates("day")
+        assert (end - start).days == 1
+
+        # Test week period
+        start, end = presentation_manager._calculate_analysis_period_dates("week")
+        assert (end - start).days == 7
+
+        # Test month period
+        start, end = presentation_manager._calculate_analysis_period_dates("month")
+        assert 28 <= (end - start).days <= 31
+
+        # Test year period
+        start, end = presentation_manager._calculate_analysis_period_dates("year")
+        assert 365 <= (end - start).days <= 366

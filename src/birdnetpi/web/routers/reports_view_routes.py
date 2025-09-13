@@ -51,8 +51,9 @@ async def get_all_detections(
 
         # Render template with data
         return templates.TemplateResponse(
-            name="reports/all_detections.html.j2",
-            context=template_data,
+            request,
+            "reports/all_detections.html.j2",
+            template_data,
         )
 
     except Exception as e:
@@ -60,9 +61,9 @@ async def get_all_detections(
 
         # Render with minimal fallback data
         return templates.TemplateResponse(
-            name="reports/all_detections.html.j2",
-            context={
-                "request": request,
+            request,
+            "reports/all_detections.html.j2",
+            {
                 "error": str(e),
                 "location": "Unknown",
                 "current_date": "Unknown",
@@ -118,8 +119,9 @@ async def get_ecological_analysis(
 
         # Render template with data
         return templates.TemplateResponse(
-            name="reports/analysis.html.j2",
-            context=template_data,
+            request,
+            "reports/analysis.html.j2",
+            template_data,
         )
 
     except Exception as e:
@@ -129,9 +131,9 @@ async def get_ecological_analysis(
         import datetime
 
         return templates.TemplateResponse(
-            name="reports/analysis.html.j2",
-            context={
-                "request": request,
+            request,
+            "reports/analysis.html.j2",
+            {
                 "site_name": config.site_name,
                 "location": f"{config.latitude:.4f}, {config.longitude:.4f}",
                 "confidence_threshold": config.species_confidence_threshold,
@@ -194,8 +196,9 @@ async def get_best_recordings(
 
         # Render template
         return templates.TemplateResponse(
-            name="reports/best_recordings.html.j2",
-            context=template_data,
+            request,
+            "reports/best_recordings.html.j2",
+            template_data,
         )
 
     except Exception as e:
@@ -203,9 +206,9 @@ async def get_best_recordings(
 
         # Render with error
         return templates.TemplateResponse(
-            name="reports/best_recordings.html.j2",
-            context={
-                "request": request,
+            request,
+            "reports/best_recordings.html.j2",
+            {
                 "site_name": config.site_name,
                 "location": f"{config.latitude:.4f}, {config.longitude:.4f}",
                 "detections": [],
