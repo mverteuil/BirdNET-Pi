@@ -201,3 +201,171 @@ class TestDetectionsAPIRoutes:
         assert data["detection_id"] == 123
 
     # Spectrogram tests removed - endpoint and PlottingManager have been removed from codebase
+
+
+class TestHierarchicalFiltering:
+    """Test the hierarchical filtering endpoints for family/genus/species."""
+
+    def test_get_families(self, client):
+        """Test getting list of families."""
+        # Mock the query service response
+        client.mock_query_service.get_species_summary = AsyncMock(
+            return_value=[
+                {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
+                {
+                    "family": "Corvidae",
+                    "genus": "Cyanocitta",
+                    "scientific_name": "Cyanocitta cristata",
+                },
+                {"family": "Turdidae", "genus": "Turdus", "scientific_name": "Turdus migratorius"},
+            ]
+        )
+
+        response = client.get("/api/detections/taxonomy/families")
+
+        assert response.status_code == 200
+        data = response.json()
+        families = data["families"]
+        assert len(families) == 2
+        assert "Corvidae" in families
+        assert "Turdidae" in families
+        assert data["count"] == 2
+
+    def test_get_genera_by_family(self, client):
+        """Test getting genera for a specific family."""
+        # Mock the query service response
+        client.mock_query_service.get_species_summary = AsyncMock(
+            return_value=[
+                {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
+                {
+                    "family": "Corvidae",
+                    "genus": "Cyanocitta",
+                    "scientific_name": "Cyanocitta cristata",
+                },
+                {"family": "Turdidae", "genus": "Turdus", "scientific_name": "Turdus migratorius"},
+            ]
+        )
+
+        response = client.get("/api/detections/taxonomy/genera?family=Corvidae")
+
+        assert response.status_code == 200
+        data = response.json()
+        genera = data["genera"]
+        assert len(genera) == 2
+        assert "Corvus" in genera
+        assert "Cyanocitta" in genera
+        assert data["family"] == "Corvidae"
+        assert data["count"] == 2
+
+    def test_get_species_by_genus(self, client):
+        """Test getting species for a specific genus."""
+        # Mock the query service response
+        client.mock_query_service.get_species_summary = AsyncMock(
+            return_value=[
+                {
+                    "family": "Corvidae",
+                    "genus": "Cyanocitta",
+                    "scientific_name": "Cyanocitta cristata",
+                    "best_common_name": "Blue Jay",
+                    "ioc_english_name": "Blue Jay",
+                    "detection_count": 42,
+                },
+                {
+                    "family": "Corvidae",
+                    "genus": "Corvus",
+                    "scientific_name": "Corvus corax",
+                    "best_common_name": "Common Raven",
+                    "ioc_english_name": "Common Raven",
+                    "detection_count": 15,
+                },
+            ]
+        )
+
+        response = client.get("/api/detections/taxonomy/species?genus=Cyanocitta")
+
+        assert response.status_code == 200
+        data = response.json()
+        species = data["species"]
+        assert len(species) == 1
+        assert species[0]["scientific_name"] == "Cyanocitta cristata"
+        assert species[0]["common_name"] == "Blue Jay"
+        assert species[0]["count"] == 42
+        assert data["genus"] == "Cyanocitta"
+        assert data["count"] == 1
+
+    def test_get_species_by_genus_with_family_filter(self, client):
+        """Test getting species for a genus filtered by family."""
+        # Mock the query service response
+        client.mock_query_service.get_species_summary = AsyncMock(
+            return_value=[
+                {
+                    "family": "Corvidae",
+                    "genus": "Corvus",
+                    "scientific_name": "Corvus corax",
+                    "best_common_name": "Common Raven",
+                    "ioc_english_name": "Common Raven",
+                    "detection_count": 15,
+                },
+                {
+                    "family": "Corvidae",
+                    "genus": "Corvus",
+                    "scientific_name": "Corvus brachyrhynchos",
+                    "best_common_name": "American Crow",
+                    "ioc_english_name": "American Crow",
+                    "detection_count": 28,
+                },
+            ]
+        )
+
+        response = client.get("/api/detections/taxonomy/species?genus=Corvus&family=Corvidae")
+
+        assert response.status_code == 200
+        data = response.json()
+        species = data["species"]
+        assert len(species) == 2
+        assert all(s["scientific_name"].startswith("Corvus") for s in species)
+        assert data["genus"] == "Corvus"
+        assert data["family"] == "Corvidae"
+
+    def test_get_families_empty_result(self, client):
+        """Test getting families when no detections exist."""
+        client.mock_query_service.get_species_summary = AsyncMock(return_value=[])
+
+        response = client.get("/api/detections/taxonomy/families")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["families"] == []
+        assert data["count"] == 0
+
+    def test_get_genera_unknown_family(self, client):
+        """Test getting genera for a family with no detections."""
+        client.mock_query_service.get_species_summary = AsyncMock(
+            return_value=[
+                {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
+            ]
+        )
+
+        response = client.get("/api/detections/taxonomy/genera?family=UnknownFamily")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["genera"] == []
+        assert data["family"] == "UnknownFamily"
+        assert data["count"] == 0
+
+    def test_get_species_unknown_genus(self, client):
+        """Test getting species for a genus with no detections."""
+        client.mock_query_service.get_species_summary = AsyncMock(
+            return_value=[
+                {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
+            ]
+        )
+
+        response = client.get("/api/detections/taxonomy/species?genus=UnknownGenus")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["species"] == []
+        assert data["genus"] == "UnknownGenus"
+        assert data["count"] == 0

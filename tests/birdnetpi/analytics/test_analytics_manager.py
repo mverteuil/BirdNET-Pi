@@ -136,6 +136,273 @@ class TestDashboardAnalytics:
         assert analysis[0]["name"] == "Rare species"  # Falls back to scientific name
 
 
+class TestTemporalPatterns:
+    """Test temporal pattern analysis methods."""
+
+    @pytest.mark.asyncio
+    async def test_get_temporal_patterns(self, analytics_manager, mock_detection_query_service):
+        """Test temporal patterns analysis with hourly detection data."""
+        mock_detection_query_service.get_hourly_counts = AsyncMock(
+            return_value=[
+                {"hour": 6, "count": 15},
+                {"hour": 7, "count": 25},
+                {"hour": 8, "count": 30},
+                {"hour": 12, "count": 10},
+                {"hour": 18, "count": 20},
+            ]
+        )
+
+        patterns = await analytics_manager.get_temporal_patterns(date.today())
+
+        assert "hourly_distribution" in patterns
+        assert "peak_hour" in patterns
+        assert "periods" in patterns
+        assert patterns["hourly_distribution"][6] == 15
+        assert patterns["hourly_distribution"][7] == 25
+        assert patterns["hourly_distribution"][8] == 30
+        assert patterns["peak_hour"] == 8  # Hour with max count (30)
+        assert patterns["periods"]["dawn"] == 40  # sum(4-8am) = 0+0+15+25
+        assert patterns["periods"]["morning"] == 30  # sum(8-12pm) = 30+0+0+0
+        assert patterns["periods"]["afternoon"] == 10  # sum(12-4pm) = 10+0+0+0
+        assert patterns["periods"]["evening"] == 20  # sum(4-8pm) = 0+0+20+0
+
+    @pytest.mark.asyncio
+    async def test_get_aggregate_hourly_pattern(
+        self, analytics_manager, mock_detection_query_service
+    ):
+        """Test aggregate hourly pattern calculation across multiple days."""
+        # Mock hourly counts for each day queried
+        mock_detection_query_service.get_hourly_counts = AsyncMock(
+            return_value=[
+                {"hour": 6, "count": 50},
+                {"hour": 7, "count": 75},
+                {"hour": 8, "count": 60},
+                {"hour": 12, "count": 30},
+                {"hour": 18, "count": 45},
+            ]
+        )
+
+        pattern = await analytics_manager.get_aggregate_hourly_pattern(days=30)
+
+        # Returns 7x24 array (7 days of week, 24 hours each)
+        assert len(pattern) == 7  # 7 days of week
+        assert len(pattern[0]) == 24  # 24 hours per day
+        # Since we're aggregating over 30 days, each day should have accumulated counts
+        # Check that some hours have counts > 0
+        total_counts = sum(sum(day) for day in pattern)
+        assert total_counts > 0  # Should have some accumulated data
+
+    @pytest.mark.asyncio
+    async def test_get_weekly_heatmap_data(self, analytics_manager, mock_detection_query_service):
+        """Test weekly heatmap data generation for visualization."""
+        # Mock different hourly counts for different days
+        day_patterns = [
+            [{"hour": 6, "count": 10}, {"hour": 7, "count": 15}],  # Day 1
+            [{"hour": 6, "count": 12}, {"hour": 8, "count": 20}],  # Day 2
+            [{"hour": 18, "count": 25}],  # Day 3
+        ]
+        mock_detection_query_service.get_hourly_counts = AsyncMock(
+            side_effect=day_patterns + [[] for _ in range(4)]  # Fill rest with empty
+        )
+
+        heatmap = await analytics_manager.get_weekly_heatmap_data(days=7)
+
+        assert len(heatmap) == 7  # 7 days
+        assert len(heatmap[0]) == 24  # 24 hours per day
+
+        # Check specific patterns (note: days are in reverse chronological order)
+        assert heatmap[-1][6] == 10  # Oldest day (day 1), hour 6
+        assert heatmap[-1][7] == 15  # Oldest day (day 1), hour 7
+        assert heatmap[-2][6] == 12  # Day 2, hour 6
+        assert heatmap[-2][8] == 20  # Day 2, hour 8
+
+    @pytest.mark.asyncio
+    async def test_get_detection_scatter_data(
+        self, analytics_manager, mock_detection_query_service
+    ):
+        """Test scatter plot data generation for detection visualization."""
+        test_time = datetime(2024, 1, 1, 6, 30)
+        mock_detections = [
+            MagicMock(
+                timestamp=test_time,
+                confidence=0.85,
+                scientific_name="Turdus migratorius",
+                common_name="American Robin",
+                translated_name=None,
+                ioc_english_name="American Robin",
+            ),
+            MagicMock(
+                timestamp=datetime(2024, 1, 1, 7, 15),
+                confidence=0.92,
+                scientific_name="Cardinalis cardinalis",
+                common_name="Northern Cardinal",
+                translated_name=None,
+                ioc_english_name="Northern Cardinal",
+            ),
+        ]
+        mock_detection_query_service.query_detections = AsyncMock(return_value=mock_detections)
+
+        scatter_data = await analytics_manager.get_detection_scatter_data(hours=24)
+
+        assert len(scatter_data) == 2
+        assert scatter_data[0]["time"] == 6.5  # 6:30 AM
+        assert scatter_data[0]["confidence"] == 0.85
+        assert scatter_data[0]["species"] == "American Robin"
+        assert "frequency_category" in scatter_data[0]
+        assert scatter_data[1]["time"] == 7.25  # 7:15 AM
+        assert scatter_data[1]["confidence"] == 0.92
+
+
+class TestDiversityMetrics:
+    """Test biodiversity calculation methods."""
+
+    @pytest.mark.asyncio
+    async def test_calculate_diversity_timeline(
+        self, analytics_manager, mock_detection_query_service
+    ):
+        """Test diversity metrics calculation over time periods."""
+        # Mock the method that calculate_diversity_timeline actually calls
+        mock_detection_query_service.get_species_counts_by_period = AsyncMock(
+            return_value=[
+                {
+                    "period": datetime(2024, 1, 1, 6, 0),
+                    "species_counts": {
+                        "Species A": 2,
+                        "Species B": 1,
+                    },
+                },
+                {
+                    "period": datetime(2024, 1, 1, 7, 0),
+                    "species_counts": {
+                        "Species B": 1,
+                        "Species C": 1,
+                    },
+                },
+                {
+                    "period": datetime(2024, 1, 1, 8, 0),
+                    "species_counts": {
+                        "Species C": 1,
+                    },
+                },
+            ]
+        )
+
+        timeline = await analytics_manager.calculate_diversity_timeline(
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 2),
+            temporal_resolution="hourly",
+        )
+
+        assert len(timeline) > 0
+        assert "period" in timeline[0]
+        assert "shannon" in timeline[0]
+        assert "simpson" in timeline[0]
+        assert "richness" in timeline[0]
+        assert "evenness" in timeline[0]
+        # Shannon index should be > 0 when multiple species present
+        assert any(point["shannon"] > 0 for point in timeline)
+
+    @pytest.mark.asyncio
+    async def test_calculate_species_accumulation(
+        self, analytics_manager, mock_detection_query_service
+    ):
+        """Test species accumulation curve calculation."""
+        # Mock the actual method called by calculate_species_accumulation
+        # Returns list of tuples (timestamp, species_name)
+        mock_detection_query_service.get_detections_for_accumulation = AsyncMock(
+            return_value=[
+                (datetime(2024, 1, 1, 6, 0), "Species A"),
+                (datetime(2024, 1, 1, 7, 0), "Species B"),
+                (datetime(2024, 1, 1, 8, 0), "Species A"),  # Repeat
+                (datetime(2024, 1, 1, 9, 0), "Species C"),
+                (datetime(2024, 1, 1, 10, 0), "Species D"),
+            ]
+        )
+
+        accumulation = await analytics_manager.calculate_species_accumulation(
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 2),
+            method="collector",  # Use collector method for actual observation order
+        )
+
+        assert len(accumulation["samples"]) > 0
+        assert len(accumulation["species_counts"]) > 0
+        assert accumulation["species_counts"][0] == 1  # First species
+        assert accumulation["species_counts"][-1] == 4  # Total unique species (4 distinct)
+        assert accumulation["method"] == "collector"
+
+    @pytest.mark.asyncio
+    async def test_calculate_community_similarity(
+        self, analytics_manager, mock_detection_query_service
+    ):
+        """Test community similarity calculation between time periods."""
+        # Mock the method that calculate_community_similarity actually calls
+        # Returns species counts for each period
+        mock_detection_query_service.get_species_counts_for_periods = AsyncMock(
+            return_value=[
+                {"Species A": 2, "Species B": 1, "Species C": 1},  # Period 1
+                {"Species A": 1, "Species B": 1, "Species D": 1},  # Period 2
+            ]
+        )
+
+        similarity = await analytics_manager.calculate_community_similarity(
+            periods=[
+                (datetime(2024, 1, 1), datetime(2024, 1, 2)),
+                (datetime(2024, 1, 3), datetime(2024, 1, 4)),
+            ],
+            index_type="jaccard",
+        )
+
+        assert "labels" in similarity
+        assert "matrix" in similarity
+        assert "index_type" in similarity
+        assert similarity["index_type"] == "jaccard"
+        # Matrix should be 2x2 (2 periods)
+        assert len(similarity["matrix"]) == 2
+        assert len(similarity["matrix"][0]) == 2
+        # Diagonal should be 1.0 (perfect similarity with self)
+        assert similarity["matrix"][0][0] == 1.0
+        assert similarity["matrix"][1][1] == 1.0
+        # Off-diagonal should be the Jaccard similarity
+        # 2 shared species (A, B) out of 4 total unique species = 0.5
+        assert similarity["matrix"][0][1] == pytest.approx(0.5, rel=0.01)
+
+    def test_calculate_correlation(self, analytics_manager):
+        """Test correlation coefficient calculation."""
+        x = [1, 2, 3, 4, 5]
+        y = [2, 4, 6, 8, 10]  # Perfect positive correlation
+
+        correlation = analytics_manager.calculate_correlation(x, y)
+        assert correlation == pytest.approx(1.0, rel=1e-5)
+
+        # Test negative correlation
+        y_neg = [10, 8, 6, 4, 2]
+        correlation_neg = analytics_manager.calculate_correlation(x, y_neg)
+        assert correlation_neg == pytest.approx(-1.0, rel=1e-5)
+
+        # Test no correlation
+        y_zero = [3, 3, 3, 3, 3]
+        correlation_zero = analytics_manager.calculate_correlation(x, y_zero)
+        assert correlation_zero == pytest.approx(0.0, abs=1e-5)
+
+    def test_categorize_frequency(self, analytics_manager):
+        """Test frequency categorization for species counts."""
+        # Based on actual implementation:
+        # <= 5: uncommon
+        # 6-20: regular
+        # > 20: common
+        assert analytics_manager._categorize_frequency(0) == "uncommon"
+        assert analytics_manager._categorize_frequency(1) == "uncommon"
+        assert analytics_manager._categorize_frequency(3) == "uncommon"
+        assert analytics_manager._categorize_frequency(5) == "uncommon"
+        assert analytics_manager._categorize_frequency(6) == "regular"
+        assert analytics_manager._categorize_frequency(8) == "regular"
+        assert analytics_manager._categorize_frequency(20) == "regular"
+        assert analytics_manager._categorize_frequency(21) == "common"
+        assert analytics_manager._categorize_frequency(25) == "common"
+        assert analytics_manager._categorize_frequency(100) == "common"
+
+
 class TestTemporalAnalytics:
     """Test temporal pattern analytics."""
 

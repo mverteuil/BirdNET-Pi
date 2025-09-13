@@ -7,7 +7,6 @@ import pytest
 
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
-from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.models import Detection
 from birdnetpi.detections.queries import DetectionQueryService
 
@@ -21,8 +20,10 @@ def mock_analytics_manager():
 @pytest.fixture
 def mock_config():
     """Create a mock BirdNETConfig."""
-    config = MagicMock(spec=BirdNETConfig)
-    config.species_confidence_threshold = 0.7
+    # Create actual instance with test values
+    from birdnetpi.config.models import BirdNETConfig
+
+    config = BirdNETConfig(species_confidence_threshold=0.7, timezone="UTC")
     return config
 
 
@@ -375,3 +376,385 @@ class TestAPIFormatting:
         assert response.status == "pending"
         assert response.data == data
         assert hasattr(response, "timestamp")
+
+
+class TestSparklineGeneration:
+    """Test sparkline data generation."""
+
+    @pytest.mark.asyncio
+    async def test_generate_sparkline_data(self, presentation_manager, mock_analytics_manager):
+        """Test sparkline data generation for species trends."""
+        # Mock the hourly patterns method
+        mock_analytics_manager.get_species_hourly_patterns = AsyncMock(
+            side_effect=[
+                [
+                    5,
+                    10,
+                    15,
+                    12,
+                    8,
+                    20,
+                    25,
+                    10,
+                    5,
+                    3,
+                    2,
+                    1,
+                    0,
+                    0,
+                    1,
+                    2,
+                    3,
+                    5,
+                    8,
+                    10,
+                    12,
+                    15,
+                    10,
+                    8,
+                ],  # 24 hours
+                [
+                    3,
+                    5,
+                    4,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    8,
+                    6,
+                    5,
+                    4,
+                    3,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    8,
+                    7,
+                    6,
+                ],  # 24 hours
+            ]
+        )
+
+        top_species = [
+            {
+                "id": 1,
+                "scientific_name": "Turdus migratorius",
+                "common_name": "American Robin",
+                "count": 100,
+            },
+            {
+                "id": 2,
+                "scientific_name": "Cardinalis cardinalis",
+                "common_name": "Northern Cardinal",
+                "count": 50,
+            },
+        ]
+
+        result = await presentation_manager._generate_sparkline_data(top_species, "week")
+
+        # Check that hourly patterns were requested
+        assert mock_analytics_manager.get_species_hourly_patterns.call_count == 2
+
+        # Check result structure
+        assert "1-spark" in result  # Using species ID
+        assert "2-spark" in result
+        assert len(result["1-spark"]) == 24  # 24 hours
+        assert len(result["2-spark"]) == 24
+
+    @pytest.mark.asyncio
+    async def test_generate_sparkline_data_empty(
+        self, presentation_manager, mock_analytics_manager
+    ):
+        """Test sparkline generation with no species."""
+        result = await presentation_manager._generate_sparkline_data([], "week")
+        assert result == {}
+
+
+class TestHeatmapData:
+    """Test heatmap data generation."""
+
+    @pytest.mark.asyncio
+    async def test_get_heatmap_data_week(self, presentation_manager, mock_analytics_manager):
+        """Test heatmap data generation for weekly view."""
+        # Create 7x24 matrix for weekly heatmap
+        heatmap_data = [[0] * 24 for _ in range(7)]
+        heatmap_data[0][6] = 15  # Monday 6 AM
+        heatmap_data[0][7] = 25  # Monday 7 AM
+        heatmap_data[5][8] = 20  # Saturday 8 AM
+
+        mock_analytics_manager.get_weekly_heatmap_data = AsyncMock(return_value=heatmap_data)
+
+        result, title = await presentation_manager._get_heatmap_data("week")
+
+        assert len(result) == 7  # 7 days
+        assert len(result[0]) == 24  # 24 hours
+        assert "24-Hour Activity Pattern" in title
+        assert result[0][6] == 15
+        assert result[0][7] == 25
+
+    @pytest.mark.asyncio
+    async def test_get_heatmap_data_month(self, presentation_manager, mock_analytics_manager):
+        """Test heatmap data generation for monthly view."""
+        # For month view, it uses get_aggregate_hourly_pattern
+        # which might return weekly aggregates
+        heatmap_data = [[0] * 24 for _ in range(4)]  # 4 weeks
+        heatmap_data[0][12] = 30  # Week 1, noon
+
+        mock_analytics_manager.get_aggregate_hourly_pattern = AsyncMock(return_value=heatmap_data)
+
+        result, title = await presentation_manager._get_heatmap_data("month")
+
+        # Check that the method was called with 30 days
+        mock_analytics_manager.get_aggregate_hourly_pattern.assert_called_once_with(30)
+
+        assert len(result) == 4  # 4 weeks for monthly aggregate
+        assert len(result[0]) == 24  # 24 hours
+        assert result[0][12] == 30
+
+
+class TestDiversityFormatting:
+    """Test diversity data formatting methods."""
+
+    def test_format_diversity_timeline(self, presentation_manager):
+        """Test formatting diversity timeline data."""
+        # Data structure matching what AnalyticsManager returns
+        data = [
+            {
+                "period": "2024-01-01",
+                "shannon": 2.5,
+                "simpson": 0.85,
+                "richness": 10,
+                "evenness": 0.75,
+                "total_detections": 50,
+            },
+            {
+                "period": "2024-01-02",
+                "shannon": 2.7,
+                "simpson": 0.87,
+                "richness": 12,
+                "evenness": 0.78,
+                "total_detections": 60,
+            },
+            {
+                "period": "2024-01-03",
+                "shannon": 2.6,
+                "simpson": 0.86,
+                "richness": 11,
+                "evenness": 0.76,
+                "total_detections": 55,
+            },
+        ]
+
+        formatted = presentation_manager._format_diversity_timeline(data)
+
+        assert "periods" in formatted
+        assert "shannon" in formatted
+        assert "simpson" in formatted
+        assert "richness" in formatted
+        assert "evenness" in formatted
+        assert "total_detections" in formatted
+        assert formatted["periods"] == ["2024-01-01", "2024-01-02", "2024-01-03"]
+        assert formatted["shannon"] == [2.5, 2.7, 2.6]
+        assert formatted["simpson"] == [0.85, 0.87, 0.86]
+        assert formatted["richness"] == [10, 12, 11]
+        assert formatted["evenness"] == [0.75, 0.78, 0.76]
+        assert formatted["total_detections"] == [50, 60, 55]
+
+    def test_format_diversity_comparison(self, presentation_manager):
+        """Test formatting diversity comparison data."""
+        data = {
+            "period1": {"shannon": 2.3, "simpson": 0.82, "species_count": 12},
+            "period2": {"shannon": 2.5, "simpson": 0.85, "species_count": 15},
+            "changes": {"shannon": 0.2, "simpson": 0.03, "species_count": 3},
+        }
+
+        formatted = presentation_manager._format_diversity_comparison(data)
+
+        assert "period1_metrics" in formatted
+        assert "period2_metrics" in formatted
+        assert "changes" in formatted
+        assert formatted["period1_metrics"]["shannon"] == 2.3
+        assert formatted["period2_metrics"]["shannon"] == 2.5
+        # Check formatted changes
+        assert formatted["changes"]["shannon"]["value"] == 0.2
+        assert formatted["changes"]["shannon"]["trend"] == "up"
+        assert formatted["changes"]["species_count"]["value"] == 3
+
+    def test_format_accumulation_curve(self, presentation_manager):
+        """Test formatting species accumulation curve data."""
+        # Data structure matching what AnalyticsManager returns
+        data = {
+            "samples": [1, 2, 3, 4, 5, 6, 7, 8],
+            "species_counts": [1, 3, 5, 7, 9, 10, 11, 12],
+            "method": "collector",
+        }
+
+        formatted = presentation_manager._format_accumulation_curve(data)
+
+        assert "samples" in formatted
+        assert "species_counts" in formatted
+        assert "method" in formatted
+        assert "total_samples" in formatted
+        assert "total_species" in formatted
+        assert len(formatted["samples"]) == 8
+        assert formatted["species_counts"][-1] == 12
+        assert formatted["total_samples"] == 8
+        assert formatted["total_species"] == 12
+
+
+class TestWeatherFormatting:
+    """Test weather correlation formatting."""
+
+    def test_format_weather_correlations(self, presentation_manager):
+        """Test formatting weather correlation data."""
+        # Data structure with raw arrays as expected by implementation
+        data = {
+            "hours": ["00:00", "01:00", "02:00", "03:00"],
+            "detection_counts": [5, 10, 15, 20],
+            "temperature": [15.5, 16.0, 17.2, 18.5],
+            "humidity": [65, 70, 75, 80],
+            "wind_speed": [5.0, 3.5, 2.0, 4.5],
+            "precipitation": [0.0, 0.0, 0.5, 1.0],
+        }
+
+        formatted = presentation_manager._format_weather_correlations(data)
+
+        assert "hours" in formatted
+        assert "detection_counts" in formatted
+        assert "weather_variables" in formatted
+        assert "correlations" in formatted
+
+        # Check that raw data is preserved
+        assert formatted["hours"] == data["hours"]
+        assert formatted["detection_counts"] == data["detection_counts"]
+
+        # Check weather variables structure
+        assert "temperature" in formatted["weather_variables"]
+        assert "humidity" in formatted["weather_variables"]
+        assert "wind_speed" in formatted["weather_variables"]
+        assert "precipitation" in formatted["weather_variables"]
+        assert formatted["weather_variables"]["temperature"] == data["temperature"]
+        assert formatted["weather_variables"]["humidity"] == data["humidity"]
+
+
+class TestPeriodCalculations:
+    """Test period calculation utilities."""
+
+    def test_calculate_period_range(self, presentation_manager):
+        """Test period range calculations."""
+        # Test week period
+        start, label = presentation_manager._calculate_period_range("week")
+        assert start is not None
+        assert label == "This Week"
+
+        # Test month period
+        start, label = presentation_manager._calculate_period_range("month")
+        assert start is not None
+        assert label == "This Month"
+
+        # Test year period
+        start, label = presentation_manager._calculate_period_range("year")
+        assert start is not None
+        assert label == "This Year"
+
+    def test_get_resolution_for_period(self, presentation_manager):
+        """Test resolution selection for different periods."""
+        assert presentation_manager._get_resolution_for_period("day") == "hourly"
+        assert presentation_manager._get_resolution_for_period("week") == "daily"
+        assert presentation_manager._get_resolution_for_period("month") == "daily"
+        assert presentation_manager._get_resolution_for_period("year") == "weekly"
+        assert presentation_manager._get_resolution_for_period("season") == "weekly"
+
+    def test_get_window_size_for_period(self, presentation_manager):
+        """Test window size calculation for periods."""
+        from datetime import timedelta
+
+        assert presentation_manager._get_window_size_for_period("day") == timedelta(hours=6)
+        assert presentation_manager._get_window_size_for_period("week") == timedelta(days=1)
+        assert presentation_manager._get_window_size_for_period("month") == timedelta(days=7)
+        assert presentation_manager._get_window_size_for_period("season") == timedelta(days=14)
+        assert presentation_manager._get_window_size_for_period("year") == timedelta(days=30)
+
+    def test_get_days_for_period(self, presentation_manager):
+        """Test day count for different periods."""
+        assert presentation_manager._get_days_for_period("day") == 1
+        assert presentation_manager._get_days_for_period("week") == 7
+        assert presentation_manager._get_days_for_period("month") == 30
+        assert presentation_manager._get_days_for_period("year") == 365
+
+    def test_get_intensity_class(self, presentation_manager):
+        """Test intensity classification."""
+        assert presentation_manager._get_intensity_class(0.0) == "very-low"
+        assert presentation_manager._get_intensity_class(0.15) == "very-low"
+        assert presentation_manager._get_intensity_class(0.35) == "low"
+        assert presentation_manager._get_intensity_class(0.45) == "medium"
+        assert presentation_manager._get_intensity_class(0.75) == "high"
+        assert presentation_manager._get_intensity_class(0.95) == "very-high"
+
+
+class TestSpeciesFrequencyFormatting:
+    """Test species frequency formatting."""
+
+    def test_format_species_frequency(self, presentation_manager):
+        """Test species frequency data formatting."""
+        species_summary = [
+            {
+                "common_name": "American Robin",
+                "count": 100,
+                "scientific_name": "Turdus migratorius",
+            },
+            {
+                "common_name": "Northern Cardinal",
+                "count": 75,
+                "scientific_name": "Cardinalis cardinalis",
+            },
+            {"common_name": "Blue Jay", "count": 50, "scientific_name": "Cyanocitta cristata"},
+            {"common_name": "Sparrow", "count": 25, "scientific_name": "Passer domesticus"},
+        ]
+
+        formatted = presentation_manager._format_species_frequency(species_summary, "week")
+
+        assert len(formatted) <= 10  # Limited to top 10 species
+        assert all("name" in s for s in formatted)
+        assert all("count" in s for s in formatted)
+        assert all("week" in s for s in formatted)
+        assert all("month" in s for s in formatted)
+        assert all("trend" in s for s in formatted)
+
+        # Check first species
+        if formatted:
+            assert formatted[0]["name"] == "American Robin"
+            assert formatted[0]["count"] == 100
+            assert formatted[0]["week"] == 100  # Count shown for week period
+
+    def test_format_top_species(self, presentation_manager):
+        """Test top species formatting."""
+        species_summary = [
+            {"common_name": "Robin", "count": 150, "scientific_name": "Turdus migratorius"},
+            {"common_name": "Cardinal", "count": 100, "scientific_name": "Cardinalis cardinalis"},
+            {"common_name": "Blue Jay", "count": 75, "scientific_name": "Cyanocitta cristata"},
+            {"common_name": "Sparrow", "count": 60, "scientific_name": "Passer domesticus"},
+            {"common_name": "Crow", "count": 50, "scientific_name": "Corvus brachyrhynchos"},
+            {"common_name": "Finch", "count": 40, "scientific_name": "Fringilla coelebs"},
+            {"common_name": "Dove", "count": 30, "scientific_name": "Zenaida macroura"},
+        ]
+
+        formatted = presentation_manager._format_top_species(species_summary)
+
+        assert len(formatted) <= 6  # Limited to top 6
+        assert all("id" in s for s in formatted)
+        assert all("common_name" in s for s in formatted)
+        assert all("scientific_name" in s for s in formatted)
+        assert all("count" in s for s in formatted)
+
+        # Verify first species
+        assert formatted[0]["count"] == 150
+        assert formatted[0]["common_name"] == "Robin"
+        assert formatted[0]["id"] == "species-0"

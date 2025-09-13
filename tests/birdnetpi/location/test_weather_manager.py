@@ -633,3 +633,96 @@ async def test_weather_manager_session_handling(session):
     if detection_ts and detection_ts.tzinfo is None:
         detection_ts = detection_ts.replace(tzinfo=UTC)
     assert detection_ts == weather.timestamp
+
+
+# Tests for refactored methods
+class TestWeatherManagerRefactoredMethods:
+    """Test the new refactored methods in WeatherManager."""
+
+    @pytest.mark.asyncio
+    async def test_get_existing_weather_hours(self, weather_manager, session):
+        """Test _get_existing_weather_hours method."""
+        # Create some weather records
+        weather1 = Weather(
+            timestamp=datetime(2024, 1, 1, 10, tzinfo=UTC),
+            latitude=63.4591,
+            longitude=-19.3647,
+            temperature=20.0,
+            humidity=65,
+        )
+        weather2 = Weather(
+            timestamp=datetime(2024, 1, 1, 11, tzinfo=UTC),
+            latitude=63.4591,
+            longitude=-19.3647,
+            temperature=21.0,
+            humidity=66,
+        )
+        session.add(weather1)
+        session.add(weather2)
+        await session.commit()
+
+        # Test the method
+        start = datetime(2024, 1, 1, 9, tzinfo=UTC)
+        end = datetime(2024, 1, 1, 12, tzinfo=UTC)
+        existing = await weather_manager._get_existing_weather_hours(start, end)
+
+        assert len(existing) == 2
+        # Convert to naive datetime for comparison (SQLite doesn't preserve timezone)
+        existing_naive = {dt.replace(tzinfo=None) if dt.tzinfo else dt for dt in existing}
+        assert datetime(2024, 1, 1, 10) in existing_naive
+        assert datetime(2024, 1, 1, 11) in existing_naive
+        assert datetime(2024, 1, 1, 9) not in existing_naive
+        assert datetime(2024, 1, 1, 12) not in existing_naive
+
+    @pytest.mark.asyncio
+    async def test_determine_chunk_size(self, weather_manager):
+        """Test _determine_chunk_size method."""
+        now = datetime.now(UTC)
+
+        # Test forecast API (within 5 days)
+        recent_date = now - timedelta(days=2)
+        chunk_size = weather_manager._determine_chunk_size(recent_date)
+        assert chunk_size == timedelta(days=14)  # Forecast API uses 14-day chunks
+
+        # Test historical API (older than 5 days)
+        old_date = now - timedelta(days=10)
+        chunk_size = weather_manager._determine_chunk_size(old_date)
+        assert chunk_size == timedelta(days=7)  # Historical API uses 7-day chunks
+
+    @pytest.mark.asyncio
+    async def test_process_weather_hour(self, weather_manager, session):
+        """Test _process_weather_hour method."""
+        # Test processing a new weather hour
+        hour_data = {
+            "timestamp": datetime(2024, 1, 1, 10, tzinfo=UTC),
+            "temperature": 20.0,
+            "humidity": 65,
+            "pressure": 1013.0,
+            "precipitation": 0.0,
+            "wind_speed": 5.0,
+            "wind_direction": 180,
+            "cloud_cover": 50,
+        }
+        stats = {"records_created": 0, "detections_updated": 0, "errors": 0}
+
+        success = await weather_manager._process_weather_hour(hour_data, stats)
+        assert success
+        assert stats["records_created"] == 1
+        assert stats["errors"] == 0
+
+        # Try processing the same hour again (duplicate handling)
+        stats2 = {"records_created": 0, "detections_updated": 0, "errors": 0}
+
+        # The method handles duplicates gracefully and returns False
+        success2 = await weather_manager._process_weather_hour(hour_data, stats2)
+        assert not success2  # Should return False for duplicate
+        assert stats2["records_created"] == 0  # No new record created
+
+        # Verify the weather record was created
+        result = await session.execute(
+            select(Weather).where(Weather.timestamp == hour_data["timestamp"])
+        )
+        weather = result.scalar_one()
+        assert weather.temperature == 20.0
+        assert weather.humidity == 65
+        assert weather.pressure == 1013.0
