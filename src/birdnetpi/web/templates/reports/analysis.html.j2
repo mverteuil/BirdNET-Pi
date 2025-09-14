@@ -224,8 +224,8 @@
 {% endif %}
 
 <!-- Species Accumulation Curve -->
-{% if analyses.accumulation %}
-<div class="analysis-section">
+<div class="analysis-section" id="accumulation-section">
+    {% if analyses.accumulation %}
     <h3 class="analysis-title">Species Accumulation</h3>
     <p class="analysis-subtitle">
         Collector's curve showing species discovery rate ·
@@ -238,12 +238,18 @@
         Method: {{ analyses.accumulation.method }} ·
         Asymptote suggests sampling completeness
     </p>
+    {% else %}
+    <h3 class="analysis-title">Species Accumulation</h3>
+    <p class="analysis-subtitle">Loading species accumulation data...</p>
+    <div class="loading-indicator" style="text-align: center; padding: 2rem;">
+        <span style="color: var(--color-text-tertiary);">⟳ Loading...</span>
+    </div>
+    {% endif %}
 </div>
-{% endif %}
 
 <!-- Community Similarity Matrix -->
-{% if analyses.similarity %}
-<div class="analysis-section">
+<div class="analysis-section" id="similarity-section">
+    {% if analyses.similarity %}
     <h3 class="analysis-title">Community Similarity</h3>
     <p class="analysis-subtitle">
         {{ analyses.similarity.index_type|title }} similarity coefficients between time periods ·
@@ -273,12 +279,18 @@
     <p class="method-note">
         Jaccard: <span style="font-family: 'Arial', sans-serif; font-style: normal; font-weight: normal;">(A ∩ B) / (A ∪ B)</span> &middot; Higher values indicate more similar communities
     </p>
+    {% else %}
+    <h3 class="analysis-title">Community Similarity</h3>
+    <p class="analysis-subtitle">Loading community similarity matrix...</p>
+    <div class="loading-indicator" style="text-align: center; padding: 2rem;">
+        <span style="color: var(--color-text-tertiary);">⟳ Loading...</span>
+    </div>
+    {% endif %}
 </div>
-{% endif %}
 
 <!-- Temporal Beta Diversity -->
-{% if analyses.beta_diversity %}
-<div class="analysis-section">
+<div class="analysis-section" id="beta-section">
+    {% if analyses.beta_diversity %}
     <h3 class="analysis-title">Temporal β-Diversity</h3>
     <p class="analysis-subtitle">
         Species turnover between consecutive time windows ·
@@ -293,12 +305,18 @@
         Whittaker's &beta; = (gained + lost) / (2 &times; total species) &middot;
         0 = identical communities, 1 = complete turnover
     </p>
+    {% else %}
+    <h3 class="analysis-title">Temporal β-Diversity</h3>
+    <p class="analysis-subtitle">Loading beta diversity analysis...</p>
+    <div class="loading-indicator" style="text-align: center; padding: 2rem;">
+        <span style="color: var(--color-text-tertiary);">⟳ Loading...</span>
+    </div>
+    {% endif %}
 </div>
-{% endif %}
 
 <!-- Weather Correlations -->
-{% if analyses.weather %}
-<div class="analysis-section">
+<div class="analysis-section" id="weather-section">
+    {% if analyses.weather %}
     <h3 class="analysis-title">Weather-Activity Correlations</h3>
     <p class="analysis-subtitle">
         Detection frequency vs environmental conditions
@@ -340,12 +358,18 @@
         Pearson correlation coefficient ·
         |r| > 0.5: strong, 0.3-0.5: moderate, < 0.3: weak
     </p>
+    {% else %}
+    <h3 class="analysis-title">Weather-Activity Correlations</h3>
+    <p class="analysis-subtitle">Loading weather correlation data...</p>
+    <div class="loading-indicator" style="text-align: center; padding: 2rem;">
+        <span style="color: var(--color-text-tertiary);">⟳ Loading...</span>
+    </div>
+    {% endif %}
 </div>
-{% endif %}
 
 <!-- Temporal Activity Patterns (existing heatmap) -->
-{% if analyses.temporal_patterns %}
-<div class="analysis-section">
+<div class="analysis-section" id="patterns-section">
+    {% if analyses.temporal_patterns %}
     <h3 class="analysis-title">Activity Patterns</h3>
     <p class="analysis-subtitle">
         24-hour detection frequency ·
@@ -358,8 +382,14 @@
         Darker cells indicate higher detection frequency ·
         Rows: days of week, Columns: hours (0-23)
     </p>
+    {% else %}
+    <h3 class="analysis-title">Activity Patterns</h3>
+    <p class="analysis-subtitle">Loading temporal patterns...</p>
+    <div class="loading-indicator" style="text-align: center; padding: 2rem;">
+        <span style="color: var(--color-text-tertiary);">⟳ Loading...</span>
+    </div>
+    {% endif %}
 </div>
-{% endif %}
 
 <!-- Footer annotation -->
 <p class="annotation" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--color-border-primary);">
@@ -781,13 +811,239 @@ function drawActivityHeatmap() {
     ctx.fillText('Hour of Day', padding.left + width / 2 - 30, canvas.height - 10);
 }
 
-// Initialize all visualizations
+// Progressive loading functions
+async function loadAccumulation() {
+    const period = document.getElementById('primary-period').value;
+    try {
+        const response = await fetch(`/api/v1/analysis/accumulation?period=${period}`);
+        const data = await response.json();
+
+        if (data.accumulation) {
+            analysisData.accumulation = data.accumulation;
+
+            // Update the section HTML
+            const section = document.getElementById('accumulation-section');
+            section.innerHTML = `
+                <h3 class="analysis-title">Species Accumulation</h3>
+                <p class="analysis-subtitle">
+                    Collector's curve showing species discovery rate ·
+                    ${data.accumulation.total_species} species from ${data.accumulation.total_samples} detections
+                </p>
+                <canvas id="accumulation-curve" class="chart-canvas" width="1100" height="200"></canvas>
+                <p class="method-note">
+                    Method: ${data.accumulation.method} ·
+                    Asymptote suggests sampling completeness
+                </p>
+            `;
+
+            // Draw the chart
+            drawAccumulationCurve();
+        }
+    } catch (error) {
+        console.error('Failed to load accumulation data:', error);
+    }
+}
+
+async function loadSimilarity() {
+    const period = document.getElementById('primary-period').value;
+    try {
+        const response = await fetch(`/api/v1/analysis/similarity?period=${period}`);
+        const data = await response.json();
+
+        if (data.similarity) {
+            analysisData.similarity = data.similarity;
+
+            // Build the similarity matrix HTML
+            const section = document.getElementById('similarity-section');
+            let matrixHtml = '<div class="similarity-matrix" style="grid-template-columns: 100px repeat(' + data.similarity.labels.length + ', 1fr);">\n';
+
+            // Header row
+            matrixHtml += '<div class="matrix-cell"></div>\n';
+            data.similarity.labels.forEach(label => {
+                matrixHtml += `<div class="matrix-cell" style="font-weight: normal;">${label}</div>\n`;
+            });
+
+            // Data rows
+            data.similarity.matrix.forEach((row, rowIdx) => {
+                matrixHtml += `<div class="matrix-cell" style="text-align: right; font-weight: normal;">${data.similarity.labels[rowIdx]}</div>\n`;
+                row.forEach(cell => {
+                    matrixHtml += `<div class="matrix-cell intensity-${cell.intensity}">${cell.display}</div>\n`;
+                });
+            });
+            matrixHtml += '</div>';
+
+            section.innerHTML = `
+                <h3 class="analysis-title">Community Similarity</h3>
+                <p class="analysis-subtitle">
+                    ${data.similarity.index_type.charAt(0).toUpperCase() + data.similarity.index_type.slice(1)} similarity coefficients between time periods ·
+                    Values shown as percentages for similarity >50%
+                </p>
+                ${matrixHtml}
+                <p class="method-note">
+                    Jaccard: <span style="font-family: 'Arial', sans-serif; font-style: normal; font-weight: normal;">(A ∩ B) / (A ∪ B)</span> · Higher values indicate more similar communities
+                </p>
+            `;
+        }
+    } catch (error) {
+        console.error('Failed to load similarity data:', error);
+    }
+}
+
+async function loadBetaDiversity() {
+    const period = document.getElementById('primary-period').value;
+    try {
+        const response = await fetch(`/api/v1/analysis/beta?period=${period}`);
+        const data = await response.json();
+
+        if (data.beta_diversity) {
+            analysisData.beta_diversity = data.beta_diversity;
+
+            // Update the section HTML
+            const section = document.getElementById('beta-section');
+            section.innerHTML = `
+                <h3 class="analysis-title">Temporal β-Diversity</h3>
+                <p class="analysis-subtitle">
+                    Species turnover between consecutive time windows ·
+                    Shows community stability vs change
+                </p>
+                <div class="horizon-chart" id="beta-horizon"></div>
+                <canvas id="beta-diversity" class="chart-canvas" width="1100" height="150"></canvas>
+                <p class="method-note">
+                    Whittaker's β = (gained + lost) / (2 × total species) ·
+                    0 = identical communities, 1 = complete turnover
+                </p>
+            `;
+
+            // Draw the chart
+            drawBetaDiversity();
+        }
+    } catch (error) {
+        console.error('Failed to load beta diversity data:', error);
+    }
+}
+
+async function loadWeatherCorrelations() {
+    const period = document.getElementById('primary-period').value;
+    try {
+        const response = await fetch(`/api/v1/analysis/weather?period=${period}`);
+        const data = await response.json();
+
+        if (data.weather) {
+            analysisData.weather = data.weather;
+
+            // Update the section HTML
+            const section = document.getElementById('weather-section');
+            const w = data.weather;
+            section.innerHTML = `
+                <h3 class="analysis-title">Weather-Activity Correlations</h3>
+                <p class="analysis-subtitle">
+                    Detection frequency vs environmental conditions
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                    <div>
+                        <canvas id="temp-correlation" class="chart-canvas" width="350" height="200"></canvas>
+                        <div style="text-align: center; margin-top: 0.5rem;">
+                            Temperature:
+                            <span class="correlation-value ${Math.abs(w.correlations.temperature) > 0.5 ? 'correlation-strong' : Math.abs(w.correlations.temperature) > 0.3 ? 'correlation-moderate' : 'correlation-weak'}">
+                                r = ${w.correlations.temperature || 0}
+                            </span>
+                        </div>
+                    </div>
+                    <div>
+                        <canvas id="humidity-correlation" class="chart-canvas" width="350" height="200"></canvas>
+                        <div style="text-align: center; margin-top: 0.5rem;">
+                            Humidity:
+                            <span class="correlation-value ${Math.abs(w.correlations.humidity) > 0.5 ? 'correlation-strong' : Math.abs(w.correlations.humidity) > 0.3 ? 'correlation-moderate' : 'correlation-weak'}">
+                                r = ${w.correlations.humidity || 0}
+                            </span>
+                        </div>
+                    </div>
+                    <div>
+                        <canvas id="wind-correlation" class="chart-canvas" width="350" height="200"></canvas>
+                        <div style="text-align: center; margin-top: 0.5rem;">
+                            Wind Speed:
+                            <span class="correlation-value ${Math.abs(w.correlations.wind_speed) > 0.5 ? 'correlation-strong' : Math.abs(w.correlations.wind_speed) > 0.3 ? 'correlation-moderate' : 'correlation-weak'}">
+                                r = ${w.correlations.wind_speed || 0}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <p class="method-note">
+                    Pearson correlation coefficient ·
+                    |r| > 0.5: strong, 0.3-0.5: moderate, < 0.3: weak
+                </p>
+            `;
+
+            // Draw the charts
+            drawWeatherCorrelations();
+        }
+    } catch (error) {
+        console.error('Failed to load weather data:', error);
+    }
+}
+
+async function loadTemporalPatterns() {
+    const period = document.getElementById('primary-period').value;
+    try {
+        const response = await fetch(`/api/v1/analysis/patterns?period=${period}`);
+        const data = await response.json();
+
+        if (data.temporal_patterns) {
+            analysisData.temporal_patterns = data.temporal_patterns;
+
+            // Update the section HTML
+            const section = document.getElementById('patterns-section');
+            section.innerHTML = `
+                <h3 class="analysis-title">Activity Patterns</h3>
+                <p class="analysis-subtitle">
+                    24-hour detection frequency ·
+                    Peak activity: ${data.temporal_patterns.peak_hour}:00
+                </p>
+                <canvas id="activity-heatmap" class="chart-canvas" width="1100" height="200"></canvas>
+                <p class="method-note">
+                    Darker cells indicate higher detection frequency ·
+                    Rows: days of week, Columns: hours (0-23)
+                </p>
+            `;
+
+            // Draw the heatmap
+            drawActivityHeatmap();
+        }
+    } catch (error) {
+        console.error('Failed to load temporal patterns:', error);
+    }
+}
+
+// Initialize visualizations and progressive loading
 document.addEventListener('DOMContentLoaded', function() {
-    drawDiversityTimeline();
-    drawAccumulationCurve();
-    drawBetaDiversity();
-    drawWeatherCorrelations();
-    drawActivityHeatmap();
+    // Draw initially loaded data (diversity timeline if available)
+    if (analysisData.diversity) {
+        drawDiversityTimeline();
+    }
+
+    // Check if progressive loading is enabled
+    if (analysisData.progressive_loading) {
+        // Load remaining analyses progressively
+        setTimeout(() => {
+            if (!analysisData.accumulation) loadAccumulation();
+            if (!analysisData.similarity) loadSimilarity();
+        }, 100);
+
+        setTimeout(() => {
+            if (!analysisData.beta_diversity) loadBetaDiversity();
+            if (!analysisData.weather) loadWeatherCorrelations();
+        }, 500);
+
+        setTimeout(() => {
+            if (!analysisData.temporal_patterns) loadTemporalPatterns();
+        }, 1000);
+    } else {
+        // Draw all available data immediately (non-progressive mode)
+        if (analysisData.accumulation) drawAccumulationCurve();
+        if (analysisData.beta_diversity) drawBetaDiversity();
+        if (analysisData.weather) drawWeatherCorrelations();
+        if (analysisData.temporal_patterns) drawActivityHeatmap();
+    }
 });
 </script>
 {% endblock %}

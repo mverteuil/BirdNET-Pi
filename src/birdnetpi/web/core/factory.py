@@ -12,6 +12,7 @@ from birdnetpi.web.middleware.request_logging import StructuredRequestLoggingMid
 from birdnetpi.web.routers import (
     admin_api_routes,
     admin_view_routes,
+    analysis_api_routes,
     detections_api_routes,
     health_api_routes,
     multimedia_view_routes,
@@ -91,6 +92,7 @@ def create_app() -> FastAPI:
             "birdnetpi.web.core.factory",  # Wire factory for root route
             "birdnetpi.web.routers.admin_api_routes",
             "birdnetpi.web.routers.admin_view_routes",
+            "birdnetpi.web.routers.analysis_api_routes",
             "birdnetpi.web.routers.detections_api_routes",
             "birdnetpi.web.routers.health_api_routes",
             "birdnetpi.web.routers.multimedia_view_routes",
@@ -119,6 +121,9 @@ def create_app() -> FastAPI:
     app.include_router(
         detections_api_routes.router, prefix="/api/detections", tags=["Detections API"]
     )
+
+    # Analysis API routes for progressive loading
+    app.include_router(analysis_api_routes.router, tags=["Analysis API"])
 
     # Real-time communication
     app.include_router(websocket_routes.router, prefix="/ws", tags=["WebSocket"])

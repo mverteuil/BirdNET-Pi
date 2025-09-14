@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,  # type: ignore[attr-defined]
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 
 # Removed sync imports - now async-only
 from sqlmodel import SQLModel
@@ -31,9 +32,15 @@ class CoreDatabaseService:
         # Configure async SQLite engine with SD card optimizations
         self.async_engine = create_async_engine(
             self.db_url,
-            # Optimize connection pool for SQLite
+            # Optimize connection pool for concurrent reads
             pool_pre_ping=True,
             pool_recycle=3600,  # Recycle connections every hour
+            # Enable more concurrent connections for analytics
+            poolclass=NullPool,  # Better for SQLite concurrent reads - no connection pooling
+            connect_args={
+                "timeout": 30.0,  # 30 second timeout for lock acquisition
+                "check_same_thread": False,  # Allow connections across threads
+            },
         )
 
         self.async_session_local = async_sessionmaker(
@@ -68,6 +75,8 @@ class CoreDatabaseService:
                 await session.execute(text("PRAGMA wal_autocheckpoint = 16384"))
                 await session.execute(text("PRAGMA cache_size = -32000"))
                 await session.execute(text("PRAGMA mmap_size = 268435456"))
+                # Enable concurrent reads with proper timeout
+                await session.execute(text("PRAGMA busy_timeout = 30000"))  # 30 seconds
 
                 # Analyze tables for optimal query planning
                 await session.execute(text("ANALYZE"))

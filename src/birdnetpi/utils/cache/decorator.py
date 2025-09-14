@@ -101,6 +101,52 @@ def cached_function(ttl: int = 300, key_prefix: str | None = None) -> Callable:
     return decorator
 
 
+def async_cached(ttl: int = 300, key_prefix: str | None = None) -> Callable:
+    """Cache async method results to avoid redundant computations.
+
+    This decorator caches the results of async method calls, avoiding redundant
+    computations for expensive async operations. It's particularly useful for:
+    - Async analytics calculations
+    - Async database queries
+    - Async API responses
+    - Complex async data transformations
+
+    Args:
+        ttl: Time-to-live in seconds for cached results (default: 300)
+        key_prefix: Optional prefix for cache keys to avoid collisions
+
+    Returns:
+        Decorated async function that caches its results
+
+    Example:
+        @async_cached(ttl=600, key_prefix="analysis")
+        async def get_analysis_data(self, period):
+            # Expensive async analytics
+            return await self._calculate_analysis(period)
+    """
+
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        async def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
+            # Generate cache key from function name and arguments
+            cache_key = _generate_cache_key(func.__name__, args, kwargs, key_prefix)
+
+            # Try to get from cache
+            cache = Cache()
+            cached_value = cache._backend.get(cache_key)
+            if cached_value is not None:
+                return cached_value
+
+            # Execute async function and cache result
+            result = await func(self, *args, **kwargs)
+            cache._backend.set(cache_key, result, ttl)
+            return result
+
+        return wrapper
+
+    return decorator
+
+
 def _generate_cache_key(
     func_name: str, args: tuple, kwargs: dict, prefix: str | None = None
 ) -> str:

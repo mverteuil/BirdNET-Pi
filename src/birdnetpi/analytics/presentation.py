@@ -575,6 +575,7 @@ class PresentationManager:
         primary_period: str,
         comparison_period: str | None = None,
         analysis_types: list[str] | None = None,
+        progressive: bool = True,
     ) -> dict:
         """Format comprehensive analysis page data.
 
@@ -582,18 +583,13 @@ class PresentationManager:
             primary_period: Main period to analyze ("day", "week", "month", "season", "year")
             comparison_period: Optional comparison period
             analysis_types: Which analyses to include
+            progressive: If True, only load essential data initially
 
         Returns:
             Formatted data for analysis template
         """
-        analysis_types = analysis_types or [
-            "diversity",
-            "accumulation",
-            "similarity",
-            "beta",
-            "weather",
-            "patterns",
-        ]
+        # Determine which analyses to load
+        analysis_types = self._determine_analysis_types(progressive, analysis_types)
 
         # Calculate date ranges
         primary_dates = self._calculate_analysis_period_dates(primary_period)
@@ -601,76 +597,182 @@ class PresentationManager:
             self._calculate_analysis_period_dates(comparison_period) if comparison_period else None
         )
 
-        result = {"period": primary_period, "comparison_period": comparison_period, "analyses": {}}
+        result = {
+            "period": primary_period,
+            "comparison_period": comparison_period,
+            "analyses": {},
+            "progressive_loading": progressive,
+        }
 
-        # Get diversity timeline
+        # Use asyncio.gather for parallel execution with proper database configuration
+        import asyncio
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        # Build tasks dictionary
+        tasks = self._build_analysis_tasks(
+            analysis_types, primary_dates, comparison_dates, primary_period
+        )
+
+        # Execute all tasks in parallel
+        if tasks:
+            import time
+
+            start_time = time.time()
+            logger.info(f"Starting parallel execution of {len(tasks)} analytics tasks")
+
+            try:
+                task_results = await asyncio.gather(*tasks.values(), return_exceptions=True)
+                elapsed = time.time() - start_time
+                logger.info(f"Parallel execution completed in {elapsed:.2f} seconds")
+
+                # Map results back to task names
+                task_names = list(tasks.keys())
+                results_dict = {}
+
+                for name, result_data in zip(task_names, task_results, strict=False):
+                    if isinstance(result_data, Exception):
+                        logger.error(f"Error in {name} analysis: {result_data}")
+                        continue
+                    results_dict[name] = result_data
+
+                # Format the results
+                self._format_analysis_results(result, results_dict)
+
+                if "summary" in results_dict:
+                    result["summary"] = results_dict["summary"]
+
+            except Exception as e:
+                logger.error(f"Failed to execute parallel analytics: {e}")
+                # Fall back to empty results
+                result["analyses"] = {}
+                result["summary"] = {}
+
+        return result
+
+    def _determine_analysis_types(
+        self, progressive: bool, analysis_types: list[str] | None
+    ) -> list[str]:
+        """Determine which analysis types to load based on settings."""
+        if progressive:
+            return ["diversity", "summary"]
+        else:
+            return analysis_types or [
+                "diversity",
+                "accumulation",
+                "similarity",
+                "beta",
+                "weather",
+                "patterns",
+            ]
+
+    def _build_analysis_tasks(
+        self,
+        analysis_types: list[str],
+        primary_dates: tuple,
+        comparison_dates: tuple | None,
+        primary_period: str,
+    ) -> dict:
+        """Build dictionary of analysis tasks to run in parallel."""
+        tasks = {}
+
+        # Diversity timeline task
         if "diversity" in analysis_types:
-            diversity_data = await self.analytics_manager.calculate_diversity_timeline(
+            tasks["diversity"] = self.analytics_manager.calculate_diversity_timeline(
                 start_date=primary_dates[0],
                 end_date=primary_dates[1],
                 temporal_resolution=self._get_resolution_for_period(primary_period),
             )
-            result["analyses"]["diversity"] = self._format_diversity_timeline(diversity_data)
-
-            # Add comparison if requested
+            # Add comparison task if requested
             if comparison_dates:
-                comparison_diversity = await self.analytics_manager.compare_period_diversity(
+                tasks["diversity_comparison"] = self.analytics_manager.compare_period_diversity(
                     period1=primary_dates, period2=comparison_dates
                 )
-                result["analyses"]["diversity_comparison"] = self._format_diversity_comparison(
-                    comparison_diversity
-                )
 
-        # Get species accumulation
+        # Species accumulation task
         if "accumulation" in analysis_types:
-            accumulation_data = await self.analytics_manager.calculate_species_accumulation(
+            tasks["accumulation"] = self.analytics_manager.calculate_species_accumulation(
                 start_date=primary_dates[0], end_date=primary_dates[1], method="collector"
             )
-            result["analyses"]["accumulation"] = self._format_accumulation_curve(accumulation_data)
 
-        # Get community similarity matrix
+        # Community similarity matrix task
         if "similarity" in analysis_types:
-            # Create time windows for similarity analysis
             periods = self._generate_similarity_periods(primary_dates[0], primary_dates[1])
-            similarity_data = await self.analytics_manager.calculate_community_similarity(
+            tasks["similarity"] = self.analytics_manager.calculate_community_similarity(
                 periods=periods, index_type="jaccard"
             )
-            result["analyses"]["similarity"] = self._format_similarity_matrix(similarity_data)
 
-        # Get beta diversity
+        # Beta diversity task
         if "beta" in analysis_types:
             window_size = self._get_window_size_for_period(primary_period)
-            beta_data = await self.analytics_manager.calculate_beta_diversity(
+            tasks["beta"] = self.analytics_manager.calculate_beta_diversity(
                 start_date=primary_dates[0], end_date=primary_dates[1], window_size=window_size
             )
-            result["analyses"]["beta_diversity"] = self._format_beta_diversity(beta_data)
 
-        # Get weather correlations
+        # Weather correlations task
         if "weather" in analysis_types:
-            weather_data = await self.analytics_manager.get_weather_correlation_data(
+            tasks["weather"] = self.analytics_manager.get_weather_correlation_data(
                 start_date=primary_dates[0], end_date=primary_dates[1]
             )
-            result["analyses"]["weather"] = self._format_weather_correlations(weather_data)
 
-        # Get existing pattern analyses
+        # Pattern analyses tasks
         if "patterns" in analysis_types:
-            # Use existing methods for temporal patterns
-            temporal = await self.analytics_manager.get_temporal_patterns()
-            heatmap = await self.analytics_manager.get_aggregate_hourly_pattern(
+            tasks["temporal"] = self.analytics_manager.get_temporal_patterns()
+            tasks["heatmap"] = self.analytics_manager.get_aggregate_hourly_pattern(
                 days=self._get_days_for_period(primary_period)
             )
 
+        # Summary statistics task
+        tasks["summary"] = self._generate_analysis_summary(primary_dates, comparison_dates)
+
+        return tasks
+
+    def _format_analysis_results(self, result: dict, results_dict: dict) -> None:
+        """Format analysis results and add them to the result dictionary."""
+        # Diversity results
+        if "diversity" in results_dict:
+            result["analyses"]["diversity"] = self._format_diversity_timeline(
+                results_dict["diversity"]
+            )
+
+        if "diversity_comparison" in results_dict:
+            result["analyses"]["diversity_comparison"] = self._format_diversity_comparison(
+                results_dict["diversity_comparison"]
+            )
+
+        # Accumulation results
+        if "accumulation" in results_dict:
+            result["analyses"]["accumulation"] = self._format_accumulation_curve(
+                results_dict["accumulation"]
+            )
+
+        # Similarity results
+        if "similarity" in results_dict:
+            result["analyses"]["similarity"] = self._format_similarity_matrix(
+                results_dict["similarity"]
+            )
+
+        # Beta diversity results
+        if "beta" in results_dict:
+            result["analyses"]["beta_diversity"] = self._format_beta_diversity(results_dict["beta"])
+
+        # Weather results
+        if "weather" in results_dict:
+            result["analyses"]["weather"] = self._format_weather_correlations(
+                results_dict["weather"]
+            )
+
+        # Temporal patterns results
+        if "temporal" in results_dict and "heatmap" in results_dict:
+            temporal = results_dict["temporal"]
+            heatmap = results_dict["heatmap"]
             result["analyses"]["temporal_patterns"] = {
                 "hourly": temporal["hourly_distribution"],
                 "peak_hour": temporal["peak_hour"],
                 "periods": temporal["periods"],
                 "heatmap": heatmap,
             }
-
-        # Add summary statistics
-        result["summary"] = await self._generate_analysis_summary(primary_dates, comparison_dates)
-
-        return result
 
     # === FORMATTING METHODS ===
 
