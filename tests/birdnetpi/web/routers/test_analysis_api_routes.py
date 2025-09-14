@@ -32,7 +32,7 @@ def client():
     container.wire(modules=["birdnetpi.web.routers.analysis_api_routes"])
     app.container = container  # type: ignore[attr-defined]
 
-    # Include the router (router already has /api/v1/analysis prefix)
+    # Include the router (router already has /api/analysis prefix)
     app.include_router(router)
 
     # Create and return test client
@@ -81,7 +81,7 @@ class TestAnalysisAPIRoutes:
         )
 
         # Make request
-        response = client.get("/api/v1/analysis/diversity?period=30d")
+        response = client.get("/api/analysis/diversity?period=30d")
 
         # Verify response
         assert response.status_code == 200
@@ -130,7 +130,7 @@ class TestAnalysisAPIRoutes:
         )
 
         # Make request
-        response = client.get("/api/v1/analysis/diversity?period=30d&comparison=previous")
+        response = client.get("/api/analysis/diversity?period=30d&comparison=previous")
 
         # Verify response
         assert response.status_code == 200
@@ -163,7 +163,7 @@ class TestAnalysisAPIRoutes:
         )
 
         # Make request
-        response = client.get("/api/v1/analysis/accumulation?period=30d")
+        response = client.get("/api/analysis/accumulation?period=30d")
 
         # Verify response
         assert response.status_code == 200
@@ -203,7 +203,7 @@ class TestAnalysisAPIRoutes:
         )
 
         # Make request
-        response = client.get("/api/v1/analysis/similarity?period=30d")
+        response = client.get("/api/analysis/similarity?period=30d")
 
         # Verify response
         assert response.status_code == 200
@@ -234,7 +234,7 @@ class TestAnalysisAPIRoutes:
         client.mock_presentation_manager._format_beta_diversity.return_value = mock_beta_data
 
         # Make request
-        response = client.get("/api/v1/analysis/beta?period=30d")
+        response = client.get("/api/analysis/beta?period=30d")
 
         # Verify response
         assert response.status_code == 200
@@ -272,7 +272,7 @@ class TestAnalysisAPIRoutes:
         )
 
         # Make request
-        response = client.get("/api/v1/analysis/weather?period=30d")
+        response = client.get("/api/analysis/weather?period=30d")
 
         # Verify response
         assert response.status_code == 200
@@ -301,7 +301,7 @@ class TestAnalysisAPIRoutes:
         client.mock_presentation_manager._get_days_for_period.return_value = 30
 
         # Make request
-        response = client.get("/api/v1/analysis/patterns?period=30d")
+        response = client.get("/api/analysis/patterns?period=30d")
 
         # Verify response
         assert response.status_code == 200
@@ -319,7 +319,7 @@ class TestAnalysisAPIRoutes:
         )
 
         # Make request
-        response = client.get("/api/v1/analysis/diversity?period=30d")
+        response = client.get("/api/analysis/diversity?period=30d")
 
         # Verify error response
         assert response.status_code == 500
@@ -353,7 +353,7 @@ class TestAnalysisAPIRoutes:
 
         # Test different periods
         for period in ["24h", "7d", "30d", "90d", "365d"]:
-            response = client.get(f"/api/v1/analysis/diversity?period={period}")
+            response = client.get(f"/api/analysis/diversity?period={period}")
             assert response.status_code == 200
             data = response.json()
             assert "diversity" in data
@@ -364,6 +364,13 @@ class TestAnalysisAPIRoutes:
 
         # Setup mock data
         mock_data = {"mock": "data"}
+
+        # Setup temporal patterns mock data with correct structure
+        mock_temporal = {
+            "hourly_distribution": [0] * 24,
+            "peak_hour": 6,
+            "periods": ["dawn", "morning", "afternoon", "evening", "night"],
+        }
 
         # Configure all mocks to return quickly
         client.mock_presentation_manager._calculate_analysis_period_dates.return_value = (
@@ -389,8 +396,10 @@ class TestAnalysisAPIRoutes:
         client.mock_analytics_manager.get_weather_correlation_data = AsyncMock(
             return_value=mock_data
         )
-        client.mock_analytics_manager.get_temporal_patterns = AsyncMock(return_value=mock_data)
-        client.mock_analytics_manager.get_aggregate_hourly_pattern = AsyncMock(return_value=[])
+        client.mock_analytics_manager.get_temporal_patterns = AsyncMock(return_value=mock_temporal)
+        client.mock_analytics_manager.get_aggregate_hourly_pattern = AsyncMock(
+            return_value=[[0] * 24 for _ in range(7)]
+        )
 
         # Configure formatters
         for formatter in [
@@ -404,12 +413,12 @@ class TestAnalysisAPIRoutes:
 
         # Define endpoints to test
         endpoints = [
-            "/api/v1/analysis/diversity",
-            "/api/v1/analysis/accumulation",
-            "/api/v1/analysis/similarity",
-            "/api/v1/analysis/beta",
-            "/api/v1/analysis/weather",
-            "/api/v1/analysis/patterns",
+            "/api/analysis/diversity",
+            "/api/analysis/accumulation",
+            "/api/analysis/similarity",
+            "/api/analysis/beta",
+            "/api/analysis/weather",
+            "/api/analysis/patterns",
         ]
 
         # Execute requests concurrently

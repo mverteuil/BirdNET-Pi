@@ -815,7 +815,7 @@ function drawActivityHeatmap() {
 async function loadAccumulation() {
     const period = document.getElementById('primary-period').value;
     try {
-        const response = await fetch(`/api/v1/analysis/accumulation?period=${period}`);
+        const response = await fetch(`/api/analysis/accumulation?period=${period}`);
         const data = await response.json();
 
         if (data.accumulation) {
@@ -847,7 +847,7 @@ async function loadAccumulation() {
 async function loadSimilarity() {
     const period = document.getElementById('primary-period').value;
     try {
-        const response = await fetch(`/api/v1/analysis/similarity?period=${period}`);
+        const response = await fetch(`/api/analysis/similarity?period=${period}`);
         const data = await response.json();
 
         if (data.similarity) {
@@ -892,7 +892,7 @@ async function loadSimilarity() {
 async function loadBetaDiversity() {
     const period = document.getElementById('primary-period').value;
     try {
-        const response = await fetch(`/api/v1/analysis/beta?period=${period}`);
+        const response = await fetch(`/api/analysis/beta?period=${period}`);
         const data = await response.json();
 
         if (data.beta_diversity) {
@@ -925,7 +925,7 @@ async function loadBetaDiversity() {
 async function loadWeatherCorrelations() {
     const period = document.getElementById('primary-period').value;
     try {
-        const response = await fetch(`/api/v1/analysis/weather?period=${period}`);
+        const response = await fetch(`/api/analysis/weather?period=${period}`);
         const data = await response.json();
 
         if (data.weather) {
@@ -985,7 +985,7 @@ async function loadWeatherCorrelations() {
 async function loadTemporalPatterns() {
     const period = document.getElementById('primary-period').value;
     try {
-        const response = await fetch(`/api/v1/analysis/patterns?period=${period}`);
+        const response = await fetch(`/api/analysis/patterns?period=${period}`);
         const data = await response.json();
 
         if (data.temporal_patterns) {

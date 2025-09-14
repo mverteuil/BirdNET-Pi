@@ -10,7 +10,7 @@ from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/v1/analysis", tags=["analysis"])
+router = APIRouter(prefix="/api/analysis", tags=["analysis"])
 
 
 @router.get("/diversity")
