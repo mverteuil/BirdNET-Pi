@@ -15,7 +15,7 @@ class TestConfigPermissions:
     """Test configuration file and directory permissions."""
 
     def test_config_directory_creation(self):
-        """Test that config directory is created if it doesn't exist."""
+        """Should config directory is created if it doesn't exist."""
         with tempfile.TemporaryDirectory() as temp_dir:
             # Set environment to use temp directory
             os.environ["BIRDNETPI_DATA"] = temp_dir
@@ -40,7 +40,7 @@ class TestConfigPermissions:
                 os.environ.pop("BIRDNETPI_DATA", None)
 
     def test_config_write_permissions(self):
-        """Test that config file can be written and read."""
+        """Should config file can be written and read."""
         with tempfile.TemporaryDirectory() as temp_dir:
             os.environ["BIRDNETPI_DATA"] = temp_dir
 
@@ -63,7 +63,7 @@ class TestConfigPermissions:
                 os.environ.pop("BIRDNETPI_DATA", None)
 
     def test_config_handles_readonly_directory(self):
-        """Test error handling when config directory is read-only."""
+        """Should error handling when config directory is read-only."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_dir = Path(temp_dir) / "config"
             config_dir.mkdir()
@@ -87,11 +87,12 @@ class TestConfigPermissions:
             finally:
                 # Restore write permissions for cleanup
                 if os.name != "nt":
-                    os.chmod(config_dir, 0o755)
+                    # Restore owner-only access for temp directory cleanup
+                    os.chmod(config_dir, 0o700)  # nosemgrep
                 os.environ.pop("BIRDNETPI_DATA", None)
 
     def test_config_creates_parent_directories(self):
-        """Test that all parent directories are created as needed."""
+        """Should all parent directories are created as needed."""
         with tempfile.TemporaryDirectory() as temp_dir:
             # Use a deeply nested path
             nested_path = Path(temp_dir) / "deep" / "nested" / "path"
@@ -114,7 +115,7 @@ class TestConfigPermissions:
                 os.environ.pop("BIRDNETPI_DATA", None)
 
     def test_config_handles_existing_file(self):
-        """Test that existing config files are properly overwritten."""
+        """Should existing config files are properly overwritten."""
         with tempfile.TemporaryDirectory() as temp_dir:
             os.environ["BIRDNETPI_DATA"] = temp_dir
 
@@ -148,7 +149,7 @@ class TestConfigPermissions:
                 os.environ.pop("BIRDNETPI_DATA", None)
 
     def test_config_in_docker_environment(self):
-        """Test config handling in Docker-like environment."""
+        """Should config handling in Docker-like environment."""
         # Simulate Docker paths
         docker_data_path = "/var/lib/birdnetpi"
 
@@ -161,7 +162,7 @@ class TestConfigPermissions:
             assert config_path == Path(docker_data_path) / "config" / "birdnetpi.yaml"
 
     def test_config_manager_creates_directory_on_save(self):
-        """Test that ConfigManager creates config directory on save if missing."""
+        """Should configManager creates config directory on save if missing."""
         with tempfile.TemporaryDirectory() as temp_dir:
             # Point to a non-existent subdirectory
             data_dir = Path(temp_dir) / "new_data_dir"

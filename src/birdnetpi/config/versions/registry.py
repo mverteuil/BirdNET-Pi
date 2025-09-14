@@ -38,7 +38,10 @@ class VersionRegistry:
 
         for version_file in sorted(versions_dir.glob("v*.py")):
             module_name = version_file.stem
-            module = importlib.import_module(f"birdnetpi.config.versions.{module_name}")
+            # Safe: Loading version modules from controlled application directory, not user input
+            module = importlib.import_module(  # nosemgrep
+                f"birdnetpi.config.versions.{module_name}"
+            )
 
             # Find the version class in the module
             for attr_name in dir(module):

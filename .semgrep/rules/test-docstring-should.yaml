@@ -1,6 +1,14 @@
 rules:
   - id: pytest-docstring-should-prefix
     patterns:
+      - pattern-not-inside: |
+          @pytest.fixture
+          def $FIXTURE(...):
+            ...
+      - pattern-not-inside: |
+          @pytest.fixture(...)
+          def $FIXTURE(...):
+            ...
       - pattern-either:
           # Single-line docstrings in test functions
           - patterns:
@@ -14,7 +22,7 @@ rules:
               - metavariable-regex:
                   metavariable: $DOCSTRING
                   regex: ^(?!Should\s).*
-          # Multi-line docstrings in test functions  
+          # Multi-line docstrings in test functions
           - patterns:
               - pattern: |
                   def $FUNC(...):
@@ -109,7 +117,7 @@ rules:
         """
       To:
         """Summary here.
-        
+
         More details if needed.
         """
     languages: [python]

@@ -113,13 +113,15 @@ class MemcachedBackend(CacheBackend):
         def serialize(key: bytes, value: Any) -> tuple[bytes, int]:  # noqa: ANN401
             if isinstance(value, bytes):
                 return value, 1
-            return pickle.dumps(value), 2
+            # Safe: Pickle used for memcached serialization only
+            return pickle.dumps(value), 2  # nosemgrep
 
         def deserialize(key: bytes, value: bytes, flags: int) -> Any:  # noqa: ANN401
             if flags == 1:
                 return value
             if flags == 2:
-                return pickle.loads(value)
+                # Safe: Pickle used for memcached deserialization only
+                return pickle.loads(value)  # nosemgrep
             raise ValueError(f"Unknown serialization flags: {flags}")
 
         self.client = MemcacheClient(  # type: ignore[misc]

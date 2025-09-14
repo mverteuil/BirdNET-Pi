@@ -137,8 +137,8 @@ class TestSettingsE2E:
         Container.templates.reset_override()
 
     def test_e2e_settings_page_loads_with_current_config(self, e2e_app):
-        """Test that settings page loads and displays current configuration."""
-        app, path_resolver, _ = e2e_app
+        """Should settings page loads and displays current configuration."""
+        app, _path_resolver, _ = e2e_app
 
         with TestClient(app) as client:
             # GET settings page
@@ -164,7 +164,7 @@ class TestSettingsE2E:
             assert 'method="post"' in response.text
 
     def test_e2e_settings_form_submission_saves_changes(self, e2e_app, temp_data_dir):
-        """Test that submitting the settings form saves changes to config file."""
+        """Should submitting the settings form saves changes to config file."""
         app, path_resolver, _ = e2e_app
 
         with TestClient(app) as client:
@@ -211,8 +211,8 @@ class TestSettingsE2E:
             assert saved_data["birdweather_id"] == "test123"
 
     def test_e2e_settings_roundtrip(self, e2e_app):
-        """Test complete roundtrip: load, modify, save, reload."""
-        app, path_resolver, _ = e2e_app
+        """Should complete roundtrip: load, modify, save, reload."""
+        app, _path_resolver, _ = e2e_app
 
         with TestClient(app) as client:
             # Step 1: Load initial settings page
@@ -255,7 +255,7 @@ class TestSettingsE2E:
             assert "139.6503" in response3.text
 
     def test_e2e_settings_validation_errors(self, e2e_app):
-        """Test that invalid form data is handled properly."""
+        """Should invalid form data is handled properly."""
         app, _, _ = e2e_app
 
         with TestClient(app) as client:
@@ -278,7 +278,7 @@ class TestSettingsE2E:
                 assert "ValidationError" in str(type(e).__name__) or "ValueError" in str(e)
 
     def test_e2e_settings_handles_concurrent_access(self, e2e_app):
-        """Test that settings can handle concurrent access (simulated)."""
+        """Should settings can handle concurrent access (simulated)."""
         app, path_resolver, _ = e2e_app
 
         with TestClient(app) as client:
@@ -341,7 +341,7 @@ class TestSettingsE2E:
             assert final_config.latitude == 30.0
 
     def test_e2e_settings_preserves_unmodified_fields(self, e2e_app):
-        """Test that fields not in the form are preserved during save."""
+        """Should fields not in the form are preserved during save."""
         app, path_resolver, _ = e2e_app
 
         # Add some extra config that's not in the form

@@ -120,7 +120,7 @@ class TestAudioFilter:
             filter_instance.apply(test_data)
 
     def test_filter_enable_disable(self):
-        """Test filter enable/disable functionality."""
+        """Should enable and disable filter correctly."""
         filter_instance = PassThroughFilter(enabled=False)
 
         assert filter_instance.enabled is False
@@ -132,7 +132,7 @@ class TestAudioFilter:
         assert filter_instance.enabled is False
 
     def test_filter_get_parameters(self):
-        """Test filter parameter retrieval."""
+        """Should return correct filter parameters."""
         filter_instance = PassThroughFilter("TestFilter")
         filter_instance.configure(48000, 2)
 
@@ -145,7 +145,7 @@ class TestAudioFilter:
         assert params["channels"] == 2
 
     def test_filter_string_representation(self):
-        """Test filter string representation."""
+        """Should include filter type, name and status in string representation."""
         filter_instance = PassThroughFilter("TestFilter", enabled=True)
         str_repr = str(filter_instance)
 
@@ -154,7 +154,7 @@ class TestAudioFilter:
         assert "enabled" in str_repr
 
     def test_abstract_filter_process_method(self):
-        """Test that abstract AudioFilter process method is callable."""
+        """Should allow calling abstract process method from subclass."""
         from birdnetpi.audio.filters import AudioFilter
 
         # Create a minimal concrete implementation that implements process
@@ -259,7 +259,7 @@ class TestLowPassFilter:
     """Test the LowPassFilter implementation."""
 
     def test_lowpass_filter_initialization(self):
-        """Test LowPassFilter initialization."""
+        """Should initialize LowPassFilter with correct parameters."""
         filter_instance = LowPassFilter(cutoff_frequency=3000.0, name="SchoolFilter")
 
         assert filter_instance.name == "SchoolFilter"
@@ -268,7 +268,7 @@ class TestLowPassFilter:
         assert filter_instance._sos is None
 
     def test_lowpass_filter_configuration(self):
-        """Test LowPassFilter configuration."""
+        """Should configure LowPassFilter and create filter coefficients."""
         filter_instance = LowPassFilter(cutoff_frequency=3000.0)
         filter_instance.configure(48000, 1)
 
@@ -277,7 +277,7 @@ class TestLowPassFilter:
         assert filter_instance._sos is not None
 
     def test_lowpass_filter_processing(self):
-        """Test LowPassFilter processing functionality."""
+        """Should filter out high frequencies and preserve low frequencies."""
         filter_instance = LowPassFilter(cutoff_frequency=2000.0)
         filter_instance.configure(48000, 1)
 
@@ -304,7 +304,7 @@ class TestLowPassFilter:
         assert result.dtype == np.int16
 
     def test_lowpass_filter_parameters(self):
-        """Test LowPassFilter parameter retrieval."""
+        """Should return correct filter parameters after configuration."""
         filter_instance = LowPassFilter(cutoff_frequency=2500.0, order=8)
         filter_instance.configure(48000, 1)
 
@@ -315,7 +315,7 @@ class TestLowPassFilter:
         assert params["type"] == "LowPassFilter"
 
     def test_lowpass_filter_cutoff_too_high_warning(self, caplog):
-        """Test warning when cutoff frequency is too high."""
+        """Should warn when cutoff frequency exceeds Nyquist limit."""
         filter_instance = LowPassFilter(cutoff_frequency=30000.0)  # Higher than Nyquist for 48kHz
 
         with caplog.at_level(logging.WARNING):
@@ -325,7 +325,7 @@ class TestLowPassFilter:
         assert "nyquist" in caplog.text.lower()
 
     def test_lowpass_filter_not_configured_error(self):
-        """Test error when processing without configuration."""
+        """Should raise RuntimeError when processing without configuration."""
         filter_instance = LowPassFilter(cutoff_frequency=2000.0)
         test_data = np.array([1000, 2000, 3000], dtype=np.int16)
 
@@ -337,7 +337,7 @@ class TestFilterChain:
     """Test the FilterChain implementation."""
 
     def test_filter_chain_initialization(self):
-        """Test FilterChain initialization."""
+        """Should initialize FilterChain with empty filter list."""
         chain = FilterChain("TestChain")
 
         assert chain.name == "TestChain"
@@ -346,7 +346,7 @@ class TestFilterChain:
         assert chain._configured is False
 
     def test_filter_chain_add_remove_filters(self):
-        """Test adding and removing filters from chain."""
+        """Should add and remove filters from chain correctly."""
         chain = FilterChain("TestChain")
         filter1 = PassThroughFilter("Filter1")
         filter2 = PassThroughFilter("Filter2")
@@ -369,7 +369,7 @@ class TestFilterChain:
         assert removed is False
 
     def test_filter_chain_configuration(self):
-        """Test FilterChain configuration propagates to filters."""
+        """Should propagate configuration to all filters in chain."""
         chain = FilterChain("TestChain")
         filter1 = PassThroughFilter("Filter1")
         filter2 = PassThroughFilter("Filter2")
@@ -385,7 +385,7 @@ class TestFilterChain:
         assert filter2._channels == 2
 
     def test_filter_chain_configuration_after_add(self):
-        """Test that filters added after configuration are automatically configured."""
+        """Should automatically configure filters added after chain configuration."""
         chain = FilterChain("TestChain")
         chain.configure(48000, 1)
 
@@ -397,7 +397,7 @@ class TestFilterChain:
         assert filter1._channels == 1
 
     def test_filter_chain_processing(self):
-        """Test FilterChain processes audio through all filters."""
+        """Should process audio through all filters in sequence."""
         chain = FilterChain("TestChain")
 
         # Create mock filters that modify data in a predictable way
@@ -423,7 +423,7 @@ class TestFilterChain:
         np.testing.assert_array_equal(result, expected)
 
     def test_filter_chain_processing__disabled_filter(self):
-        """Test FilterChain skips disabled filters."""
+        """Should skip disabled filters during processing."""
         chain = FilterChain("TestChain")
 
         class AddTenFilter(AudioFilter):
@@ -449,7 +449,7 @@ class TestFilterChain:
         np.testing.assert_array_equal(result, expected)
 
     def test_filter_chain_clear(self):
-        """Test FilterChain clear functionality."""
+        """Should remove all filters when cleared."""
         chain = FilterChain("TestChain")
         filter1 = PassThroughFilter("Filter1")
         filter2 = PassThroughFilter("Filter2")
@@ -463,7 +463,7 @@ class TestFilterChain:
         assert chain.get_filter_names() == []
 
     def test_filter_chain_string_representation(self):
-        """Test FilterChain string representation."""
+        """Should show chain name and enabled filter count in string representation."""
         chain = FilterChain("TestChain")
         filter1 = PassThroughFilter("Filter1", enabled=True)
         filter2 = PassThroughFilter("Filter2", enabled=False)
@@ -480,7 +480,7 @@ class TestFilterErrorHandling:
     """Test error handling in filter framework."""
 
     def test_filter_process__exception_returns_original_data(self, caplog):
-        """Test that filter exceptions return original data and log error."""
+        """Should return original data and log error when filter raises exception."""
 
         class BrokenFilter(AudioFilter):
             def __init__(self):

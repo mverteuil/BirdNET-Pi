@@ -31,7 +31,7 @@ class TestPathResolver:
         return path_resolver
 
     def test_get_detection_audio_path(self, resolver):
-        """Test detection audio path generation."""
+        """Should detection audio path generation."""
         # Test with a scientific name and timestamp
         scientific_name = "Turdus migratorius"
         timestamp = datetime.datetime(2024, 3, 15, 14, 30, 45)
@@ -44,7 +44,7 @@ class TestPathResolver:
         assert path == Path("recordings/Turdus_migratorius/20240315_143045_000000.wav")
 
     def test_get_detection_audio_path_with_spaces(self, resolver):
-        """Test detection audio path with spaces in scientific name."""
+        """Should detection audio path with spaces in scientific name."""
         scientific_name = "Corvus corax"
         timestamp = datetime.datetime(2024, 12, 25, 8, 15, 30)
 
@@ -54,7 +54,7 @@ class TestPathResolver:
         assert path == Path("recordings/Corvus_corax/20241225_081530_000000.wav")
 
     def test_get_recordings_dir(self, resolver):
-        """Test recordings directory path."""
+        """Should recordings directory path."""
         recordings_dir = resolver.get_recordings_dir()
 
         assert recordings_dir.name == "recordings"
@@ -62,7 +62,7 @@ class TestPathResolver:
         assert recordings_dir.is_absolute()
 
     def test_get_database_dir(self, resolver):
-        """Test database directory path."""
+        """Should database directory path."""
         db_dir = resolver.get_database_dir()
 
         assert db_dir.name == "database"
@@ -70,7 +70,7 @@ class TestPathResolver:
         assert db_dir.is_absolute()
 
     def test_get_models_dir(self, resolver):
-        """Test models directory path."""
+        """Should models directory path."""
         models_dir = resolver.get_models_dir()
 
         assert models_dir.name == "models"
@@ -78,7 +78,7 @@ class TestPathResolver:
         assert models_dir.is_absolute()
 
     def test_detection_path_uses_recordings_dir(self, resolver):
-        """Test that detection path is correctly relative to recordings dir."""
+        """Should detection path is correctly relative to recordings dir."""
         scientific_name = "Test species"
         timestamp = datetime.datetime(2024, 1, 1, 12, 0, 0)
 

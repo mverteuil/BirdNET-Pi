@@ -64,7 +64,7 @@ def mock_weather_response():
 
 
 def test_weather_manager_initialization(weather_manager):
-    """Test WeatherManager initialization."""
+    """Should weatherManager initialization."""
     assert weather_manager.latitude == 63.4591
     assert weather_manager.longitude == -19.3647
     assert weather_manager.session is not None
@@ -72,7 +72,7 @@ def test_weather_manager_initialization(weather_manager):
 
 @pytest.mark.asyncio
 async def test_fetch_weather_range(weather_manager, mock_weather_response):
-    """Test fetching weather data from API."""
+    """Should fetching weather data from API."""
     with patch("birdnetpi.location.weather.httpx.AsyncClient") as mock_client_class:
         mock_client = AsyncMock()
         mock_response = MagicMock()
@@ -95,7 +95,7 @@ async def test_fetch_weather_range(weather_manager, mock_weather_response):
 
 @pytest.mark.asyncio
 async def test_fetch_weather_range_historical_api(weather_manager, mock_weather_response):
-    """Test that historical API is used for old dates."""
+    """Should historical API is used for old dates."""
     with patch("birdnetpi.location.weather.httpx.AsyncClient") as mock_client_class:
         mock_client = AsyncMock()
         mock_response = MagicMock()
@@ -118,7 +118,7 @@ async def test_fetch_weather_range_historical_api(weather_manager, mock_weather_
 
 @pytest.mark.asyncio
 async def test_fetch_weather_range_forecast_api(weather_manager, mock_weather_response):
-    """Test that forecast API is used for recent dates."""
+    """Should forecast API is used for recent dates."""
     with patch("birdnetpi.location.weather.httpx.AsyncClient") as mock_client_class:
         mock_client = AsyncMock()
         mock_response = MagicMock()
@@ -142,7 +142,7 @@ async def test_fetch_weather_range_forecast_api(weather_manager, mock_weather_re
 
 @pytest.mark.asyncio
 async def test_fetch_and_store_weather(weather_manager, session, mock_weather_response):
-    """Test fetching and storing weather for a specific timestamp."""
+    """Should fetching and storing weather for a specific timestamp."""
     with patch.object(weather_manager, "fetch_weather_range") as mock_fetch:
         mock_fetch.return_value = [
             {
@@ -169,7 +169,7 @@ async def test_fetch_and_store_weather(weather_manager, session, mock_weather_re
 
 @pytest.mark.asyncio
 async def test_fetch_and_store_weather_no_data(weather_manager):
-    """Test error handling when no weather data is available."""
+    """Should error handling when no weather data is available."""
     with patch.object(weather_manager, "fetch_weather_range") as mock_fetch:
         mock_fetch.return_value = []
 
@@ -181,7 +181,7 @@ async def test_fetch_and_store_weather_no_data(weather_manager):
 
 @pytest.mark.asyncio
 async def test_link_detections_to_weather(weather_manager, session):
-    """Test linking detections to weather records."""
+    """Should linking detections to weather records."""
     # Create weather record
     weather = Weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
@@ -242,7 +242,7 @@ async def test_link_detections_to_weather(weather_manager, session):
 
 @pytest.mark.asyncio
 async def test_link_detections_skips_already_linked(weather_manager, session):
-    """Test that link_detections_to_weather skips already linked detections."""
+    """Should link_detections_to_weather skips already linked detections."""
     # Create two weather records
     weather1 = Weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
@@ -288,7 +288,7 @@ async def test_link_detections_skips_already_linked(weather_manager, session):
 
 @pytest.mark.asyncio
 async def test_backfill_weather(weather_manager, session):
-    """Test backfilling weather for a time range."""
+    """Should backfilling weather for a time range."""
     with patch.object(weather_manager, "fetch_and_store_weather") as mock_fetch:
         # Mock weather creation
         async def create_weather(timestamp):
@@ -331,7 +331,7 @@ async def test_backfill_weather(weather_manager, session):
 
 @pytest.mark.asyncio
 async def test_backfill_weather_skip_existing(weather_manager, session):
-    """Test that backfill skips existing weather records when requested."""
+    """Should backfill skips existing weather records when requested."""
     # Create existing weather
     existing_weather = Weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
@@ -357,7 +357,7 @@ async def test_backfill_weather_skip_existing(weather_manager, session):
 
 @pytest.mark.asyncio
 async def test_backfill_weather_error_handling(weather_manager):
-    """Test error handling in backfill_weather."""
+    """Should error handling in backfill_weather."""
     with patch.object(weather_manager, "fetch_and_store_weather") as mock_fetch:
         mock_fetch.side_effect = Exception("API Error")
 
@@ -374,7 +374,7 @@ async def test_backfill_weather_error_handling(weather_manager):
 
 @pytest.mark.asyncio
 async def test_backfill_weather_bulk(weather_manager, session):
-    """Test bulk weather backfilling."""
+    """Should bulk weather backfilling."""
     with patch.object(weather_manager, "fetch_weather_range") as mock_fetch:
         mock_fetch.return_value = [
             {
@@ -407,7 +407,7 @@ async def test_backfill_weather_bulk(weather_manager, session):
 
 @pytest.mark.asyncio
 async def test_backfill_weather_bulk_skip_existing(weather_manager, session):
-    """Test bulk backfill skips existing records."""
+    """Should bulk backfill skips existing records."""
     # Create some existing weather records
     for hour in [0, 6, 12, 18]:
         weather = Weather(
@@ -453,7 +453,7 @@ async def test_backfill_weather_bulk_skip_existing(weather_manager, session):
 
 @pytest.mark.asyncio
 async def test_smart_backfill(weather_manager, session):
-    """Test smart backfill based on detections without weather."""
+    """Should smart backfill based on detections without weather."""
     # Create detections across different times
     timestamps = [
         datetime(2024, 1, 1, 10, tzinfo=UTC),
@@ -493,7 +493,7 @@ async def test_smart_backfill(weather_manager, session):
 
 @pytest.mark.asyncio
 async def test_smart_backfill_no_detections(weather_manager, session):
-    """Test smart backfill when no detections need weather."""
+    """Should smart backfill when no detections need weather."""
     # Create detection with weather already linked
     weather = Weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
@@ -521,7 +521,7 @@ async def test_smart_backfill_no_detections(weather_manager, session):
 
 @pytest.mark.asyncio
 async def test_backfill_weather_bulk_multi_day(weather_manager, session):
-    """Test bulk backfill correctly calculates total_days for various date ranges."""
+    """Should bulk backfill correctly calculates total_days for various date ranges."""
     with patch.object(weather_manager, "fetch_weather_range") as mock_fetch:
         # Test 3 days
         mock_fetch.return_value = [
@@ -579,7 +579,7 @@ async def test_backfill_weather_bulk_multi_day(weather_manager, session):
 
 @pytest.mark.asyncio
 async def test_rate_limiting_in_backfill(weather_manager):
-    """Test that rate limiting is applied during backfill."""
+    """Should rate limiting is applied during backfill."""
     with patch.object(weather_manager, "fetch_and_store_weather") as mock_fetch:
         mock_fetch.return_value = MagicMock(id=1)
 
@@ -596,7 +596,7 @@ async def test_rate_limiting_in_backfill(weather_manager):
 
 @pytest.mark.asyncio
 async def test_weather_manager_session_handling(session):
-    """Test that WeatherManager properly uses the session."""
+    """Should weatherManager properly uses the session."""
     manager = WeatherManager(session, 40.0, -74.0)
 
     # Create a weather record
@@ -641,7 +641,7 @@ class TestWeatherManagerRefactoredMethods:
 
     @pytest.mark.asyncio
     async def test_get_existing_weather_hours(self, weather_manager, session):
-        """Test _get_existing_weather_hours method."""
+        """Should _get_existing_weather_hours method."""
         # Create some weather records
         weather1 = Weather(
             timestamp=datetime(2024, 1, 1, 10, tzinfo=UTC),
@@ -676,7 +676,7 @@ class TestWeatherManagerRefactoredMethods:
 
     @pytest.mark.asyncio
     async def test_determine_chunk_size(self, weather_manager):
-        """Test _determine_chunk_size method."""
+        """Should _determine_chunk_size method."""
         now = datetime.now(UTC)
 
         # Test forecast API (within 5 days)
@@ -691,7 +691,7 @@ class TestWeatherManagerRefactoredMethods:
 
     @pytest.mark.asyncio
     async def test_process_weather_hour(self, weather_manager, session):
-        """Test _process_weather_hour method."""
+        """Should _process_weather_hour method."""
         # Test processing a new weather hour
         hour_data = {
             "timestamp": datetime(2024, 1, 1, 10, tzinfo=UTC),

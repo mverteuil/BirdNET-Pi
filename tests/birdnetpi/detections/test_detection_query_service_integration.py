@@ -23,7 +23,7 @@ def mock_species_database():
 
 @pytest.fixture
 async def test_database(tmp_path):
-    """Create a test database with DatabaseService."""
+    """Should create a test database with DatabaseService."""
     db_path = tmp_path / "test.db"
     db_service = CoreDatabaseService(db_path)
 
@@ -211,7 +211,7 @@ class TestAnalyticsIntegration:
 
     @pytest.mark.asyncio
     async def test_get_detection_count(self, query_service_with_db):
-        """Test counting detections in time range."""
+        """Should counting detections in time range."""
         # Count all detections on Jan 1, 2024
         start_time = datetime.datetime(2024, 1, 1, 0, 0, 0)
         end_time = datetime.datetime(2024, 1, 1, 23, 59, 59)
@@ -235,7 +235,7 @@ class TestAnalyticsIntegration:
 
     @pytest.mark.asyncio
     async def test_get_unique_species_count(self, query_service_with_db):
-        """Test counting unique species in time range."""
+        """Should counting unique species in time range."""
         # Count unique species on Jan 1, 2024
         start_time = datetime.datetime(2024, 1, 1, 0, 0, 0)
         end_time = datetime.datetime(2024, 1, 1, 23, 59, 59)
@@ -254,7 +254,7 @@ class TestAnalyticsIntegration:
 
     @pytest.mark.asyncio
     async def test_get_storage_metrics(self, query_service_with_db):
-        """Test getting storage metrics for audio files."""
+        """Should getting storage metrics for audio files."""
         metrics = await query_service_with_db.get_storage_metrics()
 
         # Total size: 9 files * 48000 bytes = 432000 bytes
@@ -267,7 +267,7 @@ class TestAnalyticsIntegration:
 
     @pytest.mark.asyncio
     async def test_get_species_counts(self, query_service_with_db):
-        """Test getting species with their detection counts."""
+        """Should getting species with their detection counts."""
         start_time = datetime.datetime(2024, 1, 1, 0, 0, 0)
         end_time = datetime.datetime(2024, 1, 1, 23, 59, 59)
 
@@ -290,7 +290,7 @@ class TestAnalyticsIntegration:
 
     @pytest.mark.asyncio
     async def test_get_hourly_counts(self, query_service_with_db):
-        """Test getting hourly detection counts for a date."""
+        """Should getting hourly detection counts for a date."""
         target_date = date(2024, 1, 1)
 
         hourly_counts = await query_service_with_db.get_hourly_counts(target_date)
@@ -314,7 +314,7 @@ class TestAnalyticsIntegration:
         test_database,
         mock_species_database,
     ):
-        """Test analytics methods with empty database."""
+        """Should handle analytics methods correctly with empty database."""
         # Create DetectionQueryService with empty database
         query_service = DetectionQueryService(
             core_database=test_database,

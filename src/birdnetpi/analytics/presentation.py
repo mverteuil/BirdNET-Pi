@@ -454,7 +454,7 @@ class PresentationManager:
             Dictionary with all formatted data for the template
         """
         # Calculate time ranges based on period
-        start_date, period_label = self._calculate_period_range(period)
+        start_date, _period_label = self._calculate_period_range(period)
 
         # For display, use the current time in UTC
         now = datetime.now(UTC)

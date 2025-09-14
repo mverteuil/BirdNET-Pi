@@ -34,17 +34,22 @@ class QueryPerformanceMonitor:
     ) -> dict[str, Any]:
         """Analyze query execution plan using EXPLAIN QUERY PLAN.
 
+        WARNING: This method is for internal debugging/optimization only.
+        The query parameter should NEVER come from user input.
+
         Args:
-            query: SQL query to analyze
+            query: SQL query to analyze (must be from trusted source)
             params: Query parameters
 
         Returns:
             Dictionary containing query plan analysis
         """
         async with self.database_service.get_async_db() as session:
-            # Get query plan
+            # Get query plan - query must be from trusted source
+            # This is a development/optimization tool, not for user queries
             explain_query = f"EXPLAIN QUERY PLAN {query}"
-            result = await session.execute(text(explain_query), params or {})
+            # Safe: Internal-only method for performance analysis, not exposed to user input
+            result = await session.execute(text(explain_query), params or {})  # nosemgrep
             plan_rows = result.fetchall()
 
             # Analyze plan for optimization opportunities
@@ -336,20 +341,30 @@ class DatabaseOptimizer:
         stats = {}
 
         async with self.database_service.get_async_db() as session:
-            # Get table sizes
+            # Get table sizes - using safe queries with hardcoded table names
             tables_info = {}
-            for table_name in ["detections", "audio_files"]:
+
+            # Define queries for each table to avoid SQL injection
+            table_queries = {
+                "detections": {
+                    "count": "SELECT COUNT(*) as count FROM detections",
+                    "info": "SELECT COUNT(*) FROM pragma_table_info('detections')",
+                },
+                "audio_files": {
+                    "count": "SELECT COUNT(*) as count FROM audio_files",
+                    "info": "SELECT COUNT(*) FROM pragma_table_info('audio_files')",
+                },
+            }
+
+            for table_name, queries in table_queries.items():
                 try:
-                    count_result = await session.execute(
-                        text(f"SELECT COUNT(*) as count FROM {table_name}")
-                    )
+                    # Count rows
+                    count_result = await session.execute(text(queries["count"]))
                     count_result = count_result.fetchone()
                     count = count_result[0] if count_result else 0
 
-                    # Get table size in pages (SQLite specific)
-                    page_count_result = await session.execute(
-                        text(f"SELECT COUNT(*) FROM pragma_table_info('{table_name}')")
-                    )
+                    # Get column count (SQLite specific)
+                    page_count_result = await session.execute(text(queries["info"]))
                     page_count_result = page_count_result.fetchone()
 
                     tables_info[table_name] = {

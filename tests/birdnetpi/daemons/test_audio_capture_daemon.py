@@ -18,7 +18,7 @@ def mock_daemon_setup(mocker, path_resolver):
 
 @pytest.fixture
 def test_config():
-    """Provide test configuration data."""
+    """Should provide test configuration data."""
     return {"some_config": "value", "audio": {"sample_rate": 48000}}
 
 

@@ -123,7 +123,7 @@ class TestQueryPerformanceMonitor:
 
     @pytest.mark.asyncio
     async def test_explain_query(self, monitor):
-        """Test query plan analysis."""
+        """Should query plan analysis."""
         query = "SELECT * FROM detections WHERE scientific_name = :species"
         params = {"species": "Turdus migratorius"}
 
@@ -138,7 +138,7 @@ class TestQueryPerformanceMonitor:
 
     @pytest.mark.asyncio
     async def test_measure_query_time(self, monitor):
-        """Test query execution time measurement."""
+        """Should query execution time measurement."""
         query = "SELECT COUNT(*) FROM detections"
 
         exec_time, row_count = await monitor.measure_query_time(query)
@@ -148,7 +148,7 @@ class TestQueryPerformanceMonitor:
 
     @pytest.mark.asyncio
     async def test_analyze_common_queries(self, monitor):
-        """Test analysis of common query patterns."""
+        """Should analysis of common query patterns."""
         results = await monitor.analyze_common_queries()
 
         assert isinstance(results, list)
@@ -169,7 +169,7 @@ class TestDatabaseOptimizer:
 
     @pytest.mark.asyncio
     async def test_get_current_indexes(self, optimizer):
-        """Test retrieving current database indexes."""
+        """Should retrieving current database indexes."""
         indexes = await optimizer.get_current_indexes()
 
         assert isinstance(indexes, dict)
@@ -180,7 +180,7 @@ class TestDatabaseOptimizer:
 
     @pytest.mark.asyncio
     async def test_create_optimized_indexes_dry_run(self, optimizer):
-        """Test index creation in dry-run mode."""
+        """Should index creation in dry-run mode."""
         sql_statements = await optimizer.create_optimized_indexes(dry_run=True)
 
         assert isinstance(sql_statements, list)
@@ -196,7 +196,7 @@ class TestDatabaseOptimizer:
 
     @pytest.mark.asyncio
     async def test_create_optimized_indexes(self, optimizer):
-        """Test actual index creation."""
+        """Should actual index creation."""
         # Get initial indexes
         indexes_before = await optimizer.get_current_indexes()
         initial_count = sum(len(idx_list) for idx_list in indexes_before.values())
@@ -216,7 +216,7 @@ class TestDatabaseOptimizer:
 
     @pytest.mark.asyncio
     async def test_analyze_table_statistics(self, optimizer):
-        """Test table statistics analysis."""
+        """Should table statistics analysis."""
         stats = await optimizer.analyze_table_statistics()
 
         assert isinstance(stats, dict)
@@ -253,7 +253,7 @@ class TestDatabaseOptimizer:
 
     @pytest.mark.asyncio
     async def test_optimize_database(self, optimizer):
-        """Test complete database optimization."""
+        """Should complete database optimization."""
         results = await optimizer.optimize_database()
 
         assert isinstance(results, dict)
@@ -271,7 +271,7 @@ class TestDatabaseOptimizer:
 
     @pytest.mark.asyncio
     async def test_generate_recommendations(self, optimizer):
-        """Test recommendation generation."""
+        """Should recommendation generation."""
         # Create mock results
         results = {
             "table_statistics": {
@@ -312,7 +312,7 @@ class TestOptimizationPerformance:
 
     @pytest.mark.asyncio
     async def test_query_performance_improvement(self, optimizer):
-        """Test that optimization improves query performance."""
+        """Should optimization improves query performance."""
         # Measure performance before optimization
         monitor = optimizer.monitor
         before_results = await monitor.analyze_common_queries()

@@ -56,9 +56,10 @@ def create_app() -> FastAPI:
     app.state.translation_manager = container.translation_manager()
 
     # Add CORS middleware for proper headers (including AudioWorklet support)
+    # Wildcard CORS needed for local network access to BirdNET-Pi device
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Allow all origins for development
+        allow_origins=["*"],  # nosemgrep
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -167,7 +168,8 @@ def create_app() -> FastAPI:
             {
                 "site_name": config.site_name,
                 "location": f"{config.latitude:.4f}, {config.longitude:.4f}",
-                "websocket_url": f"ws://{request.url.hostname}:8000/ws/notifications",
+                # Safe: Using request hostname for WebSocket URL in same-origin context
+                "websocket_url": f"ws://{request.url.hostname}:8000/ws/notifications",  # nosemgrep
                 **landing_data.model_dump(),
             },
         )

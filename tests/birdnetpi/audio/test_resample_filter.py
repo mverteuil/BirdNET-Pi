@@ -10,7 +10,7 @@ class TestResampleFilter:
     """Tests for the ResampleFilter class."""
 
     def test_resample_filter_initialization(self):
-        """Test ResampleFilter initialization."""
+        """Should resampleFilter initialization."""
         filter_obj = ResampleFilter(target_sample_rate=48000, name="TestResample")
         assert filter_obj.target_sample_rate == 48000
         assert filter_obj.name == "TestResample"
@@ -18,7 +18,7 @@ class TestResampleFilter:
         assert filter_obj.source_sample_rate is None
 
     def test_resample_filter_configuration(self):
-        """Test ResampleFilter configuration."""
+        """Should resampleFilter configuration."""
         filter_obj = ResampleFilter(target_sample_rate=48000)
         filter_obj.configure(sample_rate=44100, channels=1)
 
@@ -27,7 +27,7 @@ class TestResampleFilter:
         assert filter_obj._channels == 1
 
     def test_resample_filter_passthrough_when_rates_match(self):
-        """Test that filter passes through audio when sample rates match."""
+        """Should filter passes through audio when sample rates match."""
         filter_obj = ResampleFilter(target_sample_rate=48000)
         filter_obj.configure(sample_rate=48000, channels=1)
 
@@ -42,7 +42,7 @@ class TestResampleFilter:
         assert len(result) == 48000
 
     def test_resample_filter_upsampling(self):
-        """Test resampling from lower to higher sample rate."""
+        """Should resampling from lower to higher sample rate."""
         filter_obj = ResampleFilter(target_sample_rate=48000)
         filter_obj.configure(sample_rate=44100, channels=1)
 
@@ -60,7 +60,7 @@ class TestResampleFilter:
         assert result.dtype == np.int16
 
     def test_resample_filter_downsampling(self):
-        """Test resampling from higher to lower sample rate."""
+        """Should resampling from higher to lower sample rate."""
         filter_obj = ResampleFilter(target_sample_rate=22050)
         filter_obj.configure(sample_rate=44100, channels=1)
 
@@ -78,7 +78,7 @@ class TestResampleFilter:
         assert result.dtype == np.int16
 
     def test_resample_filter_not_configured_error(self):
-        """Test that filter raises error when not configured."""
+        """Should filter raises error when not configured."""
         filter_obj = ResampleFilter(target_sample_rate=48000)
         test_audio = np.random.randint(-32768, 32767, 1000, dtype=np.int16)
 
@@ -86,7 +86,7 @@ class TestResampleFilter:
             filter_obj.process(test_audio)
 
     def test_resample_filter_parameters(self):
-        """Test getting filter parameters."""
+        """Should getting filter parameters."""
         filter_obj = ResampleFilter(target_sample_rate=48000, name="TestResample")
         filter_obj.configure(sample_rate=44100, channels=2)
 

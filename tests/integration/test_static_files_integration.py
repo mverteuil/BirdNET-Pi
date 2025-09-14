@@ -18,7 +18,7 @@ class TestStaticFilesIntegration:
 
     @pytest.fixture
     def test_paths(self, tmp_path: Path, repo_root: Path):
-        """Create test directory structure with real assets copied."""
+        """Should create test directory structure with real assets copied."""
         # Create directory structure
         (tmp_path / "database").mkdir(parents=True)
         (tmp_path / "config").mkdir(parents=True)
@@ -40,7 +40,7 @@ class TestStaticFilesIntegration:
 
     @pytest.fixture
     def test_resolver(self, test_paths: Path, repo_root: Path):
-        """Create a PathResolver configured for testing."""
+        """Should create a PathResolver configured for testing."""
         resolver = PathResolver()
 
         # Override writable paths to use temp directory
@@ -143,7 +143,7 @@ class TestStaticFilesIntegration:
         Container.database_path.reset_override()
 
     def test_static_route_exists(self, app_with_static: FastAPI):
-        """Test that the static route is properly mounted by testing it works."""
+        """Should the static route is properly mounted by testing it works."""
         # Rather than checking route internals, test that static files are actually served
         with TestClient(app_with_static) as client:
             response = client.get("/static/style.css")
@@ -151,7 +151,7 @@ class TestStaticFilesIntegration:
             assert response.status_code == 200, "Static route not properly mounted"
 
     def test_static_css_file_is_served(self, app_with_static: FastAPI):
-        """Test that the style.css file can be accessed via static route."""
+        """Should the style.css file can be accessed via static route."""
         with TestClient(app_with_static) as client:
             response = client.get("/static/style.css")
 
@@ -164,7 +164,7 @@ class TestStaticFilesIntegration:
             assert "body" in response.text
 
     def test_index_page_references_static_css(self, app_with_static: FastAPI):
-        """Test that the index page correctly references the static CSS file."""
+        """Should the index page correctly references the static CSS file."""
         with TestClient(app_with_static) as client:
             response = client.get("/")
 
@@ -176,7 +176,7 @@ class TestStaticFilesIntegration:
             assert '<link rel="stylesheet"' in response.text
 
     def test_settings_page_references_static_css(self, app_with_static: FastAPI):
-        """Test that the settings page correctly references the static CSS file."""
+        """Should the settings page correctly references the static CSS file."""
         with TestClient(app_with_static) as client:
             response = client.get("/admin/settings")
 
@@ -189,7 +189,7 @@ class TestStaticFilesIntegration:
             assert "Settings" in response.text or "Configuration" in response.text
 
     def test_livestream_page_references_static_css(self, app_with_static: FastAPI):
-        """Test that the livestream page correctly references the static CSS file."""
+        """Should the livestream page correctly references the static CSS file."""
         with TestClient(app_with_static) as client:
             response = client.get("/livestream")
 
@@ -202,14 +202,14 @@ class TestStaticFilesIntegration:
             assert "Live" in response.text or "Stream" in response.text
 
     def test_static_file_not_found(self, app_with_static: FastAPI):
-        """Test that requesting a non-existent static file returns 404."""
+        """Should requesting a non-existent static file returns 404."""
         with TestClient(app_with_static) as client:
             response = client.get("/static/nonexistent.css")
 
             assert response.status_code == 404
 
     def test_multiple_static_requests(self, app_with_static: FastAPI):
-        """Test that multiple static file requests work correctly."""
+        """Should multiple static file requests work correctly."""
         with TestClient(app_with_static) as client:
             # Make multiple requests for the same static file
             response1 = client.get("/static/style.css")
@@ -222,7 +222,7 @@ class TestStaticFilesIntegration:
             assert response1.text == response2.text
 
     def test_css_variables_are_defined(self, app_with_static: FastAPI):
-        """Test that CSS variables are properly defined in the stylesheet."""
+        """Should CSS variables are properly defined in the stylesheet."""
         with TestClient(app_with_static) as client:
             response = client.get("/static/style.css")
 
@@ -241,7 +241,7 @@ class TestStaticFilesIntegration:
                 assert var in response.text, f"CSS variable {var} not found in stylesheet"
 
     def test_page_styles_are_included(self, app_with_static: FastAPI):
-        """Test that page-specific styles are included in the stylesheet."""
+        """Should page-specific styles are included in the stylesheet."""
         with TestClient(app_with_static) as client:
             response = client.get("/static/style.css")
 

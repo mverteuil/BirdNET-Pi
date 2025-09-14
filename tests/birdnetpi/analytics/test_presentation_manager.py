@@ -78,7 +78,7 @@ class TestLandingPageData:
         mock_detection_query_service,
         sample_detections,
     ):
-        """Test complete landing page data assembly."""
+        """Should assemble complete landing page data correctly."""
         # Configure analytics manager mocks (as async)
         mock_analytics_manager.get_dashboard_summary = AsyncMock(
             return_value={
@@ -233,7 +233,7 @@ class TestFormatting:
     """Test individual formatting methods."""
 
     def test_format_metrics(self, presentation_manager):
-        """Test metrics formatting."""
+        """Should metrics formatting."""
         summary = {
             "species_total": 1250,
             "detections_today": 42,
@@ -253,7 +253,7 @@ class TestFormatting:
         assert formatted.threshold == "≥0.85"
 
     def test_format_detection_log(self, presentation_manager, sample_detections):
-        """Test detection log formatting."""
+        """Should detection log formatting."""
         formatted = presentation_manager._format_detection_log(sample_detections)
 
         assert len(formatted) == 3
@@ -268,12 +268,12 @@ class TestFormatting:
         assert formatted[2].confidence == "65%"
 
     def test_format_detection_log_empty(self, presentation_manager):
-        """Test detection log formatting with empty list."""
+        """Should detection log formatting with empty list."""
         formatted = presentation_manager._format_detection_log([])
         assert formatted == []
 
     def test_format_species_list(self, presentation_manager):
-        """Test species list formatting."""
+        """Should species list formatting."""
         frequency_data = [
             {"name": "Species A", "count": 100, "percentage": 50.0, "category": "common"},
             {"name": "Species B", "count": 60, "percentage": 30.0, "category": "regular"},
@@ -296,12 +296,12 @@ class TestFormatting:
         assert formatted[2].bar_width == "40%"
 
     def test_format_species_list_empty(self, presentation_manager):
-        """Test species list formatting with empty data."""
+        """Should species list formatting with empty data."""
         formatted = presentation_manager._format_species_list([])
         assert formatted == []
 
     def test_format_scatter_data(self, presentation_manager):
-        """Test scatter plot data formatting."""
+        """Should scatter plot data formatting."""
         scatter_data = [
             {"time": 6.5, "confidence": 0.95, "species": "Robin", "frequency_category": "common"},
             {
@@ -341,10 +341,10 @@ class TestFormatting:
 
 
 class TestAPIFormatting:
-    """Test API response formatting."""
+    """Should format API responses correctly."""
 
     def test_format_api_response_success(self, presentation_manager):
-        """Test successful API response formatting."""
+        """Should successful API response formatting."""
         data = {"result": "test", "count": 42}
 
         with patch("birdnetpi.analytics.presentation.datetime") as mock_datetime:
@@ -356,7 +356,7 @@ class TestAPIFormatting:
         assert response.data == data
 
     def test_format_api_response_error(self, presentation_manager):
-        """Test error API response formatting."""
+        """Should error API response formatting."""
         error_data = {"error": "Not found"}
 
         with patch("birdnetpi.analytics.presentation.datetime") as mock_datetime:
@@ -368,7 +368,7 @@ class TestAPIFormatting:
         assert response.data == error_data
 
     def test_format_api_response_custom_status(self, presentation_manager):
-        """Test API response with custom status."""
+        """Should API response with custom status."""
         data = {"message": "Processing"}
 
         response = presentation_manager.format_api_response(data, status="pending")
@@ -383,7 +383,7 @@ class TestSparklineGeneration:
 
     @pytest.mark.asyncio
     async def test_generate_sparkline_data(self, presentation_manager, mock_analytics_manager):
-        """Test sparkline data generation for species trends."""
+        """Should sparkline data generation for species trends."""
         # Mock the hourly patterns method
         mock_analytics_manager.get_species_hourly_patterns = AsyncMock(
             side_effect=[
@@ -472,7 +472,7 @@ class TestSparklineGeneration:
     async def test_generate_sparkline_data_empty(
         self, presentation_manager, mock_analytics_manager
     ):
-        """Test sparkline generation with no species."""
+        """Should handle sparkline generation with no species."""
         result = await presentation_manager._generate_sparkline_data([], "week")
         assert result == {}
 
@@ -482,7 +482,7 @@ class TestHeatmapData:
 
     @pytest.mark.asyncio
     async def test_get_heatmap_data_week(self, presentation_manager, mock_analytics_manager):
-        """Test heatmap data generation for weekly view."""
+        """Should heatmap data generation for weekly view."""
         # Create 7x24 matrix for weekly heatmap
         heatmap_data = [[0] * 24 for _ in range(7)]
         heatmap_data[0][6] = 15  # Monday 6 AM
@@ -501,7 +501,7 @@ class TestHeatmapData:
 
     @pytest.mark.asyncio
     async def test_get_heatmap_data_month(self, presentation_manager, mock_analytics_manager):
-        """Test heatmap data generation for monthly view."""
+        """Should heatmap data generation for monthly view."""
         # For month view, it uses get_aggregate_hourly_pattern
         # which might return weekly aggregates
         heatmap_data = [[0] * 24 for _ in range(4)]  # 4 weeks
@@ -509,7 +509,7 @@ class TestHeatmapData:
 
         mock_analytics_manager.get_aggregate_hourly_pattern = AsyncMock(return_value=heatmap_data)
 
-        result, title = await presentation_manager._get_heatmap_data("month")
+        result, _title = await presentation_manager._get_heatmap_data("month")
 
         # Check that the method was called with 30 days
         mock_analytics_manager.get_aggregate_hourly_pattern.assert_called_once_with(30)
@@ -523,7 +523,7 @@ class TestDiversityFormatting:
     """Test diversity data formatting methods."""
 
     def test_format_diversity_timeline(self, presentation_manager):
-        """Test formatting diversity timeline data."""
+        """Should formatting diversity timeline data."""
         # Data structure matching what AnalyticsManager returns
         data = [
             {
@@ -568,7 +568,7 @@ class TestDiversityFormatting:
         assert formatted["total_detections"] == [50, 60, 55]
 
     def test_format_diversity_comparison(self, presentation_manager):
-        """Test formatting diversity comparison data."""
+        """Should formatting diversity comparison data."""
         data = {
             "period1": {"shannon": 2.3, "simpson": 0.82, "species_count": 12},
             "period2": {"shannon": 2.5, "simpson": 0.85, "species_count": 15},
@@ -588,7 +588,7 @@ class TestDiversityFormatting:
         assert formatted["changes"]["species_count"]["value"] == 3
 
     def test_format_accumulation_curve(self, presentation_manager):
-        """Test formatting species accumulation curve data."""
+        """Should formatting species accumulation curve data."""
         # Data structure matching what AnalyticsManager returns
         data = {
             "samples": [1, 2, 3, 4, 5, 6, 7, 8],
@@ -613,7 +613,7 @@ class TestWeatherFormatting:
     """Test weather correlation formatting."""
 
     def test_format_weather_correlations(self, presentation_manager):
-        """Test formatting weather correlation data."""
+        """Should formatting weather correlation data."""
         # Data structure with raw arrays as expected by implementation
         data = {
             "hours": ["00:00", "01:00", "02:00", "03:00"],
@@ -648,7 +648,7 @@ class TestPeriodCalculations:
     """Test period calculation utilities."""
 
     def test_calculate_period_range(self, presentation_manager):
-        """Test period range calculations."""
+        """Should period range calculations."""
         # Test week period
         start, label = presentation_manager._calculate_period_range("week")
         assert start is not None
@@ -665,7 +665,7 @@ class TestPeriodCalculations:
         assert label == "This Year"
 
     def test_get_resolution_for_period(self, presentation_manager):
-        """Test resolution selection for different periods."""
+        """Should resolution selection for different periods."""
         assert presentation_manager._get_resolution_for_period("day") == "hourly"
         assert presentation_manager._get_resolution_for_period("week") == "daily"
         assert presentation_manager._get_resolution_for_period("month") == "daily"
@@ -673,7 +673,7 @@ class TestPeriodCalculations:
         assert presentation_manager._get_resolution_for_period("season") == "weekly"
 
     def test_get_window_size_for_period(self, presentation_manager):
-        """Test window size calculation for periods."""
+        """Should window size calculation for periods."""
         from datetime import timedelta
 
         assert presentation_manager._get_window_size_for_period("day") == timedelta(hours=6)
@@ -683,14 +683,14 @@ class TestPeriodCalculations:
         assert presentation_manager._get_window_size_for_period("year") == timedelta(days=30)
 
     def test_get_days_for_period(self, presentation_manager):
-        """Test day count for different periods."""
+        """Should day count for different periods."""
         assert presentation_manager._get_days_for_period("day") == 1
         assert presentation_manager._get_days_for_period("week") == 7
         assert presentation_manager._get_days_for_period("month") == 30
         assert presentation_manager._get_days_for_period("year") == 365
 
     def test_get_intensity_class(self, presentation_manager):
-        """Test intensity classification."""
+        """Should intensity classification."""
         assert presentation_manager._get_intensity_class(0.0) == "very-low"
         assert presentation_manager._get_intensity_class(0.15) == "very-low"
         assert presentation_manager._get_intensity_class(0.35) == "low"
@@ -703,7 +703,7 @@ class TestSpeciesFrequencyFormatting:
     """Test species frequency formatting."""
 
     def test_format_species_frequency(self, presentation_manager):
-        """Test species frequency data formatting."""
+        """Should species frequency data formatting."""
         species_summary = [
             {
                 "common_name": "American Robin",
@@ -735,7 +735,7 @@ class TestSpeciesFrequencyFormatting:
             assert formatted[0]["week"] == 100  # Count shown for week period
 
     def test_format_top_species(self, presentation_manager):
-        """Test top species formatting."""
+        """Should top species formatting."""
         species_summary = [
             {"common_name": "Robin", "count": 150, "scientific_name": "Turdus migratorius"},
             {"common_name": "Cardinal", "count": 100, "scientific_name": "Cardinalis cardinalis"},

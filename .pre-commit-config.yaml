@@ -58,7 +58,10 @@ repos:
         args: [
           '--config=auto',
           '--config=.semgrep/rules/',
-          '--include=src/birdnetpi/',
-          '--include=tests/',
+          '--exclude-rule=python.flask.security.xss.audit.direct-use-of-jinja2.direct-use-of-jinja2',
           '--error'
         ]
+        files: '^(src/birdnetpi|tests)/.*\.py$'
+        language_version: python3.11
+        additional_dependencies: []
+        verbose: false

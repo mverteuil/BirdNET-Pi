@@ -59,14 +59,14 @@ def weather_handler(database_service, config):
 
 
 def test_weather_handler_initialization(weather_handler, config):
-    """Test that weather handler initializes correctly."""
+    """Should weather handler initializes correctly."""
     assert weather_handler.latitude == config.latitude
     assert weather_handler.longitude == config.longitude
     assert weather_handler.database_service is not None
 
 
 def test_weather_handler_register(weather_handler):
-    """Test that weather handler registers with the signal."""
+    """Should weather handler registers with the signal."""
     # Initially no receivers
     receivers_before = len(detection_signal.receivers)
 
@@ -82,7 +82,7 @@ def test_weather_handler_register(weather_handler):
 
 
 def test_weather_handler_requires_location():
-    """Test that handler requires location coordinates."""
+    """Should handler requires location coordinates."""
     mock_db = MagicMock(spec=CoreDatabaseService)
 
     # Should be able to create with valid coordinates
@@ -93,7 +93,7 @@ def test_weather_handler_requires_location():
 
 @pytest.mark.asyncio
 async def test_weather_handler_handles_detection_event(weather_handler, session):
-    """Test that weather handler responds to detection events."""
+    """Should weather handler responds to detection events."""
     # Register the handler
     weather_handler.register()
 
@@ -130,7 +130,7 @@ async def test_weather_handler_handles_detection_event(weather_handler, session)
 
 @pytest.mark.asyncio
 async def test_weather_handler_skips_detection_with_weather(weather_handler, session):
-    """Test that handler skips detections that already have weather."""
+    """Should handler skips detections that already have weather."""
     weather_handler.register()
 
     try:
@@ -173,7 +173,7 @@ async def test_weather_handler_skips_detection_with_weather(weather_handler, ses
 
 @pytest.mark.asyncio
 async def test_fetch_and_link_weather_uses_existing(weather_handler, session):
-    """Test that _fetch_and_link_weather uses existing weather when available."""
+    """Should _fetch_and_link_weather uses existing weather when available."""
     # Create existing weather
     weather = Weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
@@ -211,7 +211,7 @@ async def test_fetch_and_link_weather_uses_existing(weather_handler, session):
 
 @pytest.mark.asyncio
 async def test_fetch_and_link_weather_fetches_new(weather_handler, session):
-    """Test that _fetch_and_link_weather fetches new weather when needed."""
+    """Should _fetch_and_link_weather fetches new weather when needed."""
     # Create detection without weather
     detection = Detection(
         species_tensor="Test_Bird",
@@ -248,7 +248,7 @@ async def test_fetch_and_link_weather_fetches_new(weather_handler, session):
 
 @pytest.mark.asyncio
 async def test_weather_handler_handles_fetch_error(weather_handler, session):
-    """Test that handler gracefully handles weather fetch errors."""
+    """Should handler gracefully handles weather fetch errors."""
     # Create detection
     detection = Detection(
         species_tensor="Test_Bird",
@@ -275,7 +275,7 @@ async def test_weather_handler_handles_fetch_error(weather_handler, session):
 
 
 def test_weather_handler_handles_no_event_loop(weather_handler):
-    """Test that handler gracefully handles when no event loop is running."""
+    """Should handler gracefully handles when no event loop is running."""
     # Create a detection
     detection = Detection(
         species_tensor="Test_Bird",

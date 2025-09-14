@@ -18,7 +18,7 @@ from birdnetpi.species.display import SpeciesDisplayService
 
 @pytest.fixture
 async def test_database_with_data(tmp_path):
-    """Create a test database with sample data for analytics testing."""
+    """Should create a test database with sample data for analytics testing."""
     db_path = tmp_path / "test.db"
     db_service = CoreDatabaseService(db_path)
 
@@ -221,7 +221,7 @@ class TestDashboardAnalyticsIntegration:
     async def test_get_dashboard_summary_integration(
         self, analytics_manager_with_db, test_database_with_data, mocker
     ):
-        """Test dashboard summary with real data."""
+        """Should generate dashboard summary with real data."""
         # Use the same fixed time reference that was used to create the test data
         _, fixed_now = test_database_with_data  # Unpack tuple
 
@@ -257,7 +257,7 @@ class TestDashboardAnalyticsIntegration:
     async def test_get_species_frequency_analysis_integration(
         self, analytics_manager_with_db, test_database_with_data, mocker
     ):
-        """Test species frequency analysis with real data."""
+        """Should analyze species frequency with real data."""
         # Use the same fixed time reference that was used to create the test data
         _, fixed_now = test_database_with_data  # Unpack tuple
 
@@ -296,7 +296,7 @@ class TestDashboardAnalyticsIntegration:
     async def test_get_temporal_patterns_integration(
         self, analytics_manager_with_db, test_database_with_data, mocker
     ):
-        """Test temporal patterns with real data."""
+        """Should identify temporal patterns with real data."""
         # Use the same fixed time reference that was used to create the test data
         _, fixed_now = test_database_with_data  # Unpack tuple
         today = fixed_now.date()
@@ -333,7 +333,7 @@ class TestDashboardAnalyticsIntegration:
     async def test_get_detection_scatter_data_integration(
         self, analytics_manager_with_db, test_database_with_data, mocker
     ):
-        """Test scatter plot data with real detections."""
+        """Should generate scatter plot data with real detections."""
         # Use the same fixed time reference that was used to create the test data
         _, fixed_now = test_database_with_data  # Unpack tuple
 
@@ -374,7 +374,7 @@ class TestDashboardAnalyticsIntegration:
     async def test_get_species_frequency_analysis_multiple_days(
         self, analytics_manager_with_db, test_database_with_data, mocker
     ):
-        """Test species frequency analysis across multiple days."""
+        """Should analyze species frequency across multiple days."""
         # Use the same fixed time reference that was used to create the test data
         _, fixed_now = test_database_with_data  # Unpack tuple
 
@@ -399,7 +399,7 @@ class TestDashboardAnalyticsIntegration:
 
     @pytest.mark.asyncio
     async def test_empty_time_range(self, analytics_manager_with_db):
-        """Test analytics with a time range that has no data."""
+        """Should analytics with a time range that has no data."""
         # Get data for a future date
         future_date = date.today() + timedelta(days=30)
         patterns = await analytics_manager_with_db.get_temporal_patterns(future_date)

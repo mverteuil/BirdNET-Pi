@@ -14,7 +14,7 @@ class TestHealthEndpoints:
     """Test health check endpoints."""
 
     def test_health_root_endpoint(self, client):
-        """Test the root health endpoint."""
+        """Should the root health endpoint."""
         response = client.get("/api/health/")
 
         assert response.status_code == 200
@@ -29,7 +29,7 @@ class TestHealthEndpoints:
         assert data["status"] == "healthy"
 
     def test_health_live_endpoint(self, client):
-        """Test the liveness endpoint."""
+        """Should the liveness endpoint."""
         response = client.get("/api/health/live")
 
         assert response.status_code == 200
@@ -40,7 +40,7 @@ class TestHealthEndpoints:
         assert data["status"] == "alive"
 
     def test_health_ready_endpoint(self, client):
-        """Test the readiness endpoint."""
+        """Should the readiness endpoint."""
         response = client.get("/api/health/ready")
 
         # Could be 200 (ready) or 503 (not ready)
@@ -61,7 +61,7 @@ class TestHealthEndpoints:
             assert data["checks"]["database"] is False
 
     def test_health_detailed_endpoint(self, client):
-        """Test the detailed health endpoint."""
+        """Should the detailed health endpoint."""
         response = client.get("/api/health/detailed")
 
         # Could be 200 (healthy) or 503 (unhealthy)
@@ -97,7 +97,7 @@ class TestHealthResponseFormat:
     """Test health check response formats."""
 
     def test_consistent_timestamp_format(self, client):
-        """All health endpoints should have consistent timestamp format."""
+        """Should all health endpoints should have consistent timestamp format."""
         endpoints = [
             "/api/health/",
             "/api/health/detailed",
@@ -122,7 +122,7 @@ class TestHealthResponseFormat:
                 pytest.fail(f"Invalid timestamp format in {endpoint}: {data['timestamp']}")
 
     def test_version_included(self, client):
-        """Version should be included in appropriate endpoints."""
+        """Should version should be included in appropriate endpoints."""
         endpoints_with_version = [
             "/api/health/",
             "/api/health/detailed",
@@ -146,7 +146,7 @@ class TestHealthDatabaseCheck:
     """Test database health checks."""
 
     def test_ready_endpoint_checks_database(self, client):
-        """Ready endpoint should check database connectivity."""
+        """Should ready endpoint should check database connectivity."""
         response = client.get("/api/health/ready")
         data = response.json()
 
@@ -163,7 +163,7 @@ class TestHealthDatabaseCheck:
             assert data["checks"]["database"] is False
 
     def test_detailed_endpoint_includes_database(self, client):
-        """Detailed endpoint should include database check."""
+        """Should detailed endpoint should include database check."""
         response = client.get("/api/health/detailed")
 
         data = response.json()
@@ -185,7 +185,7 @@ class TestHealthErrorHandling:
     """Test error handling in health checks."""
 
     def test_health_endpoints_handle_errors_gracefully(self, client):
-        """Health endpoints should never crash the application."""
+        """Should health endpoints should never crash the application."""
         endpoints = [
             "/api/health/",
             "/api/health/live",
@@ -210,7 +210,7 @@ class TestHealthErrorHandling:
                 pytest.fail(f"Failed to parse JSON from {endpoint}: {e}")
 
     def test_invalid_health_endpoint_returns_404(self, client):
-        """Invalid health endpoints should return 404."""
+        """Should invalid health endpoints should return 404."""
         invalid_endpoints = [
             "/api/health/invalid",
             "/api/health/nonexistent",

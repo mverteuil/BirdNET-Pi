@@ -42,11 +42,11 @@ def analytics_manager(mock_detection_query_service, mock_config):
 
 
 class TestAnalyticsManagerBasics:
-    """Test basic AnalyticsManager functionality."""
+    """Should provide basic AnalyticsManager functionality."""
 
     @pytest.mark.asyncio
     async def test_get_dashboard_summary(self, analytics_manager, mock_detection_query_service):
-        """Test dashboard summary generation."""
+        """Should dashboard summary generation."""
         # Setup specific returns
         mock_detection_query_service.get_detection_count.return_value = 50
         mock_detection_query_service.get_unique_species_count.side_effect = [30, 15]  # total, week
@@ -73,7 +73,7 @@ class TestAnalyticsManagerBasics:
     async def test_get_species_frequency_analysis(
         self, analytics_manager, mock_detection_query_service
     ):
-        """Test species frequency analysis."""
+        """Should analyze species frequency correctly."""
         # Setup mock species data
         mock_species = [
             {
@@ -105,7 +105,7 @@ class TestAnalyticsManagerBasics:
 
     @pytest.mark.asyncio
     async def test_get_temporal_patterns(self, analytics_manager, mock_detection_query_service):
-        """Test temporal pattern analysis."""
+        """Should temporal pattern analysis."""
         # Setup hourly data
         hourly_counts = [
             {"hour": 0, "count": 5},
@@ -131,7 +131,7 @@ class TestAnalyticsManagerBasics:
 
     @pytest.mark.asyncio
     async def test_get_weekly_patterns(self, analytics_manager, mock_detection_query_service):
-        """Test weekly pattern generation."""
+        """Should weekly pattern generation."""
         # Mock will return empty list, should handle gracefully
         patterns = await analytics_manager.get_weekly_patterns()
 
@@ -147,7 +147,7 @@ class TestAnalyticsManagerBasics:
 
     @pytest.mark.asyncio
     async def test_get_weekly_heatmap_data(self, analytics_manager, mock_detection_query_service):
-        """Test weekly heatmap data generation."""
+        """Should weekly heatmap data generation."""
         # Execute
         heatmap = await analytics_manager.get_weekly_heatmap_data(days=7)
 
@@ -157,7 +157,7 @@ class TestAnalyticsManagerBasics:
             assert len(row) == 24
 
     def test_calculate_correlation(self, analytics_manager):
-        """Test correlation calculation."""
+        """Should correlation calculation."""
         # Test perfect positive correlation
         x = [1, 2, 3, 4, 5]
         y = [2, 4, 6, 8, 10]
@@ -179,7 +179,7 @@ class TestAnalyticsManagerBasics:
     async def test_get_detection_scatter_data(
         self, analytics_manager, mock_detection_query_service
     ):
-        """Test scatter plot data generation."""
+        """Should generate scatter plot data correctly."""
         # Setup mock detections
         from datetime import UTC
         from uuid import uuid4

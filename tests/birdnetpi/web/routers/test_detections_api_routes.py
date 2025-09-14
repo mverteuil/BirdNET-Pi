@@ -207,7 +207,7 @@ class TestHierarchicalFiltering:
     """Test the hierarchical filtering endpoints for family/genus/species."""
 
     def test_get_families(self, client):
-        """Test getting list of families."""
+        """Should getting list of families."""
         # Mock the query service response
         client.mock_query_service.get_species_summary = AsyncMock(
             return_value=[
@@ -232,7 +232,7 @@ class TestHierarchicalFiltering:
         assert data["count"] == 2
 
     def test_get_genera_by_family(self, client):
-        """Test getting genera for a specific family."""
+        """Should getting genera for a specific family."""
         # Mock the query service response
         client.mock_query_service.get_species_summary = AsyncMock(
             return_value=[
@@ -258,7 +258,7 @@ class TestHierarchicalFiltering:
         assert data["count"] == 2
 
     def test_get_species_by_genus(self, client):
-        """Test getting species for a specific genus."""
+        """Should getting species for a specific genus."""
         # Mock the query service response
         client.mock_query_service.get_species_summary = AsyncMock(
             return_value=[
@@ -294,7 +294,7 @@ class TestHierarchicalFiltering:
         assert data["count"] == 1
 
     def test_get_species_by_genus_with_family_filter(self, client):
-        """Test getting species for a genus filtered by family."""
+        """Should getting species for a genus filtered by family."""
         # Mock the query service response
         client.mock_query_service.get_species_summary = AsyncMock(
             return_value=[
@@ -328,7 +328,7 @@ class TestHierarchicalFiltering:
         assert data["family"] == "Corvidae"
 
     def test_get_families_empty_result(self, client):
-        """Test getting families when no detections exist."""
+        """Should getting families when no detections exist."""
         client.mock_query_service.get_species_summary = AsyncMock(return_value=[])
 
         response = client.get("/api/detections/taxonomy/families")
@@ -339,7 +339,7 @@ class TestHierarchicalFiltering:
         assert data["count"] == 0
 
     def test_get_genera_unknown_family(self, client):
-        """Test getting genera for a family with no detections."""
+        """Should getting genera for a family with no detections."""
         client.mock_query_service.get_species_summary = AsyncMock(
             return_value=[
                 {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
@@ -355,7 +355,7 @@ class TestHierarchicalFiltering:
         assert data["count"] == 0
 
     def test_get_species_unknown_genus(self, client):
-        """Test getting species for a genus with no detections."""
+        """Should getting species for a genus with no detections."""
         client.mock_query_service.get_species_summary = AsyncMock(
             return_value=[
                 {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},

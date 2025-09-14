@@ -643,7 +643,7 @@ class TestPulseAudioSetup:
             "birdnetpi.system.pulseaudio_setup.PulseAudioSetup.get_pulseaudio_config_dir",
             return_value=Path("/tmp"),
         ):
-            success, message = PulseAudioSetup.test_connection(container_ip=None)
+            success, _message = PulseAudioSetup.test_connection(container_ip=None)
 
         # Note: test_connection doesn't use container_ip or call get_container_ip
         # It only uses container_name to check if container is running
@@ -666,7 +666,7 @@ class TestPulseAudioSetup:
             with patch(
                 "birdnetpi.system.pulseaudio_setup.PulseAudioSetup.get_container_ip"
             ) as mock_get_ip:
-                success, message = PulseAudioSetup.test_connection(container_ip="10.0.0.2")
+                PulseAudioSetup.test_connection(container_ip="10.0.0.2")
                 mock_get_ip.assert_not_called()  # Should not auto-detect
 
         # Verify docker exec was called (second call)

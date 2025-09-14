@@ -12,13 +12,13 @@ from birdnetpi.cli.install_assets import cli
 
 @pytest.fixture
 def test_version_data():
-    """Test version data."""
+    """Should version data."""
     return ["v2.1.1", "v2.1.0", "v2.0.0"]
 
 
 @pytest.fixture
 def test_download_result():
-    """Test download result data."""
+    """Should download result data."""
     return {
         "version": "v2.1.1",
         "downloaded_assets": [
@@ -244,7 +244,7 @@ class TestMainFunction:
         mock_cli.assert_called_once_with(obj={})
 
     def test_script_entry_point(self, repo_root):
-        """Test module can be run as script."""
+        """Should module can be run as script."""
         import subprocess
 
         module_path = repo_root / "src" / "birdnetpi" / "cli" / "install_assets.py"

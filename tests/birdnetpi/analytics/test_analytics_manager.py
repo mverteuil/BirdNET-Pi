@@ -38,7 +38,7 @@ class TestDashboardAnalytics:
     async def test_get_dashboard_summary(
         self, analytics_manager, mock_detection_query_service, mock_config
     ):
-        """Test dashboard summary calculation."""
+        """Should calculate dashboard summary with correct metrics."""
         # Mock DetectionQueryService methods
         mock_detection_query_service.get_detection_count = AsyncMock(return_value=150)
         mock_detection_query_service.get_unique_species_count = AsyncMock(
@@ -68,7 +68,7 @@ class TestDashboardAnalytics:
     async def test_get_species_frequency_analysis(
         self, analytics_manager, mock_detection_query_service
     ):
-        """Test species frequency analysis."""
+        """Should analyze species frequency and categorize by count."""
         # Mock species counts from DataManager
         mock_detection_query_service.get_species_counts = AsyncMock(
             return_value=[
@@ -112,7 +112,7 @@ class TestDashboardAnalytics:
     async def test_get_species_frequency_analysis_empty(
         self, analytics_manager, mock_detection_query_service
     ):
-        """Test species frequency analysis with no data."""
+        """Should return empty list when no species data exists."""
         mock_detection_query_service.get_species_counts = AsyncMock(return_value=[])
 
         analysis = await analytics_manager.get_species_frequency_analysis(hours=24)
@@ -123,7 +123,7 @@ class TestDashboardAnalytics:
     async def test_get_species_frequency_analysis_no_common_name(
         self, analytics_manager, mock_detection_query_service
     ):
-        """Test species frequency analysis when common name is missing."""
+        """Should use scientific name when common name is missing."""
         mock_detection_query_service.get_species_counts = AsyncMock(
             return_value=[
                 {"scientific_name": "Rare species", "common_name": None, "count": 5},
@@ -141,7 +141,7 @@ class TestTemporalPatterns:
 
     @pytest.mark.asyncio
     async def test_get_temporal_patterns(self, analytics_manager, mock_detection_query_service):
-        """Test temporal patterns analysis with hourly detection data."""
+        """Should analyze temporal patterns with hourly detection data."""
         mock_detection_query_service.get_hourly_counts = AsyncMock(
             return_value=[
                 {"hour": 6, "count": 15},
@@ -170,7 +170,7 @@ class TestTemporalPatterns:
     async def test_get_aggregate_hourly_pattern(
         self, analytics_manager, mock_detection_query_service
     ):
-        """Test aggregate hourly pattern calculation across multiple days."""
+        """Should calculate aggregate hourly patterns across multiple days."""
         # Mock hourly counts for each day queried
         mock_detection_query_service.get_hourly_counts = AsyncMock(
             return_value=[
@@ -194,7 +194,7 @@ class TestTemporalPatterns:
 
     @pytest.mark.asyncio
     async def test_get_weekly_heatmap_data(self, analytics_manager, mock_detection_query_service):
-        """Test weekly heatmap data generation for visualization."""
+        """Should generate weekly heatmap data for visualization."""
         # Mock different hourly counts for different days
         day_patterns = [
             [{"hour": 6, "count": 10}, {"hour": 7, "count": 15}],  # Day 1
@@ -220,7 +220,7 @@ class TestTemporalPatterns:
     async def test_get_detection_scatter_data(
         self, analytics_manager, mock_detection_query_service
     ):
-        """Test scatter plot data generation for detection visualization."""
+        """Should generate scatter plot data for detection visualization."""
         test_time = datetime(2024, 1, 1, 6, 30)
         mock_detections = [
             MagicMock(
@@ -260,7 +260,7 @@ class TestDiversityMetrics:
     async def test_calculate_diversity_timeline(
         self, analytics_manager, mock_detection_query_service
     ):
-        """Test diversity metrics calculation over time periods."""
+        """Should calculate diversity metrics over time periods."""
         # Mock the method that calculate_diversity_timeline actually calls
         mock_detection_query_service.get_species_counts_by_period = AsyncMock(
             return_value=[
@@ -306,7 +306,7 @@ class TestDiversityMetrics:
     async def test_calculate_species_accumulation(
         self, analytics_manager, mock_detection_query_service
     ):
-        """Test species accumulation curve calculation."""
+        """Should calculate species accumulation curve."""
         # Mock the actual method called by calculate_species_accumulation
         # Returns list of tuples (timestamp, species_name)
         mock_detection_query_service.get_detections_for_accumulation = AsyncMock(
@@ -335,7 +335,7 @@ class TestDiversityMetrics:
     async def test_calculate_community_similarity(
         self, analytics_manager, mock_detection_query_service
     ):
-        """Test community similarity calculation between time periods."""
+        """Should calculate community similarity between time periods."""
         # Mock the method that calculate_community_similarity actually calls
         # Returns species counts for each period
         mock_detection_query_service.get_species_counts_for_periods = AsyncMock(
@@ -368,7 +368,7 @@ class TestDiversityMetrics:
         assert similarity["matrix"][0][1] == pytest.approx(0.5, rel=0.01)
 
     def test_calculate_correlation(self, analytics_manager):
-        """Test correlation coefficient calculation."""
+        """Should calculate correlation coefficients correctly for different data patterns."""
         x = [1, 2, 3, 4, 5]
         y = [2, 4, 6, 8, 10]  # Perfect positive correlation
 
@@ -386,7 +386,7 @@ class TestDiversityMetrics:
         assert correlation_zero == pytest.approx(0.0, abs=1e-5)
 
     def test_categorize_frequency(self, analytics_manager):
-        """Test frequency categorization for species counts."""
+        """Should categorize species counts into frequency categories correctly."""
         # Based on actual implementation:
         # <= 5: uncommon
         # 6-20: regular
@@ -408,7 +408,7 @@ class TestTemporalAnalytics:
 
     @pytest.mark.asyncio
     async def test_get_temporal_patterns(self, analytics_manager, mock_detection_query_service):
-        """Test temporal pattern analysis."""
+        """Should analyze temporal patterns and identify peak hours."""
         # Mock hourly counts from DataManager
         mock_detection_query_service.get_hourly_counts = AsyncMock(
             return_value=[
@@ -448,7 +448,7 @@ class TestTemporalAnalytics:
     async def test_get_temporal_patterns_no_date(
         self, analytics_manager, mock_detection_query_service
     ):
-        """Test temporal patterns uses today when no date provided."""
+        """Should use today's date when no date is provided."""
         mock_detection_query_service.get_hourly_counts = AsyncMock(return_value=[])
 
         await analytics_manager.get_temporal_patterns()
@@ -461,7 +461,7 @@ class TestTemporalAnalytics:
     async def test_get_temporal_patterns_empty(
         self, analytics_manager, mock_detection_query_service
     ):
-        """Test temporal patterns with no data."""
+        """Should return zero counts and default peak hour when no data exists."""
         mock_detection_query_service.get_hourly_counts = AsyncMock(return_value=[])
 
         patterns = await analytics_manager.get_temporal_patterns(date(2024, 1, 1))
@@ -483,7 +483,7 @@ class TestScatterVisualization:
     async def test_get_detection_scatter_data(
         self, analytics_manager, mock_detection_query_service
     ):
-        """Test scatter plot data preparation."""
+        """Should prepare scatter plot data with time and confidence values."""
         # Create mock detections with taxa
         detections = [
             DetectionWithTaxa(
@@ -556,7 +556,7 @@ class TestScatterVisualization:
     async def test_get_detection_scatter_data_empty(
         self, analytics_manager, mock_detection_query_service
     ):
-        """Test scatter data with no detections."""
+        """Should return empty list when no detections exist."""
         mock_detection_query_service.get_detections_in_range = AsyncMock(return_value=[])
 
         scatter_data = await analytics_manager.get_detection_scatter_data(hours=24)
@@ -568,7 +568,7 @@ class TestFrequencyCategorization:
     """Test frequency categorization logic."""
 
     def test_categorize_frequency(self, analytics_manager):
-        """Test species frequency categorization."""
+        """Should categorize species counts into common, regular, and uncommon."""
         # Test common (>20)
         assert analytics_manager._categorize_frequency(21) == "common"
         assert analytics_manager._categorize_frequency(50) == "common"

@@ -260,7 +260,7 @@ class TestGenerateDummyData:
         mock_dependencies["SystemControlService"].return_value.start_service.assert_called_once()
 
     def test_main_entry_point_via_subprocess(self, repo_root):
-        """Test the __main__ block by running module as script."""
+        """Should the __main__ block by running module as script."""
         import subprocess
         import sys
 

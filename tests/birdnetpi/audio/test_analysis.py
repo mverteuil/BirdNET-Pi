@@ -16,7 +16,7 @@ from birdnetpi.system.file_manager import FileManager
 
 @pytest.fixture
 def test_config_data():
-    """Provide test configuration data."""
+    """Should provide test configuration data."""
     return {
         "sample_rate": 48000,
         "audio_channels": 1,
@@ -31,7 +31,7 @@ def test_config_data():
 
 @pytest.fixture
 def test_detection_result():
-    """Provide test detection result data."""
+    """Should provide test detection result data."""
     from pathlib import Path
 
     # Both paths should be the same relative path
@@ -47,7 +47,7 @@ def test_detection_result():
 
 @pytest.fixture
 def test_audio_data():
-    """Provide test audio data for analysis."""
+    """Should provide test audio data for analysis."""
     return {
         "chunk_size": 1024,
         "sample_rate": 48000,
@@ -133,7 +133,7 @@ def audio_analysis_service(
 
 @pytest.fixture
 def test_species_data():
-    """Provide test species detection data."""
+    """Should provide test species detection data."""
     return {
         "confident": [
             ("Turdus migratorius_American Robin", 0.85),

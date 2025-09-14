@@ -26,7 +26,7 @@ class TestDummyDataGenerator:
 
     @pytest.mark.asyncio
     async def test_generate_dummy_detections(self, mock_data_manager):
-        """Generate the specified number of dummy detections and add them via DetectionManager."""
+        """Should generate specified number of dummy detections via DetectionManager."""
         num_detections = 5
         await generate_dummy_detections(mock_data_manager, num_detections)
 
@@ -43,7 +43,7 @@ class TestDummyDataGenerator:
             assert isinstance(detection_event.channels, int)
 
     def test_main_entry_point_via_subprocess(self, repo_root):
-        """Test the __main__ block by running module as script."""
+        """Should the __main__ block by running module as script."""
         import subprocess
         import sys
 
@@ -69,7 +69,7 @@ class TestDummyDataGenerator:
 
     @pytest.mark.asyncio
     async def test_get_random_ioc_species(self, path_resolver):
-        """Test fetching random IOC species from the database."""
+        """Should fetching random IOC species from the database."""
         # Mock the database query
         with patch("aiosqlite.connect") as mock_connect:
             mock_cursor = AsyncMock()
@@ -104,7 +104,7 @@ class TestDummyDataGenerator:
     async def test_generate_dummy_detections_with_ioc_species(
         self, mock_data_manager, path_resolver
     ):
-        """Test generating detections with IOC species ratio."""
+        """Should generate detections with correct IOC species ratio."""
         # Add path_resolver to the mock data manager
         mock_data_manager.path_resolver = path_resolver
 

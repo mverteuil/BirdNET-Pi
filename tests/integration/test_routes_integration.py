@@ -54,7 +54,7 @@ class TestSystemRoutesIntegration:
     """Integration tests for system API routes."""
 
     def test_hardware_status_endpoint_integration(self, integration_client):
-        """Test enhanced hardware status endpoint with real DI."""
+        """Should enhanced hardware status endpoint with real DI."""
         response = integration_client.get("/api/system/hardware/status")
 
         assert response.status_code == 200
@@ -83,7 +83,7 @@ class TestDependencyInjectionValidation:
     """Tests to validate dependency injection is configured correctly."""
 
     def test_detection_query_service_is_directly_injected(self, integration_client):
-        """Ensure DetectionQueryService is properly injected."""
+        """Should ensure DetectionQueryService is properly injected."""
         # This is a meta-test that verifies our architecture
 
         # The /api/system/hardware/status endpoint should use DetectionQueryService directly
@@ -93,7 +93,7 @@ class TestDependencyInjectionValidation:
         assert "total_detections" in data
 
     def test_correct_types_are_injected(self, integration_app):
-        """Verify that the correct types are being injected.
+        """Should inject correct types from DI container.
 
         This test validates that the DI container is wired correctly and would
         catch the type annotation errors we fixed.

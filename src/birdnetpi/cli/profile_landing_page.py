@@ -159,7 +159,6 @@ async def profile_component(
         "temporal_patterns": analytics_manager.get_temporal_patterns,
         "detection_log": lambda: detection_query_service.query_detections(limit=10),
         "scatter_data": analytics_manager.get_detection_scatter_data,
-        "system_status": lambda: presentation_manager._get_system_status(),
     }
 
     if component not in component_map:

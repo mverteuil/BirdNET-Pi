@@ -10,7 +10,7 @@ class TestConfigManager:
     """Test ConfigManager functionality."""
 
     def test_load_config_creates_default_if_missing(self, path_resolver):
-        """Test that default config is created if file doesn't exist."""
+        """Should default config is created if file doesn't exist."""
         # Ensure config file doesn't exist
         config_path = path_resolver.get_birdnetpi_config_path()
         if config_path.exists():
@@ -28,7 +28,7 @@ class TestConfigManager:
         assert config_path.exists()
 
     def test_load_config_with_existing_file(self, path_resolver):
-        """Test loading an existing config file."""
+        """Should loading an existing config file."""
         # Create a config file
         config_path = path_resolver.get_birdnetpi_config_path()
         config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -55,7 +55,7 @@ class TestConfigManager:
         assert config.sensitivity_setting == 1.5
 
     def test_migrate_config_from_1_9_0(self, path_resolver):
-        """Test migrating config from version 1.9.0 to 2.0.0."""
+        """Should migrating config from version 1.9.0 to 2.0.0."""
         # Create an old-style config file
         config_path = path_resolver.get_birdnetpi_config_path()
         config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -87,7 +87,7 @@ class TestConfigManager:
         assert config.enable_webhooks is False
 
     def test_save_config(self, path_resolver):
-        """Test saving a config to file."""
+        """Should saving a config to file."""
         manager = ConfigManager(path_resolver)
         config = BirdNETConfig(
             site_name="Save Test",
@@ -108,7 +108,7 @@ class TestConfigManager:
         assert saved_data["config_version"] == "2.0.0"
 
     def test_backup_creation(self, path_resolver):
-        """Test that backups are created when saving over existing config."""
+        """Should backups are created when saving over existing config."""
         config_path = path_resolver.get_birdnetpi_config_path()
         backup_path = config_path.with_suffix(".yaml.backup")
         config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -134,7 +134,7 @@ class TestConfigManager:
         assert new_data["site_name"] == "Updated"
 
     def test_invalid_version_raises_error(self, path_resolver):
-        """Test that invalid config version raises an error."""
+        """Should invalid config version raises an error."""
         config_path = path_resolver.get_birdnetpi_config_path()
         config_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -151,7 +151,7 @@ class TestConfigManager:
             manager.load()
 
     def test_partial_config_gets_defaults(self, path_resolver):
-        """Test that missing fields are filled with defaults."""
+        """Should missing fields are filled with defaults."""
         config_path = path_resolver.get_birdnetpi_config_path()
         config_path.parent.mkdir(parents=True, exist_ok=True)
 

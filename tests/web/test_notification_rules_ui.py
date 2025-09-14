@@ -83,8 +83,8 @@ def client_with_notification_rules(app_with_notification_rules):
 def test_settings_page_renders_notification_rules(
     client_with_notification_rules, mock_config_with_rules
 ):
-    """Test that the settings page renders notification rules correctly."""
-    client, config_manager, _ = client_with_notification_rules
+    """Should render notification rules correctly on the settings page."""
+    client, _config_manager, _ = client_with_notification_rules
     response = client.get("/admin/settings")
     assert response.status_code == status.HTTP_200_OK
 
@@ -98,7 +98,7 @@ def test_settings_page_renders_notification_rules(
 def test_post_settings_with_notification_rules(
     client_with_notification_rules, mock_config_with_rules
 ):
-    """Test posting settings with notification rules data."""
+    """Should successfully post settings with notification rules data."""
     client, config_manager, _ = client_with_notification_rules
 
     # Prepare form data with notification rules
@@ -196,7 +196,7 @@ def app_for_api_test(path_resolver, repo_root):
 
 
 def test_validate_species_endpoint(app_for_api_test):
-    """Test the species validation API endpoint."""
+    """Should the species validation API endpoint."""
     with patch("birdnetpi.web.routers.admin_api_routes.IOCDatabaseService") as mock_ioc:
         mock_ioc.return_value.species_exists.side_effect = lambda name: name == "Turdus migratorius"
 

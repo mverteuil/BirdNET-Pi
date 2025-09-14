@@ -17,7 +17,7 @@ class TestCacheInitialization:
     @patch("birdnetpi.utils.cache.cache.MEMCACHED_AVAILABLE", True)
     @patch("birdnetpi.utils.cache.cache.MemcachedBackend")
     def test_init_with_memcached_success(self, mock_memcached_backend):
-        """Test successful initialization with memcached backend."""
+        """Should successful initialization with memcached backend."""
         mock_backend = MagicMock()
         mock_memcached_backend.return_value = mock_backend
 
@@ -38,7 +38,7 @@ class TestCacheInitialization:
     @patch("birdnetpi.utils.cache.cache.MemcachedBackend")
     @patch("birdnetpi.utils.cache.cache.InMemoryBackend")
     def test_init_memcached_fallback_to_memory(self, mock_memory_backend, mock_memcached_backend):
-        """Test fallback to in-memory backend when memcached fails."""
+        """Should fallback to in-memory backend when memcached fails."""
         mock_memcached_backend.side_effect = Exception("Connection refused")
         mock_memory = MagicMock()
         mock_memory_backend.return_value = mock_memory
@@ -52,7 +52,7 @@ class TestCacheInitialization:
     @patch("birdnetpi.utils.cache.cache.MEMCACHED_AVAILABLE", False)
     @patch("birdnetpi.utils.cache.cache.InMemoryBackend")
     def test_init_without_memcached(self, mock_memory_backend):
-        """Test initialization when memcached is not available."""
+        """Should initialization when memcached is not available."""
         mock_memory = MagicMock()
         mock_memory_backend.return_value = mock_memory
 
@@ -65,7 +65,7 @@ class TestCacheInitialization:
 
     @patch("birdnetpi.utils.cache.cache.InMemoryBackend")
     def test_init_statistics_tracking(self, mock_memory_backend):
-        """Test that statistics are initialized correctly."""
+        """Should statistics are initialized correctly."""
         with patch("birdnetpi.utils.cache.cache.MEMCACHED_AVAILABLE", False):
             cache = Cache()
 
@@ -82,7 +82,7 @@ class TestCreateCache:
     """Test the create_cache factory function."""
 
     def test_create_cache_default(self):
-        """Test create_cache with default parameters."""
+        """Should create_cache with default parameters."""
         with patch("birdnetpi.utils.cache.cache.Cache") as mock_cache:
             create_cache()
 
@@ -94,7 +94,7 @@ class TestCreateCache:
             )
 
     def test_create_cache_custom(self):
-        """Test create_cache with custom parameters."""
+        """Should create_cache with custom parameters."""
         with patch("birdnetpi.utils.cache.cache.Cache") as mock_cache:
             create_cache(
                 memcached_host="192.168.1.100",

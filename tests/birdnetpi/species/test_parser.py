@@ -25,7 +25,7 @@ class TestSpeciesParser:
 
     @pytest.mark.asyncio
     async def test_parse_tensor_species_valid_format(self):
-        """Test parsing valid tensor output format."""
+        """Should parsing valid tensor output format."""
         tensor_output = "Abeillia abeillei_Emerald-chinned Hummingbird"
 
         components = await SpeciesParser.parse_tensor_species(tensor_output)
@@ -39,7 +39,7 @@ class TestSpeciesParser:
 
     @pytest.mark.asyncio
     async def test_parse_tensor_species_another_example(self):
-        """Test parsing another valid tensor output format."""
+        """Should parsing another valid tensor output format."""
         tensor_output = "Turdus migratorius_American Robin"
 
         components = await SpeciesParser.parse_tensor_species(tensor_output)
@@ -51,7 +51,7 @@ class TestSpeciesParser:
 
     @pytest.mark.asyncio
     async def test_parse_tensor_species__invalid_format__no_underscore(self):
-        """Test parsing fails with invalid format (no underscore)."""
+        """Should parsing fails with invalid format (no underscore)."""
         tensor_output = "Abeillia abeillei Emerald-chinned Hummingbird"
 
         with pytest.raises(ValueError, match="Invalid tensor species format"):
@@ -59,7 +59,7 @@ class TestSpeciesParser:
 
     @pytest.mark.asyncio
     async def test_parse_tensor_species__invalid_format__empty_parts(self):
-        """Test parsing fails with empty components."""
+        """Should parsing fails with empty components."""
         tensor_output = "_Emerald-chinned Hummingbird"
 
         with pytest.raises(ValueError, match="Invalid species components"):
@@ -67,13 +67,13 @@ class TestSpeciesParser:
 
     @pytest.mark.asyncio
     async def test_parse_tensor_species__invalid_format__empty_string(self):
-        """Test parsing fails with empty string."""
+        """Should parsing fails with empty string."""
         with pytest.raises(ValueError, match="Invalid tensor output"):
             await SpeciesParser.parse_tensor_species("")
 
     @pytest.mark.asyncio
     async def test_extract_common_name_prefer_ioc(self):
-        """Test extracting common name preferring IOC."""
+        """Should extracting common name preferring IOC."""
         tensor_output = "Turdus migratorius_American Robin"
 
         common_name = await SpeciesParser.extract_common_name(tensor_output, prefer_ioc=True)
@@ -82,7 +82,7 @@ class TestSpeciesParser:
 
     @pytest.mark.asyncio
     async def test_extract_common_name_prefer_tensor(self):
-        """Test extracting common name preferring tensor."""
+        """Should extracting common name preferring tensor."""
         tensor_output = "Turdus migratorius_American Robin"
 
         common_name = await SpeciesParser.extract_common_name(tensor_output, prefer_ioc=False)
@@ -91,7 +91,7 @@ class TestSpeciesParser:
 
     @pytest.mark.asyncio
     async def test_extract_scientific_name(self):
-        """Test extracting scientific name."""
+        """Should extracting scientific name."""
         tensor_output = "Turdus migratorius_American Robin"
 
         scientific_name = await SpeciesParser.extract_scientific_name(tensor_output)
@@ -100,7 +100,7 @@ class TestSpeciesParser:
 
     @pytest.mark.asyncio
     async def test_format_full_species(self):
-        """Test formatting full species name."""
+        """Should formatting full species name."""
         tensor_output = "Turdus migratorius_American Robin"
 
         full_species = await SpeciesParser.format_full_species(tensor_output)
@@ -109,14 +109,14 @@ class TestSpeciesParser:
 
     @pytest.mark.asyncio
     async def test_is_valid_tensor_format_valid(self):
-        """Test validation of valid tensor format."""
+        """Should validation of valid tensor format."""
         tensor_output = "Turdus migratorius_American Robin"
 
         assert await SpeciesParser.is_valid_tensor_format(tensor_output) is True
 
     @pytest.mark.asyncio
     async def test_is_valid_tensor_format_invalid(self):
-        """Test validation of invalid tensor format."""
+        """Should validation of invalid tensor format."""
         tensor_output = "Invalid format without underscore"
 
         assert await SpeciesParser.is_valid_tensor_format(tensor_output) is False
@@ -126,7 +126,7 @@ class TestSpeciesDisplayOptions:
     """Test cases for species display formatting."""
 
     def test_format_species_for_display_full(self):
-        """Test formatting species for full display."""
+        """Should formatting species for full display."""
         components = SpeciesComponents(
             scientific_name="Turdus migratorius",
             common_name="American Robin",
@@ -140,7 +140,7 @@ class TestSpeciesDisplayOptions:
         assert result == "American Robin (Turdus migratorius)"
 
     def test_format_species_for_display_common_only(self):
-        """Test formatting species for common name only."""
+        """Should formatting species for common name only."""
         components = SpeciesComponents(
             scientific_name="Turdus migratorius",
             common_name="American Robin",
@@ -154,7 +154,7 @@ class TestSpeciesDisplayOptions:
         assert result == "American Robin"
 
     def test_format_species_for_display_scientific_only(self):
-        """Test formatting species for scientific name only."""
+        """Should formatting species for scientific name only."""
         components = SpeciesComponents(
             scientific_name="Turdus migratorius",
             common_name="American Robin",
@@ -172,7 +172,7 @@ class TestConfigIntegration:
     """Test integration with configuration system."""
 
     def test_create_display_options_from_config_full(self):
-        """Test creating display options from config for full display."""
+        """Should creating display options from config for full display."""
         from unittest.mock import Mock
 
         config = Mock()
@@ -186,7 +186,7 @@ class TestConfigIntegration:
         assert options.language_code == "en"
 
     def test_create_display_options_from_config_common_only(self):
-        """Test creating display options from config for common name only."""
+        """Should creating display options from config for common name only."""
         from unittest.mock import Mock
 
         config = Mock()
@@ -200,7 +200,7 @@ class TestConfigIntegration:
         assert options.language_code == "es"
 
     def test_create_display_options_from_config_scientific_only(self):
-        """Test creating display options from config for scientific name only."""
+        """Should creating display options from config for scientific name only."""
         from unittest.mock import Mock
 
         config = Mock()
@@ -214,7 +214,7 @@ class TestConfigIntegration:
         assert options.language_code == "fr"
 
     def test_create_display_options_from_config_defaults(self):
-        """Test creating display options from config with missing attributes."""
+        """Should creating display options from config with missing attributes."""
         from unittest.mock import Mock
 
         config = Mock()
@@ -233,7 +233,7 @@ class TestSpeciesParserWithIOC:
     """Test SpeciesParser functionality with IOC service."""
 
     def test_species_parser_initialization__ioc_service(self):
-        """Test SpeciesParser initialization with IOC service."""
+        """Should speciesParser initialization with IOC service."""
         # Create a temporary database service for testing
         from unittest.mock import MagicMock
 
@@ -246,7 +246,7 @@ class TestSpeciesParserWithIOC:
         assert parser.species_database is mock_species_database
 
     def test_format_species_display_fallback_to_common_name(self):
-        """Test format_species_for_display fallback when both display options are disabled."""
+        """Should format_species_for_display fallback when both display options are disabled."""
         components = SpeciesComponents(
             scientific_name="Turdus migratorius",
             common_name="American Robin",
@@ -262,7 +262,7 @@ class TestSpeciesParserWithIOC:
         assert result == "American Robin"
 
     def test_format_species_display_non_english_language_fallback(self):
-        """Test format_species_for_display with non-English language code fallback."""
+        """Should format_species_for_display with non-English language code fallback."""
         components = SpeciesComponents(
             scientific_name="Turdus migratorius",
             common_name="American Robin",

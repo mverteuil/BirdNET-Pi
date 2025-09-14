@@ -44,7 +44,7 @@ class TestAdminAPIRoutes:
     """Test class for admin API endpoints."""
 
     def test_validate_yaml_config_valid(self, client, tmp_path):
-        """Test YAML config validation with valid YAML."""
+        """Should YAML config validation with valid YAML."""
         # Create a temporary config file
         config_file = tmp_path / "config.yaml"
         config_file.write_text("site_name: Test Site\nlatitude: 40.0\nlongitude: -74.0")
@@ -67,7 +67,7 @@ species_confidence_threshold: 0.03
         assert "message" in data
 
     def test_validate_yaml_config_invalid(self, client, tmp_path):
-        """Test YAML config validation with invalid YAML."""
+        """Should YAML config validation with invalid YAML."""
         # Create a temporary config file
         config_file = tmp_path / "config.yaml"
         config_file.write_text("site_name: Test Site")
@@ -88,7 +88,7 @@ invalid_yaml: [unclosed bracket
         assert "error" in data
 
     def test_save_yaml_config(self, client, tmp_path):
-        """Test saving YAML config successfully."""
+        """Should saving YAML config successfully."""
         # Create a temporary config file
         config_file = tmp_path / "config.yaml"
         config_file.write_text("site_name: Old Site")
@@ -111,7 +111,7 @@ species_confidence_threshold: 0.05
         assert "message" in data
 
     def test_save_yaml_config_invalid(self, client, tmp_path):
-        """Test saving invalid YAML config."""
+        """Should saving invalid YAML config."""
         # Create a temporary config file
         config_file = tmp_path / "config.yaml"
         config_file.write_text("site_name: Test Site")

@@ -87,9 +87,16 @@ class CoreDatabaseService:
             mode: Checkpoint mode - "PASSIVE", "FULL", "RESTART", or "TRUNCATE"
                  RESTART is recommended for SD card longevity as it truncates WAL
         """
+        # Validate mode to prevent SQL injection
+        valid_modes = {"PASSIVE", "FULL", "RESTART", "TRUNCATE"}
+        if mode not in valid_modes:
+            raise ValueError(f"Invalid checkpoint mode: {mode}. Must be one of {valid_modes}")
+
         async with self.get_async_db() as session:
             try:
-                result = await session.execute(text(f"PRAGMA wal_checkpoint({mode})"))
+                # Safe: mode is validated against fixed set of values
+                pragma_sql = text(f"PRAGMA wal_checkpoint({mode})")  # nosemgrep
+                result = await session.execute(pragma_sql)
                 checkpoint_result = result.fetchone()
                 if checkpoint_result:
                     busy_count, log_pages, checkpointed = checkpoint_result

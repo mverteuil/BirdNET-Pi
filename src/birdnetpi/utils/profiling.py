@@ -3,11 +3,39 @@
 import functools
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 from contextlib import asynccontextmanager, contextmanager
-from typing import Any
+from typing import Any, ParamSpec, Protocol, TypeVar
+
+T = TypeVar("T")
+P = ParamSpec("P")
 
 logger = logging.getLogger(__name__)
+
+
+# ASGI type definitions
+class ASGIReceive(Protocol):
+    """ASGI receive callable protocol."""
+
+    async def __call__(self) -> dict[str, Any]:
+        """Receive a message from the client."""
+        ...
+
+
+class ASGISend(Protocol):
+    """ASGI send callable protocol."""
+
+    async def __call__(self, message: dict[str, Any]) -> None:
+        """Send a message to the client."""
+        ...
+
+
+class ASGIApp(Protocol):
+    """ASGI application protocol."""
+
+    async def __call__(self, scope: dict[str, Any], receive: ASGIReceive, send: ASGISend) -> None:
+        """Handle an ASGI request."""
+        ...
 
 
 class PerformanceProfiler:
@@ -19,8 +47,8 @@ class PerformanceProfiler:
         self.current_stack: list[tuple[str, float]] = []
 
     @contextmanager
-    def profile(self, operation: str):
-        """Context manager for profiling synchronous operations."""
+    def profile(self, operation: str) -> Generator["PerformanceProfiler", None, None]:
+        """Profile synchronous operations using context manager."""
         start_time = time.perf_counter()
         self.current_stack.append((operation, start_time))
         try:
@@ -38,8 +66,8 @@ class PerformanceProfiler:
                 logger.warning("%s: %s took %.3f seconds", self.name, operation, elapsed)
 
     @asynccontextmanager
-    async def aprofile(self, operation: str):
-        """Context manager for profiling async operations."""
+    async def aprofile(self, operation: str) -> AsyncGenerator["PerformanceProfiler", None]:
+        """Profile async operations using async context manager."""
         start_time = time.perf_counter()
         self.current_stack.append((operation, start_time))
         try:
@@ -78,7 +106,7 @@ class PerformanceProfiler:
         report["total_time"] = round(report["total_time"], 3)
         return report
 
-    def log_report(self):
+    def log_report(self) -> None:
         """Log the performance report."""
         report = self.get_report()
         logger.info(
@@ -100,17 +128,19 @@ class PerformanceProfiler:
             )
 
 
-def profile_async(name: str | None = None):
-    """Decorator for profiling async functions."""
+def profile_async(
+    name: str | None = None,
+) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Awaitable[T]]]:
+    """Profile async functions using a decorator."""
 
-    def decorator(func: Callable):
+    def decorator(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
         @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             operation_name = name or f"{func.__module__}.{func.__name__}"
             profiler = PerformanceProfiler(operation_name)
 
             async with profiler.aprofile("total"):
-                result = await func(*args, **kwargs, _profiler=profiler)
+                result = await func(*args, **kwargs)
 
             profiler.log_report()
             return result
@@ -120,17 +150,17 @@ def profile_async(name: str | None = None):
     return decorator
 
 
-def profile_sync(name: str | None = None):
-    """Decorator for profiling synchronous functions."""
+def profile_sync(name: str | None = None) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    """Profile synchronous functions using a decorator."""
 
-    def decorator(func: Callable):
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             operation_name = name or f"{func.__module__}.{func.__name__}"
             profiler = PerformanceProfiler(operation_name)
 
             with profiler.profile("total"):
-                result = func(*args, **kwargs, _profiler=profiler)
+                result = func(*args, **kwargs)
 
             profiler.log_report()
             return result
@@ -143,10 +173,11 @@ def profile_sync(name: str | None = None):
 class RequestProfiler:
     """Middleware for profiling HTTP requests."""
 
-    def __init__(self, app):
+    def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope: dict[str, Any], receive: ASGIReceive, send: ASGISend) -> None:
+        """Handle ASGI request and add timing information."""
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
@@ -156,7 +187,7 @@ class RequestProfiler:
 
         start_time = time.perf_counter()
 
-        async def send_wrapper(message):
+        async def send_wrapper(message: dict[str, Any]) -> None:
             if message["type"] == "http.response.start":
                 elapsed = time.perf_counter() - start_time
                 if elapsed > 0.5:  # Log slow requests (>500ms)

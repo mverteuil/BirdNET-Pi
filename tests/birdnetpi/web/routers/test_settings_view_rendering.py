@@ -77,7 +77,7 @@ class TestSettingsViewRendering:
         ]
 
     def test_settings_template_syntax_valid(self, template_env):
-        """Test that settings template has valid Jinja2 syntax."""
+        """Should settings template has valid Jinja2 syntax."""
         try:
             template = template_env.get_template("admin/settings.html.j2")
             # Getting the template will raise TemplateSyntaxError if syntax is invalid
@@ -88,7 +88,7 @@ class TestSettingsViewRendering:
     def test_settings_template_renders_with_data(
         self, template_env, mock_request, sample_config, sample_audio_devices
     ):
-        """Test that settings template renders with actual data."""
+        """Should render settings template with actual data correctly."""
         template = template_env.get_template("admin/settings.html.j2")
 
         # Render with test data
@@ -108,7 +108,7 @@ class TestSettingsViewRendering:
     def test_settings_template_handles_no_audio_devices(
         self, template_env, mock_request, sample_config
     ):
-        """Test that settings template handles case with no audio devices."""
+        """Should handle case with no audio devices in settings template."""
         template = template_env.get_template("admin/settings.html.j2")
 
         # Render with empty audio devices
@@ -121,7 +121,7 @@ class TestSettingsViewRendering:
     def test_settings_template_handles_missing_config_fields(
         self, template_env, mock_request, sample_audio_devices
     ):
-        """Test that template handles missing or None config fields gracefully."""
+        """Should handle missing or None config fields gracefully in template."""
         # Create config with default values (0.0 for lat/lon)
         config = BirdNETConfig()
         # latitude and longitude will default to 0.0, not None
@@ -139,7 +139,7 @@ class TestSettingsViewRendering:
     def test_settings_template_all_form_inputs_present(
         self, template_env, mock_request, sample_config, sample_audio_devices
     ):
-        """Test that all required form inputs are present in the template."""
+        """Should render all required form inputs in the template."""
         template = template_env.get_template("admin/settings.html.j2")
         html = template.render(
             request=mock_request, config=sample_config, audio_devices=sample_audio_devices
@@ -160,7 +160,7 @@ class TestSettingsViewRendering:
     def test_settings_template_javascript_functions_present(
         self, template_env, mock_request, sample_config, sample_audio_devices
     ):
-        """Test that required JavaScript functions are defined."""
+        """Should include all required JavaScript functions in the template."""
         template = template_env.get_template("admin/settings.html.j2")
         html = template.render(
             request=mock_request, config=sample_config, audio_devices=sample_audio_devices
@@ -172,7 +172,7 @@ class TestSettingsViewRendering:
         assert "function updateSliderValue" in html
 
     def test_all_template_blocks_properly_closed(self, template_env):
-        """Test that all Jinja2 blocks are properly closed."""
+        """Should all Jinja2 blocks are properly closed."""
         template_path = template_env.loader.searchpath[0] + "/admin/settings.html.j2"
 
         with open(template_path) as f:
@@ -193,7 +193,7 @@ class TestSettingsViewRendering:
         )
 
     def test_template_escapes_user_input(self, template_env, mock_request, sample_audio_devices):
-        """Test that template properly escapes user input to prevent XSS."""
+        """Should template properly escapes user input to prevent XSS."""
         # Create config with potentially dangerous values
         config = BirdNETConfig(
             site_name="<script>alert('XSS')</script>",

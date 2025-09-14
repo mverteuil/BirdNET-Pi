@@ -16,7 +16,7 @@ class TestSQLAdminViewRoutes:
     """Test SQLAdmin configuration and model views."""
 
     def test_detection_admin_model_configuration(self):
-        """Test DetectionAdmin model view configuration."""
+        """Should detectionAdmin model view configuration."""
         # Verify the model view is properly configured
         assert hasattr(DetectionAdmin, "column_list")
         assert DetectionAdmin.column_list is not None
@@ -29,7 +29,7 @@ class TestSQLAdminViewRoutes:
             assert expected_col in column_names
 
     def test_audio_file_admin_model_configuration(self):
-        """Test AudioFileAdmin model view configuration."""
+        """Should audioFileAdmin model view configuration."""
         # Verify the model view is properly configured
         assert hasattr(AudioFileAdmin, "column_list")
         assert AudioFileAdmin.column_list is not None
@@ -42,7 +42,7 @@ class TestSQLAdminViewRoutes:
             assert expected_col in column_names
 
     def test_weather_admin_model_configuration(self):
-        """Test WeatherAdmin model view configuration."""
+        """Should weatherAdmin model view configuration."""
         # Verify the model view is properly configured
         assert hasattr(WeatherAdmin, "column_list")
         assert WeatherAdmin.column_list is not None
@@ -63,7 +63,7 @@ class TestSQLAdminViewRoutes:
 
     @patch("birdnetpi.web.routers.sqladmin_view_routes.Admin")
     def test_setup_sqladmin_creates_admin_instance(self, mock_admin_class):
-        """Test that setup_sqladmin creates and configures Admin instance."""
+        """Should setup_sqladmin creates and configures Admin instance."""
         # Create mock FastAPI app with DI container
         app = FastAPI()
         mock_container = MagicMock()
@@ -97,7 +97,7 @@ class TestSQLAdminViewRoutes:
 
     @patch("birdnetpi.web.routers.sqladmin_view_routes.Admin")
     def test_setup_sqladmin_returns_admin_instance(self, mock_admin_class):
-        """Test that setup_sqladmin returns the Admin instance."""
+        """Should setup_sqladmin returns the Admin instance."""
         app = FastAPI()
         mock_container = MagicMock()
         mock_db_service = MagicMock()
@@ -114,19 +114,19 @@ class TestSQLAdminViewRoutes:
         assert result is mock_admin_instance
 
     def test_detection_admin_inherits_from_model_view(self):
-        """Test that DetectionAdmin properly inherits from ModelView."""
+        """Should detectionAdmin properly inherits from ModelView."""
         # Check that DetectionAdmin has the expected base classes
         base_class_names = [cls.__name__ for cls in DetectionAdmin.__mro__]
         assert "ModelView" in base_class_names
 
     def test_audio_file_admin_inherits_from_model_view(self):
-        """Test that AudioFileAdmin properly inherits from ModelView."""
+        """Should audioFileAdmin properly inherits from ModelView."""
         # Check that AudioFileAdmin has the expected base classes
         base_class_names = [cls.__name__ for cls in AudioFileAdmin.__mro__]
         assert "ModelView" in base_class_names
 
     def test_weather_admin_inherits_from_model_view(self):
-        """Test that WeatherAdmin properly inherits from ModelView."""
+        """Should weatherAdmin properly inherits from ModelView."""
         # Check that WeatherAdmin has the expected base classes
         base_class_names = [cls.__name__ for cls in WeatherAdmin.__mro__]
         assert "ModelView" in base_class_names

@@ -44,9 +44,13 @@ class SpeciesDatabaseService:
             session: SQLAlchemy async session (typically from main detections database)
         """
         # Always attach all three databases - they're guaranteed to exist
-        await session.execute(text(f"ATTACH DATABASE '{self.ioc_db_path}' AS ioc"))
-        await session.execute(text(f"ATTACH DATABASE '{self.avibase_db_path}' AS avibase"))
-        await session.execute(text(f"ATTACH DATABASE '{self.patlevin_db_path}' AS patlevin"))
+        # Safe: paths come from PathResolver, not user input
+        ioc_sql = text(f"ATTACH DATABASE '{self.ioc_db_path}' AS ioc")  # nosemgrep
+        await session.execute(ioc_sql)
+        avibase_sql = text(f"ATTACH DATABASE '{self.avibase_db_path}' AS avibase")  # nosemgrep
+        await session.execute(avibase_sql)
+        patlevin_sql = text(f"ATTACH DATABASE '{self.patlevin_db_path}' AS patlevin")  # nosemgrep
+        await session.execute(patlevin_sql)
 
     async def detach_all_from_session(self, session: AsyncSession) -> None:
         """Detach all databases from session.
@@ -57,7 +61,8 @@ class SpeciesDatabaseService:
         # Detach all three databases
         for db_alias in ["ioc", "avibase", "patlevin"]:
             try:
-                await session.execute(text(f"DETACH DATABASE {db_alias}"))
+                # Safe: database aliases are from hardcoded list, not user input
+                await session.execute(text(f"DETACH DATABASE {db_alias}"))  # nosemgrep
             except Exception:
                 # Ignore errors if database wasn't attached (shouldn't happen)
                 pass

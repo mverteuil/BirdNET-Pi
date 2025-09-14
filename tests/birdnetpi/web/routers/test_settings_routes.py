@@ -46,7 +46,7 @@ def mock_audio_devices():
 
 @pytest.fixture
 def test_config():
-    """Create a test configuration."""
+    """Should create a test configuration."""
     return BirdNETConfig(
         site_name="Test Site",
         latitude=45.5,
@@ -215,7 +215,7 @@ class TestSettingsGetRoute:
 
     def test_settings_page_handles_no_audio_devices(self, app_with_settings_routes):
         """Should handle case when no audio devices are available."""
-        app, config_manager, audio_service = app_with_settings_routes
+        app, _config_manager, audio_service = app_with_settings_routes
         audio_service.discover_input_devices.return_value = []
 
         with TestClient(app) as client:

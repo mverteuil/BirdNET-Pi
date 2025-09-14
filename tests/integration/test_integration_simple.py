@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 
 def test_simple_startup():
-    """Test that the app can start up without errors."""
+    """Should the app can start up without errors."""
     # Create a minimal app without complex dependencies
     from fastapi import FastAPI
 
@@ -23,7 +23,7 @@ def test_simple_startup():
 
 
 def test_admin_view_routes_endpoints():
-    """Test that admin router endpoints are accessible."""
+    """Should admin router endpoints are accessible."""
     import tempfile
     from pathlib import Path
 

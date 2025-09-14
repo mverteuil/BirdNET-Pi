@@ -21,7 +21,7 @@ class TestSetupDatabaseService:
     """Test database service setup."""
 
     def test_setup_database_service(self, mocker, path_resolver):
-        """Test successful database service setup."""
+        """Should successful database service setup."""
         # Use the global path_resolver fixture (from conftest.py)
         mocker.patch("birdnetpi.cli.optimize_database.PathResolver", return_value=path_resolver)
 
@@ -47,7 +47,7 @@ class TestPrintFunctions:
     """Test print utility functions."""
 
     def test_print_section_with_content(self, capsys):
-        """Test print_section with content."""
+        """Should print_section with content."""
         print_section("Test Title", "Test content")
         captured = capsys.readouterr()
         assert "Test Title" in captured.out
@@ -55,14 +55,14 @@ class TestPrintFunctions:
         assert "=" * 60 in captured.out
 
     def test_print_section_without_content(self, capsys):
-        """Test print_section without content."""
+        """Should print_section without content."""
         print_section("Test Title")
         captured = capsys.readouterr()
         assert "Test Title" in captured.out
         assert "=" * 60 in captured.out
 
     def test_print_query_performance_with_data(self, capsys):
-        """Test print_query_performance with performance data."""
+        """Should print_query_performance with performance data."""
         performance_data = [
             {
                 "name": "Test Query",
@@ -86,7 +86,7 @@ class TestPrintFunctions:
         assert "Long Query Name That Should Be Truncate" in captured.out
 
     def test_print_query_performance_with_error(self, capsys):
-        """Test print_query_performance with error in data."""
+        """Should print_query_performance with error in data."""
         performance_data = [
             {"name": "Failed Query", "error": "Database locked"},
         ]
@@ -96,7 +96,7 @@ class TestPrintFunctions:
         assert "Error: Database locked" in captured.out
 
     def test_print_query_performance_empty_data(self, capsys):
-        """Test print_query_performance with no data."""
+        """Should print_query_performance with no data."""
         print_query_performance([], "Test Performance")
         captured = capsys.readouterr()
         assert "No performance data available" in captured.out
@@ -107,7 +107,7 @@ class TestAnalyzePerformance:
 
     @pytest.mark.asyncio
     async def test_analyze_performance_with_indexes(self, mocker, capsys):
-        """Test analyze_performance with existing indexes."""
+        """Should analyze_performance with existing indexes."""
         mock_optimizer = mocker.AsyncMock()
         mock_optimizer.get_current_indexes.return_value = {
             "detections": ["idx_date", "idx_species"]
@@ -134,7 +134,7 @@ class TestAnalyzePerformance:
 
     @pytest.mark.asyncio
     async def test_analyze_performance_no_indexes(self, mocker, capsys):
-        """Test analyze_performance with no indexes."""
+        """Should analyze_performance with no indexes."""
         mock_optimizer = mocker.AsyncMock()
         mock_optimizer.get_current_indexes.return_value = {}
         mock_optimizer.analyze_table_statistics.return_value = {"detections": {"row_count": 0}}
@@ -151,7 +151,7 @@ class TestOptimizeDatabase:
 
     @pytest.mark.asyncio
     async def test_optimize_database_dry_run(self, mocker, capsys):
-        """Test optimize_database in dry run mode."""
+        """Should optimize_database in dry run mode."""
         mock_optimizer = mocker.AsyncMock()
         mock_optimizer.create_optimized_indexes.return_value = [
             "CREATE INDEX idx_test ON detections(date)",
@@ -168,7 +168,7 @@ class TestOptimizeDatabase:
 
     @pytest.mark.asyncio
     async def test_optimize_database_real_run(self, mocker, capsys):
-        """Test optimize_database in real mode."""
+        """Should optimize_database in real mode."""
         mock_optimizer = mocker.AsyncMock()
         mock_optimizer.create_optimized_indexes.return_value = [
             "CREATE INDEX idx_test ON detections(date)",
@@ -190,7 +190,7 @@ class TestOptimizeDatabase:
 
     @pytest.mark.asyncio
     async def test_optimize_database_no_changes_needed(self, mocker, capsys):
-        """Test optimize_database when no changes are needed."""
+        """Should optimize_database when no changes are needed."""
         mock_optimizer = mocker.AsyncMock()
         # Configure the mock to return empty results
         mock_optimizer.create_optimized_indexes.return_value = []
@@ -204,7 +204,7 @@ class TestOptimizeDatabase:
 
     @pytest.mark.asyncio
     async def test_optimize_database_many_indexes(self, mocker, capsys):
-        """Test optimize_database with more than 5 indexes."""
+        """Should optimize_database with more than 5 indexes."""
         mock_optimizer = mocker.AsyncMock()
         indexes = [f"CREATE INDEX idx_{i} ON table(col{i})" for i in range(10)]
         mock_optimizer.create_optimized_indexes.return_value = indexes
@@ -225,7 +225,7 @@ class TestExportReport:
 
     @pytest.mark.asyncio
     async def test_export_report_success(self, mocker, tmp_path, capsys):
-        """Test successful report export."""
+        """Should successful report export."""
         mock_optimizer = mocker.AsyncMock()
         mock_optimizer.analyze_table_statistics.return_value = {"test": "stats"}
         mock_optimizer.get_current_indexes.return_value = {"test": ["idx1"]}
@@ -249,7 +249,7 @@ class TestExportReport:
 
     @pytest.mark.asyncio
     async def test_export_report_failure(self, mocker, capsys):
-        """Test report export failure."""
+        """Should report export failure."""
         mock_optimizer = mocker.AsyncMock()
         mock_optimizer.analyze_table_statistics.side_effect = Exception("Test error")
 
@@ -265,7 +265,7 @@ class TestCLI:
     """Test CLI command."""
 
     def test_cli_no_options(self):
-        """Test CLI with no options shows help."""
+        """Should CLI with no options shows help."""
         runner = CliRunner()
         result = runner.invoke(cli, [])
         assert result.exit_code == 1
@@ -274,7 +274,7 @@ class TestCLI:
     @patch("birdnetpi.cli.optimize_database.setup_database_service")
     @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer")
     def test_cli_analyze_option(self, mock_optimizer_class, mock_setup_db):
-        """Test CLI with analyze option."""
+        """Should CLI with analyze option."""
         mock_db_service = MagicMock()
         mock_setup_db.return_value = mock_db_service
 
@@ -297,7 +297,7 @@ class TestCLI:
     @patch("birdnetpi.cli.optimize_database.setup_database_service")
     @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer")
     def test_cli_optimize_option(self, mock_optimizer_class, mock_setup_db):
-        """Test CLI with optimize option."""
+        """Should CLI with optimize option."""
         mock_db_service = MagicMock()
         mock_setup_db.return_value = mock_db_service
 
@@ -320,7 +320,7 @@ class TestCLI:
     @patch("birdnetpi.cli.optimize_database.setup_database_service")
     @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer")
     def test_cli_dry_run_option(self, mock_optimizer_class, mock_setup_db):
-        """Test CLI with dry-run option."""
+        """Should CLI with dry-run option."""
         mock_db_service = MagicMock()
         mock_setup_db.return_value = mock_db_service
 
@@ -343,7 +343,7 @@ class TestCLI:
     @patch("birdnetpi.cli.optimize_database.setup_database_service")
     @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer")
     def test_cli_export_option(self, mock_optimizer_class, mock_setup_db, tmp_path):
-        """Test CLI with export option."""
+        """Should CLI with export option."""
         mock_db_service = MagicMock()
         mock_setup_db.return_value = mock_db_service
 
@@ -366,7 +366,7 @@ class TestCLI:
     @patch("birdnetpi.cli.optimize_database.setup_database_service")
     @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer")
     def test_cli_verbose_option(self, mock_optimizer_class, mock_setup_db):
-        """Test CLI with verbose option."""
+        """Should CLI with verbose option."""
         mock_db_service = MagicMock()
         mock_setup_db.return_value = mock_db_service
 
@@ -391,7 +391,7 @@ class TestCLI:
     @patch("birdnetpi.cli.optimize_database.setup_database_service")
     @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer")
     def test_cli_multiple_options(self, mock_optimizer_class, mock_setup_db):
-        """Test CLI with multiple options."""
+        """Should CLI with multiple options."""
         mock_db_service = MagicMock()
         mock_setup_db.return_value = mock_db_service
 
@@ -416,7 +416,7 @@ class TestCLI:
 
     @patch("birdnetpi.cli.optimize_database.setup_database_service")
     def test_cli_exception_handling(self, mock_setup_db):
-        """Test CLI exception handling."""
+        """Should CLI exception handling."""
         mock_setup_db.side_effect = Exception("Database connection failed")
 
         runner = CliRunner()
@@ -433,7 +433,7 @@ class TestMain:
 
     @patch("birdnetpi.cli.optimize_database.cli")
     def test_main_function(self, mock_cli):
-        """Test main function calls CLI."""
+        """Should main function calls CLI."""
         mock_cli.return_value = 0
 
         with pytest.raises(SystemExit) as exc_info:

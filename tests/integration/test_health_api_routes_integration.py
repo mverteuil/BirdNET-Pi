@@ -27,7 +27,7 @@ class TestHealthEndpointsIntegration:
     """Integration tests for all health endpoints with real components."""
 
     def test_health_check_reads_real_version(self, client, repo_root):
-        """Test that health check reads version from actual pyproject.toml."""
+        """Should health check reads version from actual pyproject.toml."""
         response = client.get("/api/health/")
         assert response.status_code == 200
         data = response.json()
@@ -39,7 +39,7 @@ class TestHealthEndpointsIntegration:
         assert "." in data["version"]  # Has version dots
 
     def test_all_health_endpoints_with_real_database(self, client):
-        """Test all health endpoints work with real database connection."""
+        """Should all health endpoints work with real database connection."""
         # Test basic health endpoint
         response = client.get("/api/health/")
         assert response.status_code == 200
@@ -78,7 +78,7 @@ class TestHealthEndpointsDatabaseFailure:
     """Test health endpoints when database is unavailable."""
 
     def test_readiness_with_database_error(self, tmp_path, path_resolver):
-        """Test readiness probe when database connection fails."""
+        """Should readiness probe when database connection fails."""
         from unittest.mock import AsyncMock, MagicMock, patch
 
         from birdnetpi.web.core.factory import create_app
@@ -121,7 +121,7 @@ class TestHealthEndpointsDatabaseFailure:
             Container.path_resolver.reset_override()
 
     def test_detailed_health_with_database_error(self, tmp_path, path_resolver):
-        """Test detailed health check when database fails."""
+        """Should detailed health check when database fails."""
         from unittest.mock import AsyncMock, MagicMock, patch
 
         from birdnetpi.web.core.factory import create_app
@@ -171,7 +171,7 @@ class TestHealthEndpointsVersionHandling:
     """Test version handling in health endpoints."""
 
     def test_health_with_missing_pyproject_file(self, client):
-        """Test health check when pyproject.toml is not found."""
+        """Should health check when pyproject.toml is not found."""
         with patch("birdnetpi.web.routers.health_api_routes.Path") as mock_path:
             # Make both paths not exist
             mock_path.return_value.exists.return_value = False
@@ -186,7 +186,7 @@ class TestHealthEndpointsVersionHandling:
             assert data["service"] == "birdnet-pi"
 
     def test_health_with_malformed_pyproject(self, client):
-        """Test health check with malformed pyproject.toml."""
+        """Should health check with malformed pyproject.toml."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as tf:
             # Write invalid TOML
             tf.write("This is not valid TOML {]{[}")
@@ -218,7 +218,7 @@ class TestHealthEndpointsConsistency:
     """Test consistency across health endpoints."""
 
     def test_version_consistent_across_endpoints(self, client):
-        """Test that version is consistent across all endpoints that include it."""
+        """Should version is consistent across all endpoints that include it."""
         # Get version from main health endpoint
         response = client.get("/api/health/")
         main_version = response.json()["version"]
@@ -234,7 +234,7 @@ class TestHealthEndpointsConsistency:
         assert detailed_version == main_version
 
     def test_timestamp_format_consistency(self, client):
-        """Test that timestamps are in consistent ISO format."""
+        """Should timestamps are in consistent ISO format."""
         from datetime import datetime
 
         endpoints = [
@@ -256,7 +256,7 @@ class TestHealthEndpointsConsistency:
                 datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
 
     def test_status_codes_match_health_status(self, client):
-        """Test that HTTP status codes align with health status."""
+        """Should HTTP status codes align with health status."""
         # Healthy endpoints should return 200
         response = client.get("/api/health/")
         assert response.status_code == 200
@@ -285,7 +285,7 @@ class TestHealthEndpointsPerformance:
     """Test performance characteristics of health endpoints."""
 
     def test_health_endpoints_are_fast(self, client):
-        """Test that health endpoints respond quickly."""
+        """Should health endpoints respond quickly."""
         import time
 
         endpoints = [
@@ -307,7 +307,7 @@ class TestHealthEndpointsPerformance:
             assert response.json() is not None
 
     def test_liveness_is_lightweight(self, client):
-        """Test that liveness probe is very lightweight."""
+        """Should liveness probe is very lightweight."""
         import time
 
         # Run multiple times to ensure consistency

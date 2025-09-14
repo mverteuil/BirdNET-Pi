@@ -18,12 +18,12 @@ class TestInMemoryBackend:
     """Test the in-memory cache backend implementation."""
 
     def test_init(self):
-        """Test initialization of InMemoryBackend."""
+        """Should initialization of InMemoryBackend."""
         backend = InMemoryBackend()
         assert backend._cache == {}
 
     def test_set_and_get_basic(self):
-        """Test basic set and get operations."""
+        """Should basic set and get operations."""
         backend = InMemoryBackend()
 
         # Set a value
@@ -36,7 +36,7 @@ class TestInMemoryBackend:
         assert backend.get("nonexistent") is None
 
     def test_set_with_ttl_expiry(self):
-        """Test that TTL expiry works correctly."""
+        """Should TTL expiry works correctly."""
         backend = InMemoryBackend()
 
         # Set with 1 second TTL (minimum int value)
@@ -53,7 +53,7 @@ class TestInMemoryBackend:
         assert "short_ttl" not in backend._cache
 
     def test_set_overwrites_existing(self):
-        """Test that set overwrites existing values."""
+        """Should set overwrites existing values."""
         backend = InMemoryBackend()
 
         backend.set("key", "value1", 300)
@@ -63,7 +63,7 @@ class TestInMemoryBackend:
         assert backend.get("key") == "value2"
 
     def test_delete(self):
-        """Test delete operation."""
+        """Should delete operation."""
         backend = InMemoryBackend()
 
         # Set a value
@@ -79,7 +79,7 @@ class TestInMemoryBackend:
         assert backend.delete("nonexistent") is False
 
     def test_exists(self):
-        """Test exists operation."""
+        """Should exists operation."""
         backend = InMemoryBackend()
 
         assert backend.exists("key") is False
@@ -95,7 +95,7 @@ class TestInMemoryBackend:
         assert backend.exists("expired") is False
 
     def test_clear(self):
-        """Test clear operation."""
+        """Should clear operation."""
         backend = InMemoryBackend()
 
         # Set multiple values
@@ -114,7 +114,7 @@ class TestInMemoryBackend:
         assert backend.get("key3") is None
 
     def test_cleanup_expired_entries(self):
-        """Test that expired entries are cleaned up periodically."""
+        """Should expired entries are cleaned up periodically."""
         backend = InMemoryBackend()
 
         # Set multiple values with different TTLs
@@ -140,7 +140,7 @@ class TestInMemoryBackend:
         assert "long" in backend._cache
 
     def test_complex_data_types(self):
-        """Test caching of complex data types."""
+        """Should caching of complex data types."""
         backend = InMemoryBackend()
 
         # Lists
@@ -170,7 +170,7 @@ class TestInMemoryBackend:
         assert retrieved.y == 20
 
     def test_datetime_objects(self):
-        """Test caching of datetime objects."""
+        """Should caching of datetime objects."""
         backend = InMemoryBackend()
 
         now = datetime.now()
@@ -186,7 +186,7 @@ class TestMemcachedBackend:
 
     @pytest.mark.skipif(not MEMCACHED_AVAILABLE, reason="pymemcache not installed")
     def test_init_success(self):
-        """Test successful initialization with memcached."""
+        """Should successful initialization with memcached."""
         with patch("birdnetpi.utils.cache.backends.MemcacheClient") as mock_client:
             mock_instance = MagicMock()
             mock_instance.version.return_value = b"1.5.0"
@@ -206,7 +206,7 @@ class TestMemcachedBackend:
 
     @pytest.mark.skipif(not MEMCACHED_AVAILABLE, reason="pymemcache not installed")
     def test_init_connection_failure(self):
-        """Test initialization failure when memcached is unavailable."""
+        """Should initialization failure when memcached is unavailable."""
         with patch("birdnetpi.utils.cache.backends.MemcacheClient") as mock_client:
             mock_instance = MagicMock()
             mock_instance.version.side_effect = Exception("Connection refused")
@@ -217,7 +217,7 @@ class TestMemcachedBackend:
 
     @pytest.mark.skipif(not MEMCACHED_AVAILABLE, reason="pymemcache not installed")
     def test_get(self):
-        """Test get operation with memcached."""
+        """Should get operation with memcached."""
         with patch("birdnetpi.utils.cache.backends.MemcacheClient") as mock_client:
             mock_instance = MagicMock()
             mock_client.return_value = mock_instance
@@ -239,7 +239,7 @@ class TestMemcachedBackend:
 
     @pytest.mark.skipif(not MEMCACHED_AVAILABLE, reason="pymemcache not installed")
     def test_set(self):
-        """Test set operation with memcached."""
+        """Should set operation with memcached."""
         with patch("birdnetpi.utils.cache.backends.MemcacheClient") as mock_client:
             mock_instance = MagicMock()
             mock_client.return_value = mock_instance
@@ -262,7 +262,7 @@ class TestMemcachedBackend:
 
     @pytest.mark.skipif(not MEMCACHED_AVAILABLE, reason="pymemcache not installed")
     def test_delete(self):
-        """Test delete operation with memcached."""
+        """Should delete operation with memcached."""
         with patch("birdnetpi.utils.cache.backends.MemcacheClient") as mock_client:
             mock_instance = MagicMock()
             mock_client.return_value = mock_instance
@@ -284,7 +284,7 @@ class TestMemcachedBackend:
 
     @pytest.mark.skipif(not MEMCACHED_AVAILABLE, reason="pymemcache not installed")
     def test_exists(self):
-        """Test exists operation with memcached."""
+        """Should exists operation with memcached."""
         with patch("birdnetpi.utils.cache.backends.MemcacheClient") as mock_client:
             mock_instance = MagicMock()
             mock_client.return_value = mock_instance
@@ -305,7 +305,7 @@ class TestMemcachedBackend:
 
     @pytest.mark.skipif(not MEMCACHED_AVAILABLE, reason="pymemcache not installed")
     def test_clear(self):
-        """Test clear operation with memcached."""
+        """Should clear operation with memcached."""
         with patch("birdnetpi.utils.cache.backends.MemcacheClient") as mock_client:
             mock_instance = MagicMock()
             mock_client.return_value = mock_instance
@@ -326,12 +326,12 @@ class TestCacheBackendAbstract:
     """Test the abstract CacheBackend interface."""
 
     def test_cannot_instantiate_abstract_class(self):
-        """Test that CacheBackend cannot be instantiated directly."""
+        """Should cacheBackend cannot be instantiated directly."""
         with pytest.raises(TypeError):
             CacheBackend()  # type: ignore[abstract]
 
     def test_subclass_must_implement_all_methods(self):
-        """Test that subclasses must implement all abstract methods."""
+        """Should subclasses must implement all abstract methods."""
 
         class IncompleteBackend(CacheBackend):
             def get(self, key: str):
@@ -343,7 +343,7 @@ class TestCacheBackendAbstract:
             IncompleteBackend()  # type: ignore[abstract]
 
     def test_complete_subclass_can_be_instantiated(self):
-        """Test that a complete subclass can be instantiated."""
+        """Should a complete subclass can be instantiated."""
 
         class CompleteBackend(CacheBackend):
             def get(self, key: str):
@@ -373,13 +373,13 @@ class TestMemcachedAvailability:
     """Test MEMCACHED_AVAILABLE constant."""
 
     def test_memcached_available_constant_exists(self):
-        """Test that MEMCACHED_AVAILABLE constant is defined."""
+        """Should MEMCACHED_AVAILABLE constant is defined."""
         # The constant should always be defined
         assert isinstance(MEMCACHED_AVAILABLE, bool)
 
     @patch("birdnetpi.utils.cache.backends.MEMCACHED_AVAILABLE", False)
     def test_memcached_backend_unavailable(self):
-        """Test behavior when pymemcache is not installed."""
+        """Should behavior when pymemcache is not installed."""
         # When MEMCACHED_AVAILABLE is False, MemcachedBackend should not be usable
         # This is handled by the skipif decorators in the tests above
         pass

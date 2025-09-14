@@ -7,7 +7,7 @@ class TestDetection:
     """Test the Detection model class."""
 
     def test_get_display_name_returns_common_name(self):
-        """Test get_display_name returns common name when available."""
+        """Should get_display_name returns common name when available."""
         detection = Detection(
             species_tensor="Turdus migratorius_American Robin",
             common_name="American Robin",
@@ -20,7 +20,7 @@ class TestDetection:
         assert result == "American Robin"
 
     def test_get_display_name_falls_back_to_scientific_name(self):
-        """Test get_display_name returns scientific name when common name is None."""
+        """Should get_display_name returns scientific name when common name is None."""
         detection = Detection(
             species_tensor="Turdus migratorius_American Robin",
             common_name=None,

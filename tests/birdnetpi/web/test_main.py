@@ -7,7 +7,7 @@ class TestWebhookConfiguration:
     """Test the webhook URL configuration logic in main.py."""
 
     def test_webhook_url_string_processing(self):
-        """Test processing webhook URLs from string format (lines 121-125)."""
+        """Should processing webhook URLs from string format (lines 121-125)."""
         # Mock webhook service
         webhook_service_mock = MagicMock()
 
@@ -26,7 +26,7 @@ class TestWebhookConfiguration:
         assert call_args == ["https://webhook1.com/api", "https://webhook2.com/api"]
 
     def test_webhook_url_list_processing(self):
-        """Test processing webhook URLs from list format (lines 123-125)."""
+        """Should processing webhook URLs from list format (lines 123-125)."""
         # Mock webhook service
         webhook_service_mock = MagicMock()
 
@@ -45,7 +45,7 @@ class TestWebhookConfiguration:
         assert call_args == ["https://webhook1.com/api", "https://webhook2.com/api"]
 
     def test_empty_webhook_urls_string(self):
-        """Test processing empty webhook URLs string."""
+        """Should processing empty webhook URLs string."""
         # Mock webhook service
         webhook_service_mock = MagicMock()
 
@@ -64,7 +64,7 @@ class TestWebhookConfiguration:
         assert call_args == []
 
     def test_single_webhook_url_string(self):
-        """Test processing single webhook URL from string."""
+        """Should processing single webhook URL from string."""
         # Mock webhook service
         webhook_service_mock = MagicMock()
 
@@ -83,7 +83,7 @@ class TestWebhookConfiguration:
         assert call_args == ["https://single-webhook.com/api"]
 
     def test_mixed__empty_webhook_urls_list(self):
-        """Test processing list with mix of valid and empty URLs."""
+        """Should processing list with mix of valid and empty URLs."""
         # Mock webhook service
         webhook_service_mock = MagicMock()
 
@@ -103,7 +103,7 @@ class TestWebhookConfiguration:
         assert call_args == ["https://webhook1.com/api", "https://webhook2.com/api"]
 
     def test_webhook_configure_from_urls_call_coverage(self):
-        """Test webhook service configure_webhooks_from_urls is called (line 125)."""
+        """Should webhook service configure_webhooks_from_urls is called (line 125)."""
         # Mock webhook service
         webhook_service_mock = MagicMock()
 

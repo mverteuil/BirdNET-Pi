@@ -40,7 +40,7 @@ class TestMQTTService:
     """Test the MQTTService class."""
 
     def test_initialization_disabled(self, mqtt_service):
-        """Test that MQTTService initializes correctly when disabled."""
+        """Should mQTTService initializes correctly when disabled."""
         service = mqtt_service
 
         assert service.broker_host == "test-broker"
@@ -55,7 +55,7 @@ class TestMQTTService:
         assert service.connection_retry_count == 0
 
     def test_initialization_enabled(self, enabled_mqtt_service):
-        """Test that MQTTService initializes correctly when enabled."""
+        """Should mQTTService initializes correctly when enabled."""
         service = enabled_mqtt_service
 
         assert service.enable_mqtt is True
@@ -68,14 +68,14 @@ class TestMQTTService:
 
     @pytest.mark.asyncio
     async def test_start_disabled(self, mqtt_service):
-        """Test starting MQTT service when disabled."""
+        """Should starting MQTT service when disabled."""
         await mqtt_service.start()
         assert mqtt_service.client is None
         assert mqtt_service.is_connected is False
 
     @pytest.mark.asyncio
     async def test_start_enabled(self, enabled_mqtt_service):
-        """Test starting MQTT service when enabled."""
+        """Should starting MQTT service when enabled."""
         service = enabled_mqtt_service
 
         with (
@@ -95,7 +95,7 @@ class TestMQTTService:
 
     @pytest.mark.asyncio
     async def test_start__auth(self, enabled_mqtt_service):
-        """Test starting MQTT service with authentication."""
+        """Should starting MQTT service with authentication."""
         service = enabled_mqtt_service
         service.username = "auth_user"
         service.password = "auth_pass"
@@ -114,13 +114,13 @@ class TestMQTTService:
 
     @pytest.mark.asyncio
     async def test_stop_disabled(self, mqtt_service):
-        """Test stopping MQTT service when disabled."""
+        """Should stopping MQTT service when disabled."""
         await mqtt_service.stop()
         # Should not raise any exceptions
 
     @pytest.mark.asyncio
     async def test_stop_enabled(self, enabled_mqtt_service):
-        """Test stopping MQTT service when enabled."""
+        """Should stopping MQTT service when enabled."""
         service = enabled_mqtt_service
         mock_client = MagicMock()
         service.client = mock_client
@@ -135,7 +135,7 @@ class TestMQTTService:
             assert service.client is None
 
     def test_on_connect(self, enabled_mqtt_service):
-        """Test successful MQTT connection callback."""
+        """Should successful MQTT connection callback."""
         service = enabled_mqtt_service
 
         # _on_connect now uses run_coroutine_threadsafe when a loop is available
@@ -147,7 +147,7 @@ class TestMQTTService:
         # Background tasks are created differently now, no need to check create_task
 
     def test_on_connect_failure(self, enabled_mqtt_service):
-        """Test failed MQTT connection callback."""
+        """Should failed MQTT connection callback."""
         service = enabled_mqtt_service
 
         service._on_connect(None, None, None, 1)  # rc=1 means failure
@@ -155,7 +155,7 @@ class TestMQTTService:
         assert service.is_connected is False
 
     def test_on_disconnect(self, enabled_mqtt_service):
-        """Test MQTT disconnection callback."""
+        """Should MQTT disconnection callback."""
         service = enabled_mqtt_service
         service.is_connected = True
 
@@ -170,7 +170,7 @@ class TestMQTTService:
 
     @pytest.mark.asyncio
     async def test_publish_detection_disabled(self, mqtt_service):
-        """Test publishing detection when MQTT is disabled."""
+        """Should publishing detection when MQTT is disabled."""
         detection = Detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
@@ -190,7 +190,7 @@ class TestMQTTService:
 
     @pytest.mark.asyncio
     async def test_publish_detection_enabled(self, enabled_mqtt_service):
-        """Test publishing detection when MQTT is enabled."""
+        """Should publishing detection when MQTT is enabled."""
         service = enabled_mqtt_service
         service.client = MagicMock()
         service.is_connected = True
@@ -230,7 +230,7 @@ class TestMQTTService:
 
     @pytest.mark.asyncio
     async def test_publish_gps_location(self, enabled_mqtt_service):
-        """Test publishing GPS location."""
+        """Should publishing GPS location."""
         service = enabled_mqtt_service
         service.client = MagicMock()
         service.is_connected = True
@@ -254,7 +254,7 @@ class TestMQTTService:
 
     @pytest.mark.asyncio
     async def test_publish_system_health(self, enabled_mqtt_service):
-        """Test publishing system health data."""
+        """Should publishing system health data."""
         service = enabled_mqtt_service
         service.client = MagicMock()
         service.is_connected = True
@@ -285,7 +285,7 @@ class TestMQTTService:
 
     @pytest.mark.asyncio
     async def test_publish_system_stats(self, enabled_mqtt_service):
-        """Test publishing system statistics."""
+        """Should publishing system statistics."""
         service = enabled_mqtt_service
         service.client = MagicMock()
         service.is_connected = True
@@ -306,7 +306,7 @@ class TestMQTTService:
 
     @pytest.mark.asyncio
     async def test_publish_status(self, enabled_mqtt_service):
-        """Test publishing service status."""
+        """Should publishing service status."""
         service = enabled_mqtt_service
         service.client = MagicMock()
 
@@ -327,7 +327,7 @@ class TestMQTTService:
 
     @pytest.mark.asyncio
     async def test_publish_system_info(self, enabled_mqtt_service):
-        """Test publishing system information."""
+        """Should publishing system information."""
         service = enabled_mqtt_service
         service.client = MagicMock()
         service.is_connected = True
@@ -366,7 +366,7 @@ class TestMQTTService:
             assert payload["mqtt"]["topic_prefix"] == "test_birdnet"
 
     def test_can_publish(self, enabled_mqtt_service):
-        """Test the _can_publish method."""
+        """Should the _can_publish method."""
         service = enabled_mqtt_service
 
         # Not connected, no client
@@ -385,7 +385,7 @@ class TestMQTTService:
         assert service._can_publish() is False
 
     def test_get_connection_status(self, enabled_mqtt_service):
-        """Test getting connection status."""
+        """Should getting connection status."""
         service = enabled_mqtt_service
         service.is_connected = True
         service.connection_retry_count = 2
@@ -403,7 +403,7 @@ class TestMQTTService:
 
     @pytest.mark.asyncio
     async def test_publish_failure(self, enabled_mqtt_service):
-        """Test handling publish failures."""
+        """Should handling publish failures."""
         service = enabled_mqtt_service
         service.client = MagicMock()
         service.is_connected = True
@@ -430,7 +430,7 @@ class TestMQTTService:
 
     @pytest.mark.asyncio
     async def test_publish__exception_handling(self, enabled_mqtt_service):
-        """Test exception handling during publish."""
+        """Should exception handling during publish."""
         service = enabled_mqtt_service
         service.client = MagicMock()
         service.is_connected = True
@@ -455,7 +455,7 @@ class TestMQTTService:
 
     @pytest.mark.asyncio
     async def test_connection_retry_logic(self, enabled_mqtt_service):
-        """Test connection retry logic."""
+        """Should connection retry logic."""
         service = enabled_mqtt_service
 
         with patch("paho.mqtt.client.Client") as mock_client_class:
@@ -477,7 +477,7 @@ class TestMQTTService:
 
     @pytest.mark.asyncio
     async def test_max_retries_exceeded(self, enabled_mqtt_service):
-        """Test behavior when max retries are exceeded."""
+        """Should behavior when max retries are exceeded."""
         service = enabled_mqtt_service
 
         with patch("paho.mqtt.client.Client") as mock_client_class:

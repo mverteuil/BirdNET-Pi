@@ -156,7 +156,7 @@ async def main() -> int:
         process_task = asyncio.create_task(process.wait())
         shutdown_task = asyncio.create_task(shutdown_event.wait())
 
-        done, pending = await asyncio.wait(
+        done, _pending = await asyncio.wait(
             [process_task, shutdown_task], return_when=asyncio.FIRST_COMPLETED
         )
 

@@ -191,7 +191,7 @@ async def async_in_memory_session():
 
 @pytest.fixture
 def test_config(path_resolver: PathResolver):
-    """Load test configuration from the test config file."""
+    """Should load test configuration from the test config file."""
     from birdnetpi.config import ConfigManager
 
     manager = ConfigManager(path_resolver)

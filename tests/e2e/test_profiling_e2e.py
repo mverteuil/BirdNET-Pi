@@ -58,7 +58,7 @@ def docker_compose_with_profiling() -> Generator[None, None, None]:
 
 @pytest.mark.expensive
 def test_profiling_enabled_root_page(docker_compose_with_profiling) -> None:
-    """Test that profiling works on the root page when enabled."""
+    """Should profiling works on the root page when enabled."""
     # Request the root page with ?profile=1
     response = httpx.get("http://localhost:8001/?profile=1")
     assert response.status_code == 200
@@ -78,7 +78,7 @@ def test_profiling_enabled_root_page(docker_compose_with_profiling) -> None:
 
 @pytest.mark.expensive
 def test_profiling_enabled_settings_page(docker_compose_with_profiling) -> None:
-    """Test that profiling works on the settings page when enabled.
+    """Should enable profiling on the settings page when ENABLE_PROFILING is set.
 
     The settings page is ideal for testing because it doesn't call
     get_cpu_usage() or other system monitoring functions that have
@@ -100,7 +100,7 @@ def test_profiling_enabled_settings_page(docker_compose_with_profiling) -> None:
 
 @pytest.mark.expensive
 def test_profiling_shows_system_calls(docker_compose_with_profiling) -> None:
-    """Test that profiling output shows expected function calls."""
+    """Should profiling output shows expected function calls."""
     # Request the root page with profiling
     response = httpx.get("http://localhost:8001/?profile=1")
     assert response.status_code == 200
@@ -125,7 +125,7 @@ def test_profiling_shows_system_calls(docker_compose_with_profiling) -> None:
 
 @pytest.mark.expensive
 def test_profiling_normal_request_unaffected(docker_compose_with_profiling) -> None:
-    """Test that requests without ?profile=1 work normally when profiling is enabled."""
+    """Should requests without ?profile=1 work normally when profiling is enabled."""
     # Request without profiling parameter
     response = httpx.get("http://localhost:8001/")
     assert response.status_code == 200
@@ -143,7 +143,7 @@ def test_profiling_normal_request_unaffected(docker_compose_with_profiling) -> N
 
 @pytest.mark.expensive
 def test_profiling_api_endpoints(docker_compose_with_profiling) -> None:
-    """Test that profiling works on API endpoints."""
+    """Should profiling works on API endpoints."""
     # Test a simple API endpoint with profiling
     response = httpx.get("http://localhost:8001/api/health/ready?profile=1")
     assert response.status_code == 200

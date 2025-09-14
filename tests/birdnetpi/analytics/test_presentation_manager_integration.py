@@ -18,7 +18,7 @@ from birdnetpi.species.display import SpeciesDisplayService
 
 @pytest.fixture
 async def test_database_with_data(tmp_path):
-    """Create a test database with sample data for presentation testing."""
+    """Should create a test database with sample data for presentation testing."""
     db_path = tmp_path / "test.db"
     db_service = CoreDatabaseService(db_path)
 
@@ -178,7 +178,7 @@ class TestLandingPageIntegration:
 
     @pytest.mark.asyncio
     async def test_get_landing_page_data_integration(self, presentation_manager):
-        """Test complete landing page data retrieval with real data."""
+        """Should complete landing page data retrieval with real data."""
         # Get landing page data
         data = await presentation_manager.get_landing_page_data()
 
@@ -227,7 +227,7 @@ class TestLandingPageIntegration:
 
     @pytest.mark.asyncio
     async def test_temporal_patterns_integration(self, presentation_manager):
-        """Test temporal patterns are correctly calculated from real data."""
+        """Should temporal patterns are correctly calculated from real data."""
         # Only get temporal patterns, not the entire landing page data
         analytics = presentation_manager.analytics_manager
         temporal = await analytics.get_temporal_patterns()
@@ -243,7 +243,7 @@ class TestLandingPageIntegration:
 
     @pytest.mark.asyncio
     async def test_species_frequency_sorting(self, presentation_manager):
-        """Test that species are sorted by frequency."""
+        """Should species are sorted by frequency."""
         # Only get species frequency data, not the entire landing page
         analytics = presentation_manager.analytics_manager
         frequency = await analytics.get_species_frequency_analysis()
@@ -258,7 +258,7 @@ class TestLandingPageIntegration:
 
     @pytest.mark.asyncio
     async def test_detection_log_recent(self, presentation_manager):
-        """Test that detection log shows recent detections."""
+        """Should detection log shows recent detections."""
         # Only get recent detections, not the entire landing page
         recent = await presentation_manager.detection_query_service.query_detections(limit=10)
 
@@ -280,7 +280,7 @@ class TestAPIResponseIntegration:
 
     @pytest.mark.asyncio
     async def test_format_api_response_with_real_data(self, presentation_manager):
-        """Test API response formatting with actual analytics data."""
+        """Should API response formatting with actual analytics data."""
         # Get real analytics data
         analytics = presentation_manager.analytics_manager
         summary = await analytics.get_dashboard_summary()
@@ -302,7 +302,7 @@ class TestAPIResponseIntegration:
 
     @pytest.mark.asyncio
     async def test_format_error_response(self, presentation_manager):
-        """Test error response formatting."""
+        """Should error response formatting."""
         error_data = {"error": "Database connection failed", "code": 500}
 
         response = presentation_manager.format_api_response(error_data, status="error")
@@ -317,7 +317,7 @@ class TestFormattingWithRealData:
 
     @pytest.mark.asyncio
     async def test_format_metrics_with_real_summary(self, presentation_manager):
-        """Test metrics formatting with real summary data."""
+        """Should metrics formatting with real summary data."""
         analytics = presentation_manager.analytics_manager
         summary = await analytics.get_dashboard_summary()
 
@@ -337,7 +337,7 @@ class TestFormattingWithRealData:
 
     @pytest.mark.asyncio
     async def test_format_species_list_with_real_data(self, presentation_manager):
-        """Test species list formatting with real frequency data."""
+        """Should species list formatting with real frequency data."""
         analytics = presentation_manager.analytics_manager
         frequency_data = await analytics.get_species_frequency_analysis(hours=24)
 
@@ -352,7 +352,7 @@ class TestFormattingWithRealData:
 
     @pytest.mark.asyncio
     async def test_format_scatter_data_with_real_detections(self, presentation_manager):
-        """Test scatter data formatting with real detection data."""
+        """Should scatter data formatting with real detection data."""
         analytics = presentation_manager.analytics_manager
         scatter_data = await analytics.get_detection_scatter_data(hours=24)
 

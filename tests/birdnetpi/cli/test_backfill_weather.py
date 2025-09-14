@@ -12,7 +12,7 @@ from birdnetpi.location.weather import WeatherManager
 
 
 def test_backfill_weather_help():
-    """Test that help text displays correctly."""
+    """Should help text displays correctly."""
     runner = CliRunner()
     result = runner.invoke(backfill_weather, ["--help"])
     assert result.exit_code == 0
@@ -27,7 +27,7 @@ def test_backfill_weather_help():
 @patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
 @patch("birdnetpi.cli.backfill_weather.ConfigManager")
 def test_backfill_weather_no_location(mock_config, mock_db, path_resolver):
-    """Test error when location is not configured."""
+    """Should error when location is not configured."""
     # Mock config without location
     mock_config_instance = MagicMock(spec=ConfigManager)
     mock_config_instance.load.return_value = MagicMock(
@@ -50,7 +50,7 @@ def test_backfill_weather_no_location(mock_config, mock_db, path_resolver):
 @patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
 @patch("birdnetpi.cli.backfill_weather.ConfigManager")
 def test_backfill_weather_days_option(mock_config, mock_db, mock_weather_manager, path_resolver):
-    """Test backfilling with --days option."""
+    """Should backfilling with --days option."""
     # Setup mocks
     mock_config_instance = MagicMock(spec=ConfigManager)
     mock_config_instance.load.return_value = MagicMock(
@@ -95,7 +95,7 @@ def test_backfill_weather_days_option(mock_config, mock_db, mock_weather_manager
 @patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
 @patch("birdnetpi.cli.backfill_weather.ConfigManager")
 def test_backfill_weather_date_range(mock_config, mock_db, mock_weather_manager, path_resolver):
-    """Test backfilling with specific date range."""
+    """Should backfilling with specific date range."""
     # Setup mocks
     mock_config_instance = MagicMock(spec=ConfigManager)
     mock_config_instance.load.return_value = MagicMock(
@@ -144,7 +144,7 @@ def test_backfill_weather_date_range(mock_config, mock_db, mock_weather_manager,
 @patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
 @patch("birdnetpi.cli.backfill_weather.ConfigManager")
 def test_backfill_weather_smart_mode(mock_config, mock_db, mock_weather_manager, path_resolver):
-    """Test smart backfill mode."""
+    """Should smart backfill mode."""
     # Setup mocks
     mock_config_instance = MagicMock(spec=ConfigManager)
     mock_config_instance.load.return_value = MagicMock(
@@ -191,7 +191,7 @@ def test_backfill_weather_smart_mode(mock_config, mock_db, mock_weather_manager,
 def test_backfill_weather_smart_no_detections(
     mock_config, mock_db, mock_weather_manager, path_resolver
 ):
-    """Test smart backfill when no detections need weather."""
+    """Should skip backfill when no detections need weather data."""
     # Setup mocks
     mock_config_instance = MagicMock(spec=ConfigManager)
     mock_config_instance.load.return_value = MagicMock(
@@ -229,7 +229,7 @@ def test_backfill_weather_smart_no_detections(
 @patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
 @patch("birdnetpi.cli.backfill_weather.ConfigManager")
 def test_backfill_weather_force_option(mock_config, mock_db, mock_weather_manager, path_resolver):
-    """Test force re-fetch option."""
+    """Should force re-fetch option."""
     # Setup mocks
     mock_config_instance = MagicMock(spec=ConfigManager)
     mock_config_instance.load.return_value = MagicMock(
@@ -277,7 +277,7 @@ def test_backfill_weather_force_option(mock_config, mock_db, mock_weather_manage
 @patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
 @patch("birdnetpi.cli.backfill_weather.ConfigManager")
 def test_backfill_weather_no_bulk_option(mock_config, mock_db, mock_weather_manager, path_resolver):
-    """Test non-bulk backfill mode."""
+    """Should non-bulk backfill mode."""
     # Setup mocks
     mock_config_instance = MagicMock(spec=ConfigManager)
     mock_config_instance.load.return_value = MagicMock(
@@ -324,7 +324,7 @@ def test_backfill_weather_no_bulk_option(mock_config, mock_db, mock_weather_mana
 
 
 def test_display_stats_hourly():
-    """Test display of hourly backfill statistics."""
+    """Should display of hourly backfill statistics."""
     stats = {
         "total_hours": 48,
         "fetched": 45,
@@ -356,7 +356,7 @@ def test_display_stats_hourly():
 
 
 def test_display_stats_bulk():
-    """Test display of bulk backfill statistics."""
+    """Should display of bulk backfill statistics."""
     stats = {
         "total_days": 7,
         "api_calls": 1,
@@ -385,7 +385,7 @@ def test_display_stats_bulk():
 
 
 def test_display_stats_no_updates():
-    """Test display when no detections were updated."""
+    """Should display when no detections were updated."""
     stats = {
         "total_hours": 24,
         "fetched": 24,

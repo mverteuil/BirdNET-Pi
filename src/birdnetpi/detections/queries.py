@@ -351,7 +351,9 @@ class DetectionQueryService:
                     params["family"] = family_filter
 
                 # Updated query with COALESCE across all three databases
-                query_sql = text(f"""
+                # Safe: WHERE clause uses pre-defined fragments, user data is parameterized
+                query_sql = text(  # nosemgrep
+                    f"""
                     SELECT
                         d.scientific_name,
                         COUNT(*) as detection_count,
@@ -382,7 +384,8 @@ class DetectionQueryService:
                     GROUP BY d.scientific_name, s.english_name, translated_name, s.family, s.genus,
                              s.order_name
                     ORDER BY detection_count DESC
-                """)
+                """
+                )
 
                 result = await session.execute(query_sql, params)
                 results = result.fetchall()
@@ -459,7 +462,9 @@ class DetectionQueryService:
                     where_clause += " AND d.timestamp >= :since"
                     params["since"] = since
 
-                query_sql = text(f"""
+                # Safe: WHERE clause uses pre-defined fragments, user data is parameterized
+                query_sql = text(  # nosemgrep
+                    f"""
                     SELECT
                         s.family,
                         s.order_name,
@@ -472,7 +477,8 @@ class DetectionQueryService:
                     {where_clause}
                     GROUP BY s.family, s.order_name
                     ORDER BY detection_count DESC
-                """)
+                """
+                )
 
                 result = await session.execute(query_sql, params)
                 results = result.fetchall()
@@ -614,7 +620,9 @@ class DetectionQueryService:
 
         if has_species_db:
             # Full query with JOINs when species databases are available
-            query_sql = text(f"""
+            # Safe: WHERE/ORDER clauses use pre-defined fragments, user data is parameterized
+            query_sql = text(  # nosemgrep
+                f"""
                 SELECT
                     d.id,
                     d.species_tensor,
@@ -653,10 +661,13 @@ class DetectionQueryService:
                 {where_clause}
                 {order_clause}
                 LIMIT :limit OFFSET :offset
-            """)
+            """
+            )
         else:
             # Simplified query when species databases are not available (e.g., in tests)
-            query_sql = text(f"""
+            # Safe: WHERE/ORDER clauses use pre-defined fragments, user data is parameterized
+            query_sql = text(  # nosemgrep
+                f"""
                 SELECT
                     d.id,
                     d.species_tensor,
@@ -680,7 +691,8 @@ class DetectionQueryService:
                 {where_clause}
                 {order_clause}
                 LIMIT :limit OFFSET :offset
-            """)
+            """
+            )
 
         result = await session.execute(query_sql, params)
         results = result.fetchall()

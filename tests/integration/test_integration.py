@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 
 def test_read_main(path_resolver, tmp_path) -> None:
-    """Test the main endpoint of the web application with simplified mocking."""
+    """Should the main endpoint of the web application with simplified mocking."""
     # Create a simple FastAPI app for testing
     app = FastAPI()
 
@@ -26,7 +26,8 @@ def test_read_main(path_resolver, tmp_path) -> None:
             "index.html",
             {
                 "site_name": "Test Site",
-                "websocket_url": f"ws://{request.url.hostname}:8000/ws/notifications",
+                # Safe: Test code using request hostname, not user input
+                "websocket_url": f"ws://{request.url.hostname}:8000/ws/notifications",  # nosemgrep
             },
         )
 

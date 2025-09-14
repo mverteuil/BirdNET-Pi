@@ -41,7 +41,7 @@ class TestLanguageSwitching:
     """Test language switching in the web interface."""
 
     def test_config_language_respected(self, config_with_language, mock_path_resolver):
-        """Test that the configured language is used by default."""
+        """Should the configured language is used by default."""
         # Test with Spanish config
         config_with_language("es")  # Config created but not used directly
         translation_manager = TranslationManager(mock_path_resolver)
@@ -55,7 +55,7 @@ class TestLanguageSwitching:
         assert trans is not None
 
     def test_accept_language_header_override(self, config_with_language, mock_path_resolver):
-        """Test that Accept-Language header can override config."""
+        """Should accept-Language header can override config."""
         # Config set to English
         config_with_language("en")  # Config created but not used directly
         translation_manager = TranslationManager(mock_path_resolver)
@@ -82,7 +82,7 @@ class TestLanguageSwitching:
         ],
     )
     def test_multiple_language_support(self, mock_path_resolver, accept_header, expected_lang):
-        """Test that various languages are properly extracted from headers."""
+        """Should various languages are properly extracted from headers."""
         translation_manager = TranslationManager(mock_path_resolver)
 
         request = Mock()
@@ -97,7 +97,7 @@ class TestLanguageSwitching:
         assert trans is not None
 
     def test_fallback_to_english(self, mock_path_resolver):
-        """Test fallback to English for unsupported languages."""
+        """Should fallback to English for unsupported languages."""
         translation_manager = TranslationManager(mock_path_resolver)
 
         request = Mock()
@@ -113,7 +113,7 @@ class TestTranslationContent:
 
     @pytest.mark.skip(reason="Skipped until templates are replaced with proper i18n support")
     def test_message_extraction_coverage(self):
-        """Test that key UI elements are marked for translation."""
+        """Should key UI elements are marked for translation."""
         templates_dir = Path("src/birdnetpi/web/templates")
         if not templates_dir.exists():
             pytest.skip("Templates directory not found")
@@ -158,7 +158,7 @@ class TestTranslationContent:
             assert coverage >= 50, f"Only {coverage:.1f}% of templates have translation markers"
 
     def test_po_file_completeness(self):
-        """Test that .po files have translations for common strings."""
+        """Should .po files have translations for common strings."""
         locales_dir = Path("locales")
         if not locales_dir.exists():
             pytest.skip("Locales directory not found")
@@ -198,7 +198,7 @@ class TestTranslationContent:
             )
 
     def test_mo_files_compiled(self):
-        """Test that .mo files are properly compiled."""
+        """Should .mo files are properly compiled."""
         locales_dir = Path("locales")
         if not locales_dir.exists():
             pytest.skip("Locales directory not found")
@@ -220,7 +220,7 @@ class TestSpeciesTranslation:
     """Test species name translation integration."""
 
     def test_species_display_modes(self, config_with_language):
-        """Test different species display modes."""
+        """Should different species display modes."""
         from birdnetpi.species.display import SpeciesDisplayService
 
         # Test different display modes
@@ -256,7 +256,7 @@ class TestSpeciesTranslation:
 
     @pytest.mark.asyncio
     async def test_multilingual_species_names(self, path_resolver):
-        """Test that species names work in multiple languages using actual databases."""
+        """Should species names work in multiple languages using actual databases."""
         from pathlib import Path
 
         import pytest
@@ -321,7 +321,7 @@ class TestEndToEndTranslation:
 
     @pytest.mark.skip(reason="Skipped until templates are replaced with proper i18n support")
     def test_translation_extraction_update_compile_cycle(self):
-        """Test the complete translation workflow."""
+        """Should the complete translation workflow."""
         import subprocess
         import tempfile
         from pathlib import Path
@@ -356,7 +356,7 @@ class TestEndToEndTranslation:
             assert msgid_count > 50, f"Only {msgid_count} messages extracted, expected more"
 
     def test_template_rendering_with_translations(self):
-        """Test that templates can render with translations."""
+        """Should templates can render with translations."""
         from jinja2 import DictLoader, Environment
 
         from birdnetpi.i18n.translation_manager import setup_jinja2_i18n

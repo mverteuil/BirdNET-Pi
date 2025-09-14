@@ -226,7 +226,7 @@ class TestAssetValidation:
 
         mock_list_versions.return_value = ["v2.0.0", "v1.5.0"]
 
-        with pytest.raises(RuntimeError, match="Asset release 'assets-v1.0.0' not found"):
+        with pytest.raises(RuntimeError, match=r"Asset release 'assets-v1\.0\.0' not found"):
             update_manager._validate_asset_release("v1.0.0", "owner/repo")
 
 

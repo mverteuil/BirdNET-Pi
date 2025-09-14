@@ -26,7 +26,7 @@ class TestCacheKeyGeneration:
     """Test cache key generation logic."""
 
     def test_generate_cache_key_basic(self):
-        """Test basic cache key generation."""
+        """Should basic cache key generation."""
         cache = Cache()
 
         key = cache._generate_cache_key("test_namespace", param1="value1", param2="value2")
@@ -42,7 +42,7 @@ class TestCacheKeyGeneration:
         assert len(key.split(":")[1]) == 16  # 16 chars of SHA-256 hash
 
     def test_generate_cache_key_sorted_params(self):
-        """Test that parameters are sorted for consistent key generation."""
+        """Should parameters are sorted for consistent key generation."""
         cache = Cache()
 
         key1 = cache._generate_cache_key("namespace", z="value", a="value", m="value")
@@ -52,7 +52,7 @@ class TestCacheKeyGeneration:
         assert key1 == key2 == key3
 
     def test_generate_cache_key_datetime_objects(self):
-        """Test key generation with datetime objects."""
+        """Should key generation with datetime objects."""
         cache = Cache()
 
         now = datetime(2025, 1, 15, 10, 30, 45)
@@ -64,7 +64,7 @@ class TestCacheKeyGeneration:
         assert key == f"birdnet_analytics:{expected_hash}"
 
     def test_generate_cache_key_complex_types(self):
-        """Test key generation with lists and dicts."""
+        """Should key generation with lists and dicts."""
         cache = Cache()
 
         # Test with list
@@ -78,7 +78,7 @@ class TestCacheKeyGeneration:
         assert key3 == key4  # Dicts are sorted by json.dumps
 
     def test_generate_cache_key_none_values(self):
-        """Test that None values are ignored in key generation."""
+        """Should none values are ignored in key generation."""
         cache = Cache()
 
         key1 = cache._generate_cache_key("namespace", param1="value", param2=None)
@@ -91,7 +91,7 @@ class TestCacheGetSet:
     """Test cache get and set operations."""
 
     def test_get_cache_hit(self):
-        """Test get operation with cache hit."""
+        """Should get operation with cache hit."""
         cache = Cache()
 
         # Set a value first
@@ -105,7 +105,7 @@ class TestCacheGetSet:
         assert cache._stats["misses"] == 0
 
     def test_get_cache_miss(self):
-        """Test get operation with cache miss."""
+        """Should get operation with cache miss."""
         cache = Cache()
 
         result = cache.get("namespace", param="value")
@@ -115,7 +115,7 @@ class TestCacheGetSet:
         assert cache._stats["misses"] == 1
 
     def test_set_success(self):
-        """Test successful set operation."""
+        """Should successful set operation."""
         cache = Cache(default_ttl=300)
 
         result = cache.set("namespace", "value", ttl=None, param="test")
@@ -128,7 +128,7 @@ class TestCacheGetSet:
         assert stored == "value"
 
     def test_set_with_custom_ttl(self):
-        """Test set operation with custom TTL."""
+        """Should set operation with custom TTL."""
         cache = Cache(default_ttl=300)
 
         result = cache.set("namespace", "value", ttl=600, param="test")
@@ -144,7 +144,7 @@ class TestCacheDelete:
     """Test cache delete operations."""
 
     def test_delete_success(self):
-        """Test successful delete operation."""
+        """Should successful delete operation."""
         cache = Cache()
 
         # Set a value first
@@ -160,7 +160,7 @@ class TestCacheDelete:
         assert cache.get("namespace", param="test") is None
 
     def test_delete_nonexistent(self):
-        """Test delete operation when key doesn't exist."""
+        """Should delete operation when key doesn't exist."""
         cache = Cache()
 
         result = cache.delete("namespace", param="nonexistent")
@@ -174,7 +174,7 @@ class TestCacheExists:
     """Test cache exists operations."""
 
     def test_exists_true(self):
-        """Test exists when key is present."""
+        """Should exists when key is present."""
         cache = Cache()
 
         # Set a value
@@ -185,7 +185,7 @@ class TestCacheExists:
         assert result is True
 
     def test_exists_false(self):
-        """Test exists when key is not present."""
+        """Should exists when key is not present."""
         cache = Cache()
 
         result = cache.exists("namespace", param="nonexistent")
@@ -197,7 +197,7 @@ class TestCacheClear:
     """Test cache clear operations."""
 
     def test_clear_success(self):
-        """Test successful clear operation."""
+        """Should successful clear operation."""
         cache = Cache()
 
         # Set some values and stats
@@ -222,7 +222,7 @@ class TestCacheInvalidatePattern:
     """Test pattern-based cache invalidation."""
 
     def test_invalidate_pattern(self):
-        """Test that invalidate_pattern calls clear (simple implementation)."""
+        """Should invalidate_pattern calls clear (simple implementation)."""
         cache = Cache()
 
         # Set some values
@@ -241,7 +241,7 @@ class TestCacheWarming:
     """Test cache warming functionality."""
 
     def test_warm_cache_enabled(self):
-        """Test cache warming when enabled."""
+        """Should cache warming when enabled."""
         cache = Cache(enable_cache_warming=True)
 
         # Define warming functions
@@ -265,7 +265,7 @@ class TestCacheWarming:
         assert cache.get("namespace2", param="b") == "result2"
 
     def test_warm_cache_disabled(self):
-        """Test cache warming when disabled."""
+        """Should cache warming when disabled."""
         cache = Cache(enable_cache_warming=False)
 
         warming_functions = [
@@ -279,7 +279,7 @@ class TestCacheWarming:
         assert cache.get("namespace1") is None
 
     def test_warm_cache_already_cached(self):
-        """Test cache warming skips already cached items."""
+        """Should cache warming skips already cached items."""
         cache = Cache(enable_cache_warming=True)
 
         # Pre-cache a value
@@ -296,7 +296,7 @@ class TestCacheWarming:
         assert cache.get("namespace1", param="a") == "existing"
 
     def test_warm_cache_with_error(self):
-        """Test cache warming handles errors gracefully."""
+        """Should cache warming handles errors gracefully."""
         cache = Cache(enable_cache_warming=True)
 
         def failing_func(**kwargs):
@@ -317,7 +317,7 @@ class TestCacheStatistics:
     """Test cache statistics functionality."""
 
     def test_get_stats_empty(self):
-        """Test getting stats with no activity."""
+        """Should getting stats with no activity."""
         cache = Cache()
         stats = cache.get_stats()
 
@@ -335,7 +335,7 @@ class TestCacheStatistics:
         }
 
     def test_get_stats_with_activity(self):
-        """Test getting stats after some cache activity."""
+        """Should getting stats after some cache activity."""
         cache = Cache()
 
         # Simulate some activity
@@ -360,7 +360,7 @@ class TestCacheHealthCheck:
     """Test cache health check functionality."""
 
     def test_health_check_healthy(self):
-        """Test health check when cache is healthy."""
+        """Should health check when cache is healthy."""
         cache = Cache()
 
         health = cache.health_check()

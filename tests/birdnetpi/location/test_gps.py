@@ -28,7 +28,7 @@ class TestGPSService:
     """Test the GPSService class."""
 
     def test_initialization_disabled(self, gps_service):
-        """Test that GPSService initializes correctly when disabled."""
+        """Should gPSService initializes correctly when disabled."""
         assert not gps_service.enable_gps
         assert gps_service.update_interval == 1.0
         assert gps_service.current_location is None
@@ -37,7 +37,7 @@ class TestGPSService:
         assert len(gps_service.location_history) == 0
 
     def test_initialization_enabled(self):
-        """Test GPSService initialization when GPS is enabled."""
+        """Should gPSService initialization when GPS is enabled."""
         # Mock the gpsd module at import time
         mock_gpsd = MagicMock()
         with patch.dict("sys.modules", {"gpsd": mock_gpsd}):
@@ -47,7 +47,7 @@ class TestGPSService:
 
     @pytest.mark.asyncio
     async def test_start_stop_disabled(self, gps_service):
-        """Test starting and stopping GPS service when disabled."""
+        """Should starting and stopping GPS service when disabled."""
         await gps_service.start()
         assert not gps_service.is_running
 
@@ -56,7 +56,7 @@ class TestGPSService:
 
     @pytest.mark.asyncio
     async def test_start_stop_enabled(self, enabled_gps_service):
-        """Test starting and stopping GPS service when enabled."""
+        """Should starting and stopping GPS service when enabled."""
         service = enabled_gps_service
         service.gpsd_client.connect = MagicMock()
 
@@ -68,18 +68,18 @@ class TestGPSService:
         assert not service.is_running
 
     def test_get_current_location_disabled(self, gps_service):
-        """Test getting current location when GPS is disabled."""
+        """Should getting current location when GPS is disabled."""
         location = gps_service.get_current_location()
         assert location is None
 
     def test_get_current_location__no_fix(self, enabled_gps_service):
-        """Test getting current location when no GPS fix is available."""
+        """Should getting current location when no GPS fix is available."""
         service = enabled_gps_service
         location = service.get_current_location()
         assert location is None
 
     def test_get_current_location__fix(self, enabled_gps_service):
-        """Test getting current location with valid GPS fix."""
+        """Should getting current location with valid GPS fix."""
         service = enabled_gps_service
 
         # Create a recent location
@@ -103,7 +103,7 @@ class TestGPSService:
         assert location.satellite_count == 8
 
     def test_get_last_known_location(self, enabled_gps_service):
-        """Test getting last known location."""
+        """Should getting last known location."""
         service = enabled_gps_service
 
         test_location = GPSCoordinates(
@@ -122,7 +122,7 @@ class TestGPSService:
         assert location.longitude == -19.3647
 
     def test_get_location_at_time(self, enabled_gps_service):
-        """Test getting location at a specific time."""
+        """Should getting location at a specific time."""
         service = enabled_gps_service
 
         # Create test locations with different timestamps
@@ -152,7 +152,7 @@ class TestGPSService:
         assert location is None
 
     def test_get_location_history(self, enabled_gps_service):
-        """Test getting location history."""
+        """Should getting location history."""
         service = enabled_gps_service
 
         # Create test locations
@@ -169,7 +169,7 @@ class TestGPSService:
         assert history[1].latitude == 40.1
 
     def test_is_gps_available(self, gps_service, enabled_gps_service):
-        """Test GPS availability check."""
+        """Should GPS availability check."""
         # Disabled service
         assert not gps_service.is_gps_available()
 
@@ -183,7 +183,7 @@ class TestGPSService:
         assert enabled_gps_service.is_gps_available()
 
     def test_get_gps_status_disabled(self, gps_service):
-        """Test GPS status when disabled."""
+        """Should GPS status when disabled."""
         status = gps_service.get_gps_status()
         assert status["enabled"] is False
         assert status["running"] is False
@@ -191,7 +191,7 @@ class TestGPSService:
         assert status["last_update"] is None
 
     def test_get_gps_status_enabled__fix(self, enabled_gps_service):
-        """Test GPS status when enabled with GPS fix."""
+        """Should GPS status when enabled with GPS fix."""
         service = enabled_gps_service
         service.is_running = True
 
@@ -216,7 +216,7 @@ class TestGPSService:
 
     @pytest.mark.asyncio
     async def test_update_location__no_client(self, enabled_gps_service):
-        """Test location update when no GPSD client is available."""
+        """Should location update when no GPSD client is available."""
         service = enabled_gps_service
         service.gpsd_client = None
 
@@ -226,7 +226,7 @@ class TestGPSService:
 
     @pytest.mark.asyncio
     async def test_update_location__no_fix(self, enabled_gps_service):
-        """Test location update when GPS has no fix."""
+        """Should location update when GPS has no fix."""
         service = enabled_gps_service
 
         # Mock GPS packet with no fix
@@ -239,7 +239,7 @@ class TestGPSService:
 
     @pytest.mark.asyncio
     async def test_update_location__fix(self, enabled_gps_service):
-        """Test location update with valid GPS fix."""
+        """Should location update with valid GPS fix."""
         service = enabled_gps_service
 
         # Mock GPS packet with valid fix
@@ -264,7 +264,7 @@ class TestGPSService:
 
     @pytest.mark.asyncio
     async def test_update_location_history_limit(self, enabled_gps_service):
-        """Test that location history is limited to 100 entries."""
+        """Should location history is limited to 100 entries."""
         service = enabled_gps_service
 
         # Fill history with 100 locations

@@ -77,7 +77,7 @@ class TestLanguageMiddleware:
     """Test language middleware functionality."""
 
     def test_middleware_processes_request(self, client):
-        """Test that middleware processes requests without errors."""
+        """Should middleware processes requests without errors."""
         response = client.get("/test")
         assert response.status_code == 200
         data = response.json()
@@ -85,7 +85,7 @@ class TestLanguageMiddleware:
         assert "language" in data
 
     def test_default_language(self, client):
-        """Test default language when no Accept-Language header."""
+        """Should default language when no Accept-Language header."""
         response = client.get("/test")
         assert response.status_code == 200
         data = response.json()
@@ -94,14 +94,14 @@ class TestLanguageMiddleware:
         assert data["message"] == "Hello"
 
     def test_accept_language_header(self, client):
-        """Test language detection from Accept-Language header."""
+        """Should language detection from Accept-Language header."""
         response = client.get("/test", headers={"Accept-Language": "es-ES,es;q=0.9"})
         assert response.status_code == 200
         data = response.json()
         assert data["language"] == "es"
 
     def test_complex_accept_language(self, client):
-        """Test parsing complex Accept-Language headers."""
+        """Should parsing complex Accept-Language headers."""
         response = client.get(
             "/test", headers={"Accept-Language": "fr-CA,fr;q=0.9,en-US;q=0.8,en;q=0.7"}
         )
@@ -110,7 +110,7 @@ class TestLanguageMiddleware:
         assert data["language"] == "fr"
 
     def test_pluralization(self, client):
-        """Test ngettext pluralization support."""
+        """Should ngettext pluralization support."""
         # Singular
         response = client.get("/plural?count=1")
         assert response.status_code == 200
@@ -128,26 +128,26 @@ class TestTranslationManager:
     """Test TranslationManager functionality."""
 
     def test_initialization(self, mock_path_resolver):
-        """Test TranslationManager initialization."""
+        """Should translationManager initialization."""
         manager = TranslationManager(mock_path_resolver)
         assert manager.path_resolver == mock_path_resolver
         assert manager.default_language == "en"
         assert isinstance(manager.translations, dict)
 
     def test_get_translation_caching(self, translation_manager):
-        """Test that translations are cached."""
+        """Should translations are cached."""
         trans1 = translation_manager.get_translation("en")
         trans2 = translation_manager.get_translation("en")
         assert trans1 is trans2  # Same object, cached
 
     def test_get_translation_fallback(self, translation_manager):
-        """Test fallback for unsupported languages."""
+        """Should fallback for unsupported languages."""
         # Should fall back to NullTranslations for missing language
         trans = translation_manager.get_translation("xyz")
         assert isinstance(trans, GNUTranslations | NullTranslations)
 
     def test_install_for_request(self, translation_manager):
-        """Test installing translation for a request."""
+        """Should installing translation for a request."""
         request = Mock(spec=Request)
         request.headers = {"Accept-Language": "es-ES,es;q=0.9"}
 
@@ -155,7 +155,7 @@ class TestTranslationManager:
         assert isinstance(trans, GNUTranslations | NullTranslations)
 
     def test_install_for_request_no_header(self, translation_manager):
-        """Test installing translation when no Accept-Language header."""
+        """Should installing translation when no Accept-Language header."""
         request = Mock(spec=Request)
         request.headers = {}
 
@@ -174,7 +174,7 @@ class TestTranslationManager:
         ],
     )
     def test_language_parsing(self, translation_manager, header, expected_lang):
-        """Test parsing various Accept-Language header formats."""
+        """Should parsing various Accept-Language header formats."""
         request = Mock(spec=Request)
         request.headers = {"Accept-Language": header}
 
@@ -188,7 +188,7 @@ class TestJinja2Integration:
     """Test Jinja2 template integration."""
 
     def test_setup_jinja2_i18n(self):
-        """Test Jinja2 i18n setup."""
+        """Should jinja2 i18n setup."""
         from jinja2 import Environment
 
         from birdnetpi.i18n.translation_manager import setup_jinja2_i18n
@@ -207,7 +207,7 @@ class TestJinja2Integration:
         assert "ngettext" in templates.env.globals
 
     def test_template_translation_functions(self):
-        """Test that template translation functions work."""
+        """Should template translation functions work."""
         from jinja2 import Environment
 
         from birdnetpi.i18n.translation_manager import setup_jinja2_i18n
@@ -239,12 +239,12 @@ class TestTranslationFiles:
     """Test translation file handling."""
 
     def test_babel_config_exists(self):
-        """Test that babel.cfg configuration exists."""
+        """Should babel.cfg configuration exists."""
         babel_cfg = Path("babel.cfg")
         assert babel_cfg.exists(), "babel.cfg configuration file should exist"
 
     def test_locales_directory_structure(self):
-        """Test locales directory structure."""
+        """Should locales directory structure."""
         locales_dir = Path("locales")
         if locales_dir.exists():
             # Check for proper structure
@@ -256,7 +256,7 @@ class TestTranslationFiles:
                 assert en_dir.is_dir()
 
     def test_po_files_exist(self):
-        """Test that .po files exist for translations."""
+        """Should .po files exist for translations."""
         locales_dir = Path("locales")
         if locales_dir.exists():
             po_files = list(locales_dir.glob("*/LC_MESSAGES/*.po"))
@@ -264,7 +264,7 @@ class TestTranslationFiles:
             assert len(po_files) >= 0  # May not have any yet in early development
 
     def test_translation_extraction_config(self):
-        """Test that babel.cfg is properly configured."""
+        """Should babel.cfg is properly configured."""
         babel_cfg = Path("babel.cfg")
         if babel_cfg.exists():
             content = babel_cfg.read_text()

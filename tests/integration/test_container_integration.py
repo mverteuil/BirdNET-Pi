@@ -16,7 +16,7 @@ class TestContainerIntegration:
 
     @pytest.fixture
     def test_paths(self, tmp_path: Path, repo_root: Path):
-        """Create test directory structure with real assets copied."""
+        """Should create test directory structure with real assets copied."""
         # Create directory structure
         (tmp_path / "database").mkdir(parents=True)
         (tmp_path / "config").mkdir(parents=True)
@@ -44,7 +44,7 @@ class TestContainerIntegration:
 
     @pytest.fixture
     def test_resolver(self, test_paths: Path, repo_root: Path):
-        """Create a PathResolver configured for testing."""
+        """Should create a PathResolver configured for testing."""
         resolver = PathResolver()
 
         # Override writable paths to use temp directory
@@ -105,7 +105,7 @@ class TestContainerIntegration:
         time.sleep(0.01)
 
     def test_container_creation(self):
-        """Test that Container can be created without errors."""
+        """Should container can be created without errors."""
         container = Container()
         assert container is not None
         assert hasattr(container, "path_resolver")
@@ -113,7 +113,7 @@ class TestContainerIntegration:
         assert hasattr(container, "core_database")
 
     def test_container_wiring(self, container_with_overrides: Container):
-        """Test that Container can be wired with all modules."""
+        """Should container can be wired with all modules."""
         container_with_overrides.wire(
             modules=[
                 "birdnetpi.web.core.factory",
@@ -131,19 +131,19 @@ class TestContainerIntegration:
     def test_path_resolver_provider(
         self, container_with_overrides: Container, test_resolver: PathResolver
     ):
-        """Test that path_resolver provider returns the correct instance."""
+        """Should return the correct path_resolver instance from provider."""
         resolver = container_with_overrides.path_resolver()
         assert resolver is test_resolver
         assert resolver.get_database_path().parent.name == "database"
 
     def test_config_provider(self, container_with_overrides: Container):
-        """Test that config provider can be instantiated."""
+        """Should config provider can be instantiated."""
         config = container_with_overrides.config()
         assert config is not None
         assert hasattr(config, "site_name")
 
     def test_database_service_provider(self, container_with_overrides: Container, test_paths: Path):
-        """Test that core_database provider uses test paths."""
+        """Should core_database provider uses test paths."""
         db_service = container_with_overrides.core_database()
         try:
             assert isinstance(db_service, CoreDatabaseService)
@@ -154,17 +154,17 @@ class TestContainerIntegration:
             pass
 
     def test_species_database_provider(self, container_with_overrides: Container):
-        """Test that species_database can be instantiated."""
+        """Should species_database can be instantiated."""
         species_database = container_with_overrides.species_database()
         assert species_database is not None
 
     def test_cache_service_provider(self, container_with_overrides: Container):
-        """Test that cache_service can be instantiated (falls back to in-memory)."""
+        """Should cache_service can be instantiated (falls back to in-memory)."""
         cache_service = container_with_overrides.cache_service()
         assert cache_service is not None
 
     def test_all_critical_providers(self, container_with_overrides: Container):
-        """Test that all critical providers can be instantiated."""
+        """Should instantiate all critical providers successfully."""
         critical_providers = [
             "path_resolver",
             "config",
@@ -194,7 +194,7 @@ class TestContainerIntegration:
                 pytest.fail(f"Failed to instantiate {provider_name}: {e}")
 
     def test_provider_singleton_behavior(self, container_with_overrides: Container):
-        """Test that singleton providers return the same instance."""
+        """Should singleton providers return the same instance."""
         # Get two instances of a singleton provider
         db_service1 = container_with_overrides.core_database()
         db_service2 = container_with_overrides.core_database()
@@ -203,7 +203,7 @@ class TestContainerIntegration:
         assert db_service1 is db_service2
 
     def test_provider_factory_behavior(self, container_with_overrides: Container):
-        """Test that factory providers return new instances."""
+        """Should factory providers return new instances."""
         # detection_query_service is defined as a Factory
         service1 = container_with_overrides.detection_query_service()
         service2 = container_with_overrides.detection_query_service()
@@ -212,7 +212,7 @@ class TestContainerIntegration:
         assert service1 is not service2
 
     def test_container_reset_overrides(self, test_resolver: PathResolver):
-        """Test that overrides can be properly reset."""
+        """Should overrides can be properly reset."""
         container = Container()
 
         # Apply overrides

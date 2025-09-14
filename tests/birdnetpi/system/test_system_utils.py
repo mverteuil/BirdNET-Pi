@@ -15,7 +15,7 @@ def system_utils():
 
 @pytest.fixture
 def test_timezone_data():
-    """Provide test timezone data for various scenarios."""
+    """Should provide test timezone data for various scenarios."""
     return {
         "valid_timezones": [
             "America/New_York",
@@ -37,7 +37,7 @@ def test_timezone_data():
 
 @pytest.fixture
 def test_file_scenarios():
-    """Provide test scenarios for file operations."""
+    """Should provide test scenarios for file operations."""
     return {
         "file_not_found": FileNotFoundError("No such file or directory"),
         "permission_denied": PermissionError("Permission denied"),
@@ -49,7 +49,7 @@ def test_file_scenarios():
 
 @pytest.fixture
 def test_subprocess_scenarios():
-    """Provide test scenarios for subprocess operations."""
+    """Should provide test scenarios for subprocess operations."""
     return {
         "success": MagicMock(returncode=0, stdout="Success\n", stderr=""),
         "failure": MagicMock(returncode=1, stdout="", stderr="Error\n"),
@@ -242,7 +242,7 @@ class TestGitVersion:
 
     @patch("subprocess.run")
     def test_get_git_version__branch_failure(self, mock_run):
-        """Should handle branch command failure gracefully."""
+        """Should return 'unknown' branch name when branch command fails."""
         mock_run.side_effect = [
             MagicMock(returncode=1, stdout=""),
             MagicMock(returncode=0, stdout="abc12345\n"),
@@ -252,7 +252,7 @@ class TestGitVersion:
 
     @patch("subprocess.run")
     def test_get_git_version__commit_failure(self, mock_run):
-        """Should handle commit command failure gracefully."""
+        """Should return 'unknown' commit hash when commit command fails."""
         mock_run.side_effect = [
             MagicMock(returncode=0, stdout="main\n"),
             MagicMock(returncode=1, stdout=""),

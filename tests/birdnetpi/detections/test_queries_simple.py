@@ -40,13 +40,13 @@ class TestDetectionQueryServiceBasics:
     """Test basic DetectionQueryService functionality."""
 
     def test_parse_timestamp_datetime(self, detection_query_service):
-        """Test parsing datetime objects."""
+        """Should parsing datetime objects."""
         now = datetime.now(UTC)
         result = detection_query_service._parse_timestamp(now)
         assert result == now
 
     def test_parse_timestamp_string(self, detection_query_service):
-        """Test parsing ISO string timestamps."""
+        """Should parsing ISO string timestamps."""
         timestamp_str = "2024-01-15T10:30:00"
         result = detection_query_service._parse_timestamp(timestamp_str)
         assert isinstance(result, datetime)
@@ -55,7 +55,7 @@ class TestDetectionQueryServiceBasics:
         assert result.day == 15
 
     def test_apply_species_filter_single(self, detection_query_service):
-        """Test applying single species filter."""
+        """Should applying single species filter."""
         stmt = select(Detection)
         filtered = detection_query_service._apply_species_filter(stmt, "Turdus migratorius")
 
@@ -64,7 +64,7 @@ class TestDetectionQueryServiceBasics:
         assert "scientific_name" in str(filtered).lower()
 
     def test_apply_species_filter_list(self, detection_query_service):
-        """Test applying multiple species filter."""
+        """Should applying multiple species filter."""
         stmt = select(Detection)
         species_list = ["Turdus migratorius", "Cyanocitta cristata"]
         filtered = detection_query_service._apply_species_filter(stmt, species_list)
@@ -74,13 +74,13 @@ class TestDetectionQueryServiceBasics:
         assert "scientific_name" in str(filtered).lower()
 
     def test_apply_species_filter_none(self, detection_query_service):
-        """Test no filter when species is None."""
+        """Should no filter when species is None."""
         stmt = select(Detection)
         filtered = detection_query_service._apply_species_filter(stmt, None)
         assert filtered == stmt
 
     def test_apply_ordering(self, detection_query_service):
-        """Test applying order by clause."""
+        """Should applying order by clause."""
         stmt = select(Detection)
         ordered = detection_query_service._apply_ordering(stmt, "timestamp", True)
 
@@ -89,7 +89,7 @@ class TestDetectionQueryServiceBasics:
         assert "ORDER BY" in str(ordered)
 
     def test_build_order_clause(self, detection_query_service):
-        """Test building SQL order clause."""
+        """Should building SQL order clause."""
         # Test default ordering
         clause = detection_query_service._build_order_clause()
         assert "timestamp" in clause
@@ -102,7 +102,7 @@ class TestDetectionQueryServiceBasics:
 
     @pytest.mark.asyncio
     async def test_get_detection_count(self, detection_query_service, mock_core_database):
-        """Test counting detections in time range."""
+        """Should counting detections in time range."""
         # Setup mock
         mock_session = AsyncMock()
         mock_session.scalar = AsyncMock(return_value=42)
@@ -119,7 +119,7 @@ class TestDetectionQueryServiceBasics:
 
     @pytest.mark.asyncio
     async def test_get_unique_species_count(self, detection_query_service, mock_core_database):
-        """Test counting unique species."""
+        """Should counting unique species."""
         # Setup mock
         mock_session = AsyncMock()
         mock_session.scalar = AsyncMock(return_value=25)
@@ -136,7 +136,7 @@ class TestDetectionQueryServiceBasics:
 
     @pytest.mark.asyncio
     async def test_get_storage_metrics(self, detection_query_service, mock_core_database):
-        """Test getting storage metrics."""
+        """Should getting storage metrics."""
         # Setup mock
         mock_session = AsyncMock()
         mock_row = MagicMock()
@@ -158,7 +158,7 @@ class TestDetectionQueryServiceBasics:
 
     @pytest.mark.asyncio
     async def test_count_detections(self, detection_query_service, mock_core_database):
-        """Test counting detections with filters."""
+        """Should counting detections with filters."""
         # Setup mock
         mock_session = AsyncMock()
         mock_session.scalar = AsyncMock(return_value=150)
