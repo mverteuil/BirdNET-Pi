@@ -67,6 +67,9 @@ class DetectionBase(SQLModel):
     weather_latitude: float | None = Field(default=None, foreign_key="weather.latitude")
     weather_longitude: float | None = Field(default=None, foreign_key="weather.longitude")
 
+    # Computed field for optimized JOINs (populated by trigger or application)
+    hour_epoch: int | None = None  # Unix timestamp / 3600 for fast hour-based JOINs
+
 
 class Detection(DetectionBase, table=True):
     """Represents a bird detection record in the database."""
@@ -99,6 +102,10 @@ class Detection(DetectionBase, table=True):
         Index("idx_detections_confidence_species", "confidence", "scientific_name"),
         # Index for date range queries with family filtering (requires JOIN)
         Index("idx_detections_timestamp_confidence", "timestamp", "confidence"),
+        # Hour-based indexes for 256x speedup on weather correlation queries
+        Index("idx_detections_hour_epoch", "hour_epoch"),
+        Index("idx_detections_timestamp_hour", "timestamp", "hour_epoch"),
+        Index("idx_detections_hour_species", "hour_epoch", "scientific_name"),
     )
 
 

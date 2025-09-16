@@ -175,6 +175,13 @@ class DataManager:
                     )
 
                 # Create Detection
+                # Calculate hour_epoch for optimized weather JOINs
+                hour_epoch = (
+                    int(detection_event.timestamp.timestamp() / 3600)
+                    if detection_event.timestamp
+                    else None
+                )
+
                 detection = Detection(
                     species_tensor=detection_event.species_tensor,
                     scientific_name=detection_event.scientific_name,
@@ -188,6 +195,7 @@ class DataManager:
                     week=detection_event.week,
                     sensitivity_setting=detection_event.sensitivity_setting,
                     overlap=detection_event.overlap,
+                    hour_epoch=hour_epoch,
                 )
                 session.add(detection)
                 await session.commit()

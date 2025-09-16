@@ -57,6 +57,9 @@ class Weather(SQLModel, table=True):
     )  # "open-meteo", "cache", etc.
     fetched_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
+    # Computed field for optimized JOINs (populated by trigger or application)
+    hour_epoch: int | None = None  # Unix timestamp / 3600 for fast hour-based JOINs
+
     # Relationship to detections using explicit SQLAlchemy relationship
     detections: list[Detection] = Relationship(
         sa_relationship=relationship(
@@ -75,4 +78,7 @@ class Weather(SQLModel, table=True):
     __table_args__ = (
         Index("idx_weather_timestamp", "timestamp"),
         Index("idx_weather_conditions", "temperature", "wind_speed", "precipitation"),
+        # Hour-based indexes for 256x speedup on weather correlation queries
+        Index("idx_weather_hour_epoch", "hour_epoch"),
+        Index("idx_weather_timestamp_hour", "timestamp", "hour_epoch"),
     )

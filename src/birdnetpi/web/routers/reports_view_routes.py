@@ -98,8 +98,10 @@ async def get_ecological_analysis(
         comparison_period = None if comparison == "none" else comparison
 
         # Get formatted data from PresentationManager
+        # Set progressive=False to load all analytics data at once
+        # With our weather query optimization, this should be fast now
         template_data = await presentation_manager.get_analysis_page_data(
-            primary_period=period, comparison_period=comparison_period
+            primary_period=period, comparison_period=comparison_period, progressive=False
         )
 
         # Add request context and site info

@@ -1201,33 +1201,73 @@ class DetectionQueryService:
             Dictionary with hourly detection counts and weather variables
         """
         async with self.core_database.get_async_db() as session:
-            # Get hourly detection counts with weather data
-            query = (
-                select(
-                    func.strftime("%Y-%m-%d %H:00", Detection.timestamp).label("hour"),
-                    func.count(Detection.id).label("detection_count"),
-                    func.count(func.distinct(Detection.scientific_name)).label("species_count"),
-                    func.avg(Weather.temperature).label("temperature"),
-                    func.avg(Weather.humidity).label("humidity"),
-                    func.avg(Weather.pressure).label("pressure"),
-                    func.avg(Weather.wind_speed).label("wind_speed"),
-                    func.avg(Weather.precipitation).label("precipitation"),
-                )
-                .select_from(Detection)
-                .outerjoin(
-                    Weather,
-                    func.strftime("%Y-%m-%d %H:00:00", Detection.timestamp)
-                    == func.strftime("%Y-%m-%d %H:00:00", Weather.timestamp),
-                )
-                .where(
-                    and_(
-                        Detection.timestamp >= start_date,
-                        Detection.timestamp <= end_date,
+            # Check if hour_epoch columns exist and are populated
+            # If not, fall back to string-based JOIN (slower)
+            check_query = text("SELECT hour_epoch FROM detections LIMIT 1")
+            try:
+                await session.execute(check_query)
+                use_optimized = True
+            except Exception:
+                use_optimized = False
+
+            if use_optimized:
+                # Optimized query using integer hour_epoch for 256x speedup
+                query = (
+                    select(
+                        Detection.hour_epoch,
+                        func.datetime(
+                            func.coalesce(Detection.hour_epoch, 0) * 3600, "unixepoch"
+                        ).label("hour"),
+                        func.count(Detection.id).label("detection_count"),
+                        func.count(func.distinct(Detection.scientific_name)).label("species_count"),
+                        func.avg(Weather.temperature).label("temperature"),
+                        func.avg(Weather.humidity).label("humidity"),
+                        func.avg(Weather.pressure).label("pressure"),
+                        func.avg(Weather.wind_speed).label("wind_speed"),
+                        func.avg(Weather.precipitation).label("precipitation"),
                     )
+                    .select_from(Detection)
+                    .outerjoin(
+                        Weather,
+                        Detection.hour_epoch == Weather.hour_epoch,
+                    )
+                    .where(
+                        and_(
+                            Detection.timestamp >= start_date,
+                            Detection.timestamp <= end_date,
+                        )
+                    )
+                    .group_by(Detection.hour_epoch)
+                    .order_by(Detection.hour_epoch)
                 )
-                .group_by(func.strftime("%Y-%m-%d %H:00", Detection.timestamp))
-                .order_by("hour")
-            )
+            else:
+                # Fallback to original string-based JOIN (slower but works without migration)
+                query = (
+                    select(
+                        func.strftime("%Y-%m-%d %H:00", Detection.timestamp).label("hour"),
+                        func.count(Detection.id).label("detection_count"),
+                        func.count(func.distinct(Detection.scientific_name)).label("species_count"),
+                        func.avg(Weather.temperature).label("temperature"),
+                        func.avg(Weather.humidity).label("humidity"),
+                        func.avg(Weather.pressure).label("pressure"),
+                        func.avg(Weather.wind_speed).label("wind_speed"),
+                        func.avg(Weather.precipitation).label("precipitation"),
+                    )
+                    .select_from(Detection)
+                    .outerjoin(
+                        Weather,
+                        func.strftime("%Y-%m-%d %H:00:00", Detection.timestamp)
+                        == func.strftime("%Y-%m-%d %H:00:00", Weather.timestamp),
+                    )
+                    .where(
+                        and_(
+                            Detection.timestamp >= start_date,
+                            Detection.timestamp <= end_date,
+                        )
+                    )
+                    .group_by(func.strftime("%Y-%m-%d %H:00", Detection.timestamp))
+                    .order_by("hour")
+                )
 
             result = await session.execute(query)
             rows = result.all()

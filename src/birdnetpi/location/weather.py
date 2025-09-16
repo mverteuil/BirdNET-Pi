@@ -50,6 +50,11 @@ class WeatherManager:
             # Add location to weather data
             weather_data[0]["latitude"] = self.latitude
             weather_data[0]["longitude"] = self.longitude
+
+            # Calculate hour_epoch for optimized JOINs
+            if "timestamp" in weather_data[0] and weather_data[0]["timestamp"]:
+                weather_data[0]["hour_epoch"] = int(weather_data[0]["timestamp"].timestamp() / 3600)
+
             weather = Weather(**weather_data[0])
             self.session.add(weather)
             await self.session.flush()
@@ -171,6 +176,10 @@ class WeatherManager:
         # Add location to weather data
         hour_data["latitude"] = self.latitude
         hour_data["longitude"] = self.longitude
+
+        # Calculate hour_epoch for optimized JOINs
+        if hour_data.get("timestamp"):
+            hour_data["hour_epoch"] = int(hour_data["timestamp"].timestamp() / 3600)
 
         try:
             weather = Weather(**hour_data)

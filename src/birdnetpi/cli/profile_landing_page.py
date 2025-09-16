@@ -2,8 +2,12 @@
 
 import asyncio
 import logging
+import tempfile
+import webbrowser
+from pathlib import Path
 
 import click
+from pyinstrument import Profiler
 
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
@@ -12,13 +16,14 @@ from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.system.path_resolver import PathResolver
-from birdnetpi.utils.profiling import PerformanceProfiler
 
 
 async def profile_landing_page(
     verbose: bool = False,
     parallel: bool = False,
     component: str | None = None,
+    html_output: bool = False,
+    open_browser: bool = False,
 ) -> None:
     """Profile the landing page data fetching performance.
 
@@ -26,6 +31,8 @@ async def profile_landing_page(
         verbose: Show detailed timing for each operation
         parallel: Use parallel data fetching (experimental)
         component: Profile only a specific component (e.g., 'metrics', 'detection_log')
+        html_output: Generate HTML output instead of text
+        open_browser: Open HTML output in browser (requires html_output)
     """
     # Configure logging
     log_level = logging.DEBUG if verbose else logging.INFO
@@ -56,8 +63,8 @@ async def profile_landing_page(
     if parallel:
         logger.info("Note: Parallel mode is experimental and may not show improvements yet")
 
-    # Set up profiler
-    profiler = PerformanceProfiler("Landing Page Performance")
+    # Set up pyinstrument profiler
+    profiler = Profiler(async_mode="enabled")
 
     try:
         logger.info("Starting performance profiling...")
@@ -65,20 +72,21 @@ async def profile_landing_page(
         click.echo("LANDING PAGE PERFORMANCE PROFILE")
         click.echo("=" * 60)
 
+        # Start profiling
+        profiler.start()
+
         # Profile specific component or full page
         if component:
             logger.info(f"Profiling component: {component}")
-            await profile_component(
+            data = await profile_component(
                 presentation_manager,
                 analytics_manager,
                 detection_query_service,
                 component,
-                profiler,
             )
         else:
             # Profile the complete landing page data fetch
-            async with profiler.aprofile("total_landing_page"):
-                data = await presentation_manager.get_landing_page_data()
+            data = await presentation_manager.get_landing_page_data()
 
             # Display results summary
             click.echo("\n✓ Successfully fetched landing page data")
@@ -88,48 +96,62 @@ async def profile_landing_page(
             click.echo(f"  • Hourly distribution: {len(data.hourly_distribution)} hours")
             click.echo(f"  • Visualization data: {len(data.visualization_data)} points")
 
-        # Display timing report
-        click.echo("\n" + "-" * 60)
-        click.echo("PERFORMANCE REPORT")
-        click.echo("-" * 60)
-        report = profiler.get_report()
+        # Stop profiling
+        profiler.stop()
 
-        # Display total time prominently
-        click.echo(f"\n🕐 Total Time: {report['total_time']:.3f} seconds")
+        # Generate and display output
+        if html_output:
+            # Generate HTML output
+            output = profiler.output_html()
 
-        if report["operations"]:
-            click.echo("\nOperation Breakdown:")
-            # Sort by total time descending
-            sorted_ops = sorted(
-                report["operations"].items(), key=lambda x: x[1]["total"], reverse=True
-            )
+            if open_browser:
+                # Save to temp file and open in browser
+                with tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False) as f:
+                    f.write(output)
+                    temp_path = f.name
 
-            for operation, stats in sorted_ops:
-                click.echo(f"  • {operation}:")
-                click.echo(f"    - Total: {stats['total']:.3f}s")
-                if stats["count"] > 1:
-                    click.echo(f"    - Count: {stats['count']}")
-                    click.echo(f"    - Average: {stats['average']:.3f}s")
-                    click.echo(f"    - Min/Max: {stats['min']:.3f}s / {stats['max']:.3f}s")
-
-        # Performance analysis
-        click.echo("\n" + "-" * 60)
-        click.echo("PERFORMANCE ANALYSIS")
-        click.echo("-" * 60)
-
-        if report["total_time"] < 0.5:
-            click.secho("✅ Excellent: Page loads in under 500ms", fg="green")
-        elif report["total_time"] < 1.0:
-            click.secho("✅ Good: Page loads in under 1 second", fg="green")
-        elif report["total_time"] < 2.0:
-            click.secho("⚠️  Warning: Page takes 1-2 seconds to load", fg="yellow")
+                click.echo(f"\n✓ Opening profile in browser: {temp_path}")
+                webbrowser.open(f"file://{temp_path}")
+            else:
+                # Save to file in current directory
+                output_file = Path("landing_page_profile.html")
+                output_file.write_text(output)
+                click.echo(f"\n✓ Profile saved to: {output_file}")
+                click.echo("  Open in browser to view interactive flame graph")
         else:
-            click.secho("❌ Critical: Page takes over 2 seconds to load", fg="red")
-            click.echo("\nConsider:")
-            click.echo("  • Enabling caching for expensive queries")
-            click.echo("  • Using parallel data fetching (--parallel)")
-            click.echo("  • Optimizing database queries")
-            click.echo("  • Reducing the amount of data fetched")
+            # Generate text output
+            output = profiler.output_text(unicode=True, show_all=verbose)
+
+            # Display timing report
+            click.echo("\n" + "-" * 60)
+            click.echo("PERFORMANCE REPORT")
+            click.echo("-" * 60)
+            click.echo(output)
+
+            # Extract total time from profiler session
+            session = profiler.last_session
+            if session:
+                total_time = session.duration
+
+                # Performance analysis
+                click.echo("\n" + "-" * 60)
+                click.echo("PERFORMANCE ANALYSIS")
+                click.echo("-" * 60)
+                click.echo(f"\n🕐 Total Time: {total_time:.3f} seconds")
+
+                if total_time < 0.5:
+                    click.secho("✅ Excellent: Page loads in under 500ms", fg="green")
+                elif total_time < 1.0:
+                    click.secho("✅ Good: Page loads in under 1 second", fg="green")
+                elif total_time < 2.0:
+                    click.secho("⚠️  Warning: Page takes 1-2 seconds to load", fg="yellow")
+                else:
+                    click.secho("❌ Critical: Page takes over 2 seconds to load", fg="red")
+                    click.echo("\nConsider:")
+                    click.echo("  • Enabling caching for expensive queries")
+                    click.echo("  • Using parallel data fetching (--parallel)")
+                    click.echo("  • Optimizing database queries")
+                    click.echo("  • Reducing the amount of data fetched")
 
     finally:
         # Clean up
@@ -142,8 +164,7 @@ async def profile_component(
     analytics_manager: AnalyticsManager,
     detection_query_service: DetectionQueryService,
     component: str,
-    profiler: PerformanceProfiler,
-) -> None:
+) -> dict | list | None:
     """Profile a specific component of the landing page.
 
     Args:
@@ -151,7 +172,9 @@ async def profile_component(
         analytics_manager: The analytics manager instance
         detection_query_service: The detection query service instance
         component: Name of the component to profile
-        profiler: Performance profiler instance
+
+    Returns:
+        The result from the component function
     """
     component_map = {
         "metrics": analytics_manager.get_dashboard_summary,
@@ -164,19 +187,21 @@ async def profile_component(
     if component not in component_map:
         click.secho(f"❌ Unknown component: {component}", fg="red")
         click.echo(f"Available components: {', '.join(component_map.keys())}")
-        return
+        return None
 
-    async with profiler.aprofile(f"component_{component}"):
-        if asyncio.iscoroutinefunction(component_map[component]):
-            result = await component_map[component]()
-        else:
-            result = component_map[component]()
+    # Execute the component function
+    if asyncio.iscoroutinefunction(component_map[component]):
+        result = await component_map[component]()
+    else:
+        result = component_map[component]()
 
     click.echo(f"\n✓ Successfully profiled component: {component}")
     if isinstance(result, dict):
         click.echo(f"  Result keys: {', '.join(result.keys())}")
     elif isinstance(result, list):
         click.echo(f"  Result items: {len(result)}")
+
+    return result
 
 
 @click.command()
@@ -197,18 +222,26 @@ async def profile_component(
     ),
     help="Profile only a specific component",
 )
-def main(verbose: bool, parallel: bool, component: str | None) -> None:
+@click.option("--html", is_flag=True, help="Generate HTML output with interactive flame graph")
+@click.option("--browser", is_flag=True, help="Open HTML output in browser (requires --html)")
+def main(verbose: bool, parallel: bool, component: str | None, html: bool, browser: bool) -> None:
     """Profile the landing page performance to identify bottlenecks.
 
-    This command measures the time taken to fetch and format all data
-    required for the BirdNET-Pi landing page, helping identify performance
+    This command uses pyinstrument to measure the time taken to fetch and format
+    all data required for the BirdNET-Pi landing page, helping identify performance
     bottlenecks in the data pipeline.
 
     Examples:
-        # Basic profiling
+        # Basic text profiling
         profile-landing-page
 
-        # Verbose output with detailed timings
+        # Generate interactive HTML flame graph
+        profile-landing-page --html
+
+        # Open flame graph in browser
+        profile-landing-page --html --browser
+
+        # Verbose output with detailed call stack
         profile-landing-page --verbose
 
         # Test parallel data fetching
@@ -218,9 +251,13 @@ def main(verbose: bool, parallel: bool, component: str | None) -> None:
         profile-landing-page --component metrics
 
         # Combine options
-        profile-landing-page -v -p -c species_frequency
+        profile-landing-page -v --html --browser -c species_frequency
     """
-    asyncio.run(profile_landing_page(verbose, parallel, component))
+    if browser and not html:
+        click.secho("⚠️  --browser requires --html", fg="yellow")
+        html = True
+
+    asyncio.run(profile_landing_page(verbose, parallel, component, html, browser))
 
 
 if __name__ == "__main__":

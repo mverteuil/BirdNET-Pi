@@ -53,6 +53,8 @@ services:
       PA_ALSA_PLUGHW: 0
       # Profiling is explicitly disabled in production (pyinstrument not included)
       ENABLE_PROFILING: 0
+      # Enable uvicorn auto-reload for development (0=disabled, 1=enabled)
+      UVICORN_RELOAD: ${UVICORN_RELOAD:-0}
     ports:
       - "8000:8000"   # Caddy
     healthcheck:
@@ -92,6 +94,8 @@ services:
       PA_ALSA_PLUGHW: 0
       # Profiling is always enabled for this service
       ENABLE_PROFILING: 1
+      # Enable uvicorn auto-reload for development (0=disabled, 1=enabled)
+      UVICORN_RELOAD: ${UVICORN_RELOAD:-0}
     ports:
       - "8001:8000"   # Caddy (profiling on different port to avoid conflicts)
     healthcheck:
