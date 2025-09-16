@@ -28,8 +28,6 @@ class TestReportsViewRoutes:
                 "weekly_patterns": [],
                 "sparkline_data": {},
                 "week_patterns_data": {},
-                "heatmap_data": [],
-                "stem_leaf_data": [],
             }
         )
 

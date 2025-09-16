@@ -477,48 +477,6 @@ class TestSparklineGeneration:
         assert result == {}
 
 
-class TestHeatmapData:
-    """Test heatmap data generation."""
-
-    @pytest.mark.asyncio
-    async def test_get_heatmap_data_week(self, presentation_manager, mock_analytics_manager):
-        """Should heatmap data generation for weekly view."""
-        # Create 7x24 matrix for weekly heatmap
-        heatmap_data = [[0] * 24 for _ in range(7)]
-        heatmap_data[0][6] = 15  # Monday 6 AM
-        heatmap_data[0][7] = 25  # Monday 7 AM
-        heatmap_data[5][8] = 20  # Saturday 8 AM
-
-        mock_analytics_manager.get_weekly_heatmap_data = AsyncMock(return_value=heatmap_data)
-
-        result, title = await presentation_manager._get_heatmap_data("week")
-
-        assert len(result) == 7  # 7 days
-        assert len(result[0]) == 24  # 24 hours
-        assert "24-Hour Activity Pattern" in title
-        assert result[0][6] == 15
-        assert result[0][7] == 25
-
-    @pytest.mark.asyncio
-    async def test_get_heatmap_data_month(self, presentation_manager, mock_analytics_manager):
-        """Should heatmap data generation for monthly view."""
-        # For month view, it uses get_aggregate_hourly_pattern
-        # which might return weekly aggregates
-        heatmap_data = [[0] * 24 for _ in range(4)]  # 4 weeks
-        heatmap_data[0][12] = 30  # Week 1, noon
-
-        mock_analytics_manager.get_aggregate_hourly_pattern = AsyncMock(return_value=heatmap_data)
-
-        result, _title = await presentation_manager._get_heatmap_data("month")
-
-        # Check that the method was called with 30 days
-        mock_analytics_manager.get_aggregate_hourly_pattern.assert_called_once_with(30)
-
-        assert len(result) == 4  # 4 weeks for monthly aggregate
-        assert len(result[0]) == 24  # 24 hours
-        assert result[0][12] == 30
-
-
 class TestDiversityFormatting:
     """Test diversity data formatting methods."""
 

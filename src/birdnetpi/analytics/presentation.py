@@ -401,46 +401,6 @@ class PresentationManager:
 
         return sparkline_data
 
-    async def _get_heatmap_data(self, period: str) -> tuple[list, str]:
-        """Get heatmap data and title for the given period.
-
-        Args:
-            period: Current period for display
-
-        Returns:
-            Tuple of (heatmap_data, heatmap_title)
-        """
-        if period in ["day", "week"]:
-            # For day/week views, show past 7 days hourly pattern
-            heatmap_data = await self.analytics_manager.get_weekly_heatmap_data(7)
-            heatmap_title = "24-Hour Activity Pattern (Past 7 Days)"
-        else:
-            # For longer periods, use aggregate method that groups by week
-            period_days = {
-                "month": 30,
-                "season": 90,
-                "year": 365,
-                "historical": 3650,  # ~10 years
-            }
-            days_for_heatmap = period_days.get(period, 30)
-
-            # Use aggregate method for longer periods (returns weekly aggregates)
-            heatmap_data = await self.analytics_manager.get_aggregate_hourly_pattern(
-                days_for_heatmap
-            )
-
-            # Format the title based on period
-            period_labels = {
-                "month": "Past Month",
-                "season": "Past Season",
-                "year": "Past Year",
-                "historical": "All Time",
-            }
-            period_label = period_labels.get(period, "Selected Period")
-            heatmap_title = f"24-Hour Activity Pattern by Day of Week ({period_label})"
-
-        return heatmap_data, heatmap_title
-
     async def get_detection_display_data(
         self, period: str, detection_query_service: "DetectionQueryService"
     ) -> dict:
@@ -505,9 +465,6 @@ class PresentationManager:
             sampled_pattern = [day_pattern[h] if h < len(day_pattern) else 0 for h in sample_hours]
             week_patterns_data[f"{day}-chart"] = sampled_pattern
 
-        # Get heatmap data appropriate for the selected period
-        heatmap_data, heatmap_title = await self._get_heatmap_data(period)
-
         # Calculate statistics based on the actual species summary data
         period_species = len(species_frequency) if species_frequency else 0
         period_detections = (
@@ -552,8 +509,6 @@ class PresentationManager:
             # Chart data
             "sparkline_data": sparkline_data,
             "week_patterns_data": week_patterns_data,
-            "heatmap_data": heatmap_data,
-            "heatmap_title": heatmap_title,
             # Configuration
             "period": period,  # Pass current period for template highlighting
             "confidence_threshold": self.config.species_confidence_threshold,
@@ -719,9 +674,6 @@ class PresentationManager:
         # Pattern analyses tasks
         if "patterns" in analysis_types:
             tasks["temporal"] = self.analytics_manager.get_temporal_patterns()
-            tasks["heatmap"] = self.analytics_manager.get_aggregate_hourly_pattern(
-                days=self._get_days_for_period(primary_period)
-            )
 
         # Summary statistics task
         tasks["summary"] = self._generate_analysis_summary(primary_dates, comparison_dates)
@@ -764,14 +716,12 @@ class PresentationManager:
             )
 
         # Temporal patterns results
-        if "temporal" in results_dict and "heatmap" in results_dict:
+        if "temporal" in results_dict:
             temporal = results_dict["temporal"]
-            heatmap = results_dict["heatmap"]
             result["analyses"]["temporal_patterns"] = {
                 "hourly": temporal["hourly_distribution"],
                 "peak_hour": temporal["peak_hour"],
                 "periods": temporal["periods"],
-                "heatmap": heatmap,
             }
 
     # === FORMATTING METHODS ===
