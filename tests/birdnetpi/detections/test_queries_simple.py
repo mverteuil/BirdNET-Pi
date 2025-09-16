@@ -54,6 +54,12 @@ class TestDetectionQueryServiceBasics:
         assert result.month == 1
         assert result.day == 15
 
+    def test_parse_timestamp_invalid(self, detection_query_service):
+        """Should handle invalid timestamp formats."""
+        # Invalid string format should raise ValueError
+        with pytest.raises(ValueError):
+            detection_query_service._parse_timestamp("invalid-date")
+
     def test_apply_species_filter_single(self, detection_query_service):
         """Should applying single species filter."""
         stmt = select(Detection)
@@ -100,6 +106,31 @@ class TestDetectionQueryServiceBasics:
         assert "confidence" in clause
         assert "ASC" in clause
 
+    def test_get_species_display_name_with_detection_base(self, detection_query_service):
+        """Should get display name for DetectionBase."""
+        detection = MagicMock(spec=Detection)
+        detection.scientific_name = "Turdus migratorius"
+        detection.common_name = "American Robin"
+
+        # With prefer_translation=True (default), returns common name
+        result = detection_query_service.get_species_display_name(detection)
+        assert result == "American Robin"
+
+        # With prefer_translation=False, returns scientific name
+        result = detection_query_service.get_species_display_name(
+            detection, prefer_translation=False
+        )
+        assert result == "Turdus migratorius"
+
+    def test_get_species_display_name_no_common(self, detection_query_service):
+        """Should handle detection without common name."""
+        detection = MagicMock(spec=Detection)
+        detection.scientific_name = "Turdus migratorius"
+        detection.common_name = None
+
+        result = detection_query_service.get_species_display_name(detection)
+        assert result == "Turdus migratorius"
+
     @pytest.mark.asyncio
     async def test_get_detection_count(self, detection_query_service, mock_core_database):
         """Should counting detections in time range."""
@@ -135,6 +166,52 @@ class TestDetectionQueryServiceBasics:
         mock_session.scalar.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_count_by_species(self, detection_query_service, mock_core_database):
+        """Should count detections by species."""
+        # Setup mock
+        mock_session = AsyncMock()
+        mock_result = [
+            {"scientific_name": "Turdus migratorius", "count": 100},
+            {"scientific_name": "Cyanocitta cristata", "count": 50},
+        ]
+        # Mock the result object to be iterable
+        mock_execute_result = MagicMock()
+        mock_execute_result.__iter__ = lambda self: iter(mock_result)
+        mock_session.execute = AsyncMock(return_value=mock_execute_result)
+        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+
+        # Execute
+        start = datetime.now(UTC) - timedelta(days=1)
+        end = datetime.now(UTC)
+        counts = await detection_query_service.count_by_species(start, end)
+
+        # Verify
+        assert counts == {"Turdus migratorius": 100, "Cyanocitta cristata": 50}
+
+    @pytest.mark.asyncio
+    async def test_count_by_date(self, detection_query_service, mock_core_database):
+        """Should count detections by date."""
+        # Setup mock
+        mock_session = AsyncMock()
+        mock_date1 = datetime(2024, 1, 15).date()
+        mock_date2 = datetime(2024, 1, 16).date()
+        mock_result = [
+            {"date": mock_date1, "count": 75},
+            {"date": mock_date2, "count": 60},
+        ]
+        # Mock the result object to be iterable
+        mock_execute_result = MagicMock()
+        mock_execute_result.__iter__ = lambda self: iter(mock_result)
+        mock_session.execute = AsyncMock(return_value=mock_execute_result)
+        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+
+        # Execute
+        counts = await detection_query_service.count_by_date("Turdus migratorius")
+
+        # Verify
+        assert counts == {mock_date1: 75, mock_date2: 60}
+
+    @pytest.mark.asyncio
     async def test_get_storage_metrics(self, detection_query_service, mock_core_database):
         """Should getting storage metrics."""
         # Setup mock
@@ -155,6 +232,22 @@ class TestDetectionQueryServiceBasics:
         assert "total_duration" in metrics
         assert metrics["total_bytes"] == 1073741824
         assert metrics["total_duration"] == 7200.0
+
+    @pytest.mark.asyncio
+    async def test_get_storage_metrics_no_data(self, detection_query_service, mock_core_database):
+        """Should handle no storage data."""
+        # Setup mock
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.first.return_value = None  # No data
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+
+        # Execute
+        metrics = await detection_query_service.get_storage_metrics()
+
+        # Verify - returns empty dict or default values
+        assert metrics == {"total_bytes": 0, "total_duration": 0}
 
     @pytest.mark.asyncio
     async def test_count_detections(self, detection_query_service, mock_core_database):
