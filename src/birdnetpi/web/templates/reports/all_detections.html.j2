@@ -319,9 +319,9 @@
 
     <!-- Inline statistics -->
     <div class="inline-stats">
-        {% if period == 'day' %}Today{% elif period == 'week' %}This Week{% elif period == 'month' %}This Month{% elif period == 'year' %}This Year{% else %}All Time{% endif %}: <span class="stat-value">{{ today_species }}</span> species, <span class="stat-value">{{ today_detections }}</span> detections ·
-        Peak activity: <span class="stat-value">{{ peak_activity_time }}</span> ({{ peak_detections }} detections) ·
-        {% if new_species %}New this week: {% for species in new_species %}<span class="stat-value">{{ species }}</span>{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+        {{ period_label }}: <span class="stat-value">{{ today_species }}</span> species, <span class="stat-value">{{ today_detections }}</span> detections ·
+        Peak activity: <span class="stat-value">{{ peak_activity_time }}</span> ({{ peak_detections }} detection{%- if peak_detections != 1 -%}s{%- endif -%}) ·
+        {% if new_species %}New this {{ new_species_period }}: {% for species in new_species %}<span class="stat-value">{{ species }}</span>{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
     </div>
 
     <!-- Main content grid -->

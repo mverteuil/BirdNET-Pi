@@ -10,6 +10,7 @@ from birdnetpi.analytics.analytics import (
     DashboardSummaryDict,
     ScatterDataDict,
     SpeciesFrequencyDict,
+    TemporalPatternsDict,
 )
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.models import DetectionBase
@@ -245,6 +246,25 @@ class PresentationManager:
 
         return period_configs.get(period, period_configs["day"])
 
+    def _get_period_label(self, period: str) -> str:
+        """Get human-readable label for the period.
+
+        Args:
+            period: Period identifier
+
+        Returns:
+            Human-readable period label
+        """
+        period_labels = {
+            "day": "Today",
+            "week": "This Week",
+            "month": "This Month",
+            "season": "This Season",
+            "year": "This Year",
+            "historical": "All Time",
+        }
+        return period_labels.get(period, "This Period")
+
     async def _get_species_summary_data(
         self, detection_query_service: "DetectionQueryService | None", start_date: datetime | None
     ) -> list:
@@ -401,6 +421,41 @@ class PresentationManager:
 
         return sparkline_data
 
+    async def _get_period_temporal_patterns(
+        self, period: str, now: datetime
+    ) -> TemporalPatternsDict:
+        """Get temporal patterns for the specified period.
+
+        Args:
+            period: Time period ('day', 'week', etc.)
+            now: Current datetime
+
+        Returns:
+            Dictionary with hourly_distribution, peak_hour, and periods
+        """
+        if period == "day":
+            return await self.analytics_manager.get_temporal_patterns(date=now.date())
+
+        # For non-day views, aggregate weekly patterns to find actual peak
+        weekly_patterns = await self.analytics_manager.get_weekly_patterns()
+
+        # Combine all days to get overall hourly distribution
+        hourly_dist = [0] * 24
+        for day_data in weekly_patterns.values():
+            for hour, count in enumerate(day_data):
+                if hour < 24:
+                    hourly_dist[hour] += count
+
+        # Find the actual peak hour
+        max_count = max(hourly_dist) if hourly_dist else 0
+        peak_hour = hourly_dist.index(max_count) if max_count > 0 else 6
+
+        return {
+            "hourly_distribution": hourly_dist,
+            "peak_hour": peak_hour,
+            "periods": {},  # Not used for non-day views
+        }
+
     async def get_detection_display_data(
         self, period: str, detection_query_service: "DetectionQueryService"
     ) -> dict:
@@ -426,10 +481,8 @@ class PresentationManager:
         # Get species summary from appropriate source
         species_summary = await self._get_species_summary_data(detection_query_service, start_date)
 
-        # Get analytics data
-        temporal_patterns = await self.analytics_manager.get_temporal_patterns(
-            date=now.date() if period == "day" else None
-        )
+        # Get analytics data with period-appropriate temporal patterns
+        temporal_patterns = await self._get_period_temporal_patterns(period, now)
         dashboard_summary = await self.analytics_manager.get_dashboard_summary()
 
         # Format species frequency table
@@ -466,25 +519,40 @@ class PresentationManager:
             week_patterns_data[f"{day}-chart"] = sampled_pattern
 
         # Calculate statistics based on the actual species summary data
-        period_species = len(species_frequency) if species_frequency else 0
+        # Use the full species_summary for accurate counts, not the formatted frequency
+        period_species = len(species_summary) if species_summary else 0
         period_detections = (
-            sum(s.get("count", 0) for s in species_frequency) if species_frequency else 0
+            sum(s.get("detection_count", s.get("count", 0)) for s in species_summary)
+            if species_summary
+            else 0
         )
 
         # Find peak activity time from temporal patterns
-        peak_hour = temporal_patterns.get("peak_hour") or 6
-        peak_detections = temporal_patterns["hourly_distribution"][peak_hour] if peak_hour else 0
+        peak_hour = temporal_patterns.get("peak_hour", 6)
+        if peak_hour is None:
+            peak_hour = 6
+        hourly_dist = temporal_patterns.get("hourly_distribution", [0] * 24)
+        peak_detections = hourly_dist[peak_hour] if 0 <= peak_hour < len(hourly_dist) else 0
         peak_activity_time = f"{peak_hour:02d}:00-{(peak_hour + 1):02d}:00"
 
-        # Get new species this week (simplified - would need historical comparison)
+        # Get new species for the period (take rare/uncommon species)
         new_species = []
+        new_species_period = "week" if period == "day" else "period"
         if species_summary and len(species_summary) > 0:
-            # Take the most recently detected rare species as "new"
-            for species in species_summary[-3:]:
+            # Take species with low detection counts as potentially "new"
+            # Sort by count to get the rarest first
+            sorted_species = sorted(
+                species_summary, key=lambda x: x.get("detection_count", x.get("count", 0))
+            )
+            for species in sorted_species[:5]:  # Check first 5 rarest
                 if isinstance(species, dict):
                     name = species.get("common_name") or species.get("scientific_name")
-                    if name and species.get("detection_count", 0) < 5:
+                    count = species.get("detection_count", species.get("count", 0))
+                    # Consider species with very few detections as "new"
+                    if name and count <= 3:
                         new_species.append(name)
+                        if len(new_species) >= 2:  # Limit to 2 for display
+                            break
 
         trend_percentage = 18  # Would calculate from historical data
 
@@ -499,6 +567,7 @@ class PresentationManager:
             "peak_activity_time": peak_activity_time,
             "peak_detections": peak_detections,
             "new_species": new_species[:2],  # Limit to 2 for display
+            "new_species_period": new_species_period,  # Context for the period
             "trend_symbol": "↑" if trend_percentage > 0 else "↓" if trend_percentage < 0 else "→",
             "trend_percentage": abs(trend_percentage),
             # Main data
@@ -511,6 +580,7 @@ class PresentationManager:
             "week_patterns_data": week_patterns_data,
             # Configuration
             "period": period,  # Pass current period for template highlighting
+            "period_label": self._get_period_label(period),  # Human-readable period label
             "confidence_threshold": self.config.species_confidence_threshold,
             "migration_note": "Migration period may affect species diversity through October."
             if 8 <= now.month <= 10
