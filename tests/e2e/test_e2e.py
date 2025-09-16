@@ -7,7 +7,7 @@ import pytest
 
 @pytest.mark.expensive
 def test_root_endpoint_e2e(docker_compose_up_down) -> None:
-    """Should the root endpoint of the BirdNET-Pi application."""
+    """Should serve the root endpoint of the BirdNET-Pi application."""
     response = httpx.get("http://localhost:8000")
     assert response.status_code == 200
     assert "BirdNET-Pi" in response.text
@@ -15,7 +15,7 @@ def test_root_endpoint_e2e(docker_compose_up_down) -> None:
 
 @pytest.mark.expensive
 def test_sqladmin_detection_list_e2e(docker_compose_up_down) -> None:
-    """Should the SQLAdmin Detection list endpoint."""
+    """Should display the SQLAdmin Detection list endpoint."""
     # Generate dummy data first to ensure the database has detection records
     subprocess.run(
         ["docker", "exec", "birdnet-pi", "/opt/birdnetpi/.venv/bin/generate-dummy-data"],
