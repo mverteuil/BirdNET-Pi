@@ -17,10 +17,49 @@ def test_root_endpoint_e2e(docker_compose_up_down) -> None:
 def test_sqladmin_detection_list_e2e(docker_compose_up_down) -> None:
     """Should display the SQLAdmin Detection list endpoint."""
     # Generate dummy data first to ensure the database has detection records
-    subprocess.run(
-        ["docker", "exec", "birdnet-pi", "/opt/birdnetpi/.venv/bin/generate-dummy-data"],
-        check=True,
+    # Use capture_output to get error details if it fails
+    result = subprocess.run(
+        ["docker", "exec", "birdnet-pi", "python", "-m", "birdnetpi.cli.generate_dummy_data"],
+        capture_output=True,
+        text=True,
     )
+
+    if result.returncode != 0:
+        # If it fails due to missing column, recreate database and retry
+        if "no such column: detections.hour_epoch" in result.stderr:
+            # Remove old database to force recreation with new schema
+            subprocess.run(
+                [
+                    "docker",
+                    "exec",
+                    "birdnet-pi",
+                    "rm",
+                    "-f",
+                    "/var/lib/birdnetpi/database/birdnetpi.db",
+                ],
+                check=True,
+            )
+            # Restart container to recreate database
+            subprocess.run(["docker", "restart", "birdnet-pi"], check=True)
+            # Wait for container to be healthy
+            time.sleep(5)
+            # Retry dummy data generation
+            subprocess.run(
+                [
+                    "docker",
+                    "exec",
+                    "birdnet-pi",
+                    "python",
+                    "-m",
+                    "birdnetpi.cli.generate_dummy_data",
+                ],
+                check=True,
+            )
+        else:
+            # Other error, fail with details
+            print(f"stdout: {result.stdout}")
+            print(f"stderr: {result.stderr}")
+            result.check_returncode()
 
     # Wait for the FastAPI service to be fully ready after restart
     # Retry the basic endpoint first to ensure the service is up
