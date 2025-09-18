@@ -125,9 +125,11 @@ class TestStaticFilesIntegration:
         )
 
         with (
-            patch("birdnetpi.web.routers.admin_view_routes.ConfigManager") as mock_config_manager,
             patch(
-                "birdnetpi.web.routers.admin_view_routes.AudioDeviceService",
+                "birdnetpi.web.routers.settings_view_routes.ConfigManager"
+            ) as mock_config_manager,
+            patch(
+                "birdnetpi.web.routers.settings_view_routes.AudioDeviceService",
                 return_value=mock_audio_service,
             ),
             patch("birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin"),

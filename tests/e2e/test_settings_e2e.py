@@ -120,7 +120,7 @@ class TestSettingsE2E:
         # Patch AudioDeviceService at import
         with (
             patch(
-                "birdnetpi.web.routers.admin_view_routes.AudioDeviceService",
+                "birdnetpi.web.routers.settings_view_routes.AudioDeviceService",
                 return_value=mock_audio_service,
             ),
             patch(

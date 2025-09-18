@@ -117,8 +117,8 @@ class TestContainerIntegration:
         container_with_overrides.wire(
             modules=[
                 "birdnetpi.web.core.factory",
-                "birdnetpi.web.routers.admin_api_routes",
-                "birdnetpi.web.routers.admin_view_routes",
+                "birdnetpi.web.routers.settings_api_routes",
+                "birdnetpi.web.routers.settings_view_routes",
                 "birdnetpi.web.routers.detections_api_routes",
                 "birdnetpi.web.routers.multimedia_view_routes",
                 "birdnetpi.web.routers.sqladmin_view_routes",

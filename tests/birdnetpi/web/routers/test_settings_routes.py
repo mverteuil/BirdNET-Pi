@@ -109,9 +109,9 @@ def app_with_settings_routes(path_resolver, repo_root, test_config, mock_audio_d
 
     # Patch ConfigManager and AudioDeviceService - keep patches active during tests
     with (
-        patch("birdnetpi.web.routers.admin_view_routes.ConfigManager") as mock_config_mgr_class,
+        patch("birdnetpi.web.routers.settings_view_routes.ConfigManager") as mock_config_mgr_class,
         patch(
-            "birdnetpi.web.routers.admin_view_routes.AudioDeviceService",
+            "birdnetpi.web.routers.settings_view_routes.AudioDeviceService",
             return_value=mock_audio_service,
         ),
         patch(

@@ -10,8 +10,6 @@ from birdnetpi.web.core.lifespan import lifespan
 from birdnetpi.web.middleware.i18n import LanguageMiddleware
 from birdnetpi.web.middleware.request_logging import StructuredRequestLoggingMiddleware
 from birdnetpi.web.routers import (
-    admin_api_routes,
-    admin_view_routes,
     analysis_api_routes,
     detections_api_routes,
     health_api_routes,
@@ -19,6 +17,9 @@ from birdnetpi.web.routers import (
     logs_view_routes,
     multimedia_view_routes,
     reports_view_routes,
+    services_view_routes,
+    settings_api_routes,
+    settings_view_routes,
     sqladmin_view_routes,
     system_api_routes,
     websocket_routes,
@@ -92,8 +93,6 @@ def create_app() -> FastAPI:
     container.wire(
         modules=[
             "birdnetpi.web.core.factory",  # Wire factory for root route
-            "birdnetpi.web.routers.admin_api_routes",
-            "birdnetpi.web.routers.admin_view_routes",
             "birdnetpi.web.routers.analysis_api_routes",
             "birdnetpi.web.routers.detections_api_routes",
             "birdnetpi.web.routers.health_api_routes",
@@ -101,6 +100,9 @@ def create_app() -> FastAPI:
             "birdnetpi.web.routers.logs_view_routes",
             "birdnetpi.web.routers.multimedia_view_routes",
             "birdnetpi.web.routers.reports_view_routes",
+            "birdnetpi.web.routers.services_view_routes",
+            "birdnetpi.web.routers.settings_api_routes",
+            "birdnetpi.web.routers.settings_view_routes",
             "birdnetpi.web.routers.sqladmin_view_routes",
             "birdnetpi.web.routers.system_api_routes",
             "birdnetpi.web.routers.websocket_routes",
@@ -115,8 +117,8 @@ def create_app() -> FastAPI:
     # Note: health router already has tags=["health"] defined internally
     app.include_router(health_api_routes.router, prefix="/api/health")
 
-    # Admin API routes
-    app.include_router(admin_api_routes.router, prefix="/admin/config", tags=["Admin API"])
+    # Settings API routes
+    app.include_router(settings_api_routes.router, prefix="/admin/config", tags=["Settings API"])
 
     # System API routes
     app.include_router(system_api_routes.router, prefix="/api/system", tags=["System API"])
@@ -137,11 +139,11 @@ def create_app() -> FastAPI:
 
     # === View Routes (excluded from API documentation) ===
 
-    # Admin view routes (HTML pages)
+    # Settings view routes (HTML pages)
     app.include_router(
-        admin_view_routes.router,
+        settings_view_routes.router,
         prefix="/admin",
-        tags=["Admin Views"],
+        tags=["Settings Views"],
         include_in_schema=False,  # Exclude from API docs
     )
 
@@ -150,6 +152,13 @@ def create_app() -> FastAPI:
         logs_view_routes.router,
         prefix="/admin",
         tags=["Logs Views"],
+        include_in_schema=False,  # Exclude from API docs
+    )
+
+    # Services view routes (HTML page for service status)
+    app.include_router(
+        services_view_routes.router,
+        tags=["Services Views"],
         include_in_schema=False,  # Exclude from API docs
     )
 

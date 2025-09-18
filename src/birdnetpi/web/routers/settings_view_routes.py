@@ -1,4 +1,4 @@
-"""Admin routes for system management, settings, logs, and testing."""
+"""Settings view routes for configuration UI and testing tools."""
 
 import datetime
 import json

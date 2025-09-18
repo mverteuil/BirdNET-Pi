@@ -190,29 +190,6 @@ class TestLogsAPIRoutes:
         assert debug_level["value"] == 10
         assert debug_level["color"] == "#6c757d"
 
-    def test_get_services(self, app_with_temp_data):
-        """Should return list of available services with status information."""
-        # Mock SystemControlService is not needed since we return static list
-        with TestClient(app_with_temp_data) as client:
-            response = client.get("/api/services")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert "services" in data
-        assert "total" in data
-        assert len(data["services"]) > 0
-
-        # Check service structure
-        for service in data["services"]:
-            assert "name" in service
-            assert "running" in service
-            assert "status" in service
-
-        # Check known services are present
-        service_names = [s["name"] for s in data["services"]]
-        assert "fastapi" in service_names
-        assert "audio_capture" in service_names
-
     def test_log_entry_parsing_edge_cases(self, app_with_temp_data):
         """Should handle malformed log entries gracefully."""
         mock_log_reader = AsyncMock(spec=LogReaderService)

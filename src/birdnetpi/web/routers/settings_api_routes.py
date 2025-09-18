@@ -1,4 +1,4 @@
-"""Admin API routes for configuration and system management."""
+"""Settings API routes for configuration management and validation."""
 
 import yaml
 from dependency_injector.wiring import Provide, inject

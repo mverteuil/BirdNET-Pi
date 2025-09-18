@@ -11,7 +11,6 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 
 from birdnetpi.system.log_reader import LogReaderService
-from birdnetpi.system.system_control import SystemControlService
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.logs import LOG_LEVELS, LogEntry
 
@@ -213,47 +212,3 @@ async def get_log_levels() -> list[dict[str, Any]]:
         List of log level information for UI
     """
     return [level.model_dump() for level in LOG_LEVELS]
-
-
-@router.get("/services")
-@inject
-async def get_services(
-    system_control: SystemControlService = Depends(  # noqa: B008
-        Provide[Container.system_control_service]
-    ),
-) -> dict[str, Any]:
-    """Get list of available services.
-
-    This endpoint returns a predefined list of BirdNET-Pi services.
-    In the future, this could be enhanced to dynamically discover services.
-
-    Args:
-        system_control: Injected system control service (for future use)
-
-    Returns:
-        Dictionary with service information
-    """
-    # Define known BirdNET-Pi services
-    # In production, these would be discovered from supervisorctl or systemd
-    services = [
-        {"name": "fastapi", "running": True, "status": "running"},
-        {"name": "audio_capture", "running": True, "status": "running"},
-        {"name": "audio_analysis", "running": True, "status": "running"},
-        {"name": "audio_websocket", "running": True, "status": "running"},
-        {"name": "caddy", "running": True, "status": "running"},
-        {"name": "memcached", "running": True, "status": "running"},
-    ]
-
-    # In the future, we could check actual status for each service
-    # for service in services:
-    #     try:
-    #         status = system_control.get_service_status(service["name"])
-    #         service["status"] = status
-    #         service["running"] = "running" in status.lower()
-    #     except Exception:
-    #         pass
-
-    return {
-        "services": services,
-        "total": len(services),
-    }

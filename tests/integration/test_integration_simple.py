@@ -22,21 +22,21 @@ def test_simple_startup():
         assert response.json() == {"message": "Hello World"}
 
 
-def test_admin_view_routes_endpoints():
-    """Should admin router endpoints are accessible."""
+def test_settings_view_routes_endpoints():
+    """Should have settings router endpoints accessible."""
     import tempfile
     from pathlib import Path
 
     from fastapi import FastAPI
 
-    from birdnetpi.web.routers import admin_view_routes
+    from birdnetpi.web.routers import settings_view_routes
 
     # Use temporary directory for mock paths to prevent MagicMock folder creation
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
 
         app = FastAPI()
-        app.include_router(admin_view_routes.router)
+        app.include_router(settings_view_routes.router)
 
         # Mock dependencies
         app.state.templates = MagicMock()
@@ -51,7 +51,7 @@ def test_admin_view_routes_endpoints():
         mock_config = MagicMock()
         mock_config.site_name = "Test Site"
 
-        with patch("birdnetpi.web.routers.admin_view_routes.ConfigManager") as mock_parser:
+        with patch("birdnetpi.web.routers.settings_view_routes.ConfigManager") as mock_parser:
             mock_parser.return_value.load.return_value = mock_config
 
             with TestClient(app) as client:

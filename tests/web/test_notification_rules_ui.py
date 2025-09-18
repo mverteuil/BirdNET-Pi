@@ -52,15 +52,16 @@ def app_with_notification_rules(path_resolver, repo_root, mock_config_with_rules
         # Patch classes during app creation
         with (
             patch(
-                "birdnetpi.web.routers.admin_view_routes.ConfigManager",
+                "birdnetpi.web.routers.settings_view_routes.ConfigManager",
                 return_value=mock_config_manager,
             ),
             patch(
-                "birdnetpi.web.routers.admin_view_routes.AudioDeviceService",
+                "birdnetpi.web.routers.settings_view_routes.AudioDeviceService",
                 return_value=mock_audio_service,
             ),
             patch(
-                "birdnetpi.web.routers.admin_view_routes.PathResolver", return_value=path_resolver
+                "birdnetpi.web.routers.settings_view_routes.PathResolver",
+                return_value=path_resolver,
             ),
             patch("birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin"),
         ):
@@ -197,7 +198,7 @@ def app_for_api_test(path_resolver, repo_root):
 
 def test_validate_species_endpoint(app_for_api_test):
     """Should the species validation API endpoint."""
-    with patch("birdnetpi.web.routers.admin_api_routes.IOCDatabaseService") as mock_ioc:
+    with patch("birdnetpi.web.routers.settings_api_routes.IOCDatabaseService") as mock_ioc:
         mock_ioc.return_value.species_exists.side_effect = lambda name: name == "Turdus migratorius"
 
         with TestClient(app_for_api_test) as client:

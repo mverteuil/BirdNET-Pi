@@ -1,11 +1,11 @@
-"""Tests for admin API routes."""
+"""Tests for settings API routes."""
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from birdnetpi.web.core.container import Container
-from birdnetpi.web.routers.admin_api_routes import router
+from birdnetpi.web.routers.settings_api_routes import router
 
 
 @pytest.fixture
@@ -25,7 +25,7 @@ def client(tmp_path, path_resolver):
     container.path_resolver.override(path_resolver)
 
     # Wire the container
-    container.wire(modules=["birdnetpi.web.routers.admin_api_routes"])
+    container.wire(modules=["birdnetpi.web.routers.settings_api_routes"])
     app.container = container  # type: ignore[attr-defined]
 
     # Include the router with the same prefix as in factory
@@ -40,8 +40,8 @@ def client(tmp_path, path_resolver):
     return client
 
 
-class TestAdminAPIRoutes:
-    """Test class for admin API endpoints."""
+class TestSettingsAPIRoutes:
+    """Test class for settings API endpoints."""
 
     def test_validate_yaml_config_valid(self, client, tmp_path):
         """Should YAML config validation with valid YAML."""

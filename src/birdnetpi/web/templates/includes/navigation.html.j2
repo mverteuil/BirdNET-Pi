@@ -26,6 +26,10 @@
         cursor: pointer;
         position: relative;
         padding-right: 20px;  /* Space for arrow */
+        background: none;
+        border: none;
+        font: inherit;
+        color: inherit;
     }
 
     /* Dropdown arrow */
@@ -59,8 +63,9 @@
         margin-top: 5px;
     }
 
-    /* Show menu on hover */
-    .admin-dropdown:hover .admin-menu {
+    /* Show menu on hover or when focused within */
+    .admin-dropdown:hover .admin-menu,
+    .admin-dropdown:focus-within .admin-menu {
         display: block;
     }
 
@@ -111,20 +116,99 @@
 
 <!-- Navigation -->
 <nav class="main-nav" role="navigation" aria-label="Main navigation">
-    <a href="/" class="nav-item{% if active_page == 'dashboard' %} active{% endif %}">Dashboard</a>
-    <a href="/detections" class="nav-item{% if active_page == 'detections' %} active{% endif %}">Detections</a>
-    <a href="/reports/best" class="nav-item{% if active_page == 'best' %} active{% endif %}">Best Recordings</a>
-    <a href="/livestream" class="nav-item{% if active_page == 'livestream' %} active{% endif %}">Audio Stream</a>
-    <a href="/reports/analysis" class="nav-item{% if active_page == 'analysis' %} active{% endif %}">Analysis</a>
-    <a href="/docs" class="nav-item{% if active_page == 'api' %} active{% endif %}">API</a>
+    <a href="/" class="nav-item{% if active_page == 'dashboard' %} active{% endif %}"
+       {% if active_page == 'dashboard' %}aria-current="page"{% endif %}>Dashboard</a>
+    <a href="/detections" class="nav-item{% if active_page == 'detections' %} active{% endif %}"
+       {% if active_page == 'detections' %}aria-current="page"{% endif %}>Detections</a>
+    <a href="/reports/best" class="nav-item{% if active_page == 'best' %} active{% endif %}"
+       {% if active_page == 'best' %}aria-current="page"{% endif %}>Best Recordings</a>
+    <a href="/livestream" class="nav-item{% if active_page == 'livestream' %} active{% endif %}"
+       {% if active_page == 'livestream' %}aria-current="page"{% endif %}>Audio Stream</a>
+    <a href="/reports/analysis" class="nav-item{% if active_page == 'analysis' %} active{% endif %}"
+       {% if active_page == 'analysis' %}aria-current="page"{% endif %}>Analysis</a>
+    <a href="/docs" class="nav-item{% if active_page == 'api' %} active{% endif %}"
+       {% if active_page == 'api' %}aria-current="page"{% endif %}>API</a>
 
     <!-- Admin dropdown (right-aligned) -->
-    <div class="admin-dropdown">
-        <span class="nav-item{% if active_page in ['settings', 'logs', 'database'] %} active{% endif %}">Admin</span>
-        <div class="admin-menu">
-            <a href="/admin/settings" class="{% if active_page == 'settings' %}active{% endif %}">Settings</a>
-            <a href="/admin/logs" class="{% if active_page == 'logs' %}active{% endif %}">Logs</a>
-            <a href="/admin/database" class="{% if active_page == 'database' %}active{% endif %}">Database</a>
+    <div class="admin-dropdown" role="region" aria-label="Administration menu">
+        <button class="nav-item{% if active_page in ['settings', 'logs', 'database', 'services'] %} active{% endif %}"
+                type="button"
+                aria-expanded="false"
+                aria-haspopup="true"
+                aria-controls="admin-menu"
+                onkeydown="if(event.key === 'Escape') this.blur();">
+            Admin
+        </button>
+        <div class="admin-menu" id="admin-menu" role="menu" aria-labelledby="admin-button">
+            <a href="/admin/settings" role="menuitem"
+               class="{% if active_page == 'settings' %}active{% endif %}"
+               {% if active_page == 'settings' %}aria-current="page"{% endif %}>Settings</a>
+            <a href="/admin/services" role="menuitem"
+               class="{% if active_page == 'services' %}active{% endif %}"
+               {% if active_page == 'services' %}aria-current="page"{% endif %}>System Services</a>
+            <a href="/admin/logs" role="menuitem"
+               class="{% if active_page == 'logs' %}active{% endif %}"
+               {% if active_page == 'logs' %}aria-current="page"{% endif %}>Logs</a>
+            <a href="/admin/database" role="menuitem"
+               class="{% if active_page == 'database' %}active{% endif %}"
+               {% if active_page == 'database' %}aria-current="page"{% endif %}>Database</a>
         </div>
     </div>
 </nav>
+
+<script>
+    // Handle ARIA states for the admin dropdown
+    (function() {
+        const dropdown = document.querySelector('.admin-dropdown');
+        const button = dropdown.querySelector('button');
+        const menu = dropdown.querySelector('.admin-menu');
+
+        // Update aria-expanded on hover/focus
+        dropdown.addEventListener('mouseenter', function() {
+            button.setAttribute('aria-expanded', 'true');
+        });
+
+        dropdown.addEventListener('mouseleave', function() {
+            button.setAttribute('aria-expanded', 'false');
+        });
+
+        button.addEventListener('focus', function() {
+            button.setAttribute('aria-expanded', 'true');
+        });
+
+        button.addEventListener('blur', function(e) {
+            // Check if focus moved to a child element
+            setTimeout(() => {
+                if (!dropdown.contains(document.activeElement)) {
+                    button.setAttribute('aria-expanded', 'false');
+                }
+            }, 0);
+        });
+
+        // Handle Enter/Space key on button
+        button.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                const firstLink = menu.querySelector('a');
+                if (firstLink) firstLink.focus();
+            }
+        });
+
+        // Handle arrow keys in menu
+        menu.addEventListener('keydown', function(e) {
+            const items = Array.from(menu.querySelectorAll('a'));
+            const currentIndex = items.indexOf(document.activeElement);
+
+            if (e.key === 'ArrowDown' && currentIndex < items.length - 1) {
+                e.preventDefault();
+                items[currentIndex + 1].focus();
+            } else if (e.key === 'ArrowUp' && currentIndex > 0) {
+                e.preventDefault();
+                items[currentIndex - 1].focus();
+            } else if (e.key === 'Escape') {
+                button.focus();
+                button.setAttribute('aria-expanded', 'false');
+            }
+        });
+    })();
+</script>

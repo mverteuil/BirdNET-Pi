@@ -1,0 +1,308 @@
+{% extends "base.html.j2" %}
+
+{% block title %}{{ _('System Services') }}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ request.url_for('static', path='css/services.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="services-container">
+    <!-- Skip navigation link for screen readers -->
+    <a href="#services-grid" class="skip-link">{{ _('Skip to services') }}</a>
+
+    <h1>{{ _('System Services') }}</h1>
+
+    <!-- System Status Card -->
+    <div class="system-card" role="region" aria-labelledby="system-heading">
+        <h2 id="system-heading" class="card-title">
+            <i class="fas fa-server" aria-hidden="true"></i>
+            {{ _('System Status') }}
+        </h2>
+
+        <div class="system-info">
+            <div class="info-row">
+                <span class="info-label">{{ _('Deployment Type:') }}</span>
+                <span class="info-value">
+                    {% if deployment_type == 'docker' %}
+                        <i class="fab fa-docker" aria-hidden="true"></i> Docker Container
+                    {% elif deployment_type == 'sbc' %}
+                        <i class="fas fa-microchip" aria-hidden="true"></i> Single Board Computer
+                    {% else %}
+                        <i class="fas fa-question" aria-hidden="true"></i> Unknown
+                    {% endif %}
+                </span>
+            </div>
+
+            <div class="info-row">
+                <span class="info-label">{{ _('Uptime:') }}</span>
+                <span class="info-value" id="system-uptime">{{ system_info.uptime_formatted }}</span>
+            </div>
+        </div>
+
+        <div class="system-actions">
+            <button
+                type="button"
+                class="btn btn-secondary"
+                id="reload-config-btn"
+                aria-label="{{ _('Reload service configuration without restarting') }}"
+                title="{{ _('Reload configuration files') }}"
+            >
+                <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                {{ _('Reload Config') }}
+            </button>
+
+            {% if system_info.reboot_available %}
+            <button
+                type="button"
+                class="btn btn-danger"
+                id="reboot-system-btn"
+                aria-label="{{ _('Reboot the system') }}"
+                title="{{ _('Reboot system/container') }}"
+            >
+                <i class="fas fa-power-off" aria-hidden="true"></i>
+                {{ _('Reboot System') }}
+            </button>
+            {% endif %}
+
+            <button
+                type="button"
+                class="btn btn-primary"
+                id="refresh-status-btn"
+                aria-label="{{ _('Refresh all service statuses') }}"
+                title="{{ _('Refresh status') }}"
+            >
+                <i class="fas fa-refresh" aria-hidden="true"></i>
+                {{ _('Refresh') }}
+            </button>
+        </div>
+    </div>
+
+    <!-- Services Grid -->
+    <div id="services-grid" class="services-grid" role="region" aria-labelledby="services-heading">
+        <h2 id="services-heading" class="visually-hidden">{{ _('Services') }}</h2>
+
+        {% for service in services %}
+        {# Skip PulseAudio in Docker deployments if it's not running #}
+        {% if not (service.name == 'pulseaudio' and deployment_type == 'docker' and service.optional and service.status in ['unknown', 'inactive', 'error']) %}
+        <div
+            class="service-card {% if service.optional and service.status == 'error' %}service-unavailable{% endif %}"
+            role="article"
+            aria-labelledby="service-{{ loop.index }}-name"
+            data-service-name="{{ service.name }}"
+            data-service-critical="{{ 'true' if service.critical else 'false' }}"
+        >
+            <div class="service-header">
+                <h3 id="service-{{ loop.index }}-name" class="service-name">
+                    {{ service.name }}
+                    {% if service.critical %}
+                    <span class="badge badge-warning" title="{{ _('Critical service') }}">
+                        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                        <span class="visually-hidden">{{ _('Critical') }}</span>
+                    </span>
+                    {% endif %}
+                </h3>
+
+                <div
+                    class="service-status status-{{ service.status }}"
+                    role="status"
+                    aria-live="polite"
+                    aria-label="{{ _('Service status:') }} {{ service.status }}"
+                >
+                    {% if service.status == 'active' %}
+                        <i class="fas fa-circle text-success" aria-hidden="true"></i>
+                        <span>{{ _('Running') }}</span>
+                    {% elif service.status == 'inactive' %}
+                        <i class="fas fa-circle text-secondary" aria-hidden="true"></i>
+                        <span>{{ _('Stopped') }}</span>
+                    {% elif service.status == 'starting' %}
+                        <i class="fas fa-spinner fa-spin text-info" aria-hidden="true"></i>
+                        <span>{{ _('Starting') }}</span>
+                    {% elif service.status == 'failed' %}
+                        <i class="fas fa-times-circle text-danger" aria-hidden="true"></i>
+                        <span>{{ _('Failed') }}</span>
+                    {% else %}
+                        <i class="fas fa-question-circle text-muted" aria-hidden="true"></i>
+                        <span>{{ _('Unknown') }}</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <p class="service-description">{{ service.description }}</p>
+
+            <div class="service-details">
+                {% if service.pid %}
+                <div class="detail-row">
+                    <span class="detail-label">{{ _('PID:') }}</span>
+                    <span class="detail-value">{{ service.pid }}</span>
+                </div>
+                {% endif %}
+
+                {% if service.uptime_formatted and service.status == 'active' %}
+                <div class="detail-row">
+                    <span class="detail-label">{{ _('Uptime:') }}</span>
+                    <span class="detail-value service-uptime">{{ service.uptime_formatted }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="service-actions">
+                {% if not (service.optional and service.status == 'error') %}
+                    {% if service.status == 'active' %}
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-warning service-action-btn"
+                        data-action="restart"
+                        data-service="{{ service.name }}"
+                        aria-label="{{ _('Restart') }} {{ service.name }}"
+                    >
+                        <i class="fas fa-redo" aria-hidden="true"></i>
+                        {{ _('Restart') }}
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-danger service-action-btn"
+                        data-action="stop"
+                        data-service="{{ service.name }}"
+                        aria-label="{{ _('Stop') }} {{ service.name }}"
+                    >
+                        <i class="fas fa-stop" aria-hidden="true"></i>
+                        {{ _('Stop') }}
+                    </button>
+                    {% else %}
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-success service-action-btn"
+                        data-action="start"
+                        data-service="{{ service.name }}"
+                        aria-label="{{ _('Start') }} {{ service.name }}"
+                    >
+                        <i class="fas fa-play" aria-hidden="true"></i>
+                        {{ _('Start') }}
+                    </button>
+                    {% endif %}
+                {% else %}
+                    <span class="text-muted">{{ _('Service not available') }}</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- Status message area for screen readers -->
+    <div
+        id="status-message"
+        class="visually-hidden"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+    ></div>
+</div>
+
+<!-- Confirmation Modal for Critical Services -->
+<div
+    class="modal fade"
+    id="confirmModal"
+    tabindex="-1"
+    role="dialog"
+    aria-labelledby="confirmModalLabel"
+    aria-hidden="true"
+>
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmModalLabel">
+                    <i class="fas fa-exclamation-triangle text-warning" aria-hidden="true"></i>
+                    {{ _('Confirm Action') }}
+                </h5>
+                <button
+                    type="button"
+                    class="close"
+                    data-dismiss="modal"
+                    aria-label="{{ _('Close') }}"
+                >
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="confirmModalBody">
+                <!-- Dynamic content will be inserted here -->
+            </div>
+            <div class="modal-footer">
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-dismiss="modal"
+                >
+                    {{ _('Cancel') }}
+                </button>
+                <button
+                    type="button"
+                    class="btn btn-danger"
+                    id="confirmActionBtn"
+                >
+                    {{ _('Proceed') }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reboot Confirmation Modal -->
+<div
+    class="modal fade"
+    id="rebootModal"
+    tabindex="-1"
+    role="dialog"
+    aria-labelledby="rebootModalLabel"
+    aria-hidden="true"
+>
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rebootModalLabel">
+                    <i class="fas fa-power-off text-danger" aria-hidden="true"></i>
+                    {{ _('Confirm System Reboot') }}
+                </h5>
+                <button
+                    type="button"
+                    class="close"
+                    data-dismiss="modal"
+                    aria-label="{{ _('Close') }}"
+                >
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>{{ _('Are you sure you want to reboot the system?') }}</p>
+                <p class="text-danger">
+                    <strong>{{ _('Warning:') }}</strong>
+                    {{ _('All services will be temporarily unavailable during the reboot process.') }}
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-dismiss="modal"
+                >
+                    {{ _('Cancel') }}
+                </button>
+                <button
+                    type="button"
+                    class="btn btn-danger"
+                    id="confirmRebootBtn"
+                >
+                    <i class="fas fa-power-off" aria-hidden="true"></i>
+                    {{ _('Reboot System') }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ request.url_for('static', path='js/services.js') }}"></script>
+{% endblock %}
