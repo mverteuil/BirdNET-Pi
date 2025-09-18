@@ -118,6 +118,8 @@ reportUnknownVariableType = "none"
 reportUnnecessaryIsInstance = "none"
 typeCheckingMode = "standard"
 useLibraryCodeForTypes = true
+venv = ".venv"
+venvPath = "."
 
 [tool.pytest.ini_options]
 markers = [
