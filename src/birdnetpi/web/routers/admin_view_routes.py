@@ -83,6 +83,7 @@ async def get_settings(
             "audio_devices": audio_devices,
             "model_files": model_files,
             "metadata_model_files": metadata_model_files,
+            "active_page": "settings",  # Set active page for navigation
         },
     )
 

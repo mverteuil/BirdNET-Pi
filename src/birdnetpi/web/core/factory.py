@@ -15,6 +15,8 @@ from birdnetpi.web.routers import (
     analysis_api_routes,
     detections_api_routes,
     health_api_routes,
+    logs_api_routes,
+    logs_view_routes,
     multimedia_view_routes,
     reports_view_routes,
     sqladmin_view_routes,
@@ -95,6 +97,8 @@ def create_app() -> FastAPI:
             "birdnetpi.web.routers.analysis_api_routes",
             "birdnetpi.web.routers.detections_api_routes",
             "birdnetpi.web.routers.health_api_routes",
+            "birdnetpi.web.routers.logs_api_routes",
+            "birdnetpi.web.routers.logs_view_routes",
             "birdnetpi.web.routers.multimedia_view_routes",
             "birdnetpi.web.routers.reports_view_routes",
             "birdnetpi.web.routers.sqladmin_view_routes",
@@ -125,6 +129,9 @@ def create_app() -> FastAPI:
     # Analysis API routes for progressive loading
     app.include_router(analysis_api_routes.router, tags=["Analysis API"])
 
+    # Logs API routes (historical and streaming)
+    app.include_router(logs_api_routes.router, prefix="/api", tags=["Logs API"])
+
     # Real-time communication
     app.include_router(websocket_routes.router, prefix="/ws", tags=["WebSocket"])
 
@@ -135,6 +142,14 @@ def create_app() -> FastAPI:
         admin_view_routes.router,
         prefix="/admin",
         tags=["Admin Views"],
+        include_in_schema=False,  # Exclude from API docs
+    )
+
+    # Logs view routes (HTML page for log viewer)
+    app.include_router(
+        logs_view_routes.router,
+        prefix="/admin",
+        tags=["Logs Views"],
         include_in_schema=False,  # Exclude from API docs
     )
 

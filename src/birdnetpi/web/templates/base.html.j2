@@ -22,7 +22,7 @@
         <p class="tagline">
             Continuous acoustic monitoring ·
             {% if system_status and system_status.device_name %}{{ system_status.device_name }}{% else %}Docker Container{% endif %} ·
-            {% if location %}{{ location }}{% else %}{{ config.latitude|default(0.0, true) }}, {{ config.longitude|default(0.0, true) }}{% endif %}
+            {% if location %}{{ location }}{% else %}{{ latitude|default(0.0, true) }}, {{ longitude|default(0.0, true) }}{% endif %}
         </p>
         {% endblock %}
     </header>

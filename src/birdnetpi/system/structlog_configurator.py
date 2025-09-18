@@ -66,6 +66,11 @@ def _configure_processors(
         if config.latitude != 0.0 or config.longitude != 0.0:
             extra_fields["location"] = f"{config.latitude},{config.longitude}"
 
+    # Add service name from environment if available
+    service_name = os.environ.get("SERVICE_NAME")
+    if service_name:
+        extra_fields["service"] = service_name
+
     processors = [
         structlog.contextvars.merge_contextvars,
         _add_static_context(extra_fields),

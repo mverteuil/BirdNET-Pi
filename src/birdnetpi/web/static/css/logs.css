@@ -1,0 +1,588 @@
+/**
+ * Log Viewer Styles with Colorblind-Safe Colors
+ */
+
+/* Layout */
+.logs-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Skip link for accessibility */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #fff;
+  padding: 8px;
+  text-decoration: none;
+  z-index: 100;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Control Panel */
+.control-panel {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 20px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+/* Filter Row */
+.filter-row {
+  display: flex;
+  flex-wrap: nowrap; /* Prevent wrapping on larger screens */
+  gap: 15px;
+  margin-bottom: 20px;
+  overflow-x: auto; /* Allow horizontal scroll on small screens */
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 120px; /* Prevent groups from getting too small */
+}
+
+.filter-group:nth-child(1) {
+  /* Services */
+  flex: 0 0 200px;
+}
+
+.filter-group:nth-child(2) {
+  /* Log Level */
+  flex: 0 0 150px;
+}
+
+.filter-group:nth-child(3) {
+  /* Time Range */
+  flex: 2 1 300px;
+}
+
+.filter-group:nth-child(4) {
+  /* Search */
+  flex: 1 1 200px;
+}
+
+.filter-group:nth-child(5) {
+  /* Actions (Fetch button) */
+  flex: 0 0 100px;
+}
+
+.filter-group label,
+.form-label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+
+.form-control {
+  width: 100%;
+  padding: 6px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+select.form-control {
+  height: 34px;
+}
+
+/* Service checkboxes */
+.service-checkboxes {
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 8px;
+  background: white;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.checkbox-item input[type="checkbox"] {
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.checkbox-item label {
+  font-weight: normal;
+  margin-bottom: 0;
+  cursor: pointer;
+  display: inline;
+}
+
+/* Time range inputs */
+.time-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.time-range input {
+  flex: 1;
+  min-width: 0;
+}
+
+.range-separator {
+  padding: 0 5px;
+  white-space: nowrap;
+}
+
+/* Action Row - removed, view toggle moved to status bar */
+
+/* View mode radio buttons */
+.view-mode-group {
+  display: flex;
+  gap: 15px;
+}
+
+.view-mode-group label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.view-mode-group input[type="radio"] {
+  margin-right: 5px;
+}
+
+/* Hide empty views */
+.log-view:empty {
+  display: none;
+}
+
+#table-view table {
+  width: 100%;
+}
+
+#table-view:has(tbody:empty) {
+  display: none;
+}
+
+/* Buttons */
+.btn {
+  padding: 6px 16px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.btn:hover {
+  background: #f8f9fa;
+}
+
+.btn-primary {
+  background: #0066cc;
+  color: white;
+  border-color: #0066cc;
+}
+
+.btn-primary:hover {
+  background: #0052a3;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+  border-color: #6c757d;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+}
+
+/* Fetch button specific styling */
+#fetch-logs {
+  width: 100%;
+  white-space: nowrap;
+  padding: 6px 12px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+/* Fetch button area below logs */
+.fetch-area {
+  text-align: center;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #dee2e6;
+}
+
+.fetch-area.hidden {
+  display: none;
+}
+
+/* Status Bar */
+.status-bar {
+  background: #d1ecf1;
+  border: 1px solid #bee5eb;
+  border-radius: 4px;
+  padding: 10px 15px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.status-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.streaming-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Help text */
+.help-text {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+/* Text utilities */
+.text-muted {
+  color: #6c757d;
+}
+
+/* Log Level Indicators - Colorblind-safe palette */
+.log-level-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  margin: 0 8px;
+  vertical-align: middle;
+}
+
+.log-level-indicator.log-level-debug {
+  background-color: #6c757d; /* Gray */
+}
+
+.log-level-indicator.log-level-info {
+  background-color: #0066cc; /* Blue */
+}
+
+.log-level-indicator.log-level-warning {
+  background-color: #ff9900; /* Orange */
+}
+
+.log-level-indicator.log-level-error {
+  background-color: #9933ff; /* Purple */
+}
+
+.log-level-indicator.log-level-critical {
+  background-color: #330066; /* Dark purple */
+  border: 2px solid #fff; /* Add border for visibility on dark backgrounds */
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .log-level-indicator {
+    border: 2px solid currentColor;
+    box-shadow: 0 0 0 1px #fff;
+  }
+}
+
+/* Table Styles */
+#log-table {
+  width: 100%;
+  font-size: 0.9rem;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  border-collapse: collapse;
+}
+
+#log-table th,
+#log-table td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #dee2e6;
+}
+
+#log-table thead {
+  position: sticky;
+  top: 0;
+  background: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  z-index: 10;
+}
+
+#log-table tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.log-level-column {
+  width: 40px;
+  text-align: center;
+}
+
+.timestamp-column {
+  width: 200px;
+  white-space: nowrap;
+}
+
+.service-column {
+  width: 150px;
+}
+
+.message-column {
+  word-break: break-word;
+  white-space: pre-wrap;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+}
+
+/* Row hover and focus states */
+.log-row:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.log-row:focus {
+  outline: 2px solid #0066cc;
+  outline-offset: -2px;
+}
+
+/* New log animation */
+.new-log {
+  animation: highlight 1s ease-out;
+}
+
+@keyframes highlight {
+  0% {
+    background-color: rgba(0, 102, 204, 0.2); /* Blue highlight */
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* (Already defined above in new layout section) */
+
+/* JSON view */
+#json-content {
+  max-height: 600px;
+  overflow: auto;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  background: #2d2d2d;
+  color: #f8f8f2;
+  padding: 15px;
+  margin: 0;
+  border-radius: 4px;
+}
+
+/* Log content area */
+.log-content {
+  min-height: 400px;
+  max-height: 70vh;
+  overflow-y: auto;
+  width: 100%;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background: white;
+  position: relative;
+  margin-bottom: 20px;
+}
+
+/* Sticky table header */
+#log-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #f8f9fa;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6c757d;
+}
+
+.empty-state p {
+  margin: 10px 0;
+}
+
+/* Streaming indicator */
+#streaming-indicator .spinner-border {
+  width: 1rem;
+  height: 1rem;
+  border-width: 0.15em;
+}
+
+/* Accessibility: Focus visible */
+*:focus-visible {
+  outline: 2px solid #0066cc;
+  outline-offset: 2px;
+}
+
+/* (Button states already defined above) */
+
+/* Status text colors */
+.text-success {
+  color: #0066cc !important; /* Use blue instead of green */
+}
+
+.text-warning {
+  color: #ff9900 !important; /* Orange */
+}
+
+.text-danger {
+  color: #9933ff !important; /* Purple instead of red */
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  /* Reduce sizes on medium screens */
+  .filter-group:nth-child(1) {
+    /* Services */
+    flex: 0 0 180px;
+  }
+
+  .filter-group:nth-child(2) {
+    /* Log Level */
+    flex: 0 0 130px;
+  }
+
+  .filter-group:nth-child(3) {
+    /* Time Range */
+    flex: 1 1 280px;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Allow wrapping on smaller screens */
+  .filter-row {
+    flex-wrap: wrap;
+  }
+
+  .filter-group {
+    min-width: 100%; /* Full width on mobile */
+    flex: 1 1 100%;
+  }
+
+  .service-checkboxes {
+    max-height: 150px;
+  }
+
+  #log-table {
+    font-size: 0.8rem;
+  }
+
+  .timestamp-column {
+    width: 150px;
+  }
+
+  .service-column {
+    width: 100px;
+  }
+}
+
+/* Print styles */
+@media print {
+  .log-level-indicator {
+    border: 1px solid #000;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  #log-filters,
+  #streaming-indicator,
+  .btn-group {
+    display: none !important;
+  }
+}
+
+/* Color legend - sticky at bottom */
+.log-legend {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  border-top: 2px solid #dee2e6;
+  padding: 10px;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.log-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.log-legend-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .log-level-indicator {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+  }
+
+  .service-checkboxes {
+    background-color: #1a1a1a;
+    border-color: #404040;
+  }
+
+  #log-table thead {
+    background-color: #2a2a2a;
+  }
+
+  .log-row:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+}

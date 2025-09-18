@@ -1,0 +1,224 @@
+{% extends "base.html.j2" %}
+
+{% block title %}{{ _('System Logs') }}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ request.url_for('static', path='css/logs.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="logs-container">
+    <!-- Skip navigation link for screen readers -->
+    <a href="#log-content" class="skip-link">{{ _('Skip to log content') }}</a>
+
+    <h1>{{ _('System Logs') }}</h1>
+
+    <!-- Control Panel -->
+    <div class="control-panel">
+            <form id="log-filters" role="form" aria-label="{{ _('Log filtering options') }}">
+                <div class="filter-row">
+                    <!-- Service Selection -->
+                    <div class="filter-group">
+                        <label class="form-label">{{ _('Services') }}</label>
+                        <div class="service-checkboxes" role="group" aria-describedby="service-help">
+                            {% for service in services %}
+                            <div class="checkbox-item">
+                                <input
+                                    class="service-checkbox"
+                                    type="checkbox"
+                                    value="{{ service.name }}"
+                                    id="service-{{ loop.index }}"
+                                    aria-label="{{ _('Include logs from') }} {{ service.name }}"
+                                    {% if service.running %}checked{% endif %}
+                                >
+                                <label for="service-{{ loop.index }}">
+                                    {{ service.name }}
+                                    {% if not service.running %}
+                                    <span class="text-muted">({{ _('stopped') }})</span>
+                                    {% endif %}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <small id="service-help" class="help-text">
+                            {{ _('Select services to view logs from') }}
+                        </small>
+                    </div>
+
+                    <!-- Log Level -->
+                    <div class="filter-group">
+                        <label for="log-level" class="form-label">{{ _('Log Level') }}</label>
+                        <select class="form-control" id="log-level" aria-describedby="level-help">
+                                {% for level in log_levels %}
+                                <option value="{{ level.name }}" {% if level.name == 'INFO' %}selected{% endif %}>
+                                    {{ level.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        <small id="level-help" class="help-text">
+                            {{ _('Shows selected level and higher') }}
+                        </small>
+                    </div>
+
+                    <!-- Time Range -->
+                    <div class="filter-group">
+                        <label class="form-label">{{ _('Time Range') }}</label>
+                        <div class="time-range">
+                            <input
+                                type="datetime-local"
+                                class="form-control"
+                                id="start-time"
+                                aria-label="{{ _('Start time') }}"
+                            >
+                            <span class="range-separator">{{ _('to') }}</span>
+                            <input
+                                type="datetime-local"
+                                class="form-control"
+                                id="end-time"
+                                aria-label="{{ _('End time') }}"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Keyword Search (now filters in-memory data) -->
+                    <div class="filter-group">
+                        <label for="keyword" class="form-label">{{ _('Search') }}</label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="keyword"
+                            placeholder="{{ _('Filter displayed logs') }}"
+                            aria-label="{{ _('Filter logs in real-time') }}"
+                        >
+                    </div>
+
+                    <!-- Fetch Logs Button (moved to top with filters) -->
+                    <div class="filter-group">
+                        <label class="form-label">{{ _('Actions') }}</label>
+                        <button
+                            type="button"
+                            id="fetch-logs"
+                            class="btn btn-primary"
+                            aria-label="{{ _('Fetch logs with current filters') }}"
+                        >
+                            {{ _('Fetch') }}
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- View options moved to status bar -->
+    </div>
+
+    <!-- Status Bar with View Toggle -->
+    <div class="status-bar" role="status" aria-live="polite">
+        <div class="status-info">
+            <div>
+                <strong>{{ _('Status:') }}</strong>
+                <span id="connection-status">{{ _('Historical') }}</span>
+            </div>
+            <div>
+                <strong>{{ _('Logs:') }}</strong>
+                <span id="log-count">0</span>
+            </div>
+            <div class="view-mode-group" role="radiogroup" aria-label="{{ _('Log display format') }}">
+                <label>
+                    <input type="radio" name="view-mode" id="view-table" value="table" checked>
+                    <span>{{ _('Table') }}</span>
+                </label>
+                <label>
+                    <input type="radio" name="view-mode" id="view-json" value="json">
+                    <span>{{ _('JSON') }}</span>
+                </label>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div id="streaming-indicator" class="streaming-indicator" style="display: none;">
+                <span class="spinner" aria-hidden="true">◉</span>
+                <span>{{ _('Streaming...') }}</span>
+            </div>
+            <div class="action-buttons">
+                <button
+                    type="button"
+                    id="stream-toggle"
+                    class="btn btn-secondary"
+                    aria-label="{{ _('Toggle real-time streaming') }}"
+                    aria-pressed="false"
+                >
+                    ▶ {{ _('Stream') }}
+                </button>
+                <button
+                    type="button"
+                    id="download-logs"
+                    class="btn btn-secondary"
+                    aria-label="{{ _('Download currently displayed logs as JSON file') }}"
+                    title="{{ _('Downloads the logs currently shown (not from server)') }}"
+                >
+                    ⬇ {{ _('Download') }}
+                </button>
+                <button
+                    type="button"
+                    id="clear-display"
+                    class="btn btn-secondary"
+                    aria-label="{{ _('Clear displayed logs') }}"
+                >
+                    ✕ {{ _('Clear') }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Content Area -->
+    <div id="log-content" class="log-content" tabindex="-1">
+        <!-- Table View -->
+        <div id="table-view" class="log-view">
+            <table id="log-table">
+                <thead>
+                    <tr>
+                        <th scope="col" class="log-level-column">
+                            <span class="visually-hidden">{{ _('Level') }}</span>
+                        </th>
+                        <th scope="col" class="timestamp-column">{{ _('Timestamp') }}</th>
+                        <th scope="col" class="service-column">{{ _('Service') }}</th>
+                        <th scope="col" class="message-column">{{ _('Message') }}</th>
+                    </tr>
+                </thead>
+                <tbody id="log-tbody" aria-live="polite" aria-relevant="additions">
+                    <!-- Logs will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- JSON View -->
+        <div id="json-view" class="log-view" style="display: none;">
+            <pre id="json-content" aria-label="{{ _('JSON formatted logs') }}"><!-- JSON logs will be inserted here --></pre>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="empty-state">
+            <p>{{ _('No logs to display') }}</p>
+            <p>{{ _('Select services and click Fetch or Stream to view logs') }}</p>
+        </div>
+    </div>
+
+</div>
+
+<!-- Log Level Color Legend -->
+<div class="log-legend" aria-label="{{ _('Log level color legend') }}">
+    {% for level in log_levels %}
+    <div class="log-legend-item">
+        <span
+            class="log-legend-indicator"
+            style="background-color: {{ level.color }};"
+            aria-hidden="true"
+        ></span>
+        <span>{{ level.name }}</span>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ request.url_for('static', path='js/logs.js') }}"></script>
+{% endblock %}

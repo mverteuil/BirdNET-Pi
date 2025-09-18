@@ -19,6 +19,7 @@ from birdnetpi.notifications.mqtt import MQTTService
 from birdnetpi.notifications.webhooks import WebhookService
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager
+from birdnetpi.system.log_reader import LogReaderService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.system_control import SystemControlService
 from birdnetpi.utils.cache import Cache
@@ -133,6 +134,7 @@ class Container(containers.DeclarativeContainer):
 
     # System services - singletons
     system_control_service = providers.Singleton(SystemControlService)
+    log_reader = providers.Singleton(LogReaderService)
 
     # Audio services - singletons
     audio_websocket_service = providers.Singleton(
