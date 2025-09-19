@@ -30,7 +30,6 @@ def client():
 
     # Wire the container
     container.wire(modules=["birdnetpi.web.routers.analysis_api_routes"])
-    app.container = container  # type: ignore[attr-defined]
 
     # Include the router (router already has /api/analysis prefix)
     app.include_router(router)

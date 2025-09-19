@@ -9,6 +9,8 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
+from birdnetpi.web.core.container import Container
+
 # Note: HardwareMonitorManager has been replaced with SystemInspector static methods
 
 
@@ -100,10 +102,10 @@ class TestDependencyInjectionValidation:
         """
         from birdnetpi.detections.manager import DataManager
 
-        container = integration_app.container  # type: ignore[attr-defined]
+        container = Container()
 
         # Get the actual instances from the container
-        data_manager = container.data_manager()  # type: ignore[attr-defined]
+        data_manager = container.data_manager()
         # reporting_manager = container.reporting_manager()  # ReportingManager removed
 
         # These assertions would fail if we had the wrong type annotations

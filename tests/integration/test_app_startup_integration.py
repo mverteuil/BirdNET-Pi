@@ -86,11 +86,11 @@ class TestAppStartupIntegration:
         """Should the app can be created without errors."""
         assert app_with_real_container is not None
         assert isinstance(app_with_real_container, FastAPI)
-        assert hasattr(app_with_real_container, "container")
+        # Container is now accessed via Container() singleton, not attached to app
 
     def test_app_container_is_wired(self, app_with_real_container: FastAPI):
         """Should the app's container is properly wired."""
-        container = app_with_real_container.container  # type: ignore[attr-defined]
+        container = Container()
         assert container is not None
         # Check that it has the expected Container attributes rather than exact type
         assert hasattr(container, "config")
@@ -126,7 +126,7 @@ class TestAppStartupIntegration:
 
     def test_container_providers_are_instantiable(self, app_with_real_container: FastAPI):
         """Should container providers can be instantiated."""
-        container = app_with_real_container.container  # type: ignore[attr-defined]
+        container = Container()
 
         # Test critical providers
         config = container.config()

@@ -53,9 +53,6 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json",
     )
 
-    # Attach container to app (ignore type error - runtime dynamic attribute)
-    app.container = container  # type: ignore[attr-defined]
-
     # Set up translation manager in app state for middleware access
     app.state.translation_manager = container.translation_manager()
 

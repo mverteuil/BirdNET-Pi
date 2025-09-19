@@ -28,9 +28,6 @@ def client():
     # Wire the container to the router module
     container.wire(modules=["birdnetpi.web.routers.system_api_routes"])
 
-    # Set container on app for DI
-    app.container = container  # type: ignore[attr-defined]
-
     # Include the router with the correct prefix
     app.include_router(router, prefix="/api/system")
 

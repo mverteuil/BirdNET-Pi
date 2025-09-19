@@ -26,7 +26,6 @@ def client(tmp_path, path_resolver):
 
     # Wire the container
     container.wire(modules=["birdnetpi.web.routers.settings_api_routes"])
-    app.container = container  # type: ignore[attr-defined]
 
     # Include the router with the same prefix as in factory
     app.include_router(router, prefix="/admin/config")

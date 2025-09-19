@@ -29,8 +29,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Yields:
         None: Control back to the application for normal operation.
     """
-    # Get the container from the app (ignore type error - runtime dynamic attribute)
-    container: Container = app.container  # type: ignore[attr-defined]
+    # Get the container instance directly (it's a singleton)
+    container = Container()
 
     # Get config (structlog is already configured in main.py)
     config = container.config()
