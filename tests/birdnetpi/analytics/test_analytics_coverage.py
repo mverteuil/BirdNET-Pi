@@ -1,0 +1,489 @@
+"""Additional tests to improve AnalyticsManager coverage."""
+
+import uuid
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from birdnetpi.analytics.analytics import AnalyticsManager
+from birdnetpi.config import BirdNETConfig
+from birdnetpi.detections.models import DetectionWithTaxa
+from birdnetpi.detections.queries import DetectionQueryService
+
+
+@pytest.fixture
+def mock_detection_query_service():
+    """Create a mock DetectionQueryService."""
+    return MagicMock(spec=DetectionQueryService)
+
+
+@pytest.fixture
+def mock_config():
+    """Create a mock BirdNETConfig."""
+    config = MagicMock(spec=BirdNETConfig)
+    config.species_confidence_threshold = 0.5
+    return config
+
+
+@pytest.fixture
+def analytics_manager(mock_detection_query_service, mock_config):
+    """Create an AnalyticsManager with mocked dependencies."""
+    return AnalyticsManager(mock_detection_query_service, mock_config)
+
+
+class TestWeeklyHeatmapExtended:
+    """Test weekly heatmap with different time periods."""
+
+    @pytest.mark.asyncio
+    async def test_get_weekly_heatmap_data_more_than_7_days(
+        self, analytics_manager, mock_detection_query_service
+    ):
+        """Should calculate averaged weekday patterns for periods > 7 days."""
+        # Mock hourly counts for multiple days
+        mock_hourly_data = [
+            [{"hour": i, "count": (i % 3) + 1} for i in range(24)],  # Day 1
+            [{"hour": i, "count": (i % 2) + 2} for i in range(24)],  # Day 2
+            [{"hour": i, "count": 1} for i in range(24)],  # Day 3
+        ]
+
+        # Return different data for each call
+        mock_detection_query_service.get_hourly_counts = AsyncMock(
+            side_effect=mock_hourly_data * 5  # Repeat pattern for 15 days
+        )
+
+        result = await analytics_manager.get_weekly_heatmap_data(days=14)
+
+        # Should return 7 days (one for each weekday)
+        assert len(result) == 7
+
+        # Each day should have 24 hours
+        for day_data in result:
+            assert len(day_data) == 24
+
+        # Verify averaging occurred (not just raw counts)
+        assert mock_detection_query_service.get_hourly_counts.call_count == 14
+
+    @pytest.mark.asyncio
+    async def test_get_weekly_heatmap_data_empty_weekday(
+        self, analytics_manager, mock_detection_query_service
+    ):
+        """Should handle weekdays with no data when averaging."""
+        # Only return data for some days
+        mock_detection_query_service.get_hourly_counts = AsyncMock(
+            side_effect=[
+                [{"hour": 12, "count": 5}],  # Monday
+                [],  # Tuesday - no data
+                [{"hour": 14, "count": 3}],  # Wednesday
+            ]
+            + [[]] * 11  # Rest empty
+        )
+
+        result = await analytics_manager.get_weekly_heatmap_data(days=14)
+
+        assert len(result) == 7
+        # Sunday should have all zeros (no data)
+        assert all(count == 0 for count in result[0])
+
+
+class TestStemLeafDistribution:
+    """Test stem-and-leaf distribution visualization."""
+
+    @pytest.mark.asyncio
+    async def test_get_stem_leaf_distribution_basic(
+        self, analytics_manager, mock_detection_query_service
+    ):
+        """Should create stem-and-leaf plot from hourly counts."""
+        mock_detection_query_service.get_hourly_counts = AsyncMock(
+            side_effect=[
+                [{"hour": 0, "count": 12}, {"hour": 1, "count": 23}, {"hour": 2, "count": 15}],
+                [{"hour": 0, "count": 31}, {"hour": 1, "count": 28}],
+                [{"hour": 0, "count": 45}],
+            ]
+            + [[]] * 4  # Rest empty for 7 days
+        )
+
+        result = await analytics_manager.get_detection_frequency_distribution(days=7)
+
+        # Should have stems 1, 2, 3, 4
+        assert len(result) == 4
+
+        # Check stem 1 (12, 15)
+        stem_1 = next(r for r in result if r["stem"] == "1")
+        assert "2" in stem_1["leaves"]  # From 12
+        assert "5" in stem_1["leaves"]  # From 15
+
+        # Check stem 2 (23, 28)
+        stem_2 = next(r for r in result if r["stem"] == "2")
+        assert "3" in stem_2["leaves"]  # From 23
+        assert "8" in stem_2["leaves"]  # From 28
+
+    @pytest.mark.asyncio
+    async def test_get_stem_leaf_distribution_no_data(
+        self, analytics_manager, mock_detection_query_service
+    ):
+        """Should handle case with no detection data."""
+        mock_detection_query_service.get_hourly_counts = AsyncMock(return_value=[])
+
+        result = await analytics_manager.get_detection_frequency_distribution(days=7)
+
+        assert len(result) == 1
+        assert result[0]["stem"] == "0"
+        assert result[0]["leaves"] == "No data"
+
+
+class TestSpeciesHourlyPatterns:
+    """Test species-specific hourly pattern analysis."""
+
+    @pytest.mark.asyncio
+    async def test_get_species_hourly_patterns_basic(
+        self, analytics_manager, mock_detection_query_service
+    ):
+        """Should aggregate hourly patterns for specific species."""
+        # Create mock detections
+        mock_detections = [
+            DetectionWithTaxa(
+                id=uuid.uuid4(),
+                timestamp=datetime.now().replace(hour=6),
+                species_tensor="Turdus_migratorius_American Robin",
+                scientific_name="Turdus migratorius",
+                common_name="American Robin",
+                confidence=0.9,
+                audio_file_id=uuid.uuid4(),
+            ),
+            DetectionWithTaxa(
+                id=uuid.uuid4(),
+                timestamp=datetime.now().replace(hour=6),
+                species_tensor="Turdus_migratorius_American Robin",
+                scientific_name="Turdus migratorius",
+                common_name="American Robin",
+                confidence=0.8,
+                audio_file_id=uuid.uuid4(),
+            ),
+            DetectionWithTaxa(
+                id=uuid.uuid4(),
+                timestamp=datetime.now().replace(hour=12),
+                species_tensor="Turdus_migratorius_American Robin",
+                scientific_name="Turdus migratorius",
+                common_name="American Robin",
+                confidence=0.85,
+                audio_file_id=uuid.uuid4(),
+            ),
+            DetectionWithTaxa(
+                id=uuid.uuid4(),
+                timestamp=datetime.now().replace(hour=18),
+                species_tensor="Other_species_Other bird",
+                scientific_name="Other species",
+                common_name="Other bird",
+                confidence=0.7,
+                audio_file_id=uuid.uuid4(),
+            ),
+        ]
+
+        mock_detection_query_service.query_detections = AsyncMock(return_value=mock_detections)
+
+        result = await analytics_manager.get_species_hourly_patterns("American Robin", days=7)
+
+        assert len(result) == 24
+        assert result[6] == 2  # Two detections at hour 6
+        assert result[12] == 1  # One detection at hour 12
+        assert result[18] == 0  # Other species, not counted
+
+    @pytest.mark.asyncio
+    async def test_get_species_hourly_patterns_multiple_name_variants(
+        self, analytics_manager, mock_detection_query_service
+    ):
+        """Should match species by any name variant."""
+        mock_detections = [
+            DetectionWithTaxa(
+                id=uuid.uuid4(),
+                timestamp=datetime.now().replace(hour=8),
+                species_tensor="Turdus_migratorius_American Robin",
+                scientific_name="Turdus migratorius",
+                common_name="American Robin",
+                ioc_english_name="American Robin",
+                translated_name="Rouge-gorge américain",
+                confidence=0.9,
+                audio_file_id=uuid.uuid4(),
+            ),
+        ]
+
+        mock_detection_query_service.query_detections = AsyncMock(return_value=mock_detections)
+
+        # Test with scientific name
+        result = await analytics_manager.get_species_hourly_patterns("Turdus migratorius", days=1)
+        assert result[8] == 1
+
+        # Test with translated name
+        result = await analytics_manager.get_species_hourly_patterns(
+            "Rouge-gorge américain", days=1
+        )
+        assert result[8] == 1
+
+
+class TestSpeciesAccumulationMethods:
+    """Test different species accumulation curve methods."""
+
+    @pytest.mark.asyncio
+    async def test_species_accumulation_random_method(
+        self, analytics_manager, mock_detection_query_service
+    ):
+        """Should calculate random accumulation curves with averaging."""
+        # Create detections with species pattern
+        mock_detections = [
+            DetectionWithTaxa(
+                id=uuid.uuid4(),
+                timestamp=datetime.now() - timedelta(hours=i),
+                species_tensor=f"Species_{i % 3}_Bird_{i % 3}",
+                scientific_name=f"Species_{i % 3}",  # 3 different species
+                common_name=f"Bird_{i % 3}",
+                confidence=0.8,
+                audio_file_id=uuid.uuid4(),
+            )
+            for i in range(10)
+        ]
+
+        # Mock the accumulation data as (timestamp, species) tuples
+        mock_accumulation_data = [(det.timestamp, det.scientific_name) for det in mock_detections]
+
+        mock_detection_query_service.get_detections_for_accumulation = AsyncMock(
+            return_value=mock_accumulation_data
+        )
+
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=7)
+
+        with patch("random.shuffle"):  # Control randomization for testing
+            result = await analytics_manager.calculate_species_accumulation(
+                start_date=start_date, end_date=end_date, method="random"
+            )
+
+        assert result["method"] == "random"
+        assert len(result["samples"]) == 10
+        assert len(result["species_counts"]) == 10
+
+        # Species count should increase (or stay same) with samples
+        for i in range(1, len(result["species_counts"])):
+            assert result["species_counts"][i] >= result["species_counts"][i - 1]
+
+    @pytest.mark.asyncio
+    async def test_species_accumulation_rarefaction_method(
+        self, analytics_manager, mock_detection_query_service
+    ):
+        """Should calculate rarefaction curves."""
+        # Create detections with uneven species distribution
+        detections = []
+        species_distribution = {"Species_A": 50, "Species_B": 30, "Species_C": 10}
+
+        det_id = 1
+        for species, count in species_distribution.items():
+            for _ in range(count):
+                detections.append(
+                    DetectionWithTaxa(
+                        id=uuid.uuid4(),
+                        timestamp=datetime.now() - timedelta(hours=det_id),
+                        species_tensor=f"{species}_{species}",
+                        scientific_name=species,
+                        common_name=species,
+                        confidence=0.8,
+                        audio_file_id=uuid.uuid4(),
+                    )
+                )
+                det_id += 1
+
+        # Mock the accumulation data as (timestamp, species) tuples
+        mock_accumulation_data = [(det.timestamp, det.scientific_name) for det in detections]
+
+        mock_detection_query_service.get_detections_for_accumulation = AsyncMock(
+            return_value=mock_accumulation_data
+        )
+
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=7)
+
+        result = await analytics_manager.calculate_species_accumulation(
+            start_date=start_date, end_date=end_date, method="rarefaction"
+        )
+
+        assert result["method"] == "rarefaction"
+        assert len(result["samples"]) > 0
+        assert len(result["species_counts"]) == len(result["samples"])
+
+        # Expected species should increase with sample size
+        assert result["species_counts"][-1] > result["species_counts"][0]
+
+
+class TestBetaDiversity:
+    """Test temporal beta diversity calculations."""
+
+    @pytest.mark.asyncio
+    async def test_calculate_beta_diversity_basic(
+        self, analytics_manager, mock_detection_query_service
+    ):
+        """Should calculate species turnover between time windows."""
+        # Mock species sets for sliding windows
+        mock_windows = [
+            {
+                "period_start": datetime.now() - timedelta(days=7),
+                "period_end": datetime.now() - timedelta(days=6),
+                "species": ["Species_A", "Species_B"],
+            },
+            {
+                "period_start": datetime.now() - timedelta(days=6),
+                "period_end": datetime.now() - timedelta(days=5),
+                "species": ["Species_B", "Species_C"],  # A lost, C gained
+            },
+            {
+                "period_start": datetime.now() - timedelta(days=5),
+                "period_end": datetime.now() - timedelta(days=4),
+                "species": ["Species_C", "Species_D", "Species_E"],  # B lost, D&E gained
+            },
+        ]
+
+        mock_detection_query_service.get_species_sets_by_window = AsyncMock(
+            return_value=mock_windows
+        )
+
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=7)
+        window_size = timedelta(days=1)
+
+        result = await analytics_manager.calculate_beta_diversity(
+            start_date=start_date, end_date=end_date, window_size=window_size
+        )
+
+        assert len(result) >= 2  # At least 2 comparisons
+
+        # First comparison: Species_A lost, Species_C gained
+        assert result[0]["species_lost"] == 1
+        assert result[0]["species_gained"] == 1
+        # Turnover rate = (1 + 1) / (2 * 3) = 2/6 = 0.3333
+        # Total species = A, B, C (union of both sets)
+        assert result[0]["turnover_rate"] == pytest.approx(0.3333, abs=0.01)
+
+    @pytest.mark.asyncio
+    async def test_calculate_beta_diversity_no_turnover(
+        self, analytics_manager, mock_detection_query_service
+    ):
+        """Should handle case with no species turnover."""
+        # Same species in all windows
+        mock_windows = [
+            {
+                "period_start": datetime.now() - timedelta(days=i),
+                "period_end": datetime.now() - timedelta(days=i - 1),
+                "species": ["Species_A", "Species_B"],
+            }
+            for i in range(3, 0, -1)
+        ]
+
+        mock_detection_query_service.get_species_sets_by_window = AsyncMock(
+            return_value=mock_windows
+        )
+
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=3)
+        window_size = timedelta(days=1)
+
+        result = await analytics_manager.calculate_beta_diversity(
+            start_date=start_date, end_date=end_date, window_size=window_size
+        )
+
+        # All turnover rates should be 0
+        for comparison in result:
+            assert comparison["turnover_rate"] == 0
+            assert comparison["species_lost"] == 0
+            assert comparison["species_gained"] == 0
+
+
+class TestWeatherCorrelations:
+    """Test weather correlation analysis."""
+
+    @pytest.mark.asyncio
+    async def test_get_weather_correlation_data_passthrough(
+        self, analytics_manager, mock_detection_query_service
+    ):
+        """Should pass through to detection query service."""
+        # Mock weather correlation data from query service
+        mock_data = {
+            "correlations": {
+                "temperature": 0.75,
+                "humidity": -0.5,
+                "wind_speed": 0.3,
+            },
+            "data_points": 100,
+        }
+
+        mock_detection_query_service.get_weather_correlations = AsyncMock(return_value=mock_data)
+
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=7)
+        result = await analytics_manager.get_weather_correlation_data(start_date, end_date)
+
+        # Should return exactly what the query service returns
+        assert result == mock_data
+
+        # Verify correct parameters passed
+        mock_detection_query_service.get_weather_correlations.assert_called_once_with(
+            start_date=start_date, end_date=end_date
+        )
+
+
+class TestCorrelationCalculation:
+    """Test Pearson correlation calculation method."""
+
+    def test_calculate_correlation_positive(self, analytics_manager):
+        """Should calculate positive correlation correctly."""
+        x = [1, 2, 3, 4, 5]
+        y = [2, 4, 6, 8, 10]  # Perfect positive correlation
+
+        result = analytics_manager.calculate_correlation(x, y)
+
+        assert result == pytest.approx(1.0, abs=0.01)
+
+    def test_calculate_correlation_negative(self, analytics_manager):
+        """Should calculate negative correlation correctly."""
+        x = [1, 2, 3, 4, 5]
+        y = [10, 8, 6, 4, 2]  # Perfect negative correlation
+
+        result = analytics_manager.calculate_correlation(x, y)
+
+        assert result == pytest.approx(-1.0, abs=0.01)
+
+    def test_calculate_correlation_no_correlation(self, analytics_manager):
+        """Should handle no correlation."""
+        x = [1, 2, 3, 4, 5]
+        y = [5, 2, 8, 1, 7]  # Random, no correlation
+
+        result = analytics_manager.calculate_correlation(x, y)
+
+        # Should be close to 0
+        assert abs(result) < 0.5
+
+    def test_calculate_correlation_with_none_values(self, analytics_manager):
+        """Should handle None values by filtering them out."""
+        x = [1, 2, None, 4, 5]
+        y = [2, None, 6, 8, 10]
+
+        # Should use pairs: (1,2), (4,8), (5,10)
+        result = analytics_manager.calculate_correlation(x, y)
+
+        # Still positive correlation with filtered data
+        assert result > 0
+
+    def test_calculate_correlation_insufficient_data(self, analytics_manager):
+        """Should return 0 for insufficient data points."""
+        x = [1]
+        y = [2]
+
+        result = analytics_manager.calculate_correlation(x, y)
+
+        assert result == 0.0
+
+    def test_calculate_correlation_all_none(self, analytics_manager):
+        """Should handle all None values."""
+        x = [None, None, None]
+        y = [None, None, None]
+
+        result = analytics_manager.calculate_correlation(x, y)
+
+        assert result == 0.0
