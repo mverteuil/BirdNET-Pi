@@ -1,6 +1,7 @@
 """Tests for SystemInspector class."""
 
 import subprocess
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import psutil
@@ -329,12 +330,14 @@ class TestSystemInfoMethods:
     @patch("birdnetpi.system.status.SystemInspector.get_disk_usage")
     @patch("birdnetpi.system.status.SystemInspector.get_memory_usage")
     @patch("birdnetpi.system.status.SystemInspector.get_cpu_usage")
+    @patch("birdnetpi.system.status.psutil.Process")
     @patch("birdnetpi.system.status.psutil.boot_time")
     @patch("birdnetpi.system.status.psutil.cpu_count")
     def test_get_system_info(
         self,
         mock_cpu_count,
         mock_boot_time,
+        mock_process_class,
         mock_cpu_usage,
         mock_memory,
         mock_disk,
@@ -344,6 +347,10 @@ class TestSystemInfoMethods:
         """Should gather comprehensive system information."""
         mock_cpu_count.return_value = 4
         mock_boot_time.return_value = 1234567890
+
+        # Mock PID 1 as not accessible (typical in non-container environment)
+        mock_process_class.side_effect = psutil.AccessDenied("Cannot access PID 1")
+
         mock_cpu_usage.return_value = 25.0
         mock_memory.return_value = {"percent": 50.0}
         mock_disk.return_value = {"percent": 60.0}
@@ -353,7 +360,7 @@ class TestSystemInfoMethods:
         result = SystemInspector.get_system_info()
 
         assert result["cpu_count"] == 4
-        assert result["boot_time"] == 1234567890
+        assert result["boot_time"] == 1234567890  # Falls back to boot_time
         assert result["cpu_percent"] == 25.0
         assert result["memory"]["percent"] == 50.0
         assert result["disk"]["percent"] == 60.0
@@ -414,3 +421,127 @@ class TestSystemInfoMethods:
         assert result["alert_count"] == 2
         assert result["critical_count"] == 1
         assert "warning_count" not in result  # Only shown for warning status
+
+
+class TestContainerUptime:
+    """Test container uptime detection in get_system_info."""
+
+    @patch("birdnetpi.system.status.psutil.Process")
+    @patch("birdnetpi.system.status.psutil.boot_time")
+    def test_get_system_info_uses_container_init_time(self, mock_boot_time, mock_process_class):
+        """Should use PID 1's create time in a container environment."""
+        # Set up mock times
+        host_boot_time = 1000000.0  # Host booted long ago
+        container_start_time = datetime.now().timestamp() - 600  # Container started 10 minutes ago
+
+        # Mock system boot time (host)
+        mock_boot_time.return_value = host_boot_time
+
+        # Mock PID 1 process (container init)
+        mock_process = MagicMock()
+        mock_process.create_time.return_value = container_start_time
+        mock_process_class.return_value = mock_process
+
+        # Mock other dependencies for get_system_info
+        with (
+            patch("birdnetpi.system.status.psutil.cpu_count", return_value=4),
+            patch.object(SystemInspector, "get_cpu_usage", return_value=25.0),
+            patch.object(SystemInspector, "get_memory_usage", return_value={"percent": 50.0}),
+            patch.object(SystemInspector, "get_disk_usage", return_value={"percent": 60.0}),
+            patch.object(SystemInspector, "get_cpu_temperature", return_value=None),
+            patch("birdnetpi.system.status.psutil.net_if_addrs", return_value={}),
+        ):
+            # Get system info
+            info = SystemInspector.get_system_info()
+
+            # Should have used container's PID 1 create time, not host boot time
+            assert info["boot_time"] == container_start_time
+            assert info["boot_time"] != host_boot_time
+
+            # Verify PID 1 was checked
+            mock_process_class.assert_called_once_with(1)
+
+    @patch("birdnetpi.system.status.psutil.Process")
+    @patch("birdnetpi.system.status.psutil.boot_time")
+    def test_get_system_info_fallback_to_host_when_pid1_inaccessible(
+        self, mock_boot_time, mock_process_class
+    ):
+        """Should fall back to host boot time if PID 1 is not accessible."""
+        host_boot_time = 1000000.0
+
+        # Mock system boot time
+        mock_boot_time.return_value = host_boot_time
+
+        # Mock PID 1 access denied (common in some environments)
+        mock_process_class.side_effect = psutil.AccessDenied("Cannot access PID 1")
+
+        # Mock other dependencies
+        with (
+            patch("birdnetpi.system.status.psutil.cpu_count", return_value=4),
+            patch.object(SystemInspector, "get_cpu_usage", return_value=25.0),
+            patch.object(SystemInspector, "get_memory_usage", return_value={"percent": 50.0}),
+            patch.object(SystemInspector, "get_disk_usage", return_value={"percent": 60.0}),
+            patch.object(SystemInspector, "get_cpu_temperature", return_value=None),
+            patch("birdnetpi.system.status.psutil.net_if_addrs", return_value={}),
+        ):
+            # Get system info
+            info = SystemInspector.get_system_info()
+
+            # Should have fallen back to host boot time
+            assert info["boot_time"] == host_boot_time
+
+    @patch("birdnetpi.system.status.psutil.Process")
+    @patch("birdnetpi.system.status.psutil.boot_time")
+    def test_get_system_info_fallback_when_pid1_doesnt_exist(
+        self, mock_boot_time, mock_process_class
+    ):
+        """Should fall back to host boot time if PID 1 doesn't exist."""
+        host_boot_time = 1000000.0
+
+        # Mock system boot time
+        mock_boot_time.return_value = host_boot_time
+
+        # Mock PID 1 doesn't exist (shouldn't happen but be defensive)
+        mock_process_class.side_effect = psutil.NoSuchProcess(1)
+
+        # Mock other dependencies
+        with (
+            patch("birdnetpi.system.status.psutil.cpu_count", return_value=4),
+            patch.object(SystemInspector, "get_cpu_usage", return_value=25.0),
+            patch.object(SystemInspector, "get_memory_usage", return_value={"percent": 50.0}),
+            patch.object(SystemInspector, "get_disk_usage", return_value={"percent": 60.0}),
+            patch.object(SystemInspector, "get_cpu_temperature", return_value=None),
+            patch("birdnetpi.system.status.psutil.net_if_addrs", return_value={}),
+        ):
+            # Get system info
+            info = SystemInspector.get_system_info()
+
+            # Should have fallen back to host boot time
+            assert info["boot_time"] == host_boot_time
+
+    def test_uptime_calculation_from_boot_time(self):
+        """Should calculate uptime correctly with container boot time."""
+        import time
+
+        # Create a mock boot time 10 minutes ago
+        ten_minutes_ago = time.time() - 600
+
+        # Calculate uptime in seconds
+        uptime_seconds = time.time() - ten_minutes_ago
+
+        # Should be approximately 600 seconds (10 minutes)
+        assert 595 <= uptime_seconds <= 605  # Allow small variance
+
+        # Calculate uptime in days
+        uptime_days = int(uptime_seconds // 86400)
+
+        # Should be 0 days (less than a day)
+        assert uptime_days == 0
+
+        # Test with a boot time 2.5 days ago
+        two_and_half_days_ago = time.time() - (2.5 * 86400)
+        uptime_seconds = time.time() - two_and_half_days_ago
+        uptime_days = int(uptime_seconds // 86400)
+
+        # Should be 2 days (integer division)
+        assert uptime_days == 2

@@ -432,7 +432,18 @@ class SystemInspector:
 
         # Basic system info
         info["cpu_count"] = psutil.cpu_count()
-        info["boot_time"] = psutil.boot_time()
+
+        # Get container or system boot time
+        # In a container, use process 1's create time (container's init process)
+        # Otherwise fall back to system boot time
+        try:
+            # In a container, PID 1 is the container's init process
+            container_process = psutil.Process(1)
+            info["boot_time"] = container_process.create_time()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            # Fall back to system boot time if we can't access PID 1
+            info["boot_time"] = psutil.boot_time()
+
         info["device_name"] = SystemInspector.get_device_name()
         info["platform"] = platform.platform()
 
