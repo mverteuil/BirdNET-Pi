@@ -129,251 +129,72 @@
       segments every 12s
     </p>
 
+    <!-- Detection notification banner (initially hidden) -->
+    <div id="detection-banner" class="detection-banner" style="display: none;">
+      <span class="banner-content"></span>
+    </div>
+
+    <style>
+      .detection-banner {
+        position: fixed;
+        top: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, var(--color-accent), var(--color-status-success));
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        animation: slideIn 0.3s ease-out;
+        max-width: 500px;
+        text-align: center;
+      }
+
+      @keyframes slideIn {
+        from {
+          transform: translate(-50%, -100%);
+          opacity: 0;
+        }
+        to {
+          transform: translate(-50%, 0);
+          opacity: 1;
+        }
+      }
+
+      @keyframes slideOut {
+        from {
+          transform: translate(-50%, 0);
+          opacity: 1;
+        }
+        to {
+          transform: translate(-50%, -100%);
+          opacity: 0;
+        }
+      }
+
+      .detection-banner.hiding {
+        animation: slideOut 0.3s ease-in;
+      }
+    </style>
+
+    <!-- Load dashboard JavaScript -->
+    <script src="{{ url_for('static', path='js/dashboard.js') }}"></script>
+
     <script>
-      // Helper function to get CSS variable values
-      function getCSSVariable(varName) {
-        return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-      }
+      // Initialize data from server
+      const speciesFrequencyData = {{ species_frequency | tojson }};
+      const hourlyDistributionData = {{ hourly_distribution | tojson }};
+      const visualizationDataFromServer = {{ visualization_data | tojson }};
 
-      // Build species data from server-provided frequency data
-      const speciesData = {};
-      {% for species in species_frequency %}
-      speciesData["{{ species.name }}"] = {
-        count: {{ species.count }},
-        color: {{ species.count }} > 200 ? getCSSVariable('--color-activity-high') : {{ species.count }} > 50 ? getCSSVariable('--color-activity-medium') : getCSSVariable('--color-activity-low')
-      };
-      {% endfor %}
-
-      // Get hourly distribution from server
-      const hourlyDistribution = {{ hourly_distribution | tojson }};
-
-      // Get visualization data from server
-      const visualizationData = {{ visualization_data | tojson }};
-
-      // Use real detection data or generate based on hourly distribution
-      function generateDetections() {
-        const detections = [];
-
-        // If we have real visualization data, use it
-        if (visualizationData && visualizationData.length > 0) {
-          visualizationData.forEach(d => {
-            detections.push({
-              time: d.x,  // Already in hours (0-24)
-              confidence: d.y * 100,  // Convert from fraction to percentage
-              species: d.species,
-              color: d.color,
-              count: 1
-            });
-          });
-        } else if (hourlyDistribution && hourlyDistribution.length > 0) {
-          // Generate based on hourly distribution
-          const species = Object.keys(speciesData);
-
-          hourlyDistribution.forEach((count, hour) => {
-            for (let i = 0; i < count; i++) {
-              detections.push({
-                time: hour + Math.random(),
-                confidence: 70 + Math.random() * 30,
-                species: species.length > 0 ? species[Math.floor(Math.random() * species.length)] : "Unknown",
-                count: 1
-              });
-            }
-          });
-        } else {
-          // Fallback to minimal mock data
-          for (let i = 0; i < 50; i++) {
-            detections.push({
-              time: Math.random() * 24,
-              confidence: 70 + Math.random() * 30,
-              species: "Unknown",
-              count: 1
-            });
-          }
-        }
-
-        return detections;
-      }
-
-      // Draw the abstract visualization
-      function drawVisualization() {
-        const container = document.getElementById("visualization");
-        const detections = generateDetections();
-
-        detections.forEach((d, index) => {
-          // Create main dot
-          const dot = document.createElement("div");
-          dot.className = "dot";
-
-          // Position based on time (x) and pseudo-random vertical spread
-          const x = (d.time / 24) * 100;
-
-          // Create vertical bands with organic clustering
-          const verticalSpread = Math.sin(d.time * 0.5) * 30 + 50;
-          const y =
-            verticalSpread +
-            (Math.random() - 0.5) * 40 +
-            Math.sin(index * 0.1) * 10;
-
-          // Size based on count and confidence
-          const baseSize = 8 + d.count * 4 + (d.confidence - 70) * 0.5;
-          const size = baseSize + Math.random() * 20;
-
-          // Color based on species frequency with more variation
-          const baseColor = d.color || (speciesData[d.species] ? speciesData[d.species].color : getCSSVariable('--color-text-secondary'));
-          const opacity = 0.12 + Math.random() * 0.08;
-
-          // Apply styles
-          dot.style.left = `${x}%`;
-          dot.style.top = `${y}%`;
-          dot.style.width = `${size}px`;
-          dot.style.height = `${size}px`;
-          dot.style.background = baseColor;
-
-          // Staggered animation
-          setTimeout(() => {
-            dot.classList.add("visible");
-          }, index * 3);
-
-          // Random animation delay for organic movement
-          dot.style.animationDelay = `${Math.random() * 4}s`;
-
-          container.appendChild(dot);
-
-          // Add expanding rings for high-confidence detections
-          if (d.confidence > 90 && Math.random() > 0.7) {
-            const ring = document.createElement("div");
-            ring.className = "dot-ring";
-            ring.style.left = `${x}%`;
-            ring.style.top = `${y}%`;
-            ring.style.width = `${size}px`;
-            ring.style.height = `${size}px`;
-            ring.style.borderColor = baseColor;
-            ring.style.animationDelay = `${Math.random() * 8}s`;
-            container.appendChild(ring);
-          }
-        });
-
-        // Add floating particle effect for ambient movement
-        for (let i = 0; i < 20; i++) {
-          const particle = document.createElement("div");
-          particle.className = "dot";
-          particle.style.width = "2px";
-          particle.style.height = "2px";
-          particle.style.background = getCSSVariable('--color-viz-particle');
-          particle.style.left = `${Math.random() * 100}%`;
-          particle.style.top = `${Math.random() * 100}%`;
-          particle.style.animation = `float ${20 + Math.random() * 10}s infinite ease-in-out`;
-          particle.style.animationDelay = `${Math.random() * 5}s`;
-          particle.classList.add("visible");
-          container.appendChild(particle);
-        }
-      }
-
-      // Update times in detection log
-      function updateTimes() {
-        const now = new Date();
-        const timeElements = document.querySelectorAll(".log-entry .time");
-
-        timeElements.forEach((el, index) => {
-          const minutesAgo = index * 5 + Math.floor(Math.random() * 5);
-          const time = new Date(now - minutesAgo * 60000);
-          el.textContent = time.toTimeString().slice(0, 5);
-        });
-      }
-
-      // Load system status via API
-      async function loadSystemStatus() {
-        try {
-          const response = await fetch('/api/system/hardware/status');
-          if (!response.ok) throw new Error('Failed to fetch system status');
-
-          const data = await response.json();
-
-          // Update device name
-          const deviceName = document.getElementById('device-name');
-          if (deviceName && data.system_info?.device_name) {
-            deviceName.textContent = data.system_info.device_name;
-          }
-
-          // Update CPU status
-          const cpuPercent = data.resources?.cpu?.percent || 0;
-          const cpuTemp = data.resources?.cpu?.temperature;
-          document.getElementById('cpu-value').textContent = `${Math.round(cpuPercent)}%`;
-          document.getElementById('cpu-indicator').style.width = `${cpuPercent}%`;
-          document.getElementById('cpu-tooltip').textContent = cpuTemp !== null ?
-            `CPU Temperature: ${cpuTemp}°C` : 'CPU Temperature: N/A';
-
-          // Update Memory status
-          const memory = data.resources?.memory || {};
-          const memPercent = memory.percent || 0;
-          const memUsedGB = (memory.used / (1024**3)).toFixed(1);
-          const memTotalGB = (memory.total / (1024**3)).toFixed(1);
-          document.getElementById('memory-value').textContent = `${Math.round(memPercent)}%`;
-          document.getElementById('memory-indicator').style.width = `${memPercent}%`;
-          document.getElementById('memory-tooltip').textContent =
-            `${memUsedGB} GB / ${memTotalGB} GB used`;
-
-          // Update Disk status
-          const disk = data.resources?.disk || {};
-          const diskPercent = disk.percent || 0;
-          const diskUsedGB = (disk.used / (1024**3)).toFixed(1);
-          const diskTotalGB = (disk.total / (1024**3)).toFixed(1);
-          document.getElementById('disk-value').textContent = `${Math.round(diskPercent)}%`;
-          const diskIndicator = document.getElementById('disk-indicator');
-          diskIndicator.style.width = `${diskPercent}%`;
-          // Add warning/critical classes based on disk usage
-          diskIndicator.classList.remove('warning', 'critical');
-          if (diskPercent > 90) {
-            diskIndicator.classList.add('critical');
-          } else if (diskPercent > 80) {
-            diskIndicator.classList.add('warning');
-          }
-          document.getElementById('disk-tooltip').textContent =
-            `${diskUsedGB} GB / ${diskTotalGB} GB used`;
-
-          // Update Audio status (placeholder for now)
-          document.getElementById('audio-value').innerHTML = '-60<span class="status-detail">dB</span>';
-          document.getElementById('audio-indicator').style.width = '0%';
-          document.getElementById('audio-tooltip').textContent = 'Audio monitoring not available';
-
-          // Update Uptime
-          const uptimeDays = data.system_info?.uptime_days || 0;
-          document.getElementById('uptime-value').textContent = `${uptimeDays}d`;
-          document.getElementById('uptime-tooltip').textContent = `System uptime: ${uptimeDays} days`;
-
-        } catch (error) {
-          console.error('Failed to load system status:', error);
-          // Set error state for all indicators
-          document.getElementById('device-name').textContent = 'Unknown Device';
-          document.querySelectorAll('.status-value').forEach(el => {
-            if (!el.textContent.includes('d')) el.textContent = 'ERR';
-          });
-        }
-      }
-
-      // Initialize
+      // Pass data to dashboard functions
       document.addEventListener("DOMContentLoaded", () => {
-        drawVisualization();
-        updateTimes();
-        loadSystemStatus();  // Load system status on page load
-
-        // Update times every minute
-        setInterval(updateTimes, 60000);
-
-        // Refresh system status every 5 seconds
-        setInterval(loadSystemStatus, 5000);
-
-        // Simulate live updates
-        setInterval(() => {
-          const pulse = document.querySelector(".live");
-          if (pulse) {
-            pulse.style.background = getCSSVariable('--color-status-success');
-            setTimeout(() => {
-              pulse.style.background = getCSSVariable('--color-status-live');
-            }, 1000);
-          }
-        }, 10000);
+        initializeSpeciesData(speciesFrequencyData);
+        setHourlyDistribution(hourlyDistributionData);
+        setVisualizationData(visualizationDataFromServer);
       });
+
+      // Note: All main functions are now in dashboard.js
     </script>
   </body>
 </html>

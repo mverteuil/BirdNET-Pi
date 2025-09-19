@@ -825,7 +825,7 @@ class DetectionQueryService:
                     .where(Detection.timestamp >= start_time)
                     .where(Detection.timestamp <= end_time)
                     .group_by(Detection.scientific_name, Detection.common_name)
-                    .order_by(desc("count"))
+                    .order_by(desc("count"), Detection.scientific_name)
                 )
 
                 return [

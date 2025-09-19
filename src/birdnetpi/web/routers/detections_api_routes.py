@@ -1,16 +1,21 @@
+import asyncio
+import json
 import logging
+from collections.abc import AsyncIterator
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 # from birdnetpi.analytics.plotting_manager import PlottingManager  # Removed - analytics refactor
 # TODO: Re-implement spectrogram generation without PlottingManager
+from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.queries import DetectionQueryService
+from birdnetpi.notifications.signals import detection_signal
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.detections import DetectionEvent, LocationUpdate
 
@@ -563,6 +568,23 @@ async def get_detection(
 #     )
 
 
+@router.get("/species/frequency")
+@inject
+async def get_species_frequency(
+    hours: int = Query(24, description="Hours to look back"),
+    analytics_manager: AnalyticsManager = Depends(  # noqa: B008
+        Provide[Container.analytics_manager]
+    ),
+) -> JSONResponse:
+    """Get species detection frequency for the specified time period."""
+    try:
+        frequency = await analytics_manager.get_species_frequency_analysis(hours=hours)
+        return JSONResponse({"species": frequency, "hours": hours})
+    except Exception as e:
+        logger.error("Error getting species frequency: %s", e)
+        raise HTTPException(status_code=500, detail="Error retrieving species frequency") from e
+
+
 @router.get("/species/summary")
 @inject
 async def get_species_summary(
@@ -627,3 +649,95 @@ async def get_family_summary(
     except Exception as e:
         logger.error("Error getting family summary: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving family summary") from e
+
+
+@router.get("/stream")
+@inject
+async def stream_detections(
+    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
+        Provide[Container.detection_query_service]
+    ),
+) -> StreamingResponse:
+    """Stream new detections using Server-Sent Events (SSE).
+
+    This endpoint streams real-time detection events as they occur.
+    Clients can use EventSource API to receive updates.
+    """
+
+    async def event_generator() -> AsyncIterator[str]:
+        """Generate SSE events from detection signals."""
+        # Create a queue to receive detection events
+        detection_queue: asyncio.Queue = asyncio.Queue()
+
+        def detection_handler(sender: object, **kwargs: object) -> None:
+            """Handle detection signal and put it in the queue."""
+            detection = kwargs.get("detection")
+            if detection:
+                # Use asyncio.run_coroutine_threadsafe to add to queue from sync context
+                loop = asyncio.get_event_loop()
+                loop.call_soon_threadsafe(detection_queue.put_nowait, detection)
+
+        # Connect to the detection signal
+        detection_signal.connect(detection_handler, weak=False)
+
+        try:
+            # Send initial connection event
+            yield f"event: connected\ndata: {json.dumps({'status': 'connected'})}\n\n"
+
+            # Stream detection events
+            while True:
+                try:
+                    # Wait for new detection with timeout to keep connection alive
+                    detection = await asyncio.wait_for(detection_queue.get(), timeout=30.0)
+
+                    # Get display name and enriched data
+                    detection_with_taxa = await detection_query_service.get_detection_with_taxa(
+                        detection.id, "en"
+                    )
+
+                    if detection_with_taxa:
+                        # Create detection event data
+                        event_data = {
+                            "id": str(detection_with_taxa.id),
+                            "timestamp": detection_with_taxa.timestamp.isoformat(),
+                            "scientific_name": detection_with_taxa.scientific_name,
+                            "common_name": detection_query_service.get_species_display_name(
+                                detection_with_taxa,
+                                prefer_translation=True,
+                                language_code="en",
+                            ),
+                            "confidence": detection_with_taxa.confidence,
+                            "latitude": detection_with_taxa.latitude,
+                            "longitude": detection_with_taxa.longitude,
+                        }
+
+                        # Send as SSE event
+                        yield f"event: detection\ndata: {json.dumps(event_data, default=str)}\n\n"
+
+                except TimeoutError:
+                    # Send heartbeat to keep connection alive
+                    heartbeat_data = {"timestamp": datetime.now().isoformat()}
+                    yield f"event: heartbeat\ndata: {json.dumps(heartbeat_data)}\n\n"
+
+                except Exception as e:
+                    logger.error(f"Error processing detection for SSE: {e}")
+                    # Continue streaming despite errors
+
+        except asyncio.CancelledError:
+            # Clean disconnection
+            pass
+        except Exception as e:
+            logger.error(f"Error in detection streaming: {e}")
+            yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+        finally:
+            # Disconnect from signal when done
+            detection_signal.disconnect(detection_handler)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # Disable Nginx buffering
+        },
+    )
