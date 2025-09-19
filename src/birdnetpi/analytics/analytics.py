@@ -225,28 +225,81 @@ class AnalyticsManager:
         return weekday_hourly
 
     async def get_weekly_heatmap_data(self, days: int = 7) -> list[list[int]]:
-        """Get hourly detection counts for past N days for heatmap visualization.
+        """Get hourly detection counts for heatmap visualization.
+
+        For periods <= 7 days: Returns actual daily data (padded to 7 days if needed)
+        For periods > 7 days: Returns averaged weekday patterns (Mon-Sun)
+
+        Args:
+            days: Number of days to analyze
 
         Returns:
             List of 7 lists, each with 24 hourly counts
         """
-        heatmap_data = []
+        from collections import defaultdict
+
         end_date = datetime.now().date()
 
-        for day_offset in range(days):
-            target_date = end_date - timedelta(days=day_offset)
-            hourly_data = await self.detection_query_service.get_hourly_counts(target_date)
+        if days <= 7:
+            # For 7 days or less, show actual daily data
+            heatmap_data = []
 
-            # Create 24-hour array with counts
-            day_counts = [0] * 24
-            for item in hourly_data:
-                hour = item["hour"]
-                day_counts[hour] = item["count"]
+            # Always return 7 days of data, padding with zeros if needed
+            for day_offset in range(7):
+                if day_offset < days:
+                    # Get actual data for this day
+                    target_date = end_date - timedelta(days=day_offset)
+                    hourly_data = await self.detection_query_service.get_hourly_counts(target_date)
 
-            # Insert at beginning to maintain chronological order
-            heatmap_data.insert(0, day_counts)
+                    # Create 24-hour array with counts
+                    day_counts = [0] * 24
+                    for item in hourly_data:
+                        hour = item["hour"]
+                        day_counts[hour] = item["count"]
+                else:
+                    # Pad with zeros for days outside the period
+                    day_counts = [0] * 24
 
-        return heatmap_data
+                # Insert at beginning to maintain chronological order
+                heatmap_data.insert(0, day_counts)
+
+            return heatmap_data
+        else:
+            # For more than 7 days, return averaged weekday patterns
+            # Aggregate by weekday (0=Monday, 6=Sunday)
+            weekday_hourly_totals = defaultdict(lambda: [0] * 24)
+            weekday_day_counts = defaultdict(int)
+
+            for day_offset in range(days):
+                target_date = end_date - timedelta(days=day_offset)
+                weekday = target_date.weekday()  # 0=Monday, 6=Sunday
+
+                hourly_data = await self.detection_query_service.get_hourly_counts(target_date)
+                weekday_day_counts[weekday] += 1
+
+                for item in hourly_data:
+                    hour = item["hour"]
+                    weekday_hourly_totals[weekday][hour] += item["count"]
+
+            # Average the counts and format for 7-day week display
+            # Order: Sunday (6), Monday (0), Tuesday (1), ..., Saturday (5)
+            weekday_order = [6, 0, 1, 2, 3, 4, 5]  # Sun, Mon, Tue, Wed, Thu, Fri, Sat
+            heatmap_data = []
+
+            for weekday in weekday_order:
+                if weekday_day_counts[weekday] > 0:
+                    # Calculate averages for this weekday
+                    avg_counts = [
+                        total // weekday_day_counts[weekday]
+                        for total in weekday_hourly_totals[weekday]
+                    ]
+                else:
+                    # No data for this weekday
+                    avg_counts = [0] * 24
+
+                heatmap_data.append(avg_counts)
+
+            return heatmap_data
 
     async def get_weekly_patterns(self) -> dict[str, list[int]]:
         """Get detection patterns grouped by day of week.

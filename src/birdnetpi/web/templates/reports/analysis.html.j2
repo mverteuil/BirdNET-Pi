@@ -174,14 +174,14 @@
 <!-- Summary Metrics Line -->
 {% if analyses.diversity %}
 <div class="metrics-summary">
-    Shannon H': <span class="metric-value">{{ analyses.diversity.shannon[-1]|default(0) }}</span>
+    Shannon H': <span class="metric-value">{{ analyses.diversity.shannon[-1]|default(0)|abs|round(4) }}</span>
     {% if analyses.diversity_comparison %}
         <span class="metric-change change-{{ analyses.diversity_comparison.changes.shannon_change.trend }}">
             ({{ analyses.diversity_comparison.changes.shannon_change.value|round(2) }})
         </span>
     {% endif %}
     ·
-    Simpson D: <span class="metric-value">{{ analyses.diversity.simpson[-1]|default(0) }}</span>
+    Simpson D: <span class="metric-value">{{ analyses.diversity.simpson[-1]|default(0)|abs|round(4) }}</span>
     {% if analyses.diversity_comparison %}
         <span class="metric-change change-{{ analyses.diversity_comparison.changes.simpson_change.trend }}">
             ({{ analyses.diversity_comparison.changes.simpson_change.value|round(2) }})
@@ -276,6 +276,12 @@
         {% endfor %}
     </div>
 
+    {% if analyses.similarity.period_info %}
+    <p class="method-note">
+        Comparing {{ analyses.similarity.period_info.count }} periods of {{ analyses.similarity.period_info.size_days }} days each
+        &middot; Total period: {{ analyses.similarity.period_info.total_days }} days
+    </p>
+    {% endif %}
     <p class="method-note">
         Jaccard: <span style="font-family: 'Arial', sans-serif; font-style: normal; font-weight: normal;">(A ∩ B) / (A ∪ B)</span> &middot; Higher values indicate more similar communities
     </p>
@@ -327,9 +333,13 @@
             <canvas id="temp-correlation" class="chart-canvas" width="350" height="200"></canvas>
             <div style="text-align: center; margin-top: 0.5rem;">
                 Temperature:
-                <span class="correlation-value {% if analyses.weather.correlations.temperature|abs > 0.5 %}correlation-strong{% elif analyses.weather.correlations.temperature|abs > 0.3 %}correlation-moderate{% else %}correlation-weak{% endif %}">
+                {% if analyses.weather and analyses.weather.correlations %}
+                <span class="correlation-value {% if analyses.weather.correlations.temperature|default(0)|abs > 0.5 %}correlation-strong{% elif analyses.weather.correlations.temperature|default(0)|abs > 0.3 %}correlation-moderate{% else %}correlation-weak{% endif %}">
                     r = {{ analyses.weather.correlations.temperature|default(0) }}
                 </span>
+                {% else %}
+                <span class="correlation-value correlation-weak">r = 0.0</span>
+                {% endif %}
             </div>
         </div>
 
@@ -337,9 +347,13 @@
             <canvas id="humidity-correlation" class="chart-canvas" width="350" height="200"></canvas>
             <div style="text-align: center; margin-top: 0.5rem;">
                 Humidity:
-                <span class="correlation-value {% if analyses.weather.correlations.humidity|abs > 0.5 %}correlation-strong{% elif analyses.weather.correlations.humidity|abs > 0.3 %}correlation-moderate{% else %}correlation-weak{% endif %}">
+                {% if analyses.weather and analyses.weather.correlations %}
+                <span class="correlation-value {% if analyses.weather.correlations.humidity|default(0)|abs > 0.5 %}correlation-strong{% elif analyses.weather.correlations.humidity|default(0)|abs > 0.3 %}correlation-moderate{% else %}correlation-weak{% endif %}">
                     r = {{ analyses.weather.correlations.humidity|default(0) }}
                 </span>
+                {% else %}
+                <span class="correlation-value correlation-weak">r = 0.0</span>
+                {% endif %}
             </div>
         </div>
 
@@ -347,9 +361,13 @@
             <canvas id="wind-correlation" class="chart-canvas" width="350" height="200"></canvas>
             <div style="text-align: center; margin-top: 0.5rem;">
                 Wind Speed:
-                <span class="correlation-value {% if analyses.weather.correlations.wind_speed|abs > 0.5 %}correlation-strong{% elif analyses.weather.correlations.wind_speed|abs > 0.3 %}correlation-moderate{% else %}correlation-weak{% endif %}">
+                {% if analyses.weather and analyses.weather.correlations %}
+                <span class="correlation-value {% if analyses.weather.correlations.wind_speed|default(0)|abs > 0.5 %}correlation-strong{% elif analyses.weather.correlations.wind_speed|default(0)|abs > 0.3 %}correlation-moderate{% else %}correlation-weak{% endif %}">
                     r = {{ analyses.weather.correlations.wind_speed|default(0) }}
                 </span>
+                {% else %}
+                <span class="correlation-value correlation-weak">r = 0.0</span>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -405,6 +423,11 @@
 <script>
 // Analysis data from server
 window.analysisData = {{ analyses | tojson }};
+{% if dates %}
+window.analysisData.dates = {{ dates | tojson }};
+{% else %}
+window.analysisData.dates = {};
+{% endif %}
 
 // Draw diversity timeline using canvas
 function drawDiversityTimeline() {
@@ -436,36 +459,82 @@ function drawDiversityTimeline() {
     const maxShannon = Math.max(...data.shannon);
     const maxRichness = Math.max(...data.richness);
 
-    // Draw Shannon line
+    // Determine if we need to sample the data for cleaner lines
+    const maxLinePoints = 100; // Maximum points for smooth line drawing
+    let lineData = data;
+
+    if (data.periods.length > maxLinePoints) {
+        // Sample the data to reduce points
+        const sampleRate = Math.ceil(data.periods.length / maxLinePoints);
+        lineData = {
+            periods: [],
+            shannon: [],
+            simpson: [],
+            richness: [],
+            evenness: []
+        };
+
+        for (let i = 0; i < data.periods.length; i += sampleRate) {
+            lineData.periods.push(data.periods[i]);
+            lineData.shannon.push(data.shannon[i]);
+            lineData.simpson.push(data.simpson[i]);
+            lineData.richness.push(data.richness[i]);
+            lineData.evenness.push(data.evenness[i]);
+        }
+
+        // Always include the last point
+        if ((data.periods.length - 1) % sampleRate !== 0) {
+            lineData.periods.push(data.periods[data.periods.length - 1]);
+            lineData.shannon.push(data.shannon[data.shannon.length - 1]);
+            lineData.simpson.push(data.simpson[data.simpson.length - 1]);
+            lineData.richness.push(data.richness[data.richness.length - 1]);
+            lineData.evenness.push(data.evenness[data.evenness.length - 1]);
+        }
+    }
+
+    // Draw Shannon line with sampled data
     ctx.strokeStyle = '#111';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
 
-    data.periods.forEach((period, i) => {
-        const x = padding.left + (i / (data.periods.length - 1)) * width;
-        const y = padding.top + height - (data.shannon[i] / maxShannon) * height * 0.8;
+    lineData.periods.forEach((period, i) => {
+        const x = padding.left + (i / (lineData.periods.length - 1)) * width;
+        const y = padding.top + height - (lineData.shannon[i] / maxShannon) * height * 0.8;
 
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
     });
     ctx.stroke();
 
-    // Draw Simpson line (thinner, gray)
+    // Draw Simpson line with sampled data (thinner, gray)
     ctx.strokeStyle = '#666';
     ctx.lineWidth = 1;
     ctx.beginPath();
 
-    data.periods.forEach((period, i) => {
-        const x = padding.left + (i / (data.periods.length - 1)) * width;
-        const y = padding.top + height - data.simpson[i] * height * 0.8;
+    lineData.periods.forEach((period, i) => {
+        const x = padding.left + (i / (lineData.periods.length - 1)) * width;
+        const y = padding.top + height - lineData.simpson[i] * height * 0.8;
 
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
     });
     ctx.stroke();
 
-    // Draw richness circles
+    // Draw richness circles - intelligently sample points to avoid overlap
+    const maxCircles = 30; // Maximum number of circles to draw
+    let sampleInterval = 1;
+
+    if (data.richness.length > maxCircles) {
+        // Calculate sampling interval to get roughly maxCircles points
+        sampleInterval = Math.ceil(data.richness.length / maxCircles);
+    }
+
     data.richness.forEach((richness, i) => {
+        // Only draw circles at sampled intervals or endpoints
+        if (i % sampleInterval !== 0 && i !== data.richness.length - 1) {
+            return;
+        }
+
         const x = padding.left + (i / (data.periods.length - 1)) * width;
         const shannonY = padding.top + height - (data.shannon[i] / maxShannon) * height * 0.8;
 
@@ -519,7 +588,7 @@ function drawAccumulationCurve() {
     const data = analysisData.accumulation;
 
     // Canvas dimensions
-    const padding = { left: 50, right: 30, top: 20, bottom: 40 };
+    const padding = { left: 60, right: 30, top: 20, bottom: 50 };
     const width = canvas.width - padding.left - padding.right;
     const height = canvas.height - padding.top - padding.bottom;
 
@@ -536,6 +605,22 @@ function drawAccumulationCurve() {
     ctx.lineTo(padding.left + width, padding.top + height);
     ctx.stroke();
 
+    // Add axis labels
+    ctx.fillStyle = '#111';
+    ctx.font = '12px system-ui, -apple-system, sans-serif';
+
+    // Y-axis label (rotated)
+    ctx.save();
+    ctx.translate(15, padding.top + height / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.fillText('Species Count', 0, 0);
+    ctx.restore();
+
+    // X-axis label
+    ctx.textAlign = 'center';
+    ctx.fillText('Number of Detections', padding.left + width / 2, canvas.height - 10);
+
     // Draw accumulation curve
     ctx.strokeStyle = '#111';
     ctx.lineWidth = 1.5;
@@ -544,24 +629,71 @@ function drawAccumulationCurve() {
     const maxSpecies = Math.max(...data.species_counts);
     const maxSamples = data.samples.length;
 
+    // Store points for labeling
+    const curvePoints = [];
+
     data.samples.forEach((sample, i) => {
         const x = padding.left + (i / (maxSamples - 1)) * width;
         const y = padding.top + height - (data.species_counts[i] / maxSpecies) * height * 0.9;
+
+        curvePoints.push({ x, y, species: data.species_counts[i], samples: i });
 
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
     });
     ctx.stroke();
 
-    // Y-axis labels
-    ctx.font = '10px Georgia';
-    ctx.fillStyle = '#666';
-    ctx.textAlign = 'right';
-    ctx.fillText('Species', padding.left - 5, padding.top);
+    // Add point labels at regular intervals (5-6 points)
+    const labelInterval = Math.floor(maxSamples / 5);
+    ctx.fillStyle = '#111';
+    ctx.font = '10px system-ui, -apple-system, sans-serif';
 
-    // X-axis label
-    ctx.textAlign = 'center';
-    ctx.fillText('Detections', padding.left + width / 2, canvas.height - 5);
+    // Track last labeled point to avoid overlap
+    let lastLabeledIndex = -1;
+
+    for (let i = 0; i < maxSamples; i += labelInterval) {
+        const point = curvePoints[i];
+        if (point) {
+            // Draw small circle at point
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, 3, 0, 2 * Math.PI);
+            ctx.fillStyle = '#111';
+            ctx.fill();
+
+            // Add label above point
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${point.species} sp.`, point.x, point.y - 8);
+            ctx.font = '9px system-ui, -apple-system, sans-serif';
+            ctx.fillText(`(${point.samples} det.)`, point.x, point.y - 20);
+            ctx.font = '10px system-ui, -apple-system, sans-serif';
+
+            lastLabeledIndex = i;
+        }
+    }
+
+    // Label the final point only if it's not too close to the last labeled point
+    if (maxSamples > 0) {
+        const lastPoint = curvePoints[curvePoints.length - 1];
+
+        // Check if final point is at least 10% of the width away from last labeled point
+        const minDistance = width * 0.1;
+        const shouldLabelFinal = lastLabeledIndex < 0 ||
+            (lastPoint.x - curvePoints[lastLabeledIndex].x) > minDistance;
+
+        if (shouldLabelFinal) {
+            ctx.beginPath();
+            ctx.arc(lastPoint.x, lastPoint.y, 3, 0, 2 * Math.PI);
+            ctx.fillStyle = '#111';
+            ctx.fill();
+
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'right';
+            ctx.fillText(`${lastPoint.species} sp.`, lastPoint.x - 5, lastPoint.y - 8);
+            ctx.font = '9px system-ui, -apple-system, sans-serif';
+            ctx.fillText(`(${lastPoint.samples} det.)`, lastPoint.x - 5, lastPoint.y - 20);
+        }
+    }
 }
 
 // Draw beta diversity horizon chart
@@ -573,7 +705,7 @@ function drawBetaDiversity() {
     const data = analysisData.beta_diversity;
 
     // Canvas dimensions
-    const padding = { left: 50, right: 30, top: 20, bottom: 40 };
+    const padding = { left: 60, right: 30, top: 30, bottom: 65 };
     const width = canvas.width - padding.left - padding.right;
     const height = canvas.height - padding.top - padding.bottom;
 
@@ -581,31 +713,110 @@ function drawBetaDiversity() {
     ctx.fillStyle = '#fdfcfa';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw turnover rate bars
-    const maxTurnover = Math.max(...data.turnover_rates);
+    // Draw Y-axis
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, padding.top);
+    ctx.lineTo(padding.left, padding.top + height);
+    ctx.stroke();
+
+    // Draw X-axis
+    ctx.beginPath();
+    ctx.moveTo(padding.left, padding.top + height);
+    ctx.lineTo(padding.left + width, padding.top + height);
+    ctx.stroke();
+
+    // Add axis labels
+    ctx.fillStyle = '#111';
+    ctx.font = '12px system-ui, -apple-system, sans-serif';
+
+    // Y-axis label (rotated)
+    ctx.save();
+    ctx.translate(15, padding.top + height / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.fillText('Turnover Rate (β)', 0, 0);
+    ctx.restore();
+
+    // X-axis label
+    ctx.textAlign = 'center';
+    ctx.fillText('Time Period', padding.left + width / 2, canvas.height - 5);
+
+    // Draw turnover rate bars with labels
+    const maxTurnover = Math.max(...data.turnover_rates, 0.1); // Ensure minimum scale
     const barWidth = width / data.periods.length;
 
     data.periods.forEach((period, i) => {
         const x = padding.left + i * barWidth;
         const barHeight = (data.turnover_rates[i] / maxTurnover) * height * 0.8;
         const y = padding.top + height - barHeight;
+        const barActualWidth = barWidth * 0.7;
+        const barX = x + (barWidth - barActualWidth) / 2;
 
         // Bar color based on turnover rate
         const intensity = data.turnover_rates[i];
-        if (intensity > 0.6) ctx.fillStyle = 'rgba(200, 0, 0, 0.3)';
-        else if (intensity > 0.3) ctx.fillStyle = 'rgba(100, 100, 0, 0.3)';
-        else ctx.fillStyle = 'rgba(0, 100, 0, 0.3)';
+        if (intensity > 0.6) ctx.fillStyle = 'rgba(200, 0, 0, 0.4)';
+        else if (intensity > 0.3) ctx.fillStyle = 'rgba(180, 180, 0, 0.4)';
+        else ctx.fillStyle = 'rgba(0, 150, 0, 0.4)';
 
-        ctx.fillRect(x, y, barWidth * 0.8, barHeight);
+        ctx.fillRect(barX, y, barActualWidth, barHeight);
+
+        // Add value label above each bar
+        ctx.fillStyle = '#666';
+        ctx.font = '11px system-ui, -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        const value = data.turnover_rates[i].toFixed(2);
+        ctx.fillText(value, barX + barActualWidth / 2, y - 5);
+
+        // Add period label below X-axis
+        ctx.font = '10px system-ui, -apple-system, sans-serif';
+        ctx.fillStyle = '#666';
+
+        // Format date for display
+        const date = new Date(period);
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                           'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const label = `${monthNames[date.getMonth()]} ${date.getDate()}`;
+
+        // Check if we need to rotate based on number of bars
+        if (data.periods.length > 8) {
+            // Rotate for many bars
+            ctx.save();
+            ctx.translate(barX + barActualWidth / 2, padding.top + height + 20);
+            ctx.rotate(-Math.PI / 4); // Rotate 45 degrees
+            ctx.textAlign = 'right';
+            ctx.fillText(label, 0, 0);
+            ctx.restore();
+        } else {
+            // Horizontal for fewer bars
+            ctx.textAlign = 'center';
+            ctx.fillText(label, barX + barActualWidth / 2, padding.top + height + 20);
+        }
     });
 
-    // Axis
-    ctx.strokeStyle = '#111';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(padding.left, padding.top + height);
-    ctx.lineTo(padding.left + width, padding.top + height);
-    ctx.stroke();
+    // Add Y-axis scale markers
+    ctx.fillStyle = '#666';
+    ctx.font = '10px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'right';
+
+    // Add scale lines and labels at 0, 0.5, 1.0
+    const scalePoints = [0, 0.5, 1.0];
+    scalePoints.forEach(value => {
+        const y = padding.top + height - (value / maxTurnover) * height * 0.8;
+
+        // Draw tick mark
+        ctx.strokeStyle = '#ddd';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(padding.left - 5, y);
+        ctx.lineTo(padding.left + width, y);
+        ctx.stroke();
+
+        // Add label
+        ctx.fillStyle = '#666';
+        ctx.fillText(value.toFixed(1), padding.left - 10, y + 3);
+    });
 }
 
 // Draw weather correlation scatter plots
@@ -793,9 +1004,34 @@ function drawActivityHeatmap() {
         ctx.fillText(hour.toString(), x, padding.top + height + 15);
     }
 
-    // Y-axis labels (days of week)
-    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    // Y-axis labels - determine based on period
+    const period = document.getElementById('primary-period')?.value || 'week';
+    let dayLabels;
+
+    // Determine period length in days
+    const startDate = new Date(analysisData.dates?.primary?.start);
+    const endDate = new Date(analysisData.dates?.primary?.end);
+    const periodDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+
+    if (periodDays > 7) {
+        // For periods > 7 days, show weekday labels (averaged data)
+        dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    } else {
+        // For periods <= 7 days, show date labels
+        dayLabels = [];
+        const today = new Date();
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(today.getDate() - i);
+            // Format as MM/DD
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            dayLabels.push(`${month}/${day}`);
+        }
+    }
+
     ctx.textAlign = 'right';
+    ctx.font = '10px Georgia';
 
     data.forEach((_, idx) => {
         if (idx < dayLabels.length) {

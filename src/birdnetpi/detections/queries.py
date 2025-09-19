@@ -1027,10 +1027,12 @@ class DetectionQueryService:
         async with self.core_database.get_async_db() as session:
             # Determine grouping based on resolution
             if temporal_resolution == "hourly":
-                date_trunc = func.datetime(Detection.timestamp, "start of day", "+1 hour")
+                # Group by hour using strftime
+                date_trunc = func.strftime("%Y-%m-%d %H:00:00", Detection.timestamp)
                 period_format = "%Y-%m-%d %H:00"
             elif temporal_resolution == "weekly":
-                date_trunc = func.datetime(Detection.timestamp, "weekday 0", "-6 days")
+                # Group by week (Sunday as start)
+                date_trunc = func.date(Detection.timestamp, "weekday 0", "-6 days")
                 period_format = "%Y-W%W"
             else:  # daily
                 date_trunc = func.date(Detection.timestamp)

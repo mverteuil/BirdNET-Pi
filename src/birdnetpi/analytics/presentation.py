@@ -627,7 +627,19 @@ class PresentationManager:
             "comparison_period": comparison_period,
             "analyses": {},
             "progressive_loading": progressive,
+            "dates": {
+                "primary": {
+                    "start": primary_dates[0].isoformat(),
+                    "end": primary_dates[1].isoformat(),
+                },
+            },
         }
+
+        if comparison_dates:
+            result["dates"]["comparison"] = {
+                "start": comparison_dates[0].isoformat(),
+                "end": comparison_dates[1].isoformat(),
+            }
 
         # Use asyncio.gather for parallel execution with proper database configuration
         import asyncio
@@ -727,6 +739,8 @@ class PresentationManager:
             tasks["similarity"] = self.analytics_manager.calculate_community_similarity(
                 periods=periods, index_type="jaccard"
             )
+            # Store periods separately (not in tasks since it's not async)
+            self._similarity_periods_cache = periods
 
         # Beta diversity task
         if "beta" in analysis_types:
@@ -744,6 +758,9 @@ class PresentationManager:
         # Pattern analyses tasks
         if "patterns" in analysis_types:
             tasks["temporal"] = self.analytics_manager.get_temporal_patterns()
+            # Add heatmap data based on period
+            days = (primary_dates[1] - primary_dates[0]).days
+            tasks["heatmap"] = self.analytics_manager.get_weekly_heatmap_data(days=days)
 
         # Summary statistics task
         tasks["summary"] = self._generate_analysis_summary(primary_dates, comparison_dates)
@@ -771,8 +788,10 @@ class PresentationManager:
 
         # Similarity results
         if "similarity" in results_dict:
+            # Use the cached periods (not from results_dict)
+            periods = getattr(self, "_similarity_periods_cache", [])
             result["analyses"]["similarity"] = self._format_similarity_matrix(
-                results_dict["similarity"]
+                results_dict["similarity"], periods=periods
             )
 
         # Beta diversity results
@@ -793,6 +812,12 @@ class PresentationManager:
                 "peak_hour": temporal["peak_hour"],
                 "periods": temporal["periods"],
             }
+
+        # Add heatmap data if available
+        if "heatmap" in results_dict:
+            if "temporal_patterns" not in result["analyses"]:
+                result["analyses"]["temporal_patterns"] = {}
+            result["analyses"]["temporal_patterns"]["heatmap"] = results_dict["heatmap"]
 
     # === FORMATTING METHODS ===
 
@@ -833,10 +858,38 @@ class PresentationManager:
             "total_species": max(data["species_counts"]) if data["species_counts"] else 0,
         }
 
-    def _format_similarity_matrix(self, data: dict) -> dict:
+    def _format_similarity_matrix(self, data: dict, periods: list | None = None) -> dict:
         """Format similarity matrix for heatmap display."""
         matrix = data["matrix"]
         labels = data["labels"]
+
+        # Create better labels with date ranges if periods are provided
+        if periods:
+            formatted_labels = []
+            for _i, (start, end) in enumerate(periods):
+                # Calculate period duration
+                duration = (end - start).days
+                if duration == 1:
+                    # Single day - show date
+                    label = start.strftime("%b %d")
+                elif duration <= 7:
+                    # Week or less - show date range
+                    label = f"{start.strftime('%b %d')}-{end.strftime('%d')}"
+                else:
+                    # Longer period - show month and dates
+                    label = f"{start.strftime('%b %d')} - {end.strftime('%b %d')}"
+                formatted_labels.append(label)
+
+            # Add period size information
+            period_days = (periods[0][1] - periods[0][0]).days if periods else 0
+            period_info = {
+                "count": len(periods),
+                "size_days": period_days,
+                "total_days": (periods[-1][1] - periods[0][0]).days if periods else 0,
+            }
+        else:
+            formatted_labels = labels
+            period_info = None
 
         # Convert to percentage and threshold for display
         formatted_matrix = []
@@ -851,7 +904,12 @@ class PresentationManager:
             ]
             formatted_matrix.append(formatted_row)
 
-        return {"labels": labels, "matrix": formatted_matrix, "index_type": data["index_type"]}
+        return {
+            "labels": formatted_labels,
+            "matrix": formatted_matrix,
+            "index_type": data["index_type"],
+            "period_info": period_info,
+        }
 
     def _format_beta_diversity(self, data: list[dict]) -> dict:
         """Format beta diversity for visualization."""
@@ -974,9 +1032,9 @@ class PresentationManager:
         windows = {
             "day": timedelta(hours=6),
             "week": timedelta(days=1),
-            "month": timedelta(days=7),
-            "season": timedelta(days=14),
-            "year": timedelta(days=30),
+            "month": timedelta(days=5),
+            "season": timedelta(days=15),
+            "year": timedelta(days=60),
         }
         return windows.get(normalized_period, timedelta(days=1))
 

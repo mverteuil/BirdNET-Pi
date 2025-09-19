@@ -636,9 +636,9 @@ class TestPeriodCalculations:
 
         assert presentation_manager._get_window_size_for_period("day") == timedelta(hours=6)
         assert presentation_manager._get_window_size_for_period("week") == timedelta(days=1)
-        assert presentation_manager._get_window_size_for_period("month") == timedelta(days=7)
-        assert presentation_manager._get_window_size_for_period("season") == timedelta(days=14)
-        assert presentation_manager._get_window_size_for_period("year") == timedelta(days=30)
+        assert presentation_manager._get_window_size_for_period("month") == timedelta(days=5)
+        assert presentation_manager._get_window_size_for_period("season") == timedelta(days=15)
+        assert presentation_manager._get_window_size_for_period("year") == timedelta(days=60)
 
     def test_get_days_for_period(self, presentation_manager):
         """Should day count for different periods."""
