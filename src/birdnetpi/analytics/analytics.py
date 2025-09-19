@@ -148,8 +148,14 @@ class AnalyticsManager:
         start_time = end_time - timedelta(hours=hours)
 
         # Get detections in time range - always returns DetectionWithTaxa
+        # Use a higher limit to avoid truncation in busy periods
+        # 1000 detections should handle even very busy days
         detections = await self.detection_query_service.query_detections(
-            start_date=start_time, end_date=end_time, order_by="timestamp", order_desc=True
+            start_date=start_time,
+            end_date=end_time,
+            order_by="timestamp",
+            order_desc=True,
+            limit=1000,
         )
 
         # Group by species for frequency classification
