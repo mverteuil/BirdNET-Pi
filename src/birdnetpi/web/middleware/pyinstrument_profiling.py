@@ -28,9 +28,22 @@ class PyInstrumentProfilerMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Profile request if ?profile=1 is in query params."""
-        # Check if profiling is requested
-        profile_param = request.query_params.get("profile")
-        if not profile_param or profile_param != "1":
+        # Check if profiling is requested by looking at the raw URL
+        # This ensures we catch the profile parameter even when routes have other query params
+        query_string = str(request.url.query)
+
+        # Check if profile=1 is in the query string
+        should_profile = False
+        if query_string:
+            # Parse query params manually to avoid conflicts with FastAPI route parameters
+            for param_pair in query_string.split("&"):
+                if "=" in param_pair:
+                    key, value = param_pair.split("=", 1)
+                    if key == "profile" and value == "1":
+                        should_profile = True
+                        break
+
+        if not should_profile:
             return await call_next(request)
 
         # Start profiling

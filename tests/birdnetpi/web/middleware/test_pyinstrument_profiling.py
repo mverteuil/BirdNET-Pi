@@ -238,6 +238,7 @@ class TestMiddlewareDispatch:
         # Create mock request without profile parameter
         mock_request = MagicMock(spec=Request)
         mock_request.query_params = {}
+        mock_request.url.query = ""  # No query string
 
         # Create mock call_next that returns a response
         mock_response = Response(content="Normal response")
@@ -258,6 +259,7 @@ class TestMiddlewareDispatch:
         # Create mock request with profile=1
         mock_request = MagicMock(spec=Request)
         mock_request.query_params = {"profile": "1"}
+        mock_request.url.query = "profile=1"  # Raw query string
         mock_request.method = "GET"
         mock_request.url.path = "/test"
 
@@ -288,6 +290,7 @@ class TestMiddlewareDispatch:
         # Create mock request with profile=1
         mock_request = MagicMock(spec=Request)
         mock_request.query_params = {"profile": "1"}
+        mock_request.url.query = "profile=1"  # Raw query string
         mock_request.method = "GET"
         mock_request.url.path = "/test"
 
@@ -307,3 +310,58 @@ class TestMiddlewareDispatch:
 
             assert "X-Profile-Summary" in result.headers
             assert "Profile line 1 | Profile line 2" in result.headers["X-Profile-Summary"]
+
+    @pytest.mark.asyncio
+    async def test_dispatch_with_profiling_and_other_params(self):
+        """Should detect profile=1 even when other query parameters are present."""
+        middleware = PyInstrumentProfilerMiddleware(app=MagicMock(), html_output=True)
+
+        # Create mock request with profile=1 and other parameters
+        mock_request = MagicMock(spec=Request)
+        mock_request.query_params = {"period": "day", "profile": "1", "filter": "active"}
+        mock_request.url.query = "period=day&profile=1&filter=active"  # Raw query string
+        mock_request.method = "GET"
+        mock_request.url.path = "/reports/detections"
+
+        # Create mock call_next
+        mock_response = Response(content="Normal response")
+
+        async def mock_call_next(request):
+            return mock_response
+
+        with patch(
+            "birdnetpi.web.middleware.pyinstrument_profiling.Profiler"
+        ) as mock_profiler_class:
+            mock_profiler = MagicMock()
+            mock_profiler.is_running = False
+            mock_profiler.output_html.return_value = "<html>Profile with params</html>"
+            mock_profiler_class.return_value = mock_profiler
+
+            result = await middleware.dispatch(mock_request, mock_call_next)
+
+            # Should have profiled despite other query params
+            assert isinstance(result, HTMLResponse)
+            assert b"Profile with params" in result.body
+            mock_profiler.start.assert_called_once()
+            mock_profiler.stop.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_dispatch_without_profiling_with_other_params(self):
+        """Should not profile when profile=1 is not present, even with other params."""
+        middleware = PyInstrumentProfilerMiddleware(app=MagicMock())
+
+        # Create mock request with other parameters but no profile
+        mock_request = MagicMock(spec=Request)
+        mock_request.query_params = {"period": "week", "comparison": "month"}
+        mock_request.url.query = "period=week&comparison=month"  # Raw query string
+
+        # Create mock call_next that returns a response
+        mock_response = Response(content="Normal response")
+
+        async def mock_call_next(request):
+            return mock_response
+
+        result = await middleware.dispatch(mock_request, mock_call_next)
+
+        assert result == mock_response
+        assert result.body == b"Normal response"
