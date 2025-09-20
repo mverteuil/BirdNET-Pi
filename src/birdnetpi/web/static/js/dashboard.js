@@ -303,14 +303,13 @@ function showDetectionBanner(detection) {
   content.textContent = `New detection: ${detection.common_name} at ${time} (${confidence}% confidence)`;
 
   // Show banner
-  banner.classList.remove("hiding");
-  banner.style.display = "block";
+  banner.classList.remove("hiding", "d-none");
 
   // Hide after 5 seconds
   setTimeout(() => {
     banner.classList.add("hiding");
     setTimeout(() => {
-      banner.style.display = "none";
+      banner.classList.add("d-none");
       banner.classList.remove("hiding");
     }, 300);
   }, 5000);

@@ -1,0 +1,224 @@
+/* All Detections page-specific styles */
+
+/* Page title styling - secondary h1 after header */
+body > h1:nth-of-type(1) {
+  font-size: 1.8rem;
+  font-weight: normal;
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-text-emphasis);
+}
+
+/* Controls bar */
+.controls-bar {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-primary);
+  font-size: 0.85rem;
+}
+
+.date-picker-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.date-picker-group label {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.date-picker-group input[type="date"] {
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--color-input-border);
+  background: var(--color-bg-hover);
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+/* Filter buttons */
+.filter-buttons {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.filter-btn {
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--color-text-tertiary);
+  background: var(--color-bg-primary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+  background: var(--color-bg-hover);
+}
+
+.filter-btn.active {
+  background: var(--color-text-primary);
+  color: var(--color-bg-primary);
+  border-color: var(--color-text-primary);
+}
+
+/* Stats summary */
+.stats-summary {
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  line-height: 1.8;
+}
+
+.stat-value {
+  color: var(--color-text-emphasis);
+  font-weight: normal;
+}
+
+/* Species tabs */
+.species-tabs-container {
+  margin-bottom: 2rem;
+}
+
+.species-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.species-tab {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--color-border-secondary);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.species-tab:hover {
+  background: var(--color-bg-hover);
+}
+
+.species-tab.active {
+  background: var(--color-text-primary);
+  color: var(--color-bg-primary);
+  border-color: var(--color-text-primary);
+}
+
+.species-count {
+  font-size: 0.7rem;
+  opacity: 0.8;
+  padding: 0.1rem 0.3rem;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+.species-tab.active .species-count {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Detection grid */
+.detection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.detection-card {
+  border: 1px solid var(--color-border-secondary);
+  padding: 1rem;
+  background: var(--color-bg-secondary);
+  transition: all 0.2s ease;
+}
+
+.detection-card:hover {
+  background: var(--color-bg-hover);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.detection-time {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  margin-bottom: 0.25rem;
+}
+
+.detection-species {
+  font-size: 0.95rem;
+  color: var(--color-text-emphasis);
+  margin-bottom: 0.25rem;
+}
+
+.detection-confidence {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.confidence-high {
+  color: var(--color-activity-high);
+}
+
+.confidence-medium {
+  color: var(--color-activity-medium);
+}
+
+.confidence-low {
+  color: var(--color-activity-low);
+}
+
+/* Species summary table */
+.species-summary-table {
+  width: 100%;
+  margin-top: 2rem;
+  border-collapse: collapse;
+}
+
+.species-summary-table th {
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 2px solid var(--color-border-primary);
+  font-weight: normal;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.species-summary-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--color-border-tertiary);
+  font-size: 0.9rem;
+}
+
+.species-summary-table tr:hover {
+  background: var(--color-bg-hover);
+}
+
+/* Pagination */
+.pagination {
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+}
+
+.pagination a {
+  color: var(--color-text-primary);
+  padding: 0.2rem 0.4rem;
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+
+.pagination a:hover {
+  border-color: var(--color-text-tertiary);
+}
+
+.pagination .current-page {
+  font-weight: bold;
+}

@@ -1573,3 +1573,203 @@ h1 {
     height: 400px;
   }
 }
+
+/* ============================================
+   Common Utility Classes (Extracted from inline styles)
+   ============================================ */
+
+/* Loading states */
+.loading-indicator {
+  text-align: center;
+  padding: 2rem;
+}
+
+.loading-spinner {
+  color: var(--color-text-tertiary);
+}
+
+/* Text alignment utilities */
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-left {
+  text-align: left;
+}
+
+/* Spacing utilities */
+.mt-0-5 {
+  margin-top: 0.5rem;
+}
+.mt-1 {
+  margin-top: 1rem;
+}
+.mt-2 {
+  margin-top: 2rem;
+}
+.mb-0-5 {
+  margin-bottom: 0.5rem;
+}
+.mb-1 {
+  margin-bottom: 1rem;
+}
+.mb-2 {
+  margin-bottom: 2rem;
+}
+.ml-1 {
+  margin-left: 1rem;
+}
+.ml-2 {
+  margin-left: 2rem;
+}
+.mr-1 {
+  margin-right: 1rem;
+}
+.mr-2 {
+  margin-right: 2rem;
+}
+
+.p-1 {
+  padding: 1rem;
+}
+.p-2 {
+  padding: 2rem;
+}
+.pt-1 {
+  padding-top: 1rem;
+}
+.pb-1 {
+  padding-bottom: 1rem;
+}
+
+/* Display utilities */
+.d-none {
+  display: none;
+}
+.d-block {
+  display: block;
+}
+.d-inline {
+  display: inline;
+}
+.d-inline-block {
+  display: inline-block;
+}
+.d-flex {
+  display: flex;
+}
+.d-grid {
+  display: grid;
+}
+
+/* Flexbox utilities */
+.align-center {
+  align-items: center;
+}
+.justify-center {
+  justify-content: center;
+}
+.gap-1 {
+  gap: 1rem;
+}
+.gap-2 {
+  gap: 2rem;
+}
+
+/* Font utilities */
+.font-normal {
+  font-weight: normal;
+}
+.font-bold {
+  font-weight: bold;
+}
+.font-italic {
+  font-style: italic;
+}
+.font-mono {
+  font-family: "Courier New", monospace;
+}
+.font-sans {
+  font-family: "Arial", sans-serif;
+}
+
+/* Font size utilities */
+.text-xs {
+  font-size: 0.7rem;
+}
+.text-sm {
+  font-size: 0.8rem;
+}
+.text-base {
+  font-size: 0.85rem;
+}
+.text-md {
+  font-size: 0.9rem;
+}
+.text-lg {
+  font-size: 1rem;
+}
+.text-xl {
+  font-size: 1.5rem;
+}
+.text-2xl {
+  font-size: 1.8rem;
+}
+
+/* Color utilities */
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+.text-tertiary {
+  color: var(--color-text-tertiary);
+}
+.text-success {
+  color: var(--color-status-success);
+}
+.text-warning {
+  color: var(--color-status-warning);
+}
+.text-critical {
+  color: var(--color-status-critical);
+}
+
+/* Border utilities */
+.border-top {
+  border-top: 1px solid var(--color-border-primary);
+}
+.border-bottom {
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+/* No data states */
+.no-data {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: 2rem;
+}
+
+/* Error states */
+.error-message {
+  text-align: center;
+  color: var(--color-activity-low);
+  padding: 2rem;
+}
+
+/* Search input common style */
+.search-input {
+  margin-left: 1rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--color-input-border);
+  font-size: 0.8rem;
+}
+
+/* Grid layouts */
+.grid-3-cols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}

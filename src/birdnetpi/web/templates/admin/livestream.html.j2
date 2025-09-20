@@ -5,88 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BirdNET-Pi Livestream (Client FFT)</title>
     <link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}">
-    <style>
-        /* Page-specific styles */
-        .page-title {
-            font-size: 1.8rem;
-            font-weight: normal;
-            margin-top: 2rem;
-            margin-bottom: 0.5rem;
-            color: var(--color-text-emphasis);
-        }
-
-        /* Spectrogram layout */
-        .spectrogram-container {
-            display: flex;
-            gap: 10px;
-            margin-top: 1rem;
-            position: relative;
-        }
-
-        .freq-axis-container {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            width: 40px;
-            padding-right: 5px;
-            text-align: right;
-            font-size: 0.75rem;
-            color: #666;
-        }
-
-        .freq-axis-container span {
-            line-height: 1;
-        }
-
-        .canvas-wrapper {
-            flex: 1;
-            position: relative;
-        }
-
-        .time-axis {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 5px;
-            font-size: 0.75rem;
-            color: #666;
-        }
-
-        .gradient-legend {
-            width: 30px;
-            margin-left: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .gradient-bar {
-            flex: 1;
-            background: linear-gradient(to top,
-                #fffef0 0%,
-                #ffff64 20%,
-                #ffc832 40%,
-                #ff9b00 60%,
-                #ff0000 80%,
-                #9b0000 100%);
-            border: 1px solid #ccc;
-            border-radius: 2px;
-        }
-
-        .gradient-labels {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            font-size: 0.7rem;
-            color: #666;
-            padding-left: 5px;
-        }
-
-        #spectrogramCanvas {
-            border: 1px solid #ddd;
-            display: block;
-            width: 100%;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/livestream.css') }}">
 </head>
 <body>
 <header>
@@ -172,7 +91,7 @@
                     </div>
                 </div>
                 <div class="gradient-legend">
-                    <div style="font-size: 0.7rem; text-align: center; margin-bottom: 5px;">dB</div>
+                    <div class="text-center mb-0-5 text-xs">dB</div>
                     <div class="gradient-bar"></div>
                     <div class="gradient-labels">
                         <span>0</span>

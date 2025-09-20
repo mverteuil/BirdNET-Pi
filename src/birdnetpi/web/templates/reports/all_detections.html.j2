@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Species Detection Display</title>
     <link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}" />
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/all_detections.css') }}" />
     <style>
         /* Page-specific overrides and additions */
 
@@ -330,12 +331,12 @@
         <div class="timeline">
             <div class="timeline-header">
                 All Detections
-                <input type="text" id="search-input" placeholder="Search species..." style="margin-left: 1rem; padding: 0.2rem 0.5rem; border: 1px solid var(--color-input-border); font-size: 0.8rem;">
+                <input type="text" id="search-input" placeholder="Search species..." class="search-input">
             </div>
             <div id="detections-list">
-                <div style="text-align: center; color: var(--color-text-secondary); padding: 2rem;">Loading detections...</div>
+                <div class="no-data">Loading detections...</div>
             </div>
-            <div id="pagination" style="text-align: center; margin-top: 1rem; font-size: 0.85rem;">
+            <div id="pagination" class="pagination">
                 <!-- Pagination controls will be added here -->
             </div>
         </div>
@@ -346,18 +347,18 @@
                 <thead>
                     <tr>
                         <th>Species</th>
-                        <th style="text-align: right">Today</th>
-                        <th style="text-align: right">Week</th>
-                        <th style="text-align: right">Month</th>
+                        <th class="text-right">Today</th>
+                        <th class="text-right">Week</th>
+                        <th class="text-right">Month</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for species in species_frequency %}
                     <tr>
                         <td>{{ species.name }}</td>
-                        <td style="text-align: right">{{ species.today }}</td>
-                        <td style="text-align: right">{{ species.week }}</td>
-                        <td style="text-align: right">{{ species.month }}</td>
+                        <td class="text-right">{{ species.today }}</td>
+                        <td class="text-right">{{ species.week }}</td>
+                        <td class="text-right">{{ species.month }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -461,7 +462,7 @@
                 // Render detections
                 const detectionsList = document.getElementById('detections-list');
                 if (data.detections.length === 0) {
-                    detectionsList.innerHTML = '<div style="text-align: center; color: var(--color-text-secondary); padding: 2rem;">No detections found</div>';
+                    detectionsList.innerHTML = '<div class="no-data">No detections found</div>';
                 } else {
                     detectionsList.innerHTML = data.detections.map(d => `
                         <div class="timeline-entry">
@@ -479,7 +480,7 @@
 
                 if (data.pagination.total_pages > 1) {
                     paginationHTML = `
-                        <span style="color: var(--color-text-secondary);">
+                        <span class="text-secondary">
                             Page ${data.pagination.page} of ${data.pagination.total_pages}
                             (${data.pagination.total} total detections)
                         </span><br>
@@ -496,7 +497,7 @@
 
                     for (let i = startPage; i <= endPage; i++) {
                         if (i === page) {
-                            paginationHTML += `<span style="font-weight: bold;">${i}</span> `;
+                            paginationHTML += `<span class="font-bold current-page">${i}</span> `;
                         } else {
                             paginationHTML += `<a href="#" onclick="loadDetections(${i}); return false;">${i}</a> `;
                         }
@@ -507,7 +508,7 @@
                         paginationHTML += `<a href="#" onclick="loadDetections(${data.pagination.total_pages}); return false;">Last »</a>`;
                     }
                 } else if (data.pagination.total > 0) {
-                    paginationHTML = `<span style="color: var(--color-text-secondary);">${data.pagination.total} detections</span>`;
+                    paginationHTML = `<span class="text-secondary">${data.pagination.total} detections</span>`;
                 }
 
                 pagination.innerHTML = paginationHTML;
@@ -515,7 +516,7 @@
             } catch (error) {
                 console.error('Error loading detections:', error);
                 document.getElementById('detections-list').innerHTML =
-                    '<div style="text-align: center; color: var(--color-activity-low); padding: 2rem;">Error loading detections</div>';
+                    '<div class="error-message">Error loading detections</div>';
             }
         }
 

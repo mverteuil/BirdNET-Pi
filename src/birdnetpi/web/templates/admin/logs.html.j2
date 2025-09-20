@@ -132,8 +132,8 @@
                 </label>
             </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <div id="streaming-indicator" class="streaming-indicator" style="display: none;">
+        <div class="d-flex align-center gap-1">
+            <div id="streaming-indicator" class="streaming-indicator d-none">
                 <span class="spinner" aria-hidden="true">◉</span>
                 <span>{{ _('Streaming...') }}</span>
             </div>
@@ -190,7 +190,7 @@
         </div>
 
         <!-- JSON View -->
-        <div id="json-view" class="log-view" style="display: none;">
+        <div id="json-view" class="log-view d-none">
             <pre id="json-content" aria-label="{{ _('JSON formatted logs') }}"><!-- JSON logs will be inserted here --></pre>
         </div>
 
@@ -209,7 +209,7 @@
     <div class="log-legend-item">
         <span
             class="log-legend-indicator"
-            style="background-color: {{ level.color }};"
+            class="log-level-{{ level.name|lower }}"
             aria-hidden="true"
         ></span>
         <span>{{ level.name }}</span>

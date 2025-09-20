@@ -4,144 +4,7 @@
 {% block title %}Ecological Analysis - {{ site_name }}{% endblock %}
 
 {% block styles %}
-<style>
-    /* Analysis-specific styles following the design ethos */
-
-    /* Period selector - minimal typography */
-    .analysis-controls {
-        margin-bottom: 1.5rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid var(--color-border-primary);
-        font-size: 0.85rem;
-    }
-
-    .period-selector {
-        display: inline-flex;
-        gap: 0.5rem;
-        align-items: baseline;
-    }
-
-    .period-select {
-        padding: 0.2rem 0.5rem;
-        border: 1px solid var(--color-input-border);
-        background: var(--color-bg-hover);
-        font-family: inherit;
-        font-size: 0.85rem;
-    }
-
-    /* Diversity metrics summary line */
-    .metrics-summary {
-        font-size: 0.9rem;
-        margin-bottom: 1.5rem;
-        line-height: 1.8;
-    }
-
-    .metric-value {
-        color: var(--color-text-emphasis);
-        font-weight: normal;
-        font-variant-numeric: tabular-nums;
-    }
-
-    .metric-change {
-        font-size: 0.8rem;
-        margin-left: 0.25rem;
-    }
-
-    .change-up { color: var(--color-activity-high); }
-    .change-down { color: var(--color-activity-low); }
-    .change-stable { color: var(--color-text-tertiary); }
-
-    /* Analysis sections */
-    .analysis-section {
-        margin-bottom: 2rem;
-        padding-top: 1rem;
-        border-top: 1px solid var(--color-border-primary);
-    }
-
-    .analysis-title {
-        font-size: 1rem;
-        font-weight: normal;
-        margin-bottom: 0.5rem;
-    }
-
-    .analysis-subtitle {
-        font-size: 0.8rem;
-        color: var(--color-text-secondary);
-        margin-bottom: 0.75rem;
-        font-style: italic;
-    }
-
-    /* Canvas containers for visualizations */
-    .chart-canvas {
-        background: var(--color-bg-primary);
-        border: 1px solid var(--color-text-tertiary);
-        margin-bottom: 0.5rem;
-    }
-
-    /* Similarity matrix */
-    .similarity-matrix {
-        display: grid;
-        gap: 0;
-        font-size: 0.7rem;
-        font-family: 'Courier New', monospace;
-    }
-
-    .matrix-cell {
-        padding: 0.3rem;
-        text-align: center;
-        border-right: 1px dotted var(--color-border-tertiary);
-        border-bottom: 1px dotted var(--color-border-tertiary);
-    }
-
-    .intensity-very-high { background: rgba(0, 0, 0, 0.15); }
-    .intensity-high { background: rgba(0, 0, 0, 0.10); }
-    .intensity-medium { background: rgba(0, 0, 0, 0.05); }
-    .intensity-low { background: rgba(0, 0, 0, 0.02); }
-    .intensity-very-low { background: transparent; }
-
-    /* Beta diversity horizon chart */
-    .horizon-chart {
-        height: 80px;
-        position: relative;
-    }
-
-    /* Weather correlation scatter */
-    .correlation-value {
-        font-family: 'Courier New', monospace;
-        font-size: 0.85rem;
-    }
-
-    .correlation-strong { color: var(--color-text-emphasis); }
-    .correlation-moderate { color: var(--color-text-secondary); }
-    .correlation-weak { color: var(--color-text-tertiary); }
-
-    /* Comparison mode */
-    .comparison-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 2rem;
-    }
-
-    .period-column {
-        padding-right: 1rem;
-    }
-
-    .period-label {
-        font-size: 0.85rem;
-        color: var(--color-text-secondary);
-        margin-bottom: 0.5rem;
-        padding-bottom: 0.25rem;
-        border-bottom: 1px dotted var(--color-border-tertiary);
-    }
-
-    /* Annotations */
-    .method-note {
-        font-size: 0.7rem;
-        color: var(--color-text-tertiary);
-        font-style: italic;
-        margin-top: 0.25rem;
-    }
-</style>
+<link rel="stylesheet" href="{{ request.url_for('static', path='css/analysis.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -162,7 +25,7 @@
             <option value="365d" {% if period == '365d' %}selected{% endif %}>Year</option>
         </select>
 
-        <span style="margin-left: 2rem;">Compare with:</span>
+        <span class="ml-2">Compare with:</span>
         <select class="period-select" id="comparison-period" onchange="updateAnalysis()">
             <option value="none" {% if not comparison_period or comparison_period == 'none' %}selected{% endif %}>None</option>
             <option value="previous" {% if comparison_period == 'previous' %}selected{% endif %}>Previous period</option>
@@ -241,8 +104,8 @@
     {% else %}
     <h3 class="analysis-title">Species Accumulation</h3>
     <p class="analysis-subtitle">Loading species accumulation data...</p>
-    <div class="loading-indicator" style="text-align: center; padding: 2rem;">
-        <span style="color: var(--color-text-tertiary);">⟳ Loading...</span>
+    <div class="loading-indicator">
+        <span class="loading-spinner">⟳ Loading...</span>
     </div>
     {% endif %}
 </div>
@@ -260,12 +123,12 @@
         <!-- Header row -->
         <div class="matrix-cell"></div>
         {% for label in analyses.similarity.labels %}
-        <div class="matrix-cell" style="font-weight: normal;">{{ label }}</div>
+        <div class="matrix-cell font-normal">{{ label }}</div>
         {% endfor %}
 
         <!-- Data rows -->
         {% for row in analyses.similarity.matrix %}
-        <div class="matrix-cell" style="text-align: right; font-weight: normal;">
+        <div class="matrix-cell text-right font-normal">
             {{ analyses.similarity.labels[loop.index0] }}
         </div>
         {% for cell in row %}
@@ -283,13 +146,13 @@
     </p>
     {% endif %}
     <p class="method-note">
-        Jaccard: <span style="font-family: 'Arial', sans-serif; font-style: normal; font-weight: normal;">(A ∩ B) / (A ∪ B)</span> &middot; Higher values indicate more similar communities
+        Jaccard: <span class="font-sans font-normal">(A ∩ B) / (A ∪ B)</span> &middot; Higher values indicate more similar communities
     </p>
     {% else %}
     <h3 class="analysis-title">Community Similarity</h3>
     <p class="analysis-subtitle">Loading community similarity matrix...</p>
-    <div class="loading-indicator" style="text-align: center; padding: 2rem;">
-        <span style="color: var(--color-text-tertiary);">⟳ Loading...</span>
+    <div class="loading-indicator">
+        <span class="loading-spinner">⟳ Loading...</span>
     </div>
     {% endif %}
 </div>
@@ -314,8 +177,8 @@
     {% else %}
     <h3 class="analysis-title">Temporal β-Diversity</h3>
     <p class="analysis-subtitle">Loading beta diversity analysis...</p>
-    <div class="loading-indicator" style="text-align: center; padding: 2rem;">
-        <span style="color: var(--color-text-tertiary);">⟳ Loading...</span>
+    <div class="loading-indicator">
+        <span class="loading-spinner">⟳ Loading...</span>
     </div>
     {% endif %}
 </div>
@@ -328,10 +191,10 @@
         Detection frequency vs environmental conditions
     </p>
 
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+    <div class="grid-3-cols">
         <div>
             <canvas id="temp-correlation" class="chart-canvas" width="350" height="200"></canvas>
-            <div style="text-align: center; margin-top: 0.5rem;">
+            <div class="text-center mt-0-5">
                 Temperature:
                 {% if analyses.weather and analyses.weather.correlations %}
                 <span class="correlation-value {% if analyses.weather.correlations.temperature|default(0)|abs > 0.5 %}correlation-strong{% elif analyses.weather.correlations.temperature|default(0)|abs > 0.3 %}correlation-moderate{% else %}correlation-weak{% endif %}">
@@ -345,7 +208,7 @@
 
         <div>
             <canvas id="humidity-correlation" class="chart-canvas" width="350" height="200"></canvas>
-            <div style="text-align: center; margin-top: 0.5rem;">
+            <div class="text-center mt-0-5">
                 Humidity:
                 {% if analyses.weather and analyses.weather.correlations %}
                 <span class="correlation-value {% if analyses.weather.correlations.humidity|default(0)|abs > 0.5 %}correlation-strong{% elif analyses.weather.correlations.humidity|default(0)|abs > 0.3 %}correlation-moderate{% else %}correlation-weak{% endif %}">
@@ -359,7 +222,7 @@
 
         <div>
             <canvas id="wind-correlation" class="chart-canvas" width="350" height="200"></canvas>
-            <div style="text-align: center; margin-top: 0.5rem;">
+            <div class="text-center mt-0-5">
                 Wind Speed:
                 {% if analyses.weather and analyses.weather.correlations %}
                 <span class="correlation-value {% if analyses.weather.correlations.wind_speed|default(0)|abs > 0.5 %}correlation-strong{% elif analyses.weather.correlations.wind_speed|default(0)|abs > 0.3 %}correlation-moderate{% else %}correlation-weak{% endif %}">
@@ -379,8 +242,8 @@
     {% else %}
     <h3 class="analysis-title">Weather-Activity Correlations</h3>
     <p class="analysis-subtitle">Loading weather correlation data...</p>
-    <div class="loading-indicator" style="text-align: center; padding: 2rem;">
-        <span style="color: var(--color-text-tertiary);">⟳ Loading...</span>
+    <div class="loading-indicator">
+        <span class="loading-spinner">⟳ Loading...</span>
     </div>
     {% endif %}
 </div>
@@ -403,14 +266,14 @@
     {% else %}
     <h3 class="analysis-title">Activity Patterns</h3>
     <p class="analysis-subtitle">Loading temporal patterns...</p>
-    <div class="loading-indicator" style="text-align: center; padding: 2rem;">
-        <span style="color: var(--color-text-tertiary);">⟳ Loading...</span>
+    <div class="loading-indicator">
+        <span class="loading-spinner">⟳ Loading...</span>
     </div>
     {% endif %}
 </div>
 
 <!-- Footer annotation -->
-<p class="annotation" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--color-border-primary);">
+<p class="annotation mt-2 pt-1 border-top">
     Analysis period: {{ summary.primary_period.start }} to {{ summary.primary_period.end }} ·
     Total detections: {{ summary.primary_period.total_detections }} ·
     Confidence threshold: ≥{{ confidence_threshold|default(0.7) }} ·
@@ -1175,10 +1038,10 @@ async function loadWeatherCorrelations() {
                 <p class="analysis-subtitle">
                     Detection frequency vs environmental conditions
                 </p>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                <div class="grid-3-cols">
                     <div>
                         <canvas id="temp-correlation" class="chart-canvas" width="350" height="200"></canvas>
-                        <div style="text-align: center; margin-top: 0.5rem;">
+                        <div class="text-center mt-0-5">
                             Temperature:
                             <span class="correlation-value ${Math.abs(w.correlations.temperature) > 0.5 ? 'correlation-strong' : Math.abs(w.correlations.temperature) > 0.3 ? 'correlation-moderate' : 'correlation-weak'}">
                                 r = ${w.correlations.temperature || 0}
@@ -1187,7 +1050,7 @@ async function loadWeatherCorrelations() {
                     </div>
                     <div>
                         <canvas id="humidity-correlation" class="chart-canvas" width="350" height="200"></canvas>
-                        <div style="text-align: center; margin-top: 0.5rem;">
+                        <div class="text-center mt-0-5">
                             Humidity:
                             <span class="correlation-value ${Math.abs(w.correlations.humidity) > 0.5 ? 'correlation-strong' : Math.abs(w.correlations.humidity) > 0.3 ? 'correlation-moderate' : 'correlation-weak'}">
                                 r = ${w.correlations.humidity || 0}
@@ -1196,7 +1059,7 @@ async function loadWeatherCorrelations() {
                     </div>
                     <div>
                         <canvas id="wind-correlation" class="chart-canvas" width="350" height="200"></canvas>
-                        <div style="text-align: center; margin-top: 0.5rem;">
+                        <div class="text-center mt-0-5">
                             Wind Speed:
                             <span class="correlation-value ${Math.abs(w.correlations.wind_speed) > 0.5 ? 'correlation-strong' : Math.abs(w.correlations.wind_speed) > 0.3 ? 'correlation-moderate' : 'correlation-weak'}">
                                 r = ${w.correlations.wind_speed || 0}
