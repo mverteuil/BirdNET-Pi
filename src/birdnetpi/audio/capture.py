@@ -5,7 +5,7 @@ import numpy as np
 import sounddevice as sd
 
 from birdnetpi.audio.devices import AudioDeviceService
-from birdnetpi.audio.filters import FilterChain, ResampleFilter
+from birdnetpi.audio.filters import FilterChain
 from birdnetpi.config import BirdNETConfig
 
 logger = logging.getLogger(__name__)
@@ -95,61 +95,31 @@ class AudioCaptureService:
             channels = self.config.audio_channels
             target_sample_rate = self.config.sample_rate  # What BirdNET expects (48000)
 
-            # Query device capabilities
-            device_sample_rate = target_sample_rate  # Default to target rate
+            # Let sounddevice/PortAudio handle sample rate conversion automatically
+            # This works on all platforms (macOS, Linux, Windows) though quality may vary:
+            # - macOS: CoreAudio provides high-quality resampling
+            # - Linux/ALSA: Basic resampling (usually linear or speex)
+            # - Linux/PulseAudio: Better quality resampling
+            # - Works well enough for bird detection on Raspberry Pi and other SBCs
+            logger.info(
+                "Using sounddevice automatic resampling (PortAudio) - requesting %dHz",
+                target_sample_rate,
+            )
 
-            if device_id >= 0:
-                # Get specific device info
-                devices = self.audio_device_service.discover_input_devices()
-                for device in devices:
-                    if device.index == device_id:
-                        device_sample_rate = int(device.default_samplerate)
-                        logger.info(
-                            "Device %d (%s) native sample rate: %dHz",
-                            device_id,
-                            device.name,
-                            device_sample_rate,
-                        )
-                        break
-            else:
-                # Using default device
-                device_info = sd.query_devices(kind="input")
-                if device_info:
-                    device_sample_rate = int(device_info["default_samplerate"])  # type: ignore
-                    logger.info(
-                        "Default device native sample rate: %dHz",
-                        device_sample_rate,
-                    )
+            # Store the target sample rate (what we request from sounddevice)
+            self.device_sample_rate = target_sample_rate
 
-            # Store the actual device sample rate
-            self.device_sample_rate = device_sample_rate
-
-            # Configure filter chains with device sample rate
             if self.analysis_filter_chain is not None:
-                # If sample rates don't match, add resampling filter to analysis chain
-                if device_sample_rate != target_sample_rate:
-                    logger.info(
-                        "Device rate %dHz differs from target %dHz, adding resampling",
-                        device_sample_rate,
-                        target_sample_rate,
-                    )
-                    resample_filter = ResampleFilter(
-                        target_sample_rate=target_sample_rate,
-                        name="AnalysisResample",
-                    )
-                    # Add resampling as the first filter in the chain
-                    self.analysis_filter_chain.filters.insert(0, resample_filter)
-
-                # Configure the chain with the device's actual sample rate
-                self.analysis_filter_chain.configure(device_sample_rate, channels)
+                # Configure the chain with target sample rate
+                self.analysis_filter_chain.configure(target_sample_rate, channels)
                 logger.info(
                     "Analysis filter chain configured with %d filters",
                     len(self.analysis_filter_chain),
                 )
 
             if self.livestream_filter_chain is not None:
-                # Livestream uses device's native rate (no resampling for lower latency)
-                self.livestream_filter_chain.configure(device_sample_rate, channels)
+                # Configure livestream chain with target sample rate
+                self.livestream_filter_chain.configure(target_sample_rate, channels)
                 logger.info(
                     "Livestream filter chain configured with %d filters",
                     len(self.livestream_filter_chain),
@@ -158,18 +128,18 @@ class AudioCaptureService:
             logger.info(
                 "Starting audio capture on device ID: %s, sample rate: %dHz, channels: %s",
                 device_id,
-                device_sample_rate,
+                target_sample_rate,
                 channels,
             )
 
             self.stream = sd.InputStream(
                 device=device_id,
-                samplerate=device_sample_rate,  # Use device's native rate
+                samplerate=target_sample_rate,  # Request target rate, let sounddevice resample
                 channels=channels,
                 callback=self._callback,
             )
             self.stream.start()
-            logger.info("Audio capture stream started at %dHz.", device_sample_rate)
+            logger.info("Audio capture stream started at %dHz.", target_sample_rate)
         except Exception as e:
             logger.error("Failed to start audio capture stream: %s", e)
             raise

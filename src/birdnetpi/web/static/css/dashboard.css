@@ -1,5 +1,11 @@
 /* Dashboard-specific styles */
 
+/* Fallback CSS variables if main stylesheet doesn't load properly */
+:root {
+  --color-accent: #4a90e2;
+  --color-status-success: #4caf50;
+}
+
 /* Detection notification banner */
 .detection-banner {
   position: fixed;
@@ -8,8 +14,8 @@
   transform: translateX(-50%);
   background: linear-gradient(
     135deg,
-    var(--color-accent),
-    var(--color-status-success)
+    var(--color-accent, #4a90e2),
+    var(--color-status-success, #4caf50)
   );
   color: white;
   padding: 12px 24px;

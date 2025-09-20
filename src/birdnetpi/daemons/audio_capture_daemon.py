@@ -95,7 +95,7 @@ def main() -> None:
         logger.info("Configuration loaded successfully.")
 
         # Instantiate and start the AudioCaptureService
-        # Pass the file descriptors to the service
+        # Pass the file descriptors to the service - let it handle all audio logic
         audio_capture_service = AudioCaptureService(
             config, DaemonState.fifo_analysis_fd, DaemonState.fifo_livestream_fd
         )

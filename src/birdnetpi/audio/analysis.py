@@ -41,6 +41,8 @@ class AudioAnalysisManager:
         self.path_resolver = path_resolver
         self.config = config
         self.analysis_client = BirdDetectionService(config)
+        self.analysis_count = 0
+        self.last_analysis_log_time = time.time()
 
         # Initialize SpeciesParser with multilingual database service for canonical name lookups
         self.species_parser = SpeciesParser(species_database)
@@ -49,7 +51,8 @@ class AudioAnalysisManager:
 
         # Buffer for accumulating audio chunks for analysis
         self.audio_buffer = np.array([], dtype=np.int16)
-        self.buffer_size_samples = int(3.0 * config.sample_rate)  # 3 seconds of audio
+        # BirdNET requires exactly 48kHz sample rate (144000 samples for 3 seconds)
+        self.buffer_size_samples = int(3.0 * self.config.sample_rate)  # 3 seconds at 48kHz
 
         # In-memory buffer for detection events when FastAPI is unavailable
         self.detection_buffer: deque[dict[str, Any]] = deque(maxlen=detection_buffer_max_size)
@@ -173,13 +176,33 @@ class AudioAnalysisManager:
         # Accumulate audio data in buffer
         self.audio_buffer = np.concatenate([self.audio_buffer, audio_data])
 
+        # Log buffer accumulation progress every ~0.5 seconds worth of data
+        if len(self.audio_buffer) % (self.config.sample_rate // 2) < len(audio_data):
+            logger.debug(
+                "Buffer accumulation: %d/%d samples (%.1f%%)",
+                len(self.audio_buffer),
+                self.buffer_size_samples,
+                (len(self.audio_buffer) / self.buffer_size_samples) * 100,
+            )
+
         # Process when we have enough audio (3 seconds worth)
         if len(self.audio_buffer) >= self.buffer_size_samples:
+            logger.debug(
+                "Buffer full, analyzing audio chunk (%d samples)", self.buffer_size_samples
+            )
             # Take the first 3 seconds for analysis
             analysis_chunk = self.audio_buffer[: self.buffer_size_samples]
 
             # Remove processed samples from buffer (keep overlap for continuity)
-            overlap_samples = int(self.config.analysis_overlap * self.config.sample_rate)
+            # Clamp overlap to reasonable range (0.5 to 1.5 seconds, never >= buffer size)
+            overlap_seconds = min(self.config.analysis_overlap, 1.5)
+            if overlap_seconds >= 3.0:
+                logger.warning(
+                    "Invalid analysis_overlap %.1f seconds (must be < 3.0), using 1.0 second",
+                    self.config.analysis_overlap,
+                )
+                overlap_seconds = 1.0
+            overlap_samples = int(overlap_seconds * self.config.sample_rate)
             self.audio_buffer = self.audio_buffer[self.buffer_size_samples - overlap_samples :]
 
             # Convert int16 to float32 and normalize for BirdNET analysis
@@ -195,6 +218,7 @@ class AudioAnalysisManager:
             current_week = datetime.datetime.now(UTC).isocalendar()[1]
 
             # Perform BirdNET analysis
+            logger.debug("Starting BirdNET analysis...")
             results = self.analysis_client.get_analysis_results(
                 audio_chunk=audio_chunk,
                 latitude=self.config.latitude,
@@ -203,9 +227,29 @@ class AudioAnalysisManager:
                 sensitivity=self.config.sensitivity_setting,
             )
 
+            self.analysis_count += 1
+            current_time = time.time()
+
+            # Log analysis frequency every 30 seconds at INFO level
+            if current_time - self.last_analysis_log_time >= 30.0:
+                time_elapsed = current_time - self.last_analysis_log_time
+                analyses_per_second = self.analysis_count / time_elapsed
+                logger.info(
+                    "Analysis frequency: %.1f analyses/sec (%d analyses in %.1f seconds)",
+                    analyses_per_second,
+                    self.analysis_count,
+                    time_elapsed,
+                )
+                self.analysis_count = 0
+                self.last_analysis_log_time = current_time
+
+            logger.debug("BirdNET analysis complete: %d potential detections", len(results))
+
             # Process results and send detection events for confident detections
+            detections_above_threshold = 0
             for species_tensor, confidence in results:
                 if confidence >= self.config.species_confidence_threshold:
+                    detections_above_threshold += 1
                     # Parse species tensor using SpeciesParser
                     try:
                         species_components = await SpeciesParser.parse_tensor_species(
@@ -223,6 +267,23 @@ class AudioAnalysisManager:
                     logger.info(
                         f"Bird detected: {species_components.scientific_name} "
                         f"(confidence: {confidence:.3f})"
+                    )
+
+            if detections_above_threshold == 0:
+                # Log at INFO level if we have a reasonably confident detection below threshold
+                if results and results[0][1] > 0.5:
+                    logger.info(
+                        "Detection below threshold: %s with confidence %.3f (threshold: %.2f)",
+                        results[0][0],
+                        results[0][1],
+                        self.config.species_confidence_threshold,
+                    )
+                else:
+                    logger.debug(
+                        "No detections above threshold (%.2f). Top result: %s with confidence %.3f",
+                        self.config.species_confidence_threshold,
+                        results[0][0] if results else "None",
+                        results[0][1] if results else 0.0,
                     )
 
         except Exception:

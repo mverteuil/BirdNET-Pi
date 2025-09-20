@@ -117,4 +117,4 @@ class BirdNETConfig(BaseModel):
     git_branch: str = "main"  # Git branch name for updates
 
     # Detection Processing
-    detections_endpoint: str = "http://localhost:8000/api/detections/"  # Where to send detections
+    detections_endpoint: str = "http://127.0.0.1:8888/api/detections/"  # Where to send detections

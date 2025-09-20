@@ -58,6 +58,7 @@ def emit_detection_event(func: Callable[..., Any]) -> Callable[..., Any]:
 
         # Emit the detection event if we have a valid detection
         if detection and isinstance(detection, Detection):
+            logger.info(f"Emitting detection signal for {detection.id}")
             detection_signal.send(self, detection=detection)
 
         return detection

@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from birdnetpi.audio.capture import AudioCaptureService
-from birdnetpi.audio.filters import FilterChain, ResampleFilter
+from birdnetpi.audio.filters import FilterChain
 from birdnetpi.config import BirdNETConfig
 
 
@@ -57,10 +57,10 @@ def test_start_capture_initializes_stream(
 
     audio_service.start_capture()
 
-    # Should use device's native sample rate (44100) not config sample rate (48000)
+    # Should use BirdNET's required sample rate (48000) regardless of device native rate
     mock_input_stream.assert_called_once_with(
         device=audio_service.config.audio_device_index,
-        samplerate=44100,  # Device's native rate
+        samplerate=48000,  # BirdNET's required rate
         channels=audio_service.config.audio_channels,
         callback=audio_service._callback,
     )
@@ -302,13 +302,13 @@ def test_start_capture_with_default_device(
 
     audio_service_default_device.start_capture()
 
-    # Should query default device
-    mock_query_devices.assert_called_once_with(kind="input")
+    # Query devices is no longer called as we use the target sample rate directly
+    mock_query_devices.assert_not_called()
 
-    # Should use default device's sample rate
+    # Should use BirdNET's required sample rate
     mock_input_stream.assert_called_once_with(
         device=-1,
-        samplerate=44100,
+        samplerate=48000,
         channels=audio_service_default_device.config.audio_channels,
         callback=audio_service_default_device._callback,
     )
@@ -327,8 +327,8 @@ def test_default_device_logging(
 
     audio_service_default_device.start_capture()
 
-    # Should log default device sample rate
-    mock_logger.info.assert_any_call("Default device native sample rate: %dHz", 44100)
+    # Should log audio capture stream started
+    mock_logger.info.assert_any_call("Audio capture stream started at %dHz.", 48000)
 
 
 # Filter chain configuration tests
@@ -360,7 +360,7 @@ def audio_service_with_filters(mock_config):
 def test_filter_chain_with_resampling(
     mock_logger, mock_input_stream, mock_query_devices, audio_service_with_filters, mock_device
 ):
-    """Should add resampling filter when device rate differs from target rate."""
+    """Should use sounddevice automatic resampling, not manual filter."""
     # Device has different sample rate than target
     mock_device.default_samplerate = 44100.0  # Different from 48000
     audio_service_with_filters.audio_device_service.discover_input_devices = MagicMock(
@@ -369,19 +369,16 @@ def test_filter_chain_with_resampling(
 
     audio_service_with_filters.start_capture()
 
-    # Should add resampling filter
-    assert len(audio_service_with_filters.analysis_filter_chain.filters) == 1
-    added_filter = audio_service_with_filters.analysis_filter_chain.filters[0]
-    assert isinstance(added_filter, ResampleFilter)
-    assert added_filter.target_sample_rate == 48000
+    # Should NOT add manual resampling filter (sounddevice handles it)
+    assert len(audio_service_with_filters.analysis_filter_chain.filters) == 0
 
-    # Should configure chains with device sample rate
-    audio_service_with_filters.analysis_filter_chain.configure.assert_called_once_with(44100, 1)
-    audio_service_with_filters.livestream_filter_chain.configure.assert_called_once_with(44100, 1)
+    # Should configure chains with target sample rate
+    audio_service_with_filters.analysis_filter_chain.configure.assert_called_once_with(48000, 1)
+    audio_service_with_filters.livestream_filter_chain.configure.assert_called_once_with(48000, 1)
 
-    # Should log resampling info
+    # Should log automatic resampling info
     mock_logger.info.assert_any_call(
-        "Device rate %dHz differs from target %dHz, adding resampling", 44100, 48000
+        "Using sounddevice automatic resampling (PortAudio) - requesting %dHz", 48000
     )
 
 
@@ -390,7 +387,7 @@ def test_filter_chain_with_resampling(
 def test_filter_chain_without_resampling(
     mock_input_stream, mock_query_devices, audio_service_with_filters, mock_device
 ):
-    """Should not add resampling filter when rates match."""
+    """Should not add resampling filter regardless of rates."""
     # Device has same sample rate as target
     mock_device.default_samplerate = 48000.0  # Same as target
     audio_service_with_filters.audio_device_service.discover_input_devices = MagicMock(
@@ -399,10 +396,10 @@ def test_filter_chain_without_resampling(
 
     audio_service_with_filters.start_capture()
 
-    # Should not add resampling filter
+    # Should not add resampling filter (sounddevice handles any needed conversion)
     assert len(audio_service_with_filters.analysis_filter_chain.filters) == 0
 
-    # Should still configure chains
+    # Should configure chains with target rate
     audio_service_with_filters.analysis_filter_chain.configure.assert_called_once_with(48000, 1)
     audio_service_with_filters.livestream_filter_chain.configure.assert_called_once_with(48000, 1)
 
@@ -421,8 +418,8 @@ def test_livestream_filter_chain_configuration(
 
     audio_service_with_filters.start_capture()
 
-    # Livestream should use device's native rate (no resampling)
-    audio_service_with_filters.livestream_filter_chain.configure.assert_called_once_with(44100, 1)
+    # Livestream should use target rate (sounddevice handles resampling)
+    audio_service_with_filters.livestream_filter_chain.configure.assert_called_once_with(48000, 1)
 
     # Should log configuration
     mock_logger.info.assert_any_call("Livestream filter chain configured with %d filters", 2)

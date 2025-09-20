@@ -27,6 +27,9 @@
   --color-status-critical: #f44336;
   --color-status-live: #d32f2f;
 
+  /* Accent Color for notifications */
+  --color-accent: #4a90e2;
+
   /* Activity Colors - Detection Types */
   --color-activity-high: #2e7d32; /* High confidence/count - green */
   --color-activity-medium: #f57c00; /* Medium confidence/count - orange */

@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -28,6 +29,104 @@ class WeatherManager:
         self.latitude = latitude
         self.longitude = longitude
 
+    def _normalize_timestamp(self, timestamp: datetime) -> datetime:
+        """Normalize timestamp to UTC and round to hour."""
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=UTC)
+        elif timestamp.tzinfo != UTC:
+            timestamp = timestamp.astimezone(UTC)
+        return timestamp.replace(minute=0, second=0, microsecond=0)
+
+    async def _get_existing_weather(self, timestamp: datetime) -> Weather | None:
+        """Check if weather data already exists for the given timestamp."""
+        stmt = (
+            select(Weather)
+            .where(Weather.timestamp == timestamp)
+            .where(Weather.latitude == self.latitude)
+            .where(Weather.longitude == self.longitude)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
+    def _find_matching_hour(
+        self, weather_data: list[dict[str, Any]], target_hour: datetime
+    ) -> dict[str, Any]:
+        """Find the matching hour in weather data or return fallback."""
+        for hour_data in weather_data:
+            if hour_data["timestamp"] == target_hour:
+                return hour_data
+
+        # Log mismatch and use fallback
+        logger.warning(
+            f"Exact hour {target_hour} not found in weather data. "
+            f"Got {len(weather_data)} hours starting from "
+            f"{weather_data[0]['timestamp'] if weather_data else 'none'}"
+        )
+        return weather_data[0]
+
+    def _prepare_weather_data(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Add location and calculate hour_epoch for weather data."""
+        data["latitude"] = self.latitude
+        data["longitude"] = self.longitude
+        if data.get("timestamp"):
+            data["hour_epoch"] = int(data["timestamp"].timestamp() / 3600)
+        return data
+
+    async def _handle_race_condition(self, e: Exception, timestamp: datetime) -> Weather | None:
+        """Handle race condition when creating weather record."""
+        if "UNIQUE constraint failed" not in str(e):
+            return None
+
+        # Rollback and try to fetch existing record
+        await self.session.rollback()
+        existing = await self._get_existing_weather(timestamp)
+        if existing:
+            logger.debug(f"Weather record already exists for {timestamp}, using existing")
+        return existing
+
+    async def fetch_and_store_weather_for_hour(self, timestamp: datetime) -> Weather:
+        """Fetch weather data for a specific hour and store it.
+
+        This method fetches the actual measurement for the given hour,
+        not a forecast. It properly parses the correct hour from the API response.
+
+        Args:
+            timestamp: Datetime for which to fetch weather (should be in UTC)
+
+        Returns:
+            Weather object that was created or already existed
+        """
+        # Normalize timestamp
+        timestamp = self._normalize_timestamp(timestamp)
+
+        # Check for existing weather
+        existing_weather = await self._get_existing_weather(timestamp)
+        if existing_weather:
+            logger.debug(f"Weather already exists for {timestamp}, using existing record")
+            return existing_weather
+
+        # Fetch and validate weather data
+        weather_data = await self.fetch_weather_range(timestamp, timestamp + timedelta(hours=1))
+        if not weather_data:
+            raise ValueError(f"No weather data available for {timestamp}")
+
+        # Find matching hour and prepare data
+        matching_data = self._find_matching_hour(weather_data, timestamp)
+        matching_data = self._prepare_weather_data(matching_data)
+
+        # Create and store weather record
+        weather = Weather(**matching_data)
+        self.session.add(weather)
+
+        try:
+            await self.session.flush()
+            return weather
+        except Exception as e:
+            existing = await self._handle_race_condition(e, timestamp)
+            if existing:
+                return existing
+            raise
+
     async def fetch_and_store_weather(self, timestamp: datetime) -> Weather:
         """Fetch weather data for a specific timestamp and store it.
 
@@ -37,30 +136,31 @@ class WeatherManager:
         Returns:
             Weather object that was created
         """
-        # Ensure timestamp is in UTC
-        if timestamp.tzinfo is None:
-            timestamp = timestamp.replace(tzinfo=UTC)
-        elif timestamp.tzinfo != UTC:
-            timestamp = timestamp.astimezone(UTC)
+        # Normalize timestamp
+        timestamp = self._normalize_timestamp(timestamp)
 
-        # Fetch weather data for single hour
+        # Fetch weather data
         weather_data = await self.fetch_weather_range(timestamp, timestamp + timedelta(hours=1))
 
-        if weather_data:
-            # Add location to weather data
-            weather_data[0]["latitude"] = self.latitude
-            weather_data[0]["longitude"] = self.longitude
+        if not weather_data:
+            raise ValueError(f"No weather data available for {timestamp}")
 
-            # Calculate hour_epoch for optimized JOINs
-            if "timestamp" in weather_data[0] and weather_data[0]["timestamp"]:
-                weather_data[0]["hour_epoch"] = int(weather_data[0]["timestamp"].timestamp() / 3600)
+        # Find matching hour and prepare data
+        matching_data = self._find_matching_hour(weather_data, timestamp)
+        matching_data = self._prepare_weather_data(matching_data)
 
-            weather = Weather(**weather_data[0])
-            self.session.add(weather)
+        # Create and store weather record
+        weather = Weather(**matching_data)
+        self.session.add(weather)
+
+        try:
             await self.session.flush()
             return weather
-
-        raise ValueError(f"No weather data available for {timestamp}")
+        except Exception as e:
+            existing = await self._handle_race_condition(e, weather.timestamp)
+            if existing:
+                return existing
+            raise
 
     async def backfill_weather(
         self,
@@ -382,8 +482,11 @@ class WeatherManager:
         Returns:
             The Weather record that was linked, or None if failed or already linked
         """
+        # Convert string ID to UUID for comparison
+        detection_uuid = uuid.UUID(detection_id)
+
         # Get the detection
-        stmt = select(Detection).where(Detection.id == detection_id)
+        stmt = select(Detection).where(Detection.id == detection_uuid)
         result = await self.session.execute(stmt)
         detection = result.scalars().first()
 
@@ -415,11 +518,11 @@ class WeatherManager:
                 f"{weather.temperature}°C, {weather.humidity}% humidity"
             )
         else:
-            # Fetch new weather
+            # Fetch current hour's weather measurement
             try:
-                weather = await self.fetch_and_store_weather(detection_hour)
+                weather = await self.fetch_and_store_weather_for_hour(detection_hour)
                 logger.info(
-                    f"Fetched new weather for {detection_hour}: "
+                    f"Fetched weather measurement for {detection_hour}: "
                     f"{weather.temperature}°C, {weather.humidity}% humidity"
                 )
             except Exception as e:
@@ -429,7 +532,7 @@ class WeatherManager:
         # Link weather to detection
         stmt = (
             update(Detection)
-            .where(Detection.id == detection_id)
+            .where(Detection.id == detection_uuid)
             .values(
                 weather_timestamp=weather.timestamp,
                 weather_latitude=weather.latitude,
@@ -437,7 +540,9 @@ class WeatherManager:
             )
         )
         await self.session.execute(stmt)
-        await self.session.commit()
+        # Don't commit here - let the caller's context manager handle it
+        # This avoids greenlet context issues when called from signal handlers
+        await self.session.flush()
 
         logger.info(
             f"Successfully linked weather to detection {detection_id}: "
@@ -556,6 +661,9 @@ class WeatherSignalHandler:
 
                 # Use the manager's method to handle all the logic
                 await weather_manager.get_or_create_and_link_weather(str(detection.id))
+
+                # Explicitly commit the transaction
+                await session.commit()
 
         except Exception as e:
             logger.error(f"Error fetching weather for detection {detection.id}: {e}")

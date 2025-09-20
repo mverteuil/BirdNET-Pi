@@ -135,8 +135,8 @@
       <span class="banner-content"></span>
     </div>
 
-    <!-- Load dashboard JavaScript -->
-    <script src="{{ url_for('static', path='js/dashboard.js') }}"></script>
+    <!-- Load dashboard JavaScript with cache busting -->
+    <script src="{{ url_for('static', path='js/dashboard.js') }}?v={{ range(1000, 9999) | random }}"></script>
 
     <script>
       // Initialize data from server

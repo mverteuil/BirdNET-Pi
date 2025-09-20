@@ -153,7 +153,8 @@ class PresentationManager:
         return LandingPageData(
             metrics=self._format_metrics(summary),
             detection_log=self._format_detection_log(recent),
-            species_frequency=self._format_species_list(frequency[:12]),
+            # Send top 20 species for client-side buffering
+            species_frequency=self._format_species_list(frequency[:20]),
             hourly_distribution=temporal["hourly_distribution"],
             visualization_data=self._format_scatter_data(scatter),
         )

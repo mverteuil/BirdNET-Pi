@@ -11,7 +11,16 @@ function getCSSVariable(varName) {
 
 // Global variables for SSE
 let detectionEventSource = null;
-let currentSpeciesList = new Set();
+// Initialize species tracking Set on window object for global access
+if (!window.currentSpeciesList) {
+  window.currentSpeciesList = new Set();
+}
+
+// Species buffer - Map to track all species counts locally
+// This includes top 20 loaded initially plus any new species detected
+if (!window.speciesBuffer) {
+  window.speciesBuffer = new Map();
+}
 
 // Initialize species data from template variables (will be set by template)
 let speciesData = {};
@@ -24,7 +33,15 @@ let visualizationData = [];
  */
 function initializeSpeciesData(data) {
   speciesData = {};
+  // Clear and populate the species buffer with all 20 species
+  window.speciesBuffer.clear();
+  window.currentSpeciesList.clear();
+
   data.forEach((species) => {
+    // Add to buffer (all 20 species)
+    window.speciesBuffer.set(species.name, species.count);
+
+    // Add to display data (for charts)
     speciesData[species.name] = {
       count: species.count,
       color:
@@ -35,6 +52,9 @@ function initializeSpeciesData(data) {
             : getCSSVariable("--color-activity-low"),
     };
   });
+
+  // Display only top 10 initially
+  updateSpeciesFrequencyTableFromBuffer();
 }
 
 /**
@@ -45,367 +65,393 @@ function setHourlyDistribution(data) {
 }
 
 /**
- * Set visualization data
+ * Set visualization data and render artistic representation
  */
 function setVisualizationData(data) {
   visualizationData = data;
+  renderArtisticVisualization();
 }
 
 /**
- * Generate detection points for visualization
+ * Render artistic visualization with circles spread across full width
  */
-function generateDetections() {
-  const detections = [];
+function renderArtisticVisualization() {
+  const container = document.getElementById("visualization");
+  if (!container || !visualizationData || visualizationData.length === 0)
+    return;
 
-  // If we have real visualization data, use it
-  if (visualizationData && visualizationData.length > 0) {
-    visualizationData.forEach((d) => {
-      detections.push({
-        time: d.x, // Already in hours (0-24)
-        confidence: d.y * 100, // Convert from fraction to percentage
-        species: d.species,
-        color: d.color,
-        count: 1,
-      });
-    });
-  } else if (hourlyDistribution && hourlyDistribution.length > 0) {
-    // Generate based on hourly distribution
-    const species = Object.keys(speciesData);
+  // Clear existing dots
+  const existingDots = container.querySelectorAll(".dot");
+  existingDots.forEach((dot) => dot.remove());
 
-    hourlyDistribution.forEach((count, hour) => {
-      for (let i = 0; i < count; i++) {
-        detections.push({
-          time: hour + Math.random(),
-          confidence: 70 + Math.random() * 30,
-          species:
-            species.length > 0
-              ? species[Math.floor(Math.random() * species.length)]
-              : "Unknown",
-          count: 1,
-        });
-      }
-    });
-  } else {
-    // Fallback to minimal mock data
-    for (let i = 0; i < 50; i++) {
-      detections.push({
-        time: Math.random() * 24,
-        confidence: 70 + Math.random() * 30,
-        species: "Unknown",
-        count: 1,
-      });
-    }
+  // Create artistic representation - sample and spread dots across full width
+  const maxDots = 50; // Limit for artistic effect
+  const step = Math.max(1, Math.floor(visualizationData.length / maxDots));
+  const sampledData = [];
+
+  // Sample data evenly
+  for (let i = 0; i < visualizationData.length; i += step) {
+    sampledData.push(visualizationData[i]);
   }
 
-  return detections;
-}
+  // Calculate the actual min and max confidence values for normalization
+  const confidenceValues = sampledData.map((d) => d.y);
+  const minConfidence = Math.min(...confidenceValues);
+  const maxConfidence = Math.max(...confidenceValues);
+  const confidenceRange = maxConfidence - minConfidence || 0.1; // Avoid division by zero
 
-/**
- * Draw the abstract visualization
- */
-function drawVisualization() {
-  const container = document.getElementById("visualization");
-  const detections = generateDetections();
-
-  detections.forEach((d, index) => {
-    // Create main dot
+  // Distribute dots artistically across the full 24-hour width
+  sampledData.forEach((detection, index) => {
     const dot = document.createElement("div");
-    dot.className = "dot";
+    dot.className = "dot visible";
 
-    // Position based on time (x) and pseudo-random vertical spread
-    const x = (d.time / 24) * 100;
+    // Spread dots across full width for artistic effect
+    const xPosition = (index / sampledData.length) * 100;
+    dot.style.left = `${xPosition}%`;
 
-    // Create vertical bands with organic clustering
-    const verticalSpread = Math.sin(d.time * 0.5) * 30 + 50;
-    const y =
-      verticalSpread + (Math.random() - 0.5) * 40 + Math.sin(index * 0.1) * 10;
+    // Normalize Y position to use full height based on actual confidence range
+    // Map minConfidence -> 5%, maxConfidence -> 95% (with padding)
+    const normalizedY =
+      5 + ((detection.y - minConfidence) / confidenceRange) * 90;
+    dot.style.bottom = `${normalizedY}%`;
 
-    // Size based on count and confidence
-    const baseSize = 8 + d.count * 4 + (d.confidence - 70) * 0.5;
-    const size = baseSize + Math.random() * 20;
-
-    // Color based on species frequency with more variation
-    const baseColor =
-      d.color ||
-      (speciesData[d.species]
-        ? speciesData[d.species].color
-        : getCSSVariable("--color-text-secondary"));
-    const opacity = 0.12 + Math.random() * 0.08;
-
-    // Apply styles
-    dot.style.left = `${x}%`;
-    dot.style.top = `${y}%`;
+    // Use normalized confidence for sizing too (20-50px range)
+    const normalizedSize = (detection.y - minConfidence) / confidenceRange;
+    const size = 20 + normalizedSize * 30;
     dot.style.width = `${size}px`;
     dot.style.height = `${size}px`;
-    dot.style.background = baseColor;
 
-    // Staggered animation
-    setTimeout(() => {
-      dot.classList.add("visible");
-    }, index * 3);
-
-    // Random animation delay for organic movement
-    dot.style.animationDelay = `${Math.random() * 4}s`;
+    // Apply colors from the data
+    dot.style.backgroundColor =
+      detection.color || getCSSVariable("--color-activity-medium");
 
     container.appendChild(dot);
-
-    // Add expanding rings for high-confidence detections
-    if (d.confidence > 90 && Math.random() > 0.7) {
-      const ring = document.createElement("div");
-      ring.className = "dot-ring";
-      ring.style.left = `${x}%`;
-      ring.style.top = `${y}%`;
-      ring.style.width = `${size}px`;
-      ring.style.height = `${size}px`;
-      ring.style.borderColor = baseColor;
-      ring.style.animationDelay = `${Math.random() * 8}s`;
-      container.appendChild(ring);
-    }
-  });
-
-  // Add floating particle effect for ambient movement
-  for (let i = 0; i < 20; i++) {
-    const particle = document.createElement("div");
-    particle.className = "dot";
-    particle.style.width = "2px";
-    particle.style.height = "2px";
-    particle.style.background = getCSSVariable("--color-viz-particle");
-    particle.style.left = `${Math.random() * 100}%`;
-    particle.style.top = `${Math.random() * 100}%`;
-    particle.style.animation = `float ${20 + Math.random() * 10}s infinite ease-in-out`;
-    particle.style.animationDelay = `${Math.random() * 5}s`;
-    particle.classList.add("visible");
-    container.appendChild(particle);
-  }
-}
-
-/**
- * Update times in detection log
- */
-function updateTimes() {
-  const now = new Date();
-  const timeElements = document.querySelectorAll(".log-entry .time");
-
-  timeElements.forEach((el, index) => {
-    const minutesAgo = index * 5 + Math.floor(Math.random() * 5);
-    const time = new Date(now - minutesAgo * 60000);
-    el.textContent = time.toTimeString().slice(0, 5);
   });
 }
 
 /**
- * Load system status via API
+ * Update visualization with new detection (pulse effect on existing dots)
  */
-async function loadSystemStatus() {
-  try {
-    const response = await fetch("/api/system/hardware/status");
-    if (!response.ok) throw new Error("Failed to fetch system status");
+function addDetectionToVisualization(detection) {
+  const container = document.getElementById("visualization");
+  if (!container) return;
 
-    const data = await response.json();
+  // Find a random dot to pulse for artistic effect
+  const dots = container.querySelectorAll(".dot");
+  if (dots.length > 0) {
+    // Pick a dot near the current time (if we were doing time-based)
+    // For artistic effect, just pick one randomly or in sequence
+    const dotIndex = Math.floor(Math.random() * dots.length);
+    const dot = dots[dotIndex];
 
-    // Update device name
-    const deviceName = document.getElementById("device-name");
-    if (deviceName && data.system_info?.device_name) {
-      deviceName.textContent = data.system_info.device_name;
-    }
+    // Create a pulse effect
+    const originalSize = dot.style.width;
+    const originalOpacity = dot.style.opacity || "0.12";
 
-    // Update CPU status
-    const cpuPercent = data.resources?.cpu?.percent || 0;
-    const cpuTemp = data.resources?.cpu?.temperature;
-    document.getElementById("cpu-value").textContent =
-      `${Math.round(cpuPercent)}%`;
-    document.getElementById("cpu-indicator").style.width = `${cpuPercent}%`;
-    document.getElementById("cpu-tooltip").textContent =
-      cpuTemp !== null
-        ? `CPU Temperature: ${cpuTemp}°C`
-        : "CPU Temperature: N/A";
+    // Apply pulse animation
+    dot.style.transition = "all 0.3s ease-out";
+    dot.style.transform = "scale(1.5)";
+    dot.style.opacity = "0.8";
 
-    // Update Memory status
-    const memory = data.resources?.memory || {};
-    const memPercent = memory.percent || 0;
-    const memUsedGB = (memory.used / 1024 ** 3).toFixed(1);
-    const memTotalGB = (memory.total / 1024 ** 3).toFixed(1);
-    document.getElementById("memory-value").textContent =
-      `${Math.round(memPercent)}%`;
-    document.getElementById("memory-indicator").style.width = `${memPercent}%`;
-    document.getElementById("memory-tooltip").textContent =
-      `${memUsedGB} GB / ${memTotalGB} GB used`;
+    // Determine color based on confidence
+    const color =
+      detection.confidence > 0.9
+        ? getCSSVariable("--color-activity-high")
+        : detection.confidence > 0.8
+          ? getCSSVariable("--color-activity-medium")
+          : getCSSVariable("--color-activity-low");
 
-    // Update Disk status
-    const disk = data.resources?.disk || {};
-    const diskPercent = disk.percent || 0;
-    const diskUsedGB = (disk.used / 1024 ** 3).toFixed(1);
-    const diskTotalGB = (disk.total / 1024 ** 3).toFixed(1);
-    document.getElementById("disk-value").textContent =
-      `${Math.round(diskPercent)}%`;
-    const diskIndicator = document.getElementById("disk-indicator");
-    diskIndicator.style.width = `${diskPercent}%`;
-    // Add warning/critical classes based on disk usage
-    diskIndicator.classList.remove("warning", "critical");
-    if (diskPercent > 90) {
-      diskIndicator.classList.add("critical");
-    } else if (diskPercent > 80) {
-      diskIndicator.classList.add("warning");
-    }
-    document.getElementById("disk-tooltip").textContent =
-      `${diskUsedGB} GB / ${diskTotalGB} GB used`;
+    // Temporarily change color to show activity
+    const originalColor = dot.style.backgroundColor;
+    dot.style.backgroundColor = color;
 
-    // Update Audio status (placeholder for now)
-    document.getElementById("audio-value").innerHTML =
-      '-60<span class="status-detail">dB</span>';
-    document.getElementById("audio-indicator").style.width = "0%";
-    document.getElementById("audio-tooltip").textContent =
-      "Audio monitoring not available";
-
-    // Update Uptime
-    const uptimeDays = data.system_info?.uptime_days || 0;
-    document.getElementById("uptime-value").textContent = `${uptimeDays}d`;
-    document.getElementById("uptime-tooltip").textContent =
-      `System uptime: ${uptimeDays} days`;
-  } catch (error) {
-    console.error("Failed to load system status:", error);
-    // Set error state for all indicators
-    document.getElementById("device-name").textContent = "Unknown Device";
-    document.querySelectorAll(".status-value").forEach((el) => {
-      if (!el.textContent.includes("d")) el.textContent = "ERR";
-    });
-  }
-}
-
-// Real-time detection updates via SSE
-
-/**
- * Initialize the species list from the current frequency table
- */
-function initializeSpeciesList() {
-  // Build set of current species from the frequency table
-  const speciesElements = document.querySelectorAll(
-    ".frequency-item .species-name",
-  );
-  speciesElements.forEach((el) => {
-    const name = el.textContent.trim();
-    if (name && name !== "No species detected today") {
-      currentSpeciesList.add(name);
-    }
-  });
-}
-
-/**
- * Show detection banner notification
- */
-function showDetectionBanner(detection) {
-  const banner = document.getElementById("detection-banner");
-  const content = banner.querySelector(".banner-content");
-
-  // Format the notification message
-  const time = new Date(detection.timestamp).toTimeString().slice(0, 5);
-  const confidence = (detection.confidence * 100).toFixed(1);
-  content.textContent = `New detection: ${detection.common_name} at ${time} (${confidence}% confidence)`;
-
-  // Show banner
-  banner.classList.remove("hiding", "d-none");
-
-  // Hide after 5 seconds
-  setTimeout(() => {
-    banner.classList.add("hiding");
+    // Reset after animation
     setTimeout(() => {
-      banner.classList.add("d-none");
-      banner.classList.remove("hiding");
-    }, 300);
-  }, 5000);
+      dot.style.transform = "scale(1)";
+      dot.style.opacity = originalOpacity;
+      dot.style.backgroundColor = originalColor;
+    }, 2000);
+  }
+
+  // Add to our data array for potential re-render
+  if (visualizationData) {
+    const now = new Date();
+    const hour = now.getHours() + now.getMinutes() / 60;
+
+    visualizationData.push({
+      x: hour, // Store as hour value (0-24) like server data
+      y: detection.confidence,
+      color:
+        detection.confidence > 0.9
+          ? "#2e7d32"
+          : detection.confidence > 0.8
+            ? "#f57c00"
+            : "#c62828",
+      species: detection.common_name,
+    });
+
+    // Occasionally re-render to incorporate new data
+    if (visualizationData.length % 50 === 0) {
+      renderArtisticVisualization();
+    }
+  }
+}
+
+/**
+ * Add CSS for animations if not already present
+ */
+function addVisualizationStyles() {
+  // No additional styles needed - using CSS from style.css
+  // The .dot class already has the necessary animations
+}
+
+/**
+ * Create placeholder detection log
+ */
+function createDetectionLog() {
+  const container = document.querySelector("#detection-log");
+  if (!container) return;
+
+  const table = document.createElement("table");
+  table.className = "log-table";
+
+  // Create header
+  const thead = document.createElement("thead");
+  thead.innerHTML = `
+    <tr>
+      <th>Time</th>
+      <th>Species</th>
+      <th>Conf.</th>
+    </tr>
+  `;
+  table.appendChild(thead);
+
+  // Create body - will be populated by SSE events
+  const tbody = document.createElement("tbody");
+  table.appendChild(tbody);
+
+  container.appendChild(table);
 }
 
 /**
  * Update detection log with new detection
  */
 function updateDetectionLog(detection) {
-  const logContainer = document.querySelector(".detection-log");
-  const logHeader = logContainer.querySelector(".log-header");
-  const entries = logContainer.querySelectorAll(".log-entry");
+  const tbody = document.querySelector("#detection-log tbody");
+  if (!tbody) return;
 
-  // Create new entry
-  const newEntry = document.createElement("div");
-  newEntry.className = "log-entry";
-  newEntry.style.animation = "fadeIn 0.5s ease-out";
+  // Create new row
+  const row = document.createElement("tr");
+  row.className = "fade-in";
 
-  const time = new Date(detection.timestamp).toTimeString().slice(0, 5);
-  const confidence = (detection.confidence * 100).toFixed(1);
+  // Format time
+  const time = new Date(detection.timestamp).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 
-  newEntry.innerHTML = `
-    <span class="time">${time}</span>
-    <span>${detection.common_name}</span>
-    <span class="confidence">${confidence}%</span>
+  // Format confidence as percentage
+  const confidence = (detection.confidence * 100).toFixed(1) + "%";
+
+  row.innerHTML = `
+    <td>${time}</td>
+    <td>${detection.common_name}</td>
+    <td>${confidence}</td>
   `;
 
-  // Insert after header
-  logHeader.after(newEntry);
+  // Insert at the beginning
+  tbody.insertBefore(row, tbody.firstChild);
 
-  // Remove last entry if we have more than 10
-  if (entries.length >= 10) {
-    entries[entries.length - 1].remove();
-  }
-
-  // Remove "No recent detections" message if present
-  const noDetections = Array.from(entries).find((e) =>
-    e.textContent.includes("No recent detections"),
-  );
-  if (noDetections) {
-    noDetections.remove();
+  // Remove old entries (keep only 10)
+  while (tbody.children.length > 10) {
+    tbody.removeChild(tbody.lastChild);
   }
 }
 
 /**
- * Update species frequency display
+ * Initialize visualizations that exist in DOM
+ */
+function initializeVisualizations() {
+  // Add CSS for animations if needed
+  addVisualizationStyles();
+
+  // The gradients and waves are already in the HTML
+  // Dots will be added when data is set
+}
+
+/**
+ * Load system hardware status
+ */
+async function loadSystemStatus() {
+  try {
+    const response = await fetch("/api/system/hardware/status");
+    if (response.ok) {
+      const data = await response.json();
+      updateSystemStatus(data);
+    }
+  } catch (error) {
+    // Silently fail - hardware endpoint may not be available
+  }
+}
+
+/**
+ * Update system status display
+ */
+function updateSystemStatus(status) {
+  // The API returns data in the 'resources' object
+  const resources = status.resources || {};
+
+  // Update CPU
+  const cpuEl = document.getElementById("cpu-value");
+  const cpuIndicator = document.getElementById("cpu-indicator");
+  const cpuTooltip = document.getElementById("cpu-tooltip");
+  if (cpuEl && resources.cpu) {
+    const usage = resources.cpu.percent || 0;
+    cpuEl.textContent = `${usage.toFixed(0)}%`;
+    cpuEl.className = usage > 80 ? "status-high" : "";
+
+    if (cpuIndicator) {
+      cpuIndicator.style.width = `${usage}%`;
+    }
+
+    if (cpuTooltip) {
+      if (resources.temperature?.cpu) {
+        cpuTooltip.textContent = `Temperature: ${resources.temperature.cpu.toFixed(1)}°C`;
+      } else {
+        cpuTooltip.textContent = "Temperature: N/A";
+      }
+    }
+  }
+
+  // Update Memory
+  const memEl = document.getElementById("memory-value");
+  const memIndicator = document.getElementById("memory-indicator");
+  const memTooltip = document.getElementById("memory-tooltip");
+  if (memEl && resources.memory) {
+    const usage = resources.memory.percent || 0;
+    memEl.textContent = `${usage.toFixed(0)}%`;
+    memEl.className = usage > 80 ? "status-high" : "";
+
+    if (memIndicator) {
+      memIndicator.style.width = `${usage}%`;
+    }
+
+    if (memTooltip) {
+      const used = (resources.memory.used || 0) / 1024 ** 3;
+      const total = (resources.memory.total || 0) / 1024 ** 3;
+      memTooltip.textContent = `${used.toFixed(1)} GB / ${total.toFixed(1)} GB used`;
+    }
+  }
+
+  // Update Disk
+  const diskEl = document.getElementById("disk-value");
+  const diskIndicator = document.getElementById("disk-indicator");
+  const diskTooltip = document.getElementById("disk-tooltip");
+  if (diskEl && resources.disk) {
+    const usage = resources.disk.percent || 0;
+    diskEl.textContent = `${usage.toFixed(0)}%`;
+    diskEl.className = usage > 80 ? "status-high" : "";
+
+    if (diskIndicator) {
+      diskIndicator.style.width = `${usage}%`;
+    }
+
+    if (diskTooltip) {
+      const used = (resources.disk.used || 0) / 1024 ** 3;
+      const total = (resources.disk.total || 0) / 1024 ** 3;
+      diskTooltip.textContent = `${used.toFixed(1)} GB / ${total.toFixed(1)} GB used`;
+    }
+  }
+
+  // Update Audio level (if available)
+  const audioEl = document.getElementById("audio-value");
+  const audioIndicator = document.getElementById("audio-indicator");
+  const audioTooltip = document.getElementById("audio-tooltip");
+  if (audioEl) {
+    if (resources.audio) {
+      const level = resources.audio.level_db || -60;
+      audioEl.textContent = `${level.toFixed(0)}dB`;
+      audioEl.className = level > -10 ? "status-high" : "";
+
+      if (audioIndicator) {
+        // Map dB to percentage (assuming -60dB to 0dB range)
+        const percent = Math.max(0, ((60 + level) / 60) * 100);
+        audioIndicator.style.width = `${percent}%`;
+      }
+
+      if (audioTooltip) {
+        audioTooltip.textContent = resources.audio.is_capturing
+          ? "Audio monitoring active"
+          : "Audio monitoring not available";
+      }
+    } else {
+      audioEl.textContent = "N/A";
+      if (audioTooltip) {
+        audioTooltip.textContent = "Audio monitoring not available";
+      }
+    }
+  }
+
+  // Update System Uptime
+  const uptimeEl = document.getElementById("uptime-value");
+  const uptimeTooltip = document.getElementById("uptime-tooltip");
+  if (uptimeEl && status.system_info) {
+    const days = status.system_info.uptime_days || 0;
+    uptimeEl.textContent = `${days}d`;
+
+    if (uptimeTooltip) {
+      uptimeTooltip.textContent = `System uptime: ${days} days`;
+    }
+  }
+}
+
+/**
+ * Update species frequency based on new detection
  */
 async function updateSpeciesFrequency(detection) {
-  // Check if this species is already in our list
-  if (currentSpeciesList.has(detection.common_name)) {
-    // Species exists - just increment the count locally
-    const frequencyItems = document.querySelectorAll(".frequency-item");
-    for (const item of frequencyItems) {
-      const nameEl = item.querySelector(".species-name");
-      if (nameEl && nameEl.textContent === detection.common_name) {
-        const countEl = item.querySelector(".freq-count");
-        const currentCount = parseInt(countEl.textContent) || 0;
-        countEl.textContent = currentCount + 1;
-        break;
-      }
-    }
-  } else {
-    // New species - need to fetch updated frequency list
-    try {
-      const response = await fetch(
-        "/api/detections/species/frequency?hours=24",
-      );
-      if (response.ok) {
-        const data = await response.json();
-        updateSpeciesFrequencyTable(data.species);
-        // Add to our tracking set
-        currentSpeciesList.add(detection.common_name);
-      }
-    } catch (error) {
-      console.error("Failed to fetch updated species frequency:", error);
-    }
+  // Ensure the buffer and Set exist
+  if (!window.speciesBuffer) {
+    window.speciesBuffer = new Map();
   }
+  if (!window.currentSpeciesList) {
+    window.currentSpeciesList = new Set();
+  }
+
+  // Update the buffer with the new detection
+  const currentCount = window.speciesBuffer.get(detection.common_name) || 0;
+  window.speciesBuffer.set(detection.common_name, currentCount + 1);
+
+  // Re-render the table from buffer (will automatically show top 10)
+  updateSpeciesFrequencyTableFromBuffer();
 }
 
 /**
- * Update species frequency table
+ * Update species frequency table from buffer
+ * This sorts the buffer and displays the top 10 species
  */
-function updateSpeciesFrequencyTable(species) {
+function updateSpeciesFrequencyTableFromBuffer() {
+  // Convert Map to array and sort by count (descending)
+  const sortedSpecies = Array.from(window.speciesBuffer.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+
   const container = document.querySelector(".frequency-list");
+  if (!container) return;
+
   const header = container.querySelector(".list-header");
 
   // Clear existing entries (except header)
   const existingEntries = container.querySelectorAll(".frequency-item");
   existingEntries.forEach((e) => e.remove());
 
-  // Add new entries
-  species.slice(0, 10).forEach((s) => {
+  // Add top 10 entries
+  const top10 = sortedSpecies.slice(0, 10);
+  const maxCount = top10[0]?.count || 1;
+
+  top10.forEach((s) => {
     const item = document.createElement("div");
     item.className = "frequency-item";
-
-    const maxCount = species[0]?.count || 1;
     const barWidth = (s.count / maxCount) * 100 + "%";
 
     item.innerHTML = `
@@ -419,42 +465,41 @@ function updateSpeciesFrequencyTable(species) {
     container.appendChild(item);
   });
 
-  // If no species, show empty message
-  if (species.length === 0) {
-    const item = document.createElement("div");
-    item.className = "frequency-item";
-    item.innerHTML = `
-      <span class="species-name">No species detected today</span>
-      <span class="freq-count">0</span>
-      <span class="freq-bar">
-        <span class="bar" style="width: 0%"></span>
-      </span>
-    `;
-    container.appendChild(item);
-  }
+  // Update tracking set with current top 10
+  window.currentSpeciesList.clear();
+  top10.forEach((s) => window.currentSpeciesList.add(s.name));
 }
 
 /**
- * Connect to detection stream via Server-Sent Events
+ * Update species frequency table (legacy - now just calls buffer version)
  */
-function connectDetectionStream() {
+function updateSpeciesFrequencyTable(species) {
+  // Convert API response to buffer format and update
+  window.speciesBuffer.clear();
+  species.forEach((s) => {
+    window.speciesBuffer.set(s.name, s.count);
+  });
+  updateSpeciesFrequencyTableFromBuffer();
+}
+
+/**
+ * Start SSE connection for real-time updates
+ */
+function startSSEConnection() {
   if (detectionEventSource) {
     detectionEventSource.close();
   }
 
   detectionEventSource = new EventSource("/api/detections/stream");
 
-  detectionEventSource.addEventListener("connected", (event) => {
+  detectionEventSource.onopen = () => {
     console.log("Connected to detection stream");
-  });
+  };
 
-  detectionEventSource.addEventListener("detection", (event) => {
+  detectionEventSource.onmessage = (event) => {
     try {
       const detection = JSON.parse(event.data);
       console.log("New detection:", detection);
-
-      // Show banner notification
-      showDetectionBanner(detection);
 
       // Update detection log
       updateDetectionLog(detection);
@@ -462,77 +507,85 @@ function connectDetectionStream() {
       // Update species frequency
       updateSpeciesFrequency(detection);
 
-      // Pulse the live indicator
-      const pulse = document.querySelector(".live");
-      if (pulse) {
-        pulse.style.background = getCSSVariable("--color-status-success");
-        setTimeout(() => {
-          pulse.style.background = getCSSVariable("--color-status-live");
-        }, 1000);
-      }
+      // Add to visualization
+      addDetectionToVisualization(detection);
+
+      // Show notification banner
+      showDetectionBanner(detection);
     } catch (error) {
-      console.error("Failed to process detection event:", error);
-    }
-  });
-
-  detectionEventSource.addEventListener("heartbeat", (event) => {
-    // Heartbeat received - connection is alive
-  });
-
-  detectionEventSource.addEventListener("error", (event) => {
-    console.error("Detection stream error:", event);
-    if (detectionEventSource.readyState === EventSource.CLOSED) {
-      // Reconnect after 5 seconds
-      setTimeout(connectDetectionStream, 5000);
-    }
-  });
-
-  detectionEventSource.onerror = (error) => {
-    console.error("EventSource error:", error);
-    if (detectionEventSource.readyState === EventSource.CLOSED) {
-      setTimeout(connectDetectionStream, 5000);
+      console.error("Failed to parse detection event:", error);
     }
   };
+
+  detectionEventSource.onerror = (error) => {
+    console.error("Detection stream error:", error);
+
+    if (detectionEventSource.readyState === EventSource.CLOSED) {
+      console.log("Detection stream closed, reconnecting in 5 seconds...");
+      setTimeout(startSSEConnection, 5000);
+    }
+  };
+
+  // Additional error handling for connection issues
+  detectionEventSource.addEventListener("error", (event) => {
+    console.error("EventSource error:", event);
+  });
+}
+
+/**
+ * Show detection notification banner
+ */
+function showDetectionBanner(detection) {
+  const banner = document.getElementById("detection-banner");
+  if (!banner) return;
+
+  const content = banner.querySelector(".banner-content");
+  if (!content) return;
+
+  // Format the message
+  const time = new Date(detection.timestamp).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const confidence = (detection.confidence * 100).toFixed(1);
+
+  content.textContent = `New detection: ${detection.common_name} at ${time} (${confidence}% confidence)`;
+
+  // Show the banner
+  banner.classList.remove("d-none");
+  banner.classList.remove("hiding");
+
+  // Hide after 5 seconds
+  setTimeout(() => {
+    banner.classList.add("hiding");
+    setTimeout(() => {
+      banner.classList.add("d-none");
+    }, 300);
+  }, 5000);
 }
 
 /**
  * Initialize dashboard on page load
  */
-function initializeDashboard() {
-  // Add fadeIn animation style
-  const style = document.createElement("style");
-  style.textContent = `
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-  `;
-  document.head.appendChild(style);
+document.addEventListener("DOMContentLoaded", () => {
+  // Initialize visualizations
+  initializeVisualizations();
 
-  // Initialize components
-  drawVisualization();
-  updateTimes();
-  loadSystemStatus(); // Load system status on page load
-  initializeSpeciesList(); // Build initial species list
-  connectDetectionStream(); // Connect to SSE stream
+  // Load initial hardware status
+  loadSystemStatus();
 
-  // Update times every minute
-  setInterval(updateTimes, 60000);
+  // Update hardware status every 15 seconds (reduced from 5s to avoid overwhelming workers)
+  setInterval(loadSystemStatus, 15000);
 
-  // Refresh system status every 5 seconds
-  setInterval(loadSystemStatus, 5000);
+  // Start SSE connection for real-time detections
+  startSSEConnection();
 
-  // Simulate live updates
-  setInterval(() => {
-    const pulse = document.querySelector(".live");
-    if (pulse) {
-      pulse.style.background = getCSSVariable("--color-status-success");
-      setTimeout(() => {
-        pulse.style.background = getCSSVariable("--color-status-live");
-      }, 1000);
-    }
-  }, 10000);
-}
+  // Initialize data if provided by template
+  // (The template will call these functions directly)
+});
 
-// Initialize when DOM is ready
-document.addEventListener("DOMContentLoaded", initializeDashboard);
+// Export functions that need to be called from template
+window.initializeSpeciesData = initializeSpeciesData;
+window.setHourlyDistribution = setHourlyDistribution;
+window.setVisualizationData = setVisualizationData;
