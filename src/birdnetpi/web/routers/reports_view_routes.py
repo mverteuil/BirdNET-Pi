@@ -70,12 +70,7 @@ async def get_all_detections(
                 "species_count": 0,
                 "recent_detections": [],
                 "species_frequency": [],
-                "top_species": [],
                 "weekly_patterns": [],
-                "sparkline_data": {},
-                "week_patterns_data": {},
-                "heatmap_data": [],
-                "stem_leaf_data": [],
             },
         )
 

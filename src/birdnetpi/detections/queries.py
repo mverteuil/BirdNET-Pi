@@ -135,22 +135,44 @@ class DetectionQueryService:
 
         This is the main query method that handles all detection queries.
         Always returns DetectionWithTaxa for consistent taxonomy data access.
+
+        Args:
+            species: Filter by scientific name(s) - string or list
+            family: Filter by taxonomic family
+            genus: Filter by taxonomic genus
+            start_date: Only return detections after this timestamp
+            end_date: Only return detections before this timestamp
+            min_confidence: Minimum confidence threshold
+            max_confidence: Maximum confidence threshold
+            limit: Maximum number of results (None = no limit)
+            offset: Number of results to skip
+            order_by: Field to order by (default: timestamp)
+            order_desc: Whether to order descending (default: True)
+            language_code: Language for translations (default: en)
+
+        Returns:
+            List of DetectionWithTaxa objects
         """
-        # Always use taxa-enriched query with all filters
-        return await self.get_detections_with_taxa(
-            limit=limit or 100,
-            offset=offset or 0,
-            language_code=language_code,
-            start_date=start_date,
-            end_date=end_date,
-            scientific_name_filter=species,
-            family_filter=family,
-            genus_filter=genus,
-            min_confidence=min_confidence,
-            max_confidence=max_confidence,
-            order_by=order_by,
-            order_desc=order_desc,
-        )
+        async with self.core_database.get_async_db() as session:
+            await self.species_database.attach_all_to_session(session)
+            try:
+                return await self._execute_join_query(
+                    session=session,
+                    limit=limit,
+                    offset=offset or 0,
+                    language_code=language_code,
+                    start_date=start_date,
+                    end_date=end_date,
+                    scientific_name_filter=species,
+                    family_filter=family,
+                    genus_filter=genus,
+                    min_confidence=min_confidence,
+                    max_confidence=max_confidence,
+                    order_by=order_by,
+                    order_desc=order_desc,
+                )
+            finally:
+                await self.species_database.detach_all_from_session(session)
 
     async def get_detections_with_taxa(
         self,
@@ -171,6 +193,8 @@ class DetectionQueryService:
         since: dt | None = None,
     ) -> list[DetectionWithTaxa]:
         """Get detections with taxonomy data.
+
+        DEPRECATED: Use query_detections() instead. This method exists for backward compatibility.
 
         Args:
             limit: Maximum number of results
@@ -194,26 +218,21 @@ class DetectionQueryService:
         if since and not start_date:
             start_date = since
 
-        async with self.core_database.get_async_db() as session:
-            await self.species_database.attach_all_to_session(session)
-            try:
-                return await self._execute_join_query(
-                    session=session,
-                    limit=limit,
-                    offset=offset,
-                    language_code=language_code,
-                    start_date=start_date,
-                    end_date=end_date,
-                    scientific_name_filter=scientific_name_filter,
-                    family_filter=family_filter,
-                    genus_filter=genus_filter,
-                    min_confidence=min_confidence,
-                    max_confidence=max_confidence,
-                    order_by=order_by,
-                    order_desc=order_desc,
-                )
-            finally:
-                await self.species_database.detach_all_from_session(session)
+        # Delegate to the main query method
+        return await self.query_detections(
+            species=scientific_name_filter,
+            family=family_filter,
+            genus=genus_filter,
+            start_date=start_date,
+            end_date=end_date,
+            min_confidence=min_confidence,
+            max_confidence=max_confidence,
+            limit=limit,
+            offset=offset,
+            order_by=order_by,
+            order_desc=order_desc,
+            language_code=language_code,
+        )
 
     async def get_detection_with_taxa(
         self, detection_id: UUID, language_code: str = "en"
@@ -502,10 +521,32 @@ class DetectionQueryService:
             finally:
                 await self.species_database.detach_all_from_session(session)
 
+    def _add_scientific_name_filter(
+        self,
+        where_clause: str,
+        params: dict[str, Any],
+        scientific_name_filter: str | list[str] | None,
+    ) -> str:
+        """Add scientific name filter to WHERE clause."""
+        if not scientific_name_filter:
+            return where_clause
+
+        if isinstance(scientific_name_filter, list):
+            # Create parameterized IN clause
+            species_params = [f":species_{i}" for i in range(len(scientific_name_filter))]
+            where_clause += f" AND d.scientific_name IN ({','.join(species_params)})"
+            for i, species in enumerate(scientific_name_filter):
+                params[f"species_{i}"] = species
+        else:
+            where_clause += " AND d.scientific_name = :scientific_name"
+            params["scientific_name"] = scientific_name_filter
+
+        return where_clause
+
     def _build_where_clause_and_params(
         self,
         language_code: str,
-        limit: int,
+        limit: int | None,
         offset: int,
         *,  # Everything after this is keyword-only
         start_date: dt | None = None,
@@ -518,7 +559,11 @@ class DetectionQueryService:
     ) -> tuple[str, dict[str, Any]]:
         """Build WHERE clause and parameters for the query."""
         where_clause = "WHERE 1=1"
-        params: dict[str, Any] = {"language_code": language_code, "limit": limit, "offset": offset}
+        params: dict[str, Any] = {"language_code": language_code, "offset": offset}
+
+        # Only add limit to params if it's not None
+        if limit is not None:
+            params["limit"] = limit
 
         # Date filters
         if start_date:
@@ -529,24 +574,16 @@ class DetectionQueryService:
             where_clause += " AND d.timestamp <= :end_date"
             params["end_date"] = end_date
 
-        # Scientific name filter - supports both single string and list
-        if scientific_name_filter:
-            if isinstance(scientific_name_filter, list):
-                # Create parameterized IN clause
-                species_params = [f":species_{i}" for i in range(len(scientific_name_filter))]
-                where_clause += f" AND d.scientific_name IN ({','.join(species_params)})"
-                for i, species in enumerate(scientific_name_filter):
-                    params[f"species_{i}"] = species
-            else:
-                where_clause += " AND d.scientific_name = :scientific_name"
-                params["scientific_name"] = scientific_name_filter
+        # Scientific name filter - delegate to helper method
+        where_clause = self._add_scientific_name_filter(
+            where_clause, params, scientific_name_filter
+        )
 
-        # Family filter
+        # Taxonomy filters
         if family_filter:
             where_clause += " AND s.family = :family"
             params["family"] = family_filter
 
-        # Genus filter
         if genus_filter:
             where_clause += " AND s.genus = :genus"
             params["genus"] = genus_filter
@@ -578,7 +615,7 @@ class DetectionQueryService:
     async def _execute_join_query(
         self,
         session: AsyncSession,
-        limit: int,
+        limit: int | None,
         offset: int,
         language_code: str,
         *,  # Everything after this is keyword-only
@@ -617,6 +654,11 @@ class DetectionQueryService:
             has_species_db = True
         except Exception:
             has_species_db = False
+
+        # Build limit clause based on whether limit is None
+        limit_clause = "" if limit is None else "LIMIT :limit"
+        offset_clause = "OFFSET :offset" if offset > 0 else ""
+        pagination_clause = f"{limit_clause} {offset_clause}".strip()
 
         if has_species_db:
             # Full query with JOINs when species databases are available
@@ -660,7 +702,7 @@ class DetectionQueryService:
                     AND a.language_code = :language_code
                 {where_clause}
                 {order_clause}
-                LIMIT :limit OFFSET :offset
+                {pagination_clause}
             """
             )
         else:
@@ -690,7 +732,7 @@ class DetectionQueryService:
                 FROM detections d
                 {where_clause}
                 {order_clause}
-                LIMIT :limit OFFSET :offset
+                {pagination_clause}
             """
             )
 

@@ -140,12 +140,14 @@ async def get_paginated_detections(
         start_time = end_time - timedelta(days=days)
 
         # Get detections with taxa enrichment for proper display names
+        # Pass limit=None to get ALL detections for the period, not just default 100
         all_detections = await detection_query_service.query_detections(
             start_date=start_time,
             end_date=end_time,
             language_code=config.language,
             order_by="timestamp",
             order_desc=True,
+            limit=None,  # Get all detections, don't use default limit
         )
 
         # Filter by search term if provided

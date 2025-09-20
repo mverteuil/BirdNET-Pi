@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
@@ -479,24 +480,24 @@ class PresentationManager:
         # We'll load detections via AJAX, so just provide empty list initially
         recent_detections = []
 
-        # Get species summary from appropriate source
-        species_summary = await self._get_species_summary_data(detection_query_service, start_date)
+        # Parallelize independent async operations for better performance
+        # These operations don't depend on each other and can run concurrently
+        (
+            species_summary,
+            temporal_patterns,
+            dashboard_summary,
+            weekly_data,
+        ) = await asyncio.gather(
+            self._get_species_summary_data(detection_query_service, start_date),
+            self._get_period_temporal_patterns(period, now),
+            self.analytics_manager.get_dashboard_summary(),
+            self.analytics_manager.get_weekly_patterns(),
+        )
 
-        # Get analytics data with period-appropriate temporal patterns
-        temporal_patterns = await self._get_period_temporal_patterns(period, now)
-        dashboard_summary = await self.analytics_manager.get_dashboard_summary()
-
-        # Format species frequency table
+        # Format species frequency table (synchronous, depends on species_summary)
         species_frequency = self._format_species_frequency(species_summary, period)
 
-        # Format top species for sparklines
-        top_species = self._format_top_species(species_summary)
-
-        # Generate sparkline data with real species-specific patterns for the selected period
-        sparkline_data = await self._generate_sparkline_data(top_species, period)
-
-        # Get real weekly patterns from analytics
-        weekly_data = await self.analytics_manager.get_weekly_patterns()
+        # Removed: top_species and sparkline generation (charts removed per requirements)
 
         # Format for display with total counts per day
         weekly_patterns = [
@@ -509,15 +510,7 @@ class PresentationManager:
             {"id": "sat", "name": "Saturday", "count": sum(weekly_data.get("sat", []))},
         ]
 
-        # Use real weekly patterns for charts
-        # Sample every 2-3 hours for mini charts (10 points)
-        week_patterns_data = {}
-        sample_hours = [0, 3, 6, 8, 10, 12, 14, 16, 18, 21]  # 10 representative hours
-
-        for day in ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]:
-            day_pattern = weekly_data.get(day, [0] * 24)
-            sampled_pattern = [day_pattern[h] if h < len(day_pattern) else 0 for h in sample_hours]
-            week_patterns_data[f"{day}-chart"] = sampled_pattern
+        # Removed: week_patterns_data generation (charts removed per requirements)
 
         # Calculate statistics based on the actual species summary data
         # Use the full species_summary for accurate counts, not the formatted frequency
@@ -574,11 +567,7 @@ class PresentationManager:
             # Main data
             "recent_detections": recent_detections,
             "species_frequency": species_frequency,
-            "top_species": top_species,
             "weekly_patterns": weekly_patterns,
-            # Chart data
-            "sparkline_data": sparkline_data,
-            "week_patterns_data": week_patterns_data,
             # Configuration
             "period": period,  # Pass current period for template highlighting
             "period_label": self._get_period_label(period),  # Human-readable period label
