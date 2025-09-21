@@ -82,8 +82,21 @@ class TestWeeklyHeatmapExtended:
         result = await analytics_manager.get_weekly_heatmap_data(days=14)
 
         assert len(result) == 7
-        # Sunday should have all zeros (no data)
-        assert all(count == 0 for count in result[0])
+
+        # For 14 days (>7), the function aggregates by weekday
+        # The mock provides data iterating backwards from today:
+        # - First call: most recent day (could be any weekday)
+        # - Second call: day before that
+        # - Third call: two days before that
+        # Since we don't control what day the test runs on, we can't predict
+        # which weekday gets which data. The test should verify:
+        # 1. Total number of non-zero hours matches expected data
+        # 2. The averaging logic works (counts are divided by number of weeks)
+
+        # Count total non-zero entries
+        non_zero_count = sum(1 for day in result for count in day if count > 0)
+        # We provided data for 2 different hours across 14 days
+        assert non_zero_count == 2  # hour 12 from first call, hour 14 from third call
 
 
 class TestStemLeafDistribution:

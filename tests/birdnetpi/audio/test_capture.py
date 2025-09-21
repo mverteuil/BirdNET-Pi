@@ -40,21 +40,10 @@ def mock_device():
 # Basic AudioCaptureService tests
 
 
-@patch("sounddevice.query_devices")
 @patch("sounddevice.InputStream")
-def test_start_capture_initializes_stream(
-    mock_input_stream, mock_query_devices, audio_service, mock_device
-):
+def test_start_capture_initializes_stream(mock_input_stream, audio_service):
     """Should initialize the sounddevice stream correctly."""
-    # Mock the device to return its default sample rate
-    mock_device_info = {"default_samplerate": 44100.0}
-    mock_query_devices.return_value = mock_device_info
-
-    # Mock the audio device service
-    audio_service.audio_device_service.discover_input_devices = MagicMock(
-        return_value=[mock_device]
-    )
-
+    # No device discovery needed - we always use the target sample rate
     audio_service.start_capture()
 
     # Should use BirdNET's required sample rate (48000) regardless of device native rate
@@ -67,20 +56,9 @@ def test_start_capture_initializes_stream(
     mock_input_stream.return_value.start.assert_called_once()
 
 
-@patch("sounddevice.query_devices")
 @patch("sounddevice.InputStream")
-def test_stop_capture_stops_closes_stream(
-    mock_input_stream, mock_query_devices, audio_service, mock_device
-):
+def test_stop_capture_stops_closes_stream(mock_input_stream, audio_service):
     """Should stop and close the sounddevice stream."""
-    # Mock the device
-    mock_device_info = {"default_samplerate": 48000.0}
-    mock_query_devices.return_value = mock_device_info
-    mock_device.default_samplerate = 48000.0
-    audio_service.audio_device_service.discover_input_devices = MagicMock(
-        return_value=[mock_device]
-    )
-
     mock_input_stream.return_value.stopped = False  # Ensure it's not stopped initially
     audio_service.start_capture()
     audio_service.stop_capture()
@@ -89,20 +67,9 @@ def test_stop_capture_stops_closes_stream(
     mock_input_stream.return_value.close.assert_called_once()
 
 
-@patch("sounddevice.query_devices")
 @patch("sounddevice.InputStream", side_effect=Exception("Test Error"))
-def test_start_capture_handles_exceptions(
-    mock_input_stream, mock_query_devices, audio_service, mock_device
-):
+def test_start_capture_handles_exceptions(mock_input_stream, audio_service):
     """Should handle exceptions during stream initialization."""
-    # Mock the device
-    mock_device_info = {"default_samplerate": 48000.0}
-    mock_query_devices.return_value = mock_device_info
-    mock_device.default_samplerate = 48000.0
-    audio_service.audio_device_service.discover_input_devices = MagicMock(
-        return_value=[mock_device]
-    )
-
     with pytest.raises(Exception) as exc_info:
         audio_service.start_capture()
     assert str(exc_info.value) == "Test Error"
@@ -290,20 +257,10 @@ def audio_service_default_device(mock_config):
     return AudioCaptureService(mock_config, analysis_fifo_fd=-1, livestream_fifo_fd=-1)
 
 
-@patch("sounddevice.query_devices")
 @patch("sounddevice.InputStream")
-def test_start_capture_with_default_device(
-    mock_input_stream, mock_query_devices, audio_service_default_device
-):
+def test_start_capture_with_default_device(mock_input_stream, audio_service_default_device):
     """Should use default device when device_index is -1."""
-    # Mock the default device info
-    mock_device_info = {"default_samplerate": 44100.0}
-    mock_query_devices.return_value = mock_device_info
-
     audio_service_default_device.start_capture()
-
-    # Query devices is no longer called as we use the target sample rate directly
-    mock_query_devices.assert_not_called()
 
     # Should use BirdNET's required sample rate
     mock_input_stream.assert_called_once_with(
@@ -315,16 +272,10 @@ def test_start_capture_with_default_device(
     mock_input_stream.return_value.start.assert_called_once()
 
 
-@patch("sounddevice.query_devices")
 @patch("sounddevice.InputStream")
 @patch("birdnetpi.audio.capture.logger")
-def test_default_device_logging(
-    mock_logger, mock_input_stream, mock_query_devices, audio_service_default_device
-):
+def test_default_device_logging(mock_logger, mock_input_stream, audio_service_default_device):
     """Should log default device information."""
-    mock_device_info = {"default_samplerate": 44100.0}
-    mock_query_devices.return_value = mock_device_info
-
     audio_service_default_device.start_capture()
 
     # Should log audio capture stream started
@@ -354,19 +305,10 @@ def audio_service_with_filters(mock_config):
     )
 
 
-@patch("sounddevice.query_devices")
 @patch("sounddevice.InputStream")
 @patch("birdnetpi.audio.capture.logger")
-def test_filter_chain_with_resampling(
-    mock_logger, mock_input_stream, mock_query_devices, audio_service_with_filters, mock_device
-):
+def test_filter_chain_with_resampling(mock_logger, mock_input_stream, audio_service_with_filters):
     """Should use sounddevice automatic resampling, not manual filter."""
-    # Device has different sample rate than target
-    mock_device.default_samplerate = 44100.0  # Different from 48000
-    audio_service_with_filters.audio_device_service.discover_input_devices = MagicMock(
-        return_value=[mock_device]
-    )
-
     audio_service_with_filters.start_capture()
 
     # Should NOT add manual resampling filter (sounddevice handles it)
@@ -382,18 +324,9 @@ def test_filter_chain_with_resampling(
     )
 
 
-@patch("sounddevice.query_devices")
 @patch("sounddevice.InputStream")
-def test_filter_chain_without_resampling(
-    mock_input_stream, mock_query_devices, audio_service_with_filters, mock_device
-):
+def test_filter_chain_without_resampling(mock_input_stream, audio_service_with_filters):
     """Should not add resampling filter regardless of rates."""
-    # Device has same sample rate as target
-    mock_device.default_samplerate = 48000.0  # Same as target
-    audio_service_with_filters.audio_device_service.discover_input_devices = MagicMock(
-        return_value=[mock_device]
-    )
-
     audio_service_with_filters.start_capture()
 
     # Should not add resampling filter (sounddevice handles any needed conversion)
@@ -404,18 +337,12 @@ def test_filter_chain_without_resampling(
     audio_service_with_filters.livestream_filter_chain.configure.assert_called_once_with(48000, 1)
 
 
-@patch("sounddevice.query_devices")
 @patch("sounddevice.InputStream")
 @patch("birdnetpi.audio.capture.logger")
 def test_livestream_filter_chain_configuration(
-    mock_logger, mock_input_stream, mock_query_devices, audio_service_with_filters, mock_device
+    mock_logger, mock_input_stream, audio_service_with_filters
 ):
-    """Should configure livestream filter chain with device's native rate."""
-    mock_device.default_samplerate = 44100.0
-    audio_service_with_filters.audio_device_service.discover_input_devices = MagicMock(
-        return_value=[mock_device]
-    )
-
+    """Should configure livestream filter chain with target rate."""
     audio_service_with_filters.start_capture()
 
     # Livestream should use target rate (sounddevice handles resampling)
@@ -528,12 +455,10 @@ def test_stop_capture_normal_flow(mock_logger, mock_sleep, audio_service):
 # Integration tests
 
 
-@patch("sounddevice.query_devices")
 @patch("sounddevice.InputStream")
-def test_full_audio_pipeline(mock_input_stream, mock_query_devices, mock_config, mock_device):
+def test_full_audio_pipeline(mock_input_stream, mock_config):
     """Should test complete flow from start to stop."""
     # Setup mocks
-    mock_device.default_samplerate = 48000.0
     mock_stream = MagicMock()
     mock_stream.stopped = False
     mock_input_stream.return_value = mock_stream
@@ -550,8 +475,6 @@ def test_full_audio_pipeline(mock_input_stream, mock_query_devices, mock_config,
         livestream_filter_chain=livestream_chain,
     )
 
-    service.audio_device_service.discover_input_devices = MagicMock(return_value=[mock_device])
-
     # Start capture
     service.start_capture()
 
@@ -567,20 +490,14 @@ def test_full_audio_pipeline(mock_input_stream, mock_query_devices, mock_config,
     mock_stream.close.assert_called_once()
 
 
-@patch("sounddevice.query_devices")
 @patch("sounddevice.InputStream")
-def test_multiple_start_stop_cycles(
-    mock_input_stream, mock_query_devices, mock_config, mock_device
-):
+def test_multiple_start_stop_cycles(mock_input_stream, mock_config):
     """Should test repeated start/stop operations."""
-    mock_device.default_samplerate = 48000.0
     mock_stream = MagicMock()
     mock_stream.stopped = False
     mock_input_stream.return_value = mock_stream
 
     service = AudioCaptureService(mock_config, analysis_fifo_fd=-1, livestream_fifo_fd=-1)
-
-    service.audio_device_service.discover_input_devices = MagicMock(return_value=[mock_device])
 
     # First cycle
     service.start_capture()

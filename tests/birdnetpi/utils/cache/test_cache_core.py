@@ -1,111 +1,130 @@
-"""Core tests for Cache class initialization and factory functions.
+"""Core tests for Cache class initialization.
 
-This module tests the Cache class's backend selection logic and initialization.
-The actual cache operations are tested in:
-- test_cache_with_memory.py (InMemoryBackend tests)
-- test_cache_with_memcached.py (MemcachedBackend tests)
+This module tests the Cache class's initialization with Redis backend.
+Redis is the exclusive backend for caching in BirdNET-Pi.
 """
 
 from unittest.mock import MagicMock, patch
 
-from birdnetpi.utils.cache.cache import Cache, create_cache
+import pytest
+
+from birdnetpi.utils.cache.cache import Cache
 
 
 class TestCacheInitialization:
-    """Test Cache class initialization with different backends."""
+    """Should test Cache class initialization with Redis backend."""
 
-    @patch("birdnetpi.utils.cache.cache.MEMCACHED_AVAILABLE", True)
-    @patch("birdnetpi.utils.cache.cache.MemcachedBackend")
-    def test_init_with_memcached_success(self, mock_memcached_backend):
-        """Should successful initialization with memcached backend."""
-        mock_backend = MagicMock()
-        mock_memcached_backend.return_value = mock_backend
+    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool")
+    @patch("birdnetpi.utils.cache.backends.redis.Redis")
+    def test_init_with_redis_success(self, mock_redis, mock_pool):
+        """Should successfully initialize with Redis backend."""
+        mock_client = MagicMock()
+        mock_redis.return_value = mock_client
+        mock_client.ping.return_value = True
 
         cache = Cache(
-            memcached_host="localhost",
-            memcached_port=11211,
+            redis_host="localhost",
+            redis_port=6379,
+            redis_db=0,
             default_ttl=600,
             enable_cache_warming=True,
         )
 
         assert cache.default_ttl == 600
         assert cache.enable_cache_warming is True
-        assert cache.backend_type == "memcached"
-        assert cache._backend == mock_backend
-        mock_memcached_backend.assert_called_once_with("localhost", 11211)
+        assert cache.backend_type == "redis"
+        mock_client.ping.assert_called()
 
-    @patch("birdnetpi.utils.cache.cache.MEMCACHED_AVAILABLE", True)
-    @patch("birdnetpi.utils.cache.cache.MemcachedBackend")
-    @patch("birdnetpi.utils.cache.cache.InMemoryBackend")
-    def test_init_memcached_fallback_to_memory(self, mock_memory_backend, mock_memcached_backend):
-        """Should fallback to in-memory backend when memcached fails."""
-        mock_memcached_backend.side_effect = Exception("Connection refused")
-        mock_memory = MagicMock()
-        mock_memory_backend.return_value = mock_memory
+    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool")
+    @patch("birdnetpi.utils.cache.backends.redis.Redis")
+    def test_init_redis_connection_failure(self, mock_redis, mock_pool):
+        """Should raise RuntimeError when Redis is unavailable."""
+        mock_client = MagicMock()
+        mock_redis.return_value = mock_client
+        # Simulate connection failure on all retries
+        mock_client.ping.side_effect = Exception("Connection refused")
+
+        with pytest.raises(RuntimeError) as exc_info:
+            Cache(
+                redis_host="localhost",
+                redis_port=6379,
+                redis_db=0,
+            )
+
+        # The error message could be either format depending on the exception
+        error_msg = str(exc_info.value)
+        assert "Failed to" in error_msg and ("Redis" in error_msg or "backend" in error_msg)
+
+    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool")
+    @patch("birdnetpi.utils.cache.backends.redis.Redis")
+    def test_init_with_default_parameters(self, mock_redis, mock_pool):
+        """Should initialize with default parameters."""
+        mock_client = MagicMock()
+        mock_redis.return_value = mock_client
+        mock_client.ping.return_value = True
 
         cache = Cache()
 
-        assert cache.backend_type == "memory"
-        assert cache._backend == mock_memory
-        mock_memory_backend.assert_called_once()
-
-    @patch("birdnetpi.utils.cache.cache.MEMCACHED_AVAILABLE", False)
-    @patch("birdnetpi.utils.cache.cache.InMemoryBackend")
-    def test_init_without_memcached(self, mock_memory_backend):
-        """Should initialization when memcached is not available."""
-        mock_memory = MagicMock()
-        mock_memory_backend.return_value = mock_memory
-
-        cache = Cache()
-
-        assert cache.backend_type == "memory"
-        assert cache._backend == mock_memory
         assert cache.default_ttl == 300
         assert cache.enable_cache_warming is True
+        assert cache.backend_type == "redis"
 
-    @patch("birdnetpi.utils.cache.cache.InMemoryBackend")
-    def test_init_statistics_tracking(self, mock_memory_backend):
-        """Should statistics are initialized correctly."""
-        with patch("birdnetpi.utils.cache.cache.MEMCACHED_AVAILABLE", False):
-            cache = Cache()
+    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool")
+    @patch("birdnetpi.utils.cache.backends.redis.Redis")
+    def test_init_statistics_tracking(self, mock_redis, mock_pool):
+        """Should initialize statistics correctly."""
+        mock_client = MagicMock()
+        mock_redis.return_value = mock_client
+        mock_client.ping.return_value = True
 
-            assert cache._stats == {
-                "hits": 0,
-                "misses": 0,
-                "sets": 0,
-                "deletes": 0,
-                "errors": 0,
-            }
+        cache = Cache()
 
+        assert cache._stats == {
+            "hits": 0,
+            "misses": 0,
+            "sets": 0,
+            "deletes": 0,
+            "pattern_deletes": 0,
+            "errors": 0,
+        }
 
-class TestCreateCache:
-    """Test the create_cache factory function."""
+    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool")
+    @patch("birdnetpi.utils.cache.backends.redis.Redis")
+    def test_init_with_custom_ttl(self, mock_redis, mock_pool):
+        """Should initialize with custom TTL."""
+        mock_client = MagicMock()
+        mock_redis.return_value = mock_client
+        mock_client.ping.return_value = True
 
-    def test_create_cache_default(self):
-        """Should create_cache with default parameters."""
-        with patch("birdnetpi.utils.cache.cache.Cache") as mock_cache:
-            create_cache()
+        cache = Cache(default_ttl=1800)
 
-            mock_cache.assert_called_once_with(
-                memcached_host="localhost",
-                memcached_port=11211,
-                default_ttl=300,
-                enable_cache_warming=True,
-            )
+        assert cache.default_ttl == 1800
 
-    def test_create_cache_custom(self):
-        """Should create_cache with custom parameters."""
-        with patch("birdnetpi.utils.cache.cache.Cache") as mock_cache:
-            create_cache(
-                memcached_host="192.168.1.100",
-                memcached_port=11212,
-                default_ttl=600,
-                enable_cache_warming=False,
-            )
+    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool")
+    @patch("birdnetpi.utils.cache.backends.redis.Redis")
+    def test_init_with_cache_warming_disabled(self, mock_redis, mock_pool):
+        """Should initialize with cache warming disabled."""
+        mock_client = MagicMock()
+        mock_redis.return_value = mock_client
+        mock_client.ping.return_value = True
 
-            mock_cache.assert_called_once_with(
-                memcached_host="192.168.1.100",
-                memcached_port=11212,
-                default_ttl=600,
-                enable_cache_warming=False,
-            )
+        cache = Cache(enable_cache_warming=False)
+
+        assert cache.enable_cache_warming is False
+
+    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool")
+    @patch("birdnetpi.utils.cache.backends.redis.Redis")
+    def test_repr_method(self, mock_redis, mock_pool):
+        """Should provide informative string representation."""
+        mock_client = MagicMock()
+        mock_redis.return_value = mock_client
+        mock_client.ping.return_value = True
+
+        cache = Cache()
+        cache._stats = {"hits": 50, "misses": 10}
+
+        repr_str = repr(cache)
+
+        assert "<Cache backend=redis" in repr_str
+        assert "hit_rate=83.33%" in repr_str
+        assert "requests=60>" in repr_str

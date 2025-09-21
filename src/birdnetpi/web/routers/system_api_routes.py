@@ -86,7 +86,7 @@ SERVICES_CONFIG = {
         ServiceConfig("audio_analysis", "Bird detection service"),
         ServiceConfig("audio_websocket", "Real-time audio streaming"),
         ServiceConfig("caddy", "Web server and reverse proxy", critical=True),
-        ServiceConfig("memcached", "Cache service"),
+        ServiceConfig("redis", "Cache service (memory-only)"),
         ServiceConfig("pulseaudio", "Audio system", optional=True),
     ],
     "sbc": [
@@ -95,7 +95,7 @@ SERVICES_CONFIG = {
         ServiceConfig("birdnetpi-audio-analysis", "Bird detection service"),
         ServiceConfig("birdnetpi-audio-websocket", "Real-time audio streaming"),
         ServiceConfig("caddy", "Web server and reverse proxy", critical=True),
-        ServiceConfig("memcached", "Cache service"),
+        ServiceConfig("redis", "Cache service (memory-only)"),
         ServiceConfig("pulseaudio", "Audio system"),
     ],
 }

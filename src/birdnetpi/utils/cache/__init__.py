@@ -4,22 +4,16 @@ This package provides caching functionality for expensive operations like
 analytics queries, database operations, and API responses.
 
 Main components:
-- Cache: Main cache class with automatic backend selection
-- CacheService: Backward compatibility alias for Cache
+- Cache: Main cache class with Redis backend
 - Decorators: @cached and @cached_function for easy caching
-- Backends: MemcachedBackend and InMemoryBackend implementations
+- Backend: RedisBackend implementation for memory-only caching
 """
 
 # Import backend classes
-from birdnetpi.utils.cache.backends import (
-    MEMCACHED_AVAILABLE,
-    CacheBackend,
-    InMemoryBackend,
-    MemcachedBackend,
-)
+from birdnetpi.utils.cache.backends import CacheBackend, RedisBackend
 
-# Import main cache class and factory
-from birdnetpi.utils.cache.cache import Cache, create_cache
+# Import main cache class
+from birdnetpi.utils.cache.cache import Cache
 
 # Import decorators and utilities
 from birdnetpi.utils.cache.decorator import (
@@ -30,14 +24,11 @@ from birdnetpi.utils.cache.decorator import (
 )
 
 __all__ = [
-    "MEMCACHED_AVAILABLE",
     "Cache",
     "CacheBackend",
-    "InMemoryBackend",
-    "MemcachedBackend",
+    "RedisBackend",
     "cached",
     "cached_function",
     "clear_all_cache",
-    "create_cache",
     "invalidate_cache",
 ]

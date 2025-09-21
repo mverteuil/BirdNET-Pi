@@ -58,35 +58,22 @@
             margin-bottom: 2rem;
         }
 
-        /* Sparkline container */
-        .sparkline-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 0.5rem;
-            margin-bottom: 2rem;
+        /* Species list styles */
+        .species-name-cell {
+            padding: 0.25rem 0;
         }
 
-        .species-sparkline {
-            padding: 0.75rem;
-            border-bottom: 1px solid var(--color-border-tertiary);
-        }
-
-        .species-sparkline:hover {
-            background: var(--color-bg-tertiary);
-        }
-
-        .species-name {
-            font-size: 0.9rem;
-            margin-bottom: 0.25rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
+        .common-name {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--color-text-primary);
         }
 
         .scientific-name {
             font-style: italic;
             font-size: 0.8rem;
             color: var(--color-text-secondary);
+            margin-top: 0.1rem;
         }
 
         .detection-count {
@@ -95,21 +82,99 @@
             font-weight: normal;
         }
 
-        /* Inline sparklines */
-        .sparkline {
-            height: 30px;
-            width: 100%;
-            display: flex;
-            align-items: flex-end;
-            gap: 1px;
-            margin-top: 0.25rem;
+        /* Make species rows clickable */
+        .species-row {
+            cursor: pointer;
+            transition: background-color 0.2s;
         }
 
-        .spark-bar {
-            flex: 1;
-            background: var(--color-text-secondary);
-            min-height: 1px;
-            transition: background 0.2s;
+        .species-row:hover {
+            background-color: var(--color-bg-tertiary);
+        }
+
+        .species-row.selected {
+            background-color: var(--color-accent-bg);
+            font-weight: bold;
+        }
+
+        /* Sortable column headers */
+        .sortable {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 1.5rem;
+        }
+
+        .sortable:hover {
+            background-color: var(--color-bg-tertiary);
+        }
+
+        .sortable::after {
+            content: '⇅';
+            position: absolute;
+            right: 0.5rem;
+            opacity: 0.3;
+            font-size: 0.8rem;
+        }
+
+        .sortable.sort-asc::after {
+            content: '↑';
+            opacity: 1;
+        }
+
+        .sortable.sort-desc::after {
+            content: '↓';
+            opacity: 1;
+        }
+
+        /* Pagination controls */
+        .pagination-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+            padding: 0.5rem;
+            background: var(--color-bg-secondary);
+            border-radius: 4px;
+        }
+
+        .pagination-info {
+            font-size: 0.9rem;
+            color: var(--color-text-secondary);
+        }
+
+        .pagination-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .pagination-buttons button {
+            padding: 0.25rem 0.75rem;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-primary);
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 0.9rem;
+        }
+
+        .pagination-buttons button:hover:not(:disabled) {
+            background: var(--color-bg-tertiary);
+        }
+
+        .pagination-buttons button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .page-size-selector {
+            font-size: 0.9rem;
+        }
+
+        .page-size-selector select {
+            padding: 0.25rem;
+            border: 1px solid var(--color-border);
+            border-radius: 3px;
+            background: var(--color-bg-primary);
         }
 
         .spark-bar:hover {
@@ -124,7 +189,7 @@
 
         .timeline-header {
             font-weight: bold;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0;
             padding-bottom: 0.25rem;
             border-bottom: 1px solid var(--color-border-primary);
         }
@@ -162,13 +227,34 @@
             width: 100%;
             font-size: 0.85rem;
             border-collapse: collapse;
-            margin-top: 1.5rem;
+            margin-top: 1.875rem; /* 30px */
+            table-layout: fixed;
         }
+
+        /* Specific margin for detections table */
+        #detections-table {
+            margin-top: 0;
+        }
+
+        /* Column widths for alignment */
+        #detections-table th:nth-child(1),
+        #detections-table td:nth-child(1) { width: 10%; }  /* Time */
+        #detections-table th:nth-child(2),
+        #detections-table td:nth-child(2) { width: 50%; }  /* Species */
+        #detections-table th:nth-child(3),
+        #detections-table td:nth-child(3) { width: 25%; }  /* Date */
+        #detections-table th:nth-child(4),
+        #detections-table td:nth-child(4) { width: 15%; }  /* Confidence */
+
+        #species-frequency-table th:nth-child(1),
+        #species-frequency-table td:nth-child(1) { width: 75%; }  /* Species name */
+        #species-frequency-table th:nth-child(2),
+        #species-frequency-table td:nth-child(2) { width: 25%; }  /* Count */
 
         .data-table th {
             text-align: left;
             font-weight: normal;
-            padding: 0.5rem 0;
+            padding: 0.75rem 0 0.5rem 0;
             border-bottom: 1px solid var(--color-border-primary);
             font-size: 0.8rem;
         }
@@ -258,6 +344,41 @@
             border-left: 2px solid #e0e0e0;
         }
 
+        /* Loading indicator */
+        .loading-indicator {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem 2rem;
+            border: 1px solid var(--color-border-primary);
+            font-size: 0.9rem;
+            color: var(--color-text-secondary);
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .loading-indicator.active {
+            display: block;
+        }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.5);
+            z-index: 999;
+        }
+
+        .loading-overlay.active {
+            display: block;
+        }
+
         /* Summary statistics - inline text */
         .inline-stats {
             font-size: 0.85rem;
@@ -305,7 +426,7 @@
     {% include 'includes/navigation.html.j2' %}
 
     <h1>Species Detections</h1>
-    <p class="subtitle">{{ location }} · {{ current_date }} · {{ species_count }} species active</p>
+    <p class="subtitle"><span id="period-date"></span> · <span id="species-count">0</span> species active</p>
 
     <!-- Time period selector - minimal text links -->
     <div class="time-selector">
@@ -333,9 +454,19 @@
                 All Detections
                 <input type="text" id="search-input" placeholder="Search species..." class="search-input">
             </div>
-            <div id="detections-list">
-                <div class="no-data">Loading detections...</div>
-            </div>
+            <table class="data-table" id="detections-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="timestamp" onclick="sortDetections('timestamp')">Time</th>
+                        <th class="sortable" data-sort="species" onclick="sortDetections('species')">Species</th>
+                        <th>Date</th>
+                        <th class="sortable text-right" data-sort="confidence" onclick="sortDetections('confidence')">Confidence</th>
+                    </tr>
+                </thead>
+                <tbody id="detections-list">
+                    <tr><td colspan="3" class="no-data">Loading detections...</td></tr>
+                </tbody>
+            </table>
             <div id="pagination" class="pagination">
                 <!-- Pagination controls will be added here -->
             </div>
@@ -343,108 +474,214 @@
 
         <!-- Species frequency table -->
         <div>
-            <table class="data-table">
+            <table class="data-table" id="species-frequency-table">
                 <thead>
                     <tr>
-                        <th>Species</th>
-                        <th class="text-right">Today</th>
-                        <th class="text-right">Week</th>
-                        <th class="text-right">Month</th>
+                        <th class="sortable" data-sort="name" onclick="sortSpeciesTable('name')">Species</th>
+                        <th class="sortable text-right" id="count-header" data-sort="count" onclick="sortSpeciesTable('count')">
+                            {% if period == 'day' %}Today's Count
+                            {% elif period == 'week' %}This Week
+                            {% elif period == 'month' %}This Month
+                            {% elif period == 'season' %}This Season
+                            {% elif period == 'year' %}This Year
+                            {% else %}All Time
+                            {% endif %}
+                        </th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for species in species_frequency %}
-                    <tr>
-                        <td>{{ species.name }}</td>
-                        <td class="text-right">{{ species.today }}</td>
-                        <td class="text-right">{{ species.week }}</td>
-                        <td class="text-right">{{ species.month }}</td>
-                    </tr>
-                    {% endfor %}
+                <tbody id="species-frequency-tbody">
+                    <tr><td colspan="2" class="no-data">Loading species...</td></tr>
                 </tbody>
             </table>
-        </div>
-    </div>
-
-    <!-- Sparkline grid showing species activity patterns -->
-    <div class="sparkline-grid">
-        {% for species in top_species %}
-        <div class="species-sparkline">
-            <div class="species-name">
-                <span>{{ species.common_name }}</span>
-                <span class="detection-count">{{ species.count }}</span>
+            <!-- Species table pagination matching detections style -->
+            <div id="species-pagination" class="pagination">
+                <!-- Pagination controls will be added here by JavaScript -->
             </div>
-            <div class="scientific-name">{{ species.scientific_name }}</div>
-            <div class="sparkline" id="{{ species.id }}-spark"></div>
         </div>
-        {% endfor %}
     </div>
 
-    <!-- Small multiples showing weekly patterns -->
-    <div class="small-multiples" id="weekly-patterns">
-        {% for day in weekly_patterns %}
-        <div class="small-multiple">
-            <div class="small-multiple-title">{{ day.name }}</div>
-            <div class="mini-chart" id="{{ day.id }}-chart"></div>
-            <div class="small-multiple-value">{{ day.count }}</div>
-        </div>
-        {% endfor %}
-    </div>
 
     <p class="annotation">
-        Note: Detection confidence threshold ≥{{ confidence_threshold }}. Acoustic sensors calibrated weekly.
+        Note: Detection confidence threshold ≥{{ confidence_threshold }}.
         {% if migration_note %}{{ migration_note }}{% endif %}
     </p>
 
+    <!-- Loading indicator -->
+    <div class="loading-overlay" id="loading-overlay"></div>
+    <div class="loading-indicator" id="loading-indicator">Loading detections...</div>
+
     <script>
-        // Generate sparklines
-        function createSparkline(elementId, data) {
-            const container = document.getElementById(elementId);
-            if (!container) return;
+        // Species filtering
+        let selectedSpecies = null;
 
-            const max = Math.max(...data);
-            data.forEach(value => {
-                const bar = document.createElement('div');
-                bar.className = 'spark-bar';
-                bar.style.height = `${(value / max) * 100}%`;
-                container.appendChild(bar);
-            });
+        function filterBySpecies(scientificName, rowElement) {
+            // Toggle selection
+            if (selectedSpecies === scientificName) {
+                // Deselect if clicking same species
+                selectedSpecies = null;
+                document.querySelectorAll('.species-row').forEach(row => {
+                    row.classList.remove('selected');
+                });
+            } else {
+                // Select new species
+                selectedSpecies = scientificName;
+                document.querySelectorAll('.species-row').forEach(row => {
+                    row.classList.remove('selected');
+                });
+                rowElement.classList.add('selected');
+            }
+
+            // Update the search box to show filter
+            const searchBox = document.getElementById('search-input');
+            if (searchBox) {
+                searchBox.value = selectedSpecies || '';
+            }
+
+            // Reload detections with filter
+            loadDetections(1);
         }
 
-        // Generate sparklines from data
-        const sparklineData = {{ sparkline_data|tojson|safe }};
-        Object.keys(sparklineData).forEach(id => {
-            createSparkline(id, sparklineData[id]);
-        });
+        // Species table management
+        let allSpeciesData = [];
+        let speciesCurrentPage = 1;
+        let speciesPageSize = 10;
+        let speciesSortColumn = 'count';
+        let speciesSortDirection = 'desc';
 
-        // Generate small multiples for weekly patterns
-        const weekPatterns = {{ week_patterns_data|tojson|safe }};
-        Object.keys(weekPatterns).forEach(id => {
-            const container = document.getElementById(id);
-            if (!container) return;
+        // Get initial period from template or default to 'day'
+        let initialPeriod = '{{ period }}' || 'day';
 
-            const data = weekPatterns[id];
-            const max = Math.max(...data);
+        // Format date based on period
+        function formatPeriodDate(period) {
+            const now = new Date();
+            const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                          'July', 'August', 'September', 'October', 'November', 'December'];
 
-            data.forEach(value => {
-                const bar = document.createElement('div');
-                bar.className = 'mini-bar';
-                bar.style.height = `${(value / max) * 100}%`;
-                container.appendChild(bar);
-            });
-        });
-
-        // Time period switching
-        function switchPeriod(period, element) {
-            // Reload page with new period parameter
-            window.location.href = `/reports/detections?period=${period}`;
+            switch(period) {
+                case 'day':
+                    return `${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+                case 'week':
+                    const weekStart = new Date(now);
+                    weekStart.setDate(now.getDate() - now.getDay());
+                    const weekEnd = new Date(weekStart);
+                    weekEnd.setDate(weekStart.getDate() + 6);
+                    return `Week of ${months[weekStart.getMonth()]} ${weekStart.getDate()}, ${weekStart.getFullYear()}`;
+                case 'month':
+                    return `${months[now.getMonth()]}, ${now.getFullYear()}`;
+                case 'season':
+                    // Determine season
+                    const month = now.getMonth();
+                    let season;
+                    if (month >= 2 && month <= 4) season = 'Spring';
+                    else if (month >= 5 && month <= 7) season = 'Summer';
+                    else if (month >= 8 && month <= 10) season = 'Fall';
+                    else season = 'Winter';
+                    return `${season} ${now.getFullYear()}`;
+                case 'year':
+                    return now.getFullYear().toString();
+                case 'historical':
+                    return 'All Time';
+                default:
+                    return '';
+            }
         }
+
+        // Time period switching with AJAX
+        let currentPeriod = '{{ period }}';
+
+        async function switchPeriod(period, element) {
+            // Update active state immediately for better UX
+            document.querySelectorAll('.time-selector a').forEach(a => a.classList.remove('active'));
+            if (element) {
+                element.classList.add('active');
+            } else {
+                // If no element passed, try to find and activate the matching period button
+                document.querySelectorAll('.time-selector a').forEach(a => {
+                    if (a.getAttribute('onclick') && a.getAttribute('onclick').includes(`'${period}'`)) {
+                        a.classList.add('active');
+                    }
+                });
+            }
+
+            // Update current period
+            currentPeriod = period;
+
+            // Update URL without reload using pushState
+            const newUrl = `/reports/detections?period=${period}`;
+            window.history.pushState({ period: period }, '', newUrl);
+
+            // Show loading indicator
+            showLoading();
+
+            try {
+                // Update the date display
+                document.getElementById('period-date').textContent = formatPeriodDate(period);
+
+                // Update the count header based on period
+                const countHeader = document.getElementById('count-header');
+                if (countHeader) {
+                    const headerText = {
+                        'day': "Today's Count",
+                        'week': 'This Week',
+                        'month': 'This Month',
+                        'season': 'This Season',
+                        'year': 'This Year',
+                        'historical': 'All Time'
+                    };
+                    countHeader.textContent = headerText[period] || 'Count';
+                }
+
+                // Clear any species selection and search
+                selectedSpecies = null;
+                searchTerm = '';
+                document.getElementById('search-input').value = '';
+
+                // Reset species page when switching periods
+                speciesCurrentPage = 1;
+
+                // Load both data sets in parallel
+                await Promise.all([
+                    loadDetections(1),
+                    loadSpeciesData()
+                ]);
+
+            } catch (error) {
+                console.error('Error switching period:', error);
+                // Fall back to page reload on error
+                window.location.href = newUrl;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', function(event) {
+            if (event.state && event.state.period) {
+                // Find and click the corresponding period link
+                const periodLink = document.querySelector(`.time-selector a[onclick*="'${event.state.period}'"]`);
+                if (periodLink) {
+                    switchPeriod(event.state.period, periodLink);
+                }
+            }
+        });
 
         // Detection loading with AJAX
         let currentPage = 1;
         let searchTerm = '';
         let searchTimeout = null;
-        const currentPeriod = '{{ period }}';
+        let detectionsSortColumn = 'timestamp';
+        let detectionsSortDirection = 'desc';
+
+        // Loading indicator functions
+        function showLoading() {
+            document.getElementById('loading-overlay').classList.add('active');
+            document.getElementById('loading-indicator').classList.add('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading-overlay').classList.remove('active');
+            document.getElementById('loading-indicator').classList.remove('active');
+        }
 
         async function loadDetections(page = 1) {
             currentPage = page;
@@ -452,27 +689,43 @@
                 page: page,
                 per_page: 20,
                 period: currentPeriod,
-                ...(searchTerm && { search: searchTerm })
+                sort_by: detectionsSortColumn,
+                sort_order: detectionsSortDirection,
+                // Use search parameter for both species filtering and text search
+                ...(selectedSpecies && { search: selectedSpecies }),
+                ...(searchTerm && !selectedSpecies && { search: searchTerm })
             });
 
+            // Show loading indicator
+            showLoading();
+
             try {
-                const response = await fetch(`/api/detections/paginated?${searchParams}`);
+                const response = await fetch(`/api/detections/?${searchParams}`);
                 const data = await response.json();
 
-                // Render detections
+                // Render detections table
                 const detectionsList = document.getElementById('detections-list');
                 if (data.detections.length === 0) {
-                    detectionsList.innerHTML = '<div class="no-data">No detections found</div>';
+                    detectionsList.innerHTML = '<tr><td colspan="4" class="no-data">No detections found</td></tr>';
                 } else {
-                    detectionsList.innerHTML = data.detections.map(d => `
-                        <div class="timeline-entry">
-                            <span class="time">${d.timestamp}</span>
-                            <span>${d.species}</span>
-                            <span class="location">${d.date}</span>
-                            <span class="count">${(d.confidence * 100).toFixed(0)}%</span>
-                        </div>
-                    `).join('');
+                    detectionsList.innerHTML = data.detections.map(d => {
+                        return `
+                        <tr class="detection-row">
+                            <td class="detection-time">${d.timestamp}</td>
+                            <td>${d.species}</td>
+                            <td class="detection-time">${d.date}</td>
+                            <td class="text-right">${(d.confidence * 100).toFixed(0)}%</td>
+                        </tr>
+                    `}).join('');
                 }
+
+                // Update sort indicators
+                document.querySelectorAll('#detections-table th.sortable').forEach(th => {
+                    th.classList.remove('sort-asc', 'sort-desc');
+                    if (th.dataset.sort === detectionsSortColumn) {
+                        th.classList.add(detectionsSortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+                    }
+                });
 
                 // Render pagination
                 const pagination = document.getElementById('pagination');
@@ -516,21 +769,210 @@
             } catch (error) {
                 console.error('Error loading detections:', error);
                 document.getElementById('detections-list').innerHTML =
-                    '<div class="error-message">Error loading detections</div>';
+                    '<tr><td colspan="4" class="error-message">Error loading detections</td></tr>';
+            } finally {
+                // Always hide loading indicator
+                hideLoading();
             }
         }
 
         // Search functionality
         document.getElementById('search-input').addEventListener('input', function(e) {
             searchTerm = e.target.value;
+            // Clear species selection when user types
+            if (searchTerm) {
+                selectedSpecies = null;
+                document.querySelectorAll('.species-row').forEach(row => {
+                    row.classList.remove('selected');
+                });
+            }
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
                 loadDetections(1); // Reset to page 1 on search
             }, 300); // Debounce search
         });
 
-        // Load initial detections
-        loadDetections();
+        // Species table functions
+        function renderSpeciesTable() {
+            // Sort the data
+            const sortedData = [...allSpeciesData].sort((a, b) => {
+                let aVal = speciesSortColumn === 'name' ? a.name : a.count;
+                let bVal = speciesSortColumn === 'name' ? b.name : b.count;
+
+                if (speciesSortColumn === 'name') {
+                    aVal = aVal.toLowerCase();
+                    bVal = bVal.toLowerCase();
+                }
+
+                if (speciesSortDirection === 'asc') {
+                    return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+                } else {
+                    return bVal > aVal ? 1 : bVal < aVal ? -1 : 0;
+                }
+            });
+
+            // Calculate pagination
+            const totalItems = sortedData.length;
+            const totalPages = speciesPageSize === 'all' ? 1 : Math.ceil(totalItems / speciesPageSize);
+            const actualPageSize = speciesPageSize === 'all' ? totalItems : parseInt(speciesPageSize);
+            const startIndex = speciesPageSize === 'all' ? 0 : (speciesCurrentPage - 1) * actualPageSize;
+            const endIndex = speciesPageSize === 'all' ? totalItems : Math.min(startIndex + actualPageSize, totalItems);
+
+            // Get the page data
+            const pageData = sortedData.slice(startIndex, endIndex);
+
+            // Render the table
+            const tbody = document.getElementById('species-frequency-tbody');
+            if (tbody) {
+                tbody.innerHTML = pageData.map(species => `
+                    <tr class="species-row" data-species="${species.scientific_name}" onclick="filterBySpecies('${species.scientific_name}', this)">
+                        <td>
+                            <div class="species-name-cell">
+                                <div class="common-name">${species.name}</div>
+                                <div class="scientific-name">${species.scientific_name}</div>
+                            </div>
+                        </td>
+                        <td class="text-right">${species.count}</td>
+                    </tr>
+                `).join('');
+            }
+
+            // Render pagination similar to detections
+            const pagination = document.getElementById('species-pagination');
+            let paginationHTML = '';
+
+            if (totalPages > 1) {
+                paginationHTML = `
+                    <span class="text-secondary">
+                        Page ${speciesCurrentPage} of ${totalPages}
+                        (${totalItems} total species)
+                    </span><br>
+                `;
+
+                if (speciesCurrentPage > 1) {
+                    paginationHTML += `<a href="#" onclick="changeSpeciesPage('first'); return false;">« First</a> `;
+                    paginationHTML += `<a href="#" onclick="changeSpeciesPage('prev'); return false;">‹ Prev</a> `;
+                }
+
+                // Show page numbers
+                const startPage = Math.max(1, speciesCurrentPage - 2);
+                const endPage = Math.min(totalPages, speciesCurrentPage + 2);
+
+                for (let i = startPage; i <= endPage; i++) {
+                    if (i === speciesCurrentPage) {
+                        paginationHTML += `<span class="font-bold current-page">${i}</span> `;
+                    } else {
+                        paginationHTML += `<a href="#" onclick="speciesCurrentPage=${i}; renderSpeciesTable(); return false;">${i}</a> `;
+                    }
+                }
+
+                if (speciesCurrentPage < totalPages) {
+                    paginationHTML += `<a href="#" onclick="changeSpeciesPage('next'); return false;">Next ›</a> `;
+                    paginationHTML += `<a href="#" onclick="changeSpeciesPage('last'); return false;">Last »</a>`;
+                }
+            } else if (totalItems > 0) {
+                paginationHTML = `<span class="text-secondary">${totalItems} species</span>`;
+            }
+
+            pagination.innerHTML = paginationHTML;
+
+            // Update sort indicators
+            document.querySelectorAll('#species-frequency-table th.sortable').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (th.dataset.sort === speciesSortColumn) {
+                    th.classList.add(speciesSortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+                }
+            });
+        }
+
+        function sortSpeciesTable(column) {
+            if (speciesSortColumn === column) {
+                // Toggle direction if same column
+                speciesSortDirection = speciesSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                // New column, default to desc for count, asc for name
+                speciesSortColumn = column;
+                speciesSortDirection = column === 'count' ? 'desc' : 'asc';
+            }
+            renderSpeciesTable();
+        }
+
+        function changeSpeciesPage(action) {
+            const totalPages = Math.ceil(allSpeciesData.length / (speciesPageSize === 'all' ? allSpeciesData.length : speciesPageSize));
+
+            switch(action) {
+                case 'first':
+                    speciesCurrentPage = 1;
+                    break;
+                case 'prev':
+                    speciesCurrentPage = Math.max(1, speciesCurrentPage - 1);
+                    break;
+                case 'next':
+                    speciesCurrentPage = Math.min(totalPages, speciesCurrentPage + 1);
+                    break;
+                case 'last':
+                    speciesCurrentPage = totalPages;
+                    break;
+            }
+            renderSpeciesTable();
+        }
+
+        function changeSpeciesPageSize(size) {
+            speciesPageSize = size;
+            speciesCurrentPage = 1; // Reset to first page
+            renderSpeciesTable();
+        }
+
+        // Initialize species data from server-rendered content
+        async function loadSpeciesData() {
+            try {
+                const response = await fetch(`/api/detections/species/frequency?period=${currentPeriod}`);
+                const data = await response.json();
+                allSpeciesData = data.species || [];
+
+                // Update species count in subtitle
+                const uniqueSpecies = new Set(allSpeciesData.map(s => s.scientific_name || s.name)).size;
+                document.getElementById('species-count').textContent = uniqueSpecies;
+
+                renderSpeciesTable();
+            } catch (error) {
+                console.error('Error loading species data:', error);
+                document.getElementById('species-frequency-tbody').innerHTML =
+                    '<tr><td colspan="2" class="no-data">Error loading species data</td></tr>';
+            }
+        }
+
+        // Sorting for detections (server-side)
+        function sortDetections(column) {
+            if (detectionsSortColumn === column) {
+                // Toggle direction if same column
+                detectionsSortDirection = detectionsSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                // New column, default to desc for timestamp/confidence, asc for species
+                detectionsSortColumn = column;
+                detectionsSortDirection = column === 'species' ? 'asc' : 'desc';
+            }
+            loadDetections(1); // Reset to first page when sorting changes
+        }
+
+        // Initialize page on load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set period from URL parameter
+            currentPeriod = initialPeriod;
+
+            // Update the date display
+            document.getElementById('period-date').textContent = formatPeriodDate(currentPeriod);
+
+            // Load both data sets in parallel
+            Promise.all([
+                loadDetections(),
+                loadSpeciesData()
+            ]).then(() => {
+                console.log('Initial data loaded');
+            }).catch(error => {
+                console.error('Error loading initial data:', error);
+            });
+        });
     </script>
 </body>
 </html>

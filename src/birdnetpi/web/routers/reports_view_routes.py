@@ -38,18 +38,23 @@ async def get_all_detections(
     All data preparation is handled by PresentationManager.
     """
     try:
-        # Get formatted data from PresentationManager
-        template_data = await presentation_manager.get_detection_display_data(
-            period=period,
-            detection_query_service=detection_query_service,
-        )
+        # Progressive loading: Don't fetch any data server-side
+        # Just provide minimal context for the template
+        template_data = {
+            "request": request,
+            "site_name": config.site_name,
+            "location": f"{config.latitude:.4f}, {config.longitude:.4f}",
+            "system_status": {"device_name": SystemInspector.get_device_name()},
+            "period": period,  # Pass the requested period for JavaScript to use
+            # Empty data placeholders - JavaScript will populate these
+            "current_date": "",
+            "species_count": 0,
+            "recent_detections": [],
+            "species_frequency": [],
+            "weekly_patterns": [],
+        }
 
-        # Add request context and site info
-        template_data["request"] = request
-        template_data["site_name"] = config.site_name
-        template_data["system_status"] = {"device_name": SystemInspector.get_device_name()}
-
-        # Render template with data
+        # Render template with minimal data
         return templates.TemplateResponse(
             request,
             "reports/all_detections.html.j2",

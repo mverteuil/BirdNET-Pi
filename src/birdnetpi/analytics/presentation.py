@@ -16,6 +16,8 @@ from birdnetpi.analytics.analytics import (
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.models import DetectionBase
 from birdnetpi.detections.queries import DetectionQueryService
+from birdnetpi.notifications.signals import detection_signal
+from birdnetpi.utils.cache.cache import Cache
 
 logger = logging.getLogger(__name__)
 
@@ -112,10 +114,16 @@ class PresentationManager:
         analytics_manager: AnalyticsManager,
         detection_query_service: DetectionQueryService,
         config: BirdNETConfig,
+        cache: Cache | None = None,
     ):
         self.analytics_manager = analytics_manager
         self.detection_query_service = detection_query_service
         self.config = config
+        self.cache = cache
+
+        # Subscribe to detection signal for cache invalidation
+        if self.cache:
+            detection_signal.connect(self._invalidate_detection_cache)
 
     # --- Landing Page ---
 
@@ -308,7 +316,7 @@ class PresentationManager:
             return species_frequency
 
         for species in species_summary[:10]:  # Top 10 species
-            # Extract name from dict or object
+            # Extract name and scientific name from dict or object
             if isinstance(species, dict):
                 name = (
                     species.get("translated_name", None)
@@ -316,6 +324,7 @@ class PresentationManager:
                     or species.get("common_name", None)
                     or species.get("scientific_name", "Unknown")
                 )
+                scientific_name = species.get("scientific_name", "Unknown")
                 count = species.get("detection_count", species.get("count", 0))
             else:
                 name = (
@@ -324,11 +333,13 @@ class PresentationManager:
                     or getattr(species, "common_name", None)
                     or getattr(species, "scientific_name", "Unknown")
                 )
+                scientific_name = getattr(species, "scientific_name", "Unknown")
                 count = getattr(species, "count", 0)
 
             species_frequency.append(
                 {
                     "name": name,
+                    "scientific_name": scientific_name,  # Add scientific name for filtering
                     "count": count,  # Keep raw count for statistics
                     "today": count if period == "day" else "-",
                     "week": count if period == "week" else "-",
@@ -438,12 +449,22 @@ class PresentationManager:
         if period == "day":
             return await self.analytics_manager.get_temporal_patterns(date=now.date())
 
-        # For non-day views, aggregate weekly patterns to find actual peak
-        weekly_patterns = await self.analytics_manager.get_weekly_patterns()
+        # Map period to days for calculation
+        period_days = {
+            "week": 7,
+            "month": 30,
+            "season": 90,
+            "year": 365,
+            "historical": 3650,  # 10 years
+        }
+        days = period_days.get(period, 7)
 
-        # Combine all days to get overall hourly distribution
+        # Get aggregated hourly pattern for the actual period
+        weekday_hourly = await self.analytics_manager.get_aggregate_hourly_pattern(days=days)
+
+        # Combine all weekdays to get overall hourly distribution
         hourly_dist = [0] * 24
-        for day_data in weekly_patterns.values():
+        for day_data in weekday_hourly:
             for hour, count in enumerate(day_data):
                 if hour < 24:
                     hourly_dist[hour] += count
@@ -458,6 +479,20 @@ class PresentationManager:
             "periods": {},  # Not used for non-day views
         }
 
+    def _invalidate_detection_cache(self, sender: object, **kwargs: object) -> None:
+        """Invalidate detection-related cache when new detection arrives.
+
+        This is called by the detection signal when a new detection is created.
+        """
+        if not self.cache:
+            return
+
+        logger.debug("Invalidating detection cache due to new detection")
+        # Invalidate all detection display caches for different periods
+        for period in ["day", "week", "month", "season", "year", "historical"]:
+            self.cache.delete("detection_display_data", period=period)
+        logger.debug("Detection cache invalidated")
+
     async def get_detection_display_data(
         self, period: str, detection_query_service: "DetectionQueryService"
     ) -> dict:
@@ -470,6 +505,12 @@ class PresentationManager:
         Returns:
             Dictionary with all formatted data for the template
         """
+        # Check cache first if available
+        if self.cache:
+            cached_data = self.cache.get("detection_display_data", period=period)
+            if cached_data is not None:
+                logger.debug(f"Returning cached detection display data for period: {period}")
+                return cached_data
         # Calculate time ranges based on period
         start_date, _period_label = self._calculate_period_range(period)
 
@@ -540,17 +581,23 @@ class PresentationManager:
             )
             for species in sorted_species[:5]:  # Check first 5 rarest
                 if isinstance(species, dict):
-                    name = species.get("common_name") or species.get("scientific_name")
+                    # Get common name using same logic as species frequency
+                    common_name = (
+                        species.get("translated_name", None)
+                        or species.get("best_common_name", None)
+                        or species.get("common_name", None)
+                        or species.get("scientific_name", "Unknown")
+                    )
                     count = species.get("detection_count", species.get("count", 0))
                     # Consider species with very few detections as "new"
-                    if name and count <= 3:
-                        new_species.append(name)
+                    if common_name and count <= 3:
+                        new_species.append(common_name)
                         if len(new_species) >= 2:  # Limit to 2 for display
                             break
 
         trend_percentage = 18  # Would calculate from historical data
 
-        return {
+        result = {
             # Page metadata
             "location": self.config.site_name,
             "current_date": now.strftime("%B %d, %Y"),
@@ -576,6 +623,13 @@ class PresentationManager:
             if 8 <= now.month <= 10
             else None,
         }
+
+        # Cache the result if cache is available
+        if self.cache:
+            # Cache for 5 minutes or until new detection arrives
+            self.cache.set("detection_display_data", result, ttl=300, period=period)
+
+        return result
 
     # --- API Responses ---
 

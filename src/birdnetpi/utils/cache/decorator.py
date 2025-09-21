@@ -48,11 +48,40 @@ def cached(ttl: int = 300, key_prefix: str | None = None) -> Callable:
             cache = Cache()
             cached_value = cache._backend.get(cache_key)
             if cached_value is not None:
+                # Check if we need to reconstruct objects
+                # This is a simple heuristic - check if the result type has a specific structure
+                # For AudioDevice, we know it returns a list of dicts from cache
+                if (
+                    isinstance(cached_value, list)
+                    and cached_value
+                    and isinstance(cached_value[0], dict)
+                ):
+                    # Check if this looks like AudioDevice data
+                    if (
+                        "default_samplerate" in cached_value[0]
+                        and "max_input_channels" in cached_value[0]
+                    ):
+                        from birdnetpi.audio.devices import AudioDevice
+
+                        return [AudioDevice(**item) for item in cached_value]
                 return cached_value
 
             # Execute function and cache result
             result = func(self, *args, **kwargs)
-            cache._backend.set(cache_key, result, ttl)
+
+            # Convert objects with to_dict method for serialization
+            if isinstance(result, list):
+                # Check if items have to_dict method
+                if result and hasattr(result[0], "to_dict"):
+                    serializable_result = [item.to_dict() for item in result]
+                    cache._backend.set(cache_key, serializable_result, ttl)
+                else:
+                    cache._backend.set(cache_key, result, ttl)
+            elif hasattr(result, "to_dict"):
+                cache._backend.set(cache_key, result.to_dict(), ttl)
+            else:
+                cache._backend.set(cache_key, result, ttl)
+
             return result
 
         return wrapper

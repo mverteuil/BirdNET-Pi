@@ -1,32 +1,25 @@
-"""Core cache implementation with automatic backend selection and fallback.
+"""Core cache implementation using Redis backend.
 
-This module provides the main Cache class (formerly CacheService) that manages
-caching for expensive operations with automatic backend selection.
+This module provides the main Cache class that manages
+caching for expensive operations using Redis as the backend.
 """
 
 import hashlib
 import json
 import logging
-import time
-from collections.abc import Callable
 from typing import Any
 
-from birdnetpi.utils.cache.backends import (
-    MEMCACHED_AVAILABLE,
-    CacheBackend,
-    InMemoryBackend,
-    MemcachedBackend,
-)
+from birdnetpi.utils.cache.backends import CacheBackend, RedisBackend
 
 logger = logging.getLogger(__name__)
 
 
 class Cache:
-    """Analytics cache with automatic backend selection and fallback.
+    """Analytics cache using Redis backend.
 
     Provides caching for expensive analytics queries to improve dashboard performance.
-    Automatically selects memcached if available, falls back to in-memory caching.
-    Includes cache warming and invalidation strategies.
+    Uses Redis exclusively for caching with no fallback to ensure consistent behavior.
+    Includes cache warming and invalidation strategies with pattern-based deletion support.
 
     This class was previously named CacheService but has been renamed to Cache
     for simplicity and clarity.
@@ -34,40 +27,43 @@ class Cache:
 
     def __init__(
         self,
-        memcached_host: str = "127.0.0.1",
-        memcached_port: int = 11211,
+        redis_host: str = "127.0.0.1",
+        redis_port: int = 6379,
+        redis_db: int = 0,
         default_ttl: int = 300,  # 5 minutes default TTL
         enable_cache_warming: bool = True,
     ):
-        """Initialize cache with automatic backend selection.
+        """Initialize cache with Redis backend.
 
         Args:
-            memcached_host: Memcached server host (if available)
-            memcached_port: Memcached server port (if available)
+            redis_host: Redis server host
+            redis_port: Redis server port
+            redis_db: Redis database number
             default_ttl: Default cache TTL in seconds
             enable_cache_warming: Whether to enable cache warming functionality
+
+        Raises:
+            RuntimeError: If Redis connection cannot be established
         """
         self.default_ttl = default_ttl
         self.enable_cache_warming = enable_cache_warming
-        self._backend: CacheBackend
 
-        # Try memcached first (preferred for SBC deployments)
-        if MEMCACHED_AVAILABLE:
-            try:
-                self._backend = MemcachedBackend(memcached_host, memcached_port)
-                self.backend_type = "memcached"
-                logger.debug("Cache initialized with memcached backend")
-            except Exception as e:
-                logger.warning(
-                    "Failed to initialize memcached, falling back to in-memory cache",
-                    extra={"error": str(e)},
-                )
-                self._backend = InMemoryBackend()
-                self.backend_type = "memory"
-        else:
-            logger.warning("Memcached not available, using in-memory cache backend")
-            self._backend = InMemoryBackend()
-            self.backend_type = "memory"
+        # Initialize Redis backend (will raise RuntimeError if connection fails)
+        try:
+            self._backend: CacheBackend = RedisBackend(
+                host=redis_host,
+                port=redis_port,
+                db=redis_db,
+                timeout=1.0,
+            )
+            self.backend_type = "redis"
+            logger.info("Cache initialized with Redis backend")
+        except RuntimeError:
+            # Re-raise RuntimeError from RedisBackend as-is
+            raise
+        except Exception as e:
+            # Wrap other exceptions in RuntimeError
+            raise RuntimeError(f"Failed to initialize Redis backend: {e}") from e
 
         # Statistics tracking
         self._stats = {
@@ -75,28 +71,27 @@ class Cache:
             "misses": 0,
             "sets": 0,
             "deletes": 0,
+            "pattern_deletes": 0,
             "errors": 0,
         }
 
     def _generate_cache_key(self, namespace: str, **kwargs: Any) -> str:  # noqa: ANN401
-        """Generate a consistent cache key from parameters.
+        """Generate a consistent cache key from namespace and parameters.
 
         Args:
-            namespace: Cache namespace (e.g., 'species_summary', 'weekly_report')
-            **kwargs: Parameters to include in key generation
+            namespace: Cache namespace
+            **kwargs: Parameters to include in cache key
 
         Returns:
-            SHA-256 hash of the cache key components
+            Cache key string
         """
-        # Sort parameters for consistent key generation
+        # Sort kwargs for consistent key generation
         key_parts = [namespace]
-        for key, value in sorted(kwargs.items()):
+        for key in sorted(kwargs.keys()):
+            value = kwargs[key]
             if value is not None:
-                # Handle different types appropriately
-                if hasattr(value, "isoformat"):  # datetime objects
-                    key_parts.append(f"{key}:{value.isoformat()}")
-                elif isinstance(value, list | dict):
-                    # Serialize complex objects consistently
+                # Handle different value types
+                if isinstance(value, (list, dict)):
                     key_parts.append(f"{key}:{json.dumps(value, sort_keys=True)}")
                 else:
                     key_parts.append(f"{key}:{value!s}")
@@ -148,19 +143,18 @@ class Cache:
         cache_ttl = ttl or self.default_ttl
 
         try:
-            success = self._backend.set(cache_key, value, cache_ttl)
-            if success:
+            result = self._backend.set(cache_key, value, cache_ttl)
+            if result:
                 self._stats["sets"] += 1
                 logger.debug(
                     "Cache set",
-                    extra={"namespace": namespace, "key": cache_key[:8], "ttl": cache_ttl},
+                    extra={
+                        "namespace": namespace,
+                        "key": cache_key[:8],
+                        "ttl": cache_ttl,
+                    },
                 )
-            else:
-                self._stats["errors"] += 1
-                logger.warning(
-                    "Cache set failed", extra={"namespace": namespace, "key": cache_key[:8]}
-                )
-            return success
+            return result
         except Exception as e:
             self._stats["errors"] += 1
             logger.error("Cache set error", extra={"namespace": namespace, "error": str(e)})
@@ -179,52 +173,76 @@ class Cache:
         cache_key = self._generate_cache_key(namespace, **kwargs)
 
         try:
-            success = self._backend.delete(cache_key)
-            if success:
+            result = self._backend.delete(cache_key)
+            if result:
                 self._stats["deletes"] += 1
                 logger.debug("Cache delete", extra={"namespace": namespace, "key": cache_key[:8]})
-            return success
+            return result
         except Exception as e:
             self._stats["errors"] += 1
             logger.error("Cache delete error", extra={"namespace": namespace, "error": str(e)})
             return False
 
-    def exists(self, namespace: str, **kwargs: Any) -> bool:  # noqa: ANN401
-        """Check if cached value exists.
+    def delete_pattern(self, pattern: str) -> int:
+        """Delete all cached values matching the given pattern.
+
+        Uses Redis SCAN for efficient pattern-based deletion.
 
         Args:
-            namespace: Cache namespace
-            **kwargs: Parameters for cache key generation
+            pattern: Redis pattern (e.g., "birdnet_analytics:*" or "*species*")
 
         Returns:
-            True if key exists, False otherwise
+            Number of keys deleted
         """
-        cache_key = self._generate_cache_key(namespace, **kwargs)
-
         try:
-            return self._backend.exists(cache_key)
+            deleted = self._backend.delete_pattern(pattern)
+            self._stats["pattern_deletes"] += deleted
+            if deleted > 0:
+                logger.debug(
+                    "Cache pattern delete",
+                    extra={"pattern": pattern, "deleted": deleted},
+                )
+            return deleted
         except Exception as e:
             self._stats["errors"] += 1
-            logger.error(
-                "Cache exists check error", extra={"namespace": namespace, "error": str(e)}
-            )
-            return False
+            logger.error("Cache pattern delete error", extra={"pattern": pattern, "error": str(e)})
+            return 0
 
-    def invalidate_pattern(self, namespace: str) -> bool:
-        """Invalidate all cache entries matching a namespace pattern.
+    def clear_namespace(self, namespace: str) -> int:
+        """Clear all cached values for a namespace.
 
-        Note: This is a simple implementation that clears the entire cache.
-        More sophisticated pattern matching would require backend-specific
-        implementations (e.g., Redis SCAN).
+        Uses pattern matching to delete all keys in the namespace.
 
         Args:
-            namespace: Cache namespace pattern to invalidate
+            namespace: Cache namespace to clear
 
         Returns:
-            True if successful, False otherwise
+            Number of keys deleted
         """
-        logger.info("Invalidating cache pattern", extra={"namespace": namespace})
-        return self.clear()
+        # Generate pattern for the namespace
+        # Since we hash the full key, we can't easily clear by namespace prefix
+        # This would require storing namespace info in the key itself
+        # For now, we'll use a more general pattern
+        pattern = f"birdnet_analytics:*{namespace}*"
+        return self.delete_pattern(pattern)
+
+    def ping(self) -> bool:
+        """Test Redis connectivity.
+
+        Returns:
+            True if Redis is reachable, False otherwise
+        """
+        try:
+            # For RedisBackend, we can access the client directly
+            if hasattr(self._backend, "client"):
+                return self._backend.client.ping()  # type: ignore[attr-defined]
+            # Fallback: try a simple set/get operation
+            test_key = "_health_check_ping"
+            self._backend.set(test_key, "pong", ttl=1)
+            return self._backend.get(test_key) == "pong"
+        except Exception as e:
+            logger.debug(f"Cache ping failed: {e}")
+            return False
 
     def clear(self) -> bool:
         """Clear all cached data.
@@ -233,165 +251,77 @@ class Cache:
             True if successful, False otherwise
         """
         try:
-            success = self._backend.clear()
-            if success:
-                logger.info("Cache cleared successfully")
-                # Reset stats
-                for key in self._stats:
-                    self._stats[key] = 0
-            return success
+            result = self._backend.clear()
+            if result:
+                logger.info("Cache cleared")
+                # Reset stats except errors
+                errors = self._stats["errors"]
+                self._stats = {
+                    "hits": 0,
+                    "misses": 0,
+                    "sets": 0,
+                    "deletes": 0,
+                    "pattern_deletes": 0,
+                    "errors": errors,
+                }
+            return result
         except Exception as e:
             self._stats["errors"] += 1
             logger.error("Cache clear error", extra={"error": str(e)})
             return False
 
-    def warm_cache(
-        self, cache_warming_functions: list[tuple[str, Callable[..., Any], dict[str, Any], int]]
-    ) -> dict[str, bool]:
-        """Warm cache with common queries.
-
-        Args:
-            cache_warming_functions: List of (namespace, function, kwargs, ttl) tuples
-
-        Returns:
-            Dictionary mapping namespace to success status
-        """
-        if not self.enable_cache_warming:
-            logger.info("Cache warming is disabled")
-            return {}
-
-        results = {}
-        logger.info(
-            "Starting cache warming", extra={"functions_count": len(cache_warming_functions)}
-        )
-
-        for namespace, func, kwargs, ttl in cache_warming_functions:
-            try:
-                # Check if already cached
-                if self.exists(namespace, **kwargs):
-                    logger.debug("Cache already warmed", extra={"namespace": namespace})
-                    results[namespace] = True
-                    continue
-
-                # Execute function and cache result
-                logger.debug("Warming cache", extra={"namespace": namespace})
-                result = func(**kwargs)
-
-                success = self.set(namespace, result, ttl, **kwargs)
-                results[namespace] = success
-
-                if success:
-                    logger.debug("Cache warmed successfully", extra={"namespace": namespace})
-                else:
-                    logger.warning("Failed to warm cache", extra={"namespace": namespace})
-
-            except Exception as e:
-                logger.error("Cache warming error", extra={"namespace": namespace, "error": str(e)})
-                results[namespace] = False
-
-        successful_warms = sum(1 for success in results.values() if success)
-        logger.info(
-            "Cache warming completed",
-            extra={
-                "successful": successful_warms,
-                "total": len(cache_warming_functions),
-            },
-        )
-
-        return results
-
     def get_stats(self) -> dict[str, Any]:
         """Get cache statistics.
 
         Returns:
-            Dictionary containing cache performance metrics
+            Dictionary with cache statistics including hit rate
         """
         total_requests = self._stats["hits"] + self._stats["misses"]
-        hit_rate = (self._stats["hits"] / total_requests * 100) if total_requests > 0 else 0
+        hit_rate = self._stats["hits"] / total_requests if total_requests > 0 else 0.0
 
         return {
-            "backend_type": self.backend_type,
+            **self._stats,
+            "hit_rate": round(hit_rate * 100, 2),
             "total_requests": total_requests,
-            "hits": self._stats["hits"],
-            "misses": self._stats["misses"],
-            "hit_rate_percent": round(hit_rate, 2),
-            "sets": self._stats["sets"],
-            "deletes": self._stats["deletes"],
-            "errors": self._stats["errors"],
-            "default_ttl": self.default_ttl,
-            "cache_warming_enabled": self.enable_cache_warming,
+            "backend": self.backend_type,
         }
 
-    def health_check(self) -> dict[str, Any]:
-        """Perform cache health check.
+    def warm_cache(
+        self,
+        namespace: str,
+        value_generator: callable,  # type: ignore[valid-type]
+        ttl: int | None = None,
+        **kwargs: Any,  # noqa: ANN401
+    ) -> bool:
+        """Warm cache by generating and storing value.
+
+        Useful for pre-populating cache with expensive computations.
+
+        Args:
+            namespace: Cache namespace
+            value_generator: Callable that generates the value to cache
+            ttl: TTL in seconds
+            **kwargs: Parameters for cache key generation
 
         Returns:
-            Dictionary containing health status and diagnostics
+            True if successful, False otherwise
         """
-        test_key = "health_check_test"
-        test_value = {"timestamp": time.time(), "test": True}
+        if not self.enable_cache_warming:
+            logger.debug("Cache warming disabled")
+            return False
 
         try:
-            # Test set operation
-            set_success = self._backend.set(test_key, test_value, 10)
-            if not set_success:
-                return {
-                    "status": "unhealthy",
-                    "backend": self.backend_type,
-                    "error": "Set operation failed",
-                    "stats": self.get_stats(),
-                }
-
-            # Test get operation
-            retrieved_value = self._backend.get(test_key)
-            if retrieved_value != test_value:
-                return {
-                    "status": "unhealthy",
-                    "backend": self.backend_type,
-                    "error": "Get operation failed or data corrupted",
-                    "stats": self.get_stats(),
-                }
-
-            # Test delete operation
-            delete_success = self._backend.delete(test_key)
-            if not delete_success:
-                logger.warning("Delete operation failed during health check")
-
-            return {
-                "status": "healthy",
-                "backend": self.backend_type,
-                "stats": self.get_stats(),
-            }
-
+            value = value_generator()
+            return self.set(namespace, value, ttl, **kwargs)
         except Exception as e:
-            return {
-                "status": "unhealthy",
-                "backend": self.backend_type,
-                "error": str(e),
-                "stats": self.get_stats(),
-            }
+            logger.error("Cache warming error", extra={"namespace": namespace, "error": str(e)})
+            return False
 
-
-def create_cache(
-    memcached_host: str = "localhost",
-    memcached_port: int = 11211,
-    default_ttl: int = 300,
-    enable_cache_warming: bool = True,
-) -> Cache:
-    """Create a configured cache instance.
-
-    Args:
-        memcached_host: Memcached server host
-        memcached_port: Memcached server port
-        default_ttl: Default TTL in seconds
-        enable_cache_warming: Whether to enable cache warming
-
-    Returns:
-        Configured Cache instance
-    """
-    return Cache(
-        memcached_host=memcached_host,
-        memcached_port=memcached_port,
-        default_ttl=default_ttl,
-        enable_cache_warming=enable_cache_warming,
-    )
+    def __repr__(self) -> str:
+        """Return string representation of Cache."""
+        stats = self.get_stats()
+        return (
+            f"<Cache backend={self.backend_type} "
+            f"hit_rate={stats['hit_rate']}% "
+            f"requests={stats['total_requests']}>"
+        )

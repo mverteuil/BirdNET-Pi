@@ -94,9 +94,10 @@ class Container(containers.DeclarativeContainer):
     # Cache service - singleton for analytics performance
     cache_service = providers.Singleton(
         Cache,
-        # Use default settings optimized for SBC deployments
-        memcached_host="localhost",
-        memcached_port=11211,
+        # Use Redis for caching with memory-only mode
+        redis_host="localhost",
+        redis_port=6379,
+        redis_db=0,
         default_ttl=300,
         enable_cache_warming=True,
     )
@@ -190,4 +191,5 @@ class Container(containers.DeclarativeContainer):
         analytics_manager=analytics_manager,
         detection_query_service=detection_query_service,
         config=config,
+        cache=cache_service,
     )

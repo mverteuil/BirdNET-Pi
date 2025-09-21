@@ -18,12 +18,37 @@ from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import Detection
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.notifications.signals import detection_signal
+from birdnetpi.utils.cache import Cache
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.detections import DetectionEvent, LocationUpdate
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# Track if cache invalidation handler is registered
+_paginated_cache_handler_registered = False
+
+
+def _get_cache_invalidation_handler(cache: Cache) -> Callable:
+    """Create a cache invalidation handler with the cache instance."""
+
+    def _invalidate_paginated_cache(sender: object, **kwargs: object) -> None:
+        """Invalidate paginated detection cache when new detection arrives."""
+        logger.debug("Invalidating paginated detections cache due to new detection")
+        # Use Redis pattern-based deletion to clear all paginated detection caches
+        try:
+            # Delete all keys matching the paginated detections pattern
+            deleted = cache.delete_pattern("birdnet_analytics:*paginated*")
+            logger.debug(f"Deleted {deleted} paginated detection cache entries")
+
+            # Also delete species analytics caches
+            deleted = cache.delete_pattern("birdnet_analytics:*species_analytics*")
+            logger.debug(f"Deleted {deleted} species analytics cache entries")
+        except Exception as e:
+            logger.warning(f"Failed to invalidate cache: {e}")
+
+    return _invalidate_paginated_cache
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -107,13 +132,17 @@ async def get_recent_detections(
         raise HTTPException(status_code=500, detail="Error retrieving recent detections") from e
 
 
-@router.get("/paginated")
+@router.get("/")
 @inject
-async def get_paginated_detections(
+async def get_detections(
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(20, ge=10, le=200, description="Items per page"),
     period: str = Query("day", description="Time period filter"),
     search: str | None = Query(None, description="Search species name"),
+    sort_by: str = Query(
+        "timestamp", description="Field to sort by: timestamp, species, confidence"
+    ),
+    sort_order: str = Query("desc", description="Sort order: asc or desc"),
     data_manager: DataManager = Depends(  # noqa: B008
         Provide[Container.data_manager]
     ),
@@ -123,9 +152,31 @@ async def get_paginated_detections(
     config: BirdNETConfig = Depends(  # noqa: B008
         Provide[Container.config]
     ),
+    cache: Cache = Depends(  # noqa: B008
+        Provide[Container.cache_service]
+    ),
 ) -> JSONResponse:
     """Get paginated detections with filtering."""
+    # Register cache invalidation handler if not already registered
+    global _paginated_cache_handler_registered
+    if cache and not _paginated_cache_handler_registered:
+        handler = _get_cache_invalidation_handler(cache)
+        detection_signal.connect(handler)
+        _paginated_cache_handler_registered = True
+
     try:
+        # Generate cache key including all parameters
+        search_part = search or "all"
+        cache_key = (
+            f"paginated_detections_{page}_{per_page}_{period}_{search_part}_{sort_by}_{sort_order}"
+        )
+
+        # Check cache first
+        if cache:
+            cached_response = cache.get("api_paginated", key=cache_key)
+            if cached_response is not None:
+                logger.debug(f"Returning cached paginated detections: {cache_key}")
+                return JSONResponse(cached_response)
         # Calculate date range based on period
         end_time = datetime.now()
         period_days = {
@@ -141,12 +192,21 @@ async def get_paginated_detections(
 
         # Get detections with taxa enrichment for proper display names
         # Pass limit=None to get ALL detections for the period, not just default 100
+        # Map sort_by to database column names
+        sort_column_map = {
+            "timestamp": "timestamp",
+            "species": "scientific_name",
+            "confidence": "confidence",
+        }
+        order_by_column = sort_column_map.get(sort_by, "timestamp")
+        order_desc = sort_order.lower() == "desc"
+
         all_detections = await detection_query_service.query_detections(
             start_date=start_time,
             end_date=end_time,
             language_code=config.language,
-            order_by="timestamp",
-            order_desc=True,
+            order_by=order_by_column,
+            order_desc=order_desc,
             limit=None,  # Get all detections, don't use default limit
         )
 
@@ -159,9 +219,6 @@ async def get_paginated_detections(
                 if search_lower in (d.common_name or "").lower()
                 or search_lower in (d.scientific_name or "").lower()
             ]
-
-        # Sort by timestamp descending (convert to list for sorting)
-        all_detections = sorted(all_detections, key=lambda d: d.timestamp, reverse=True)
 
         # Calculate pagination
         total = len(all_detections)
@@ -190,22 +247,158 @@ async def get_paginated_detections(
                 }
             )
 
-        return JSONResponse(
-            {
-                "detections": detection_list,
-                "pagination": {
-                    "page": page,
-                    "per_page": per_page,
-                    "total": total,
-                    "total_pages": total_pages,
-                    "has_next": page < total_pages,
-                    "has_prev": page > 1,
-                },
-            }
-        )
+        # Prepare response data
+        response_data = {
+            "detections": detection_list,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_prev": page > 1,
+            },
+        }
+
+        # Cache the response data before returning
+        cache.set("api_paginated", response_data, key=cache_key, ttl=300)  # 5 minute TTL
+        logger.debug(f"Cached paginated detections: {cache_key}")
+
+        return JSONResponse(response_data)
     except Exception as e:
         logger.error("Error getting paginated detections: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving detections") from e
+
+
+@router.get("/species-analytics")
+@inject
+async def get_species_analytics(
+    period: str = Query("day", description="Time period for analytics"),
+    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
+        Provide[Container.detection_query_service]
+    ),
+    config: BirdNETConfig = Depends(Provide[Container.config]),  # noqa: B008
+    cache: Cache = Depends(Provide[Container.cache_service]),  # noqa: B008
+) -> JSONResponse:
+    """Get species analytics for the specified period.
+
+    Returns species frequency data with counts for the selected period only.
+    Results are cached and invalidated when new detections arrive.
+    """
+    try:
+        # Generate cache key
+        cache_key = f"species_analytics_{period}_{config.language}"
+
+        # Check cache first
+        if cache:
+            cached_response = cache.get("api_species_analytics", key=cache_key)
+            if cached_response is not None:
+                logger.debug(f"Returning cached species analytics: {cache_key}")
+                return JSONResponse(cached_response)
+
+        # Calculate time range for the period
+        from datetime import timedelta
+
+        import pytz
+
+        # Get the configured timezone
+        user_tz = pytz.timezone(config.timezone) if config.timezone != "UTC" else UTC
+
+        # Get current time in user's timezone
+        now_utc = datetime.now(UTC)
+        now_local = now_utc.astimezone(user_tz)
+
+        # Calculate "today" start in user's timezone, then convert back to UTC for queries
+        today_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+        today = today_local.astimezone(UTC)  # Convert back to UTC for database queries
+
+        # Define period ranges
+        period_configs = {
+            "day": (today, today + timedelta(days=1)),  # Today only
+            "week": (today - timedelta(days=7), today + timedelta(days=1)),
+            "month": (today - timedelta(days=30), today + timedelta(days=1)),
+            "season": (today - timedelta(days=90), today + timedelta(days=1)),
+            "year": (today - timedelta(days=365), today + timedelta(days=1)),
+            "historical": (None, None),  # All time
+        }
+
+        start_date, _end_date = period_configs.get(period, period_configs["day"])
+
+        # Get species summary for the exact period
+        species_summary = await detection_query_service.get_species_summary(
+            language_code=config.language,
+            since=start_date,
+        )
+
+        # Format species frequency data
+        species_frequency = []
+        for species in species_summary:  # Show all species, not limited to top 10
+            # Extract name and scientific name
+            if isinstance(species, dict):
+                name = (
+                    species.get("translated_name", None)
+                    or species.get("best_common_name", None)
+                    or species.get("common_name", None)
+                    or species.get("scientific_name", "Unknown")
+                )
+                scientific_name = species.get("scientific_name", "Unknown")
+                count = species.get("detection_count", species.get("count", 0))
+            else:
+                name = (
+                    getattr(species, "translated_name", None)
+                    or getattr(species, "best_common_name", None)
+                    or getattr(species, "common_name", None)
+                    or getattr(species, "scientific_name", "Unknown")
+                )
+                scientific_name = getattr(species, "scientific_name", "Unknown")
+                count = getattr(species, "count", 0)
+
+            species_frequency.append(
+                {
+                    "name": name,
+                    "scientific_name": scientific_name,
+                    "count": count,
+                    "percentage": 0,  # Will be calculated below
+                }
+            )
+
+        # Calculate percentages after we have all counts
+        total_detections = sum(s["count"] for s in species_frequency)
+        if total_detections > 0:
+            for species in species_frequency:
+                species["percentage"] = round((species["count"] / total_detections) * 100, 1)
+
+        # Sort by count descending
+        species_frequency.sort(key=lambda x: x["count"], reverse=True)
+
+        # Prepare response
+        response_data = {
+            "period": period,
+            "period_label": {
+                "day": "Today",
+                "week": "This Week",
+                "month": "This Month",
+                "season": "This Season",
+                "year": "This Year",
+                "historical": "All Time",
+            }.get(period, "This Period"),
+            "total_detections": total_detections,
+            "unique_species": len(species_frequency),
+            "species_list": species_frequency[:50],  # Limit to top 50 for performance
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
+
+        # Cache the response
+        if cache:
+            cache.set(
+                "api_species_analytics", response_data, key=cache_key, ttl=300
+            )  # 5 minute TTL
+            logger.debug(f"Cached species analytics: {cache_key}")
+
+        return JSONResponse(response_data)
+    except Exception as e:
+        logger.error("Error getting species analytics: %s", e)
+        raise HTTPException(status_code=500, detail="Error retrieving species analytics") from e
 
 
 @router.get("/count")
@@ -438,6 +631,102 @@ async def get_taxonomy_species(
     except Exception as e:
         logger.error("Error getting species: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving species") from e
+
+
+@router.get("/summary")
+@inject
+async def get_detections_summary(
+    period: str = Query(
+        "day", description="Time period: day, week, month, season, year, historical"
+    ),
+    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
+        Provide[Container.detection_query_service]
+    ),
+) -> JSONResponse:
+    """Get detection summary data for period switching.
+
+    This endpoint provides all the data needed to update the all_detections page
+    when switching time periods without a full page reload.
+    """
+    try:
+        # Map period to days
+        period_map = {
+            "day": 1,
+            "week": 7,
+            "month": 30,
+            "season": 90,
+            "year": 365,
+            "historical": None,
+        }
+
+        days = period_map.get(period)
+        since = None
+        end_time = datetime.now(UTC).replace(tzinfo=None)
+        if days:
+            since = end_time - timedelta(days=days)
+            start_time = since
+        else:
+            # For historical, use a very old date
+            start_time = datetime(2020, 1, 1).replace(tzinfo=None)
+
+        # Get species frequency data for the period
+        species_summary = await detection_query_service.get_species_summary(since=since)
+
+        # Format species frequency table data - ALL species for the selected period
+        species_frequency = []
+        for species in species_summary if species_summary else []:
+            count = species.get("detection_count", 0)
+            species_frequency.append(
+                {
+                    "name": species.get("best_common_name")
+                    or species.get("ioc_english_name", "Unknown"),
+                    "scientific_name": species.get("scientific_name", ""),
+                    "count": count,  # Single count for the selected period
+                }
+            )
+
+        # Get detection count for the period
+        total_detections = await detection_query_service.get_detection_count(
+            start_time=start_time, end_time=end_time
+        )
+
+        # Count unique species
+        species_count = len(species_frequency)
+
+        # Simple peak activity calculation (placeholder)
+        peak_time = "12:00"
+        peak_count = 0
+
+        # Format subtitle
+        location = "Location not set"
+        current_date_str = datetime.now(UTC).strftime("%B %d, %Y")
+        subtitle = f"{location} · {current_date_str} · {species_count} species active"
+
+        # Format statistics HTML
+        period_label = period.capitalize()
+        statistics = (
+            f'{period_label}: <span class="stat-value">{species_count}</span> species, '
+            f'<span class="stat-value">{total_detections}</span> detections · '
+            f'Peak activity: <span class="stat-value">{peak_time}</span> '
+            f"({peak_count} detection{'s' if peak_count != 1 else ''})"
+        )
+
+        return JSONResponse(
+            {
+                "species_frequency": species_frequency,
+                "subtitle": subtitle,
+                "statistics": statistics,
+                "species_count": species_count,
+                "total_detections": total_detections,
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error getting detection summary: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get detection summary: {e!s}",
+        ) from e
 
 
 @router.post("/{detection_id}/location")

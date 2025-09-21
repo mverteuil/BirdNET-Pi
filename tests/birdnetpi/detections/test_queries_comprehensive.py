@@ -204,14 +204,17 @@ class TestMainQueryMethods:
     async def test_query_detections_delegates(
         self, detection_query_service, mock_core_database, mock_species_database
     ):
-        """Should delegate to get_detections_with_taxa."""
+        """Should delegate to _execute_join_query."""
         # Setup mock
         mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = []
+        mock_session.execute = AsyncMock(return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Mock the internal method
         with patch.object(
-            detection_query_service, "get_detections_with_taxa", new_callable=AsyncMock
+            detection_query_service, "_execute_join_query", new_callable=AsyncMock
         ) as mock_method:
             mock_method.return_value = []
 
@@ -223,9 +226,10 @@ class TestMainQueryMethods:
                 min_confidence=0.7,
             )
 
-            # Verify delegation
+            # Verify delegation - when no limit is specified, it's passed as None
             mock_method.assert_called_once_with(
-                limit=100,
+                session=mock_session,
+                limit=None,  # No limit specified, so None is passed
                 offset=0,
                 language_code="en",
                 start_date=None,

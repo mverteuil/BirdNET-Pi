@@ -1,26 +1,15 @@
 """Cache backend implementations for the cache system.
 
-This module provides different backend implementations for caching:
-- MemcachedBackend: Uses memcached for distributed caching
-- InMemoryBackend: Uses a simple dictionary for single-process caching
+This module provides the Redis backend implementation for caching.
+Redis is used in memory-only mode for fast, distributed caching without disk writes.
 """
 
+import json
 import logging
-import pickle
-import time
 from abc import ABC, abstractmethod
 from typing import Any
 
-# Optional memcached dependency
-try:
-    import pymemcache
-    from pymemcache.client.base import Client as MemcacheClient
-
-    MEMCACHED_AVAILABLE = True
-except ImportError:
-    pymemcache = None  # type: ignore[assignment]
-    MemcacheClient = None  # type: ignore[assignment,misc]
-    MEMCACHED_AVAILABLE = False
+import redis
 
 logger = logging.getLogger(__name__)
 
@@ -87,203 +76,211 @@ class CacheBackend(ABC):
         """
         pass
 
-
-class MemcachedBackend(CacheBackend):
-    """Memcached backend implementation.
-
-    Uses pymemcache for fast, memory-only caching that doesn't write to disk.
-    Ideal for SBC deployments where minimizing SD card writes is critical.
-    """
-
-    def __init__(self, host: str = "127.0.0.1", port: int = 11211, timeout: float = 1.0):
-        """Initialize memcached backend.
+    @abstractmethod
+    def delete_pattern(self, pattern: str) -> int:
+        """Delete all keys matching the given pattern.
 
         Args:
-            host: Memcached server host
-            port: Memcached server port
-            timeout: Connection timeout in seconds
+            pattern: Pattern to match keys (e.g., "cache:prefix:*")
 
-        Raises:
-            RuntimeError: If memcached is not available
+        Returns:
+            Number of keys deleted
         """
-        if not MEMCACHED_AVAILABLE:
-            raise RuntimeError("pymemcache is required for MemcachedBackend")
-
-        # Define serializer functions for pymemcache
-        def serialize(key: bytes, value: Any) -> tuple[bytes, int]:  # noqa: ANN401
-            if isinstance(value, bytes):
-                return value, 1
-            # Safe: Pickle used for memcached serialization only
-            return pickle.dumps(value), 2  # nosemgrep
-
-        def deserialize(key: bytes, value: bytes, flags: int) -> Any:  # noqa: ANN401
-            if flags == 1:
-                return value
-            if flags == 2:
-                # Safe: Pickle used for memcached deserialization only
-                return pickle.loads(value)  # nosemgrep
-            raise ValueError(f"Unknown serialization flags: {flags}")
-
-        self.client = MemcacheClient(  # type: ignore[misc]
-            (host, port),
-            timeout=timeout,
-            connect_timeout=timeout,
-            serializer=serialize,
-            deserializer=deserialize,
-        )
-
-        # Test connection with retries for startup timing
-        max_retries = 3
-        retry_delay = 0.5
-        for attempt in range(max_retries):
-            try:
-                self.client.version()
-                logger.debug(
-                    "Memcached backend initialized successfully", extra={"host": host, "port": port}
-                )
-                break
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    logger.debug(
-                        f"Memcached connection attempt {attempt + 1} failed, retrying...",
-                        extra={"error": str(e)},
-                    )
-                    time.sleep(retry_delay)
-                else:
-                    logger.error(
-                        "Failed to connect to memcached",
-                        extra={"host": host, "port": port, "error": str(e)},
-                    )
-                    raise RuntimeError(
-                        f"Failed to connect to memcached at {host}:{port}: {e}"
-                    ) from e
-
-    def get(self, key: str) -> Any:  # noqa: ANN401
-        """Get value from memcached."""
-        try:
-            return self.client.get(key)
-        except Exception as e:
-            logger.warning("Memcached get failed", extra={"key": key, "error": str(e)})
-            return None
-
-    def set(self, key: str, value: Any, ttl: int) -> bool:  # noqa: ANN401
-        """Set value in memcached with TTL."""
-        try:
-            result = self.client.set(key, value, expire=ttl)
-            return bool(result)
-        except Exception as e:
-            logger.warning("Memcached set failed", extra={"key": key, "ttl": ttl, "error": str(e)})
-            return False
-
-    def delete(self, key: str) -> bool:
-        """Delete value from memcached."""
-        try:
-            return self.client.delete(key)
-        except Exception as e:
-            logger.warning("Memcached delete failed", extra={"key": key, "error": str(e)})
-            return False
-
-    def clear(self) -> bool:
-        """Clear all memcached data."""
-        try:
-            return self.client.flush_all()
-        except Exception as e:
-            logger.warning("Memcached clear failed", extra={"error": str(e)})
-            return False
-
-    def exists(self, key: str) -> bool:
-        """Check if key exists in memcached."""
-        try:
-            return self.client.get(key) is not None
-        except Exception as e:
-            logger.warning("Memcached exists check failed", extra={"key": key, "error": str(e)})
-            return False
+        pass
 
 
-class InMemoryBackend(CacheBackend):
-    """In-memory cache backend implementation.
+class RedisBackend(CacheBackend):
+    """Redis backend implementation.
 
-    Thread-safe fallback implementation using a simple dictionary with TTL tracking.
-    Used when memcached is unavailable. Suitable for single-process deployments.
+    Uses Redis in memory-only mode for fast caching without disk writes.
+    Ideal for SBC deployments where minimizing SD card writes is critical.
+    Supports pattern-based key deletion for efficient cache invalidation.
     """
 
-    def __init__(self):
-        """Initialize in-memory backend."""
-        # Cache storage: {key: (value, expiry_timestamp)}
-        self._cache: dict[str, tuple[Any, float]] = {}
-        logger.info("In-memory cache backend initialized")
+    def __init__(
+        self,
+        host: str = "127.0.0.1",
+        port: int = 6379,
+        db: int = 0,
+        timeout: float = 1.0,
+        decode_responses: bool = False,
+    ):
+        """Initialize Redis backend.
 
-    def _is_expired(self, expiry: float) -> bool:
-        """Check if cache entry has expired."""
-        return time.time() > expiry
+        Args:
+            host: Redis server host
+            port: Redis server port
+            db: Redis database number
+            timeout: Connection timeout in seconds
+            decode_responses: Whether to decode responses to strings
 
-    def _cleanup_expired(self) -> None:
-        """Remove expired entries from cache."""
-        current_time = time.time()
-        expired_keys = [key for key, (_, expiry) in self._cache.items() if current_time > expiry]
-        for key in expired_keys:
-            del self._cache[key]
+        Raises:
+            RuntimeError: If Redis connection cannot be established
+        """
+        self.host = host
+        self.port = port
+        self.db = db
+
+        try:
+            # Create Redis connection pool for efficiency
+            self.pool = redis.ConnectionPool(
+                host=host,
+                port=port,
+                db=db,
+                socket_connect_timeout=timeout,
+                socket_timeout=timeout,
+                decode_responses=decode_responses,
+            )
+            self.client = redis.Redis(connection_pool=self.pool)
+
+            # Test connection with retries for startup timing
+            max_retries = 3
+            retry_delay = 0.5
+            import time
+
+            for attempt in range(max_retries):
+                try:
+                    self.client.ping()
+                    logger.debug(
+                        "Redis backend initialized successfully",
+                        extra={"host": host, "port": port, "db": db},
+                    )
+                    break
+                except redis.ConnectionError as e:
+                    if attempt < max_retries - 1:
+                        logger.debug(
+                            f"Redis connection attempt {attempt + 1} failed, retrying...",
+                            extra={"error": str(e)},
+                        )
+                        time.sleep(retry_delay)
+                    else:
+                        raise RuntimeError(
+                            f"Failed to connect to Redis at {host}:{port} "
+                            f"after {max_retries} attempts"
+                        ) from e
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize Redis backend: {e}") from e
 
     def get(self, key: str) -> Any:  # noqa: ANN401
-        """Get value from in-memory cache."""
+        """Get value from cache by key.
+
+        Args:
+            key: Cache key to retrieve
+
+        Returns:
+            Cached value or None if not found/expired
+        """
         try:
-            if key in self._cache:
-                value, expiry = self._cache[key]
-                if not self._is_expired(expiry):
-                    return value
-                else:
-                    # Remove expired entry
-                    del self._cache[key]
+            value = self.client.get(key)
+            if value is None:
+                return None
 
-            # Periodic cleanup when cache gets large
-            if len(self._cache) > 1000:
-                self._cleanup_expired()
-
-            return None
-        except Exception as e:
-            logger.warning("In-memory get failed", extra={"key": key, "error": str(e)})
-            return None
+            # Try to deserialize JSON
+            try:
+                return json.loads(value)  # type: ignore[arg-type]
+            except (json.JSONDecodeError, TypeError):
+                # Return as-is if not JSON
+                return value.decode("utf-8") if isinstance(value, bytes) else value
+        except redis.RedisError as e:
+            logger.error(f"Redis get error for key '{key}': {e}")
+            raise  # Re-raise to let cache layer handle and count errors
 
     def set(self, key: str, value: Any, ttl: int) -> bool:  # noqa: ANN401
-        """Set value in in-memory cache with TTL."""
+        """Set value in cache with TTL.
+
+        Args:
+            key: Cache key
+            value: Value to cache
+            ttl: Time-to-live in seconds
+
+        Returns:
+            True if successful, False otherwise
+        """
         try:
-            expiry = time.time() + ttl
-            self._cache[key] = (value, expiry)
-            return True
-        except Exception as e:
-            logger.warning("In-memory set failed", extra={"key": key, "ttl": ttl, "error": str(e)})
-            return False
+            # Serialize value to JSON for consistency
+            if isinstance(value, (str, bytes)):
+                serialized = value
+            else:
+                serialized = json.dumps(value)
+
+            # Set with expiration
+            return bool(self.client.setex(key, ttl, serialized))
+        except (redis.RedisError, TypeError, json.JSONDecodeError) as e:
+            logger.error(f"Redis set error for key '{key}': {e}")
+            raise  # Re-raise to let cache layer handle and count errors
 
     def delete(self, key: str) -> bool:
-        """Delete value from in-memory cache."""
+        """Delete value from cache.
+
+        Args:
+            key: Cache key to delete
+
+        Returns:
+            True if successful (or key didn't exist), False on error
+        """
         try:
-            if key in self._cache:
-                del self._cache[key]
-                return True
-            return False
-        except Exception as e:
-            logger.warning("In-memory delete failed", extra={"key": key, "error": str(e)})
-            return False
+            self.client.delete(key)
+            return True
+        except redis.RedisError as e:
+            logger.error(f"Redis delete error for key '{key}': {e}")
+            raise  # Re-raise to let cache layer handle and count errors
 
     def clear(self) -> bool:
-        """Clear all in-memory cache data."""
+        """Clear all cached data in the current database.
+
+        Returns:
+            True if successful, False otherwise
+        """
         try:
-            self._cache.clear()
+            self.client.flushdb()
             return True
-        except Exception as e:
-            logger.warning("In-memory clear failed", extra={"error": str(e)})
-            return False
+        except redis.RedisError as e:
+            logger.error(f"Redis clear error: {e}")
+            raise  # Re-raise to let cache layer handle and count errors
 
     def exists(self, key: str) -> bool:
-        """Check if key exists in in-memory cache."""
+        """Check if key exists in cache.
+
+        Args:
+            key: Cache key to check
+
+        Returns:
+            True if key exists, False otherwise
+        """
         try:
-            if key in self._cache:
-                _, expiry = self._cache[key]
-                if not self._is_expired(expiry):
-                    return True
-                else:
-                    del self._cache[key]
-            return False
-        except Exception as e:
-            logger.warning("In-memory exists check failed", extra={"key": key, "error": str(e)})
-            return False
+            return bool(self.client.exists(key))
+        except redis.RedisError as e:
+            logger.error(f"Redis exists error for key '{key}': {e}")
+            raise  # Re-raise to let cache layer handle and count errors
+
+    def delete_pattern(self, pattern: str) -> int:
+        """Delete all keys matching the given pattern.
+
+        Uses SCAN for efficient iteration without blocking the server.
+
+        Args:
+            pattern: Pattern to match keys (e.g., "cache:prefix:*")
+
+        Returns:
+            Number of keys deleted
+        """
+        try:
+            deleted_count = 0
+            # Use SCAN to find matching keys without blocking
+            for key in self.client.scan_iter(match=pattern, count=100):
+                if self.client.delete(key):
+                    deleted_count += 1
+
+            logger.debug(f"Deleted {deleted_count} keys matching pattern '{pattern}'")
+            return deleted_count
+        except redis.RedisError as e:
+            logger.error(f"Redis delete_pattern error for pattern '{pattern}': {e}")
+            raise  # Re-raise to let cache layer handle and count errors
+
+    def __del__(self):
+        """Clean up Redis connection pool on deletion."""
+        if hasattr(self, "pool"):
+            try:
+                self.pool.disconnect()
+            except Exception:
+                pass  # Ignore errors during cleanup

@@ -68,3 +68,7 @@ ioc_multilingual_v*.xlsx
 *.pkl
 *.tflite
 *.whl
+
+# Redis dump files
+dump.rdb
+*.rdb

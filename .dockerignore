@@ -33,3 +33,5 @@ Thumbs.db
 .vscode
 *.bak
 .gitattributes
+dump.rdb
+*.rdb

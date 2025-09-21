@@ -76,7 +76,7 @@ RUN apt-get update && \
     libportaudio2 \
     libsox-fmt-mp3 \
     lsof \
-    memcached \
+    redis-server \
     net-tools \
     portaudio19-dev \
     pulseaudio \
@@ -85,7 +85,6 @@ RUN apt-get update && \
     sox \
     sqlite3 \
     supervisor \
-    systemd-journal-remote \
     zlib1g-dev && \
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg && \
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list && \
@@ -99,7 +98,6 @@ RUN apt-get update && \
 # Copy service configuration files with proper permissions
 COPY --chmod=644 config_templates/Caddyfile /etc/caddy/Caddyfile
 COPY --chmod=644 config_templates/supervisord.conf /etc/supervisor/supervisord.conf
-COPY --chmod=644 config_templates/journald.conf /etc/systemd/journald.conf
 COPY --chmod=744 config_templates/supervisor-wrapper.py /usr/local/bin/supervisor-wrapper.py
 
 # Create birdnetpi user and set up necessary directories
@@ -129,10 +127,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Configure git safe directory for the birdnetpi user
 RUN git config --global --add safe.directory /opt/birdnetpi
-
-# Copy the configuration template to a location that won't be overlaid by volume mount
-# The init container will copy this to the volume
-COPY --chown=birdnetpi:birdnetpi config_templates/birdnetpi.yaml /opt/birdnetpi/config_templates/birdnetpi.yaml
 
 # Set the asset version as an environment variable for runtime use
 ENV BIRDNET_ASSETS_VERSION=${BIRDNET_ASSETS_VERSION}

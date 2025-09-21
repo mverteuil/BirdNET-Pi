@@ -113,6 +113,7 @@ async def readiness_probe(
 async def detailed_health_check(
     response: Response,
     db_service: CoreDatabaseService = Depends(Provide[Container.core_database]),  # noqa: B008
+    cache_service: Any = Depends(Provide[Container.cache_service]),  # noqa: B008, ANN401
 ) -> dict[str, Any]:
     """Provide detailed health check with component status.
 
@@ -143,18 +144,27 @@ async def detailed_health_check(
         }
         health_status["status"] = "degraded"
 
-    # Check cache (if memcached is being used)
+    # Check cache (Redis)
     try:
-        # We'd need to get the cache instance from the container
-        # For now, just report cache backend type
+        # Test Redis connectivity with a simple ping
+        cache_healthy = cache_service.ping()
+        if cache_healthy:
+            health_status["components"]["cache"] = {
+                "status": "healthy",
+                "type": "redis",
+            }
+        else:
+            health_status["components"]["cache"] = {
+                "status": "unhealthy",
+                "error": "Redis ping failed",
+            }
+            health_status["status"] = "degraded"
+    except Exception as e:
         health_status["components"]["cache"] = {
-            "status": "healthy",
-            "type": "memcached",  # This would come from the actual cache instance
+            "status": "unhealthy",
+            "error": str(e),
         }
-    except Exception:
-        health_status["components"]["cache"] = {
-            "status": "unknown",
-        }
+        health_status["status"] = "degraded"
 
     # Set appropriate status code for degraded state
     if health_status["status"] == "degraded":

@@ -1,5 +1,5 @@
 import logging
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 import sounddevice as sd
 
@@ -22,6 +22,10 @@ class AudioDevice:
     default_high_input_latency: float
     default_high_output_latency: float
     default_samplerate: float
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for serialization."""
+        return asdict(self)
 
 
 class AudioDeviceService:

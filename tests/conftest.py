@@ -130,6 +130,28 @@ async def app_with_temp_data(path_resolver):
 
     Container.core_database.override(providers.Singleton(lambda: temp_db_service))
 
+    # Mock the cache service to avoid Redis connection issues in tests
+    from unittest.mock import MagicMock
+
+    mock_cache = MagicMock()
+    mock_cache.get.return_value = None
+    mock_cache.set.return_value = True
+    mock_cache.delete.return_value = True
+    mock_cache.clear.return_value = True
+    mock_cache.ping.return_value = True
+    mock_cache.get_stats.return_value = {
+        "hits": 0,
+        "misses": 0,
+        "sets": 0,
+        "deletes": 0,
+        "pattern_deletes": 0,
+        "errors": 0,
+        "hit_rate": 0.0,
+        "total_requests": 0,
+        "backend": "mock",
+    }
+    Container.cache_service.override(providers.Singleton(lambda: mock_cache))
+
     # Now create the app with our overridden providers
     from birdnetpi.web.core.factory import create_app
 
@@ -150,6 +172,7 @@ async def app_with_temp_data(path_resolver):
     Container.database_path.reset_override()
     Container.config.reset_override()
     Container.core_database.reset_override()
+    Container.cache_service.reset_override()
 
 
 @pytest.fixture
@@ -196,6 +219,48 @@ def test_config(path_resolver: PathResolver):
 
     manager = ConfigManager(path_resolver)
     return manager.load()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def ensure_redis_running():
+    """Ensure Redis is running for tests that require it."""
+    import subprocess
+    import time
+
+    # Check if Redis is already running
+    try:
+        result = subprocess.run(["redis-cli", "ping"], capture_output=True, text=True, timeout=2)
+        if result.stdout.strip() == "PONG":
+            # Redis is already running
+            yield
+            return
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    # Try to start Redis
+    try:
+        # Start Redis in the background
+        subprocess.run(
+            ["redis-server", "--daemonize", "yes"], capture_output=True, text=True, check=False
+        )
+
+        # Give Redis a moment to start
+        time.sleep(0.5)
+
+        # Verify Redis started
+        result = subprocess.run(["redis-cli", "ping"], capture_output=True, text=True, timeout=2)
+        if result.stdout.strip() == "PONG":
+            yield
+            return
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    # Redis is required for tests
+    pytest.fail(
+        "Redis is not available and could not be started. "
+        "Please install and start Redis to run the tests. "
+        "Install with: brew install redis (macOS) or apt-get install redis-server (Linux)"
+    )
 
 
 @pytest.fixture(scope="session", autouse=True)

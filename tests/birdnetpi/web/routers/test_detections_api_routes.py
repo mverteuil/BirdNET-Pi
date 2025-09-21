@@ -41,6 +41,26 @@ def client():
     mock_config.language = "en"
     container.config.override(mock_config)
 
+    # Mock the cache service to avoid Redis connection issues
+    mock_cache = MagicMock()
+    mock_cache.get.return_value = None
+    mock_cache.set.return_value = True
+    mock_cache.delete.return_value = True
+    mock_cache.clear.return_value = True
+    mock_cache.ping.return_value = True
+    mock_cache.get_stats.return_value = {
+        "hits": 0,
+        "misses": 0,
+        "sets": 0,
+        "deletes": 0,
+        "pattern_deletes": 0,
+        "errors": 0,
+        "hit_rate": 0.0,
+        "total_requests": 0,
+        "backend": "mock",
+    }
+    container.cache_service.override(mock_cache)
+
     # Wire the container
     container.wire(modules=["birdnetpi.web.routers.detections_api_routes"])
 
@@ -303,7 +323,7 @@ class TestPaginatedDetections:
             side_effect=lambda d, *args: f"Display {d.common_name}"
         )
 
-        response = client.get("/api/detections/paginated?page=1&per_page=10&period=week")
+        response = client.get("/api/detections/?page=1&per_page=10&period=week")
 
         assert response.status_code == 200
         data = response.json()
@@ -348,7 +368,7 @@ class TestPaginatedDetections:
         )
 
         # Search for "Robin"
-        response = client.get("/api/detections/paginated?search=Robin")
+        response = client.get("/api/detections/?search=Robin")
 
         assert response.status_code == 200
         data = response.json()
@@ -359,7 +379,7 @@ class TestPaginatedDetections:
         """Should handle empty results gracefully."""
         client.mock_query_service.query_detections = AsyncMock(return_value=[])
 
-        response = client.get("/api/detections/paginated?page=1")
+        response = client.get("/api/detections/?page=1")
 
         assert response.status_code == 200
         data = response.json()
@@ -373,7 +393,7 @@ class TestPaginatedDetections:
             side_effect=Exception("Database error")
         )
 
-        response = client.get("/api/detections/paginated")
+        response = client.get("/api/detections/?page=1&per_page=10")
 
         assert response.status_code == 500
         assert "Error retrieving detections" in response.json()["detail"]

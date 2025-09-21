@@ -25,6 +25,7 @@ class SpeciesFrequencyDict(TypedDict):
     """Species frequency analysis result."""
 
     name: str
+    scientific_name: str
     count: int
     percentage: float
     category: str
@@ -95,6 +96,7 @@ class AnalyticsManager:
         return [
             {
                 "name": s["common_name"] or s["scientific_name"],
+                "scientific_name": s["scientific_name"],
                 "count": s["count"],
                 "percentage": (s["count"] / total * 100) if total > 0 else 0,
                 "category": self._categorize_frequency(s["count"]),
