@@ -36,9 +36,9 @@ def mock_detection_query_service():
 
 
 @pytest.fixture
-def analytics_manager(mock_detection_query_service, mock_config):
+def analytics_manager(mock_detection_query_service, test_config):
     """Create AnalyticsManager."""
-    return AnalyticsManager(mock_detection_query_service, mock_config)
+    return AnalyticsManager(mock_detection_query_service, test_config)
 
 
 class TestAnalyticsManagerBasics:
@@ -67,7 +67,9 @@ class TestAnalyticsManagerBasics:
         assert summary["detections_today"] == 50
         assert summary["species_week"] == 15
         assert summary["storage_gb"] == 1.0  # 1073741824 / (1024**3)
-        assert summary["confidence_threshold"] == 0.03  # species_confidence_threshold from config
+        assert (
+            summary["confidence_threshold"] == 0.7
+        )  # species_confidence_threshold from test_config
 
     @pytest.mark.asyncio
     async def test_get_species_frequency_analysis(
@@ -206,6 +208,11 @@ class TestAnalyticsManagerBasics:
         ]
         mock_detection_query_service.query_detections.return_value = mock_detections
 
+        # Mock species counts for frequency categorization
+        mock_detection_query_service.get_species_counts.return_value = [
+            {"common_name": "American Robin", "count": 1}
+        ]
+
         # Execute
         scatter_data = await analytics_manager.get_detection_scatter_data(hours=24)
 
@@ -216,11 +223,11 @@ class TestAnalyticsManagerBasics:
         point = scatter_data[0]
         assert "time" in point
         assert "confidence" in point
-        assert "species" in point
+        assert "common_name" in point
         assert "frequency_category" in point
 
         # Verify values
         assert point["time"] == 8.5  # 8:30 = 8 + 30/60
         assert point["confidence"] == 0.95
-        assert point["species"] == "American Robin"  # Uses ioc_english_name
+        assert point["common_name"] == "American Robin"  # Uses ioc_english_name
         assert point["frequency_category"] == "uncommon"  # 1 detection is <= 5

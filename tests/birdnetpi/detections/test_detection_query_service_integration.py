@@ -194,7 +194,7 @@ async def populated_database(test_database):
 
 
 @pytest.fixture
-async def query_service_with_db(populated_database, mocker):
+async def query_service_with_db(populated_database, mocker, test_config):
     """Create DetectionQueryService with real populated database."""
     # Mock the species database that DetectionQueryService needs
     mock_multilingual = mocker.MagicMock(spec=SpeciesDatabaseService)
@@ -203,6 +203,7 @@ async def query_service_with_db(populated_database, mocker):
     return DetectionQueryService(
         core_database=populated_database,
         species_database=mock_multilingual,
+        config=test_config,
     )
 
 
@@ -313,12 +314,14 @@ class TestAnalyticsIntegration:
         self,
         test_database,
         mock_species_database,
+        test_config,
     ):
         """Should handle analytics methods correctly with empty database."""
         # Create DetectionQueryService with empty database
         query_service = DetectionQueryService(
             core_database=test_database,
             species_database=mock_species_database,
+            config=test_config,
         )
 
         start_time = datetime.datetime(2024, 1, 1, 0, 0, 0)

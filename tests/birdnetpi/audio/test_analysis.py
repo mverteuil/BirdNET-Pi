@@ -10,7 +10,6 @@ import numpy as np
 import pytest
 
 from birdnetpi.audio.analysis import AudioAnalysisManager
-from birdnetpi.config import BirdNETConfig
 from birdnetpi.system.file_manager import FileManager
 
 
@@ -86,18 +85,9 @@ def mock_path_resolver(path_resolver, test_detection_result):
 
 
 @pytest.fixture
-def mock_config(test_config_data):
-    """Return a mock BirdNETConfig instance with test data."""
-    mock = MagicMock(spec=BirdNETConfig)
-    for key, value in test_config_data.items():
-        setattr(mock, key, value)
-    return mock
-
-
-@pytest.fixture
 @patch("birdnetpi.audio.analysis.BirdDetectionService")
 def audio_analysis_service(
-    mock_analysis_client_class, mock_file_manager, mock_path_resolver, mock_config
+    mock_analysis_client_class, mock_file_manager, mock_path_resolver, test_config
 ):
     """Return an AudioAnalysisManager instance with mocked dependencies."""
     # Mock the BirdDetectionService constructor to avoid model loading
@@ -121,7 +111,7 @@ def audio_analysis_service(
     service = AudioAnalysisManager(
         mock_file_manager,
         mock_path_resolver,
-        mock_config,
+        test_config,
         mock_species_database,
         mock_session,
         detection_buffer_max_size=100,  # Smaller buffer for testing
@@ -180,12 +170,12 @@ class TestAudioAnalysisManager:
     """Test the AudioAnalysisManager class."""
 
     async def test_init(
-        self, audio_analysis_service, mock_file_manager, mock_path_resolver, mock_config
+        self, audio_analysis_service, mock_file_manager, mock_path_resolver, test_config
     ):
         """Should initialize with correct dependencies and attributes."""
         assert audio_analysis_service.file_manager == mock_file_manager
         assert audio_analysis_service.path_resolver == mock_path_resolver
-        assert audio_analysis_service.config == mock_config
+        assert audio_analysis_service.config == test_config
         assert hasattr(audio_analysis_service, "analysis_client")
         assert hasattr(audio_analysis_service, "audio_buffer")
         assert hasattr(audio_analysis_service, "detection_buffer")
@@ -293,7 +283,7 @@ class TestAudioAnalysisManager:
         # Verify the HTTP POST was made with correct endpoint
         mock_post.assert_called_once()
         call_args = mock_post.call_args
-        assert call_args[0][0] == "http://localhost:8000/api/v1/detections/"
+        assert call_args[0][0] == "http://127.0.0.1:8888/api/detections/"
 
         # Verify the detection data structure
         detection_data = call_args[1]["json"]

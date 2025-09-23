@@ -11,8 +11,6 @@ from sqlmodel import SQLModel
 
 from birdnetpi.config.models import BirdNETConfig
 from birdnetpi.database.core import CoreDatabaseService
-from birdnetpi.detections.models import Detection
-from birdnetpi.location.models import Weather
 from birdnetpi.location.weather import WeatherSignalHandler
 from birdnetpi.notifications.signals import detection_signal
 
@@ -92,14 +90,14 @@ def test_weather_handler_requires_location():
 
 
 @pytest.mark.asyncio
-async def test_weather_handler_handles_detection_event(weather_handler, session):
+async def test_weather_handler_handles_detection_event(weather_handler, session, model_factory):
     """Should weather handler responds to detection events."""
     # Register the handler
     weather_handler.register()
 
     try:
         # Create a detection
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Test_Bird",
             scientific_name="Testus birdus",
             confidence=0.95,
@@ -129,13 +127,15 @@ async def test_weather_handler_handles_detection_event(weather_handler, session)
 
 
 @pytest.mark.asyncio
-async def test_weather_handler_skips_detection_with_weather(weather_handler, session):
+async def test_weather_handler_skips_detection_with_weather(
+    weather_handler, session, model_factory
+):
     """Should handler skips detections that already have weather."""
     weather_handler.register()
 
     try:
         # Create a weather record
-        weather = Weather(
+        weather = model_factory.create_weather(
             timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
             latitude=63.4591,
             longitude=-19.3647,
@@ -145,7 +145,7 @@ async def test_weather_handler_skips_detection_with_weather(weather_handler, ses
         await session.commit()
 
         # Create a detection already linked to weather
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Test_Bird",
             scientific_name="Testus birdus",
             confidence=0.95,
@@ -172,10 +172,10 @@ async def test_weather_handler_skips_detection_with_weather(weather_handler, ses
 
 
 @pytest.mark.asyncio
-async def test_fetch_and_link_weather_uses_existing(weather_handler, session):
+async def test_fetch_and_link_weather_uses_existing(weather_handler, session, model_factory):
     """Should _fetch_and_link_weather uses existing weather when available."""
     # Create existing weather
-    weather = Weather(
+    weather = model_factory.create_weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
         latitude=63.4591,
         longitude=-19.3647,
@@ -185,7 +185,7 @@ async def test_fetch_and_link_weather_uses_existing(weather_handler, session):
     session.add(weather)
 
     # Create detection without weather
-    detection = Detection(
+    detection = model_factory.create_detection(
         species_tensor="Test_Bird",
         scientific_name="Testus birdus",
         confidence=0.95,
@@ -210,10 +210,10 @@ async def test_fetch_and_link_weather_uses_existing(weather_handler, session):
 
 
 @pytest.mark.asyncio
-async def test_fetch_and_link_weather_fetches_new(weather_handler, session):
+async def test_fetch_and_link_weather_fetches_new(weather_handler, session, model_factory):
     """Should _fetch_and_link_weather fetches new weather when needed."""
     # Create detection without weather
-    detection = Detection(
+    detection = model_factory.create_detection(
         species_tensor="Test_Bird",
         scientific_name="Testus birdus",
         confidence=0.95,
@@ -223,7 +223,7 @@ async def test_fetch_and_link_weather_fetches_new(weather_handler, session):
     await session.commit()
 
     # Mock the weather to be returned
-    mock_weather = Weather(
+    mock_weather = model_factory.create_weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
         latitude=63.4591,
         longitude=-19.3647,
@@ -247,10 +247,10 @@ async def test_fetch_and_link_weather_fetches_new(weather_handler, session):
 
 
 @pytest.mark.asyncio
-async def test_weather_handler_handles_fetch_error(weather_handler, session):
+async def test_weather_handler_handles_fetch_error(weather_handler, session, model_factory):
     """Should handler gracefully handles weather fetch errors."""
     # Create detection
-    detection = Detection(
+    detection = model_factory.create_detection(
         species_tensor="Test_Bird",
         scientific_name="Testus birdus",
         confidence=0.95,
@@ -274,10 +274,10 @@ async def test_weather_handler_handles_fetch_error(weather_handler, session):
         assert call_args[0] == str(detection.id)
 
 
-def test_weather_handler_handles_no_event_loop(weather_handler):
+def test_weather_handler_handles_no_event_loop(weather_handler, model_factory):
     """Should handler gracefully handles when no event loop is running."""
     # Create a detection
-    detection = Detection(
+    detection = model_factory.create_detection(
         species_tensor="Test_Bird",
         scientific_name="Testus birdus",
         confidence=0.95,

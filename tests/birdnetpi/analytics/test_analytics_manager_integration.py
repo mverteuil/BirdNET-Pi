@@ -11,13 +11,13 @@ from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
-from birdnetpi.detections.models import AudioFile, Detection
+from birdnetpi.detections.models import Detection
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.species.display import SpeciesDisplayService
 
 
 @pytest.fixture
-async def test_database_with_data(tmp_path):
+async def test_database_with_data(tmp_path, model_factory):
     """Should create a test database with sample data for analytics testing."""
     db_path = tmp_path / "test.db"
     db_service = CoreDatabaseService(db_path)
@@ -34,13 +34,13 @@ async def test_database_with_data(tmp_path):
 
         # Morning detections (today) - 3 hours ago
         for i in range(5):
-            audio = AudioFile(
+            audio = model_factory.create_audio_file(
                 file_path=Path(f"/recordings/morning_{i}.wav"), duration=3.0, size_bytes=48000
             )
             session.add(audio)
             await session.flush()
 
-            detection = Detection(
+            detection = model_factory.create_detection(
                 audio_file_id=audio.id,
                 species_tensor="Turdus migratorius_American Robin",
                 scientific_name="Turdus migratorius",
@@ -56,13 +56,13 @@ async def test_database_with_data(tmp_path):
 
         # Afternoon detections (today) - 2 hours ago
         for i in range(3):
-            audio = AudioFile(
+            audio = model_factory.create_audio_file(
                 file_path=Path(f"/recordings/afternoon_{i}.wav"), duration=3.0, size_bytes=48000
             )
             session.add(audio)
             await session.flush()
 
-            detection = Detection(
+            detection = model_factory.create_detection(
                 audio_file_id=audio.id,
                 species_tensor="Cardinalis cardinalis_Northern Cardinal",
                 scientific_name="Cardinalis cardinalis",
@@ -77,11 +77,13 @@ async def test_database_with_data(tmp_path):
             session.add(detection)
 
         # Evening detection (today) - 1 hour ago
-        audio = AudioFile(file_path=Path("/recordings/evening.wav"), duration=3.0, size_bytes=48000)
+        audio = model_factory.create_audio_file(
+            file_path=Path("/recordings/evening.wav"), duration=3.0, size_bytes=48000
+        )
         session.add(audio)
         await session.flush()
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             audio_file_id=audio.id,
             species_tensor="Cyanocitta cristata_Blue Jay",
             scientific_name="Cyanocitta cristata",
@@ -120,13 +122,13 @@ async def test_database_with_data(tmp_path):
         # Yesterday's detections
         yesterday = today_start - timedelta(days=1)
         for i in range(2):
-            audio = AudioFile(
+            audio = model_factory.create_audio_file(
                 file_path=Path(f"/recordings/yesterday_{i}.wav"), duration=3.0, size_bytes=48000
             )
             session.add(audio)
             await session.flush()
 
-            detection = Detection(
+            detection = model_factory.create_detection(
                 audio_file_id=audio.id,
                 species_tensor="Poecile carolinensis_Carolina Chickadee",
                 scientific_name="Poecile carolinensis",
@@ -142,13 +144,13 @@ async def test_database_with_data(tmp_path):
 
         # Last week's detections
         last_week = today_start - timedelta(days=8)
-        audio = AudioFile(
+        audio = model_factory.create_audio_file(
             file_path=Path("/recordings/last_week.wav"), duration=3.0, size_bytes=48000
         )
         session.add(audio)
         await session.flush()
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             audio_file_id=audio.id,
             species_tensor="Sitta carolinensis_White-breasted Nuthatch",
             scientific_name="Sitta carolinensis",
@@ -190,10 +192,10 @@ def mock_species_display_service():
 
 
 @pytest.fixture
-def mock_detection_query_service(test_database_with_data, mock_species_database):
+def mock_detection_query_service(test_database_with_data, mock_species_database, test_config):
     """Create a DetectionQueryService with mocks."""
     db_service, _ = test_database_with_data  # Unpack tuple
-    return DetectionQueryService(db_service, mock_species_database)
+    return DetectionQueryService(db_service, mock_species_database, config=test_config)
 
 
 @pytest.fixture
@@ -209,6 +211,7 @@ async def analytics_manager_with_db(
     detection_query_service = DetectionQueryService(
         core_database=db_service,
         species_database=mock_species_database,
+        config=config,
     )
 
     return AnalyticsManager(detection_query_service, config)
@@ -348,7 +351,7 @@ class TestDashboardAnalyticsIntegration:
         assert len(scatter_data) == 9
 
         # Check time conversion for morning detections
-        morning_times = [d["time"] for d in scatter_data if d["species"] == "American Robin"]
+        morning_times = [d["time"] for d in scatter_data if d["common_name"] == "American Robin"]
         assert len(morning_times) == 5
 
         # Times should be around (fixed_now - 3 hours)
@@ -360,7 +363,7 @@ class TestDashboardAnalyticsIntegration:
 
         # Check confidence values
         robin_confidences = [
-            d["confidence"] for d in scatter_data if d["species"] == "American Robin"
+            d["confidence"] for d in scatter_data if d["common_name"] == "American Robin"
         ]
         assert min(robin_confidences) == pytest.approx(0.85, rel=0.01)
         assert max(robin_confidences) == pytest.approx(0.93, rel=0.01)

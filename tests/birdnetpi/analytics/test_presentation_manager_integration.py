@@ -11,13 +11,12 @@ from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
-from birdnetpi.detections.models import AudioFile, Detection
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.species.display import SpeciesDisplayService
 
 
 @pytest.fixture
-async def test_database_with_data(tmp_path):
+async def test_database_with_data(tmp_path, model_factory):
     """Should create a test database with sample data for presentation testing."""
     db_path = tmp_path / "test.db"
     db_service = CoreDatabaseService(db_path)
@@ -51,7 +50,7 @@ async def test_database_with_data(tmp_path):
             timestamp = today_start.replace(hour=hour, minute=minute)
 
             # Create audio file
-            audio_file = AudioFile(
+            audio_file = model_factory.create_audio_file(
                 file_path=Path(f"/recordings/audio_{i}.wav"),
                 duration=10.0,
                 size_bytes=1024 * 1024,  # Simplified size
@@ -75,7 +74,7 @@ async def test_database_with_data(tmp_path):
             minute = (i * 15) % 60
             timestamp = today_start.replace(hour=hour, minute=minute)
 
-            detection = Detection(
+            detection = model_factory.create_detection(
                 audio_file_id=audio_file.id,
                 species_tensor=f"{scientific_name}_{common_name}",
                 scientific_name=scientific_name,
@@ -90,7 +89,7 @@ async def test_database_with_data(tmp_path):
         week_audio_files = []
 
         for i in range(5):
-            audio_file = AudioFile(
+            audio_file = model_factory.create_audio_file(
                 file_path=Path(f"/recordings/week_audio_{i}.wav"),
                 duration=10.0,
                 size_bytes=1024 * 1024,
@@ -105,7 +104,7 @@ async def test_database_with_data(tmp_path):
             species_idx = i % len(species_list)
             scientific_name, common_name = species_list[species_idx]
 
-            detection = Detection(
+            detection = model_factory.create_detection(
                 audio_file_id=audio_file.id,
                 species_tensor=f"{scientific_name}_{common_name}",
                 scientific_name=scientific_name,
@@ -144,9 +143,9 @@ def mock_species_display_service():
 
 
 @pytest.fixture
-def mock_detection_query_service(test_database_with_data, mock_species_database):
+def mock_detection_query_service(test_database_with_data, mock_species_database, test_config):
     """Create a DetectionQueryService with mocks."""
-    return DetectionQueryService(test_database_with_data, mock_species_database)
+    return DetectionQueryService(test_database_with_data, mock_species_database, config=test_config)
 
 
 @pytest.fixture
@@ -165,6 +164,7 @@ async def presentation_manager(
     detection_query_service = DetectionQueryService(
         core_database=db_service,
         species_database=mock_species_database,
+        config=config,
     )
 
     # Create AnalyticsManager with DetectionQueryService

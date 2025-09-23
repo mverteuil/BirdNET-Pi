@@ -83,12 +83,12 @@ class Container(containers.DeclarativeContainer):
         config=config,
     )
 
-    # Detection query service - now uses multilingual service and species display
+    # Detection query service
     detection_query_service = providers.Factory(
         DetectionQueryService,
         core_database=core_database,
         species_database=species_database,
-        species_display_service=species_display_service,
+        config=config,
     )
 
     # Cache service - singleton for analytics performance

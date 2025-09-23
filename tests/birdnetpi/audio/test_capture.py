@@ -8,23 +8,12 @@ import pytest
 
 from birdnetpi.audio.capture import AudioCaptureService
 from birdnetpi.audio.filters import FilterChain
-from birdnetpi.config import BirdNETConfig
 
 
 @pytest.fixture
-def mock_config():
-    """Create a mock BirdNETConfig."""
-    config = MagicMock(spec=BirdNETConfig)
-    config.audio_device_index = 1
-    config.sample_rate = 48000
-    config.audio_channels = 1
-    return config
-
-
-@pytest.fixture
-def audio_service(mock_config):
+def audio_service(test_config):
     """Create an AudioCaptureService instance."""
-    return AudioCaptureService(mock_config, analysis_fifo_fd=-1, livestream_fifo_fd=-1)
+    return AudioCaptureService(test_config, analysis_fifo_fd=-1, livestream_fifo_fd=-1)
 
 
 @pytest.fixture
@@ -79,14 +68,14 @@ def test_start_capture_handles_exceptions(mock_input_stream, audio_service):
 
 
 @pytest.fixture
-def audio_service_with_fds(mock_config):
+def audio_service_with_fds(test_config):
     """Create an AudioCaptureService with real file descriptors."""
     # Create real file descriptors for testing
     analysis_fd = os.open("/dev/null", os.O_WRONLY)
     livestream_fd = os.open("/dev/null", os.O_WRONLY)
 
     service = AudioCaptureService(
-        mock_config,
+        test_config,
         analysis_fifo_fd=analysis_fd,
         livestream_fifo_fd=livestream_fd,
     )
@@ -251,10 +240,10 @@ def test_callback_handles_other_os_errors(mock_logger, mock_write, audio_service
 
 
 @pytest.fixture
-def audio_service_default_device(mock_config):
+def audio_service_default_device(test_config):
     """Create an AudioCaptureService configured for default device."""
-    mock_config.audio_device_index = -1  # Use default device
-    return AudioCaptureService(mock_config, analysis_fifo_fd=-1, livestream_fifo_fd=-1)
+    test_config.audio_device_index = -1  # Use default device
+    return AudioCaptureService(test_config, analysis_fifo_fd=-1, livestream_fifo_fd=-1)
 
 
 @patch("sounddevice.InputStream")
@@ -286,7 +275,7 @@ def test_default_device_logging(mock_logger, mock_input_stream, audio_service_de
 
 
 @pytest.fixture
-def audio_service_with_filters(mock_config):
+def audio_service_with_filters(test_config):
     """Create an AudioCaptureService with filter chains."""
     # Create mock filter chains
     mock_analysis_chain = MagicMock(spec=FilterChain)
@@ -297,7 +286,7 @@ def audio_service_with_filters(mock_config):
     mock_livestream_chain.__len__ = Mock(return_value=2)
 
     return AudioCaptureService(
-        mock_config,
+        test_config,
         analysis_fifo_fd=-1,
         livestream_fifo_fd=-1,
         analysis_filter_chain=mock_analysis_chain,
@@ -456,7 +445,7 @@ def test_stop_capture_normal_flow(mock_logger, mock_sleep, audio_service):
 
 
 @patch("sounddevice.InputStream")
-def test_full_audio_pipeline(mock_input_stream, mock_config):
+def test_full_audio_pipeline(mock_input_stream, test_config):
     """Should test complete flow from start to stop."""
     # Setup mocks
     mock_stream = MagicMock()
@@ -468,7 +457,7 @@ def test_full_audio_pipeline(mock_input_stream, mock_config):
     livestream_chain = FilterChain()
 
     service = AudioCaptureService(
-        mock_config,
+        test_config,
         analysis_fifo_fd=-1,
         livestream_fifo_fd=-1,
         analysis_filter_chain=analysis_chain,
@@ -491,13 +480,13 @@ def test_full_audio_pipeline(mock_input_stream, mock_config):
 
 
 @patch("sounddevice.InputStream")
-def test_multiple_start_stop_cycles(mock_input_stream, mock_config):
+def test_multiple_start_stop_cycles(mock_input_stream, test_config):
     """Should test repeated start/stop operations."""
     mock_stream = MagicMock()
     mock_stream.stopped = False
     mock_input_stream.return_value = mock_stream
 
-    service = AudioCaptureService(mock_config, analysis_fifo_fd=-1, livestream_fifo_fd=-1)
+    service = AudioCaptureService(test_config, analysis_fifo_fd=-1, livestream_fifo_fd=-1)
 
     # First cycle
     service.start_capture()

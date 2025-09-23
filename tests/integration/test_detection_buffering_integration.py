@@ -16,23 +16,7 @@ import pytest
 
 import birdnetpi.cli.generate_dummy_data as gdd
 from birdnetpi.audio.analysis import AudioAnalysisManager
-from birdnetpi.config import BirdNETConfig
 from birdnetpi.system.file_manager import FileManager
-
-
-@pytest.fixture
-def mock_config():
-    """Return a mock BirdNETConfig instance for integration tests."""
-    mock = MagicMock(spec=BirdNETConfig)
-    mock.sample_rate = 48000
-    mock.audio_channels = 1
-    mock.latitude = 63.4591
-    mock.longitude = -19.3647
-    mock.sensitivity_setting = 1.25
-    mock.species_confidence_threshold = 0.7
-    mock.analysis_overlap = 0.5
-    mock.detections_endpoint = "http://localhost:8000/api/v1/detections/"
-    return mock
 
 
 @pytest.fixture
@@ -66,7 +50,7 @@ def mock_path_resolver(tmp_path, path_resolver):
 def audio_analysis_service_integration(
     mock_file_manager,
     mock_path_resolver,
-    mock_config,
+    test_config,
 ):
     """Yield an AudioAnalysisManager instance for integration testing with proper cleanup."""
     with patch("birdnetpi.audio.analysis.BirdDetectionService") as mock_analysis_client_class:
@@ -91,7 +75,7 @@ def audio_analysis_service_integration(
         service = AudioAnalysisManager(
             mock_file_manager,
             mock_path_resolver,
-            mock_config,
+            test_config,
             mock_species_database,
             mock_session,
             detection_buffer_max_size=50,  # Reasonable size for integration tests

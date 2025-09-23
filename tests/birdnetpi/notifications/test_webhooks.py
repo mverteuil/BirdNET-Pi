@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from birdnetpi.detections.models import Detection
 from birdnetpi.notifications.webhooks import WebhookConfig, WebhookService
 
 
@@ -210,9 +209,9 @@ class TestWebhookService:
             mock_logger.error.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_send_detection_webhook_disabled(self, webhook_service):
+    async def test_send_detection_webhook_disabled(self, webhook_service, model_factory):
         """Should sending detection webhook when service is disabled."""
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
             common_name="Test Bird",
@@ -230,7 +229,7 @@ class TestWebhookService:
         # Should not raise any exceptions, but won't send anything
 
     @pytest.mark.asyncio
-    async def test_send_detection_webhook_enabled(self, enabled_webhook_service):
+    async def test_send_detection_webhook_enabled(self, enabled_webhook_service, model_factory):
         """Should sending detection webhook when service is enabled."""
         service = enabled_webhook_service
         service.client = AsyncMock()
@@ -239,7 +238,7 @@ class TestWebhookService:
         config = WebhookConfig(url="https://example.com/webhook", events=["detection"])
         service.add_webhook(config)
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
             common_name="Test Bird",
@@ -333,7 +332,7 @@ class TestWebhookService:
             assert payload["system"]["processes"] == 142
 
     @pytest.mark.asyncio
-    async def test_send_to_multiple_webhooks(self, enabled_webhook_service):
+    async def test_send_to_multiple_webhooks(self, enabled_webhook_service, model_factory):
         """Should sending to multiple webhooks concurrently."""
         service = enabled_webhook_service
         service.client = AsyncMock()
@@ -349,7 +348,7 @@ class TestWebhookService:
         service.add_webhook(config2)
         service.add_webhook(config3)
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
             common_name="Test Bird",

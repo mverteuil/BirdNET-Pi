@@ -4,7 +4,6 @@ from unittest.mock import Mock
 import pytest
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.detections.models import Detection
 from birdnetpi.notifications.manager import NotificationManager
 
 
@@ -23,17 +22,17 @@ def mock_active_websockets():
 
 
 @pytest.fixture
-def notification_manager(mock_active_websockets, mock_config):
+def notification_manager(mock_active_websockets, test_config):
     """Provide a NotificationManager instance for testing."""
-    service = NotificationManager(active_websockets=mock_active_websockets, config=mock_config)
+    service = NotificationManager(active_websockets=mock_active_websockets, config=test_config)
     service.register_listeners()  # Listeners
     return service
 
 
-def test_handle_detection_event_basic(notification_manager, caplog):
+def test_handle_detection_event_basic(notification_manager, caplog, model_factory):
     """Should log a basic notification message for detection event."""
     with caplog.at_level(logging.INFO):
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Turdus merula_Common Blackbird",
             scientific_name="Turdus merula",
             common_name="Common Blackbird",
@@ -47,10 +46,10 @@ def test_handle_detection_event_basic(notification_manager, caplog):
 
 
 def test_handle_detection_event__notification_rules_enabled(
-    mock_config, notification_manager, caplog
+    test_config, notification_manager, caplog, model_factory
 ):
     """Should log a notification message when rules are configured for detection event."""
-    mock_config.notification_rules = [
+    test_config.notification_rules = [
         {
             "name": "All Detections",
             "enabled": True,
@@ -58,7 +57,7 @@ def test_handle_detection_event__notification_rules_enabled(
         }
     ]
     with caplog.at_level(logging.INFO):
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Erithacus rubecula_European Robin",
             scientific_name="Erithacus rubecula",
             common_name="European Robin",
@@ -121,7 +120,7 @@ class TestAsyncNotifications:
     """Test async notification sending."""
 
     @pytest.mark.asyncio
-    async def test_send_websocket_notifications(self, notification_manager):
+    async def test_send_websocket_notifications(self, notification_manager, model_factory):
         """Should send notifications to all connected websockets."""
         import json
         from unittest.mock import AsyncMock
@@ -135,7 +134,7 @@ class TestAsyncNotifications:
         notification_manager.add_websocket(ws1)
         notification_manager.add_websocket(ws2)
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Parus major_Great Tit",
             scientific_name="Parus major",
             common_name="Great Tit",
@@ -162,7 +161,7 @@ class TestAsyncNotifications:
 
     @pytest.mark.asyncio
     async def test_send_websocket_notifications_with_disconnected(
-        self, notification_manager, caplog
+        self, notification_manager, caplog, model_factory
     ):
         """Should handle disconnected websockets gracefully."""
         from unittest.mock import AsyncMock
@@ -177,7 +176,7 @@ class TestAsyncNotifications:
         notification_manager.add_websocket(ws_disconnected)
         notification_manager.add_websocket(ws_active)
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Corvus corax_Common Raven",
             scientific_name="Corvus corax",
             common_name="Common Raven",
@@ -193,7 +192,7 @@ class TestAsyncNotifications:
         ws_active.send_text.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_send_iot_notifications_mqtt(self, notification_manager):
+    async def test_send_iot_notifications_mqtt(self, notification_manager, model_factory):
         """Should send MQTT notifications when service is available."""
         from unittest.mock import AsyncMock
 
@@ -201,7 +200,7 @@ class TestAsyncNotifications:
         mock_mqtt.publish_detection = AsyncMock()
         notification_manager.mqtt_service = mock_mqtt
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Strix aluco_Tawny Owl",
             scientific_name="Strix aluco",
             common_name="Tawny Owl",
@@ -213,7 +212,7 @@ class TestAsyncNotifications:
         mock_mqtt.publish_detection.assert_called_once_with(detection)
 
     @pytest.mark.asyncio
-    async def test_send_iot_notifications_webhook(self, notification_manager):
+    async def test_send_iot_notifications_webhook(self, notification_manager, model_factory):
         """Should send webhook notifications when service is available."""
         from unittest.mock import AsyncMock
 
@@ -221,7 +220,7 @@ class TestAsyncNotifications:
         mock_webhook.send_detection_webhook = AsyncMock()
         notification_manager.webhook_service = mock_webhook
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Falco peregrinus_Peregrine Falcon",
             scientific_name="Falco peregrinus",
             common_name="Peregrine Falcon",
@@ -233,7 +232,7 @@ class TestAsyncNotifications:
         mock_webhook.send_detection_webhook.assert_called_once_with(detection)
 
     @pytest.mark.asyncio
-    async def test_send_iot_notifications_both_services(self, notification_manager):
+    async def test_send_iot_notifications_both_services(self, notification_manager, model_factory):
         """Should send both MQTT and webhook notifications when both services available."""
         from unittest.mock import AsyncMock
 
@@ -245,7 +244,7 @@ class TestAsyncNotifications:
         mock_webhook.send_detection_webhook = AsyncMock()
         notification_manager.webhook_service = mock_webhook
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Aquila chrysaetos_Golden Eagle",
             scientific_name="Aquila chrysaetos",
             common_name="Golden Eagle",
@@ -261,9 +260,11 @@ class TestAsyncNotifications:
 class TestNotificationRules:
     """Test notification rule processing."""
 
-    def test_immediate_notification_rule(self, mock_config, notification_manager, caplog):
+    def test_immediate_notification_rule(
+        self, test_config, notification_manager, caplog, model_factory
+    ):
         """Should process immediate notification rules."""
-        mock_config.notification_rules = [
+        test_config.notification_rules = [
             {
                 "name": "High Confidence",
                 "enabled": True,
@@ -272,7 +273,7 @@ class TestNotificationRules:
             }
         ]
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Buteo buteo_Common Buzzard",
             scientific_name="Buteo buteo",
             common_name="Common Buzzard",
@@ -284,9 +285,11 @@ class TestNotificationRules:
 
         assert "Simulating sending notification for rule 'High Confidence'" in caplog.text
 
-    def test_disabled_notification_rule(self, mock_config, notification_manager, caplog):
+    def test_disabled_notification_rule(
+        self, test_config, notification_manager, caplog, model_factory
+    ):
         """Should skip disabled notification rules."""
-        mock_config.notification_rules = [
+        test_config.notification_rules = [
             {
                 "name": "Disabled Rule",
                 "enabled": False,
@@ -294,7 +297,7 @@ class TestNotificationRules:
             }
         ]
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Pica pica_Eurasian Magpie",
             scientific_name="Pica pica",
             common_name="Eurasian Magpie",
@@ -306,9 +309,11 @@ class TestNotificationRules:
 
         assert "Simulating sending notification" not in caplog.text
 
-    def test_scheduled_notification_rule(self, mock_config, notification_manager, caplog):
+    def test_scheduled_notification_rule(
+        self, test_config, notification_manager, caplog, model_factory
+    ):
         """Should skip non-immediate notification rules."""
-        mock_config.notification_rules = [
+        test_config.notification_rules = [
             {
                 "name": "Daily Summary",
                 "enabled": True,
@@ -316,7 +321,7 @@ class TestNotificationRules:
             }
         ]
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Columba palumbus_Common Wood Pigeon",
             scientific_name="Columba palumbus",
             common_name="Common Wood Pigeon",
@@ -329,9 +334,11 @@ class TestNotificationRules:
         # Should not send scheduled notifications on detection event
         assert "Simulating sending notification" not in caplog.text
 
-    def test_multiple_notification_rules(self, mock_config, notification_manager, caplog):
+    def test_multiple_notification_rules(
+        self, test_config, notification_manager, caplog, model_factory
+    ):
         """Should process only the first matching immediate rule."""
-        mock_config.notification_rules = [
+        test_config.notification_rules = [
             {
                 "name": "Rule 1",
                 "enabled": True,
@@ -344,7 +351,7 @@ class TestNotificationRules:
             },
         ]
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Regulus regulus_Goldcrest",
             scientific_name="Regulus regulus",
             common_name="Goldcrest",
@@ -362,9 +369,9 @@ class TestNotificationRules:
 class TestEventLoopHandling:
     """Test event loop handling for async operations."""
 
-    def test_handle_detection_without_event_loop(self, notification_manager, caplog):
+    def test_handle_detection_without_event_loop(self, notification_manager, caplog, model_factory):
         """Should handle detection events when no event loop is running."""
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Phoenicurus ochruros_Black Redstart",
             scientific_name="Phoenicurus ochruros",
             common_name="Black Redstart",
@@ -382,7 +389,7 @@ class TestEventLoopHandling:
         assert "No event loop running" in caplog.text
 
     @pytest.mark.asyncio
-    async def test_handle_detection_with_event_loop(self, notification_manager):
+    async def test_handle_detection_with_event_loop(self, notification_manager, model_factory):
         """Should handle detection events when event loop is running."""
         import asyncio
         from unittest.mock import AsyncMock
@@ -392,7 +399,7 @@ class TestEventLoopHandling:
         ws.send_text = AsyncMock()
         notification_manager.add_websocket(ws)
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Motacilla alba_White Wagtail",
             scientific_name="Motacilla alba",
             common_name="White Wagtail",
@@ -412,12 +419,12 @@ class TestEventLoopHandling:
 class TestSignalRegistration:
     """Test signal registration."""
 
-    def test_register_listeners(self, mock_active_websockets, mock_config, caplog):
+    def test_register_listeners(self, mock_active_websockets, test_config, caplog):
         """Should register detection signal listeners."""
         from birdnetpi.notifications.signals import detection_signal
 
         # Create new manager (without auto-registration)
-        manager = NotificationManager(mock_active_websockets, mock_config)
+        manager = NotificationManager(mock_active_websockets, test_config)
 
         # Verify no listeners before registration
         initial_receivers = len(detection_signal.receivers)
@@ -609,12 +616,14 @@ class TestEdgeCases:
     """Test edge cases and error handling."""
 
     @pytest.mark.asyncio
-    async def test_send_websocket_notifications_empty_set(self, notification_manager):
+    async def test_send_websocket_notifications_empty_set(
+        self, notification_manager, model_factory
+    ):
         """Should return early when no websockets are connected."""
         # Ensure websockets set is empty
         notification_manager.active_websockets.clear()
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Test species",
             scientific_name="Testicus species",
             common_name="Test Bird",
@@ -626,7 +635,9 @@ class TestEdgeCases:
         # No assertions needed - just ensuring line 92 is covered
 
     @pytest.mark.asyncio
-    async def test_send_iot_notifications_error_handling(self, notification_manager, caplog):
+    async def test_send_iot_notifications_error_handling(
+        self, notification_manager, caplog, model_factory
+    ):
         """Should handle and log errors in IoT notifications."""
         from unittest.mock import AsyncMock
 
@@ -635,7 +646,7 @@ class TestEdgeCases:
         mock_mqtt.publish_detection = AsyncMock(side_effect=Exception("Network error"))
         notification_manager.mqtt_service = mock_mqtt
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Error test",
             scientific_name="Erroricus testicus",
             common_name="Error Bird",

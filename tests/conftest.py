@@ -1,3 +1,4 @@
+from datetime import UTC
 from pathlib import Path
 
 import matplotlib
@@ -327,3 +328,117 @@ def check_required_assets(repo_root: Path):
             os.environ["BIRDNETPI_DATA"] = stashed_data_dir
         else:
             os.environ.pop("BIRDNETPI_DATA", None)
+
+
+@pytest.fixture(scope="session")
+def model_factory():
+    """Create a factory for test model instances.
+
+    This fixture provides a centralized way to create test models with sensible defaults,
+    eliminating the need for MagicMock objects that can't be JSON serialized and reducing
+    duplication across test files.
+    """
+    import uuid
+    from datetime import datetime
+    from typing import Any
+
+    from birdnetpi.detections.models import AudioFile, Detection, DetectionWithTaxa
+    from birdnetpi.location.models import Weather
+
+    class ModelFactory:
+        """Factory class for creating test model instances."""
+
+        @staticmethod
+        def create_audio_file(**kwargs: Any) -> AudioFile:
+            """Create an AudioFile instance with sensible defaults."""
+            defaults = {
+                "id": uuid.uuid4(),
+                "file_path": Path("/tmp/test_audio.wav"),
+                "duration": 3.0,
+                "size_bytes": 48000,
+            }
+            defaults.update(kwargs)
+            return AudioFile(**defaults)
+
+        @staticmethod
+        def create_detection(**kwargs: Any) -> Detection:
+            """Create a Detection instance with sensible defaults."""
+            defaults = {
+                "id": uuid.uuid4(),
+                "species_tensor": "Unknown species_Unknown",
+                "scientific_name": "Unknown species",
+                "common_name": "Unknown",
+                "confidence": 0.5,
+                "timestamp": datetime.now(UTC),
+                "audio_file_id": None,
+                "latitude": 0.0,
+                "longitude": 0.0,
+                "species_confidence_threshold": 0.1,
+                "week": 1,
+                "sensitivity_setting": 1.5,
+                "overlap": 0.0,
+                "weather_timestamp": None,
+                "weather_latitude": None,
+                "weather_longitude": None,
+                "hour_epoch": None,
+            }
+            defaults.update(kwargs)
+            return Detection(**defaults)
+
+        @staticmethod
+        def create_detection_with_taxa(**kwargs: Any) -> DetectionWithTaxa:
+            """Create a DetectionWithTaxa instance with sensible defaults."""
+            defaults = {
+                "id": uuid.uuid4(),
+                "species_tensor": "Unknown species_Unknown",
+                "scientific_name": "Unknown species",
+                "common_name": "Unknown",
+                "confidence": 0.5,
+                "timestamp": datetime.now(UTC),
+                "audio_file_id": None,
+                "latitude": 0.0,
+                "longitude": 0.0,
+                "species_confidence_threshold": 0.1,
+                "week": 1,
+                "sensitivity_setting": 1.5,
+                "overlap": 0.0,
+                "weather_timestamp": None,
+                "weather_latitude": None,
+                "weather_longitude": None,
+                "hour_epoch": None,
+                # DetectionWithTaxa specific fields
+                "ioc_english_name": None,
+                "translated_name": None,
+                "family": None,
+                "genus": None,
+                "order_name": None,
+                "is_first_ever": None,
+                "is_first_in_period": None,
+                "first_ever_detection": None,
+                "first_period_detection": None,
+            }
+            defaults.update(kwargs)
+            return DetectionWithTaxa(**defaults)
+
+        @staticmethod
+        def create_weather(**kwargs: Any) -> Weather:
+            """Create a Weather instance with sensible defaults."""
+            defaults = {
+                "timestamp": datetime.now(UTC),
+                "latitude": 0.0,
+                "longitude": 0.0,
+                "source": "test",
+                "temperature_c": 20.0,
+                "humidity_percent": 50,
+                "pressure_hpa": 1013.0,
+                "wind_speed_kmh": 10.0,
+                "wind_direction_deg": 180,
+                "precipitation_mm": 0.0,
+                "cloud_cover_percent": 25,
+                "weather_code": 0,
+                "description": "Clear",
+            }
+            defaults.update(kwargs)
+            return Weather(**defaults)
+
+    return ModelFactory()

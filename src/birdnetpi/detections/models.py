@@ -5,8 +5,9 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+from pydantic import computed_field, field_serializer, model_serializer
 from sqlalchemy import Column, Index, String
 from sqlalchemy.orm import relationship
 from sqlmodel import Field, Relationship, SQLModel
@@ -124,6 +125,74 @@ class DetectionWithTaxa(DetectionBase):
     genus: str | None = None
     order_name: str | None = None
 
+    # First detection metadata (optional, populated when requested)
+    is_first_ever: bool | None = None
+    is_first_in_period: bool | None = None
+    first_ever_detection: datetime | None = None
+    first_period_detection: datetime | None = None
+
+    @field_serializer("timestamp")
+    def serialize_timestamp(self, value: datetime) -> str:
+        """Serialize timestamp to ISO format."""
+        return value.isoformat() if value else ""
+
+    @field_serializer("first_ever_detection", "first_period_detection")
+    def serialize_datetime_fields(self, value: datetime | None) -> str | None:
+        """Serialize datetime fields to ISO format."""
+        return value.isoformat() if value else None
+
+    @field_serializer("id")
+    def serialize_id(self, value: uuid.UUID) -> str:
+        """Serialize UUID to string."""
+        return str(value)
+
+    @field_serializer("confidence")
+    def serialize_confidence(self, value: float) -> float:
+        """Round confidence to 2 decimal places."""
+        return round(value, 2) if value is not None else 0.0
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def date(self) -> str:
+        """Get the date portion of timestamp."""
+        return self.timestamp.strftime("%Y-%m-%d") if self.timestamp else ""
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def time(self) -> str:
+        """Get the time portion of timestamp."""
+        return self.timestamp.strftime("%H:%M") if self.timestamp else ""
+
+    @model_serializer(mode="wrap")
+    def serialize_model(self, serializer: object, info: object) -> dict[str, Any]:
+        """Serialize model with config-aware display name computation.
+
+        This allows us to pass config through context to compute
+        the proper display name based on configuration rules.
+        Also provides backward compatibility by setting common_name.
+        """
+        # Get the default serialization
+        data = serializer(self)  # type: ignore[operator]
+
+        # Check if we have context with config
+        if info and hasattr(info, "context") and info.context:  # type: ignore[attr-defined]
+            config = info.context.get("config")  # type: ignore[attr-defined]
+
+            if config:
+                # Create a display service with the config and use it
+                from birdnetpi.species.display import SpeciesDisplayService
+
+                display_service = SpeciesDisplayService(config)
+                # Always prefer translation (as recommended)
+                display_name = display_service.format_species_display(self, prefer_translation=True)
+
+                # Set both display_name and common_name for backward compatibility
+                data["display_name"] = display_name
+                # Override common_name with the properly formatted display name
+                data["common_name"] = display_name
+
+        return data
+
     def __init__(
         self,
         detection: Detection | None = None,
@@ -132,6 +201,10 @@ class DetectionWithTaxa(DetectionBase):
         family: str | None = None,
         genus: str | None = None,
         order_name: str | None = None,
+        is_first_ever: bool | None = None,
+        is_first_in_period: bool | None = None,
+        first_ever_detection: datetime | None = None,
+        first_period_detection: datetime | None = None,
         **kwargs,  # noqa: ANN003
     ):
         """Initialize with a detection and localization data.
@@ -165,6 +238,12 @@ class DetectionWithTaxa(DetectionBase):
         self.family = family
         self.genus = genus
         self.order_name = order_name
+
+        # Set first detection fields
+        self.is_first_ever = is_first_ever
+        self.is_first_in_period = is_first_in_period
+        self.first_ever_detection = first_ever_detection
+        self.first_period_detection = first_period_detection
 
     @property
     def detection(self) -> DetectionBase:

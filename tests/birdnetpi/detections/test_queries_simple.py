@@ -28,11 +28,12 @@ def mock_species_database():
 
 
 @pytest.fixture
-def detection_query_service(mock_core_database, mock_species_database):
+def detection_query_service(mock_core_database, mock_species_database, test_config):
     """Create DetectionQueryService with mocks."""
     return DetectionQueryService(
         core_database=mock_core_database,
         species_database=mock_species_database,
+        config=test_config,
     )
 
 
@@ -105,31 +106,6 @@ class TestDetectionQueryServiceBasics:
         clause = detection_query_service._build_order_clause("confidence", False)
         assert "confidence" in clause
         assert "ASC" in clause
-
-    def test_get_species_display_name_with_detection_base(self, detection_query_service):
-        """Should get display name for DetectionBase."""
-        detection = MagicMock(spec=Detection)
-        detection.scientific_name = "Turdus migratorius"
-        detection.common_name = "American Robin"
-
-        # With prefer_translation=True (default), returns common name
-        result = detection_query_service.get_species_display_name(detection)
-        assert result == "American Robin"
-
-        # With prefer_translation=False, returns scientific name
-        result = detection_query_service.get_species_display_name(
-            detection, prefer_translation=False
-        )
-        assert result == "Turdus migratorius"
-
-    def test_get_species_display_name_no_common(self, detection_query_service):
-        """Should handle detection without common name."""
-        detection = MagicMock(spec=Detection)
-        detection.scientific_name = "Turdus migratorius"
-        detection.common_name = None
-
-        result = detection_query_service.get_species_display_name(detection)
-        assert result == "Turdus migratorius"
 
     @pytest.mark.asyncio
     async def test_get_detection_count(self, detection_query_service, mock_core_database):

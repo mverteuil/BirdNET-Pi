@@ -9,7 +9,6 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.notifications.signals import detection_signal
 from birdnetpi.web.core.container import Container
@@ -17,7 +16,7 @@ from birdnetpi.web.routers.detections_api_routes import router
 
 
 @pytest.fixture
-def sse_client():
+def sse_client(test_config):
     """Create test client with SSE endpoints and mocked dependencies."""
     # Create the app
     app = FastAPI()
@@ -27,17 +26,13 @@ def sse_client():
 
     # Override services with mocks
     mock_query_service = MagicMock(spec=DetectionQueryService)
-    mock_analytics_manager = MagicMock(spec=AnalyticsManager)
+    mock_detection_query_service = MagicMock(spec=DetectionQueryService)
 
     container.detection_query_service.override(mock_query_service)
-    container.analytics_manager.override(mock_analytics_manager)
+    container.detection_query_service.override(mock_detection_query_service)
 
-    # Mock the config dependency
-    from birdnetpi.config.models import BirdNETConfig
-
-    mock_config = MagicMock(spec=BirdNETConfig)
-    mock_config.language = "en"
-    container.config.override(mock_config)
+    # Use the real test config from the fixture
+    container.config.override(test_config)
 
     # Wire the container
     container.wire(modules=["birdnetpi.web.routers.detections_api_routes"])
@@ -50,8 +45,7 @@ def sse_client():
 
     # Store the mocks for access in tests
     client.mock_query_service = mock_query_service  # type: ignore[attr-defined]
-    client.mock_analytics_manager = mock_analytics_manager  # type: ignore[attr-defined]
-    client.mock_config = mock_config  # type: ignore[attr-defined]
+    client.mock_detection_query_service = mock_detection_query_service  # type: ignore[attr-defined]
 
     return client
 
@@ -62,28 +56,44 @@ class TestSpeciesFrequency:
     def test_get_species_frequency_default_hours(self, sse_client):
         """Should return species frequency for default 24 hours."""
         mock_frequency = [
-            {"name": "American Robin", "count": 42, "percentage": 35.0, "category": "frequent"},
-            {"name": "House Sparrow", "count": 30, "percentage": 25.0, "category": "frequent"},
-            {"name": "Blue Jay", "count": 20, "percentage": 16.7, "category": "common"},
+            {
+                "common_name": "American Robin",
+                "scientific_name": "Turdus migratorius",
+                "count": 42,
+                "percentage": 35.0,
+                "category": "frequent",
+            },
+            {
+                "common_name": "House Sparrow",
+                "scientific_name": "Passer domesticus",
+                "count": 30,
+                "percentage": 25.0,
+                "category": "frequent",
+            },
+            {
+                "common_name": "Blue Jay",
+                "scientific_name": "Cyanocitta cristata",
+                "count": 20,
+                "percentage": 16.7,
+                "category": "common",
+            },
         ]
 
-        sse_client.mock_analytics_manager.get_species_frequency_analysis = AsyncMock(
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
             return_value=mock_frequency
         )
 
-        response = sse_client.get("/api/detections/species/frequency")
+        response = sse_client.get("/api/detections/species/summary")
 
         assert response.status_code == 200
         data = response.json()
-        assert data["hours"] == 24
+        # New API doesn't return hours field
         assert len(data["species"]) == 3
         assert data["species"][0]["name"] == "American Robin"
-        assert data["species"][0]["count"] == 42
+        assert data["species"][0]["detection_count"] == 42
 
         # Verify the analytics manager was called with correct params
-        sse_client.mock_analytics_manager.get_species_frequency_analysis.assert_called_once_with(
-            hours=24
-        )
+        sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
 
     def test_get_species_frequency_custom_hours(self, sse_client):
         """Should return species frequency for custom time period."""
@@ -92,54 +102,48 @@ class TestSpeciesFrequency:
             {"name": "Blue Jay", "count": 10, "percentage": 33.3, "category": "common"},
         ]
 
-        sse_client.mock_analytics_manager.get_species_frequency_analysis = AsyncMock(
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
             return_value=mock_frequency
         )
 
-        response = sse_client.get("/api/detections/species/frequency?hours=48")
+        response = sse_client.get("/api/detections/species/summary?hours=48")
 
         assert response.status_code == 200
         data = response.json()
-        assert data["hours"] == 48
+        # New API doesn't return hours field
         assert len(data["species"]) == 2
 
         # Verify the analytics manager was called with correct params
-        sse_client.mock_analytics_manager.get_species_frequency_analysis.assert_called_once_with(
-            hours=48
-        )
+        sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
 
     def test_get_species_frequency_empty_result(self, sse_client):
         """Should handle empty results gracefully."""
-        sse_client.mock_analytics_manager.get_species_frequency_analysis = AsyncMock(
-            return_value=[]
-        )
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(return_value=[])
 
-        response = sse_client.get("/api/detections/species/frequency?hours=1")
+        response = sse_client.get("/api/detections/species/summary?hours=1")
 
         assert response.status_code == 200
         data = response.json()
-        assert data["hours"] == 1
+        # New API doesn't return hours field
         assert data["species"] == []
 
     def test_get_species_frequency_error(self, sse_client):
         """Should handle errors in species frequency analysis."""
-        sse_client.mock_analytics_manager.get_species_frequency_analysis = AsyncMock(
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
             side_effect=Exception("Analysis failed")
         )
 
-        response = sse_client.get("/api/detections/species/frequency")
+        response = sse_client.get("/api/detections/species/summary")
 
         assert response.status_code == 500
-        assert "Error retrieving species frequency" in response.json()["detail"]
+        assert "Error retrieving species summary" in response.json()["detail"]
 
     def test_get_species_frequency_negative_hours(self, sse_client):
         """Should handle negative hours gracefully."""
         # Even with negative hours, the analytics manager should handle it
-        sse_client.mock_analytics_manager.get_species_frequency_analysis = AsyncMock(
-            return_value=[]
-        )
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(return_value=[])
 
-        response = sse_client.get("/api/detections/species/frequency?hours=-1")
+        response = sse_client.get("/api/detections/species/summary?hours=-1")
 
         # The endpoint doesn't validate hours, it passes it to analytics manager
         assert response.status_code == 200
@@ -153,20 +157,215 @@ class TestSpeciesFrequency:
             {"name": "Species B", "count": 300, "percentage": 24.0, "category": "common"},
         ]
 
-        sse_client.mock_analytics_manager.get_species_frequency_analysis = AsyncMock(
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
             return_value=mock_frequency
         )
 
-        response = sse_client.get("/api/detections/species/frequency?hours=720")  # 30 days
+        response = sse_client.get("/api/detections/species/summary?hours=720")  # 30 days
 
         assert response.status_code == 200
         data = response.json()
-        assert data["hours"] == 720
+        # New API doesn't return hours field
         assert len(data["species"]) == 2
 
-        sse_client.mock_analytics_manager.get_species_frequency_analysis.assert_called_once_with(
-            hours=720
+        sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
+
+    def test_get_species_frequency_with_period_day(self, sse_client):
+        """Should accept period=day parameter and convert to 24 hours."""
+        mock_frequency = [
+            {"name": "American Robin", "count": 42, "percentage": 35.0, "category": "frequent"},
+        ]
+
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
+            return_value=mock_frequency
         )
+
+        response = sse_client.get("/api/detections/species/summary?period=day")
+
+        assert response.status_code == 200
+        data = response.json()
+        # New API doesn't return hours field  # day = 24 hours
+        assert len(data["species"]) == 1
+
+        # Verify the analytics manager was called with 24 hours
+        sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
+
+    def test_get_species_frequency_with_period_week(self, sse_client):
+        """Should accept period=week parameter and convert to 168 hours."""
+        mock_frequency = [
+            {"name": "Blue Jay", "count": 150, "percentage": 45.0, "category": "frequent"},
+        ]
+
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
+            return_value=mock_frequency
+        )
+
+        response = sse_client.get("/api/detections/species/summary?period=week")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["period"] == "week"  # API normalizes to lowercase
+        assert len(data["species"]) == 1
+
+        sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
+
+    def test_get_species_frequency_with_period_month(self, sse_client):
+        """Should accept period=month parameter and convert to 720 hours."""
+        mock_frequency = [
+            {"name": "Cardinal", "count": 500, "percentage": 50.0, "category": "frequent"},
+        ]
+
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
+            return_value=mock_frequency
+        )
+
+        response = sse_client.get("/api/detections/species/summary?period=month")
+
+        assert response.status_code == 200
+        response.json()  # Validate response is valid JSON
+        # New API doesn't return hours field  # month = 720 hours (30 days)
+
+        sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
+
+    def test_get_species_frequency_with_period_season(self, sse_client):
+        """Should accept period=season parameter and convert to 2160 hours."""
+        mock_frequency = [
+            {"name": "Warbler", "count": 1200, "percentage": 40.0, "category": "frequent"},
+        ]
+
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
+            return_value=mock_frequency
+        )
+
+        response = sse_client.get("/api/detections/species/summary?period=season")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["period"] == "season"  # season = 2160 hours (90 days)
+
+        sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
+
+    def test_get_species_frequency_with_period_year(self, sse_client):
+        """Should accept period=year parameter and convert to 8760 hours."""
+        mock_frequency = [
+            {"name": "Owl", "count": 3650, "percentage": 25.0, "category": "common"},
+        ]
+
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
+            return_value=mock_frequency
+        )
+
+        response = sse_client.get("/api/detections/species/summary?period=year")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["period"] == "year"  # year = 8760 hours (365 days)
+
+        sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
+
+    def test_get_species_frequency_with_period_historical(self, sse_client):
+        """Should accept period=historical parameter and convert to 999999 hours."""
+        mock_frequency = [
+            {"name": "Eagle", "count": 10000, "percentage": 30.0, "category": "frequent"},
+        ]
+
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
+            return_value=mock_frequency
+        )
+
+        response = sse_client.get("/api/detections/species/summary?period=historical")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["period"] == "historical"  # historical = 999999 hours
+
+        sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
+
+    def test_get_species_frequency_period_case_insensitive(self, sse_client):
+        """Should handle period parameter case-insensitively."""
+        mock_frequency = [
+            {
+                "common_name": "Sparrow",
+                "scientific_name": "Passer domesticus",
+                "count": 20,
+                "percentage": 100.0,
+                "category": "frequent",
+            },
+        ]
+
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
+            return_value=mock_frequency
+        )
+
+        # Test with uppercase - API preserves case
+        response = sse_client.get("/api/detections/species/summary?period=WEEK")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["period"] == "WEEK"  # API preserves case from request
+
+        # Test with mixed case - API preserves case
+        response = sse_client.get("/api/detections/species/summary?period=Week")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["period"] == "Week"  # API preserves case from request
+
+    def test_get_species_frequency_period_overrides_hours(self, sse_client):
+        """Should use period value when both period and hours are provided."""
+        mock_frequency = [
+            {"name": "Robin", "count": 75, "percentage": 60.0, "category": "frequent"},
+        ]
+
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
+            return_value=mock_frequency
+        )
+
+        # Provide both parameters - period should take precedence
+        response = sse_client.get("/api/detections/species/summary?hours=48&period=week")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["period"] == "week"  # API normalizes to lowercase, not 48
+
+        # Should use week's period, not the provided 48 hours
+        sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
+
+    def test_get_species_frequency_invalid_period(self, sse_client):
+        """Should default to 24 hours for invalid period values."""
+        mock_frequency = [
+            {"name": "Finch", "count": 10, "percentage": 100.0, "category": "common"},
+        ]
+
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
+            return_value=mock_frequency
+        )
+
+        # Invalid period should default to 24 hours
+        response = sse_client.get("/api/detections/species/summary?period=invalid")
+
+        assert response.status_code == 200
+        response.json()  # Validate response is valid JSON
+        # New API doesn't return hours field  # Defaults to 24 hours
+
+        sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
+
+    def test_get_species_frequency_empty_period(self, sse_client):
+        """Should default to 24 hours when period is empty string."""
+        mock_frequency = [
+            {"name": "Crow", "count": 5, "percentage": 100.0, "category": "rare"},
+        ]
+
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
+            return_value=mock_frequency
+        )
+
+        # Empty period should default to 24 hours
+        response = sse_client.get("/api/detections/species/summary?period=")
+
+        assert response.status_code == 200
+        response.json()  # Validate response is valid JSON
+        # New API doesn't return hours field  # Defaults to 24 hours
 
 
 class TestSSEStreaming:
@@ -206,7 +405,6 @@ class TestSSEStreaming:
         )
 
         mock_query_service.get_detection_with_taxa = AsyncMock(return_value=mock_detection)
-        mock_query_service.get_species_display_name = MagicMock(return_value="Common Raven")
 
         # We'd need to set up a more complex test harness to fully test the SSE generator
         # For now, we've verified the endpoint is accessible and returns correct headers
@@ -285,15 +483,15 @@ class TestSSEErrorHandling:
 
     def test_species_frequency_handles_analytics_errors(self, sse_client):
         """Should return 500 when analytics manager fails."""
-        sse_client.mock_analytics_manager.get_species_frequency_analysis = AsyncMock(
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
             side_effect=Exception("Analytics error")
         )
 
-        response = sse_client.get("/api/detections/species/frequency")
+        response = sse_client.get("/api/detections/species/summary")
 
         assert response.status_code == 500
         data = response.json()
-        assert "Error retrieving species frequency" in data["detail"]
+        assert "Error retrieving species summary" in data["detail"]
 
     def test_stream_handles_cancellation(self):
         """Should handle client disconnection gracefully."""

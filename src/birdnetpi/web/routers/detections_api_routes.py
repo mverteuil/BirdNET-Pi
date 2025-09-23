@@ -10,15 +10,14 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse, StreamingResponse
 
-# from birdnetpi.analytics.plotting_manager import PlottingManager  # Removed - analytics refactor
-# TODO: Re-implement spectrogram generation without PlottingManager
-from birdnetpi.analytics.analytics import AnalyticsManager
+from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import Detection
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.notifications.signals import detection_signal
 from birdnetpi.utils.cache import Cache
+from birdnetpi.utils.time_periods import calculate_period_boundaries
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.detections import DetectionEvent, LocationUpdate
 
@@ -89,12 +88,14 @@ async def create_detection(
 async def get_recent_detections(
     limit: int = 10,
     offset: int = 0,  # Added for compatibility with old endpoint
-    language_code: str = "en",
     data_manager: DataManager = Depends(  # noqa: B008
         Provide[Container.data_manager]
     ),
     detection_query_service: DetectionQueryService = Depends(  # noqa: B008
         Provide[Container.detection_query_service]
+    ),
+    config: BirdNETConfig = Depends(  # noqa: B008
+        Provide[Container.config]
     ),
 ) -> JSONResponse:
     """Get recent bird detections with taxa and translation data."""
@@ -105,27 +106,19 @@ async def get_recent_detections(
             offset=offset,
             order_by="timestamp",
             order_desc=True,
-            language_code=language_code,
+            include_first_detections=True,  # API always provides rich metadata
         )
-        detection_list = [
-            {
-                "id": str(detection.id),
-                "scientific_name": detection.scientific_name,
-                "common_name": detection_query_service.get_species_display_name(
-                    detection, True, language_code
-                ),
-                "confidence": detection.confidence,
-                "timestamp": detection.timestamp.isoformat(),
-                "latitude": detection.latitude,
-                "longitude": detection.longitude,
-                "ioc_english_name": detection.ioc_english_name,
-                "translated_name": detection.translated_name,
-                "family": detection.family,
-                "genus": detection.genus,
-                "order_name": detection.order_name,
-            }
-            for detection in detections
-        ]
+        detection_list = []
+        for detection in detections:
+            # Use model_dump with config context - this automatically handles display_name
+            # and sets common_name for backward compatibility
+            det_dict = detection.model_dump(
+                mode="json",
+                exclude_none=True,
+                exclude={"species_tensor", "audio_file_id", "week", "hour_epoch"},
+                context={"config": config},
+            )
+            detection_list.append(det_dict)
         return JSONResponse({"detections": detection_list, "count": len(detection_list)})
     except Exception as e:
         logger.error("Error getting recent detections: %s", e)
@@ -140,23 +133,21 @@ async def get_detections(
     period: str = Query("day", description="Time period filter"),
     search: str | None = Query(None, description="Search species name"),
     sort_by: str = Query(
-        "timestamp", description="Field to sort by: timestamp, species, confidence"
+        "timestamp", description="Field to sort by: timestamp, species, confidence, first"
     ),
     sort_order: str = Query("desc", description="Sort order: asc or desc"),
-    data_manager: DataManager = Depends(  # noqa: B008
-        Provide[Container.data_manager]
-    ),
-    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
-        Provide[Container.detection_query_service]
-    ),
-    config: BirdNETConfig = Depends(  # noqa: B008
-        Provide[Container.config]
+    presentation_manager: PresentationManager = Depends(  # noqa: B008
+        Provide[Container.presentation_manager]
     ),
     cache: Cache = Depends(  # noqa: B008
         Provide[Container.cache_service]
     ),
 ) -> JSONResponse:
-    """Get paginated detections with filtering."""
+    """Get paginated detections with filtering.
+
+    This endpoint now delegates to PresentationManager for data processing
+    and formatting, keeping the router focused on HTTP concerns.
+    """
     # Register cache invalidation handler if not already registered
     global _paginated_cache_handler_registered
     if cache and not _paginated_cache_handler_registered:
@@ -177,228 +168,26 @@ async def get_detections(
             if cached_response is not None:
                 logger.debug(f"Returning cached paginated detections: {cache_key}")
                 return JSONResponse(cached_response)
-        # Calculate date range based on period
-        end_time = datetime.now()
-        period_days = {
-            "day": 1,
-            "week": 7,
-            "month": 30,
-            "season": 90,
-            "year": 365,
-            "historical": 36500,  # ~100 years
-        }
-        days = period_days.get(period, 1)
-        start_time = end_time - timedelta(days=days)
 
-        # Get detections with taxa enrichment for proper display names
-        # Pass limit=None to get ALL detections for the period, not just default 100
-        # Map sort_by to database column names
-        sort_column_map = {
-            "timestamp": "timestamp",
-            "species": "scientific_name",
-            "confidence": "confidence",
-        }
-        order_by_column = sort_column_map.get(sort_by, "timestamp")
-        order_desc = sort_order.lower() == "desc"
-
-        all_detections = await detection_query_service.query_detections(
-            start_date=start_time,
-            end_date=end_time,
-            language_code=config.language,
-            order_by=order_by_column,
-            order_desc=order_desc,
-            limit=None,  # Get all detections, don't use default limit
+        # Delegate to PresentationManager for data processing and formatting
+        response_data = await presentation_manager.format_paginated_detections(
+            period=period,
+            page=page,
+            per_page=per_page,
+            search=search,
+            sort_by=sort_by,
+            sort_order=sort_order,
         )
 
-        # Filter by search term if provided
-        if search:
-            search_lower = search.lower()
-            all_detections = [
-                d
-                for d in all_detections
-                if search_lower in (d.common_name or "").lower()
-                or search_lower in (d.scientific_name or "").lower()
-            ]
-
-        # Calculate pagination
-        total = len(all_detections)
-        total_pages = (total + per_page - 1) // per_page
-        offset = (page - 1) * per_page
-
-        # Get page of detections
-        page_detections = all_detections[offset : offset + per_page]
-
-        # Format response using proper display names
-        detection_list = []
-        for detection in page_detections:
-            # Always use the display name logic which handles localization properly
-            display_name = detection_query_service.get_species_display_name(
-                detection, True, config.language
-            )
-
-            detection_list.append(
-                {
-                    "id": str(detection.id),
-                    "timestamp": detection.timestamp.strftime("%H:%M"),
-                    "date": detection.timestamp.strftime("%Y-%m-%d"),
-                    "species": display_name,
-                    "scientific_name": detection.scientific_name,
-                    "confidence": round(detection.confidence, 2),
-                }
-            )
-
-        # Prepare response data
-        response_data = {
-            "detections": detection_list,
-            "pagination": {
-                "page": page,
-                "per_page": per_page,
-                "total": total,
-                "total_pages": total_pages,
-                "has_next": page < total_pages,
-                "has_prev": page > 1,
-            },
-        }
-
         # Cache the response data before returning
-        cache.set("api_paginated", response_data, key=cache_key, ttl=300)  # 5 minute TTL
-        logger.debug(f"Cached paginated detections: {cache_key}")
+        if cache:
+            cache.set("api_paginated", response_data, key=cache_key, ttl=300)  # 5 minute TTL
+            logger.debug(f"Cached paginated detections: {cache_key}")
 
         return JSONResponse(response_data)
     except Exception as e:
         logger.error("Error getting paginated detections: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving detections") from e
-
-
-@router.get("/species-analytics")
-@inject
-async def get_species_analytics(
-    period: str = Query("day", description="Time period for analytics"),
-    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
-        Provide[Container.detection_query_service]
-    ),
-    config: BirdNETConfig = Depends(Provide[Container.config]),  # noqa: B008
-    cache: Cache = Depends(Provide[Container.cache_service]),  # noqa: B008
-) -> JSONResponse:
-    """Get species analytics for the specified period.
-
-    Returns species frequency data with counts for the selected period only.
-    Results are cached and invalidated when new detections arrive.
-    """
-    try:
-        # Generate cache key
-        cache_key = f"species_analytics_{period}_{config.language}"
-
-        # Check cache first
-        if cache:
-            cached_response = cache.get("api_species_analytics", key=cache_key)
-            if cached_response is not None:
-                logger.debug(f"Returning cached species analytics: {cache_key}")
-                return JSONResponse(cached_response)
-
-        # Calculate time range for the period
-        from datetime import timedelta
-
-        import pytz
-
-        # Get the configured timezone
-        user_tz = pytz.timezone(config.timezone) if config.timezone != "UTC" else UTC
-
-        # Get current time in user's timezone
-        now_utc = datetime.now(UTC)
-        now_local = now_utc.astimezone(user_tz)
-
-        # Calculate "today" start in user's timezone, then convert back to UTC for queries
-        today_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
-        today = today_local.astimezone(UTC)  # Convert back to UTC for database queries
-
-        # Define period ranges
-        period_configs = {
-            "day": (today, today + timedelta(days=1)),  # Today only
-            "week": (today - timedelta(days=7), today + timedelta(days=1)),
-            "month": (today - timedelta(days=30), today + timedelta(days=1)),
-            "season": (today - timedelta(days=90), today + timedelta(days=1)),
-            "year": (today - timedelta(days=365), today + timedelta(days=1)),
-            "historical": (None, None),  # All time
-        }
-
-        start_date, _end_date = period_configs.get(period, period_configs["day"])
-
-        # Get species summary for the exact period
-        species_summary = await detection_query_service.get_species_summary(
-            language_code=config.language,
-            since=start_date,
-        )
-
-        # Format species frequency data
-        species_frequency = []
-        for species in species_summary:  # Show all species, not limited to top 10
-            # Extract name and scientific name
-            if isinstance(species, dict):
-                name = (
-                    species.get("translated_name", None)
-                    or species.get("best_common_name", None)
-                    or species.get("common_name", None)
-                    or species.get("scientific_name", "Unknown")
-                )
-                scientific_name = species.get("scientific_name", "Unknown")
-                count = species.get("detection_count", species.get("count", 0))
-            else:
-                name = (
-                    getattr(species, "translated_name", None)
-                    or getattr(species, "best_common_name", None)
-                    or getattr(species, "common_name", None)
-                    or getattr(species, "scientific_name", "Unknown")
-                )
-                scientific_name = getattr(species, "scientific_name", "Unknown")
-                count = getattr(species, "count", 0)
-
-            species_frequency.append(
-                {
-                    "name": name,
-                    "scientific_name": scientific_name,
-                    "count": count,
-                    "percentage": 0,  # Will be calculated below
-                }
-            )
-
-        # Calculate percentages after we have all counts
-        total_detections = sum(s["count"] for s in species_frequency)
-        if total_detections > 0:
-            for species in species_frequency:
-                species["percentage"] = round((species["count"] / total_detections) * 100, 1)
-
-        # Sort by count descending
-        species_frequency.sort(key=lambda x: x["count"], reverse=True)
-
-        # Prepare response
-        response_data = {
-            "period": period,
-            "period_label": {
-                "day": "Today",
-                "week": "This Week",
-                "month": "This Month",
-                "season": "This Season",
-                "year": "This Year",
-                "historical": "All Time",
-            }.get(period, "This Period"),
-            "total_detections": total_detections,
-            "unique_species": len(species_frequency),
-            "species_list": species_frequency[:50],  # Limit to top 50 for performance
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-
-        # Cache the response
-        if cache:
-            cache.set(
-                "api_species_analytics", response_data, key=cache_key, ttl=300
-            )  # 5 minute TTL
-            logger.debug(f"Cached species analytics: {cache_key}")
-
-        return JSONResponse(response_data)
-    except Exception as e:
-        logger.error("Error getting species analytics: %s", e)
-        raise HTTPException(status_code=500, detail="Error retrieving species analytics") from e
 
 
 @router.get("/count")
@@ -435,6 +224,9 @@ async def get_best_recordings(
     detection_query_service: DetectionQueryService = Depends(  # noqa: B008
         Provide[Container.detection_query_service]
     ),
+    config: BirdNETConfig = Depends(  # noqa: B008
+        Provide[Container.config]
+    ),
 ) -> JSONResponse:
     """Get best recordings with optional taxonomic filtering.
 
@@ -467,19 +259,28 @@ async def get_best_recordings(
         # Format response
         recordings = []
         for detection in detections:
-            recordings.append(
-                {
-                    "id": str(detection.id),
-                    "scientific_name": detection.scientific_name,
-                    "common_name": detection.common_name or detection.ioc_english_name,
-                    "family": detection.family,
-                    "genus": detection.genus,
-                    "confidence": round(detection.confidence * 100, 1),
-                    "timestamp": detection.timestamp.isoformat(),
-                    "date": detection.timestamp.strftime("%Y-%m-%d"),
-                    "time": detection.timestamp.strftime("%H:%M:%S"),
-                }
+            # Use model_dump with config context - handles display_name automatically
+            det_dict = detection.model_dump(
+                mode="json",
+                exclude_none=True,
+                include={
+                    "id",
+                    "scientific_name",
+                    "common_name",
+                    "family",
+                    "genus",
+                    "confidence",
+                    "timestamp",
+                    "date",
+                    "time",
+                },
+                context={"config": config},
             )
+            # Convert confidence to percentage for this endpoint
+            det_dict["confidence"] = round(detection.confidence * 100, 1)
+            # Override time format to include seconds for this endpoint
+            det_dict["time"] = detection.timestamp.strftime("%H:%M:%S")
+            recordings.append(det_dict)
 
         # Calculate summary stats
         if recordings:
@@ -773,9 +574,9 @@ def _create_detection_handler(
 ) -> Callable[..., None]:
     """Create a handler for detection signals."""
 
-    def handler(sender: object, **kwargs: Any) -> None:  # noqa: ANN401
+    def handler(sender: object, **kwargs: object) -> None:
         """Handle detection signal and put it in the queue."""
-        detection: Detection | None = kwargs.get("detection")
+        detection: Detection | None = kwargs.get("detection")  # type: ignore[arg-type]
         if detection:
             try:
                 loop.call_soon_threadsafe(queue.put_nowait, detection)
@@ -788,20 +589,24 @@ def _create_detection_handler(
 
 def _format_detection_event(detection: Detection) -> dict[str, Any]:
     """Format a detection as an SSE event."""
-    timestamp_str = ""
-    if detection.timestamp:
-        # Ensure timestamp is treated as UTC by adding Z suffix
-        timestamp_str = detection.timestamp.isoformat() + "Z"
-
-    return {
-        "id": str(detection.id),
-        "timestamp": timestamp_str,
-        "scientific_name": detection.scientific_name,
-        "common_name": detection.common_name,
-        "confidence": detection.confidence,
-        "latitude": detection.latitude,
-        "longitude": detection.longitude,
-    }
+    # Use model_dump for consistent serialization
+    det_dict = detection.model_dump(
+        mode="json",
+        exclude_none=True,
+        include={
+            "id",
+            "timestamp",
+            "scientific_name",
+            "common_name",
+            "confidence",
+            "latitude",
+            "longitude",
+        },
+    )
+    # Ensure timestamp is treated as UTC by adding Z suffix
+    if det_dict.get("timestamp"):
+        det_dict["timestamp"] = det_dict["timestamp"] + "Z"
+    return det_dict
 
 
 @router.get("/stream")
@@ -878,12 +683,14 @@ async def stream_detections(
 @inject
 async def get_detection(
     detection_id: UUID | int,
-    language_code: str = "en",
     data_manager: DataManager = Depends(  # noqa: B008
         Provide[Container.data_manager]
     ),
     detection_query_service: DetectionQueryService = Depends(  # noqa: B008
         Provide[Container.detection_query_service]
+    ),
+    config: BirdNETConfig = Depends(  # noqa: B008
+        Provide[Container.config]
     ),
 ) -> JSONResponse:
     """Get a specific detection by ID with taxa and translation data."""
@@ -891,34 +698,34 @@ async def get_detection(
         # Always get detection with taxa enrichment
         if isinstance(detection_id, UUID):
             detection_with_taxa = await detection_query_service.get_detection_with_taxa(
-                detection_id,
-                language_code,
+                detection_id
             )
             if detection_with_taxa:
-                detection_data = {
-                    "id": str(detection_with_taxa.id),
-                    "scientific_name": detection_with_taxa.scientific_name,
-                    "common_name": detection_query_service.get_species_display_name(
-                        detection_with_taxa,
-                        prefer_translation=True,
-                        language_code=language_code,
-                    ),
-                    "confidence": detection_with_taxa.confidence,
-                    "timestamp": detection_with_taxa.timestamp.isoformat(),
-                    "latitude": detection_with_taxa.latitude,
-                    "longitude": detection_with_taxa.longitude,
-                    "species_confidence_threshold": (
-                        detection_with_taxa.species_confidence_threshold
-                    ),
-                    "week": detection_with_taxa.week,
-                    "sensitivity_setting": detection_with_taxa.sensitivity_setting,
-                    "overlap": detection_with_taxa.overlap,
-                    "ioc_english_name": detection_with_taxa.ioc_english_name,
-                    "translated_name": detection_with_taxa.translated_name,
-                    "family": detection_with_taxa.family,
-                    "genus": detection_with_taxa.genus,
-                    "order_name": detection_with_taxa.order_name,
-                }
+                # Use model_dump with config context for consistent serialization
+                # The model serializer handles display_name and sets common_name automatically
+                detection_data = detection_with_taxa.model_dump(
+                    mode="json",
+                    exclude_none=True,
+                    include={
+                        "id",
+                        "scientific_name",
+                        "common_name",
+                        "confidence",
+                        "timestamp",
+                        "latitude",
+                        "longitude",
+                        "species_confidence_threshold",
+                        "week",
+                        "sensitivity_setting",
+                        "overlap",
+                        "ioc_english_name",
+                        "translated_name",
+                        "family",
+                        "genus",
+                        "order_name",
+                    },
+                    context={"config": config},
+                )
                 return JSONResponse(detection_data)
 
         # Fallback for integer IDs - get basic detection
@@ -927,19 +734,25 @@ async def get_detection(
         if not detection:
             raise HTTPException(status_code=404, detail="Detection not found")
 
-        detection_data = {
-            "id": str(detection.id),
-            "scientific_name": detection.scientific_name,
-            "common_name": detection.common_name,
-            "confidence": detection.confidence,
-            "timestamp": detection.timestamp.isoformat(),
-            "latitude": detection.latitude,
-            "longitude": detection.longitude,
-            "species_confidence_threshold": detection.species_confidence_threshold,
-            "week": detection.week,
-            "sensitivity_setting": detection.sensitivity_setting,
-            "overlap": detection.overlap,
-        }
+        # Use model_dump for consistent serialization with config context
+        detection_data = detection.model_dump(
+            mode="json",
+            exclude_none=True,
+            include={
+                "id",
+                "scientific_name",
+                "common_name",
+                "confidence",
+                "timestamp",
+                "latitude",
+                "longitude",
+                "species_confidence_threshold",
+                "week",
+                "sensitivity_setting",
+                "overlap",
+            },
+            context={"config": config},
+        )
         return JSONResponse(detection_data)
     except HTTPException:
         raise
@@ -948,103 +761,125 @@ async def get_detection(
         raise HTTPException(status_code=500, detail="Error retrieving detection") from e
 
 
-# TODO: Re-implement spectrogram generation endpoint
-# The spectrogram endpoint has been temporarily disabled after removing PlottingManager.
-# This functionality needs to be re-implemented using a different approach.
-# @router.get("/{detection_id}/spectrogram")
-# @inject
-# async def get_detection_spectrogram(
-#     detection_id: int,
-#     data_manager: DataManager = Depends(
-#         Provide[Container.data_manager]
-#     ),
-# ) -> StreamingResponse:
-#     """Generate and return a spectrogram for a specific detection's audio file."""
-#     # Implementation temporarily removed - needs replacement for PlottingManager
-#     raise HTTPException(
-#         status_code=501,
-#         detail="Spectrogram generation temporarily unavailable - being reimplemented"
-#     )
-
-
-@router.get("/species/frequency")
-@inject
-async def get_species_frequency(
-    hours: int = Query(24, description="Hours to look back"),
-    analytics_manager: AnalyticsManager = Depends(  # noqa: B008
-        Provide[Container.analytics_manager]
-    ),
-) -> JSONResponse:
-    """Get species detection frequency for the specified time period."""
-    try:
-        frequency = await analytics_manager.get_species_frequency_analysis(hours=hours)
-        return JSONResponse({"species": frequency, "hours": hours})
-    except Exception as e:
-        logger.error("Error getting species frequency: %s", e)
-        raise HTTPException(status_code=500, detail="Error retrieving species frequency") from e
-
-
 @router.get("/species/summary")
 @inject
 async def get_species_summary(
-    language_code: str = "en",
+    period: str | None = Query(
+        None, description="Time period (day, week, month, season, year, historical)"
+    ),
     since: datetime | None = None,
-    family_filter: str | None = None,
+    family_filter: str | None = Query(None, description="Filter by taxonomic family"),
     detection_query_service: DetectionQueryService = Depends(  # noqa: B008
         Provide[Container.detection_query_service]
     ),
+    config: BirdNETConfig = Depends(Provide[Container.config]),  # noqa: B008
+    cache: Cache = Depends(Provide[Container.cache_service]),  # noqa: B008
 ) -> JSONResponse:
-    """Get detection count summary by species with translation data."""
+    """Get species summary with detection counts and first detection info.
+
+    Can be filtered by period (day/week/month/season/year) or by explicit date range.
+    Returns formatted species list with is_first_ever boolean flags.
+    """
     try:
-        # Use get_species_summary which returns list of dicts with localized names
+        # If period is provided, calculate date range using calendar boundaries
+        if period:
+            import pytz
+
+            # Get the configured timezone
+            user_tz = pytz.timezone(config.timezone) if config.timezone != "UTC" else UTC
+
+            # Get current time in user's timezone
+            now_utc = datetime.now(UTC)
+            now_local = now_utc.astimezone(user_tz)
+
+            # Use helper function to calculate period boundaries
+            # Validate and cast period to PeriodType
+            if period in ["day", "week", "month", "season", "year", "historical"]:
+                period_to_use = period  # type: ignore[assignment]
+            else:
+                period_to_use = "day"  # type: ignore[assignment]
+            start_local, end_local = calculate_period_boundaries(
+                period_to_use, now_local, config.timezone
+            )
+
+            # Convert to UTC for database queries (unless historical)
+            if period == "historical":
+                since = None
+                _end_date = None
+            else:
+                since = start_local.astimezone(UTC)
+                _end_date = end_local.astimezone(UTC)
+
+        # Get species summary with first detection info
         species_summary = await detection_query_service.get_species_summary(
-            language_code=language_code,
             since=since,
+            family_filter=family_filter,
+            include_first_detections=True,
         )
 
-        # Filter by family if requested
-        if family_filter and isinstance(species_summary, list):
-            species_summary = [s for s in species_summary if s.get("family") == family_filter]
+        # Format species data with is_first_ever boolean
+        species_list = []
+        for species in species_summary:
+            if isinstance(species, dict):
+                name = (
+                    species.get("translated_name", None)
+                    or species.get("best_common_name", None)
+                    or species.get("common_name", None)
+                    or species.get("scientific_name", "Unknown")
+                )
+                scientific_name = species.get("scientific_name", "Unknown")
+                count = species.get("detection_count", species.get("count", 0))
+                first_ever_detection = species.get("first_ever_detection")
+            else:
+                name = (
+                    getattr(species, "translated_name", None)
+                    or getattr(species, "best_common_name", None)
+                    or getattr(species, "common_name", None)
+                    or getattr(species, "scientific_name", "Unknown")
+                )
+                scientific_name = getattr(species, "scientific_name", "Unknown")
+                count = getattr(species, "count", 0)
+                first_ever_detection = getattr(species, "first_ever_detection", None)
 
-        return JSONResponse({"species": species_summary, "count": len(species_summary)})
+            # Determine if this is a first ever detection
+            is_first_ever = bool(first_ever_detection)
+
+            species_list.append(
+                {
+                    "name": name,
+                    "scientific_name": scientific_name,
+                    "detection_count": count,  # Use consistent field name
+                    "is_first_ever": is_first_ever,
+                    "first_ever_detection": first_ever_detection,
+                }
+            )
+
+        # Sort by count descending
+        species_list.sort(key=lambda x: x["detection_count"], reverse=True)
+
+        # Calculate total detections
+        total_detections = sum(s["detection_count"] for s in species_list)
+
+        # Prepare response
+        response_data = {
+            "species": species_list,
+            "count": len(species_list),
+            "total_detections": total_detections,
+        }
+
+        # Add period info if provided
+        if period:
+            response_data["period"] = period
+            response_data["period_label"] = {
+                "day": "Today",
+                "week": "This Week",
+                "month": "This Month",
+                "season": "This Season",
+                "year": "This Year",
+                "historical": "All Time",
+            }.get(period, "This Period")
+
+        return JSONResponse(response_data)
     except Exception as e:
         logger.error("Error getting species summary: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving species summary") from e
-
-
-@router.get("/families/summary")
-@inject
-async def get_family_summary(
-    language_code: str = "en",
-    since: datetime | None = None,
-    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
-        Provide[Container.detection_query_service]
-    ),
-) -> JSONResponse:
-    """Get detection count summary by taxonomic family with translation data."""
-    try:
-        # Get species summary with family information
-        species_summary = await detection_query_service.get_species_summary(
-            language_code=language_code,
-            since=since,
-        )
-
-        # Aggregate by family
-        family_counts: dict[str, int] = {}
-        if isinstance(species_summary, list):
-            for species in species_summary:
-                family = species.get("family", "Unknown")
-                if family in family_counts:
-                    family_counts[family] += species.get("count", 0)
-                else:
-                    family_counts[family] = species.get("count", 0)
-
-        family_summary = [
-            {"family": family, "count": count}
-            for family, count in sorted(family_counts.items(), key=lambda x: x[1], reverse=True)
-        ]
-
-        return JSONResponse({"families": family_summary, "count": len(family_summary)})
-    except Exception as e:
-        logger.error("Error getting family summary: %s", e)
-        raise HTTPException(status_code=500, detail="Error retrieving family summary") from e

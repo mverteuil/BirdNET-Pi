@@ -4,22 +4,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from birdnetpi.config.models import BirdNETConfig
 from birdnetpi.species.display import SpeciesDisplayService
 
 
 @pytest.fixture
-def config():
-    """Create a mock config with default display settings."""
-    mock_config = MagicMock(spec=BirdNETConfig)
-    mock_config.species_display_mode = "full"  # Default to full mode
-    return mock_config
-
-
-@pytest.fixture
-def display_service(config):
+def display_service(test_config):
     """Create a SpeciesDisplayService instance with mock config."""
-    return SpeciesDisplayService(config)
+    return SpeciesDisplayService(test_config)
 
 
 @pytest.fixture
@@ -58,10 +49,10 @@ def detection_no_common():
 class TestFormatSpeciesDisplay:
     """Test the format_species_display method."""
 
-    def test_scientific_name_mode(self, config, detection_with_all_names):
+    def test_scientific_name_mode(self, test_config, detection_with_all_names):
         """Should return scientific name when mode is scientific_name."""
-        config.species_display_mode = "scientific_name"
-        service = SpeciesDisplayService(config)
+        test_config.species_display_mode = "scientific_name"
+        service = SpeciesDisplayService(test_config)
 
         result = service.format_species_display(detection_with_all_names)
 
@@ -129,19 +120,19 @@ class TestFormatSpeciesDisplay:
 class TestFormatFullSpeciesDisplay:
     """Test the format_full_species_display method."""
 
-    def test_scientific_name_mode(self, config, detection_with_all_names):
+    def test_scientific_name_mode(self, test_config, detection_with_all_names):
         """Should return only scientific name in scientific mode."""
-        config.species_display_mode = "scientific_name"
-        service = SpeciesDisplayService(config)
+        test_config.species_display_mode = "scientific_name"
+        service = SpeciesDisplayService(test_config)
 
         result = service.format_full_species_display(detection_with_all_names)
 
         assert result == "Turdus migratorius"
 
-    def test_common_name_mode(self, config, detection_with_all_names):
+    def test_common_name_mode(self, test_config, detection_with_all_names):
         """Should return only common name in common mode."""
-        config.species_display_mode = "common_name"
-        service = SpeciesDisplayService(config)
+        test_config.species_display_mode = "common_name"
+        service = SpeciesDisplayService(test_config)
 
         result = service.format_full_species_display(detection_with_all_names)
 
@@ -166,43 +157,43 @@ class TestFormatFullSpeciesDisplay:
 class TestHelperMethods:
     """Test the helper methods of SpeciesDisplayService."""
 
-    def test_get_display_mode(self, config):
+    def test_get_display_mode(self, test_config):
         """Should return the current display mode from config."""
-        config.species_display_mode = "scientific_name"
-        service = SpeciesDisplayService(config)
+        test_config.species_display_mode = "scientific_name"
+        service = SpeciesDisplayService(test_config)
 
         assert service.get_display_mode() == "scientific_name"
 
-        config.species_display_mode = "common_name"
+        test_config.species_display_mode = "common_name"
         assert service.get_display_mode() == "common_name"
 
-        config.species_display_mode = "full"
+        test_config.species_display_mode = "full"
         assert service.get_display_mode() == "full"
 
-    def test_should_show_scientific_name(self, config):
+    def test_should_show_scientific_name(self, test_config):
         """Should return True for scientific_name and full modes."""
-        service = SpeciesDisplayService(config)
+        service = SpeciesDisplayService(test_config)
 
-        config.species_display_mode = "scientific_name"
+        test_config.species_display_mode = "scientific_name"
         assert service.should_show_scientific_name() is True
 
-        config.species_display_mode = "full"
+        test_config.species_display_mode = "full"
         assert service.should_show_scientific_name() is True
 
-        config.species_display_mode = "common_name"
+        test_config.species_display_mode = "common_name"
         assert service.should_show_scientific_name() is False
 
-    def test_should_show_common_name(self, config):
+    def test_should_show_common_name(self, test_config):
         """Should return True for common_name and full modes."""
-        service = SpeciesDisplayService(config)
+        service = SpeciesDisplayService(test_config)
 
-        config.species_display_mode = "common_name"
+        test_config.species_display_mode = "common_name"
         assert service.should_show_common_name() is True
 
-        config.species_display_mode = "full"
+        test_config.species_display_mode = "full"
         assert service.should_show_common_name() is True
 
-        config.species_display_mode = "scientific_name"
+        test_config.species_display_mode = "scientific_name"
         assert service.should_show_common_name() is False
 
 

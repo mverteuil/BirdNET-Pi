@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from birdnetpi.analytics.analytics import AnalyticsManager
-from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.models import DetectionWithTaxa
 from birdnetpi.detections.queries import DetectionQueryService
 
@@ -19,17 +18,9 @@ def mock_detection_query_service():
 
 
 @pytest.fixture
-def mock_config():
-    """Create a mock BirdNETConfig."""
-    config = MagicMock(spec=BirdNETConfig)
-    config.species_confidence_threshold = 0.5
-    return config
-
-
-@pytest.fixture
-def analytics_manager(mock_detection_query_service, mock_config):
+def analytics_manager(mock_detection_query_service, test_config):
     """Create an AnalyticsManager with mocked dependencies."""
-    return AnalyticsManager(mock_detection_query_service, mock_config)
+    return AnalyticsManager(mock_detection_query_service, test_config)
 
 
 class TestWeeklyHeatmapExtended:

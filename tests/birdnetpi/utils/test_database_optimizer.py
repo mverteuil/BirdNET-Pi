@@ -10,12 +10,11 @@ from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 
 from birdnetpi.database.core import CoreDatabaseService
-from birdnetpi.detections.models import AudioFile, Detection
 from birdnetpi.utils.database_optimizer import DatabaseOptimizer, QueryPerformanceMonitor
 
 
 @pytest.fixture
-def temp_db():
+def temp_db(model_factory):
     """Create a temporary database for testing."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
         db_path = tmp.name
@@ -40,7 +39,7 @@ def temp_db():
     now = datetime.now()
     for i in range(100):
         # Create audio file
-        audio_file = AudioFile(
+        audio_file = model_factory.create_audio_file(
             file_path=Path(f"/test/audio_{i}.wav"),
             duration=3.0,
             size_bytes=48000,
@@ -52,7 +51,7 @@ def temp_db():
         species_idx = i % len(test_species)
         scientific_name, common_name = test_species[species_idx]
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor=f"{scientific_name}_{common_name}",
             scientific_name=scientific_name,
             common_name=common_name,

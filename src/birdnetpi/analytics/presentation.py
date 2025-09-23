@@ -14,10 +14,14 @@ from birdnetpi.analytics.analytics import (
     TemporalPatternsDict,
 )
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.detections.models import DetectionBase
+from birdnetpi.detections.models import DetectionBase, DetectionWithTaxa
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.notifications.signals import detection_signal
 from birdnetpi.utils.cache.cache import Cache
+from birdnetpi.utils.time_periods import (
+    calculate_period_boundaries,
+    get_period_label,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +43,7 @@ class DetectionLogEntry(BaseModel):
     """Detection log entry for display."""
 
     time: str
-    species: str
+    common_name: str
     confidence: str
 
 
@@ -181,14 +185,33 @@ class PresentationManager:
 
     def _format_detection_log(self, detections: Sequence[DetectionBase]) -> list[DetectionLogEntry]:
         """Format recent detections for display."""
-        return [
-            DetectionLogEntry(
-                time=d.timestamp.strftime("%H:%M"),
-                species=d.common_name or d.scientific_name,
-                confidence=f"{d.confidence:.0%}",
-            )
-            for d in detections
-        ]
+        entries = []
+        for d in detections:
+            # Use model_dump with config context if it's DetectionWithTaxa
+            if hasattr(d, "model_dump"):
+                data = d.model_dump(
+                    mode="json",
+                    exclude_none=True,
+                    context={"config": self.config},
+                )
+                entries.append(
+                    DetectionLogEntry(
+                        time=d.timestamp.strftime("%H:%M"),
+                        common_name=data.get("common_name")
+                        or data.get("scientific_name", "Unknown"),
+                        confidence=f"{d.confidence:.0%}",
+                    )
+                )
+            else:
+                # Fallback for plain Detection objects
+                entries.append(
+                    DetectionLogEntry(
+                        time=d.timestamp.strftime("%H:%M"),
+                        common_name=d.common_name or d.scientific_name,
+                        confidence=f"{d.confidence:.0%}",
+                    )
+                )
+        return entries
 
     def _format_species_list(
         self, frequency_data: list[SpeciesFrequencyDict]
@@ -211,7 +234,7 @@ class PresentationManager:
             ScatterDataPoint(
                 x=d["time"],
                 y=d["confidence"],
-                species=d["species"],
+                species=d.get("common_name") or d.get("species", "Unknown"),
                 color={"common": "#2e7d32", "regular": "#f57c00", "uncommon": "#c62828"}.get(
                     d["frequency_category"], "#666"
                 ),
@@ -289,7 +312,6 @@ class PresentationManager:
         """
         if detection_query_service:
             return await detection_query_service.get_species_summary(
-                language_code=self.config.language,
                 since=start_date,
             )
         else:
@@ -318,20 +340,14 @@ class PresentationManager:
         for species in species_summary[:10]:  # Top 10 species
             # Extract name and scientific name from dict or object
             if isinstance(species, dict):
-                name = (
-                    species.get("translated_name", None)
-                    or species.get("best_common_name", None)
-                    or species.get("common_name", None)
-                    or species.get("scientific_name", "Unknown")
-                )
+                # Use common_name which now contains properly formatted display name
+                name = species.get("common_name") or species.get("scientific_name", "Unknown")
                 scientific_name = species.get("scientific_name", "Unknown")
                 count = species.get("detection_count", species.get("count", 0))
             else:
-                name = (
-                    getattr(species, "translated_name", None)
-                    or getattr(species, "best_common_name", None)
-                    or getattr(species, "common_name", None)
-                    or getattr(species, "scientific_name", "Unknown")
+                # Use common_name which now contains properly formatted display name
+                name = getattr(species, "common_name", None) or getattr(
+                    species, "scientific_name", "Unknown"
                 )
                 scientific_name = getattr(species, "scientific_name", "Unknown")
                 count = getattr(species, "count", 0)
@@ -365,14 +381,12 @@ class PresentationManager:
 
         for i, species in enumerate(species_summary[:6]):  # Top 6 species
             if isinstance(species, dict):
-                common_name = (
-                    species.get("translated_name")
-                    or species.get("best_common_name")
-                    or species.get("common_name", "Unknown")
-                )
+                # Use common_name which now contains properly formatted display name
+                common_name = species.get("common_name", "Unknown")
                 scientific_name = species.get("scientific_name", "")
                 count = species.get("detection_count", 0) or species.get("count", 0)
             else:
+                # Use common_name which now contains properly formatted display name
                 common_name = getattr(species, "common_name", "Unknown")
                 scientific_name = getattr(species, "scientific_name", "")
                 count = getattr(species, "count", 0)
@@ -581,12 +595,9 @@ class PresentationManager:
             )
             for species in sorted_species[:5]:  # Check first 5 rarest
                 if isinstance(species, dict):
-                    # Get common name using same logic as species frequency
-                    common_name = (
-                        species.get("translated_name", None)
-                        or species.get("best_common_name", None)
-                        or species.get("common_name", None)
-                        or species.get("scientific_name", "Unknown")
+                    # Use common_name which now contains properly formatted display name
+                    common_name = species.get("common_name") or species.get(
+                        "scientific_name", "Unknown"
                     )
                     count = species.get("detection_count", species.get("count", 0))
                     # Consider species with very few detections as "new"
@@ -1163,3 +1174,211 @@ class PresentationManager:
             }
 
         return summary
+
+    async def format_paginated_detections(
+        self,
+        period: str,
+        page: int = 1,
+        per_page: int = 20,
+        search: str | None = None,
+        sort_by: str = "timestamp",
+        sort_order: str = "desc",
+    ) -> dict:
+        """Format paginated detections for API response.
+
+        Args:
+            period: Time period filter
+            page: Page number (1-based)
+            per_page: Items per page
+            search: Search term for species filtering
+            sort_by: Field to sort by
+            sort_order: Sort order (asc/desc)
+
+        Returns:
+            Paginated detection data with formatting
+        """
+        # Calculate period boundaries
+        start_date, end_date = calculate_period_boundaries(period, timezone=self.config.timezone)
+
+        # Convert to UTC for queries
+        from datetime import UTC
+
+        start_utc = start_date.astimezone(UTC)
+        end_utc = end_date.astimezone(UTC)
+
+        # Map sort_by to database column names
+        sort_column_map = {
+            "timestamp": "timestamp",
+            "species": "scientific_name",
+            "confidence": "confidence",
+            "first": None,  # Will be handled after fetching data
+        }
+
+        # Handle sorting for database columns vs computed fields
+        if sort_by == "first":
+            # For "first" sorting, fetch by timestamp then sort in memory
+            order_by_column = "timestamp"
+            order_desc = True  # Get newest first for initial fetch
+        else:
+            order_by_column = sort_column_map.get(sort_by, "timestamp")
+            order_desc = sort_order.lower() == "desc"
+
+        # Get all detections for the period
+        all_detections = await self.detection_query_service.query_detections(
+            start_date=start_utc,
+            end_date=end_utc,
+            order_by=order_by_column,
+            order_desc=order_desc,
+            limit=None,  # Get all detections, don't use default limit
+            include_first_detections=True,  # API always provides rich metadata
+        )
+
+        # Filter by search term if provided
+        if search:
+            search_lower = search.lower()
+            all_detections = [
+                d
+                for d in all_detections
+                if search_lower in (d.common_name or "").lower()
+                or search_lower in (d.scientific_name or "").lower()
+            ]
+
+        # Apply special sorting for "first" detection column
+        if sort_by == "first":
+            all_detections = self.apply_first_detection_sorting(all_detections, sort_order)
+
+        # Calculate pagination
+        total = len(all_detections)
+        total_pages = (total + per_page - 1) // per_page
+        offset = (page - 1) * per_page
+
+        # Get page of detections
+        page_detections = all_detections[offset : offset + per_page]
+
+        # Format response using model_dump with proper context
+        detection_list = [
+            detection.model_dump(
+                mode="json",
+                exclude_none=True,
+                context={"config": self.config},
+            )
+            for detection in page_detections
+        ]
+
+        return {
+            "detections": detection_list,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_prev": page > 1,
+            },
+        }
+
+    def apply_first_detection_sorting(
+        self, detections: list[DetectionWithTaxa], sort_order: str
+    ) -> list[DetectionWithTaxa]:
+        """Apply special sorting logic for 'first' detection column.
+
+        Args:
+            detections: List of detection objects
+            sort_order: Sort order ('asc' or 'desc')
+
+        Returns:
+            Sorted list of detections
+        """
+
+        def sort_key(d: DetectionWithTaxa) -> tuple[int, float]:
+            # Check if it's a first detection (either ever or in period)
+            is_first = bool(
+                (hasattr(d, "is_first_ever") and d.is_first_ever)
+                or (hasattr(d, "is_first_in_period") and d.is_first_in_period)
+            )
+            # Return tuple: (not is_first, timestamp)
+            # This puts first detections (False) before non-first (True)
+            if sort_order.lower() == "desc":
+                # Descending: first detections first, then by newest time
+                return (
+                    0 if is_first else 1,
+                    -d.timestamp.timestamp() if d.timestamp else 0,
+                )
+            else:
+                # Ascending: non-first detections first, then by oldest time
+                return (
+                    1 if is_first else 0,
+                    d.timestamp.timestamp() if d.timestamp else 0,
+                )
+
+        detections.sort(key=sort_key)
+        return detections
+
+    def format_detection_for_api(self, detection: DetectionWithTaxa) -> dict:
+        """Format a single detection for API response.
+
+        Args:
+            detection: DetectionWithTaxa object
+
+        Returns:
+            Formatted detection dictionary
+        """
+        # Use model_dump() with config context for proper display name
+        return detection.model_dump(
+            mode="json",
+            exclude_none=True,
+            context={"config": self.config},
+        )
+
+    async def format_detection_summary(self, period: str) -> dict:
+        """Format detection summary for period switching.
+
+        Args:
+            period: Time period
+
+        Returns:
+            Formatted summary with species frequency and statistics
+        """
+        # Get period statistics from AnalyticsManager
+        stats = await self.analytics_manager.get_period_statistics(period, self.config.timezone)
+
+        # Format species frequency table data
+        species_frequency = []
+        for species in stats.get("species_summary", []):
+            count = species.get("detection_count", 0)
+            species_frequency.append(
+                {
+                    "name": species.get("common_name", "Unknown"),
+                    "scientific_name": species.get("scientific_name", ""),
+                    "count": count,
+                }
+            )
+
+        # Format subtitle
+        from datetime import UTC, datetime
+
+        current_date_str = datetime.now(UTC).strftime("%B %d, %Y")
+        species_count = stats["unique_species"]
+        subtitle = f"{self.config.site_name} · {current_date_str} · {species_count} species active"
+
+        # Format statistics HTML
+        period_label = get_period_label(period)
+        peak_hour = stats["peak_hour"]
+        peak_count = stats["peak_count"]
+        peak_time = f"{peak_hour:02d}:00" if peak_hour is not None else "12:00"
+        total_detections = stats["total_detections"]
+
+        statistics = (
+            f'{period_label}: <span class="stat-value">{species_count}</span> species, '
+            f'<span class="stat-value">{total_detections}</span> detections · '
+            f'Peak activity: <span class="stat-value">{peak_time}</span> '
+            f"({peak_count} detection{'s' if peak_count != 1 else ''})"
+        )
+
+        return {
+            "species_frequency": species_frequency,
+            "subtitle": subtitle,
+            "statistics": statistics,
+            "species_count": species_count,
+            "total_detections": total_detections,
+        }

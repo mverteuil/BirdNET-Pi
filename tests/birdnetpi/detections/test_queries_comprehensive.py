@@ -1,7 +1,7 @@
 """Comprehensive tests for DetectionQueryService to improve coverage."""
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -11,7 +11,6 @@ from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.models import Detection, DetectionWithTaxa
 from birdnetpi.detections.queries import DetectionQueryService
-from birdnetpi.species.display import SpeciesDisplayService
 
 
 @pytest.fixture
@@ -32,20 +31,12 @@ def mock_species_database():
 
 
 @pytest.fixture
-def mock_species_display():
-    """Mock species display service."""
-    mock = MagicMock(spec=SpeciesDisplayService)
-    mock.format_species_name = Mock(return_value="Formatted Species")
-    return mock
-
-
-@pytest.fixture
-def detection_query_service(mock_core_database, mock_species_database, mock_species_display):
+def detection_query_service(mock_core_database, mock_species_database, test_config):
     """Create DetectionQueryService with mocks."""
     return DetectionQueryService(
         core_database=mock_core_database,
         species_database=mock_species_database,
-        species_display_service=mock_species_display,
+        config=test_config,
     )
 
 
@@ -231,7 +222,6 @@ class TestMainQueryMethods:
                 session=mock_session,
                 limit=None,  # No limit specified, so None is passed
                 offset=0,
-                language_code="en",
                 start_date=None,
                 end_date=None,
                 scientific_name_filter="Turdus migratorius",
@@ -241,6 +231,7 @@ class TestMainQueryMethods:
                 max_confidence=None,
                 order_by="timestamp",
                 order_desc=True,
+                include_first_detections=False,  # New parameter with default value
             )
 
     @pytest.mark.asyncio
@@ -279,7 +270,6 @@ class TestMainQueryMethods:
         await detection_query_service.get_detections_with_taxa(
             limit=50,
             offset=10,
-            language_code="fr",
             start_date=datetime(2024, 1, 1),
             end_date=datetime(2024, 1, 31),
             scientific_name_filter=["Species1", "Species2"],
@@ -333,7 +323,7 @@ class TestMainQueryMethods:
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute
-        result = await detection_query_service.get_detection_with_taxa(detection_id, "fr")
+        result = await detection_query_service.get_detection_with_taxa(detection_id)
 
         # Verify
         assert result is not None
@@ -405,7 +395,7 @@ class TestSummaryMethods:
 
         # Execute
         result = await detection_query_service.get_species_summary(
-            language_code="en", since=datetime(2024, 1, 1), family_filter="Turdidae"
+            since=datetime(2024, 1, 1), family_filter="Turdidae"
         )
 
         # Verify
@@ -448,9 +438,7 @@ class TestSummaryMethods:
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute
-        result = await detection_query_service.get_family_summary(
-            language_code="en", since=datetime(2024, 1, 1)
-        )
+        result = await detection_query_service.get_family_summary(since=datetime(2024, 1, 1))
 
         # Verify
         assert len(result) == 2
@@ -803,7 +791,6 @@ class TestErrorHandling:
         # Should raise the error
         with pytest.raises(SQLAlchemyError):
             await detection_query_service.get_detections_with_taxa(
-                language_code="en",
                 limit=10,
                 offset=0,
             )
@@ -819,7 +806,6 @@ class TestHelperMethods:
         """Should build WHERE clause with parameters."""
         # Required positional arguments first
         clause, params = detection_query_service._build_where_clause_and_params(
-            "en",  # language_code
             100,  # limit
             0,  # offset
             start_date=datetime(2024, 1, 1),
@@ -847,7 +833,6 @@ class TestHelperMethods:
         species_list = ["Species1", "Species2", "Species3"]
         # Required positional arguments first
         clause, params = detection_query_service._build_where_clause_and_params(
-            "en",  # language_code
             100,  # limit
             0,  # offset
             scientific_name_filter=species_list,
@@ -862,13 +847,12 @@ class TestHelperMethods:
         """Should return WHERE 1=1 for empty filters."""
         # Required positional arguments
         clause, params = detection_query_service._build_where_clause_and_params(
-            "en",  # language_code
             100,  # limit
             0,  # offset
         )
         assert "WHERE 1=1" in clause
         assert "language_code" in params
-        assert params["language_code"] == "en"
+        # Language code comes from config.language, not from parameter
 
     def test_build_order_clause_default(self, detection_query_service):
         """Should build default order clause."""

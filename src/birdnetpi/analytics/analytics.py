@@ -1,13 +1,14 @@
 import math
 import random
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import TypedDict
 
 import numpy as np
 
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.detections.queries import DetectionQueryService
+from birdnetpi.utils.time_periods import calculate_period_boundaries, period_to_days
 
 
 class DashboardSummaryDict(TypedDict):
@@ -160,37 +161,38 @@ class AnalyticsManager:
             limit=1000,
         )
 
-        # Group by species for frequency classification
-        species_counts = {}
-        for d in detections:
-            # Use translated name if available, otherwise IOC name, otherwise common/scientific
-            species_name = (
-                d.translated_name or d.ioc_english_name or d.common_name or d.scientific_name
-            )
-            if species_name:
-                species_counts[species_name] = species_counts.get(species_name, 0) + 1
+        # Get species frequency counts from database aggregation
+        species_counts = await self.detection_query_service.get_species_counts(
+            start_time=start_time,
+            end_time=end_time,
+        )
 
-        return [
-            {
-                "time": d.timestamp.hour + (d.timestamp.minute / 60),
-                "confidence": d.confidence,
-                "species": d.translated_name
-                or d.ioc_english_name
-                or d.common_name
-                or d.scientific_name,
-                "frequency_category": self._categorize_frequency(
-                    species_counts.get(
-                        d.translated_name
-                        or d.ioc_english_name
-                        or d.common_name
-                        or d.scientific_name,
-                        0,
-                    )
-                ),
-            }
-            for d in detections
-            if d.timestamp
-        ]
+        # Build a lookup map for frequency counts
+        frequency_map = {
+            species["common_name"]: species["count"]
+            for species in species_counts
+            if species["common_name"]
+        }
+
+        # Build scatter data with model_dump and frequency category
+        result = []
+        for d in detections:
+            if d.timestamp:
+                # Use model_dump to get all fields properly serialized
+                detection_data = d.model_dump()
+                # Add computed fields for scatter plot
+                detection_data.update(
+                    {
+                        "time": d.timestamp.hour
+                        + (d.timestamp.minute / 60),  # Decimal hour for charting
+                        "frequency_category": self._categorize_frequency(
+                            frequency_map.get(d.common_name, 0)
+                        ),
+                    }
+                )
+                result.append(detection_data)
+
+        return result
 
     async def get_aggregate_hourly_pattern(self, days: int = 30) -> list[list[int]]:
         """Get aggregated hourly pattern over N days for heatmap.
@@ -785,4 +787,133 @@ class AnalyticsManager:
                 "evenness_change": avg_metric(metrics2, "evenness")
                 - avg_metric(metrics1, "evenness"),
             },
+        }
+
+    async def get_period_statistics(self, period: str, timezone: str = "UTC") -> dict:
+        """Calculate statistics for a given period.
+
+        Args:
+            period: Time period (day, week, month, season, year, historical)
+            timezone: Timezone for calculations
+
+        Returns:
+            Dictionary with period statistics
+        """
+        # Calculate period boundaries
+        start_date, end_date = calculate_period_boundaries(period, timezone=timezone)
+
+        # Convert to UTC for queries
+        if timezone != "UTC":
+            start_utc = start_date.astimezone(UTC)
+            end_utc = end_date.astimezone(UTC)
+        else:
+            start_utc = start_date
+            end_utc = end_date
+
+        # Get species summary for the period
+        species_summary = await self.detection_query_service.get_species_summary(
+            since=start_utc.replace(tzinfo=None)
+            if start_utc != datetime.min.replace(tzinfo=UTC)
+            else None
+        )
+
+        # Calculate statistics
+        total_detections = await self.detection_query_service.get_detection_count(
+            start_time=start_utc.replace(tzinfo=None),
+            end_time=end_utc.replace(tzinfo=None),
+        )
+        unique_species = len(species_summary) if species_summary else 0
+
+        # Get peak activity
+        peak_hour, peak_count = await self.calculate_peak_activity(start_utc, end_utc)
+
+        return {
+            "period": period,
+            "start_date": start_date,
+            "end_date": end_date,
+            "total_detections": total_detections,
+            "unique_species": unique_species,
+            "species_summary": species_summary,
+            "peak_hour": peak_hour,
+            "peak_count": peak_count,
+        }
+
+    async def calculate_peak_activity(
+        self, start_date: datetime, end_date: datetime
+    ) -> tuple[int, int]:
+        """Calculate peak activity hour for a time period.
+
+        Args:
+            start_date: Start of period
+            end_date: End of period
+
+        Returns:
+            Tuple of (peak_hour, detection_count)
+        """
+        # Get hourly counts for the period
+        # get_hourly_counts expects a target_date (date object)
+        hourly_counts = await self.detection_query_service.get_hourly_counts(
+            target_date=start_date.date()
+        )
+
+        if not hourly_counts:
+            return 12, 0  # Default to noon if no data
+
+        # Find the hour with max detections
+        peak_hour = 12
+        peak_count = 0
+        for entry in hourly_counts:
+            if entry["count"] > peak_count:
+                peak_count = entry["count"]
+                peak_hour = entry["hour"]
+
+        return peak_hour, peak_count
+
+    async def get_detection_trends(self, period: str, timezone: str = "UTC") -> dict[str, float]:
+        """Calculate detection trends compared to previous period.
+
+        Args:
+            period: Current time period
+            timezone: Timezone for calculations
+
+        Returns:
+            Dictionary with trend percentages
+        """
+        # Get current period statistics
+        current_stats = await self.get_period_statistics(period, timezone)
+
+        # Calculate previous period dates
+        days = period_to_days(period)
+        if days is None:  # Historical period
+            return {"detection_trend": 0, "species_trend": 0}
+
+        # Get previous period by shifting back
+        now = datetime.now(UTC)
+        prev_start = now - timedelta(days=days * 2)
+        prev_end = now - timedelta(days=days)
+
+        # Get previous period counts
+        prev_detections = await self.detection_query_service.get_detection_count(
+            start_time=prev_start.replace(tzinfo=None),
+            end_time=prev_end.replace(tzinfo=None),
+        )
+        prev_species = await self.detection_query_service.get_unique_species_count(
+            start_time=prev_start.replace(tzinfo=None),
+            end_time=prev_end.replace(tzinfo=None),
+        )
+
+        # Calculate trends
+        detection_trend = 0
+        if prev_detections > 0:
+            detection_trend = (
+                (current_stats["total_detections"] - prev_detections) / prev_detections
+            ) * 100
+
+        species_trend = 0
+        if prev_species > 0:
+            species_trend = ((current_stats["unique_species"] - prev_species) / prev_species) * 100
+
+        return {
+            "detection_trend": round(detection_trend, 1),
+            "species_trend": round(species_trend, 1),
         }

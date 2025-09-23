@@ -6,8 +6,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from birdnetpi.analytics.analytics import AnalyticsManager
-from birdnetpi.config import BirdNETConfig
-from birdnetpi.detections.models import DetectionWithTaxa
 from birdnetpi.detections.queries import DetectionQueryService
 
 
@@ -18,17 +16,9 @@ def mock_detection_query_service():
 
 
 @pytest.fixture
-def mock_config():
-    """Create a mock BirdNETConfig."""
-    config = MagicMock(spec=BirdNETConfig)
-    config.species_confidence_threshold = 0.5
-    return config
-
-
-@pytest.fixture
-def analytics_manager(mock_detection_query_service, mock_config):
+def analytics_manager(mock_detection_query_service, test_config):
     """Create an AnalyticsManager with mocked dependencies."""
-    return AnalyticsManager(mock_detection_query_service, mock_config)
+    return AnalyticsManager(mock_detection_query_service, test_config)
 
 
 class TestScatterDataLimit:
@@ -36,26 +26,32 @@ class TestScatterDataLimit:
 
     @pytest.mark.asyncio
     async def test_get_detection_scatter_data_uses_higher_limit(
-        self, analytics_manager, mock_detection_query_service
+        self, analytics_manager, mock_detection_query_service, model_factory
     ):
         """Should use limit=1000 to avoid truncation at 100 detections."""
-        # Create 150 mock detections to simulate a busy day
-        mock_detections = []
+        # Create 150 real detections to simulate a busy day
+        detections = []
         base_time = datetime.now()
 
         for i in range(150):
             # Spread detections across 24 hours
             hour_offset = i % 24
-            detection = MagicMock(spec=DetectionWithTaxa)
-            detection.timestamp = base_time.replace(hour=hour_offset, minute=i % 60, second=0)
-            detection.confidence = 0.5 + (i % 50) / 100  # Vary confidence
-            detection.scientific_name = f"Species_{i % 10}"
-            detection.common_name = f"Bird_{i % 10}"
-            detection.ioc_english_name = None
-            detection.translated_name = None
-            mock_detections.append(detection)
+            detection = model_factory.create_detection_with_taxa(
+                timestamp=base_time.replace(hour=hour_offset, minute=i % 60, second=0),
+                confidence=0.5 + (i % 50) / 100,  # Vary confidence
+                scientific_name=f"Species_{i % 10}",
+                common_name=f"Bird_{i % 10}",
+                ioc_english_name=f"IOC_Bird_{i % 10}",
+            )
+            detections.append(detection)
 
-        mock_detection_query_service.query_detections = AsyncMock(return_value=mock_detections)
+        mock_detection_query_service.query_detections = AsyncMock(return_value=detections)
+
+        # Mock species counts for frequency categorization
+        species_counts = []
+        for i in range(10):
+            species_counts.append({"common_name": f"Bird_{i}", "count": 15})  # 15 each = 150 total
+        mock_detection_query_service.get_species_counts = AsyncMock(return_value=species_counts)
 
         # Call the method
         result = await analytics_manager.get_detection_scatter_data(hours=24)
@@ -74,7 +70,7 @@ class TestScatterDataLimit:
         for item in result:
             assert "time" in item
             assert "confidence" in item
-            assert "species" in item
+            assert "common_name" in item
             assert "frequency_category" in item
 
             # Time should be between 0 and 24
@@ -89,6 +85,7 @@ class TestScatterDataLimit:
     ):
         """Should handle case with no detections gracefully."""
         mock_detection_query_service.query_detections = AsyncMock(return_value=[])
+        mock_detection_query_service.get_species_counts = AsyncMock(return_value=[])
 
         result = await analytics_manager.get_detection_scatter_data(hours=24)
 
@@ -101,53 +98,62 @@ class TestScatterDataLimit:
 
     @pytest.mark.asyncio
     async def test_get_detection_scatter_data_frequency_categorization(
-        self, analytics_manager, mock_detection_query_service
+        self, analytics_manager, mock_detection_query_service, model_factory
     ):
         """Should correctly categorize species by frequency."""
-        mock_detections = []
+        detections = []
         base_time = datetime.now()
 
         # Create detections with different frequencies
         # Species_1: 25 detections (common - needs >20)
         for i in range(25):
-            detection = MagicMock(spec=DetectionWithTaxa)
-            detection.timestamp = base_time.replace(hour=i % 24, minute=0, second=0)
-            detection.confidence = 0.8
-            detection.scientific_name = "Species_1"
-            detection.common_name = "Common Bird"
-            detection.ioc_english_name = None
-            detection.translated_name = None
-            mock_detections.append(detection)
+            detection = model_factory.create_detection_with_taxa(
+                timestamp=base_time.replace(hour=i % 24, minute=0, second=0),
+                confidence=0.8,
+                scientific_name="Species_1",
+                common_name="Common Bird",
+                ioc_english_name="Common Bird",
+            )
+            detections.append(detection)
 
         # Species_2: 10 detections (regular - needs >5 and <=20)
         for i in range(10):
-            detection = MagicMock(spec=DetectionWithTaxa)
-            detection.timestamp = base_time.replace(hour=i % 24, minute=30, second=0)
-            detection.confidence = 0.7
-            detection.scientific_name = "Species_2"
-            detection.common_name = "Regular Bird"
-            detection.ioc_english_name = None
-            detection.translated_name = None
-            mock_detections.append(detection)
+            detection = model_factory.create_detection_with_taxa(
+                timestamp=base_time.replace(hour=i % 24, minute=30, second=0),
+                confidence=0.7,
+                scientific_name="Species_2",
+                common_name="Regular Bird",
+                ioc_english_name="Regular Bird",
+            )
+            detections.append(detection)
 
         # Species_3: 1 detection (uncommon)
-        detection = MagicMock(spec=DetectionWithTaxa)
-        detection.timestamp = base_time.replace(hour=12, minute=45, second=0)
-        detection.confidence = 0.6
-        detection.scientific_name = "Species_3"
-        detection.common_name = "Rare Bird"
-        detection.ioc_english_name = None
-        detection.translated_name = None
-        mock_detections.append(detection)
+        detection = model_factory.create_detection_with_taxa(
+            timestamp=base_time.replace(hour=12, minute=45, second=0),
+            confidence=0.6,
+            scientific_name="Species_3",
+            common_name="Rare Bird",
+            ioc_english_name="Rare Bird",
+        )
+        detections.append(detection)
 
-        mock_detection_query_service.query_detections = AsyncMock(return_value=mock_detections)
+        mock_detection_query_service.query_detections = AsyncMock(return_value=detections)
+
+        # Mock species counts for frequency categorization
+        mock_detection_query_service.get_species_counts = AsyncMock(
+            return_value=[
+                {"common_name": "Common Bird", "count": 25},
+                {"common_name": "Regular Bird", "count": 10},
+                {"common_name": "Rare Bird", "count": 1},
+            ]
+        )
 
         result = await analytics_manager.get_detection_scatter_data(hours=24)
 
         # Group results by species
         species_categories = {}
         for item in result:
-            species_categories[item["species"]] = item["frequency_category"]
+            species_categories[item["common_name"]] = item["frequency_category"]
 
         # Check frequency categorization
         # Common Bird should be 'common' (25 detections, >20)

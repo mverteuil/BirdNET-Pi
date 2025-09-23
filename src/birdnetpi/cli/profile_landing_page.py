@@ -54,7 +54,7 @@ async def profile_landing_page(
     species_database = SpeciesDatabaseService(path_resolver)
 
     # Initialize query and analytics services
-    detection_query_service = DetectionQueryService(core_database, species_database)
+    detection_query_service = DetectionQueryService(core_database, species_database, config)
     analytics_manager = AnalyticsManager(detection_query_service, config)
 
     # Create presentation manager

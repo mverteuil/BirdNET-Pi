@@ -6,8 +6,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from birdnetpi.analytics.analytics import AnalyticsManager
-from birdnetpi.config import BirdNETConfig
-from birdnetpi.detections.models import Detection, DetectionWithTaxa
 from birdnetpi.detections.queries import DetectionQueryService
 
 
@@ -18,17 +16,9 @@ def mock_detection_query_service():
 
 
 @pytest.fixture
-def mock_config():
-    """Create a mock BirdNETConfig."""
-    config = MagicMock(spec=BirdNETConfig)
-    config.species_confidence_threshold = 0.5
-    return config
-
-
-@pytest.fixture
-def analytics_manager(mock_detection_query_service, mock_config):
+def analytics_manager(mock_detection_query_service, test_config):
     """Create an AnalyticsManager with mocked dependencies."""
-    return AnalyticsManager(mock_detection_query_service, mock_config)
+    return AnalyticsManager(mock_detection_query_service, test_config)
 
 
 class TestDashboardAnalytics:
@@ -36,7 +26,7 @@ class TestDashboardAnalytics:
 
     @pytest.mark.asyncio
     async def test_get_dashboard_summary(
-        self, analytics_manager, mock_detection_query_service, mock_config
+        self, analytics_manager, mock_detection_query_service, test_config
     ):
         """Should calculate dashboard summary with correct metrics."""
         # Mock DetectionQueryService methods
@@ -58,7 +48,7 @@ class TestDashboardAnalytics:
         assert summary["species_week"] == 25
         assert summary["storage_gb"] == 5.0
         assert summary["hours_monitored"] == 24.0
-        assert summary["confidence_threshold"] == 0.5
+        assert summary["confidence_threshold"] == test_config.species_confidence_threshold
 
         # Verify correct time ranges were used
         assert mock_detection_query_service.get_detection_count.call_count == 1
@@ -218,39 +208,50 @@ class TestTemporalPatterns:
 
     @pytest.mark.asyncio
     async def test_get_detection_scatter_data(
-        self, analytics_manager, mock_detection_query_service
+        self, analytics_manager, mock_detection_query_service, model_factory
     ):
         """Should generate scatter plot data for detection visualization."""
         test_time = datetime(2024, 1, 1, 6, 30)
-        mock_detections = [
-            MagicMock(
-                timestamp=test_time,
-                confidence=0.85,
-                scientific_name="Turdus migratorius",
-                common_name="American Robin",
-                translated_name=None,
-                ioc_english_name="American Robin",
-            ),
-            MagicMock(
-                timestamp=datetime(2024, 1, 1, 7, 15),
-                confidence=0.92,
-                scientific_name="Cardinalis cardinalis",
-                common_name="Northern Cardinal",
-                translated_name=None,
-                ioc_english_name="Northern Cardinal",
-            ),
-        ]
-        mock_detection_query_service.query_detections = AsyncMock(return_value=mock_detections)
+
+        # Use model_factory to create real DetectionWithTaxa instances
+        detection1 = model_factory.create_detection_with_taxa(
+            timestamp=test_time,
+            confidence=0.85,
+            scientific_name="Turdus migratorius",
+            common_name="American Robin",
+            ioc_english_name="American Robin",
+        )
+
+        detection2 = model_factory.create_detection_with_taxa(
+            timestamp=datetime(2024, 1, 1, 7, 15),
+            confidence=0.92,
+            scientific_name="Cardinalis cardinalis",
+            common_name="Northern Cardinal",
+            ioc_english_name="Northern Cardinal",
+        )
+
+        mock_detection_query_service.query_detections = AsyncMock(
+            return_value=[detection1, detection2]
+        )
+
+        # Mock species counts for frequency categorization
+        mock_detection_query_service.get_species_counts = AsyncMock(
+            return_value=[
+                {"common_name": "American Robin", "count": 8},
+                {"common_name": "Northern Cardinal", "count": 3},
+            ]
+        )
 
         scatter_data = await analytics_manager.get_detection_scatter_data(hours=24)
 
         assert len(scatter_data) == 2
         assert scatter_data[0]["time"] == 6.5  # 6:30 AM
         assert scatter_data[0]["confidence"] == 0.85
-        assert scatter_data[0]["species"] == "American Robin"
-        assert "frequency_category" in scatter_data[0]
+        assert scatter_data[0]["common_name"] == "American Robin"
+        assert scatter_data[0]["frequency_category"] == "regular"  # 8 detections = regular
         assert scatter_data[1]["time"] == 7.25  # 7:15 AM
         assert scatter_data[1]["confidence"] == 0.92
+        assert scatter_data[1]["frequency_category"] == "uncommon"  # 3 detections = uncommon
 
 
 class TestDiversityMetrics:
@@ -481,13 +482,13 @@ class TestScatterVisualization:
 
     @pytest.mark.asyncio
     async def test_get_detection_scatter_data(
-        self, analytics_manager, mock_detection_query_service
+        self, analytics_manager, mock_detection_query_service, model_factory
     ):
         """Should prepare scatter plot data with time and confidence values."""
         # Create mock detections with taxa
         detections = [
-            DetectionWithTaxa(
-                detection=Detection(
+            model_factory.create_detection_with_taxa(
+                detection=model_factory.create_detection(
                     species_tensor="Turdus migratorius_American Robin",
                     scientific_name="Turdus migratorius",
                     common_name="American Robin",
@@ -500,8 +501,8 @@ class TestScatterVisualization:
                 genus="Turdus",
                 order_name="Passeriformes",
             ),
-            DetectionWithTaxa(
-                detection=Detection(
+            model_factory.create_detection_with_taxa(
+                detection=model_factory.create_detection(
                     species_tensor="Cardinalis cardinalis_Northern Cardinal",
                     scientific_name="Cardinalis cardinalis",
                     common_name="Northern Cardinal",
@@ -514,8 +515,8 @@ class TestScatterVisualization:
                 genus="Cardinalis",
                 order_name="Passeriformes",
             ),
-            DetectionWithTaxa(
-                detection=Detection(
+            model_factory.create_detection_with_taxa(
+                detection=model_factory.create_detection(
                     species_tensor="Cyanocitta cristata_Blue Jay",
                     scientific_name="Cyanocitta cristata",
                     common_name="Blue Jay",
@@ -539,18 +540,18 @@ class TestScatterVisualization:
         # Check first detection
         assert scatter_data[0]["time"] == 6.25  # 6:15 = 6 + 15/60
         assert scatter_data[0]["confidence"] == 0.95
-        assert scatter_data[0]["species"] == "American Robin"
+        assert scatter_data[0]["common_name"] == "American Robin"
         assert scatter_data[0]["frequency_category"] == "uncommon"  # Count is 1
 
         # Check second detection
         assert scatter_data[1]["time"] == 7.5  # 7:30 = 7 + 30/60
         assert scatter_data[1]["confidence"] == 0.88
-        assert scatter_data[1]["species"] == "Northern Cardinal"
+        assert scatter_data[1]["common_name"] == "Northern Cardinal"
 
         # Check third detection
         assert scatter_data[2]["time"] == 8.75  # 8:45 = 8 + 45/60
         assert scatter_data[2]["confidence"] == 0.75
-        assert scatter_data[2]["species"] == "Blue Jay"
+        assert scatter_data[2]["common_name"] == "Blue Jay"
 
     @pytest.mark.asyncio
     async def test_get_detection_scatter_data_empty(

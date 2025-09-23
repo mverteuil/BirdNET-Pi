@@ -180,10 +180,10 @@ async def test_fetch_and_store_weather_no_data(weather_manager):
 
 
 @pytest.mark.asyncio
-async def test_link_detections_to_weather(weather_manager, session):
+async def test_link_detections_to_weather(weather_manager, session, model_factory):
     """Should linking detections to weather records."""
     # Create weather record
-    weather = Weather(
+    weather = model_factory.create_weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
         latitude=63.4591,
         longitude=-19.3647,
@@ -196,7 +196,7 @@ async def test_link_detections_to_weather(weather_manager, session):
     # Create detections in the same hour
     base_time = datetime(2024, 1, 1, 12, 30, tzinfo=UTC)
     for i in range(3):
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor=f"Bird_{i}",
             scientific_name=f"Species {i}",
             confidence=0.9,
@@ -205,7 +205,7 @@ async def test_link_detections_to_weather(weather_manager, session):
         session.add(detection)
 
     # Create detection in different hour (shouldn't be linked)
-    other_detection = Detection(
+    other_detection = model_factory.create_detection(
         species_tensor="Other_Bird",
         scientific_name="Other Species",
         confidence=0.8,
@@ -241,16 +241,16 @@ async def test_link_detections_to_weather(weather_manager, session):
 
 
 @pytest.mark.asyncio
-async def test_link_detections_skips_already_linked(weather_manager, session):
+async def test_link_detections_skips_already_linked(weather_manager, session, model_factory):
     """Should link_detections_to_weather skips already linked detections."""
     # Create two weather records
-    weather1 = Weather(
+    weather1 = model_factory.create_weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
         latitude=63.4591,
         longitude=-19.3647,
         temperature=20.0,
     )
-    weather2 = Weather(
+    weather2 = model_factory.create_weather(
         timestamp=datetime(2024, 1, 1, 13, tzinfo=UTC),
         latitude=63.4591,
         longitude=-19.3647,
@@ -260,7 +260,7 @@ async def test_link_detections_skips_already_linked(weather_manager, session):
     await session.commit()
 
     # Create detection already linked to weather1
-    detection = Detection(
+    detection = model_factory.create_detection(
         species_tensor="Bird",
         scientific_name="Species",
         confidence=0.9,
@@ -287,12 +287,12 @@ async def test_link_detections_skips_already_linked(weather_manager, session):
 
 
 @pytest.mark.asyncio
-async def test_backfill_weather(weather_manager, session):
+async def test_backfill_weather(weather_manager, session, model_factory):
     """Should backfilling weather for a time range."""
     with patch.object(weather_manager, "fetch_and_store_weather") as mock_fetch:
         # Mock weather creation
         async def create_weather(timestamp):
-            weather = Weather(
+            weather = model_factory.create_weather(
                 timestamp=timestamp,
                 latitude=63.4591,
                 longitude=-19.3647,
@@ -308,7 +308,7 @@ async def test_backfill_weather(weather_manager, session):
         # Create detections needing weather
         base_time = datetime(2024, 1, 1, 12, tzinfo=UTC)
         for i in range(3):
-            detection = Detection(
+            detection = model_factory.create_detection(
                 species_tensor=f"Bird_{i}",
                 scientific_name=f"Species {i}",
                 confidence=0.9,
@@ -330,10 +330,10 @@ async def test_backfill_weather(weather_manager, session):
 
 
 @pytest.mark.asyncio
-async def test_backfill_weather_skip_existing(weather_manager, session):
+async def test_backfill_weather_skip_existing(weather_manager, session, model_factory):
     """Should backfill skips existing weather records when requested."""
     # Create existing weather
-    existing_weather = Weather(
+    existing_weather = model_factory.create_weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
         latitude=63.4591,
         longitude=-19.3647,
@@ -406,11 +406,11 @@ async def test_backfill_weather_bulk(weather_manager, session):
 
 
 @pytest.mark.asyncio
-async def test_backfill_weather_bulk_skip_existing(weather_manager, session):
+async def test_backfill_weather_bulk_skip_existing(weather_manager, session, model_factory):
     """Should bulk backfill skips existing records."""
     # Create some existing weather records
     for hour in [0, 6, 12, 18]:
-        weather = Weather(
+        weather = model_factory.create_weather(
             timestamp=datetime(2024, 1, 1, hour, tzinfo=UTC),
             latitude=63.4591,
             longitude=-19.3647,
@@ -452,7 +452,7 @@ async def test_backfill_weather_bulk_skip_existing(weather_manager, session):
 
 
 @pytest.mark.asyncio
-async def test_smart_backfill(weather_manager, session):
+async def test_smart_backfill(weather_manager, session, model_factory):
     """Should smart backfill based on detections without weather."""
     # Create detections across different times
     timestamps = [
@@ -462,7 +462,7 @@ async def test_smart_backfill(weather_manager, session):
     ]
 
     for ts in timestamps:
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Bird",
             scientific_name="Species",
             confidence=0.9,
@@ -492,10 +492,10 @@ async def test_smart_backfill(weather_manager, session):
 
 
 @pytest.mark.asyncio
-async def test_smart_backfill_no_detections(weather_manager, session):
+async def test_smart_backfill_no_detections(weather_manager, session, model_factory):
     """Should smart backfill when no detections need weather."""
     # Create detection with weather already linked
-    weather = Weather(
+    weather = model_factory.create_weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
         latitude=63.4591,
         longitude=-19.3647,
@@ -504,7 +504,7 @@ async def test_smart_backfill_no_detections(weather_manager, session):
     session.add(weather)
     await session.commit()
 
-    detection = Detection(
+    detection = model_factory.create_detection(
         species_tensor="Bird",
         scientific_name="Species",
         confidence=0.9,
@@ -595,12 +595,12 @@ async def test_rate_limiting_in_backfill(weather_manager):
 
 
 @pytest.mark.asyncio
-async def test_weather_manager_session_handling(session):
+async def test_weather_manager_session_handling(session, model_factory):
     """Should weatherManager properly uses the session."""
     manager = WeatherManager(session, 40.0, -74.0)
 
     # Create a weather record
-    weather = Weather(
+    weather = model_factory.create_weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
         latitude=63.4591,
         longitude=-19.3647,
@@ -610,7 +610,7 @@ async def test_weather_manager_session_handling(session):
     await session.commit()
 
     # Create detection
-    detection = Detection(
+    detection = model_factory.create_detection(
         species_tensor="Bird",
         scientific_name="Species",
         confidence=0.9,
@@ -640,17 +640,17 @@ class TestWeatherManagerRefactoredMethods:
     """Test the new refactored methods in WeatherManager."""
 
     @pytest.mark.asyncio
-    async def test_get_existing_weather_hours(self, weather_manager, session):
+    async def test_get_existing_weather_hours(self, weather_manager, session, model_factory):
         """Should _get_existing_weather_hours method."""
         # Create some weather records
-        weather1 = Weather(
+        weather1 = model_factory.create_weather(
             timestamp=datetime(2024, 1, 1, 10, tzinfo=UTC),
             latitude=63.4591,
             longitude=-19.3647,
             temperature=20.0,
             humidity=65,
         )
-        weather2 = Weather(
+        weather2 = model_factory.create_weather(
             timestamp=datetime(2024, 1, 1, 11, tzinfo=UTC),
             latitude=63.4591,
             longitude=-19.3647,

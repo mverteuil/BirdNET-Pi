@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from birdnetpi.detections.models import Detection
 from birdnetpi.notifications.mqtt import MQTTService
 
 
@@ -169,9 +168,9 @@ class TestMQTTService:
         assert service.is_connected is False
 
     @pytest.mark.asyncio
-    async def test_publish_detection_disabled(self, mqtt_service):
+    async def test_publish_detection_disabled(self, mqtt_service, model_factory):
         """Should publishing detection when MQTT is disabled."""
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
             common_name="Test Bird",
@@ -189,7 +188,7 @@ class TestMQTTService:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_publish_detection_enabled(self, enabled_mqtt_service):
+    async def test_publish_detection_enabled(self, enabled_mqtt_service, model_factory):
         """Should publishing detection when MQTT is enabled."""
         service = enabled_mqtt_service
         service.client = MagicMock()
@@ -200,7 +199,7 @@ class TestMQTTService:
         mock_result.rc = 0  # MQTT_ERR_SUCCESS
         service.client.publish.return_value = mock_result
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
             common_name="Test Bird",
@@ -402,7 +401,7 @@ class TestMQTTService:
         assert "detections" in status["topics"]
 
     @pytest.mark.asyncio
-    async def test_publish_failure(self, enabled_mqtt_service):
+    async def test_publish_failure(self, enabled_mqtt_service, model_factory):
         """Should handling publish failures."""
         service = enabled_mqtt_service
         service.client = MagicMock()
@@ -413,7 +412,7 @@ class TestMQTTService:
         mock_result.rc = 1  # MQTT_ERR_NOMEM or other error
         service.client.publish.return_value = mock_result
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
             common_name="Test Bird",
@@ -429,7 +428,7 @@ class TestMQTTService:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_publish__exception_handling(self, enabled_mqtt_service):
+    async def test_publish__exception_handling(self, enabled_mqtt_service, model_factory):
         """Should exception handling during publish."""
         service = enabled_mqtt_service
         service.client = MagicMock()
@@ -438,7 +437,7 @@ class TestMQTTService:
         # Mock exception during publish
         service.client.publish.side_effect = Exception("Connection lost")
 
-        detection = Detection(
+        detection = model_factory.create_detection(
             species_tensor="Testus species_Test Bird",
             scientific_name="Testus species",
             common_name="Test Bird",

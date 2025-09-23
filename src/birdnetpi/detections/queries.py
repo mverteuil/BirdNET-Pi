@@ -20,11 +20,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
 
+from birdnetpi.config.models import BirdNETConfig
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
-from birdnetpi.detections.models import AudioFile, Detection, DetectionBase, DetectionWithTaxa
+from birdnetpi.detections.models import AudioFile, Detection, DetectionWithTaxa
 from birdnetpi.location.models import Weather
-from birdnetpi.species.display import SpeciesDisplayService
 
 logger = logging.getLogger(__name__)
 
@@ -43,18 +43,18 @@ class DetectionQueryService:
         self,
         core_database: CoreDatabaseService,
         species_database: SpeciesDatabaseService,
-        species_display_service: SpeciesDisplayService | None = None,
+        config: BirdNETConfig,
     ):
         """Initialize detection query service.
 
         Args:
             core_database: Main database service for detections
             species_database: Species database service (IOC/Avibase/PatLevin)
-            species_display_service: Optional service for species display formatting
+            config: BirdNET configuration with language settings
         """
         self.core_database = core_database
         self.species_database = species_database
-        self.species_display = species_display_service
+        self.config = config
 
     def _parse_timestamp(self, timestamp_value: dt | str | int | float) -> dt:
         """Parse timestamp from various formats.
@@ -129,7 +129,7 @@ class DetectionQueryService:
         offset: int | None = None,
         order_by: str = "timestamp",
         order_desc: bool = True,
-        language_code: str = "en",
+        include_first_detections: bool = False,
     ) -> list[DetectionWithTaxa]:
         """Query detections with flexible filtering and taxa enrichment.
 
@@ -148,7 +148,7 @@ class DetectionQueryService:
             offset: Number of results to skip
             order_by: Field to order by (default: timestamp)
             order_desc: Whether to order descending (default: True)
-            language_code: Language for translations (default: en)
+            include_first_detections: Include first detection flags (adds overhead)
 
         Returns:
             List of DetectionWithTaxa objects
@@ -160,7 +160,6 @@ class DetectionQueryService:
                     session=session,
                     limit=limit,
                     offset=offset or 0,
-                    language_code=language_code,
                     start_date=start_date,
                     end_date=end_date,
                     scientific_name_filter=species,
@@ -170,6 +169,7 @@ class DetectionQueryService:
                     max_confidence=max_confidence,
                     order_by=order_by,
                     order_desc=order_desc,
+                    include_first_detections=include_first_detections,
                 )
             finally:
                 await self.species_database.detach_all_from_session(session)
@@ -178,7 +178,6 @@ class DetectionQueryService:
         self,
         limit: int = 100,
         offset: int = 0,
-        language_code: str = "en",
         *,  # Everything after this is keyword-only
         start_date: dt | None = None,
         end_date: dt | None = None,
@@ -199,7 +198,6 @@ class DetectionQueryService:
         Args:
             limit: Maximum number of results
             offset: Number of results to skip
-            language_code: Language for translations (default: en)
             start_date: Only return detections after this timestamp
             end_date: Only return detections before this timestamp
             scientific_name_filter: Filter by scientific name(s) - string or list
@@ -231,17 +229,13 @@ class DetectionQueryService:
             offset=offset,
             order_by=order_by,
             order_desc=order_desc,
-            language_code=language_code,
         )
 
-    async def get_detection_with_taxa(
-        self, detection_id: UUID, language_code: str = "en"
-    ) -> DetectionWithTaxa | None:
+    async def get_detection_with_taxa(self, detection_id: UUID) -> DetectionWithTaxa | None:
         """Get single detection with taxonomy data by ID.
 
         Args:
             detection_id: Detection UUID
-            language_code: Language for translations
 
         Returns:
             DetectionWithTaxa object or None if not found
@@ -291,7 +285,8 @@ class DetectionQueryService:
                 """)
 
                 result = await session.execute(
-                    query_sql, {"detection_id": str(detection_id), "language_code": language_code}
+                    query_sql,
+                    {"detection_id": str(detection_id), "language_code": self.config.language},
                 )
                 result = result.fetchone()
 
@@ -339,18 +334,175 @@ class DetectionQueryService:
             finally:
                 await self.species_database.detach_all_from_session(session)
 
+    def _format_species_summary_result(
+        self,
+        result: Any,  # noqa: ANN401
+        include_first_detections: bool,
+    ) -> dict[str, Any]:
+        """Format a single species summary result.
+
+        Args:
+            result: Database result row
+            include_first_detections: Whether to include first detection fields
+
+        Returns:
+            Formatted species data dictionary
+        """
+        species_data = {
+            "scientific_name": result.scientific_name,  # type: ignore[attr-defined]
+            "detection_count": result.detection_count,  # type: ignore[attr-defined]
+            "avg_confidence": round(float(result.avg_confidence), 3),  # type: ignore[attr-defined]
+            "latest_detection": self._parse_timestamp(result.latest_detection).isoformat()  # type: ignore[attr-defined]
+            if result.latest_detection  # type: ignore[attr-defined]
+            else None,
+            "ioc_english_name": result.ioc_english_name,  # type: ignore[attr-defined]
+            "translated_name": result.translated_name,  # type: ignore[attr-defined]
+            "family": result.family,  # type: ignore[attr-defined]
+            "genus": result.genus,  # type: ignore[attr-defined]
+            "order_name": result.order_name,  # type: ignore[attr-defined]
+            "best_common_name": result.translated_name or result.ioc_english_name,  # type: ignore[attr-defined]
+        }
+
+        # Add first detection fields if they exist
+        # (as ISO strings for JSON serialization)
+        if include_first_detections:
+            if hasattr(result, "first_ever_detection") and result.first_ever_detection:
+                species_data["first_ever_detection"] = self._parse_timestamp(
+                    result.first_ever_detection
+                ).isoformat()  # type: ignore[attr-defined]
+            if hasattr(result, "first_period_detection") and result.first_period_detection:
+                species_data["first_period_detection"] = self._parse_timestamp(
+                    result.first_period_detection
+                ).isoformat()  # type: ignore[attr-defined]
+
+        return species_data
+
+    def _build_species_summary_where_clause(
+        self,
+        since: dt | None,
+        family_filter: str | None,
+        params: dict[str, Any],
+    ) -> str:
+        """Build WHERE clause for species summary query."""
+        where_clause = "WHERE 1=1"
+
+        if since:
+            where_clause += " AND d.timestamp >= :since"
+            params["since"] = since
+
+        if family_filter:
+            where_clause += " AND s.family = :family"
+            params["family"] = family_filter
+
+        return where_clause
+
+    def _build_species_summary_query(
+        self,
+        where_clause: str,
+        include_first_detections: bool,
+        since: dt | None = None,
+    ) -> str:
+        """Build SQL query for species summary."""
+        if include_first_detections:
+            return self._build_query_with_first_detections(where_clause, since)
+        return self._build_simple_species_query(where_clause)
+
+    def _build_query_with_first_detections(
+        self,
+        where_clause: str,
+        since: dt | None,
+    ) -> str:
+        """Build species summary query with first detection tracking."""
+        # Build first_period_detection column based on whether since is provided
+        if since:
+            first_period_col = (
+                "MIN(CASE WHEN d.timestamp >= :since "
+                "THEN d.timestamp END) as first_period_detection,"
+            )
+        else:
+            first_period_col = "NULL as first_period_detection,"
+
+        return f"""
+            SELECT
+                d.scientific_name,
+                COUNT(*) as detection_count,
+                AVG(d.confidence) as avg_confidence,
+                MAX(d.timestamp) as latest_detection,
+                MIN(d.timestamp) as first_ever_detection,
+                {first_period_col}
+                MAX(s.english_name) as ioc_english_name,
+                MAX(COALESCE(
+                    t.common_name,
+                    p.common_name,
+                    a.common_name,
+                    s.english_name,
+                    d.common_name
+                )) as translated_name,
+                MAX(s.family) as family,
+                MAX(s.genus) as genus,
+                MAX(s.order_name) as order_name
+            FROM detections d
+            LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
+            LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                AND t.language_code = :language_code
+            LEFT JOIN patlevin.patlevin_labels p
+                ON p.scientific_name = d.scientific_name
+                AND p.language_code = :language_code
+            LEFT JOIN avibase.avibase_names a
+                ON a.scientific_name = d.scientific_name
+                AND a.language_code = :language_code
+            {where_clause}
+            GROUP BY d.scientific_name
+            ORDER BY detection_count DESC
+        """
+
+    def _build_simple_species_query(self, where_clause: str) -> str:
+        """Build simple species summary query without first detections."""
+        return f"""
+            SELECT
+                d.scientific_name,
+                COUNT(*) as detection_count,
+                AVG(d.confidence) as avg_confidence,
+                MAX(d.timestamp) as latest_detection,
+                s.english_name as ioc_english_name,
+                COALESCE(
+                    t.common_name,
+                    p.common_name,
+                    a.common_name,
+                    s.english_name,
+                    d.common_name
+                ) as translated_name,
+                s.family,
+                s.genus,
+                s.order_name
+            FROM detections d
+            LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
+            LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                AND t.language_code = :language_code
+            LEFT JOIN patlevin.patlevin_labels p
+                ON p.scientific_name = d.scientific_name
+                AND p.language_code = :language_code
+            LEFT JOIN avibase.avibase_names a
+                ON a.scientific_name = d.scientific_name
+                AND a.language_code = :language_code
+            {where_clause}
+            GROUP BY d.scientific_name, s.english_name, translated_name,
+                     s.family, s.genus, s.order_name
+            ORDER BY detection_count DESC
+        """
+
     async def get_species_summary(
         self,
-        language_code: str = "en",
         since: dt | None = None,
         family_filter: str | None = None,
+        include_first_detections: bool = False,
     ) -> list[dict[str, Any]]:
         """Get detection count summary by species with translation data.
 
         Args:
-            language_code: Language for translations
             since: Only include detections after this timestamp
             family_filter: Filter by taxonomic family
+            include_first_detections: Include first detection timestamps (adds overhead)
 
         Returns:
             List of species summary dictionaries
@@ -358,53 +510,20 @@ class DetectionQueryService:
         async with self.core_database.get_async_db() as session:
             await self.species_database.attach_all_to_session(session)
             try:
-                where_clause = "WHERE 1=1"
-                params: dict[str, Any] = {"language_code": language_code}
+                params: dict[str, Any] = {"language_code": self.config.language}
 
-                if since:
-                    where_clause += " AND d.timestamp >= :since"
-                    params["since"] = since
-
-                if family_filter:
-                    where_clause += " AND s.family = :family"
-                    params["family"] = family_filter
-
-                # Updated query with COALESCE across all three databases
-                # Safe: WHERE clause uses pre-defined fragments, user data is parameterized
-                query_sql = text(  # nosemgrep
-                    f"""
-                    SELECT
-                        d.scientific_name,
-                        COUNT(*) as detection_count,
-                        AVG(d.confidence) as avg_confidence,
-                        MAX(d.timestamp) as latest_detection,
-                        s.english_name as ioc_english_name,
-                        COALESCE(
-                            t.common_name,
-                            p.common_name,
-                            a.common_name,
-                            s.english_name,
-                            d.common_name
-                        ) as translated_name,
-                        s.family,
-                        s.genus,
-                        s.order_name
-                    FROM detections d
-                    LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
-                    LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
-                        AND t.language_code = :language_code
-                    LEFT JOIN patlevin.patlevin_labels p
-                        ON LOWER(p.scientific_name) = LOWER(d.scientific_name)
-                        AND p.language_code = :language_code
-                    LEFT JOIN avibase.avibase_names a
-                        ON LOWER(a.scientific_name) = LOWER(d.scientific_name)
-                        AND a.language_code = :language_code
-                    {where_clause}
-                    GROUP BY d.scientific_name, s.english_name, translated_name, s.family, s.genus,
-                             s.order_name
-                    ORDER BY detection_count DESC
-                """
+                # Build WHERE clause
+                where_clause = self._build_species_summary_where_clause(
+                    since, family_filter, params
                 )
+
+                # Build query SQL
+                query_string = self._build_species_summary_query(
+                    where_clause, include_first_detections, since
+                )
+
+                # Safe: WHERE clause uses pre-defined fragments, user data is parameterized
+                query_sql = text(query_string)  # nosemgrep
 
                 result = await session.execute(query_sql, params)
                 results = result.fetchall()
@@ -436,12 +555,15 @@ class DetectionQueryService:
                             f"After {params['since']}: {check_row.detections_after_since}"
                         )
 
-                species_summary = [
-                    {
+                species_summary = []
+                for result in results:
+                    species_data = {
                         "scientific_name": result.scientific_name,  # type: ignore[attr-defined]
                         "detection_count": result.detection_count,  # type: ignore[attr-defined]
                         "avg_confidence": round(float(result.avg_confidence), 3),  # type: ignore[attr-defined]
-                        "latest_detection": self._parse_timestamp(result.latest_detection)  # type: ignore[attr-defined]
+                        "latest_detection": self._parse_timestamp(
+                            result.latest_detection
+                        ).isoformat()  # type: ignore[attr-defined]
                         if result.latest_detection  # type: ignore[attr-defined]
                         else None,
                         "ioc_english_name": result.ioc_english_name,  # type: ignore[attr-defined]
@@ -451,21 +573,33 @@ class DetectionQueryService:
                         "order_name": result.order_name,  # type: ignore[attr-defined]
                         "best_common_name": result.translated_name or result.ioc_english_name,  # type: ignore[attr-defined]
                     }
-                    for result in results
-                ]
+
+                    # Add first detection fields if they exist
+                    # (as ISO strings for JSON serialization)
+                    if include_first_detections:
+                        if hasattr(result, "first_ever_detection") and result.first_ever_detection:
+                            species_data["first_ever_detection"] = self._parse_timestamp(
+                                result.first_ever_detection
+                            ).isoformat()  # type: ignore[attr-defined]
+                        if (
+                            hasattr(result, "first_period_detection")
+                            and result.first_period_detection
+                        ):
+                            species_data["first_period_detection"] = self._parse_timestamp(
+                                result.first_period_detection
+                            ).isoformat()  # type: ignore[attr-defined]
+
+                    species_summary.append(species_data)
 
                 return species_summary
 
             finally:
                 await self.species_database.detach_all_from_session(session)
 
-    async def get_family_summary(
-        self, language_code: str = "en", since: dt | None = None
-    ) -> list[dict[str, Any]]:
+    async def get_family_summary(self, since: dt | None = None) -> list[dict[str, Any]]:
         """Get detection count summary by taxonomic family.
 
         Args:
-            language_code: Language for translations
             since: Only include detections after this timestamp
 
         Returns:
@@ -475,7 +609,7 @@ class DetectionQueryService:
             await self.species_database.attach_all_to_session(session)
             try:
                 where_clause = "WHERE s.family IS NOT NULL"
-                params: dict[str, Any] = {"language_code": language_code}
+                params: dict[str, Any] = {"language_code": self.config.language}
 
                 if since:
                     where_clause += " AND d.timestamp >= :since"
@@ -545,7 +679,6 @@ class DetectionQueryService:
 
     def _build_where_clause_and_params(
         self,
-        language_code: str,
         limit: int | None,
         offset: int,
         *,  # Everything after this is keyword-only
@@ -559,7 +692,7 @@ class DetectionQueryService:
     ) -> tuple[str, dict[str, Any]]:
         """Build WHERE clause and parameters for the query."""
         where_clause = "WHERE 1=1"
-        params: dict[str, Any] = {"language_code": language_code, "offset": offset}
+        params: dict[str, Any] = {"language_code": self.config.language, "offset": offset}
 
         # Only add limit to params if it's not None
         if limit is not None:
@@ -617,7 +750,6 @@ class DetectionQueryService:
         session: AsyncSession,
         limit: int | None,
         offset: int,
-        language_code: str,
         *,  # Everything after this is keyword-only
         start_date: dt | None = None,
         end_date: dt | None = None,
@@ -628,11 +760,11 @@ class DetectionQueryService:
         max_confidence: float | None = None,
         order_by: str = "timestamp",
         order_desc: bool = True,
+        include_first_detections: bool = False,
     ) -> list[DetectionWithTaxa]:
         """Execute the main JOIN query with filters."""
         # Build WHERE clause and parameters
         where_clause, params = self._build_where_clause_and_params(
-            language_code=language_code,
             limit=limit,
             offset=offset,
             start_date=start_date,
@@ -661,50 +793,130 @@ class DetectionQueryService:
         pagination_clause = f"{limit_clause} {offset_clause}".strip()
 
         if has_species_db:
-            # Full query with JOINs when species databases are available
-            # Safe: WHERE/ORDER clauses use pre-defined fragments, user data is parameterized
-            query_sql = text(  # nosemgrep
-                f"""
-                SELECT
-                    d.id,
-                    d.species_tensor,
-                    d.scientific_name,
-                    d.common_name,
-                    d.confidence,
-                    d.timestamp,
-                    d.audio_file_id,
-                    d.latitude,
-                    d.longitude,
-                    d.species_confidence_threshold,
-                    d.week,
-                    d.sensitivity_setting,
-                    d.overlap,
-                    COALESCE(s.english_name, d.common_name) as ioc_english_name,
-                    COALESCE(
-                        t.common_name,
-                        p.common_name,
-                        a.common_name,
-                        s.english_name,
-                        d.common_name
-                    ) as translated_name,
-                    s.family,
-                    s.genus,
-                    s.order_name
-                FROM detections d
-                LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
-                LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
-                    AND t.language_code = :language_code
-                LEFT JOIN patlevin.patlevin_labels p
-                    ON LOWER(p.scientific_name) = LOWER(d.scientific_name)
-                    AND p.language_code = :language_code
-                LEFT JOIN avibase.avibase_names a
-                    ON LOWER(a.scientific_name) = LOWER(d.scientific_name)
-                    AND a.language_code = :language_code
-                {where_clause}
-                {order_clause}
-                {pagination_clause}
-            """
-            )
+            # Build query with or without window functions based on flag
+            if include_first_detections:
+                # Enhanced query with window functions for first detection info
+                # Safe: WHERE/ORDER clauses use pre-defined fragments, user data is parameterized
+                query_sql = text(  # nosemgrep
+                    f"""
+                    WITH detection_ranks AS (
+                        SELECT
+                            d.*,
+                            COALESCE(s.english_name, d.common_name) as ioc_english_name,
+                            COALESCE(
+                                t.common_name,
+                                p.common_name,
+                                a.common_name,
+                                s.english_name,
+                                d.common_name
+                            ) as translated_name,
+                            s.family,
+                            s.genus,
+                            s.order_name,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY d.scientific_name ORDER BY d.timestamp
+                            ) as overall_rank,
+                            MIN(d.timestamp) OVER (
+                                PARTITION BY d.scientific_name
+                            ) as first_ever_detection
+                        FROM detections d
+                        LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
+                        LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                            AND t.language_code = :language_code
+                        LEFT JOIN patlevin.patlevin_labels p
+                            ON p.scientific_name = d.scientific_name
+                            AND p.language_code = :language_code
+                        LEFT JOIN avibase.avibase_names a
+                            ON a.scientific_name = d.scientific_name
+                            AND a.language_code = :language_code
+                        {where_clause}
+                    ),
+                    period_first AS (
+                        SELECT
+                            scientific_name,
+                            MIN(timestamp) as first_period_detection
+                        FROM detections
+                        {where_clause.replace("d.", "") if start_date else "WHERE 1=1"}
+                        GROUP BY scientific_name
+                    )
+                    SELECT
+                        dr.id,
+                        dr.species_tensor,
+                        dr.scientific_name,
+                        dr.common_name,
+                        dr.confidence,
+                        dr.timestamp,
+                        dr.audio_file_id,
+                        dr.latitude,
+                        dr.longitude,
+                        dr.species_confidence_threshold,
+                        dr.week,
+                        dr.sensitivity_setting,
+                        dr.overlap,
+                        dr.ioc_english_name,
+                        dr.translated_name,
+                        dr.family,
+                        dr.genus,
+                        dr.order_name,
+                        CASE WHEN dr.overall_rank = 1 THEN 1 ELSE 0 END as is_first_ever,
+                        CASE
+                            WHEN dr.timestamp = pf.first_period_detection THEN 1
+                            ELSE 0
+                        END as is_first_in_period,
+                        dr.first_ever_detection,
+                        pf.first_period_detection
+                    FROM detection_ranks dr
+                    LEFT JOIN period_first pf ON dr.scientific_name = pf.scientific_name
+                    ORDER BY dr.{"timestamp" if "timestamp" in order_by else order_by}
+                        {"DESC" if order_desc else "ASC"}
+                    {pagination_clause}
+                """
+                )
+            else:
+                # Standard query without window functions
+                # Safe: WHERE/ORDER clauses use pre-defined fragments, user data is parameterized
+                query_sql = text(  # nosemgrep
+                    f"""
+                    SELECT
+                        d.id,
+                        d.species_tensor,
+                        d.scientific_name,
+                        d.common_name,
+                        d.confidence,
+                        d.timestamp,
+                        d.audio_file_id,
+                        d.latitude,
+                        d.longitude,
+                        d.species_confidence_threshold,
+                        d.week,
+                        d.sensitivity_setting,
+                        d.overlap,
+                        COALESCE(s.english_name, d.common_name) as ioc_english_name,
+                        COALESCE(
+                            t.common_name,
+                            p.common_name,
+                            a.common_name,
+                            s.english_name,
+                            d.common_name
+                        ) as translated_name,
+                        s.family,
+                        s.genus,
+                        s.order_name
+                    FROM detections d
+                    LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
+                    LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                        AND t.language_code = :language_code
+                    LEFT JOIN patlevin.patlevin_labels p
+                        ON LOWER(p.scientific_name) = LOWER(d.scientific_name)
+                        AND p.language_code = :language_code
+                    LEFT JOIN avibase.avibase_names a
+                        ON LOWER(a.scientific_name) = LOWER(d.scientific_name)
+                        AND a.language_code = :language_code
+                    {where_clause}
+                    {order_clause}
+                    {pagination_clause}
+                """
+                )
         else:
             # Simplified query when species databases are not available (e.g., in tests)
             # Safe: WHERE/ORDER clauses use pre-defined fragments, user data is parameterized
@@ -758,16 +970,31 @@ class DetectionQueryService:
                 overlap=result.overlap,  # type: ignore[attr-defined]
             )
 
-            detection_data_list.append(
-                DetectionWithTaxa(
-                    detection=detection,
-                    ioc_english_name=result.ioc_english_name,  # type: ignore[attr-defined]
-                    translated_name=result.translated_name,  # type: ignore[attr-defined]
-                    family=result.family,  # type: ignore[attr-defined]
-                    genus=result.genus,  # type: ignore[attr-defined]
-                    order_name=result.order_name,  # type: ignore[attr-defined]
-                )
+            # Build DetectionWithTaxa with optional first detection fields
+            detection_with_taxa = DetectionWithTaxa(
+                detection=detection,
+                ioc_english_name=result.ioc_english_name,  # type: ignore[attr-defined]
+                translated_name=result.translated_name,  # type: ignore[attr-defined]
+                family=result.family,  # type: ignore[attr-defined]
+                genus=result.genus,  # type: ignore[attr-defined]
+                order_name=result.order_name,  # type: ignore[attr-defined]
             )
+
+            # Add first detection fields if they exist in the result
+            if hasattr(result, "is_first_ever"):
+                detection_with_taxa.is_first_ever = bool(result.is_first_ever)  # type: ignore[attr-defined]
+            if hasattr(result, "is_first_in_period"):
+                detection_with_taxa.is_first_in_period = bool(result.is_first_in_period)  # type: ignore[attr-defined]
+            if hasattr(result, "first_ever_detection"):
+                detection_with_taxa.first_ever_detection = self._parse_timestamp(
+                    result.first_ever_detection
+                )  # type: ignore[attr-defined]
+            if hasattr(result, "first_period_detection"):
+                detection_with_taxa.first_period_detection = self._parse_timestamp(
+                    result.first_period_detection
+                )  # type: ignore[attr-defined]
+
+            detection_data_list.append(detection_with_taxa)
 
         return detection_data_list
 
@@ -1018,35 +1245,274 @@ class DetectionQueryService:
                 logger.exception("Error counting by date")
                 raise
 
-    # ==================== Display Helpers ====================
-
-    def get_species_display_name(
+    async def query_detections_with_first_detection_info(
         self,
-        detection: DetectionBase | DetectionWithTaxa,
-        prefer_translation: bool = True,
-        language_code: str = "en",
-    ) -> str:
-        """Get display name respecting user preferences and database priority.
+        *,
+        species: str | list[str] | None = None,
+        family: str | None = None,
+        genus: str | None = None,
+        start_date: dt | None = None,
+        end_date: dt | None = None,
+        min_confidence: float | None = None,
+        max_confidence: float | None = None,
+        limit: int | None = 100,
+        offset: int = 0,
+        order_by: str = "timestamp",
+        order_desc: bool = True,
+    ) -> list[DetectionWithTaxa]:
+        """Query detections with first detection flags using window functions.
+
+        Adds two boolean fields to each detection:
+        - is_first_ever: True if this is the first ever detection of this species
+        - is_first_in_period: True if this is the first detection of this species in the
+          selected period
+        """
+        async with self.core_database.get_async_db() as session:
+            await self.species_database.attach_all_to_session(session)
+            try:
+                # Build WHERE clause and parameters
+                where_clause, params = self._build_where_clause_and_params(
+                    limit=limit,
+                    offset=offset,
+                    start_date=start_date,
+                    end_date=end_date,
+                    scientific_name_filter=species,
+                    family_filter=family,
+                    genus_filter=genus,
+                    min_confidence=min_confidence,
+                    max_confidence=max_confidence,
+                )
+
+                # Main query with window functions for first detection flags
+                query_sql = text(  # nosemgrep
+                    f"""
+                    WITH detection_ranks AS (
+                        SELECT
+                            d.*,
+                            s.english_name as ioc_english_name,
+                            s.family,
+                            s.genus,
+                            s.order_name,
+                            COALESCE(
+                                t.common_name,
+                                p.common_name,
+                                a.common_name,
+                                s.english_name
+                            ) as translated_name,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY d.scientific_name ORDER BY d.timestamp
+                            ) as overall_rank,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY d.scientific_name
+                                ORDER BY CASE
+                                    WHEN d.timestamp >= :start_date THEN d.timestamp
+                                    ELSE NULL
+                                END
+                            ) as period_rank
+                        FROM detections d
+                        LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
+                        LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                            AND t.language_code = :language_code
+                        LEFT JOIN patlevin.patlevin_labels p
+                            ON LOWER(p.scientific_name) = LOWER(d.scientific_name)
+                            AND p.language_code = :language_code
+                        LEFT JOIN avibase.avibase_names a
+                            ON d.scientific_name = a.scientific_name
+                            AND a.language_code = :language_code
+                        {where_clause}
+                    )
+                    SELECT
+                        *,
+                        CASE WHEN overall_rank = 1 THEN 1 ELSE 0 END as is_first_ever,
+                        CASE
+                            WHEN period_rank = 1 AND timestamp >= :start_date THEN 1
+                            ELSE 0
+                        END as is_first_in_period
+                    FROM detection_ranks
+                    ORDER BY {order_by} {"DESC" if order_desc else "ASC"}
+                    LIMIT :limit OFFSET :offset
+                    """
+                )
+
+                result = await session.execute(query_sql, params)
+                results = list(result.mappings())
+
+                # Build DetectionWithTaxa objects from results
+                detections = []
+                for row in results:
+                    # Create base Detection object
+                    detection = Detection(
+                        id=row["id"],
+                        species_tensor=row["species_tensor"],
+                        scientific_name=row["scientific_name"],
+                        common_name=row["common_name"],
+                        confidence=row["confidence"],
+                        timestamp=row["timestamp"],
+                        audio_file_id=row["audio_file_id"],
+                        latitude=row.get("latitude"),
+                        longitude=row.get("longitude"),
+                        species_confidence_threshold=row.get("species_confidence_threshold"),
+                        week=row.get("week"),
+                        sensitivity_setting=row.get("sensitivity_setting"),
+                        overlap=row.get("overlap"),
+                        weather_timestamp=row.get("weather_timestamp"),
+                        weather_latitude=row.get("weather_latitude"),
+                        weather_longitude=row.get("weather_longitude"),
+                        hour_epoch=row.get("hour_epoch"),
+                    )
+
+                    # Build DetectionWithTaxa with taxonomy and first detection info
+                    detection_with_taxa = DetectionWithTaxa(
+                        detection=detection,
+                        ioc_english_name=row.get("ioc_english_name"),
+                        translated_name=row.get("translated_name"),
+                        family=row.get("family"),
+                        genus=row.get("genus"),
+                        order_name=row.get("order_name"),
+                        is_first_ever=bool(row.get("is_first_ever")),
+                        is_first_in_period=bool(row.get("is_first_in_period")),
+                    )
+                    detections.append(detection_with_taxa)
+
+                return detections
+
+            finally:
+                await self.species_database.detach_all_from_session(session)
+
+    async def get_species_with_first_detections(
+        self,
+        since: dt | None = None,
+        family_filter: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Get species summary with first detection timestamps using window functions.
 
         Args:
-            detection: The detection to get display name for
-            prefer_translation: Whether to prefer translated common name
-            language_code: Language code for translation (unused but kept for compatibility)
+            since: Only include detections after this timestamp
+            family_filter: Filter by taxonomic family
 
         Returns:
-            Formatted species display name
+            List of species summary dictionaries with first detection info
         """
-        # If species display service is available and it's a DetectionWithTaxa, use it
-        if self.species_display and isinstance(detection, DetectionWithTaxa):
-            return self.species_display.format_species_display(detection, prefer_translation)
+        async with self.core_database.get_async_db() as session:
+            await self.species_database.attach_all_to_session(session)
+            try:
+                where_clause = "WHERE 1=1"
+                params: dict[str, Any] = {"language_code": self.config.language}
 
-        # For plain Detection, return basic name
-        if prefer_translation and detection.common_name:
-            return str(detection.common_name)
-        # Ensure we return a string
-        scientific = detection.scientific_name
-        common = detection.common_name
-        return str(scientific) if scientific else str(common) if common else "Unknown"
+                if since:
+                    where_clause += " AND d.timestamp >= :since"
+                    params["since"] = since
+
+                if family_filter:
+                    where_clause += " AND s.family = :family"
+                    params["family"] = family_filter
+
+                # Query with window functions for first detections
+                query_sql = text(  # nosemgrep
+                    f"""
+                    WITH ranked_detections AS (
+                        SELECT
+                            d.scientific_name,
+                            d.timestamp,
+                            d.confidence,
+                            s.english_name as ioc_english_name,
+                            s.family,
+                            s.genus,
+                            s.order_name,
+                            COALESCE(
+                                t.common_name,
+                                p.common_name,
+                                a.common_name,
+                                s.english_name
+                            ) as translated_name,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY d.scientific_name ORDER BY d.timestamp
+                            ) as detection_rank,
+                            MIN(d.timestamp) OVER (
+                                PARTITION BY d.scientific_name
+                            ) as first_ever_detection,
+                            COUNT(*) OVER (PARTITION BY d.scientific_name) as detection_count,
+                            AVG(d.confidence) OVER (
+                                PARTITION BY d.scientific_name
+                            ) as avg_confidence,
+                            MAX(d.timestamp) OVER (
+                                PARTITION BY d.scientific_name
+                            ) as latest_detection
+                        FROM detections d
+                        LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
+                        LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                            AND t.language_code = :language_code
+                        LEFT JOIN patlevin.patlevin_labels p
+                            ON LOWER(p.scientific_name) = LOWER(d.scientific_name)
+                            AND p.language_code = :language_code
+                        LEFT JOIN avibase.avibase_names a
+                            ON d.scientific_name = a.scientific_name
+                            AND a.language_code = :language_code
+                        {where_clause}
+                    ),
+                    period_first_detections AS (
+                        SELECT
+                            scientific_name,
+                            MIN(timestamp) as first_period_detection
+                        FROM detections d
+                        {where_clause}
+                        GROUP BY scientific_name
+                    )
+                    SELECT
+                        rd.scientific_name,
+                        rd.detection_count,
+                        rd.avg_confidence,
+                        rd.latest_detection,
+                        rd.first_ever_detection,
+                        pfd.first_period_detection,
+                        rd.ioc_english_name,
+                        rd.translated_name,
+                        rd.family,
+                        rd.genus,
+                        rd.order_name,
+                        COALESCE(rd.translated_name, rd.ioc_english_name) as best_common_name
+                    FROM ranked_detections rd
+                    JOIN period_first_detections pfd ON rd.scientific_name = pfd.scientific_name
+                    WHERE rd.detection_rank = 1
+                    ORDER BY rd.first_ever_detection ASC
+                    """
+                )
+
+                result = await session.execute(query_sql, params)
+                results = list(result.mappings())
+
+                species_summary = [
+                    {
+                        "scientific_name": result["scientific_name"],
+                        "detection_count": result["detection_count"],
+                        "avg_confidence": round(float(result["avg_confidence"]), 3),
+                        "latest_detection": self._parse_timestamp(result["latest_detection"])
+                        if result["latest_detection"]
+                        else None,
+                        "first_ever_detection": self._parse_timestamp(
+                            result["first_ever_detection"]
+                        )
+                        if result["first_ever_detection"]
+                        else None,
+                        "first_period_detection": self._parse_timestamp(
+                            result["first_period_detection"]
+                        )
+                        if result["first_period_detection"]
+                        else None,
+                        "ioc_english_name": result["ioc_english_name"],
+                        "translated_name": result["translated_name"],
+                        "family": result["family"],
+                        "genus": result["genus"],
+                        "order_name": result["order_name"],
+                        "best_common_name": result["translated_name"] or result["ioc_english_name"],
+                    }
+                    for result in results
+                ]
+
+                return species_summary
+
+            finally:
+                await self.species_database.detach_all_from_session(session)
 
     # Ecological Analysis Methods
 

@@ -87,7 +87,7 @@
         {% for detection in detection_log[:10] %}
         <div class="log-entry">
           <span class="time">{{ detection.time }}</span>
-          <span>{{ detection.species }}</span>
+          <span>{{ detection.common_name }}</span>
           <span class="confidence">{{ detection.confidence }}</span>
         </div>
         {% endfor %}

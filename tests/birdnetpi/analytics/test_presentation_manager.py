@@ -185,7 +185,7 @@ class TestLandingPageData:
         # Verify detection log
         assert len(data.detection_log) == 3
         assert data.detection_log[0].time == "10:30"
-        assert data.detection_log[0].species == "American Robin"
+        assert data.detection_log[0].common_name == "American Robin"
         assert data.detection_log[0].confidence == "95%"
 
         # Verify species frequency (limited to 12)

@@ -5,8 +5,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from click.testing import CliRunner
 
 from birdnetpi.cli.backfill_weather import _display_stats, backfill_weather
-from birdnetpi.config.manager import ConfigManager
-from birdnetpi.config.models import BirdNETConfig
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.location.weather import WeatherManager
 
@@ -25,15 +23,13 @@ def test_backfill_weather_help():
 
 
 @patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
-@patch("birdnetpi.cli.backfill_weather.ConfigManager")
-def test_backfill_weather_no_location(mock_config, mock_db, path_resolver):
+@patch("birdnetpi.cli.backfill_weather.ConfigManager.load")
+def test_backfill_weather_no_location(mock_load, mock_db, path_resolver, test_config):
     """Should error when location is not configured."""
     # Mock config without location
-    mock_config_instance = MagicMock(spec=ConfigManager)
-    mock_config_instance.load.return_value = MagicMock(
-        spec=BirdNETConfig, latitude=None, longitude=None
-    )
-    mock_config.return_value = mock_config_instance
+    test_config.latitude = None
+    test_config.longitude = None
+    mock_load.return_value = test_config
 
     # Patch PathResolver with the global fixture
     with patch("birdnetpi.cli.backfill_weather.PathResolver") as mock_path:
@@ -48,15 +44,13 @@ def test_backfill_weather_no_location(mock_config, mock_db, path_resolver):
 
 @patch("birdnetpi.cli.backfill_weather.WeatherManager")
 @patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
-@patch("birdnetpi.cli.backfill_weather.ConfigManager")
-def test_backfill_weather_days_option(mock_config, mock_db, mock_weather_manager, path_resolver):
+@patch("birdnetpi.cli.backfill_weather.ConfigManager.load")
+def test_backfill_weather_days_option(
+    mock_load, mock_db, mock_weather_manager, path_resolver, test_config
+):
     """Should backfilling with --days option."""
     # Setup mocks
-    mock_config_instance = MagicMock(spec=ConfigManager)
-    mock_config_instance.load.return_value = MagicMock(
-        spec=BirdNETConfig, latitude=63.4591, longitude=-19.3647
-    )
-    mock_config.return_value = mock_config_instance
+    mock_load.return_value = test_config
 
     mock_weather_instance = MagicMock(spec=WeatherManager)
     mock_weather_instance.backfill_weather_bulk = AsyncMock(
@@ -93,15 +87,13 @@ def test_backfill_weather_days_option(mock_config, mock_db, mock_weather_manager
 
 @patch("birdnetpi.cli.backfill_weather.WeatherManager")
 @patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
-@patch("birdnetpi.cli.backfill_weather.ConfigManager")
-def test_backfill_weather_date_range(mock_config, mock_db, mock_weather_manager, path_resolver):
+@patch("birdnetpi.cli.backfill_weather.ConfigManager.load")
+def test_backfill_weather_date_range(
+    mock_load, mock_db, mock_weather_manager, path_resolver, test_config
+):
     """Should backfilling with specific date range."""
     # Setup mocks
-    mock_config_instance = MagicMock(spec=ConfigManager)
-    mock_config_instance.load.return_value = MagicMock(
-        spec=BirdNETConfig, latitude=63.4591, longitude=-19.3647
-    )
-    mock_config.return_value = mock_config_instance
+    mock_load.return_value = test_config
 
     mock_weather_instance = MagicMock(spec=WeatherManager)
     mock_weather_instance.backfill_weather_bulk = AsyncMock(
@@ -142,15 +134,13 @@ def test_backfill_weather_date_range(mock_config, mock_db, mock_weather_manager,
 
 @patch("birdnetpi.cli.backfill_weather.WeatherManager")
 @patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
-@patch("birdnetpi.cli.backfill_weather.ConfigManager")
-def test_backfill_weather_smart_mode(mock_config, mock_db, mock_weather_manager, path_resolver):
+@patch("birdnetpi.cli.backfill_weather.ConfigManager.load")
+def test_backfill_weather_smart_mode(
+    mock_load, mock_db, mock_weather_manager, path_resolver, test_config
+):
     """Should smart backfill mode."""
     # Setup mocks
-    mock_config_instance = MagicMock(spec=ConfigManager)
-    mock_config_instance.load.return_value = MagicMock(
-        spec=BirdNETConfig, latitude=63.4591, longitude=-19.3647
-    )
-    mock_config.return_value = mock_config_instance
+    mock_load.return_value = test_config
 
     mock_weather_instance = MagicMock(spec=WeatherManager)
     mock_weather_instance.smart_backfill = AsyncMock(
@@ -187,17 +177,13 @@ def test_backfill_weather_smart_mode(mock_config, mock_db, mock_weather_manager,
 
 @patch("birdnetpi.cli.backfill_weather.WeatherManager")
 @patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
-@patch("birdnetpi.cli.backfill_weather.ConfigManager")
+@patch("birdnetpi.cli.backfill_weather.ConfigManager.load")
 def test_backfill_weather_smart_no_detections(
-    mock_config, mock_db, mock_weather_manager, path_resolver
+    mock_load, mock_db, mock_weather_manager, path_resolver, test_config
 ):
     """Should skip backfill when no detections need weather data."""
     # Setup mocks
-    mock_config_instance = MagicMock(spec=ConfigManager)
-    mock_config_instance.load.return_value = MagicMock(
-        spec=BirdNETConfig, latitude=63.4591, longitude=-19.3647
-    )
-    mock_config.return_value = mock_config_instance
+    mock_load.return_value = test_config
 
     mock_weather_instance = MagicMock(spec=WeatherManager)
     mock_weather_instance.smart_backfill = AsyncMock(
@@ -227,15 +213,13 @@ def test_backfill_weather_smart_no_detections(
 
 @patch("birdnetpi.cli.backfill_weather.WeatherManager")
 @patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
-@patch("birdnetpi.cli.backfill_weather.ConfigManager")
-def test_backfill_weather_force_option(mock_config, mock_db, mock_weather_manager, path_resolver):
+@patch("birdnetpi.cli.backfill_weather.ConfigManager.load")
+def test_backfill_weather_force_option(
+    mock_load, mock_db, mock_weather_manager, path_resolver, test_config
+):
     """Should force re-fetch option."""
     # Setup mocks
-    mock_config_instance = MagicMock(spec=ConfigManager)
-    mock_config_instance.load.return_value = MagicMock(
-        spec=BirdNETConfig, latitude=63.4591, longitude=-19.3647
-    )
-    mock_config.return_value = mock_config_instance
+    mock_load.return_value = test_config
 
     mock_weather_instance = MagicMock(spec=WeatherManager)
     mock_weather_instance.backfill_weather_bulk = AsyncMock(
@@ -275,15 +259,13 @@ def test_backfill_weather_force_option(mock_config, mock_db, mock_weather_manage
 
 @patch("birdnetpi.cli.backfill_weather.WeatherManager")
 @patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
-@patch("birdnetpi.cli.backfill_weather.ConfigManager")
-def test_backfill_weather_no_bulk_option(mock_config, mock_db, mock_weather_manager, path_resolver):
+@patch("birdnetpi.cli.backfill_weather.ConfigManager.load")
+def test_backfill_weather_no_bulk_option(
+    mock_load, mock_db, mock_weather_manager, path_resolver, test_config
+):
     """Should non-bulk backfill mode."""
     # Setup mocks
-    mock_config_instance = MagicMock(spec=ConfigManager)
-    mock_config_instance.load.return_value = MagicMock(
-        spec=BirdNETConfig, latitude=63.4591, longitude=-19.3647
-    )
-    mock_config.return_value = mock_config_instance
+    mock_load.return_value = test_config
 
     mock_weather_instance = MagicMock(spec=WeatherManager)
     mock_weather_instance.backfill_weather = AsyncMock(

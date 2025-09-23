@@ -105,6 +105,18 @@
             padding-right: 1.5rem;
         }
 
+        /* Ensure count column header has enough space for sort indicator */
+        #species-frequency-table th:last-child.sortable {
+            padding-right: 2.5rem;
+            min-width: 0;  /* Allow text to wrap if needed */
+        }
+
+        /* Adjust sort indicator position for narrow columns */
+        #species-frequency-table th:nth-child(2).sortable::after,
+        #species-frequency-table th:last-child.sortable::after {
+            right: 0.25rem;  /* Move indicator closer to edge */
+        }
+
         .sortable:hover {
             background-color: var(--color-bg-tertiary);
         }
@@ -125,6 +137,18 @@
         .sortable.sort-desc::after {
             content: '↓';
             opacity: 1;
+        }
+
+        /* Special handling for centered sortable headers */
+        .sortable.text-center {
+            padding-left: 1.5rem;
+            padding-right: 1.5rem;
+        }
+
+        /* Species table - fixed layout for consistent columns */
+        #species-frequency-table {
+            table-layout: fixed;
+            width: 100%;
         }
 
         /* Pagination controls */
@@ -222,6 +246,11 @@
             font-size: 0.8rem;
         }
 
+        /* Center alignment class */
+        .text-center {
+            text-align: center;
+        }
+
         /* Data table following Tufte's principles */
         .data-table {
             width: 100%;
@@ -240,16 +269,27 @@
         #detections-table th:nth-child(1),
         #detections-table td:nth-child(1) { width: 10%; }  /* Time */
         #detections-table th:nth-child(2),
-        #detections-table td:nth-child(2) { width: 50%; }  /* Species */
+        #detections-table td:nth-child(2) { width: 40%; }  /* Species */
         #detections-table th:nth-child(3),
-        #detections-table td:nth-child(3) { width: 25%; }  /* Date */
+        #detections-table td:nth-child(3) { width: 20%; }  /* Date */
         #detections-table th:nth-child(4),
         #detections-table td:nth-child(4) { width: 15%; }  /* Confidence */
+        #detections-table th:nth-child(5),
+        #detections-table td:nth-child(5) { width: 15%; }  /* First Detection */
 
+        /* Species frequency table has 3 columns: Species, Star indicator, Count */
         #species-frequency-table th:nth-child(1),
-        #species-frequency-table td:nth-child(1) { width: 75%; }  /* Species name */
+        #species-frequency-table td:nth-child(1) { width: 65%; }  /* Species name */
         #species-frequency-table th:nth-child(2),
-        #species-frequency-table td:nth-child(2) { width: 25%; }  /* Count */
+        #species-frequency-table td:nth-child(2) {
+            width: 15%;  /* Star indicator - needs space for sort arrow */
+            text-align: center;
+        }
+        #species-frequency-table th:nth-child(3),
+        #species-frequency-table td:nth-child(3) {
+            width: 20%;  /* Count */
+            text-align: right;
+        }
 
         .data-table th {
             text-align: left;
@@ -426,7 +466,7 @@
     {% include 'includes/navigation.html.j2' %}
 
     <h1>Species Detections</h1>
-    <p class="subtitle"><span id="period-date"></span> · <span id="species-count">0</span> species active</p>
+    <p class="subtitle"><span id="period-date"></span> · <span id="species-count">0</span> species active · <span id="total-detection-count">0</span> detections</p>
 
     <!-- Time period selector - minimal text links -->
     <div class="time-selector">
@@ -439,12 +479,7 @@
         <a {% if period == 'historical' %}class="active"{% endif %} onclick="switchPeriod('historical', this)">Historical</a>
     </div>
 
-    <!-- Inline statistics -->
-    <div class="inline-stats">
-        {{ period_label }}: <span class="stat-value">{{ today_species }}</span> species, <span class="stat-value">{{ today_detections }}</span> detections ·
-        Peak activity: <span class="stat-value">{{ peak_activity_time }}</span> ({{ peak_detections }} detection{%- if peak_detections != 1 -%}s{%- endif -%}) ·
-        {% if new_species %}New this {{ new_species_period }}: {% for species in new_species %}<span class="stat-value">{{ species }}</span>{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
-    </div>
+    <!-- Statistics removed - counts moved to page heading -->
 
     <!-- Main content grid -->
     <div class="main-content">
@@ -461,10 +496,11 @@
                         <th class="sortable" data-sort="species" onclick="sortDetections('species')">Species</th>
                         <th>Date</th>
                         <th class="sortable text-right" data-sort="confidence" onclick="sortDetections('confidence')">Confidence</th>
+                        <th class="sortable text-center" data-sort="first" onclick="sortDetections('first')">★|●</th>
                     </tr>
                 </thead>
                 <tbody id="detections-list">
-                    <tr><td colspan="3" class="no-data">Loading detections...</td></tr>
+                    <tr><td colspan="5" class="no-data">Loading detections...</td></tr>
                 </tbody>
             </table>
             <div id="pagination" class="pagination">
@@ -478,8 +514,9 @@
                 <thead>
                     <tr>
                         <th class="sortable" data-sort="name" onclick="sortSpeciesTable('name')">Species</th>
+                        <th class="sortable text-center" data-sort="first_detection" onclick="sortSpeciesTable('first_detection')">★</th>
                         <th class="sortable text-right" id="count-header" data-sort="count" onclick="sortSpeciesTable('count')">
-                            {% if period == 'day' %}Today's Count
+                            {% if period == 'day' %}Today
                             {% elif period == 'week' %}This Week
                             {% elif period == 'month' %}This Month
                             {% elif period == 'season' %}This Season
@@ -490,7 +527,7 @@
                     </tr>
                 </thead>
                 <tbody id="species-frequency-tbody">
-                    <tr><td colspan="2" class="no-data">Loading species...</td></tr>
+                    <tr><td colspan="3" class="no-data">Loading species...</td></tr>
                 </tbody>
             </table>
             <!-- Species table pagination matching detections style -->
@@ -505,6 +542,14 @@
         Note: Detection confidence threshold ≥{{ confidence_threshold }}.
         {% if migration_note %}{{ migration_note }}{% endif %}
     </p>
+
+    <!-- Icon legend -->
+    <div class="icon-legend" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e0e0e0; font-size: 0.85rem; color: #666;">
+        <strong>Legend:</strong>
+        <span style="margin-left: 1rem;">★ First ever detection of species</span>
+        <span style="margin-left: 1rem;">● First detection in current period</span>
+        <span style="margin-left: 1rem;">— No data</span>
+    </div>
 
     <!-- Loading indicator -->
     <div class="loading-overlay" id="loading-overlay"></div>
@@ -562,10 +607,14 @@
                     return `${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
                 case 'week':
                     const weekStart = new Date(now);
-                    weekStart.setDate(now.getDate() - now.getDay());
+                    // Calculate Monday as start of week (getDay() returns 0 for Sunday, 1 for Monday)
+                    const dayOfWeek = now.getDay();
+                    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday is 6 days from Monday
+                    weekStart.setDate(now.getDate() - daysFromMonday);
                     const weekEnd = new Date(weekStart);
                     weekEnd.setDate(weekStart.getDate() + 6);
-                    return `Week of ${months[weekStart.getMonth()]} ${weekStart.getDate()}, ${weekStart.getFullYear()}`;
+                    // Show date range for clarity
+                    return `Week: ${months[weekStart.getMonth()]} ${weekStart.getDate()} - ${months[weekEnd.getMonth()]} ${weekEnd.getDate()}, ${weekEnd.getFullYear()}`;
                 case 'month':
                     return `${months[now.getMonth()]}, ${now.getFullYear()}`;
                 case 'season':
@@ -621,7 +670,7 @@
                 const countHeader = document.getElementById('count-header');
                 if (countHeader) {
                     const headerText = {
-                        'day': "Today's Count",
+                        'day': 'Today',
                         'week': 'This Week',
                         'month': 'This Month',
                         'season': 'This Season',
@@ -706,15 +755,24 @@
                 // Render detections table
                 const detectionsList = document.getElementById('detections-list');
                 if (data.detections.length === 0) {
-                    detectionsList.innerHTML = '<tr><td colspan="4" class="no-data">No detections found</td></tr>';
+                    detectionsList.innerHTML = '<tr><td colspan="5" class="no-data">No detections found</td></tr>';
                 } else {
                     detectionsList.innerHTML = data.detections.map(d => {
+                        // Show star if it's a first-ever detection, bullet if first in period
+                        let firstIndicator = '';
+                        if (d.is_first_ever) {
+                            firstIndicator = '★';
+                        } else if (d.is_first_in_period) {
+                            firstIndicator = '●';
+                        }
+
                         return `
                         <tr class="detection-row">
-                            <td class="detection-time">${d.timestamp}</td>
-                            <td>${d.species}</td>
+                            <td class="detection-time">${d.time}</td>
+                            <td>${d.common_name}</td>
                             <td class="detection-time">${d.date}</td>
-                            <td class="text-right">${(d.confidence * 100).toFixed(0)}%</td>
+                            <td class="text-right">${d.confidence < 1 ? (d.confidence * 100).toFixed(0) : d.confidence.toFixed(0)}%</td>
+                            <td class="text-center">${firstIndicator}</td>
                         </tr>
                     `}).join('');
                 }
@@ -769,7 +827,7 @@
             } catch (error) {
                 console.error('Error loading detections:', error);
                 document.getElementById('detections-list').innerHTML =
-                    '<tr><td colspan="4" class="error-message">Error loading detections</td></tr>';
+                    '<tr><td colspan="5" class="error-message">Error loading detections</td></tr>';
             } finally {
                 // Always hide loading indicator
                 hideLoading();
@@ -796,12 +854,20 @@
         function renderSpeciesTable() {
             // Sort the data
             const sortedData = [...allSpeciesData].sort((a, b) => {
-                let aVal = speciesSortColumn === 'name' ? a.name : a.count;
-                let bVal = speciesSortColumn === 'name' ? b.name : b.count;
-
+                let aVal, bVal;
                 if (speciesSortColumn === 'name') {
-                    aVal = aVal.toLowerCase();
-                    bVal = bVal.toLowerCase();
+                    aVal = (a.name || '').toLowerCase();
+                    bVal = (b.name || '').toLowerCase();
+                } else if (speciesSortColumn === 'first_detection') {
+                    // Sort by first detection timestamp, converting to Date objects
+                    // Use the first_ever_detection as these are what matter for the star indicator
+                    const aDate = a.first_ever_detection ? new Date(a.first_ever_detection) : new Date('9999-12-31');
+                    const bDate = b.first_ever_detection ? new Date(b.first_ever_detection) : new Date('9999-12-31');
+                    aVal = aDate.getTime();
+                    bVal = bDate.getTime();
+                } else {
+                    aVal = a.detection_count;
+                    bVal = b.detection_count;
                 }
 
                 if (speciesSortDirection === 'asc') {
@@ -824,17 +890,27 @@
             // Render the table
             const tbody = document.getElementById('species-frequency-tbody');
             if (tbody) {
-                tbody.innerHTML = pageData.map(species => `
-                    <tr class="species-row" data-species="${species.scientific_name}" onclick="filterBySpecies('${species.scientific_name}', this)">
-                        <td>
-                            <div class="species-name-cell">
-                                <div class="common-name">${species.name}</div>
-                                <div class="scientific-name">${species.scientific_name}</div>
-                            </div>
-                        </td>
-                        <td class="text-right">${species.count}</td>
-                    </tr>
-                `).join('');
+                if (pageData.length === 0) {
+                    // Show "No species detected" message when empty
+                    tbody.innerHTML = '<tr><td colspan="3" class="no-data">No species detected</td></tr>';
+                } else {
+                    tbody.innerHTML = pageData.map(species => {
+                        // Show star indicator if this is a first-ever detection
+                        const firstDetectionText = species.is_first_ever ? '★' : '—';
+
+                        return `
+                        <tr class="species-row" data-species="${species.scientific_name}" onclick="filterBySpecies('${species.scientific_name}', this)">
+                            <td>
+                                <div class="species-name-cell">
+                                    <div class="common-name">${species.name}</div>
+                                    <div class="scientific-name">${species.scientific_name}</div>
+                                </div>
+                            </td>
+                            <td class="text-center">${firstDetectionText}</td>
+                            <td class="text-right">${species.detection_count}</td>
+                        </tr>
+                    `}).join('');
+                }
             }
 
             // Render pagination similar to detections
@@ -926,13 +1002,31 @@
         // Initialize species data from server-rendered content
         async function loadSpeciesData() {
             try {
-                const response = await fetch(`/api/detections/species/frequency?period=${currentPeriod}`);
+                // Use species/summary endpoint to get period-specific data with first detection flags
+                const response = await fetch(`/api/detections/species/summary?period=${currentPeriod}`);
                 const data = await response.json();
-                allSpeciesData = data.species || [];
 
-                // Update species count in subtitle
+                // Transform the analytics data - API now provides is_first_ever boolean
+                allSpeciesData = (data.species || []).map(s => {
+                    return {
+                        scientific_name: s.scientific_name,
+                        name: s.name,  // Summary endpoint provides the best name
+                        detection_count: s.detection_count,  // Keep consistent field name
+                        first_period_detection: s.first_period_detection,
+                        first_ever_detection: s.first_ever_detection,
+                        is_first_ever: s.is_first_ever || false,  // Use the boolean from API
+                        is_first_in_period: s.is_first_in_period || false
+                    };
+                });
+
+                // Update counts in subtitle
                 const uniqueSpecies = new Set(allSpeciesData.map(s => s.scientific_name || s.name)).size;
                 document.getElementById('species-count').textContent = uniqueSpecies;
+                // Use total_detections from the API response
+                const totalDetectionCount = document.getElementById('total-detection-count');
+                if (totalDetectionCount) {
+                    totalDetectionCount.textContent = data.total_detections || 0;
+                }
 
                 renderSpeciesTable();
             } catch (error) {
