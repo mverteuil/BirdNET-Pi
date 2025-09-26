@@ -8,7 +8,7 @@ from uuid import UUID
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.config import BirdNETConfig
@@ -16,6 +16,7 @@ from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import Detection
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.notifications.signals import detection_signal
+from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.utils.cache import Cache
 from birdnetpi.utils.time_periods import calculate_period_boundaries
 from birdnetpi.web.core.container import Container
@@ -216,11 +217,12 @@ async def get_detection_count(
 @router.get("/best-recordings")
 @inject
 async def get_best_recordings(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(50, ge=10, le=200, description="Items per page"),
     family: str | None = Query(None, description="Filter by taxonomic family"),
     genus: str | None = Query(None, description="Filter by genus"),
     species: str | None = Query(None, description="Filter by species scientific name"),
     min_confidence: float = Query(0.7, ge=0.0, le=1.0, description="Minimum confidence threshold"),
-    limit: int = Query(100, ge=1, le=500, description="Maximum number of recordings to return"),
     detection_query_service: DetectionQueryService = Depends(  # noqa: B008
         Provide[Container.detection_query_service]
     ),
@@ -248,13 +250,24 @@ async def get_best_recordings(
             filters["family"] = family
 
         # Query detections with filters
-        detections = await detection_query_service.query_detections(
+        # When filtering by specific species, don't limit per species (show all)
+        # Otherwise, limit to 5 per species for diversity
+        per_species_limit = None if species else 5
+
+        detections, total_count = await detection_query_service.query_best_recordings_per_species(
+            per_species_limit=per_species_limit,
             min_confidence=min_confidence,
-            limit=limit,
-            order_by="confidence",
-            order_desc=True,
-            **filters,
+            page=page,
+            per_page=per_page,
+            family=family,
+            genus=genus,
+            species=species,
         )
+
+        # Calculate pagination metadata
+        total_pages = (total_count + per_page - 1) // per_page if total_count > 0 else 0
+        has_prev = page > 1
+        has_next = page < total_pages
 
         # Format response
         recordings = []
@@ -269,6 +282,7 @@ async def get_best_recordings(
                     "common_name",
                     "family",
                     "genus",
+                    "order_name",
                     "confidence",
                     "timestamp",
                     "date",
@@ -297,6 +311,14 @@ async def get_best_recordings(
             {
                 "recordings": recordings,
                 "count": len(recordings),
+                "pagination": {
+                    "page": page,
+                    "per_page": per_page,
+                    "total": total_count,
+                    "total_pages": total_pages,
+                    "has_prev": has_prev,
+                    "has_next": has_next,
+                },
                 "avg_confidence": round(avg_confidence, 1),
                 "date_range": date_range,
                 "unique_species": unique_species,
@@ -533,7 +555,7 @@ async def get_detections_summary(
 @router.post("/{detection_id}/location")
 @inject
 async def update_detection_location(
-    detection_id: int,
+    detection_id: UUID,
     location: LocationUpdate,
     data_manager: DataManager = Depends(  # noqa: B008
         Provide[Container.data_manager]
@@ -555,7 +577,7 @@ async def update_detection_location(
             return JSONResponse(
                 {
                     "message": "Location updated successfully",
-                    "detection_id": detection_id,
+                    "detection_id": str(detection_id),
                     "latitude": location.latitude,
                     "longitude": location.longitude,
                 }
@@ -682,10 +704,7 @@ async def stream_detections(
 @router.get("/{detection_id}")
 @inject
 async def get_detection(
-    detection_id: UUID | int,
-    data_manager: DataManager = Depends(  # noqa: B008
-        Provide[Container.data_manager]
-    ),
+    detection_id: UUID,
     detection_query_service: DetectionQueryService = Depends(  # noqa: B008
         Provide[Container.detection_query_service]
     ),
@@ -695,47 +714,14 @@ async def get_detection(
 ) -> JSONResponse:
     """Get a specific detection by ID with taxa and translation data."""
     try:
-        # Always get detection with taxa enrichment
-        if isinstance(detection_id, UUID):
-            detection_with_taxa = await detection_query_service.get_detection_with_taxa(
-                detection_id
-            )
-            if detection_with_taxa:
-                # Use model_dump with config context for consistent serialization
-                # The model serializer handles display_name and sets common_name automatically
-                detection_data = detection_with_taxa.model_dump(
-                    mode="json",
-                    exclude_none=True,
-                    include={
-                        "id",
-                        "scientific_name",
-                        "common_name",
-                        "confidence",
-                        "timestamp",
-                        "latitude",
-                        "longitude",
-                        "species_confidence_threshold",
-                        "week",
-                        "sensitivity_setting",
-                        "overlap",
-                        "ioc_english_name",
-                        "translated_name",
-                        "family",
-                        "genus",
-                        "order_name",
-                    },
-                    context={"config": config},
-                )
-                return JSONResponse(detection_data)
-
-        # Fallback for integer IDs - get basic detection
-        id_to_use = int(detection_id) if isinstance(detection_id, UUID) else detection_id
-        detection = await data_manager.get_detection_by_id(id_to_use)
-        if not detection:
+        # Get detection with taxa enrichment
+        detection_with_taxa = await detection_query_service.get_detection_with_taxa(detection_id)
+        if not detection_with_taxa:
             raise HTTPException(status_code=404, detail="Detection not found")
 
-        # Use model_dump for consistent serialization with config context
-        detection_data = detection.model_dump(
+        # Use model_dump with config context for consistent serialization
+        # The model serializer handles display_name and sets common_name automatically
+        detection_data = detection_with_taxa.model_dump(
             mode="json",
             exclude_none=True,
             include={
@@ -750,6 +736,11 @@ async def get_detection(
                 "week",
                 "sensitivity_setting",
                 "overlap",
+                "ioc_english_name",
+                "translated_name",
+                "family",
+                "genus",
+                "order_name",
             },
             context={"config": config},
         )
@@ -883,3 +874,77 @@ async def get_species_summary(
     except Exception as e:
         logger.error("Error getting species summary: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving species summary") from e
+
+
+@router.get("/{detection_id}/audio")
+@inject
+async def get_detection_audio(
+    detection_id: UUID,
+    data_manager: DataManager = Depends(  # noqa: B008
+        Provide[Container.data_manager]
+    ),
+    path_resolver: PathResolver = Depends(  # noqa: B008
+        Provide[Container.path_resolver]
+    ),
+) -> FileResponse:
+    """Serve WAV audio file for a specific detection.
+
+    Args:
+        detection_id: UUID of the detection
+        data_manager: Data manager for accessing detections
+        path_resolver: Path resolver for getting data directory paths
+
+    Returns:
+        FileResponse with the WAV audio file
+
+    Raises:
+        HTTPException: If detection not found or audio file missing
+    """
+    try:
+        # Get the detection with its audio file relationship
+        detection = await data_manager.get_detection_by_id(detection_id)
+
+        if not detection:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"Detection {detection_id} not found"
+            )
+
+        # Check if audio file exists
+        if not detection.audio_file or not detection.audio_file.file_path:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Audio file not available for this detection",
+            )
+
+        # Get the audio file path
+        audio_path = detection.audio_file.file_path
+
+        # If path is relative, resolve it against the recordings directory
+        if not audio_path.is_absolute():
+            audio_path = path_resolver.get_recordings_dir() / audio_path
+
+        # Check if file exists on disk
+        if not audio_path.exists():
+            logger.warning(f"Audio file not found on disk: {audio_path}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Audio file not found on disk"
+            )
+
+        # Serve the WAV file
+        return FileResponse(
+            path=audio_path,
+            media_type="audio/wav",
+            filename=audio_path.name,
+            headers={
+                "Accept-Ranges": "bytes",
+                "Cache-Control": "public, max-age=3600",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error serving audio for detection {detection_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error serving audio file"
+        ) from e

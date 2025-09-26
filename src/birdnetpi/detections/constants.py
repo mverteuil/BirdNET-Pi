@@ -24,4 +24,10 @@ NON_BIRD_LABELS = {
     # Cricket species - not birds but actual species names
     "Gryllus assimilis_Gryllus assimilis",
     "Miogryllus saussurei_Miogryllus saussurei",
+    # Mammal species
+    "Canis latrans_Coyote",
+    "Canis lupus_Gray Wolf",
+    "Odocoileus virginianus_White-tailed Deer",
+    "Sciurus carolinensis_Eastern Gray Squirrel",
+    "Tamiasciurus hudsonicus_Red Squirrel",
 }

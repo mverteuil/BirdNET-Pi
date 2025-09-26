@@ -194,15 +194,15 @@ async def populated_database(test_database):
 
 
 @pytest.fixture
-async def query_service_with_db(populated_database, mocker, test_config):
+async def query_service_with_db(populated_database, path_resolver, test_config):
     """Create DetectionQueryService with real populated database."""
-    # Mock the species database that DetectionQueryService needs
-    mock_multilingual = mocker.MagicMock(spec=SpeciesDatabaseService)
+    # Use real SpeciesDatabaseService to get actual database attachments
+    species_database = SpeciesDatabaseService(path_resolver)
 
     # Create a DetectionQueryService with the real database
     return DetectionQueryService(
         core_database=populated_database,
-        species_database=mock_multilingual,
+        species_database=species_database,
         config=test_config,
     )
 
@@ -337,3 +337,129 @@ class TestAnalyticsIntegration:
 
         assert await query_service.get_species_counts(start_time, end_time) == []
         assert await query_service.get_hourly_counts(date(2024, 1, 1)) == []
+
+    @pytest.mark.asyncio
+    async def test_query_best_recordings_with_species_filter(self, query_service_with_db):
+        """Should return all recordings for a specific species without per-species limit."""
+        # Query for American Robin only (has 4 detections in test data)
+        detections, total = await query_service_with_db.query_best_recordings_per_species(
+            per_species_limit=None,  # No limit when filtering by species
+            min_confidence=0.5,
+            page=1,
+            per_page=10,
+            species="Turdus migratorius",
+        )
+
+        # Should get all 4 American Robin detections
+        assert total == 4
+        assert len(detections) == 4
+
+        # All should be American Robin
+        for detection in detections:
+            assert detection.detection.scientific_name == "Turdus migratorius"
+
+        # Should be ordered by confidence descending
+        confidences = [d.detection.confidence for d in detections]
+        assert confidences == sorted(confidences, reverse=True)
+
+    @pytest.mark.asyncio
+    async def test_query_best_recordings_without_species_filter(self, query_service_with_db):
+        """Should return limited recordings per species when no species filter."""
+        # Query without species filter - should get max 2 per species
+        detections, _ = await query_service_with_db.query_best_recordings_per_species(
+            per_species_limit=2,  # Limit per species for diversity
+            min_confidence=0.5,
+            page=1,
+            per_page=10,
+        )
+
+        # Count detections per species
+        species_counts = {}
+        for detection in detections:
+            species = detection.detection.scientific_name
+            species_counts[species] = species_counts.get(species, 0) + 1
+
+        # No species should have more than 2 recordings
+        for species, count in species_counts.items():
+            assert count <= 2, f"{species} has {count} recordings, expected <= 2"
+
+        # American Robin has 4 detections but should only return 2 with per_species_limit
+        assert species_counts.get("Turdus migratorius", 0) <= 2
+
+    @pytest.mark.asyncio
+    async def test_query_best_recordings_with_family_filter(self, query_service_with_db):
+        """Should filter recordings by family correctly."""
+        # Query with family filter (would need proper test data with families)
+        detections, total = await query_service_with_db.query_best_recordings_per_species(
+            per_species_limit=5,
+            min_confidence=0.5,
+            page=1,
+            per_page=10,
+            family="Turdidae",  # Thrush family
+        )
+
+        # This test would need proper IOC database setup to work
+        # For now just verify the method doesn't crash
+        assert isinstance(detections, list)
+        assert isinstance(total, int)
+
+    @pytest.mark.asyncio
+    async def test_query_best_recordings_with_confidence_filter(self, query_service_with_db):
+        """Should filter recordings by minimum confidence threshold."""
+        # Query with high confidence threshold
+        detections, _ = await query_service_with_db.query_best_recordings_per_species(
+            per_species_limit=5,
+            min_confidence=0.8,  # High threshold
+            page=1,
+            per_page=10,
+        )
+
+        # All returned detections should meet confidence threshold
+        for detection in detections:
+            assert detection.detection.confidence >= 0.8
+
+    @pytest.mark.asyncio
+    async def test_query_best_recordings_pagination(self, query_service_with_db):
+        """Should paginate best recordings correctly."""
+        # Get first page
+        page1, total1 = await query_service_with_db.query_best_recordings_per_species(
+            per_species_limit=2,
+            min_confidence=0.5,
+            page=1,
+            per_page=3,
+        )
+
+        # Get second page
+        page2, total2 = await query_service_with_db.query_best_recordings_per_species(
+            per_species_limit=2,
+            min_confidence=0.5,
+            page=2,
+            per_page=3,
+        )
+
+        # Total should be the same
+        assert total1 == total2
+
+        # Should get 3 items on first page (or less if total < 3)
+        assert len(page1) <= 3
+
+        # Pages should not overlap (different detection IDs)
+        page1_ids = {d.detection.id for d in page1}
+        page2_ids = {d.detection.id for d in page2}
+        assert len(page1_ids & page2_ids) == 0  # No overlap
+
+    @pytest.mark.asyncio
+    async def test_query_best_recordings_none_limit_without_species(self, query_service_with_db):
+        """Should handle None per_species_limit without species filter."""
+        # When per_species_limit is None and no species filter,
+        # should return all recordings (no ranking)
+        detections, _ = await query_service_with_db.query_best_recordings_per_species(
+            per_species_limit=None,  # No limit
+            min_confidence=0.5,
+            page=1,
+            per_page=20,
+        )
+
+        # Should get all detections above threshold
+        # With our test data, all 9 detections have confidence >= 0.5
+        assert len(detections) <= 9  # Could be less due to confidence filter

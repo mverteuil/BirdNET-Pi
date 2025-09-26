@@ -195,6 +195,18 @@
     .filter-tag-remove:hover {
         color: var(--color-error);
     }
+
+    /* Clickable taxonomy labels */
+    .taxonomy-link {
+        cursor: pointer;
+        text-decoration: underline dotted;
+        transition: color 0.2s ease;
+    }
+
+    .taxonomy-link:hover {
+        color: var(--color-primary);
+        text-decoration: underline solid;
+    }
 </style>
 {% endblock %}
 
@@ -250,6 +262,12 @@
     <div class="loading-indicator">Loading recordings...</div>
 </div>
 
+<div id="pagination" class="pagination">
+    <!-- Pagination controls will be added here by JavaScript -->
+</div>
+
+{% include 'includes/pagination.html.j2' %}
+
 <script>
 // State management
 let currentFilters = {
@@ -260,12 +278,117 @@ let currentFilters = {
 };
 
 let currentRecordings = [];
+let currentPage = 1;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadFamilies();
     loadRecordings();
 });
+
+// Helper function to format order names (PASSERIFORMES -> Passeriformes)
+function formatOrderName(orderName) {
+    if (!orderName) return '';
+    return orderName.charAt(0).toUpperCase() + orderName.slice(1).toLowerCase();
+}
+
+// Set filter from clicked taxonomy label
+async function setFilterFromLabel(filterType, value, event) {
+    // Prevent event bubbling (e.g., playing audio when clicking label)
+    if (event) {
+        event.stopPropagation();
+    }
+
+    if (filterType === 'family') {
+        // Set family filter and reset dependent filters
+        document.getElementById('family-filter').value = value;
+        currentFilters.family = value;
+        currentFilters.genus = null;
+        currentFilters.species = null;
+        document.getElementById('genus-filter').value = '';
+        document.getElementById('species-filter').value = '';
+        // Load genera for this family
+        await loadGenera();
+    } else if (filterType === 'genus') {
+        // For genus, we need to extract it from the scientific name
+        const genus = value.split(' ')[0];
+
+        // Find the family for this genus from the current recordings
+        let family = null;
+        for (const recording of currentRecordings) {
+            if (recording.scientific_name.startsWith(genus + ' ')) {
+                family = recording.family;
+                break;
+            }
+        }
+
+        // Set both family and genus filters
+        if (family) {
+            document.getElementById('family-filter').value = family;
+            currentFilters.family = family;
+            // Load genera for this family
+            await loadGenera();
+            // Then set the genus filter
+            document.getElementById('genus-filter').value = genus;
+            currentFilters.genus = genus;
+        } else {
+            // Fallback: just set genus without family
+            currentFilters.genus = genus;
+            currentFilters.family = null;
+            document.getElementById('family-filter').value = '';
+            document.getElementById('genus-filter').disabled = false;
+            document.getElementById('genus-filter').innerHTML = `<option value="${genus}" selected>${genus}</option>`;
+        }
+
+        currentFilters.species = null;
+        document.getElementById('species-filter').value = '';
+        document.getElementById('species-filter').disabled = true;
+        document.getElementById('species-filter').innerHTML = '<option value="">Select genus first</option>';
+    } else if (filterType === 'species') {
+        // When clicking species, apply species filter and set family/genus
+        const genus = value.split(' ')[0];
+
+        // Find the family for this species from the current recordings
+        let family = null;
+        for (const recording of currentRecordings) {
+            if (recording.scientific_name === value) {
+                family = recording.family;
+                break;
+            }
+        }
+
+        // Set all three filters hierarchically
+        if (family) {
+            // Set family
+            document.getElementById('family-filter').value = family;
+            currentFilters.family = family;
+            // Load genera for this family
+            await loadGenera();
+            // Set genus
+            document.getElementById('genus-filter').value = genus;
+            currentFilters.genus = genus;
+            // Load species for this genus
+            await loadSpecies();
+            // Set species
+            document.getElementById('species-filter').value = value;
+            currentFilters.species = value;
+        } else {
+            // Fallback: just set species directly
+            currentFilters.species = value;
+            currentFilters.genus = null;
+            currentFilters.family = null;
+            document.getElementById('family-filter').value = '';
+            document.getElementById('genus-filter').disabled = false;
+            document.getElementById('genus-filter').innerHTML = `<option value="${genus}">${genus}</option>`;
+            document.getElementById('genus-filter').value = genus;
+            document.getElementById('species-filter').disabled = false;
+            document.getElementById('species-filter').innerHTML = `<option value="${value}" selected>${value}</option>`;
+        }
+    }
+
+    // Load recordings with the new filter
+    await loadRecordings();
+}
 
 // Load available families
 async function loadFamilies() {
@@ -287,18 +410,11 @@ async function loadFamilies() {
     }
 }
 
-// Handle family selection
-async function onFamilyChange() {
-    const familySelect = document.getElementById('family-filter');
+// Load genera for the current family filter
+async function loadGenera() {
     const genusSelect = document.getElementById('genus-filter');
-    const speciesSelect = document.getElementById('species-filter');
-
-    currentFilters.family = familySelect.value || null;
-    currentFilters.genus = null;
-    currentFilters.species = null;
 
     if (currentFilters.family) {
-        // Load genera for selected family
         genusSelect.disabled = false;
         genusSelect.innerHTML = '<option value="">Loading...</option>';
 
@@ -313,10 +429,31 @@ async function onFamilyChange() {
                 option.textContent = genus;
                 genusSelect.appendChild(option);
             });
+
+            // If we have a genus filter set, select it
+            if (currentFilters.genus && data.genera.includes(currentFilters.genus)) {
+                genusSelect.value = currentFilters.genus;
+            }
         } catch (error) {
             console.error('Error loading genera:', error);
             genusSelect.innerHTML = '<option value="">Error loading genera</option>';
         }
+    }
+}
+
+// Handle family selection
+async function onFamilyChange() {
+    const familySelect = document.getElementById('family-filter');
+    const genusSelect = document.getElementById('genus-filter');
+    const speciesSelect = document.getElementById('species-filter');
+
+    currentFilters.family = familySelect.value || null;
+    currentFilters.genus = null;
+    currentFilters.species = null;
+
+    if (currentFilters.family) {
+        // Load genera for selected family
+        await loadGenera();
 
         // Reset species selector
         speciesSelect.disabled = true;
@@ -332,16 +469,11 @@ async function onFamilyChange() {
     loadRecordings();
 }
 
-// Handle genus selection
-async function onGenusChange() {
-    const genusSelect = document.getElementById('genus-filter');
+// Load species for the current genus filter
+async function loadSpecies() {
     const speciesSelect = document.getElementById('species-filter');
 
-    currentFilters.genus = genusSelect.value || null;
-    currentFilters.species = null;
-
     if (currentFilters.genus) {
-        // Load species for selected genus
         speciesSelect.disabled = false;
         speciesSelect.innerHTML = '<option value="">Loading...</option>';
 
@@ -367,10 +499,29 @@ async function onGenusChange() {
                 }
                 speciesSelect.appendChild(option);
             });
+
+            // If we have a species filter set, select it
+            if (currentFilters.species) {
+                speciesSelect.value = currentFilters.species;
+            }
         } catch (error) {
             console.error('Error loading species:', error);
             speciesSelect.innerHTML = '<option value="">Error loading species</option>';
         }
+    }
+}
+
+// Handle genus selection
+async function onGenusChange() {
+    const genusSelect = document.getElementById('genus-filter');
+    const speciesSelect = document.getElementById('species-filter');
+
+    currentFilters.genus = genusSelect.value || null;
+    currentFilters.species = null;
+
+    if (currentFilters.genus) {
+        // Load species for selected genus
+        await loadSpecies();
     } else {
         // Reset species selector
         speciesSelect.disabled = true;
@@ -388,7 +539,8 @@ function onSpeciesChange() {
 }
 
 // Load recordings with current filters
-async function loadRecordings() {
+async function loadRecordings(page = 1) {
+    currentPage = page;
     const container = document.getElementById('detections-container');
     container.innerHTML = '<div class="loading-indicator">Loading recordings...</div>';
 
@@ -398,8 +550,9 @@ async function loadRecordings() {
 
     // Build query parameters
     const params = new URLSearchParams({
-        min_confidence: currentFilters.minConfidence,
-        limit: 100
+        page: page,
+        per_page: 50,
+        min_confidence: currentFilters.minConfidence
     });
 
     if (currentFilters.species) {
@@ -427,6 +580,11 @@ async function loadRecordings() {
             displayRecordings(currentRecordings);
         } else {
             container.innerHTML = '<div class="no-results">No recordings found matching the selected filters.</div>';
+        }
+
+        // Render pagination
+        if (data.pagination) {
+            BirdNETPagination.render('pagination', data.pagination, 'loadRecordings', 'recordings');
         }
     } catch (error) {
         console.error('Error loading recordings:', error);
@@ -485,14 +643,30 @@ function displayRecordings(recordings) {
 
     const html = recordings.map(recording => `
         <div class="detection-entry">
-            <button class="play-button" onclick="playAudio('${recording.id}', this)" title="Play recording"></button>
+            <button class="play-button" onclick="playAudio('${recording.id}', '${recording.audio_file_id}', this)" title="Play recording"></button>
             <div>
                 <div style="font-weight: 500;">${recording.common_name || recording.scientific_name}</div>
                 <div style="font-size: 0.8rem; color: var(--color-text-tertiary);">
-                    <em>${recording.scientific_name}</em>
+                    <em>
+                        <span class="taxonomy-link"
+                              onclick="setFilterFromLabel('genus', '${recording.scientific_name}', event)"
+                              title="Filter by genus ${recording.scientific_name.split(' ')[0]}">
+                            ${recording.scientific_name.split(' ')[0]}
+                        </span>
+                        <span class="taxonomy-link"
+                              onclick="setFilterFromLabel('species', '${recording.scientific_name}', event)"
+                              title="Filter by ${recording.scientific_name}">
+                            ${recording.scientific_name.split(' ').slice(1).join(' ')}
+                        </span>
+                    </em>
                 </div>
                 <div style="font-size: 0.7rem; color: var(--color-text-tertiary);">
-                    ${recording.family} · ${recording.genus}
+                    ${formatOrderName(recording.order_name)} ·
+                    <span class="taxonomy-link"
+                          onclick="setFilterFromLabel('family', '${recording.family}', event)"
+                          title="Filter by ${recording.family} family">
+                        ${recording.family}
+                    </span>
                 </div>
             </div>
             <div>${recording.date}</div>
@@ -550,7 +724,7 @@ function clearAllFilters() {
 let currentAudio = null;
 let currentButton = null;
 
-function playAudio(detectionId, button) {
+function playAudio(detectionId, audioFileId, button) {
     // Stop current audio if playing
     if (currentAudio && currentButton) {
         currentAudio.pause();
@@ -568,8 +742,8 @@ function playAudio(detectionId, button) {
     button.classList.add('loading');
     button.disabled = true;
 
-    // Create audio element
-    const audio = new Audio(`/audio/${detectionId}`);
+    // Create audio element using direct audio file endpoint
+    const audio = new Audio(`/api/audio/${audioFileId}`);
 
     audio.addEventListener('canplay', () => {
         button.classList.remove('loading');

@@ -199,7 +199,7 @@ class TestLandingPageIntegration:
         # Verify detection log has entries
         assert len(data.detection_log) > 0
         assert all(hasattr(d, "time") for d in data.detection_log)
-        assert all(hasattr(d, "species") for d in data.detection_log)
+        assert all(hasattr(d, "common_name") for d in data.detection_log)
         assert all(hasattr(d, "confidence") for d in data.detection_log)
         assert all("%" in d.confidence for d in data.detection_log)
 

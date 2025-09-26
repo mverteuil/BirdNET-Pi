@@ -555,6 +555,7 @@
     <div class="loading-overlay" id="loading-overlay"></div>
     <div class="loading-indicator" id="loading-indicator">Loading detections...</div>
 
+    <script src="{{ request.url_for('static', path='js/pagination.js') }}"></script>
     <script>
         // Species filtering
         let selectedSpecies = null;
@@ -785,44 +786,8 @@
                     }
                 });
 
-                // Render pagination
-                const pagination = document.getElementById('pagination');
-                let paginationHTML = '';
-
-                if (data.pagination.total_pages > 1) {
-                    paginationHTML = `
-                        <span class="text-secondary">
-                            Page ${data.pagination.page} of ${data.pagination.total_pages}
-                            (${data.pagination.total} total detections)
-                        </span><br>
-                    `;
-
-                    if (data.pagination.has_prev) {
-                        paginationHTML += `<a href="#" onclick="loadDetections(1); return false;">« First</a> `;
-                        paginationHTML += `<a href="#" onclick="loadDetections(${page - 1}); return false;">‹ Prev</a> `;
-                    }
-
-                    // Show page numbers
-                    const startPage = Math.max(1, page - 2);
-                    const endPage = Math.min(data.pagination.total_pages, page + 2);
-
-                    for (let i = startPage; i <= endPage; i++) {
-                        if (i === page) {
-                            paginationHTML += `<span class="font-bold current-page">${i}</span> `;
-                        } else {
-                            paginationHTML += `<a href="#" onclick="loadDetections(${i}); return false;">${i}</a> `;
-                        }
-                    }
-
-                    if (data.pagination.has_next) {
-                        paginationHTML += `<a href="#" onclick="loadDetections(${page + 1}); return false;">Next ›</a> `;
-                        paginationHTML += `<a href="#" onclick="loadDetections(${data.pagination.total_pages}); return false;">Last »</a>`;
-                    }
-                } else if (data.pagination.total > 0) {
-                    paginationHTML = `<span class="text-secondary">${data.pagination.total} detections</span>`;
-                }
-
-                pagination.innerHTML = paginationHTML;
+                // Render pagination using common function
+                BirdNETPagination.render('pagination', data.pagination, 'loadDetections', 'detections');
 
             } catch (error) {
                 console.error('Error loading detections:', error);
@@ -913,44 +878,22 @@
                 }
             }
 
-            // Render pagination similar to detections
-            const pagination = document.getElementById('species-pagination');
-            let paginationHTML = '';
+            // Render pagination using common function
+            const speciesPaginationData = {
+                page: speciesCurrentPage,
+                total_pages: totalPages,
+                total: totalItems,
+                has_prev: speciesCurrentPage > 1,
+                has_next: speciesCurrentPage < totalPages
+            };
 
-            if (totalPages > 1) {
-                paginationHTML = `
-                    <span class="text-secondary">
-                        Page ${speciesCurrentPage} of ${totalPages}
-                        (${totalItems} total species)
-                    </span><br>
-                `;
+            // Use a wrapper function to handle species page changes
+            window.loadSpeciesPage = function(page) {
+                speciesCurrentPage = page;
+                renderSpeciesTable();
+            };
 
-                if (speciesCurrentPage > 1) {
-                    paginationHTML += `<a href="#" onclick="changeSpeciesPage('first'); return false;">« First</a> `;
-                    paginationHTML += `<a href="#" onclick="changeSpeciesPage('prev'); return false;">‹ Prev</a> `;
-                }
-
-                // Show page numbers
-                const startPage = Math.max(1, speciesCurrentPage - 2);
-                const endPage = Math.min(totalPages, speciesCurrentPage + 2);
-
-                for (let i = startPage; i <= endPage; i++) {
-                    if (i === speciesCurrentPage) {
-                        paginationHTML += `<span class="font-bold current-page">${i}</span> `;
-                    } else {
-                        paginationHTML += `<a href="#" onclick="speciesCurrentPage=${i}; renderSpeciesTable(); return false;">${i}</a> `;
-                    }
-                }
-
-                if (speciesCurrentPage < totalPages) {
-                    paginationHTML += `<a href="#" onclick="changeSpeciesPage('next'); return false;">Next ›</a> `;
-                    paginationHTML += `<a href="#" onclick="changeSpeciesPage('last'); return false;">Last »</a>`;
-                }
-            } else if (totalItems > 0) {
-                paginationHTML = `<span class="text-secondary">${totalItems} species</span>`;
-            }
-
-            pagination.innerHTML = paginationHTML;
+            BirdNETPagination.render('species-pagination', speciesPaginationData, 'loadSpeciesPage', 'species');
 
             // Update sort indicators
             document.querySelectorAll('#species-frequency-table th.sortable').forEach(th => {
@@ -973,25 +916,7 @@
             renderSpeciesTable();
         }
 
-        function changeSpeciesPage(action) {
-            const totalPages = Math.ceil(allSpeciesData.length / (speciesPageSize === 'all' ? allSpeciesData.length : speciesPageSize));
-
-            switch(action) {
-                case 'first':
-                    speciesCurrentPage = 1;
-                    break;
-                case 'prev':
-                    speciesCurrentPage = Math.max(1, speciesCurrentPage - 1);
-                    break;
-                case 'next':
-                    speciesCurrentPage = Math.min(totalPages, speciesCurrentPage + 1);
-                    break;
-                case 'last':
-                    speciesCurrentPage = totalPages;
-                    break;
-            }
-            renderSpeciesTable();
-        }
+        // changeSpeciesPage function removed - now using loadSpeciesPage defined in renderSpeciesTable
 
         function changeSpeciesPageSize(size) {
             speciesPageSize = size;

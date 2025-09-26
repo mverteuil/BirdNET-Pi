@@ -15,6 +15,7 @@ from birdnetpi.web.routers import (
     health_api_routes,
     logs_api_routes,
     logs_view_routes,
+    multimedia_api_routes,
     multimedia_view_routes,
     reports_view_routes,
     services_view_routes,
@@ -95,6 +96,7 @@ def create_app() -> FastAPI:
             "birdnetpi.web.routers.health_api_routes",
             "birdnetpi.web.routers.logs_api_routes",
             "birdnetpi.web.routers.logs_view_routes",
+            "birdnetpi.web.routers.multimedia_api_routes",
             "birdnetpi.web.routers.multimedia_view_routes",
             "birdnetpi.web.routers.reports_view_routes",
             "birdnetpi.web.routers.services_view_routes",
@@ -124,6 +126,9 @@ def create_app() -> FastAPI:
     app.include_router(
         detections_api_routes.router, prefix="/api/detections", tags=["Detections API"]
     )
+
+    # Multimedia API routes (audio/image serving)
+    app.include_router(multimedia_api_routes.router, prefix="/api", tags=["Multimedia API"])
 
     # Analysis API routes for progressive loading
     app.include_router(analysis_api_routes.router, tags=["Analysis API"])

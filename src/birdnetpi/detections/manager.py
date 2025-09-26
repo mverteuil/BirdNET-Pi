@@ -11,9 +11,11 @@ import functools
 import logging
 from collections.abc import Callable, Sequence
 from typing import Any, TypeVar
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import selectinload
 
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
@@ -102,11 +104,17 @@ class DataManager:
 
     # ==================== Core CRUD Operations ====================
 
-    async def get_detection_by_id(self, detection_id: int) -> Detection | None:
+    async def get_detection_by_id(self, detection_id: UUID) -> Detection | None:
         """Get a single detection by its ID."""
         async with self.database_service.get_async_db() as session:
             try:
-                stmt = select(Detection).where(Detection.id == detection_id)
+                stmt = (
+                    select(Detection)
+                    .where(Detection.id == detection_id)
+                    .options(
+                        selectinload(Detection.audio_file)  # Eagerly load audio file
+                    )
+                )
                 result = await session.execute(stmt)
                 return result.scalar_one_or_none()
             except SQLAlchemyError:
@@ -208,7 +216,7 @@ class DataManager:
                 raise
 
     async def update_detection(
-        self, detection_id: int, updates: dict[str, Any]
+        self, detection_id: UUID, updates: dict[str, Any]
     ) -> Detection | None:
         """Update a detection record."""
         async with self.database_service.get_async_db() as session:

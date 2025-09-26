@@ -260,11 +260,11 @@ class TestFormatting:
 
         # Check first detection
         assert formatted[0].time == "10:30"
-        assert formatted[0].species == "American Robin"
+        assert formatted[0].common_name == "American Robin"
         assert formatted[0].confidence == "95%"
 
         # Check detection with no common name
-        assert formatted[2].species == "Unknown species"  # Falls back to scientific name
+        assert formatted[2].common_name == "Unknown species"  # Falls back to scientific name
         assert formatted[2].confidence == "65%"
 
     def test_format_detection_log_empty(self, presentation_manager):

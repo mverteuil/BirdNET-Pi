@@ -1,0 +1,13 @@
+{#
+Pagination Fragment
+Usage: {% include 'includes/pagination.html.j2' %}
+Provides the pagination.js script that can be used to render pagination controls
+
+Use in your JavaScript:
+  BirdNETPagination.render(elementId, paginationData, loadFunction, itemName)
+
+Or create a handler:
+  const renderMyPagination = BirdNETPagination.createHandler('pagination', 'loadDetections', 'detections');
+#}
+
+<script src="{{ request.url_for('static', path='js/pagination.js') }}"></script>

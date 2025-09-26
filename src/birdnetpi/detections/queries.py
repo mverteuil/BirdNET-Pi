@@ -11,7 +11,7 @@ import logging
 from collections import defaultdict
 from datetime import datetime as dt
 from datetime import timedelta
-from typing import Any
+from typing import Any, Protocol
 from uuid import UUID
 
 from dateutil import parser as date_parser
@@ -19,6 +19,7 @@ from sqlalchemy import and_, desc, func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
+from sqlalchemy.sql.elements import TextClause
 
 from birdnetpi.config.models import BirdNETConfig
 from birdnetpi.database.core import CoreDatabaseService
@@ -27,6 +28,20 @@ from birdnetpi.detections.models import AudioFile, Detection, DetectionWithTaxa
 from birdnetpi.location.models import Weather
 
 logger = logging.getLogger(__name__)
+
+
+class BestRecordingRow(Protocol):
+    """Protocol for best recording query result rows."""
+
+    id: str
+    timestamp: Any  # Can be datetime, str, int, or float
+    confidence: float
+    scientific_name: str
+    common_name: str
+    audio_file_id: str | None
+    family: str | None
+    order_name: str | None
+    translated_name: str | None
 
 
 class DetectionQueryService:
@@ -1804,3 +1819,373 @@ class DetectionQueryService:
                 data["precipitation"].append(row.precipitation)
 
             return data
+
+    def _build_best_recordings_count_query(
+        self,
+        where_clause: str,
+        species: str | None,
+        family: str | None,
+        per_species_limit: int | None,
+    ) -> TextClause:
+        """Build count query for best recordings based on filter type."""
+        if species:
+            # Simple count for single species - no ranking needed
+            if family:
+                return text(  # nosemgrep
+                    f"""
+                    SELECT COUNT(*) as total
+                    FROM detections d
+                    LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
+                    WHERE {where_clause}
+                    """
+                )
+            else:
+                return text(  # nosemgrep
+                    f"""
+                    SELECT COUNT(*) as total
+                    FROM detections d
+                    WHERE {where_clause}
+                    """
+                )
+        elif per_species_limit is None:
+            # No per-species limit - count all matching detections
+            if family:
+                return text(  # nosemgrep
+                    f"""
+                    SELECT COUNT(*) as total
+                    FROM detections d
+                    LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
+                    WHERE {where_clause}
+                    """
+                )
+            else:
+                return text(  # nosemgrep
+                    f"""
+                    SELECT COUNT(*) as total
+                    FROM detections d
+                    WHERE {where_clause}
+                    """
+                )
+        elif family:
+            # Need ranking for family filter with per-species limit
+            return text(  # nosemgrep
+                f"""
+                WITH ranked_detections AS (
+                    SELECT
+                        d.scientific_name,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY d.scientific_name
+                            ORDER BY d.confidence DESC, d.timestamp DESC
+                        ) as rank_within_species
+                    FROM detections d
+                    LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
+                    WHERE {where_clause}
+                )
+                SELECT COUNT(*) as total
+                FROM ranked_detections
+                WHERE rank_within_species <= :per_species_limit
+                """
+            )
+        else:
+            # Default case with ranking
+            return text(  # nosemgrep
+                f"""
+                WITH ranked_detections AS (
+                    SELECT
+                        d.scientific_name,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY d.scientific_name
+                            ORDER BY d.confidence DESC, d.timestamp DESC
+                        ) as rank_within_species
+                    FROM detections d
+                    WHERE {where_clause}
+                )
+                SELECT COUNT(*) as total
+                FROM ranked_detections
+                WHERE rank_within_species <= :per_species_limit
+                """
+            )
+
+    def _build_best_recordings_data_query(
+        self,
+        where_clause: str,
+        species: str | None,
+        family: str | None,
+        per_species_limit: int | None,
+    ) -> TextClause:
+        """Build data query for best recordings based on filter type."""
+        if species:
+            # For specific species, skip ranking - just filter directly
+            return text(  # nosemgrep
+                f"""
+                SELECT
+                    d.id,
+                    d.scientific_name,
+                    d.common_name,
+                    d.confidence,
+                    d.timestamp,
+                    d.audio_file_id,
+                    s.family,
+                    s.order_name,
+                    COALESCE(
+                        t.common_name,
+                        p.common_name,
+                        a.common_name,
+                        s.english_name,
+                        d.common_name
+                    ) AS translated_name
+                FROM detections d
+                LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
+                LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                    AND t.language_code = :language_code
+                LEFT JOIN patlevin.patlevin_labels p
+                    ON p.scientific_name = d.scientific_name
+                    AND p.language_code = :language_code
+                LEFT JOIN avibase.avibase_names a
+                    ON a.scientific_name = d.scientific_name
+                    AND a.language_code = :language_code
+                WHERE {where_clause}
+                ORDER BY d.confidence DESC, d.timestamp DESC
+                LIMIT :limit OFFSET :offset
+                """
+            )
+        elif per_species_limit is None:
+            # No per-species limit - get all detections directly
+            return text(  # nosemgrep
+                f"""
+                SELECT
+                    d.id,
+                    d.scientific_name,
+                    d.common_name,
+                    d.confidence,
+                    d.timestamp,
+                    d.audio_file_id,
+                    s.family,
+                    s.order_name,
+                    COALESCE(
+                        t.common_name,
+                        p.common_name,
+                        a.common_name,
+                        s.english_name,
+                        d.common_name
+                    ) AS translated_name
+                FROM detections d
+                LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
+                LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                    AND t.language_code = :language_code
+                LEFT JOIN patlevin.patlevin_labels p
+                    ON p.scientific_name = d.scientific_name
+                    AND p.language_code = :language_code
+                LEFT JOIN avibase.avibase_names a
+                    ON a.scientific_name = d.scientific_name
+                    AND a.language_code = :language_code
+                WHERE {where_clause}
+                ORDER BY d.confidence DESC, d.timestamp DESC
+                LIMIT :limit OFFSET :offset
+                """
+            )
+        else:
+            # Use ranking to limit per species
+            join_clause = (
+                "LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name" if family else ""
+            )
+            ranked_cte = f"""
+                WITH ranked_detections AS (
+                    SELECT
+                        d.id,
+                        d.scientific_name,
+                        d.common_name,
+                        d.confidence,
+                        d.timestamp,
+                        d.audio_file_id,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY d.scientific_name
+                            ORDER BY d.confidence DESC, d.timestamp DESC
+                        ) as rank_within_species
+                    FROM detections d
+                    {join_clause}
+                    WHERE {where_clause}
+                )"""
+            return text(  # nosemgrep
+                ranked_cte
+                + """
+                SELECT
+                    rd.id,
+                    rd.scientific_name,
+                    rd.common_name,
+                    rd.confidence,
+                    rd.timestamp,
+                    rd.audio_file_id,
+                    s.family,
+                    s.order_name,
+                    COALESCE(
+                        t.common_name,
+                        p.common_name,
+                        a.common_name,
+                        s.english_name,
+                        rd.common_name
+                    ) AS translated_name
+                FROM ranked_detections rd
+                LEFT JOIN ioc.species s ON rd.scientific_name = s.scientific_name
+                LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                    AND t.language_code = :language_code
+                LEFT JOIN patlevin.patlevin_labels p
+                    ON p.scientific_name = rd.scientific_name
+                    AND p.language_code = :language_code
+                LEFT JOIN avibase.avibase_names a
+                    ON a.scientific_name = rd.scientific_name
+                    AND a.language_code = :language_code
+                WHERE rd.rank_within_species <= :per_species_limit
+                ORDER BY rd.confidence DESC, rd.timestamp DESC
+                LIMIT :limit OFFSET :offset
+                """
+            )
+
+    def _create_detection_with_taxa_from_row(self, row: BestRecordingRow) -> DetectionWithTaxa:
+        """Create DetectionWithTaxa from a database row result."""
+        # Build species_tensor from scientific_name and common_name
+        species_tensor = f"{row.scientific_name}_{row.common_name}"
+
+        detection = Detection(
+            id=UUID(row.id),
+            scientific_name=row.scientific_name,
+            common_name=row.common_name,
+            confidence=row.confidence,
+            timestamp=self._parse_timestamp(row.timestamp),
+            audio_file_id=UUID(row.audio_file_id) if row.audio_file_id else None,
+            # Set defaults for required but unused fields
+            species_tensor=species_tensor,
+            latitude=None,
+            longitude=None,
+            species_confidence_threshold=None,
+            week=None,
+            sensitivity_setting=None,
+            overlap=None,
+        )
+
+        return DetectionWithTaxa(
+            detection=detection,
+            translated_name=(
+                row.translated_name if hasattr(row, "translated_name") else row.common_name
+            ),
+            family=row.family if hasattr(row, "family") else None,
+            order_name=row.order_name if hasattr(row, "order_name") else None,
+            # Set defaults for unused fields
+            ioc_english_name=None,
+            genus=None,
+        )
+
+    def _build_best_recordings_filter_conditions(
+        self,
+        species: str | None,
+        genus: str | None,
+        family: str | None,
+        min_confidence: float,
+        params: dict[str, Any],
+    ) -> list[str]:
+        """Build filter conditions for best recordings query."""
+        filter_conditions = ["d.confidence >= :min_confidence"]
+
+        if species:
+            filter_conditions.append("d.scientific_name = :species")
+            params["species"] = species
+        elif genus:
+            # For genus, match the first part of the scientific name
+            filter_conditions.append("d.scientific_name LIKE :genus_pattern")
+            params["genus_pattern"] = f"{genus} %"
+        elif family:
+            # Family requires joining with IOC species table
+            filter_conditions.append("s.family = :family")
+            params["family"] = family
+
+        return filter_conditions
+
+    async def query_best_recordings_per_species(
+        self,
+        per_species_limit: int | None = 5,
+        min_confidence: float = 0.5,
+        language_code: str = "en",
+        page: int = 1,
+        per_page: int = 50,
+        family: str | None = None,
+        genus: str | None = None,
+        species: str | None = None,
+    ) -> tuple[list[DetectionWithTaxa], int]:
+        """Get best recordings with an optional limit per species.
+
+        Uses SQL window functions to rank detections within each species by confidence
+        and returns only the top N per species. When filtering by a specific species,
+        pass None for per_species_limit to get all recordings.
+
+        Args:
+            per_species_limit: Maximum number of detections per species (None = no limit)
+            min_confidence: Minimum confidence threshold
+            language_code: Language code for translations
+            page: Page number for pagination (1-indexed)
+            per_page: Number of items per page
+            family: Optional family filter
+            genus: Optional genus filter
+            species: Optional species (scientific name) filter
+
+        Returns:
+            Tuple of (list of DetectionWithTaxa objects, total count)
+        """
+        async with self.core_database.get_async_db() as session:
+            await self.species_database.attach_all_to_session(session)
+            try:
+                # Calculate offset for pagination
+                offset = (page - 1) * per_page
+
+                # Build base parameters
+                params: dict[str, Any] = {
+                    "min_confidence": min_confidence,
+                    "language_code": language_code,
+                    "limit": per_page,
+                    "offset": offset,
+                }
+
+                # Only add per_species_limit if we have one and not filtering by specific species
+                if per_species_limit is not None and not species:
+                    params["per_species_limit"] = per_species_limit
+
+                # Build filter conditions
+                filter_conditions = self._build_best_recordings_filter_conditions(
+                    species, genus, family, min_confidence, params
+                )
+                where_clause = " AND ".join(filter_conditions)
+
+                # Build and execute count query
+                count_sql = self._build_best_recordings_count_query(
+                    where_clause, species, family, per_species_limit
+                )
+
+                # Use only the parameters needed for count query
+                count_params: dict[str, Any] = {"min_confidence": min_confidence}
+                if per_species_limit is not None and not species:
+                    count_params["per_species_limit"] = per_species_limit
+                if species:
+                    count_params["species"] = species
+                if genus:
+                    count_params["genus_pattern"] = params["genus_pattern"]
+                if family:
+                    count_params["family"] = family
+
+                count_result = await session.execute(count_sql, count_params)
+                total_count = count_result.scalar() or 0
+
+                # Build and execute data query
+                query_sql = self._build_best_recordings_data_query(
+                    where_clause, species, family, per_species_limit
+                )
+
+                result = await session.execute(query_sql, params)
+                results = result.fetchall()
+
+                detection_data_list = []
+                for row in results:
+                    detection_with_taxa = self._create_detection_with_taxa_from_row(row)
+                    detection_data_list.append(detection_with_taxa)
+
+                return detection_data_list, total_count
+            finally:
+                await self.species_database.detach_all_from_session(session)
