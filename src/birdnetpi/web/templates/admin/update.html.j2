@@ -1,0 +1,263 @@
+{% extends "base.html.j2" %}
+
+{% block title %}{{ _('System Updates') }}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ request.url_for('static', path='css/update.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="update-container">
+    <!-- Skip navigation link for screen readers -->
+    <a href="#update-content" class="skip-link">{{ _('Skip to update content') }}</a>
+
+    <h1>{{ _('System Updates') }}</h1>
+
+    <!-- Update Status Panel -->
+    <div class="update-status-panel" id="update-status-panel" role="region" aria-label="{{ _('Update status') }}">
+        <div class="status-header">
+            <h2>{{ _('Current Status') }}</h2>
+            <button
+                type="button"
+                id="check-updates-btn"
+                class="btn btn-primary"
+                aria-label="{{ _('Check for updates') }}"
+            >
+                <span class="btn-icon" aria-hidden="true">🔄</span>
+                {{ _('Check for Updates') }}
+            </button>
+        </div>
+
+        <div class="status-content">
+            <div class="status-row">
+                <span class="status-label">{{ _('Current Version:') }}</span>
+                <span class="status-value" id="current-version">
+                    {{ update_status.current_version or _('Unknown') }}
+                </span>
+            </div>
+
+            <div class="status-row">
+                <span class="status-label">{{ _('Latest Version:') }}</span>
+                <span class="status-value" id="latest-version">
+                    {{ update_status.latest_version or _('Unknown') }}
+                </span>
+            </div>
+
+            <div class="status-row">
+                <span class="status-label">{{ _('Status:') }}</span>
+                <span class="status-value" id="update-status">
+                    {% if update_status.available %}
+                        <span class="badge badge-warning">{{ _('Update Available') }}</span>
+                    {% elif update_status.error %}
+                        <span class="badge badge-error">{{ _('Error') }}: {{ update_status.error }}</span>
+                    {% else %}
+                        <span class="badge badge-success">{{ _('Up to Date') }}</span>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+
+        <!-- Update Available Actions -->
+        <div id="update-actions" class="update-actions" {% if not update_status.available %}style="display: none;"{% endif %}>
+            <h3>{{ _('Update Details') }}</h3>
+
+            <div id="release-notes" class="release-notes">
+                {% if update_status.release_notes %}
+                    {{ update_status.release_notes | safe }}
+                {% endif %}
+            </div>
+
+            {% if update_status.release_url %}
+            <div class="release-link">
+                <a href="{{ update_status.release_url }}" target="_blank" rel="noopener noreferrer">
+                    {{ _('View on GitHub') }}
+                    <span aria-hidden="true">↗️</span>
+                </a>
+            </div>
+            {% endif %}
+
+            <div class="update-buttons">
+                <button
+                    type="button"
+                    id="apply-update-btn"
+                    class="btn btn-warning"
+                    aria-label="{{ _('Apply update') }}"
+                    {% if not update_status.can_auto_update %}disabled{% endif %}
+                >
+                    <span class="btn-icon" aria-hidden="true">⬇️</span>
+                    {{ _('Apply Update') }}
+                </button>
+
+                <button
+                    type="button"
+                    id="test-update-btn"
+                    class="btn btn-secondary"
+                    aria-label="{{ _('Test update without applying') }}"
+                    {% if not update_status.can_auto_update %}disabled{% endif %}
+                >
+                    <span class="btn-icon" aria-hidden="true">🧪</span>
+                    {{ _('Test Update (Dry Run)') }}
+                </button>
+            </div>
+
+            {% if not update_status.can_auto_update %}
+            <div class="alert alert-info" role="alert">
+                <strong>{{ _('Manual Update Required') }}</strong>
+                <p>{{ _('This update cannot be applied automatically. Please follow the manual update instructions.') }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Git Configuration Panel -->
+    <div class="git-config-panel" id="git-config-panel" role="region" aria-label="{{ _('Git configuration') }}">
+        <h2>{{ _('Git Configuration') }}</h2>
+
+        <form id="git-config-form" class="git-config-form">
+            <div class="config-row">
+                <label for="git-remote">{{ _('Git Remote:') }}</label>
+                <input
+                    type="text"
+                    id="git-remote"
+                    name="git_remote"
+                    value="{{ git_remote }}"
+                    pattern="^[a-zA-Z0-9_-]+$"
+                    title="{{ _('Remote name (e.g., origin)') }}"
+                    aria-describedby="git-remote-help"
+                >
+                <small id="git-remote-help">{{ _('Git remote for updates (default: origin)') }}</small>
+            </div>
+
+            <div class="config-row">
+                <label for="git-branch">{{ _('Git Branch:') }}</label>
+                <input
+                    type="text"
+                    id="git-branch"
+                    name="git_branch"
+                    value="{{ git_branch }}"
+                    pattern="^[a-zA-Z0-9/_-]+$"
+                    title="{{ _('Branch name (e.g., main)') }}"
+                    aria-describedby="git-branch-help"
+                >
+                <small id="git-branch-help">{{ _('Git branch to track (default: main)') }}</small>
+            </div>
+
+            <div class="config-actions">
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                    aria-label="{{ _('Save git configuration') }}"
+                >
+                    {{ _('Save Configuration') }}
+                </button>
+                <div id="git-config-message" class="config-message" style="display: none;"></div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Update Progress Panel -->
+    <div class="update-progress-panel" id="update-progress-panel" style="display: none;"
+         role="region" aria-label="{{ _('Update progress') }}" aria-live="polite" aria-atomic="true">
+        <h2>{{ _('Update Progress') }}</h2>
+
+        <div class="progress-container">
+            <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+            </div>
+            <div class="progress-text" id="progress-text">{{ _('Initializing...') }}</div>
+        </div>
+
+        <div class="progress-log" id="progress-log" aria-label="{{ _('Update log') }}">
+            <!-- Progress messages will be added here via JavaScript -->
+        </div>
+
+        <button
+            type="button"
+            id="cancel-update-btn"
+            class="btn btn-danger"
+            aria-label="{{ _('Cancel update') }}"
+            style="display: none;"
+        >
+            <span class="btn-icon" aria-hidden="true">❌</span>
+            {{ _('Cancel Update') }}
+        </button>
+    </div>
+
+    <!-- Last Update Result -->
+    {% if update_result %}
+    <div class="update-result-panel" id="update-result-panel" role="region" aria-label="{{ _('Last update result') }}">
+        <h2>{{ _('Last Update Result') }}</h2>
+
+        <div class="result-content">
+            {% if update_result.success %}
+                <div class="alert alert-success">
+                    <strong>{{ _('Update Successful') }}</strong>
+                    {% if update_result.message %}
+                        <p>{{ update_result.message }}</p>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="alert alert-error">
+                    <strong>{{ _('Update Failed') }}</strong>
+                    {% if update_result.error %}
+                        <p>{{ update_result.error }}</p>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Help Section -->
+    <div class="help-panel" id="help-panel" role="region" aria-label="{{ _('Update help') }}">
+        <h2>{{ _('Update Help') }}</h2>
+
+        <details>
+            <summary>{{ _('About Automatic Updates') }}</summary>
+            <div class="help-content">
+                <p>{{ _('BirdNET-Pi supports automatic updates for minor versions and patches. Major version updates may require manual intervention.') }}</p>
+                <p>{{ _('Before applying an update:') }}</p>
+                <ul>
+                    <li>{{ _('Ensure your system has sufficient disk space') }}</li>
+                    <li>{{ _('Consider backing up your data') }}</li>
+                    <li>{{ _('Review the release notes for breaking changes') }}</li>
+                </ul>
+            </div>
+        </details>
+
+        <details>
+            <summary>{{ _('Manual Update Instructions') }}</summary>
+            <div class="help-content">
+                <p>{{ _('If automatic updates are not available, you can update manually:') }}</p>
+                <ol>
+                    <li>{{ _('SSH into your BirdNET-Pi device') }}</li>
+                    <li>{{ _('Navigate to the BirdNET-Pi directory') }}</li>
+                    <li>{{ _('Run: git pull origin main') }}</li>
+                    <li>{{ _('Restart the services: sudo systemctl restart birdnetpi') }}</li>
+                </ol>
+            </div>
+        </details>
+
+        <details>
+            <summary>{{ _('Troubleshooting') }}</summary>
+            <div class="help-content">
+                <p>{{ _('If you encounter issues:') }}</p>
+                <ul>
+                    <li>{{ _('Check the system logs for error messages') }}</li>
+                    <li>{{ _('Ensure your device has internet connectivity') }}</li>
+                    <li>{{ _('Verify that the update service is running') }}</li>
+                    <li>{{ _('Report issues on GitHub with error details') }}</li>
+                </ul>
+            </div>
+        </details>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Store SSE endpoint for JavaScript to use
+    const sseEndpoint = "{{ sse_endpoint }}";
+</script>
+<script src="{{ request.url_for('static', path='js/update.js') }}"></script>
+{% endblock %}

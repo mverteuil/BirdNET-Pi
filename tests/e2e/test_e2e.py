@@ -98,5 +98,6 @@ def test_profiling_disabled_by_default(docker_compose_up_down) -> None:
     # Should return the normal page, not profiling output
     assert "BirdNET-Pi" in response.text
     assert "pyinstrument" not in response.text.lower()
-    assert "flame" not in response.text.lower()
+    # Check for pyinstrument-specific profiling elements
+    assert '"identifier"' not in response.text  # pyinstrument JSON output
     assert "cpu utilization" not in response.text.lower()

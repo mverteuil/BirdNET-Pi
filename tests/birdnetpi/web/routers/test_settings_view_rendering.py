@@ -18,6 +18,12 @@ class TestSettingsViewRendering:
         """Create Jinja2 environment for template testing."""
         template_dir = repo_root / "src" / "birdnetpi" / "web" / "templates"
         env = Environment(loader=FileSystemLoader(str(template_dir)), autoescape=True)
+
+        # Add template globals that are expected by base template
+        env.globals["get_update_status"] = lambda: None
+        env.globals["update_available"] = lambda: False
+        env.globals["show_development_warning"] = lambda: False
+
         return env
 
     @pytest.fixture

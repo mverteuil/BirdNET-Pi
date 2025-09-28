@@ -131,7 +131,7 @@
 
     <!-- Admin dropdown (right-aligned) -->
     <div class="admin-dropdown" role="region" aria-label="Administration menu">
-        <button class="nav-item{% if active_page in ['settings', 'logs', 'database', 'services'] %} active{% endif %}"
+        <button class="nav-item{% if active_page in ['settings', 'logs', 'database', 'services', 'update'] %} active{% endif %}"
                 type="button"
                 aria-expanded="false"
                 aria-haspopup="true"
@@ -146,6 +146,9 @@
             <a href="/admin/services" role="menuitem"
                class="{% if active_page == 'services' %}active{% endif %}"
                {% if active_page == 'services' %}aria-current="page"{% endif %}>System Services</a>
+            <a href="/admin/update" role="menuitem"
+               class="{% if active_page == 'update' %}active{% endif %}"
+               {% if active_page == 'update' %}aria-current="page"{% endif %}>System Update</a>
             <a href="/admin/logs" role="menuitem"
                class="{% if active_page == 'logs' %}active{% endif %}"
                {% if active_page == 'logs' %}aria-current="page"{% endif %}>Logs</a>

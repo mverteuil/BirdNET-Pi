@@ -347,8 +347,8 @@ class TestSettingsE2E:
         # Add some extra config that's not in the form
         config_manager = ConfigManager(path_resolver)
         config = config_manager.load()
-        config.git_branch = "custom-branch"
-        config.git_remote = "custom-remote"
+        config.updates.git_branch = "custom-branch"
+        config.updates.git_remote = "custom-remote"
         config_manager.save(config)
 
         with TestClient(app) as client:
@@ -375,6 +375,6 @@ class TestSettingsE2E:
 
             # Verify git fields were preserved
             final_config = config_manager.load()
-            assert final_config.git_branch == "custom-branch"
-            assert final_config.git_remote == "custom-remote"
+            assert final_config.updates.git_branch == "custom-branch"
+            assert final_config.updates.git_remote == "custom-remote"
             assert final_config.site_name == "Preserve Test"

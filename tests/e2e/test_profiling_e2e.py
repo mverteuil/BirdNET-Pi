@@ -135,7 +135,9 @@ def test_profiling_normal_request_unaffected(docker_compose_with_profiling) -> N
 
     # Should NOT contain profiling output
     assert "pyinstrument" not in response.text.lower()
-    assert "flame" not in response.text.lower()
+    # Check for pyinstrument-specific profiling elements
+    assert '"identifier"' not in response.text  # pyinstrument JSON output
+    # The page may have "time" in regular content, so don't check for it
 
     # Page should have normal HTML structure
     assert "<html" in response.text.lower() or "<!doctype" in response.text.lower()

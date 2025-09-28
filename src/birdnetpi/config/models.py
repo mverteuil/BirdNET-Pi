@@ -3,7 +3,9 @@
 This module contains all configuration-related Pydantic models used throughout the application.
 """
 
-from pydantic import BaseModel, Field
+import re
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class LoggingConfig(BaseModel):
@@ -13,6 +15,42 @@ class LoggingConfig(BaseModel):
     json_logs: bool | None = None  # None = auto-detect based on environment
     include_caller: bool = False  # Include file:line info (useful for debugging)
     extra_fields: dict[str, str] = Field(default_factory=lambda: {"service": "birdnet-pi"})
+
+
+class UpdateConfig(BaseModel):
+    """Update notification and management configuration."""
+
+    check_enabled: bool = True  # Enable periodic update checks
+    check_interval_hours: int = 6  # How often to check for updates
+    show_banner: bool = True  # Show update banner when updates are available
+    show_development_warning: bool = True  # Show warning banner when on development version
+    auto_check_on_startup: bool = True  # Check for updates when system starts
+    git_remote: str = "origin"  # Git remote name for updates
+    git_branch: str = "main"  # Git branch name for updates
+    # Note: Assets are always updated with code to prevent version mismatches
+
+    # Validators for git configuration
+    @field_validator("git_remote")
+    @classmethod
+    def validate_git_remote(cls, v: str) -> str:
+        """Validate git remote name format."""
+        if not re.match(r"^[a-zA-Z0-9_-]+$", v):
+            raise ValueError(
+                f"Invalid git remote name '{v}'. "
+                "Must contain only letters, numbers, underscores, and hyphens."
+            )
+        return v
+
+    @field_validator("git_branch")
+    @classmethod
+    def validate_git_branch(cls, v: str) -> str:
+        """Validate git branch name format."""
+        if not re.match(r"^[a-zA-Z0-9/_-]+$", v):
+            raise ValueError(
+                f"Invalid git branch name '{v}'. "
+                "Must contain only letters, numbers, underscores, hyphens, and forward slashes."
+            )
+        return v
 
 
 class BirdNETConfig(BaseModel):
@@ -112,9 +150,8 @@ class BirdNETConfig(BaseModel):
     webhook_urls: list[str] = Field(default_factory=list)  # List of webhook URLs
     webhook_events: str = "detection,health,gps,system"  # Events to send via webhooks
 
-    # Git Update settings
-    git_remote: str = "origin"  # Git remote name for updates
-    git_branch: str = "main"  # Git branch name for updates
+    # Update Configuration
+    updates: UpdateConfig = Field(default_factory=UpdateConfig)
 
     # Detection Processing
     detections_endpoint: str = "http://127.0.0.1:8888/api/detections/"  # Where to send detections

@@ -27,6 +27,9 @@
         {% endblock %}
     </header>
 
+    {# Update and development warning banners #}
+    {% include 'includes/update_banner.html.j2' %}
+
     {# Navigation - can be overridden but usually included #}
     {% block navigation %}
         {% set active_page = active_page|default('') %}

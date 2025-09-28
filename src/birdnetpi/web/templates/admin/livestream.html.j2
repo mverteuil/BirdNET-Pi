@@ -8,6 +8,9 @@
     <link rel="stylesheet" href="{{ request.url_for('static', path='css/livestream.css') }}">
 </head>
 <body>
+<!-- Update and development warning banners -->
+{% include 'includes/update_banner.html.j2' %}
+
 <header>
     <h1>BirdNET-Pi <span class="live" title="System Active"></span></h1>
     <p class="tagline">

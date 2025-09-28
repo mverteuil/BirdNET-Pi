@@ -95,7 +95,7 @@ class Container(containers.DeclarativeContainer):
     cache_service = providers.Singleton(
         Cache,
         # Use Redis for caching with memory-only mode
-        redis_host="localhost",
+        redis_host="127.0.0.1",  # Use IP instead of localhost for Docker compatibility
         redis_port=6379,
         redis_db=0,
         default_ttl=300,

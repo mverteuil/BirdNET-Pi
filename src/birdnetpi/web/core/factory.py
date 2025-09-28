@@ -23,6 +23,8 @@ from birdnetpi.web.routers import (
     settings_view_routes,
     sqladmin_view_routes,
     system_api_routes,
+    update_api_routes,
+    update_view_routes,
     websocket_routes,
 )
 
@@ -87,6 +89,11 @@ def create_app() -> FastAPI:
     templates = container.templates()
     setup_jinja2_i18n(templates)
 
+    # Add update status to template context
+    from birdnetpi.web.middleware.update_banner import add_update_status_to_templates
+
+    add_update_status_to_templates(templates, container)
+
     # Wire dependencies for all router modules and factory
     container.wire(
         modules=[
@@ -104,6 +111,8 @@ def create_app() -> FastAPI:
             "birdnetpi.web.routers.settings_view_routes",
             "birdnetpi.web.routers.sqladmin_view_routes",
             "birdnetpi.web.routers.system_api_routes",
+            "birdnetpi.web.routers.update_api_routes",
+            "birdnetpi.web.routers.update_view_routes",
             "birdnetpi.web.routers.websocket_routes",
         ]
     )
@@ -121,6 +130,9 @@ def create_app() -> FastAPI:
 
     # System API routes
     app.include_router(system_api_routes.router, prefix="/api/system", tags=["System API"])
+
+    # Update API routes
+    app.include_router(update_api_routes.router, prefix="/api/update", tags=["Update API"])
 
     # Core API routes (detections endpoints)
     app.include_router(
@@ -161,6 +173,14 @@ def create_app() -> FastAPI:
     app.include_router(
         services_view_routes.router,
         tags=["Services Views"],
+        include_in_schema=False,  # Exclude from API docs
+    )
+
+    # Update view routes (HTML page for system updates)
+    app.include_router(
+        update_view_routes.router,
+        prefix="/admin/update",
+        tags=["Update Views"],
         include_in_schema=False,  # Exclude from API docs
     )
 

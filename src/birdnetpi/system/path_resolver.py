@@ -155,3 +155,17 @@ class PathResolver:
     def get_fifo_base_path(self) -> Path:
         """Get the base path for FIFO files (temporary)."""
         return self.get_temp_dir()
+
+    def get_update_state_path(self) -> Path:
+        """Get the path to the update state file."""
+        return self.data_dir / "update_state.json"
+
+    def get_update_lock_path(self) -> Path:
+        """Get the path to the update lock file."""
+        return self.data_dir / "update.lock"
+
+    def get_rollback_dir(self) -> Path:
+        """Get the directory for rollback points."""
+        rollback_dir = self.data_dir / "rollback"
+        rollback_dir.mkdir(parents=True, exist_ok=True)
+        return rollback_dir

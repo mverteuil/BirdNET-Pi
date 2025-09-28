@@ -3,36 +3,22 @@ from unittest.mock import MagicMock, mock_open, patch
 import httpx
 import pytest
 
-from birdnetpi.config import BirdNETConfig
 from birdnetpi.releases.update_manager import UpdateManager
+from birdnetpi.system.file_manager import FileManager
+from birdnetpi.system.system_control import SystemControlService
 
 
 @pytest.fixture
-def mock_path_resolver(path_resolver, tmp_path):
-    """Provide a properly mocked PathResolver for UpdateManager tests.
-
-    Uses the global path_resolver fixture as a base to prevent MagicMock file creation.
-    """
-    # Create test database files in temp directory
-    ioc_db_path = tmp_path / "database" / "ioc_reference.db"
-    ioc_db_path.parent.mkdir(parents=True, exist_ok=True)
-    ioc_db_path.touch()
-
-    models_dir = tmp_path / "models"
-    models_dir.mkdir(parents=True, exist_ok=True)
-
-    # Override the database path methods
-    path_resolver.get_ioc_database_path = lambda: ioc_db_path
-    path_resolver.get_models_dir = lambda: models_dir
-
-    return path_resolver
-
-
-@pytest.fixture
-def update_manager(mock_path_resolver, tmp_path):
+def update_manager(path_resolver, tmp_path):
     """Provide an UpdateManager instance for testing."""
-    mock_system_control = MagicMock()
-    manager = UpdateManager(mock_path_resolver, mock_system_control)
+    # The global path_resolver already provides real paths for models and IOC database
+    mock_file_manager = MagicMock(spec=FileManager)
+    mock_system_control = MagicMock(spec=SystemControlService)
+    manager = UpdateManager(
+        path_resolver=path_resolver,
+        file_manager=mock_file_manager,
+        system_control=mock_system_control,
+    )
     manager.app_dir = tmp_path
     scripts_dir = tmp_path / "scripts"
     scripts_dir.mkdir()
@@ -42,58 +28,105 @@ def update_manager(mock_path_resolver, tmp_path):
     return manager
 
 
-@patch("birdnetpi.releases.update_manager.subprocess.run")
-def test_update_birdnet(mock_run, update_manager):
+@patch("birdnetpi.releases.update_manager.subprocess.run", autospec=True)
+def test_update_birdnet(mock_run, update_manager, test_config):
     """Should update BirdNET successfully."""
-    config = BirdNETConfig()
-    update_manager.update_birdnet(config)
+    update_manager.update_birdnet(test_config)
     # 11 subprocess calls (removed systemctl daemon-reload)
     assert mock_run.call_count == 11
     # Verify daemon_reload was called on system_control service
     update_manager.system_control.daemon_reload.assert_called_once()
 
 
-@patch("birdnetpi.releases.update_manager.subprocess.run")
-def test_get_commits_behind(mock_run, update_manager):
+@patch("birdnetpi.releases.update_manager.subprocess.run", autospec=True)
+def test_get_commits_behind(mock_run, update_manager, test_config):
     """Should return the number of commits behind."""
     mock_run.return_value.stdout = (
         "Your branch is behind 'origin/main' by 3 commits, and can be fast-forwarded."
     )
-    commits_behind = update_manager.get_commits_behind()
+    commits_behind = update_manager.get_commits_behind(test_config)
     assert commits_behind == 3
 
+    # Verify fetch was called with correct remote and branch
+    mock_run.assert_any_call(
+        ["git", "-C", str(update_manager.app_dir), "fetch", "origin", "main"],
+        check=True,
+        capture_output=True,
+    )
 
-@patch("birdnetpi.releases.update_manager.subprocess.run")
-def test_get_commits_behind_diverged(mock_run, update_manager):
+
+@patch("birdnetpi.releases.update_manager.subprocess.run", autospec=True)
+def test_get_commits_behind_diverged(mock_run, update_manager, test_config):
     """Should return the number of commits behind when diverged."""
     mock_run.return_value.stdout = (
         "Your branch and 'origin/main' have diverged, and have 1 and 2 different "
         "commits each, respectively."
     )
-    commits_behind = update_manager.get_commits_behind()
+    commits_behind = update_manager.get_commits_behind(test_config)
     assert commits_behind == 3
 
 
-@patch("birdnetpi.releases.update_manager.subprocess.run")
-def test_get_commits_behind_up_to_date(mock_run, update_manager):
+@patch("birdnetpi.releases.update_manager.subprocess.run", autospec=True)
+def test_get_commits_behind_up_to_date(mock_run, update_manager, test_config):
     """Should return 0 when the branch is up to date."""
     mock_run.return_value.stdout = "Your branch is up to date with 'origin/main'."
-    commits_behind = update_manager.get_commits_behind()
+    commits_behind = update_manager.get_commits_behind(test_config)
     assert commits_behind == 0
 
 
-@patch("birdnetpi.releases.update_manager.subprocess.run")
-def test_get_commits_behind_error(mock_run, update_manager):
+@patch("birdnetpi.releases.update_manager.subprocess.run", autospec=True)
+def test_get_commits_behind_error(mock_run, update_manager, test_config):
     """Should return -1 when there is an error."""
     mock_run.side_effect = Exception
-    commits_behind = update_manager.get_commits_behind()
+    commits_behind = update_manager.get_commits_behind(test_config)
     assert commits_behind == -1
+
+
+@patch("birdnetpi.releases.update_manager.subprocess.run", autospec=True)
+def test_get_commits_behind_uses_custom_remote(mock_run, update_manager, test_config):
+    """Should use custom git remote and branch from config."""
+    # Override the default git settings
+    test_config.updates.git_remote = "upstream"
+    test_config.updates.git_branch = "develop"
+    mock_run.return_value.stdout = "Your branch is up to date with 'upstream/develop'."
+
+    commits_behind = update_manager.get_commits_behind(test_config)
+    assert commits_behind == 0
+
+    # Verify fetch was called with custom remote and branch
+    mock_run.assert_any_call(
+        ["git", "-C", str(update_manager.app_dir), "fetch", "upstream", "develop"],
+        check=True,
+        capture_output=True,
+    )
+
+
+@patch("birdnetpi.releases.update_manager.subprocess.run", autospec=True)
+def test_get_latest_version_uses_custom_remote(mock_run, update_manager, test_config):
+    """Should use custom git remote from config."""
+    # Override the default git settings
+    test_config.updates.git_remote = "fork"
+    test_config.updates.git_branch = "feature"
+
+    mock_run.return_value.stdout = "abc123\trefs/tags/v2.0.0\n"
+    mock_run.return_value.returncode = 0
+
+    version = update_manager.get_latest_version(test_config)
+    assert version == "v2.0.0"
+
+    # Verify ls-remote was called with custom remote
+    mock_run.assert_called_once_with(
+        ["git", "-C", str(update_manager.app_dir), "ls-remote", "--tags", "fork"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
 
 
 class TestVersionResolution:
     """Test version resolution methods."""
 
-    @patch("httpx.Client")
+    @patch("httpx.Client", autospec=True)
     def test_resolve_version_latest(self, mock_client_class, update_manager):
         """Should resolve 'latest' to actual release tag."""
         mock_client = MagicMock()
@@ -116,7 +149,7 @@ class TestVersionResolution:
         result = update_manager._resolve_version("v1.5.0", "owner/repo")
         assert result == "v1.5.0"
 
-    @patch("httpx.Client")
+    @patch("httpx.Client", autospec=True)
     def test_resolve_latest_asset_version(self, mock_client_class, update_manager):
         """Should resolve latest asset version from releases."""
         mock_client = MagicMock()
@@ -135,7 +168,7 @@ class TestVersionResolution:
         assert result == "v2.1.1"  # Should remove 'assets-' prefix
         mock_client.get.assert_called_once_with("https://api.github.com/repos/owner/repo/releases")
 
-    @patch("httpx.Client")
+    @patch("httpx.Client", autospec=True)
     def test_resolve_latest_asset_version__no_assets(self, mock_client_class, update_manager):
         """Should raise error when no asset releases found."""
         mock_client = MagicMock()
@@ -151,7 +184,7 @@ class TestVersionResolution:
         with pytest.raises(RuntimeError, match="No asset releases found"):
             update_manager._resolve_latest_asset_version("owner/repo")
 
-    @patch("httpx.Client")
+    @patch("httpx.Client", autospec=True)
     def test_resolve_latest_asset_version_http_error(self, mock_client_class, update_manager):
         """Should handle HTTP errors during asset version resolution."""
         mock_client = MagicMock()
@@ -166,7 +199,7 @@ class TestVersionResolution:
 class TestAssetValidation:
     """Test asset release validation."""
 
-    @patch("httpx.Client")
+    @patch("httpx.Client", autospec=True)
     def test_validate_asset_release_exists(self, mock_client_class, update_manager):
         """Should validate existing asset release."""
         mock_client = MagicMock()
@@ -183,7 +216,7 @@ class TestAssetValidation:
             "https://api.github.com/repos/owner/repo/releases/tags/assets-v1.0.0"
         )
 
-    @patch("httpx.Client")
+    @patch("httpx.Client", autospec=True)
     def test_validate_asset_release__v_prefix(self, mock_client_class, update_manager):
         """Should handle version with 'v' prefix correctly."""
         mock_client = MagicMock()
@@ -197,7 +230,7 @@ class TestAssetValidation:
 
         assert result == "assets-v1.0.0"
 
-    @patch("httpx.Client")
+    @patch("httpx.Client", autospec=True)
     def test_validate_asset_release_without_v_prefix(self, mock_client_class, update_manager):
         """Should handle version without 'v' prefix correctly."""
         mock_client = MagicMock()
@@ -211,7 +244,7 @@ class TestAssetValidation:
 
         assert result == "assets-v1.0.0"
 
-    @patch("httpx.Client")
+    @patch("httpx.Client", autospec=True)
     @patch.object(UpdateManager, "list_available_asset_versions")
     def test_validate_asset_release_not_found(
         self, mock_list_versions, mock_client_class, update_manager
@@ -235,7 +268,7 @@ class TestAssetDownload:
 
     @patch("tempfile.mkdtemp")
     @patch("shutil.unpack_archive")
-    @patch("httpx.Client")
+    @patch("httpx.Client", autospec=True)
     @patch("builtins.open", new_callable=mock_open)
     def test_download__extract_assets(
         self, mock_file, mock_client_class, mock_unpack, mock_mkdtemp, update_manager, tmp_path
@@ -269,7 +302,7 @@ class TestAssetDownload:
 
     @patch("tempfile.mkdtemp")
     @patch("shutil.unpack_archive")
-    @patch("httpx.Client")
+    @patch("httpx.Client", autospec=True)
     def test_download__extract_assets__no_extracted_dir(
         self, mock_client_class, mock_unpack, mock_mkdtemp, update_manager, tmp_path
     ):
@@ -416,7 +449,7 @@ class TestDownloadReleaseAssets:
 class TestListVersions:
     """Test version listing functionality."""
 
-    @patch("httpx.Client")
+    @patch("httpx.Client", autospec=True)
     def test_list_available_versions(self, mock_client_class, update_manager):
         """Should list available code release versions."""
         mock_client = MagicMock()
@@ -436,7 +469,7 @@ class TestListVersions:
         assert result == ["v2.1.1", "v2.0.0"]
         mock_client.get.assert_called_once_with("https://api.github.com/repos/owner/repo/releases")
 
-    @patch("httpx.Client")
+    @patch("httpx.Client", autospec=True)
     def test_list_available_asset_versions(self, mock_client_class, update_manager):
         """Should list available asset release versions."""
         mock_client = MagicMock()
@@ -456,7 +489,7 @@ class TestListVersions:
         assert result == ["v2.1.1", "v2.0.0"]  # 'assets-' prefix removed
         mock_client.get.assert_called_once_with("https://api.github.com/repos/owner/repo/releases")
 
-    @patch("httpx.Client")
+    @patch("httpx.Client", autospec=True)
     def test_list_available_versions_error(self, mock_client_class, update_manager):
         """Should handle errors gracefully and return empty list."""
         mock_client = MagicMock()
@@ -468,7 +501,7 @@ class TestListVersions:
 
         assert result == []
 
-    @patch("httpx.Client")
+    @patch("httpx.Client", autospec=True)
     def test_list_available_asset_versions_error(self, mock_client_class, update_manager):
         """Should handle errors gracefully and return empty list."""
         mock_client = MagicMock()

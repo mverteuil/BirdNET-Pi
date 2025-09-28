@@ -1,35 +1,132 @@
+import asyncio
+import json
+import os
 import re
 import shutil
 import subprocess
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import httpx
+from alembic.config import Config
+from sqlalchemy import create_engine, text
 from tqdm import tqdm
 
+from alembic import command
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.releases.asset_manifest import AssetManifest, AssetType
+from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.system_control import SystemControlService
+
+
+class StateFileManager:
+    """Manages update state via FileManager and atomic file operations."""
+
+    def __init__(self, file_manager: FileManager, path_resolver: PathResolver):
+        """Initialize StateFileManager with dependencies.
+
+        Args:
+            file_manager: FileManager instance for atomic operations
+            path_resolver: PathResolver instance for path resolution
+        """
+        self.file_manager = file_manager
+        self.state_path = path_resolver.get_update_state_path()
+        self.lock_path = path_resolver.get_update_lock_path()
+
+    def write_state(self, state: dict) -> None:
+        """Atomically write state to file.
+
+        Args:
+            state: State dictionary to write
+        """
+        state["updated_at"] = datetime.now().isoformat()
+        # Atomic write: write to temp, then rename
+        temp_path = self.state_path.with_suffix(".tmp")
+        temp_path.write_text(json.dumps(state, indent=2))
+        temp_path.rename(self.state_path)  # Atomic on POSIX
+
+    def read_state(self) -> dict | None:
+        """Read current state if exists.
+
+        Returns:
+            State dictionary or None if no state exists
+        """
+        if self.state_path.exists():
+            try:
+                return json.loads(self.state_path.read_text())
+            except (json.JSONDecodeError, OSError):
+                return None
+        return None
+
+    def clear_state(self) -> None:
+        """Remove state file."""
+        if self.state_path.exists():
+            self.state_path.unlink()
+
+    def acquire_lock(self, pid: int | None = None) -> bool:
+        """Acquire update lock with PID.
+
+        Args:
+            pid: Process ID to write to lock file (defaults to current PID)
+
+        Returns:
+            True if lock acquired, False if already locked
+        """
+        if self.lock_path.exists():
+            # Check if process is still running
+            try:
+                existing_pid = int(self.lock_path.read_text().strip())
+                # Check if process exists
+                os.kill(existing_pid, 0)
+                return False  # Process still running
+            except (ValueError, OSError, ProcessLookupError):
+                # Invalid PID or process not running
+                self.lock_path.unlink()
+
+        # Write our PID
+        pid = pid or os.getpid()
+        self.lock_path.write_text(str(pid))
+        return True
+
+    def release_lock(self) -> None:
+        """Release update lock."""
+        if self.lock_path.exists():
+            self.lock_path.unlink()
 
 
 class UpdateManager:
     """Manages updates and Git operations for the BirdNET-Pi repository."""
 
     def __init__(
-        self, path_resolver: PathResolver, system_control: SystemControlService | None = None
+        self,
+        path_resolver: PathResolver,
+        file_manager: FileManager | None = None,
+        system_control: SystemControlService | None = None,
     ) -> None:
         self.path_resolver = path_resolver
         self.app_dir = path_resolver.app_dir
+        self.file_manager = file_manager or FileManager(path_resolver)
         self.system_control = system_control or SystemControlService()
+        self.state_manager = StateFileManager(self.file_manager, path_resolver)
 
-    def get_commits_behind(self) -> int:
+    def get_commits_behind(self, config: BirdNETConfig) -> int:
         """Check how many commits the local repository is behind the remote."""
         try:
             # Git fetch to update remote tracking branches
             subprocess.run(
-                ["git", "-C", str(self.app_dir), "fetch"], check=True, capture_output=True
+                [
+                    "git",
+                    "-C",
+                    str(self.app_dir),
+                    "fetch",
+                    config.updates.git_remote,
+                    config.updates.git_branch,
+                ],
+                check=True,
+                capture_output=True,
             )
 
             # Git status to get the status of the repository
@@ -79,7 +176,14 @@ class UpdateManager:
 
             # Fetches latest changes
             subprocess.run(
-                ["git", "-C", str(self.app_dir), "fetch", config.git_remote, config.git_branch],
+                [
+                    "git",
+                    "-C",
+                    str(self.app_dir),
+                    "fetch",
+                    config.updates.git_remote,
+                    config.updates.git_branch,
+                ],
                 check=True,
                 capture_output=True,
             )
@@ -92,9 +196,9 @@ class UpdateManager:
                     str(self.app_dir),
                     "switch",
                     "-C",
-                    config.git_branch,
+                    config.updates.git_branch,
                     "--track",
-                    f"{config.git_remote}/{config.git_branch}",
+                    f"{config.updates.git_remote}/{config.updates.git_branch}",
                 ],
                 check=True,
                 capture_output=True,
@@ -411,3 +515,392 @@ class UpdateManager:
         except Exception as e:
             print(f"Failed to list asset versions: {e}")
             return []
+
+    async def check_for_updates(self) -> dict:
+        """Check for available updates.
+
+        Returns:
+            Dictionary with update status and available versions
+        """
+        # Always get current version first (this should never fail)
+        try:
+            current_version = self.get_current_version()
+        except Exception:
+            current_version = "unknown"
+
+        # Determine version type based on current version format
+        # Development versions start with "dev-", release versions are tags like "v1.0.0"
+        version_type = "development" if current_version.startswith("dev-") else "release"
+
+        try:
+            # Get latest version from remote (needs config for git remote)
+            # This needs to be fixed to pass config
+            # For now, create a minimal config with defaults
+            from birdnetpi.config import BirdNETConfig
+
+            config = BirdNETConfig()
+            latest_version = self.get_latest_version(config)
+
+            # Check if update is available
+            update_available = self._is_newer_version(latest_version, current_version)
+
+            return {
+                "current_version": current_version,
+                "latest_version": latest_version,
+                "update_available": update_available,
+                "version_type": version_type,
+                "checked_at": datetime.now().isoformat(),
+            }
+        except Exception as e:
+            # Even on error, include current version info so dev banner can show
+            return {
+                "current_version": current_version,
+                "version_type": version_type,
+                "error": f"Failed to get latest version: {e}",
+                "checked_at": datetime.now().isoformat(),
+            }
+
+    def get_current_version(self) -> str:
+        """Get current application version from git tag or commit.
+
+        Returns:
+            Version string (tag or commit hash)
+        """
+        try:
+            # Try to get current tag
+            result = subprocess.run(
+                ["git", "-C", str(self.app_dir), "describe", "--exact-match", "--tags"],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                return result.stdout.strip()
+
+            # Fall back to commit hash
+            result = subprocess.run(
+                ["git", "-C", str(self.app_dir), "rev-parse", "--short", "HEAD"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return f"dev-{result.stdout.strip()}"
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Failed to get current version: {e}") from e
+
+    def get_latest_version(self, config: BirdNETConfig) -> str:
+        """Get latest version from remote repository.
+
+        Returns:
+            Latest version tag
+        """
+        try:
+            # Get all tags from remote without fetching
+            result = subprocess.run(
+                ["git", "-C", str(self.app_dir), "ls-remote", "--tags", config.updates.git_remote],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            # Parse output to get tags
+            tags = []
+            for line in result.stdout.strip().split("\n"):
+                if line:
+                    # Format: hash<tab>refs/tags/tagname
+                    parts = line.split("\t")
+                    if len(parts) == 2 and "refs/tags/" in parts[1]:
+                        tag = parts[1].replace("refs/tags/", "")
+                        # Skip annotated tag markers (^{})
+                        if not tag.endswith("^{}"):
+                            tags.append(tag)
+
+            if not tags:
+                raise RuntimeError("No tags found in remote repository")
+
+            # Sort tags to get the latest (assumes semantic versioning)
+            tags.sort(
+                key=lambda x: [int(p) if p.isdigit() else p for p in x.replace("v", "").split(".")]
+            )
+            return tags[-1]
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Failed to get latest version: {e}") from e
+
+    def _is_newer_version(self, latest: str, current: str) -> bool:
+        """Check if latest version is newer than current.
+
+        Args:
+            latest: Latest version string
+            current: Current version string
+
+        Returns:
+            True if latest is newer than current
+        """
+        # Handle development versions
+        if current.startswith("dev-"):
+            return True  # Development versions are always considered outdated
+
+        # Simple version comparison
+        return latest != current and latest > current
+
+    async def apply_update(self, version: str) -> dict:
+        """Apply an update to the specified version.
+
+        Args:
+            version: Target version to update to
+
+        Returns:
+            Dictionary with update result
+        """
+        # Check if update is already in progress
+        if not self.state_manager.acquire_lock():
+            return {"success": False, "error": "Update already in progress"}
+
+        rollback_info: dict | None = None
+        try:
+            # Write initial state
+            self.state_manager.write_state(
+                {
+                    "phase": "starting",
+                    "target_version": version,
+                    "started_at": datetime.now().isoformat(),
+                }
+            )
+
+            # Create rollback point
+            rollback_info = await self._create_rollback_point()
+            self.state_manager.write_state(
+                {
+                    "phase": "rollback_created",
+                    "target_version": version,
+                    "rollback": rollback_info,
+                }
+            )
+
+            # Perform git update
+            self.state_manager.write_state(
+                {
+                    "phase": "updating_code",
+                    "target_version": version,
+                }
+            )
+            await self._perform_git_update(version)
+
+            # Update dependencies
+            self.state_manager.write_state(
+                {
+                    "phase": "updating_dependencies",
+                    "target_version": version,
+                }
+            )
+            await self._update_dependencies()
+
+            # Run migrations
+            self.state_manager.write_state(
+                {
+                    "phase": "running_migrations",
+                    "target_version": version,
+                }
+            )
+            await self._run_migrations()
+
+            # Restart services
+            self.state_manager.write_state(
+                {
+                    "phase": "restarting_services",
+                    "target_version": version,
+                }
+            )
+            await self._restart_services()
+
+            # Update complete
+            self.state_manager.write_state(
+                {
+                    "phase": "complete",
+                    "target_version": version,
+                    "completed_at": datetime.now().isoformat(),
+                }
+            )
+
+            return {"success": True, "version": version}
+
+        except Exception as e:
+            # Attempt rollback
+            self.state_manager.write_state(
+                {
+                    "phase": "error",
+                    "error": str(e),
+                    "attempting_rollback": True,
+                }
+            )
+            # rollback_info should exist if we got past the rollback creation
+            # If it doesn't, we can't rollback
+            if rollback_info is not None:
+                await self._perform_rollback(rollback_info)
+                return {"success": False, "error": str(e), "rolled_back": True}
+            return {"success": False, "error": str(e), "rolled_back": False}
+
+        finally:
+            self.state_manager.release_lock()
+
+    async def _create_rollback_point(self) -> dict:
+        """Create a rollback point before update.
+
+        Returns:
+            Dictionary with rollback information
+        """
+        rollback_dir = self.path_resolver.get_rollback_dir()
+
+        # Save current git commit
+        result = subprocess.run(
+            ["git", "-C", str(self.app_dir), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        commit = result.stdout.strip()
+
+        # Backup configuration
+        config_backup = rollback_dir / "config.yaml"
+        shutil.copy2(
+            self.path_resolver.get_birdnetpi_config_path(),
+            config_backup,
+        )
+
+        # Backup database
+        db_backup = rollback_dir / "birdnetpi.db"
+        shutil.copy2(
+            self.path_resolver.get_database_path(),
+            db_backup,
+        )
+
+        return {
+            "commit": commit,
+            "config_backup": str(config_backup),
+            "db_backup": str(db_backup),
+            "created_at": datetime.now().isoformat(),
+        }
+
+    async def _perform_git_update(self, version: str) -> None:
+        """Perform git update to specified version.
+
+        Args:
+            version: Target version tag
+        """
+        # Fetch latest changes
+        subprocess.run(
+            ["git", "-C", str(self.app_dir), "fetch", "--all", "--tags"],
+            check=True,
+        )
+
+        # Checkout specific version
+        subprocess.run(
+            ["git", "-C", str(self.app_dir), "checkout", version],
+            check=True,
+        )
+
+    async def _update_dependencies(self) -> None:
+        """Update Python dependencies."""
+        # Update dependencies using uv
+        subprocess.run(
+            ["uv", "sync"],
+            cwd=str(self.app_dir),
+            check=True,
+        )
+
+    async def _run_migrations(self) -> None:
+        """Run database migrations using Alembic."""
+        # Create Alembic config
+        alembic_cfg = Config("alembic.ini")
+
+        # Run migrations in thread pool (Alembic is sync)
+        def run_upgrade() -> None:
+            command.upgrade(alembic_cfg, "head")
+
+        await asyncio.to_thread(run_upgrade)
+
+    async def get_current_db_revision(self) -> str | None:
+        """Get current database migration revision.
+
+        Returns:
+            Current Alembic revision or None if not initialized
+        """
+
+        def get_revision() -> str | None:
+            # Get database path
+            db_path = self.path_resolver.get_database_path()
+
+            # If database doesn't exist, no migrations have been run
+            if not db_path.exists():
+                return None
+
+            # Create engine and connect
+            engine = create_engine(f"sqlite:///{db_path}")
+
+            with engine.connect() as conn:
+                # Check if alembic_version table exists
+                result = conn.execute(
+                    text(
+                        "SELECT name FROM sqlite_master "
+                        "WHERE type='table' AND name='alembic_version'"
+                    )
+                )
+                if not result.fetchone():
+                    return None
+
+                # Get the current revision
+                result = conn.execute(text("SELECT version_num FROM alembic_version LIMIT 1"))
+                row = result.fetchone()
+                return str(row[0]) if row else None
+
+        return await asyncio.to_thread(get_revision)
+
+    async def rollback_migrations(self, target_revision: str) -> None:
+        """Rollback database to a specific migration revision.
+
+        Args:
+            target_revision: Alembic revision to rollback to
+        """
+        alembic_cfg = Config("alembic.ini")
+
+        def run_downgrade() -> None:
+            command.downgrade(alembic_cfg, target_revision)
+
+        await asyncio.to_thread(run_downgrade)
+
+    async def _restart_services(self) -> None:
+        """Restart all services after update."""
+        # Use SystemControlService to restart services
+        services = ["audio_capture", "audio_analysis", "audio_websocket", "fastapi"]
+        for service in services:
+            self.system_control.restart_service(service)
+
+    async def _perform_rollback(self, rollback_info: dict) -> None:
+        """Perform rollback to previous state.
+
+        Args:
+            rollback_info: Rollback information from create_rollback_point
+        """
+        try:
+            # Restore git commit
+            subprocess.run(
+                ["git", "-C", str(self.app_dir), "reset", "--hard", rollback_info["commit"]],
+                check=True,
+            )
+
+            # Restore configuration
+            shutil.copy2(
+                rollback_info["config_backup"],
+                self.path_resolver.get_birdnetpi_config_path(),
+            )
+
+            # Restore database
+            shutil.copy2(
+                rollback_info["db_backup"],
+                self.path_resolver.get_database_path(),
+            )
+
+            # Restart services
+            await self._restart_services()
+
+        except Exception as e:
+            raise RuntimeError(f"Rollback failed: {e}") from e

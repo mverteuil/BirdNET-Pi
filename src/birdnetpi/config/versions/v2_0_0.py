@@ -88,9 +88,16 @@ class ConfigVersion_2_0_0:  # noqa: N801
             "enable_webhooks": False,
             "webhook_urls": [],
             "webhook_events": "detection,health,gps,system",
-            # Git Update settings
-            "git_remote": "origin",
-            "git_branch": "main",
+            # Update settings
+            "updates": {
+                "check_enabled": True,
+                "check_interval_hours": 6,
+                "show_banner": True,
+                "show_development_warning": True,
+                "auto_check_on_startup": True,
+                "git_remote": "origin",
+                "git_branch": "main",
+            },
         }
 
     def apply_defaults(self, config: dict[str, Any]) -> dict[str, Any]:
@@ -111,6 +118,9 @@ class ConfigVersion_2_0_0:  # noqa: N801
 
         # Migrate old apprise notification fields to new structure
         self._migrate_notifications(config)
+
+        # Migrate git settings to updates section
+        self._migrate_git_settings(config)
 
         # Ensure new notification fields exist with defaults if missing
         if "apprise_targets" not in config:
@@ -271,6 +281,32 @@ class ConfigVersion_2_0_0:  # noqa: N801
             config["notification_body_default"] = (
                 "Detected {{ common_name }} ({{ scientific_name }}) at {{ confidence }}% confidence"
             )
+
+    def _migrate_git_settings(self, config: dict[str, Any]) -> None:
+        """Migrate git settings from root to updates section."""
+        # Ensure updates section exists
+        if "updates" not in config:
+            config["updates"] = {}
+
+        # Move git_branch and git_remote to updates section if they exist at root
+        if "git_branch" in config:
+            config["updates"]["git_branch"] = config.pop("git_branch")
+        if "git_remote" in config:
+            config["updates"]["git_remote"] = config.pop("git_remote")
+
+        # Apply defaults for other update settings if not present
+        defaults = {
+            "check_enabled": True,
+            "check_interval_hours": 6,
+            "show_banner": True,
+            "show_development_warning": True,
+            "auto_check_on_startup": True,
+            "git_remote": "origin",
+            "git_branch": "main",
+        }
+        for key, value in defaults.items():
+            if key not in config["updates"]:
+                config["updates"][key] = value
 
     def _remove_old_notification_fields(self, config: dict[str, Any]) -> None:
         """Remove old apprise notification fields after migration."""

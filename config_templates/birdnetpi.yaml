@@ -157,9 +157,32 @@ enable_webhooks: false
 webhook_urls: []  # List of webhook URLs, e.g., ["http://example.com/webhook", "http://another.com/hook"]
 webhook_events: detection,health,gps,system
 
-# Git Update Settings
-git_remote: origin  # Git remote name for updates
-git_branch: main    # Git branch name for updates
+# System Update Configuration
+# Controls how the system checks for and notifies about updates
+updates:
+  # Enable periodic update checks
+  # When true, the system will check for updates at the specified interval
+  check_enabled: true
+
+  # How often to check for updates (in hours)
+  # Default: 6 hours. Minimum recommended: 1 hour to avoid excessive API calls
+  check_interval_hours: 6
+
+  # Show update banner when updates are available
+  # When true, a banner appears at the top of all pages when an update is available
+  show_banner: true
+
+  # Show warning banner when running a development version
+  # Development versions are non-tagged git commits (useful for testing)
+  show_development_warning: true
+
+  # Automatically check for updates when the system starts
+  # This ensures you're notified of updates even if periodic checks are disabled
+  auto_check_on_startup: true
+
+  # Git configuration for updates
+  git_remote: origin  # Git remote name (usually 'origin' for the main repository)
+  git_branch: main    # Git branch to track for updates (usually 'main' or 'master')
 
 # Detection Processing
 detections_endpoint: "http://127.0.0.1:8888/api/detections/"  # Where to send detections (can be remote)

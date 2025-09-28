@@ -275,9 +275,8 @@ async def post_settings(
         webhook_events=webhook_events
         if webhook_events is not None
         else current_config.webhook_events,
-        # Git settings (always preserved from current config)
-        git_remote=current_config.git_remote,
-        git_branch=current_config.git_branch,
+        # Update settings (always preserved from current config)
+        updates=current_config.updates,
     )
     config_manager.save(updated_config)
     logger.info("Settings saved successfully")
