@@ -71,7 +71,7 @@ class Container(containers.DeclarativeContainer):
         db_path=database_path,
     )
 
-    # Multilingual database service with all three bird name databases
+    # Species database service with all three bird name databases
     species_database = providers.Singleton(
         SpeciesDatabaseService,
         path_resolver=path_resolver,

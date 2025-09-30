@@ -1,17 +1,25 @@
 {% extends "base.html.j2" %}
+{% set page_name = _('System Services') %}
 
-{% block title %}{{ _('System Services') }}{% endblock %}
+{% block navigation %}
+    {% set active_page = 'services' %}
+    {{ super() }}
+{% endblock %}
 
-{% block head %}
-<link rel="stylesheet" href="{{ request.url_for('static', path='css/services.css') }}">
+{% block styles %}
+    {{ super() }}
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/services.css') }}">
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script src="{{ request.url_for('static', path='js/services.js') }}"></script>
 {% endblock %}
 
 {% block content %}
 <div class="services-container">
     <!-- Skip navigation link for screen readers -->
     <a href="#services-grid" class="skip-link">{{ _('Skip to services') }}</a>
-
-    <h1>{{ _('System Services') }}</h1>
 
     <!-- System Status Card -->
     <div class="system-card" role="region" aria-labelledby="system-heading">
@@ -301,8 +309,4 @@
     </div>
 </div>
 
-{% endblock %}
-
-{% block scripts %}
-<script src="{{ request.url_for('static', path='js/services.js') }}"></script>
 {% endblock %}

@@ -4,7 +4,6 @@ Uses Python's gettext with Babel for extraction/compilation.
 """
 
 from gettext import GNUTranslations, NullTranslations, ngettext, translation
-from gettext import gettext as _
 from typing import TYPE_CHECKING
 
 from fastapi import Request
@@ -43,10 +42,17 @@ class TranslationManager:
         return self.translations[language]
 
     def install_for_request(self, request: Request) -> GNUTranslations | NullTranslations:
-        """Install translation for current request based on Accept-Language header."""
-        # Parse Accept-Language header
-        accept_language = request.headers.get("Accept-Language", self.default_language)
-        language = accept_language.split(",")[0].split("-")[0]  # Extract primary language code
+        """Install translation for current request.
+
+        Based on Accept-Language header or lang query param.
+        """
+        # Check query parameter first (for testing)
+        language = request.query_params.get("lang")
+
+        if not language:
+            # Parse Accept-Language header
+            accept_language = request.headers.get("Accept-Language", self.default_language)
+            language = accept_language.split(",")[0].split("-")[0]  # Extract primary language code
 
         # Get translation and install it
         translation = self.get_translation(language)
@@ -66,9 +72,30 @@ def get_translation(request: Request) -> GNUTranslations:
 def setup_jinja2_i18n(templates: "Jinja2Templates") -> None:
     """Configure Jinja2 templates with i18n support."""
 
-    def get_text(message: str) -> str:
-        """Template function for translations."""
-        return _(message)  # Uses the globally installed translation
+    def get_text(message: str, **kwargs: object) -> str:
+        """Template function for translations with parameter interpolation.
+
+        Supports both simple messages and messages with parameters:
+        - _('Simple message')
+        - _('Hello %(name)s', name='World')
+        - _('%(count)d items', count=5)
+        """
+        import builtins
+
+        # Get the current _ function from builtins (where install() puts it)
+        current_gettext = getattr(builtins, "_", lambda x: x)
+        translated = current_gettext(message)
+
+        # If kwargs provided, do parameter substitution
+        if kwargs:
+            try:
+                # Use % formatting for consistency with gettext conventions
+                translated = translated % kwargs
+            except (TypeError, KeyError, ValueError):
+                # If substitution fails, return the translated string as-is
+                pass
+
+        return translated
 
     templates.env.globals["_"] = get_text
     templates.env.globals["gettext"] = get_text

@@ -1,509 +1,72 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Species Detection Display</title>
-    <link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}" />
-    <link rel="stylesheet" href="{{ request.url_for('static', path='css/all_detections.css') }}" />
-    <style>
-        /* Page-specific overrides and additions */
+{% extends "base.html.j2" %}
+{% set page_name = 'Detections' %}
 
-        /* Page title styling - secondary h1 after header */
-        body > h1:nth-of-type(1) {
-            font-size: 1.8rem;
-            font-weight: normal;
-            margin-top: 2rem;
-            margin-bottom: 0.5rem;
-            color: var(--color-text-emphasis);
-        }
-
-        .subtitle {
-            font-size: 0.9rem;
-            color: var(--color-text-secondary);
-            margin-bottom: 1.5rem;
-            font-style: italic;
-        }
-
-        /* Time selector - minimal, text-based */
-        .time-selector {
-            margin-bottom: 1.5rem;
-            font-size: 0.85rem;
-            border-bottom: 1px solid var(--color-border-tertiary);
-            padding-bottom: 0.5rem;
-        }
-
-        .time-selector a {
-            color: var(--color-text-secondary);
-            text-decoration: none;
-            margin-right: 1.5rem;
-            transition: color 0.2s;
-            cursor: pointer;
-        }
-
-        .time-selector a:hover {
-            color: var(--color-text-emphasis);
-        }
-
-        .time-selector a.active {
-            color: var(--color-text-emphasis);
-            font-weight: bold;
-        }
-
-        /* Main grid with minimal separation */
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        /* Species list styles */
-        .species-name-cell {
-            padding: 0.25rem 0;
-        }
-
-        .common-name {
-            font-size: 0.95rem;
-            font-weight: 500;
-            color: var(--color-text-primary);
-        }
-
-        .scientific-name {
-            font-style: italic;
-            font-size: 0.8rem;
-            color: var(--color-text-secondary);
-            margin-top: 0.1rem;
-        }
-
-        .detection-count {
-            font-size: 0.8rem;
-            color: var(--color-text-emphasis);
-            font-weight: normal;
-        }
-
-        /* Make species rows clickable */
-        .species-row {
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .species-row:hover {
-            background-color: var(--color-bg-tertiary);
-        }
-
-        .species-row.selected {
-            background-color: var(--color-accent-bg);
-            font-weight: bold;
-        }
-
-        /* Sortable column headers */
-        .sortable {
-            cursor: pointer;
-            user-select: none;
-            position: relative;
-            padding-right: 1.5rem;
-        }
-
-        /* Ensure count column header has enough space for sort indicator */
-        #species-frequency-table th:last-child.sortable {
-            padding-right: 2.5rem;
-            min-width: 0;  /* Allow text to wrap if needed */
-        }
-
-        /* Adjust sort indicator position for narrow columns */
-        #species-frequency-table th:nth-child(2).sortable::after,
-        #species-frequency-table th:last-child.sortable::after {
-            right: 0.25rem;  /* Move indicator closer to edge */
-        }
-
-        .sortable:hover {
-            background-color: var(--color-bg-tertiary);
-        }
-
-        .sortable::after {
-            content: '⇅';
-            position: absolute;
-            right: 0.5rem;
-            opacity: 0.3;
-            font-size: 0.8rem;
-        }
-
-        .sortable.sort-asc::after {
-            content: '↑';
-            opacity: 1;
-        }
-
-        .sortable.sort-desc::after {
-            content: '↓';
-            opacity: 1;
-        }
-
-        /* Special handling for centered sortable headers */
-        .sortable.text-center {
-            padding-left: 1.5rem;
-            padding-right: 1.5rem;
-        }
-
-        /* Species table - fixed layout for consistent columns */
-        #species-frequency-table {
-            table-layout: fixed;
-            width: 100%;
-        }
-
-        /* Pagination controls */
-        .pagination-controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 1rem;
-            padding: 0.5rem;
-            background: var(--color-bg-secondary);
-            border-radius: 4px;
-        }
-
-        .pagination-info {
-            font-size: 0.9rem;
-            color: var(--color-text-secondary);
-        }
-
-        .pagination-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .pagination-buttons button {
-            padding: 0.25rem 0.75rem;
-            border: 1px solid var(--color-border);
-            background: var(--color-bg-primary);
-            cursor: pointer;
-            border-radius: 3px;
-            font-size: 0.9rem;
-        }
-
-        .pagination-buttons button:hover:not(:disabled) {
-            background: var(--color-bg-tertiary);
-        }
-
-        .pagination-buttons button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .page-size-selector {
-            font-size: 0.9rem;
-        }
-
-        .page-size-selector select {
-            padding: 0.25rem;
-            border: 1px solid var(--color-border);
-            border-radius: 3px;
-            background: var(--color-bg-primary);
-        }
-
-        .spark-bar:hover {
-            background: var(--color-text-emphasis);
-        }
-
-        /* Timeline using text and minimal marks */
-        .timeline {
-            font-size: 0.85rem;
-            line-height: 1.6;
-        }
-
-        .timeline-header {
-            font-weight: bold;
-            margin-bottom: 0;
-            padding-bottom: 0.25rem;
-            border-bottom: 1px solid var(--color-border-primary);
-        }
-
-        .timeline-entry {
-            display: grid;
-            grid-template-columns: 60px 1fr 80px 60px;
-            gap: 1rem;
-            padding: 0.4rem 0;
-            border-bottom: 1px dotted var(--color-input-border);
-        }
-
-        .timeline-entry:hover {
-            background: var(--color-bg-tertiary);
-        }
-
-        .time {
-            color: var(--color-text-secondary);
-            font-size: 0.8rem;
-        }
-
-        .location {
-            color: var(--color-text-secondary);
-            font-size: 0.8rem;
-            text-align: right;
-        }
-
-        .count {
-            text-align: right;
-            font-size: 0.8rem;
-        }
-
-        /* Center alignment class */
-        .text-center {
-            text-align: center;
-        }
-
-        /* Data table following Tufte's principles */
-        .data-table {
-            width: 100%;
-            font-size: 0.85rem;
-            border-collapse: collapse;
-            margin-top: 1.875rem; /* 30px */
-            table-layout: fixed;
-        }
-
-        /* Specific margin for detections table */
-        #detections-table {
-            margin-top: 0;
-        }
-
-        /* Column widths for alignment */
-        #detections-table th:nth-child(1),
-        #detections-table td:nth-child(1) { width: 10%; }  /* Time */
-        #detections-table th:nth-child(2),
-        #detections-table td:nth-child(2) { width: 40%; }  /* Species */
-        #detections-table th:nth-child(3),
-        #detections-table td:nth-child(3) { width: 20%; }  /* Date */
-        #detections-table th:nth-child(4),
-        #detections-table td:nth-child(4) { width: 15%; }  /* Confidence */
-        #detections-table th:nth-child(5),
-        #detections-table td:nth-child(5) { width: 15%; }  /* First Detection */
-
-        /* Species frequency table has 3 columns: Species, Star indicator, Count */
-        #species-frequency-table th:nth-child(1),
-        #species-frequency-table td:nth-child(1) { width: 65%; }  /* Species name */
-        #species-frequency-table th:nth-child(2),
-        #species-frequency-table td:nth-child(2) {
-            width: 15%;  /* Star indicator - needs space for sort arrow */
-            text-align: center;
-        }
-        #species-frequency-table th:nth-child(3),
-        #species-frequency-table td:nth-child(3) {
-            width: 20%;  /* Count */
-            text-align: right;
-        }
-
-        .data-table th {
-            text-align: left;
-            font-weight: normal;
-            padding: 0.75rem 0 0.5rem 0;
-            border-bottom: 1px solid var(--color-border-primary);
-            font-size: 0.8rem;
-        }
-
-        .data-table td {
-            padding: 0.3rem 0;
-            border-bottom: 1px dotted var(--color-border-secondary);
-        }
-
-        .data-table tr:hover {
-            background: var(--color-bg-tertiary);
-        }
-
-        /* Small multiples grid */
-        .small-multiples {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 0.5rem;
-            margin-top: 2rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--color-border-primary);
-        }
-
-        .small-multiple {
-            text-align: center;
-            padding: 0.5rem;
-        }
-
-        .small-multiple-title {
-            font-size: 0.7rem;
-            color: var(--color-text-secondary);
-            margin-bottom: 0.25rem;
-        }
-
-        .mini-chart {
-            height: 40px;
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            gap: 1px;
-            margin: 0.5rem 0;
-        }
-
-        .mini-bar {
-            width: 3px;
-            background: #999;
-        }
-
-        .small-multiple-value {
-            font-size: 0.8rem;
-            color: #111;
-        }
-
-        /* Stem and leaf style display */
-        .stem-leaf-display {
-            font-family: 'Courier New', monospace;
-            font-size: 0.8rem;
-            line-height: 1.3;
-            margin-top: 1.5rem;
-            padding: 1rem;
-            background: #f8f8f8;
-            border-left: 2px solid #666;
-        }
-
-        .stem-leaf-row {
-            display: flex;
-            gap: 1rem;
-        }
-
-        .stem {
-            width: 30px;
-            text-align: right;
-            color: #666;
-        }
-
-        .leaf {
-            color: #111;
-        }
-
-        /* Annotation style */
-        .annotation {
-            font-size: 0.8rem;
-            color: #666;
-            font-style: italic;
-            margin-top: 0.5rem;
-            padding-left: 1rem;
-            border-left: 2px solid #e0e0e0;
-        }
-
-        /* Loading indicator */
-        .loading-indicator {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.95);
-            padding: 1rem 2rem;
-            border: 1px solid var(--color-border-primary);
-            font-size: 0.9rem;
-            color: var(--color-text-secondary);
-            z-index: 1000;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .loading-indicator.active {
-            display: block;
-        }
-
-        .loading-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.5);
-            z-index: 999;
-        }
-
-        .loading-overlay.active {
-            display: block;
-        }
-
-        /* Summary statistics - inline text */
-        .inline-stats {
-            font-size: 0.85rem;
-            color: #666;
-            margin: 1rem 0;
-            line-height: 1.6;
-        }
-
-        .stat-value {
-            color: #111;
-            font-weight: normal;
-        }
-
-        /* Remove all unnecessary visual elements */
-        * {
-            border-radius: 0;
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-
-            .timeline-entry {
-                grid-template-columns: 50px 1fr 60px;
-            }
-
-            .location {
-                display: none;
-            }
-        }
-    </style>
-</head>
-<body>
-    <!-- Update and development warning banners -->
-    {% include 'includes/update_banner.html.j2' %}
-
-    <header>
-      <h1>BirdNET-Pi <span class="live" title="System Active"></span></h1>
-      <p class="tagline">
-        Continuous acoustic monitoring · {{ location | default('Location not set') }}
-      </p>
-    </header>
-
-    <!-- Navigation -->
+{% block navigation %}
     {% set active_page = 'detections' %}
-    {% include 'includes/navigation.html.j2' %}
+    {{ super() }}
+{% endblock %}
 
-    <h1>Species Detections</h1>
-    <p class="subtitle"><span id="period-date"></span> · <span id="species-count">0</span> species active · <span id="total-detection-count">0</span> detections</p>
+{% block styles %}
+    {{ super() }}
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/all_detections.css') }}" />
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/taxonomy_display.css') }}" />
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/taxonomic_filters.css') }}" />
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/pagination.css') }}" />
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script src="{{ request.url_for('static', path='js/pagination.js') }}"></script>
+    <script src="{{ request.url_for('static', path='js/taxonomic_filters.js') }}"></script>
+    <script src="{{ request.url_for('static', path='js/taxonomy_display.js') }}"></script>
+    <script src="{{ request.url_for('static', path='js/all_detections.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+
+    <!-- Subtitle info (kept below navigation) -->
+    <p class="subtitle" role="status" aria-live="polite"><span id="period-date"></span> · <span id="species-count">0</span> {{ _('species active') }} · <span id="total-detection-count">0</span> {{ _('detections') }}</p>
 
     <!-- Time period selector - minimal text links -->
-    <div class="time-selector">
-        Period:
-        <a {% if period == 'day' %}class="active"{% endif %} onclick="switchPeriod('day', this)">Day</a>
-        <a {% if period == 'week' %}class="active"{% endif %} onclick="switchPeriod('week', this)">Week</a>
-        <a {% if period == 'month' %}class="active"{% endif %} onclick="switchPeriod('month', this)">Month</a>
-        <a {% if period == 'season' %}class="active"{% endif %} onclick="switchPeriod('season', this)">Season</a>
-        <a {% if period == 'year' %}class="active"{% endif %} onclick="switchPeriod('year', this)">Year</a>
-        <a {% if period == 'historical' %}class="active"{% endif %} onclick="switchPeriod('historical', this)">Historical</a>
+    <div class="period-selector" role="navigation" aria-label="{{ _('Time period selection') }}">
+        <a href="javascript:void(0)" onclick="setPeriod('today')" class="{% if period == 'today' %}active{% endif %}" aria-label="{{ _('View today\'s detections') }}" {% if period == 'today' %}aria-current="page"{% endif %}>{{ _('Today') }}</a> ·
+        <a href="javascript:void(0)" onclick="setPeriod('week')" class="{% if period == 'week' %}active{% endif %}" aria-label="{{ _('View this week\'s detections') }}" {% if period == 'week' %}aria-current="page"{% endif %}>{{ _('Week') }}</a> ·
+        <a href="javascript:void(0)" onclick="setPeriod('month')" class="{% if period == 'month' %}active{% endif %}" aria-label="{{ _('View this month\'s detections') }}" {% if period == 'month' %}aria-current="page"{% endif %}>{{ _('Month') }}</a> ·
+        <a href="javascript:void(0)" onclick="setPeriod('all')" class="{% if period == 'all' %}active{% endif %}" aria-label="{{ _('View all detections') }}" {% if period == 'all' %}aria-current="page"{% endif %}>{{ _('All') }}</a> ·
+        <a href="javascript:void(0)" onclick="openDatePicker()" class="{% if period == 'date' %}active{% endif %}" aria-label="{{ _('Select specific date') }}" {% if period == 'date' %}aria-current="page"{% endif %}>{{ _('Date') }}</a>
+
+        <!-- Navigation arrows for date mode -->
+        {% if period == 'date' %}
+        <span class="date-nav">
+            <a href="javascript:void(0)" onclick="goToPreviousPeriod()" aria-label="{{ _('Previous day') }}">←</a>
+            <a href="javascript:void(0)" onclick="goToNextPeriod()" aria-label="{{ _('Next day') }}">→</a>
+        </span>
+        {% endif %}
     </div>
 
-    <!-- Statistics removed - counts moved to page heading -->
+    <!-- Taxonomic filters (without confidence filter) -->
+    {% set show_confidence = false %}
+    {% include 'includes/taxonomic_filters.html.j2' with context %}
 
     <!-- Main content grid -->
     <div class="main-content">
-        <!-- Timeline of recent detections -->
+        <!-- Detections timeline -->
         <div class="timeline">
             <div class="timeline-header">
-                All Detections
-                <input type="text" id="search-input" placeholder="Search species..." class="search-input">
+                {{ _('All Detections') }}
             </div>
             <table class="data-table" id="detections-table">
                 <thead>
                     <tr>
-                        <th class="sortable" data-sort="timestamp" onclick="sortDetections('timestamp')">Time</th>
-                        <th class="sortable" data-sort="species" onclick="sortDetections('species')">Species</th>
-                        <th>Date</th>
-                        <th class="sortable text-right" data-sort="confidence" onclick="sortDetections('confidence')">Confidence</th>
+                        <th class="sortable" data-sort="timestamp" onclick="sortDetections('timestamp')">{{ _('Time') }}</th>
+                        <th class="sortable" data-sort="species" onclick="sortDetections('species')">{{ _('Species') }}</th>
+                        <th>{{ _('Date') }}</th>
+                        <th class="sortable text-right" data-sort="confidence" onclick="sortDetections('confidence')">{{ _('Confidence') }}</th>
                         <th class="sortable text-center" data-sort="first" onclick="sortDetections('first')">★|●</th>
                     </tr>
                 </thead>
                 <tbody id="detections-list">
-                    <tr><td colspan="5" class="no-data">Loading detections...</td></tr>
+                    <tr><td colspan="5" class="no-data">{{ _('Loading detections...') }}</td></tr>
                 </tbody>
             </table>
             <div id="pagination" class="pagination">
@@ -516,21 +79,21 @@
             <table class="data-table" id="species-frequency-table">
                 <thead>
                     <tr>
-                        <th class="sortable" data-sort="name" onclick="sortSpeciesTable('name')">Species</th>
+                        <th class="sortable" data-sort="name" onclick="sortSpeciesTable('name')">{{ _('Species') }}</th>
                         <th class="sortable text-center" data-sort="first_detection" onclick="sortSpeciesTable('first_detection')">★</th>
                         <th class="sortable text-right" id="count-header" data-sort="count" onclick="sortSpeciesTable('count')">
-                            {% if period == 'day' %}Today
-                            {% elif period == 'week' %}This Week
-                            {% elif period == 'month' %}This Month
-                            {% elif period == 'season' %}This Season
-                            {% elif period == 'year' %}This Year
-                            {% else %}All Time
+                            {% if period == 'day' %}{{ _('Today') }}
+                            {% elif period == 'week' %}{{ _('This Week') }}
+                            {% elif period == 'month' %}{{ _('This Month') }}
+                            {% elif period == 'season' %}{{ _('This Season') }}
+                            {% elif period == 'year' %}{{ _('This Year') }}
+                            {% else %}{{ _('All Time') }}
                             {% endif %}
                         </th>
                     </tr>
                 </thead>
                 <tbody id="species-frequency-tbody">
-                    <tr><td colspan="3" class="no-data">Loading species...</td></tr>
+                    <tr><td colspan="3" class="no-data">{{ _('Loading species...') }}</td></tr>
                 </tbody>
             </table>
             <!-- Species table pagination matching detections style -->
@@ -540,461 +103,54 @@
         </div>
     </div>
 
+    <!-- Date picker modal -->
+    <div id="date-picker-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>{{ _('Select Date') }}</h3>
+            <input type="date" id="date-input" />
+            <div class="modal-buttons">
+                <button onclick="goToSelectedDate()">{{ _('Go') }}</button>
+                <button onclick="closeDatePicker()">{{ _('Cancel') }}</button>
+            </div>
+        </div>
+    </div>
 
-    <p class="annotation">
-        Note: Detection confidence threshold ≥{{ confidence_threshold }}.
-        {% if migration_note %}{{ migration_note }}{% endif %}
-    </p>
+    <!-- Hidden HTML Templates for JavaScript (for i18n) -->
+    <div id="js-templates" style="display: none;">
+        <!-- Detection entry template for new detections via SSE -->
+        <template id="detection-entry-template">
+            <div class="detection-entry new-detection" data-species="">
+                <button class="play-button" data-action="play" title="{{ _('Play recording') }}"></button>
+                <div class="species-info" data-action="filter-species">
+                    <span class="species-name">
+                        <span class="species-common" data-field="common-name"></span>
+                        <span class="species-scientific" data-field="scientific-name"></span>
+                    </span>
+                </div>
+                <div data-field="time"></div>
+                <div data-field="confidence"></div>
+                <div class="audio-status"></div>
+            </div>
+        </template>
 
-    <!-- Icon legend -->
-    <div class="icon-legend" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e0e0e0; font-size: 0.85rem; color: #666;">
-        <strong>Legend:</strong>
-        <span style="margin-left: 1rem;">★ First ever detection of species</span>
-        <span style="margin-left: 1rem;">● First detection in current period</span>
-        <span style="margin-left: 1rem;">— No data</span>
+        <!-- Filter indicator template -->
+        <template id="filter-indicator-template">
+            {{ _('Filtered') }}: <strong data-field="species-name"></strong>
+            <button onclick="clearSpeciesFilter()" class="clear-filter-btn">{{ _('Clear') }}</button>
+        </template>
+
     </div>
 
     <!-- Loading indicator -->
     <div class="loading-overlay" id="loading-overlay"></div>
-    <div class="loading-indicator" id="loading-indicator">Loading detections...</div>
+    <div class="loading-indicator" id="loading-indicator">{{ _('Loading detections...') }}</div>
 
-    <script src="{{ request.url_for('static', path='js/pagination.js') }}"></script>
-    <script>
-        // Species filtering
-        let selectedSpecies = null;
+{% endblock %}
 
-        function filterBySpecies(scientificName, rowElement) {
-            // Toggle selection
-            if (selectedSpecies === scientificName) {
-                // Deselect if clicking same species
-                selectedSpecies = null;
-                document.querySelectorAll('.species-row').forEach(row => {
-                    row.classList.remove('selected');
-                });
-            } else {
-                // Select new species
-                selectedSpecies = scientificName;
-                document.querySelectorAll('.species-row').forEach(row => {
-                    row.classList.remove('selected');
-                });
-                rowElement.classList.add('selected');
-            }
-
-            // Update the search box to show filter
-            const searchBox = document.getElementById('search-input');
-            if (searchBox) {
-                searchBox.value = selectedSpecies || '';
-            }
-
-            // Reload detections with filter
-            loadDetections(1);
-        }
-
-        // Species table management
-        let allSpeciesData = [];
-        let speciesCurrentPage = 1;
-        let speciesPageSize = 10;
-        let speciesSortColumn = 'count';
-        let speciesSortDirection = 'desc';
-
-        // Get initial period from template or default to 'day'
-        let initialPeriod = '{{ period }}' || 'day';
-
-        // Format date based on period
-        function formatPeriodDate(period) {
-            const now = new Date();
-            const months = ['January', 'February', 'March', 'April', 'May', 'June',
-                          'July', 'August', 'September', 'October', 'November', 'December'];
-
-            switch(period) {
-                case 'day':
-                    return `${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
-                case 'week':
-                    const weekStart = new Date(now);
-                    // Calculate Monday as start of week (getDay() returns 0 for Sunday, 1 for Monday)
-                    const dayOfWeek = now.getDay();
-                    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday is 6 days from Monday
-                    weekStart.setDate(now.getDate() - daysFromMonday);
-                    const weekEnd = new Date(weekStart);
-                    weekEnd.setDate(weekStart.getDate() + 6);
-                    // Show date range for clarity
-                    return `Week: ${months[weekStart.getMonth()]} ${weekStart.getDate()} - ${months[weekEnd.getMonth()]} ${weekEnd.getDate()}, ${weekEnd.getFullYear()}`;
-                case 'month':
-                    return `${months[now.getMonth()]}, ${now.getFullYear()}`;
-                case 'season':
-                    // Determine season
-                    const month = now.getMonth();
-                    let season;
-                    if (month >= 2 && month <= 4) season = 'Spring';
-                    else if (month >= 5 && month <= 7) season = 'Summer';
-                    else if (month >= 8 && month <= 10) season = 'Fall';
-                    else season = 'Winter';
-                    return `${season} ${now.getFullYear()}`;
-                case 'year':
-                    return now.getFullYear().toString();
-                case 'historical':
-                    return 'All Time';
-                default:
-                    return '';
-            }
-        }
-
-        // Time period switching with AJAX
-        let currentPeriod = '{{ period }}';
-
-        async function switchPeriod(period, element) {
-            // Update active state immediately for better UX
-            document.querySelectorAll('.time-selector a').forEach(a => a.classList.remove('active'));
-            if (element) {
-                element.classList.add('active');
-            } else {
-                // If no element passed, try to find and activate the matching period button
-                document.querySelectorAll('.time-selector a').forEach(a => {
-                    if (a.getAttribute('onclick') && a.getAttribute('onclick').includes(`'${period}'`)) {
-                        a.classList.add('active');
-                    }
-                });
-            }
-
-            // Update current period
-            currentPeriod = period;
-
-            // Update URL without reload using pushState
-            const newUrl = `/reports/detections?period=${period}`;
-            window.history.pushState({ period: period }, '', newUrl);
-
-            // Show loading indicator
-            showLoading();
-
-            try {
-                // Update the date display
-                document.getElementById('period-date').textContent = formatPeriodDate(period);
-
-                // Update the count header based on period
-                const countHeader = document.getElementById('count-header');
-                if (countHeader) {
-                    const headerText = {
-                        'day': 'Today',
-                        'week': 'This Week',
-                        'month': 'This Month',
-                        'season': 'This Season',
-                        'year': 'This Year',
-                        'historical': 'All Time'
-                    };
-                    countHeader.textContent = headerText[period] || 'Count';
-                }
-
-                // Clear any species selection and search
-                selectedSpecies = null;
-                searchTerm = '';
-                document.getElementById('search-input').value = '';
-
-                // Reset species page when switching periods
-                speciesCurrentPage = 1;
-
-                // Load both data sets in parallel
-                await Promise.all([
-                    loadDetections(1),
-                    loadSpeciesData()
-                ]);
-
-            } catch (error) {
-                console.error('Error switching period:', error);
-                // Fall back to page reload on error
-                window.location.href = newUrl;
-            } finally {
-                hideLoading();
-            }
-        }
-
-        // Handle browser back/forward buttons
-        window.addEventListener('popstate', function(event) {
-            if (event.state && event.state.period) {
-                // Find and click the corresponding period link
-                const periodLink = document.querySelector(`.time-selector a[onclick*="'${event.state.period}'"]`);
-                if (periodLink) {
-                    switchPeriod(event.state.period, periodLink);
-                }
-            }
-        });
-
-        // Detection loading with AJAX
-        let currentPage = 1;
-        let searchTerm = '';
-        let searchTimeout = null;
-        let detectionsSortColumn = 'timestamp';
-        let detectionsSortDirection = 'desc';
-
-        // Loading indicator functions
-        function showLoading() {
-            document.getElementById('loading-overlay').classList.add('active');
-            document.getElementById('loading-indicator').classList.add('active');
-        }
-
-        function hideLoading() {
-            document.getElementById('loading-overlay').classList.remove('active');
-            document.getElementById('loading-indicator').classList.remove('active');
-        }
-
-        async function loadDetections(page = 1) {
-            currentPage = page;
-            const searchParams = new URLSearchParams({
-                page: page,
-                per_page: 20,
-                period: currentPeriod,
-                sort_by: detectionsSortColumn,
-                sort_order: detectionsSortDirection,
-                // Use search parameter for both species filtering and text search
-                ...(selectedSpecies && { search: selectedSpecies }),
-                ...(searchTerm && !selectedSpecies && { search: searchTerm })
-            });
-
-            // Show loading indicator
-            showLoading();
-
-            try {
-                const response = await fetch(`/api/detections/?${searchParams}`);
-                const data = await response.json();
-
-                // Render detections table
-                const detectionsList = document.getElementById('detections-list');
-                if (data.detections.length === 0) {
-                    detectionsList.innerHTML = '<tr><td colspan="5" class="no-data">No detections found</td></tr>';
-                } else {
-                    detectionsList.innerHTML = data.detections.map(d => {
-                        // Show star if it's a first-ever detection, bullet if first in period
-                        let firstIndicator = '';
-                        if (d.is_first_ever) {
-                            firstIndicator = '★';
-                        } else if (d.is_first_in_period) {
-                            firstIndicator = '●';
-                        }
-
-                        return `
-                        <tr class="detection-row">
-                            <td class="detection-time">${d.time}</td>
-                            <td>${d.common_name}</td>
-                            <td class="detection-time">${d.date}</td>
-                            <td class="text-right">${d.confidence < 1 ? (d.confidence * 100).toFixed(0) : d.confidence.toFixed(0)}%</td>
-                            <td class="text-center">${firstIndicator}</td>
-                        </tr>
-                    `}).join('');
-                }
-
-                // Update sort indicators
-                document.querySelectorAll('#detections-table th.sortable').forEach(th => {
-                    th.classList.remove('sort-asc', 'sort-desc');
-                    if (th.dataset.sort === detectionsSortColumn) {
-                        th.classList.add(detectionsSortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
-                    }
-                });
-
-                // Render pagination using common function
-                BirdNETPagination.render('pagination', data.pagination, 'loadDetections', 'detections');
-
-            } catch (error) {
-                console.error('Error loading detections:', error);
-                document.getElementById('detections-list').innerHTML =
-                    '<tr><td colspan="5" class="error-message">Error loading detections</td></tr>';
-            } finally {
-                // Always hide loading indicator
-                hideLoading();
-            }
-        }
-
-        // Search functionality
-        document.getElementById('search-input').addEventListener('input', function(e) {
-            searchTerm = e.target.value;
-            // Clear species selection when user types
-            if (searchTerm) {
-                selectedSpecies = null;
-                document.querySelectorAll('.species-row').forEach(row => {
-                    row.classList.remove('selected');
-                });
-            }
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                loadDetections(1); // Reset to page 1 on search
-            }, 300); // Debounce search
-        });
-
-        // Species table functions
-        function renderSpeciesTable() {
-            // Sort the data
-            const sortedData = [...allSpeciesData].sort((a, b) => {
-                let aVal, bVal;
-                if (speciesSortColumn === 'name') {
-                    aVal = (a.name || '').toLowerCase();
-                    bVal = (b.name || '').toLowerCase();
-                } else if (speciesSortColumn === 'first_detection') {
-                    // Sort by first detection timestamp, converting to Date objects
-                    // Use the first_ever_detection as these are what matter for the star indicator
-                    const aDate = a.first_ever_detection ? new Date(a.first_ever_detection) : new Date('9999-12-31');
-                    const bDate = b.first_ever_detection ? new Date(b.first_ever_detection) : new Date('9999-12-31');
-                    aVal = aDate.getTime();
-                    bVal = bDate.getTime();
-                } else {
-                    aVal = a.detection_count;
-                    bVal = b.detection_count;
-                }
-
-                if (speciesSortDirection === 'asc') {
-                    return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-                } else {
-                    return bVal > aVal ? 1 : bVal < aVal ? -1 : 0;
-                }
-            });
-
-            // Calculate pagination
-            const totalItems = sortedData.length;
-            const totalPages = speciesPageSize === 'all' ? 1 : Math.ceil(totalItems / speciesPageSize);
-            const actualPageSize = speciesPageSize === 'all' ? totalItems : parseInt(speciesPageSize);
-            const startIndex = speciesPageSize === 'all' ? 0 : (speciesCurrentPage - 1) * actualPageSize;
-            const endIndex = speciesPageSize === 'all' ? totalItems : Math.min(startIndex + actualPageSize, totalItems);
-
-            // Get the page data
-            const pageData = sortedData.slice(startIndex, endIndex);
-
-            // Render the table
-            const tbody = document.getElementById('species-frequency-tbody');
-            if (tbody) {
-                if (pageData.length === 0) {
-                    // Show "No species detected" message when empty
-                    tbody.innerHTML = '<tr><td colspan="3" class="no-data">No species detected</td></tr>';
-                } else {
-                    tbody.innerHTML = pageData.map(species => {
-                        // Show star indicator if this is a first-ever detection
-                        const firstDetectionText = species.is_first_ever ? '★' : '—';
-
-                        return `
-                        <tr class="species-row" data-species="${species.scientific_name}" onclick="filterBySpecies('${species.scientific_name}', this)">
-                            <td>
-                                <div class="species-name-cell">
-                                    <div class="common-name">${species.name}</div>
-                                    <div class="scientific-name">${species.scientific_name}</div>
-                                </div>
-                            </td>
-                            <td class="text-center">${firstDetectionText}</td>
-                            <td class="text-right">${species.detection_count}</td>
-                        </tr>
-                    `}).join('');
-                }
-            }
-
-            // Render pagination using common function
-            const speciesPaginationData = {
-                page: speciesCurrentPage,
-                total_pages: totalPages,
-                total: totalItems,
-                has_prev: speciesCurrentPage > 1,
-                has_next: speciesCurrentPage < totalPages
-            };
-
-            // Use a wrapper function to handle species page changes
-            window.loadSpeciesPage = function(page) {
-                speciesCurrentPage = page;
-                renderSpeciesTable();
-            };
-
-            BirdNETPagination.render('species-pagination', speciesPaginationData, 'loadSpeciesPage', 'species');
-
-            // Update sort indicators
-            document.querySelectorAll('#species-frequency-table th.sortable').forEach(th => {
-                th.classList.remove('sort-asc', 'sort-desc');
-                if (th.dataset.sort === speciesSortColumn) {
-                    th.classList.add(speciesSortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
-                }
-            });
-        }
-
-        function sortSpeciesTable(column) {
-            if (speciesSortColumn === column) {
-                // Toggle direction if same column
-                speciesSortDirection = speciesSortDirection === 'asc' ? 'desc' : 'asc';
-            } else {
-                // New column, default to desc for count, asc for name
-                speciesSortColumn = column;
-                speciesSortDirection = column === 'count' ? 'desc' : 'asc';
-            }
-            renderSpeciesTable();
-        }
-
-        // changeSpeciesPage function removed - now using loadSpeciesPage defined in renderSpeciesTable
-
-        function changeSpeciesPageSize(size) {
-            speciesPageSize = size;
-            speciesCurrentPage = 1; // Reset to first page
-            renderSpeciesTable();
-        }
-
-        // Initialize species data from server-rendered content
-        async function loadSpeciesData() {
-            try {
-                // Use species/summary endpoint to get period-specific data with first detection flags
-                const response = await fetch(`/api/detections/species/summary?period=${currentPeriod}`);
-                const data = await response.json();
-
-                // Transform the analytics data - API now provides is_first_ever boolean
-                allSpeciesData = (data.species || []).map(s => {
-                    return {
-                        scientific_name: s.scientific_name,
-                        name: s.name,  // Summary endpoint provides the best name
-                        detection_count: s.detection_count,  // Keep consistent field name
-                        first_period_detection: s.first_period_detection,
-                        first_ever_detection: s.first_ever_detection,
-                        is_first_ever: s.is_first_ever || false,  // Use the boolean from API
-                        is_first_in_period: s.is_first_in_period || false
-                    };
-                });
-
-                // Update counts in subtitle
-                const uniqueSpecies = new Set(allSpeciesData.map(s => s.scientific_name || s.name)).size;
-                document.getElementById('species-count').textContent = uniqueSpecies;
-                // Use total_detections from the API response
-                const totalDetectionCount = document.getElementById('total-detection-count');
-                if (totalDetectionCount) {
-                    totalDetectionCount.textContent = data.total_detections || 0;
-                }
-
-                renderSpeciesTable();
-            } catch (error) {
-                console.error('Error loading species data:', error);
-                document.getElementById('species-frequency-tbody').innerHTML =
-                    '<tr><td colspan="2" class="no-data">Error loading species data</td></tr>';
-            }
-        }
-
-        // Sorting for detections (server-side)
-        function sortDetections(column) {
-            if (detectionsSortColumn === column) {
-                // Toggle direction if same column
-                detectionsSortDirection = detectionsSortDirection === 'asc' ? 'desc' : 'asc';
-            } else {
-                // New column, default to desc for timestamp/confidence, asc for species
-                detectionsSortColumn = column;
-                detectionsSortDirection = column === 'species' ? 'asc' : 'desc';
-            }
-            loadDetections(1); // Reset to first page when sorting changes
-        }
-
-        // Initialize page on load
-        document.addEventListener('DOMContentLoaded', function() {
-            // Set period from URL parameter
-            currentPeriod = initialPeriod;
-
-            // Update the date display
-            document.getElementById('period-date').textContent = formatPeriodDate(currentPeriod);
-
-            // Load both data sets in parallel
-            Promise.all([
-                loadDetections(),
-                loadSpeciesData()
-            ]).then(() => {
-                console.log('Initial data loaded');
-            }).catch(error => {
-                console.error('Error loading initial data:', error);
-            });
-        });
-    </script>
-</body>
-</html>
+{% block footer_annotation %}
+    <p class="annotation">
+        {{ _('Confidence threshold ≥%(threshold)s', threshold=confidence_threshold|default(0.7)) }} ·
+        {% if timezone %}{{ timezone }}{% else %}{{ _('UTC') }}{% endif %} ·
+        {{ _('Showing %(shown)s of %(total)s detections', shown=detections|length, total=total_count) }}
+    </p>
+{% endblock %}

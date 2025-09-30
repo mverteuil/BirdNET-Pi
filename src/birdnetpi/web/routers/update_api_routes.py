@@ -1,7 +1,7 @@
 """Update API routes for system update management."""
 
 import logging
-from typing import Any
+from typing import Annotated, Any
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException
@@ -61,7 +61,7 @@ class GitConfigRequest(BaseModel):
 @inject
 async def check_for_updates(
     request: UpdateCheckRequest,
-    cache: Cache = Depends(Provide[Container.cache_service]),  # noqa: B008
+    cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
 ) -> UpdateStatusResponse:
     """Check for available updates.
 
@@ -95,7 +95,7 @@ async def check_for_updates(
 @router.get("/status")
 @inject
 async def get_update_status(
-    cache: Cache = Depends(Provide[Container.cache_service]),  # noqa: B008
+    cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
 ) -> UpdateStatusResponse:
     """Get current update status from cache.
 
@@ -120,7 +120,7 @@ async def get_update_status(
 @inject
 async def apply_update(
     request: UpdateApplyRequest,
-    cache: Cache = Depends(Provide[Container.cache_service]),  # noqa: B008
+    cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
 ) -> UpdateActionResponse:
     """Apply a system update.
 
@@ -164,7 +164,7 @@ async def apply_update(
 @router.get("/result")
 @inject
 async def get_update_result(
-    cache: Cache = Depends(Provide[Container.cache_service]),  # noqa: B008
+    cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
 ) -> dict[str, Any]:
     """Get the result of the last update operation.
 
@@ -189,7 +189,7 @@ async def get_update_result(
 @router.delete("/cancel")
 @inject
 async def cancel_update(
-    cache: Cache = Depends(Provide[Container.cache_service]),  # noqa: B008
+    cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
 ) -> UpdateActionResponse:
     """Cancel a pending update request.
 
@@ -229,8 +229,8 @@ async def cancel_update(
 @inject
 async def update_git_config(
     request: GitConfigRequest,
-    config: BirdNETConfig = Depends(Provide[Container.config]),  # noqa: B008
-    path_resolver: PathResolver = Depends(Provide[Container.path_resolver]),  # noqa: B008
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
 ) -> UpdateActionResponse:
     """Update git configuration for system updates.
 

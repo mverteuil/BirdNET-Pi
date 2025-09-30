@@ -1,0 +1,122 @@
+/* Best Recordings Page Styles */
+
+/* Detection entry styles */
+.detection-entry {
+  display: grid;
+  grid-template-columns: 40px 1fr 120px 80px 80px 100px;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px dotted var(--color-border-tertiary);
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.detection-entry:hover {
+  background: var(--color-bg-hover-subtle);
+}
+
+/* Play button states */
+.play-button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--color-border-primary);
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  padding: 0;
+}
+
+.play-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.play-button.loading::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 6px;
+  height: 6px;
+  background: var(--color-text-secondary);
+  animation: pulse 1s infinite;
+}
+
+.play-button.playing::before {
+  content: "■";
+  font-size: 12px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.play-button:not(.playing):not(.loading)::before {
+  content: "▶";
+  font-size: 10px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-40%, -50%);
+}
+
+/* Audio availability indicator */
+.audio-status {
+  width: 30px;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--color-text-tertiary);
+}
+
+.audio-available {
+  color: var(--color-text-secondary);
+}
+
+.audio-missing {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
+/* Recording stats */
+.recording-stats {
+  padding: 0.75rem 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border-secondary);
+  margin-bottom: 1rem;
+}
+
+.stat-value {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+/* Filter controls are now in taxonomic_filters.css */
+
+/* Loading indicator */
+.loading-indicator {
+  text-align: center;
+  padding: 2rem;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* No results message */
+.no-results {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--color-text-tertiary);
+  font-size: 0.9rem;
+}
+
+/* Active filters styles are now in taxonomic_filters.css */

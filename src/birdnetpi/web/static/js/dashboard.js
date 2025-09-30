@@ -581,11 +581,25 @@ document.addEventListener("DOMContentLoaded", () => {
   // Start SSE connection for real-time detections
   startSSEConnection();
 
-  // Initialize data if provided by template
-  // (The template will call these functions directly)
-});
+  // Initialize data from data attributes
+  const dataElement = document.getElementById("dashboard-data");
+  if (dataElement) {
+    const speciesFrequency = JSON.parse(
+      dataElement.dataset.speciesFrequency || "[]",
+    );
+    const hourlyDist = JSON.parse(
+      dataElement.dataset.hourlyDistribution || "[]",
+    );
+    const vizData = JSON.parse(dataElement.dataset.visualization || "[]");
 
-// Export functions that need to be called from template
-window.initializeSpeciesData = initializeSpeciesData;
-window.setHourlyDistribution = setHourlyDistribution;
-window.setVisualizationData = setVisualizationData;
+    if (speciesFrequency.length > 0) {
+      initializeSpeciesData(speciesFrequency);
+    }
+    if (hourlyDist.length > 0) {
+      setHourlyDistribution(hourlyDist);
+    }
+    if (vizData.length > 0) {
+      setVisualizationData(vizData);
+    }
+  }
+});

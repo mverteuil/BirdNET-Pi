@@ -3,7 +3,7 @@ import json
 import logging
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, date, datetime, timedelta
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 from dependency_injector.wiring import Provide, inject
@@ -54,10 +54,8 @@ def _get_cache_invalidation_handler(cache: Cache) -> Callable:
 @router.post("/", status_code=status.HTTP_201_CREATED)
 @inject
 async def create_detection(
+    data_manager: Annotated[DataManager, Depends(Provide[Container.data_manager])],
     detection_event: DetectionEvent,
-    data_manager: DataManager = Depends(  # noqa: B008
-        Provide[Container.data_manager]
-    ),
 ) -> dict:
     """Receive a new detection event and dispatch it.
 
@@ -87,17 +85,14 @@ async def create_detection(
 @router.get("/recent")
 @inject
 async def get_recent_detections(
+    # Added for compatibility with old endpoint
+    data_manager: Annotated[DataManager, Depends(Provide[Container.data_manager])],
+    detection_query_service: Annotated[
+        DetectionQueryService, Depends(Provide[Container.detection_query_service])
+    ],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
     limit: int = 10,
-    offset: int = 0,  # Added for compatibility with old endpoint
-    data_manager: DataManager = Depends(  # noqa: B008
-        Provide[Container.data_manager]
-    ),
-    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
-        Provide[Container.detection_query_service]
-    ),
-    config: BirdNETConfig = Depends(  # noqa: B008
-        Provide[Container.config]
-    ),
+    offset: int = 0,
 ) -> JSONResponse:
     """Get recent bird detections with taxa and translation data."""
     try:
@@ -129,6 +124,10 @@ async def get_recent_detections(
 @router.get("/")
 @inject
 async def get_detections(
+    presentation_manager: Annotated[
+        PresentationManager, Depends(Provide[Container.presentation_manager])
+    ],
+    cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(20, ge=10, le=200, description="Items per page"),
     period: str = Query("day", description="Time period filter"),
@@ -137,12 +136,6 @@ async def get_detections(
         "timestamp", description="Field to sort by: timestamp, species, confidence, first"
     ),
     sort_order: str = Query("desc", description="Sort order: asc or desc"),
-    presentation_manager: PresentationManager = Depends(  # noqa: B008
-        Provide[Container.presentation_manager]
-    ),
-    cache: Cache = Depends(  # noqa: B008
-        Provide[Container.cache_service]
-    ),
 ) -> JSONResponse:
     """Get paginated detections with filtering.
 
@@ -194,10 +187,10 @@ async def get_detections(
 @router.get("/count")
 @inject
 async def get_detection_count(
+    detection_query_service: Annotated[
+        DetectionQueryService, Depends(Provide[Container.detection_query_service])
+    ],
     target_date: date | None = None,
-    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
-        Provide[Container.detection_query_service]
-    ),
 ) -> JSONResponse:
     """Get detection count for a specific date (defaults to today)."""
     try:
@@ -217,18 +210,16 @@ async def get_detection_count(
 @router.get("/best-recordings")
 @inject
 async def get_best_recordings(
+    detection_query_service: Annotated[
+        DetectionQueryService, Depends(Provide[Container.detection_query_service])
+    ],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(50, ge=10, le=200, description="Items per page"),
     family: str | None = Query(None, description="Filter by taxonomic family"),
     genus: str | None = Query(None, description="Filter by genus"),
     species: str | None = Query(None, description="Filter by species scientific name"),
     min_confidence: float = Query(0.7, ge=0.0, le=1.0, description="Minimum confidence threshold"),
-    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
-        Provide[Container.detection_query_service]
-    ),
-    config: BirdNETConfig = Depends(  # noqa: B008
-        Provide[Container.config]
-    ),
 ) -> JSONResponse:
     """Get best recordings with optional taxonomic filtering.
 
@@ -278,6 +269,7 @@ async def get_best_recordings(
                 exclude_none=True,
                 include={
                     "id",
+                    "audio_file_id",  # Include audio_file_id for playback
                     "scientific_name",
                     "common_name",
                     "family",
@@ -338,10 +330,10 @@ async def get_best_recordings(
 @router.get("/taxonomy/families")
 @inject
 async def get_taxonomy_families(
+    detection_query_service: Annotated[
+        DetectionQueryService, Depends(Provide[Container.detection_query_service])
+    ],
     has_detections: bool = Query(True, description="Only return families with detections"),
-    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
-        Provide[Container.detection_query_service]
-    ),
 ) -> JSONResponse:
     """Get list of all taxonomic families, optionally filtered to those with detections."""
     try:
@@ -374,11 +366,11 @@ async def get_taxonomy_families(
 @router.get("/taxonomy/genera")
 @inject
 async def get_taxonomy_genera(
+    detection_query_service: Annotated[
+        DetectionQueryService, Depends(Provide[Container.detection_query_service])
+    ],
     family: str = Query(..., description="Family to get genera for"),
     has_detections: bool = Query(True, description="Only return genera with detections"),
-    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
-        Provide[Container.detection_query_service]
-    ),
 ) -> JSONResponse:
     """Get list of genera within a family, optionally filtered to those with detections."""
     try:
@@ -411,12 +403,12 @@ async def get_taxonomy_genera(
 @router.get("/taxonomy/species")
 @inject
 async def get_taxonomy_species(
+    detection_query_service: Annotated[
+        DetectionQueryService, Depends(Provide[Container.detection_query_service])
+    ],
     genus: str = Query(..., description="Genus to get species for"),
     family: str | None = Query(None, description="Optional family filter"),
     has_detections: bool = Query(True, description="Only return species with detections"),
-    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
-        Provide[Container.detection_query_service]
-    ),
 ) -> JSONResponse:
     """Get list of species within a genus, optionally filtered to those with detections."""
     try:
@@ -459,11 +451,11 @@ async def get_taxonomy_species(
 @router.get("/summary")
 @inject
 async def get_detections_summary(
+    detection_query_service: Annotated[
+        DetectionQueryService, Depends(Provide[Container.detection_query_service])
+    ],
     period: str = Query(
         "day", description="Time period: day, week, month, season, year, historical"
-    ),
-    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
-        Provide[Container.detection_query_service]
     ),
 ) -> JSONResponse:
     """Get detection summary data for period switching.
@@ -555,11 +547,9 @@ async def get_detections_summary(
 @router.post("/{detection_id}/location")
 @inject
 async def update_detection_location(
+    data_manager: Annotated[DataManager, Depends(Provide[Container.data_manager])],
     detection_id: UUID,
     location: LocationUpdate,
-    data_manager: DataManager = Depends(  # noqa: B008
-        Provide[Container.data_manager]
-    ),
 ) -> JSONResponse:
     """Update detection location with GPS coordinates."""
     try:
@@ -634,9 +624,9 @@ def _format_detection_event(detection: Detection) -> dict[str, Any]:
 @router.get("/stream")
 @inject
 async def stream_detections(
-    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
-        Provide[Container.detection_query_service]
-    ),
+    detection_query_service: Annotated[
+        DetectionQueryService, Depends(Provide[Container.detection_query_service])
+    ],
 ) -> StreamingResponse:
     """Stream new detections using Server-Sent Events (SSE).
 
@@ -704,13 +694,11 @@ async def stream_detections(
 @router.get("/{detection_id}")
 @inject
 async def get_detection(
+    detection_query_service: Annotated[
+        DetectionQueryService, Depends(Provide[Container.detection_query_service])
+    ],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
     detection_id: UUID,
-    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
-        Provide[Container.detection_query_service]
-    ),
-    config: BirdNETConfig = Depends(  # noqa: B008
-        Provide[Container.config]
-    ),
 ) -> JSONResponse:
     """Get a specific detection by ID with taxa and translation data."""
     try:
@@ -755,16 +743,16 @@ async def get_detection(
 @router.get("/species/summary")
 @inject
 async def get_species_summary(
+    detection_query_service: Annotated[
+        DetectionQueryService, Depends(Provide[Container.detection_query_service])
+    ],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
+    cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
     period: str | None = Query(
         None, description="Time period (day, week, month, season, year, historical)"
     ),
     since: datetime | None = None,
     family_filter: str | None = Query(None, description="Filter by taxonomic family"),
-    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
-        Provide[Container.detection_query_service]
-    ),
-    config: BirdNETConfig = Depends(Provide[Container.config]),  # noqa: B008
-    cache: Cache = Depends(Provide[Container.cache_service]),  # noqa: B008
 ) -> JSONResponse:
     """Get species summary with detection counts and first detection info.
 
@@ -835,6 +823,20 @@ async def get_species_summary(
             # Determine if this is a first ever detection
             is_first_ever = bool(first_ever_detection)
 
+            # Get taxonomy fields from the species data
+            family = None
+            genus = None
+            order = None
+
+            if isinstance(species, dict):
+                family = species.get("family")
+                genus = species.get("genus")
+                order = species.get("order_name")
+            else:
+                family = getattr(species, "family", None)
+                genus = getattr(species, "genus", None)
+                order = getattr(species, "order_name", None)
+
             species_list.append(
                 {
                     "name": name,
@@ -842,6 +844,9 @@ async def get_species_summary(
                     "detection_count": count,  # Use consistent field name
                     "is_first_ever": is_first_ever,
                     "first_ever_detection": first_ever_detection,
+                    "family": family,
+                    "genus": genus,
+                    "order": order,
                 }
             )
 
@@ -879,13 +884,9 @@ async def get_species_summary(
 @router.get("/{detection_id}/audio")
 @inject
 async def get_detection_audio(
+    data_manager: Annotated[DataManager, Depends(Provide[Container.data_manager])],
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
     detection_id: UUID,
-    data_manager: DataManager = Depends(  # noqa: B008
-        Provide[Container.data_manager]
-    ),
-    path_resolver: PathResolver = Depends(  # noqa: B008
-        Provide[Container.path_resolver]
-    ),
 ) -> FileResponse:
     """Serve WAV audio file for a specific detection.
 

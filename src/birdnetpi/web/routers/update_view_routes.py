@@ -1,6 +1,7 @@
 """Update view routes for system update management UI."""
 
 import logging
+from typing import Annotated
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Request
@@ -19,9 +20,9 @@ router = APIRouter()
 @inject
 async def update_page(
     request: Request,
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
-    cache: Cache = Depends(Provide[Container.cache_service]),  # noqa: B008
-    config: BirdNETConfig = Depends(Provide[Container.config]),  # noqa: B008
+    templates: Annotated[Jinja2Templates, Depends(Provide[Container.templates])],
+    cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
 ) -> HTMLResponse:
     """Render the system update page.
 

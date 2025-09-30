@@ -82,9 +82,9 @@ async def init_session_and_service(
     path_resolver: PathResolver, config: "BirdNETConfig"
 ) -> tuple["AsyncSession", AudioAnalysisManager]:
     """Initialize async session and audio analysis service."""
-    # Create multilingual database service
+    # Create species database service
     species_database = SpeciesDatabaseService(path_resolver)
-    logger.info("Multilingual database service initialized")
+    logger.info("Species database service initialized")
 
     # Create async session for database queries
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")

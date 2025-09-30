@@ -1,115 +1,27 @@
 {% extends "base.html.j2" %}
+{% set page_name = 'API Documentation' %}
 
-{% block title %}API Documentation - BirdNET-Pi{% endblock %}
-
-{% set active_page = 'api' %}
+{% block navigation %}
+    {% set active_page = 'api' %}
+    {{ super() }}
+{% endblock %}
 
 {% block styles %}
     {{ super() }}
-    <style>
-        /* Swagger UI container styling */
-        #swagger-ui {
-            margin-top: 20px;
-        }
-
-        /* Override Swagger UI styles to match site theme */
-        .swagger-ui .topbar {
-            display: none;
-        }
-
-        .swagger-ui {
-            font-family: inherit;
-        }
-
-        /* Adjust swagger section headers */
-        .swagger-ui .opblock-tag {
-            font-size: 1.2em;
-            font-weight: 600;
-            color: var(--color-text-primary);
-        }
-
-        /* Style the info section */
-        .swagger-ui .info {
-            margin: 20px 0;
-        }
-
-        .swagger-ui .info .title {
-            font-size: 1.5em;
-            color: var(--color-text-primary);
-        }
-
-        /* Adjust button colors to match site theme */
-        .swagger-ui .btn.authorize {
-            background-color: var(--color-accent);
-            border-color: var(--color-accent);
-        }
-
-        .swagger-ui .btn.execute {
-            background-color: var(--color-accent);
-            border-color: var(--color-accent);
-        }
-
-        /* Adjust response status colors */
-        .swagger-ui .responses-inner h4 {
-            font-size: 1em;
-        }
-
-        /* Make sure swagger content is contained */
-        main {
-            padding: 0 20px;
-            max-width: 100%;
-        }
-    </style>
-{% endblock %}
-
-{% block content %}
-    <div id="swagger-ui"></div>
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/api_docs.css') }}">
 {% endblock %}
 
 {% block scripts %}
+    {{ super() }}
     <!-- Swagger UI Bundle -->
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
     <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
 
-    <script>
-        // Initialize Swagger UI
-        window.onload = function() {
-            const ui = SwaggerUIBundle({
-                url: "{{ openapi_url }}",
-                dom_id: '#swagger-ui',
-                deepLinking: true,
-                presets: [
-                    SwaggerUIBundle.presets.apis,
-                    SwaggerUIStandalonePreset
-                ],
-                plugins: [
-                    SwaggerUIBundle.plugins.DownloadUrl
-                ],
-                layout: "BaseLayout",
-                // Disable the "Try it out" functionality if needed
-                // tryItOutEnabled: false,
-                // Show operation IDs
-                displayOperationId: false,
-                // Show request duration
-                displayRequestDuration: true,
-                // Default models expansion
-                docExpansion: "list",
-                // Default model expansion
-                defaultModelsExpandDepth: 1,
-                // Default model rendering
-                defaultModelRendering: "example",
-                // Show common extensions
-                showCommonExtensions: true,
-                // Show extensions
-                showExtensions: true,
-                // Filter
-                filter: true,
-                // Validation
-                validatorUrl: null
-            });
+    <!-- API Docs initialization -->
+    <script src="{{ request.url_for('static', path='js/api_docs.js') }}"></script>
+{% endblock %}
 
-            window.ui = ui;
-        }
-    </script>
+{% block content %}
+    <div id="swagger-ui" data-openapi-url="{{ openapi_url }}"></div>
 {% endblock %}

@@ -1,0 +1,56 @@
+{# Reusable Taxonomic Filter Component #}
+{# Usage: {% include 'includes/taxonomic_filters.html.j2' %} #}
+{#        {% include 'includes/taxonomic_filters.html.j2' with context %} #}
+{#
+   Optional context variables:
+   - show_confidence: boolean (default: true) - Whether to show confidence filter
+   - default_confidence: float (default: 0.7) - Default confidence value
+
+   Required JavaScript functions to implement in parent page:
+   - onFamilyChange()
+   - onGenusChange()
+   - onSpeciesChange()
+   - onConfidenceChange() (only if show_confidence is true)
+   - clearAllFilters()
+#}
+
+<div class="recording-controls" role="region" aria-label="{{ _('Recording filters') }}">
+    <!-- Hierarchical taxonomic filters -->
+    <div class="filter-section">
+        <label class="filter-label" for="family-filter">{{ _('Family') }}</label>
+        <select class="filter-selector" id="family-filter" onchange="onFamilyChange()" aria-label="{{ _('Filter by taxonomic family') }}">
+            <option value="">{{ _('All families') }}</option>
+        </select>
+    </div>
+
+    <div class="filter-section">
+        <label class="filter-label" for="genus-filter">{{ _('Genus') }}</label>
+        <select class="filter-selector" id="genus-filter" onchange="onGenusChange()" disabled aria-label="{{ _('Filter by genus') }}" aria-describedby="genus-help">
+            <option value="">{{ _('Select family first') }}</option>
+        </select>
+    </div>
+
+    <div class="filter-section">
+        <label class="filter-label" for="species-filter">{{ _('Species') }}</label>
+        <select class="filter-selector" id="species-filter" onchange="onSpeciesChange()" disabled aria-label="{{ _('Filter by species') }}" aria-describedby="species-help">
+            <option value="">{{ _('Select genus first') }}</option>
+        </select>
+    </div>
+
+    {% if show_confidence is not defined or show_confidence %}
+    <div class="filter-section">
+        <label class="filter-label" for="confidence-filter">{{ _('Min Confidence') }}</label>
+        <select class="filter-selector" id="confidence-filter" onchange="onConfidenceChange()" aria-label="{{ _('Minimum confidence threshold') }}">
+            <option value="0.7" aria-label="{{ _('70 percent confidence') }}" {% if default_confidence == 0.7 %}selected{% endif %}>70%</option>
+            <option value="0.8" {% if default_confidence == 0.8 %}selected{% endif %}>80%</option>
+            <option value="0.9" {% if default_confidence == 0.9 %}selected{% endif %}>90%</option>
+            <option value="0.95" {% if default_confidence == 0.95 %}selected{% endif %}>95%</option>
+        </select>
+    </div>
+    {% endif %}
+</div>
+
+<div class="active-filters" id="active-filters" style="display: none;" role="region" aria-label="{{ _('Active filters') }}" aria-live="polite">
+    {# Filter tags will be dynamically added here by JavaScript #}
+    {# Clear button will be added by JavaScript when filters are active #}
+</div>

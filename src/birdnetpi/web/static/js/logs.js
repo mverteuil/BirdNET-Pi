@@ -473,7 +473,7 @@ function renderTableView() {
  */
 function createLogRow(log) {
   const tr = document.createElement("tr");
-  tr.className = `log-row log-level-${log.level.toLowerCase()}`;
+  tr.className = "log-row";
   tr.setAttribute("role", "row");
 
   // Level indicator cell
@@ -510,11 +510,13 @@ function createLogRow(log) {
  * Create level indicator HTML
  */
 function createLevelIndicator(level) {
-  const config = LOG_LEVEL_CONFIG[level] || LOG_LEVEL_CONFIG.INFO;
+  // Ensure level is uppercase for config lookup
+  const upperLevel = level ? level.toUpperCase() : "INFO";
+  const config = LOG_LEVEL_CONFIG[upperLevel] || LOG_LEVEL_CONFIG.INFO;
   return `<span
-        class="log-level-indicator log-level-${level.toLowerCase()}"
-        aria-label="${level} level"
-        title="${level}"
+        class="log-level-indicator log-level-${upperLevel.toLowerCase()}"
+        aria-label="${upperLevel} level"
+        title="${upperLevel}"
     ></span>`;
 }
 
@@ -646,7 +648,7 @@ function updateStreamingUI(streaming) {
     button.classList.remove("btn-secondary");
     button.classList.add("btn-danger");
     button.setAttribute("aria-pressed", "true");
-    indicator.style.display = "flex";
+    indicator.classList.remove("d-none");
     // Hide fetch button when streaming
     if (fetchArea) {
       fetchArea.classList.add("hidden");
@@ -656,7 +658,7 @@ function updateStreamingUI(streaming) {
     button.classList.remove("btn-danger");
     button.classList.add("btn-secondary");
     button.setAttribute("aria-pressed", "false");
-    indicator.style.display = "none";
+    indicator.classList.add("d-none");
     // Show fetch button when not streaming
     if (fetchArea) {
       fetchArea.classList.remove("hidden");

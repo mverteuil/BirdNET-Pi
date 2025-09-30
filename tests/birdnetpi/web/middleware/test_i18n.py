@@ -150,6 +150,8 @@ class TestTranslationManager:
         """Should installing translation for a request."""
         request = Mock(spec=Request)
         request.headers = {"Accept-Language": "es-ES,es;q=0.9"}
+        request.query_params = Mock()
+        request.query_params.get = Mock(return_value=None)
 
         trans = translation_manager.install_for_request(request)
         assert isinstance(trans, GNUTranslations | NullTranslations)
@@ -158,6 +160,8 @@ class TestTranslationManager:
         """Should installing translation when no Accept-Language header."""
         request = Mock(spec=Request)
         request.headers = {}
+        request.query_params = Mock()
+        request.query_params.get = Mock(return_value=None)
 
         trans = translation_manager.install_for_request(request)
         assert isinstance(trans, GNUTranslations | NullTranslations)
@@ -177,6 +181,8 @@ class TestTranslationManager:
         """Should parsing various Accept-Language header formats."""
         request = Mock(spec=Request)
         request.headers = {"Accept-Language": header}
+        request.query_params = Mock()
+        request.query_params.get = Mock(return_value=None)
 
         # Mock the method to capture the language argument
         with patch.object(translation_manager, "get_translation") as mock_get:

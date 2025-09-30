@@ -52,7 +52,7 @@ class SpeciesParser:
     _session: "AsyncSession | None" = None
 
     def __init__(self, species_database: "SpeciesDatabaseService"):
-        """Initialize parser with required multilingual database service.
+        """Initialize parser with required species database service.
 
         Args:
             species_database: Service for multilingual species lookup (required)
@@ -78,14 +78,14 @@ class SpeciesParser:
         """Set the database session for species lookups.
 
         Args:
-            session: AsyncSession with multilingual databases attached
+            session: AsyncSession with species databases attached
         """
         cls._session = session
 
     async def get_ioc_common_name(self, scientific_name: str) -> str | None:
-        """Get IOC canonical common name from multilingual database service.
+        """Get IOC canonical common name from species database service.
 
-        Uses the multilingual database service to get the best available common name,
+        Uses the species database service to get the best available common name,
         prioritizing IOC English names.
 
         Args:

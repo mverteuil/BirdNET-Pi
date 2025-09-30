@@ -1,0 +1,43 @@
+{# Reusable Taxonomy Display Component #}
+{#
+   Usage: {% include 'includes/taxonomy_display.html.j2' %}
+
+   Required variables:
+   - common_name: Common name of the species
+   - scientific_name: Scientific name of the species
+   - genus: Genus name
+   - species_part: Species epithet (second part of scientific name)
+   - order: Order name
+   - family: Family name
+
+   Optional variables:
+   - show_links: boolean to enable/disable clickable links (default: true)
+   - link_function_prefix: prefix for JavaScript functions (default: 'setFilterFromLabel')
+#}
+
+{% set show_links = show_links|default(true) %}
+{% set link_function_prefix = link_function_prefix|default('setFilterFromLabel') %}
+
+<div class="taxonomy-display">
+    <div class="taxonomy-primary">
+        <span class="common-name">{{ common_name or scientific_name }}</span>
+    </div>
+    <div class="taxonomy-scientific">
+        <em>
+            {% if show_links %}
+                <span class="taxonomy-link" onclick="{{ link_function_prefix }}('genus', '{{ genus }}')">{{ genus }}</span>
+                <span class="taxonomy-link" onclick="{{ link_function_prefix }}('species', '{{ scientific_name }}')">{{ species_part }}</span>
+            {% else %}
+                {{ scientific_name }}
+            {% endif %}
+        </em>
+    </div>
+    <div class="taxonomy-classification">
+        <span class="order-name">{{ order }}</span> ·
+        {% if show_links %}
+            <span class="taxonomy-link" onclick="{{ link_function_prefix }}('family', '{{ family }}')">{{ family }}</span>
+        {% else %}
+            <span class="family-name">{{ family }}</span>
+        {% endif %}
+    </div>
+</div>

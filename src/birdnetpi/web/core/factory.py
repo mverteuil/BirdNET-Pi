@@ -13,6 +13,7 @@ from birdnetpi.web.routers import (
     analysis_api_routes,
     detections_api_routes,
     health_api_routes,
+    i18n_api_routes,
     logs_api_routes,
     logs_view_routes,
     multimedia_api_routes,
@@ -101,6 +102,7 @@ def create_app() -> FastAPI:
             "birdnetpi.web.routers.analysis_api_routes",
             "birdnetpi.web.routers.detections_api_routes",
             "birdnetpi.web.routers.health_api_routes",
+            "birdnetpi.web.routers.i18n_api_routes",  # Wire i18n API routes
             "birdnetpi.web.routers.logs_api_routes",
             "birdnetpi.web.routers.logs_view_routes",
             "birdnetpi.web.routers.multimedia_api_routes",
@@ -147,6 +149,9 @@ def create_app() -> FastAPI:
 
     # Logs API routes (historical and streaming)
     app.include_router(logs_api_routes.router, prefix="/api", tags=["Logs API"])
+
+    # i18n API routes (translation support for JavaScript)
+    app.include_router(i18n_api_routes.router, tags=["i18n API"])
 
     # Real-time communication
     app.include_router(websocket_routes.router, prefix="/ws", tags=["WebSocket"])

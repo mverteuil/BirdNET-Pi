@@ -63,6 +63,8 @@ class TestLanguageSwitching:
         # Request with French Accept-Language
         request = Mock()
         request.headers = {"Accept-Language": "fr-FR,fr;q=0.9"}
+        request.query_params = Mock()
+        request.query_params.get = Mock(return_value=None)
 
         # Should extract and use French
         trans = translation_manager.install_for_request(request)
@@ -87,6 +89,8 @@ class TestLanguageSwitching:
 
         request = Mock()
         request.headers = {"Accept-Language": accept_header}
+        request.query_params = Mock()
+        request.query_params.get = Mock(return_value=None)
 
         # Parse the header manually to verify
         lang = accept_header.split(",")[0].split("-")[0]
@@ -102,6 +106,8 @@ class TestLanguageSwitching:
 
         request = Mock()
         request.headers = {"Accept-Language": "xyz-XY"}  # Non-existent language
+        request.query_params = Mock()
+        request.query_params.get = Mock(return_value=None)
 
         # Should fall back gracefully
         trans = translation_manager.install_for_request(request)

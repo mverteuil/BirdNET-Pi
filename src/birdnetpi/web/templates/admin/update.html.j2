@@ -1,17 +1,29 @@
 {% extends "base.html.j2" %}
+{% set page_name = _('System Update') %}
 
-{% block title %}{{ _('System Updates') }}{% endblock %}
+{% block navigation %}
+    {% set active_page = 'update' %}
+    {{ super() }}
+{% endblock %}
 
-{% block head %}
-<link rel="stylesheet" href="{{ request.url_for('static', path='css/update.css') }}">
+{% block styles %}
+    {{ super() }}
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/update.css') }}">
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script>
+        // Store SSE endpoint for JavaScript to use
+        const sseEndpoint = "{{ sse_endpoint }}";
+    </script>
+    <script src="{{ request.url_for('static', path='js/update.js') }}"></script>
 {% endblock %}
 
 {% block content %}
 <div class="update-container">
     <!-- Skip navigation link for screen readers -->
     <a href="#update-content" class="skip-link">{{ _('Skip to update content') }}</a>
-
-    <h1>{{ _('System Updates') }}</h1>
 
     <!-- Update Status Panel -->
     <div class="update-status-panel" id="update-status-panel" role="region" aria-label="{{ _('Update status') }}">
@@ -252,12 +264,5 @@
         </details>
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
-<script>
-    // Store SSE endpoint for JavaScript to use
-    const sseEndpoint = "{{ sse_endpoint }}";
-</script>
-<script src="{{ request.url_for('static', path='js/update.js') }}"></script>
 {% endblock %}

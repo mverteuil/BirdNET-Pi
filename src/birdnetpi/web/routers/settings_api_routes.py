@@ -1,5 +1,7 @@
 """Settings API routes for configuration management and validation."""
 
+from typing import Annotated
+
 import yaml
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends
@@ -27,18 +29,11 @@ class SpeciesValidationResponse(BaseModel):
     invalid: list[str]
 
 
-@router.post("/validate")
-@inject
-async def validate_yaml_config(
-    config_request: YAMLConfigRequest,
-    path_resolver: PathResolver = Depends(  # noqa: B008
-        Provide[Container.path_resolver]
-    ),
-) -> dict:
-    """Validate YAML configuration content."""
+def _validate_yaml_config_impl(yaml_content: str, path_resolver: PathResolver) -> dict:
+    """Validate YAML configuration content internally."""
     try:
         # Parse YAML
-        config_data = yaml.safe_load(config_request.yaml_content)
+        config_data = yaml.safe_load(yaml_content)
 
         # Create a ConfigManager to leverage the version system
         config_manager = ConfigManager(path_resolver)
@@ -68,18 +63,26 @@ async def validate_yaml_config(
         return {"valid": False, "error": f"Validation error: {e!s}"}
 
 
+@router.post("/validate")
+@inject
+async def validate_yaml_config(
+    config_request: YAMLConfigRequest,
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
+) -> dict:
+    """Validate YAML configuration content."""
+    return _validate_yaml_config_impl(config_request.yaml_content, path_resolver)
+
+
 @router.post("/save")
 @inject
 async def save_yaml_config(
     config_request: YAMLConfigRequest,
-    path_resolver: PathResolver = Depends(  # noqa: B008
-        Provide[Container.path_resolver]
-    ),
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
 ) -> dict:
     """Save YAML configuration content."""
     try:
-        # First validate the YAML (validate_yaml_config has its own injection)
-        validation_result = await validate_yaml_config(config_request)
+        # First validate the YAML using the shared implementation
+        validation_result = _validate_yaml_config_impl(config_request.yaml_content, path_resolver)
         if not validation_result["valid"]:
             return {"success": False, "error": validation_result["error"]}
 
@@ -100,9 +103,7 @@ async def save_yaml_config(
 @inject
 async def validate_species(
     request: SpeciesValidationRequest,
-    path_resolver: PathResolver = Depends(  # noqa: B008
-        Provide[Container.path_resolver]
-    ),
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
 ) -> SpeciesValidationResponse:
     """Validate scientific names against the IOC database.
 

@@ -63,10 +63,22 @@ class FileManager:
         sample_rate: int,
         channels: int,
     ) -> AudioFile:
-        """Save raw audio bytes to a WAV file and return an in-memory AudioFile instance."""
+        """Save raw audio bytes to a WAV file and return an in-memory AudioFile instance.
+
+        Args:
+            relative_path: Path relative to recordings directory
+            raw_audio_bytes: Raw audio data as bytes
+            sample_rate: Sample rate in Hz
+            channels: Number of audio channels
+
+        Returns:
+            AudioFile instance with path relative to recordings directory
+        """
         import numpy as np
 
-        full_path = self.base_path / relative_path
+        # The relative_path is now relative to recordings dir, not data dir
+        recordings_dir = self.path_resolver.get_recordings_dir()
+        full_path = recordings_dir / relative_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Convert bytes to numpy array

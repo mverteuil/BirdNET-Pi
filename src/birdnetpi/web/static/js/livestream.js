@@ -2,6 +2,8 @@
  * Livestream JavaScript - Real-time audio streaming and detection monitoring
  */
 
+// Migration: Now using global _() function from i18n.js
+
 // Helper function to get CSS variables
 function getCSSVariable(varName) {
   return getComputedStyle(document.documentElement)
@@ -20,11 +22,11 @@ let useAudioWorklet = false; // Flag for AudioWorklet support
 window.audioWorkletNode = null; // Expose globally for debugging
 window.useAudioWorklet = false; // Expose globally for debugging
 
-// Canvas contexts
-const spectrogramCanvas = document.getElementById("spectrogramCanvas");
-const spectrogramCtx = spectrogramCanvas.getContext("2d", { alpha: false });
-const waveformCanvas = document.getElementById("waveformCanvas");
-const waveformCtx = waveformCanvas.getContext("2d", { alpha: false });
+// Canvas contexts - will be initialized after DOM loads
+let spectrogramCanvas = null;
+let spectrogramCtx = null;
+let waveformCanvas = null;
+let waveformCtx = null;
 
 // Create offscreen canvas for double buffering
 let offscreenCanvas = null;
@@ -32,6 +34,7 @@ let offscreenCtx = null;
 
 // Data storage
 let spectrogramHistory = [];
+let waveformHistory = []; // Store waveform data over time for zoomed-out view
 let detections = [];
 let lastFrameTime = Date.now();
 let frameCount = 0;
@@ -64,18 +67,42 @@ const MAX_DETECTIONS = 50; // Keep last 50 detections in the list
 
 // Resize canvases
 function resizeCanvases() {
+  if (!spectrogramCanvas || !waveformCanvas) {
+    console.warn("Canvas elements not initialized");
+    return;
+  }
+
   spectrogramCanvas.width = spectrogramCanvas.offsetWidth;
   spectrogramCanvas.height = 300;
   waveformCanvas.width = waveformCanvas.offsetWidth;
   waveformCanvas.height = 60;
+
+  // Clear canvases with page background color instead of default black
+  // Get the actual computed background color from the body element
+  const bodyStyle = window.getComputedStyle(document.body);
+  const bgColor = bodyStyle.backgroundColor || "#fdfcfa";
+
+  // Clear spectrogram canvas
+  spectrogramCtx.fillStyle = bgColor;
+  spectrogramCtx.fillRect(
+    0,
+    0,
+    spectrogramCanvas.width,
+    spectrogramCanvas.height,
+  );
+
+  // Clear waveform canvas
+  waveformCtx.fillStyle = bgColor;
+  waveformCtx.fillRect(0, 0, waveformCanvas.width, waveformCanvas.height);
 }
 
 // Toggle audio connection
 function toggleAudio() {
+  console.log("toggleAudio called, audioWs state:", audioWs?.readyState);
   const button = document.getElementById("audioToggle");
   if (audioWs && audioWs.readyState === WebSocket.OPEN) {
     audioWs.close();
-    button.textContent = "Connect Audio";
+    button.textContent = _("connect-audio");
     button.classList.remove("active");
 
     // Clean up AudioWorklet if used
@@ -105,7 +132,7 @@ function toggleAudio() {
     }
   } else {
     connectAudio();
-    button.textContent = "Disconnect Audio";
+    button.textContent = _("disconnect-audio");
     button.classList.add("active");
   }
 }
@@ -116,21 +143,32 @@ function connectAudio() {
   audioWs = new WebSocket(`${wsProtocol}//${location.host}/ws/audio`);
   audioWs.binaryType = "arraybuffer"; // Ensure binary data is received as ArrayBuffer
 
-  audioWs.onopen = () => {
-    updateStatus("audioStatus", "Connected", true);
+  audioWs.onopen = async () => {
+    console.log("WebSocket opened successfully");
+    updateStatus("connection-status", "Connected", true);
     addMessage("✅ Audio connected");
     window.audioWs = audioWs; // Make available for debugging
-    initAudioContext();
+    console.log("Calling initAudioContext...");
+    await initAudioContext();
+    console.log("initAudioContext completed");
   };
 
   audioWs.onmessage = (event) => {
+    console.log(
+      "WebSocket message, size:",
+      event.data.byteLength || event.data.length,
+      "type:",
+      typeof event.data,
+    );
     if (event.data instanceof ArrayBuffer) {
       handleAudioData(event.data);
+    } else {
+      console.warn("Unexpected data type:", typeof event.data, event.data);
     }
   };
 
   audioWs.onclose = () => {
-    updateStatus("audioStatus", "Disconnected", false);
+    updateStatus("connection-status", "Disconnected", false);
     addMessage("Audio disconnected");
 
     // Clean up oscillator (for fallback mode)
@@ -173,108 +211,177 @@ function connectAudio() {
 
 // Initialize audio context with Web Audio API FFT
 async function initAudioContext() {
+  console.log("initAudioContext called, current state:", audioContext);
   if (!audioContext) {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)({
-      sampleRate: 48000,
-    });
+    try {
+      console.log("Creating new AudioContext...");
+      audioContext = new (window.AudioContext || window.webkitAudioContext)({
+        sampleRate: 48000,
+      });
+      console.log("AudioContext created, state:", audioContext.state);
 
-    // Create analyser node for FFT
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = fftSize;
-    analyser.smoothingTimeConstant = 0;
+      // Create analyser node for FFT
+      console.log("Creating analyser node...");
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = fftSize;
+      analyser.smoothingTimeConstant = 0;
+      console.log("Analyser created with fftSize:", analyser.fftSize);
+      window.analyser = analyser; // Expose globally for debugging
 
-    // Create gain node for volume control
-    gainNode = audioContext.createGain();
-    gainNode.gain.value = volume / 100;
+      // Create gain node for volume control
+      console.log("Creating gain node...");
+      gainNode = audioContext.createGain();
+      gainNode.gain.value = volume / 100;
+      console.log("Gain node created with value:", gainNode.gain.value);
 
-    // Try to use AudioWorklet if available
-    if (typeof AudioWorkletNode !== "undefined" && audioContext.audioWorklet) {
-      try {
-        // Note: The URL will be provided by the template
-        const moduleUrl =
-          window.audioProcessorUrl || "/static/js/audio-processor.js";
+      // Try to use AudioWorklet if available - DISABLED due to browser issues
+      console.log("Checking AudioWorklet availability...");
+      // Temporarily disable AudioWorklet to use fallback path which works reliably
+      const skipAudioWorklet = true; // Force fallback for now
+      if (
+        !skipAudioWorklet &&
+        typeof AudioWorkletNode !== "undefined" &&
+        audioContext.audioWorklet
+      ) {
+        console.log("AudioWorklet is available, attempting to initialize...");
+        try {
+          // Note: The URL will be provided by the template
+          const moduleUrl =
+            window.audioProcessorUrl || "/static/js/audio-processor.js";
+          console.log("Loading AudioWorklet module from:", moduleUrl);
 
-        // Load the AudioWorklet processor directly
-        await audioContext.audioWorklet.addModule(moduleUrl);
+          // Add timeout for AudioWorklet loading
+          const loadPromise = audioContext.audioWorklet.addModule(moduleUrl);
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("AudioWorklet loading timeout")),
+              3000,
+            ),
+          );
 
-        // Create AudioWorklet node with explicit output configuration
-        audioWorkletNode = new AudioWorkletNode(
-          audioContext,
-          "pcm-audio-processor",
-          {
-            numberOfInputs: 0, // We're not using inputs
-            numberOfOutputs: 1, // We need one output
-            outputChannelCount: [2], // Stereo output
-          },
-        );
+          // Race between loading and timeout
+          await Promise.race([loadPromise, timeoutPromise]);
+          console.log("AudioWorklet module loaded successfully");
 
-        // Connect audio graph: worklet -> analyser -> gain -> destination
-        // This matches the BufferSource path that was working
-        audioWorkletNode.connect(analyser);
-        analyser.connect(gainNode);
+          // Create AudioWorklet node with explicit output configuration
+          audioWorkletNode = new AudioWorkletNode(
+            audioContext,
+            "pcm-audio-processor",
+            {
+              numberOfInputs: 0, // We're not using inputs
+              numberOfOutputs: 1, // We need one output
+              outputChannelCount: [2], // Stereo output
+            },
+          );
+          console.log("AudioWorklet node created");
+
+          // Connect audio graph: worklet -> analyser -> gain -> destination
+          // This matches the BufferSource path that was working
+          audioWorkletNode.connect(analyser);
+          analyser.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          console.log(
+            "Audio graph connected: worklet -> analyser -> gain -> destination",
+          );
+
+          // Set up message handling
+          audioWorkletNode.port.onmessage = (event) => {
+            if (event.data.type === "underrun") {
+              console.warn("Audio buffer underrun");
+            } else if (event.data.type === "metrics") {
+              console.log("AudioWorklet metrics:", event.data);
+            }
+            // Removed bufferReady logging - too noisy
+          };
+
+          // Configure the worklet with balanced threshold
+          audioWorkletNode.port.postMessage({
+            type: "config",
+            sampleRate: 48000,
+            bufferThreshold: 512, // Balance between latency and smooth playback
+          });
+
+          useAudioWorklet = true;
+          window.useAudioWorklet = true; // Expose globally
+          window.audioWorkletNode = audioWorkletNode; // Expose globally
+          addMessage("✅ AudioWorklet initialized - low-latency mode active");
+          console.log("AudioWorklet initialization complete");
+        } catch (error) {
+          console.error("❌ AudioWorklet initialization failed:", error);
+          console.error("Error details:", {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+          });
+          useAudioWorklet = false;
+          addMessage(
+            `⚠️ AudioWorklet failed: ${error.message} - using fallback`,
+          );
+        }
+      } else {
+        console.log("AudioWorklet not available, will use fallback");
+      }
+
+      // Fallback: Create a silent oscillator for the analyser if not using AudioWorklet
+      if (!useAudioWorklet) {
+        console.log("Setting up BufferSource fallback...");
         gainNode.connect(audioContext.destination);
 
-        // Set up message handling
-        audioWorkletNode.port.onmessage = (event) => {
-          if (event.data.type === "underrun") {
-            console.warn("Audio buffer underrun");
-          } else if (event.data.type === "metrics") {
-            console.log("AudioWorklet metrics:", event.data);
-          }
-          // Removed bufferReady logging - too noisy
-        };
+        // Create a constant tone source for the analyser (silent)
+        // This keeps the analyser continuously active for smooth waveform display
+        oscillator = audioContext.createOscillator();
+        oscillator.frequency.value = 0; // Silent
+        oscillator.connect(analyser);
+        oscillator.start();
 
-        // Configure the worklet with balanced threshold
-        audioWorkletNode.port.postMessage({
-          type: "config",
-          sampleRate: 48000,
-          bufferThreshold: 512, // Balance between latency and smooth playback
-        });
-
-        useAudioWorklet = true;
-        window.useAudioWorklet = true; // Expose globally
-        window.audioWorkletNode = audioWorkletNode; // Expose globally
-        addMessage("✅ AudioWorklet initialized - low-latency mode active");
-      } catch (error) {
-        console.error("❌ AudioWorklet initialization failed:", error);
-        console.error("Error details:", {
-          name: error.name,
-          message: error.message,
-          stack: error.stack,
-        });
-        useAudioWorklet = false;
-        addMessage(`⚠️ AudioWorklet failed: ${error.message} - using fallback`);
+        console.log("Using BufferSource fallback for audio processing");
       }
+
+      // Use requestAnimationFrame for smoother rendering
+      console.log("Starting visualization loop...");
+      startVisualization();
+    } catch (error) {
+      console.error("CRITICAL ERROR in initAudioContext:", error);
+      console.error("Error stack:", error.stack);
+      addMessage(`❌ Audio initialization failed: ${error.message}`);
     }
-
-    // Fallback: Create a silent oscillator for the analyser if not using AudioWorklet
-    if (!useAudioWorklet) {
-      gainNode.connect(audioContext.destination);
-
-      // Create a constant tone source for the analyser (silent)
-      oscillator = audioContext.createOscillator();
-      oscillator.frequency.value = 0; // Silent
-      oscillator.connect(analyser);
-      oscillator.start();
-
-      console.log("Using BufferSource fallback for audio processing");
-    }
-
-    // Use requestAnimationFrame for smoother rendering
-    startVisualization();
   }
 
   if (audioContext.state === "suspended") {
+    console.log("Resuming suspended AudioContext...");
     await audioContext.resume();
+    console.log("AudioContext resumed, state:", audioContext.state);
   }
+
+  console.log(
+    "initAudioContext complete - analyser:",
+    analyser ? "created" : "null",
+    "gainNode:",
+    gainNode ? "created" : "null",
+  );
+  window.gainNode = gainNode; // Expose globally for debugging
 }
 
 // Handle audio data from WebSocket
 function handleAudioData(arrayBuffer) {
   totalBytesReceived += arrayBuffer.byteLength;
   window.totalBytesReceived = totalBytesReceived; // For debugging
+  console.log(
+    "handleAudioData: bytes=",
+    arrayBuffer.byteLength,
+    "total=",
+    totalBytesReceived,
+    "audioContext=",
+    audioContext?.state,
+  );
 
-  if (!audioContext || !analyser) return;
+  if (!audioContext || !analyser) {
+    console.error("AudioContext or analyser not initialized!", {
+      audioContext,
+      analyser,
+    });
+    return;
+  }
 
   try {
     const dataView = new DataView(arrayBuffer);
@@ -345,8 +452,20 @@ function scheduleAudioBuffer(audioBuffer) {
 
 // Start visualization loop using requestAnimationFrame
 function startVisualization() {
+  console.log("startVisualization called, analyser:", analyser);
+  let frameCounter = 0;
   function visualize() {
     animationFrameId = requestAnimationFrame(visualize);
+    if (frameCounter % 60 === 0) {
+      // Log every 60 frames
+      console.log(
+        "Visualization running, frame:",
+        frameCounter,
+        "analyser:",
+        analyser,
+      );
+    }
+    frameCounter++;
 
     const now = performance.now();
 
@@ -360,6 +479,14 @@ function startVisualization() {
 
       // Check if we have actual data (not silence)
       const hasData = freqData.some((val) => val > 0);
+      if (frameCounter % 60 === 0) {
+        console.log(
+          "FFT data check - hasData:",
+          hasData,
+          "sample values:",
+          freqData.slice(0, 5),
+        );
+      }
 
       if (hasData) {
         // Get time domain data for waveform
@@ -443,6 +570,11 @@ function processFFTData() {
 
 // Draw spectrogram from client-side FFT data with rolling buffer
 function drawSpectrogram() {
+  if (!spectrogramCanvas || !spectrogramCtx) {
+    console.warn("Spectrogram canvas not initialized");
+    return;
+  }
+
   const width = spectrogramCanvas.width;
   const height = spectrogramCanvas.height;
 
@@ -549,49 +681,112 @@ function drawSpectrogram() {
 
 // Update waveform from time domain data
 function updateWaveformFromTimeData(timeData) {
+  if (!waveformCanvas || !waveformCtx) {
+    console.warn("Waveform canvas not initialized");
+    return;
+  }
+
+  // Calculate peak and RMS for the current frame
+  let peak = 0;
+  let rms = 0;
+  for (let i = 0; i < timeData.length; i++) {
+    const value = (timeData[i] - 128) / 128; // Convert from 0-255 to -1 to 1
+    peak = Math.max(peak, Math.abs(value));
+    rms += value * value;
+  }
+  rms = Math.sqrt(rms / timeData.length);
+
+  // Add current peak/RMS to history (downsample to manageable size)
+  // Store peak values to show envelope of activity
+  waveformHistory.push({
+    peak: peak * (gain / 25), // Apply gain to make activity more visible
+    rms: rms * (gain / 25),
+    timestamp: Date.now(),
+  });
+
+  // Keep history for 3 seconds (more zoomed out view)
+  const historyDuration = 3000; // milliseconds
+  const now = Date.now();
+  waveformHistory = waveformHistory.filter(
+    (item) => now - item.timestamp < historyDuration,
+  );
+
+  // Draw the waveform
   const width = waveformCanvas.width;
   const height = waveformCanvas.height;
 
-  // Clear
-  waveformCtx.fillStyle = getCSSVariable("--color-bg-hover") || "#ffffff";
+  // Clear with subtle background
+  waveformCtx.fillStyle = getCSSVariable("--color-bg-hover") || "#fafafa";
   waveformCtx.fillRect(0, 0, width, height);
 
   // Draw zero line
-  waveformCtx.strokeStyle = getCSSVariable("--color-input-border") || "#ccc";
+  waveformCtx.strokeStyle = getCSSVariable("--color-input-border") || "#ddd";
   waveformCtx.lineWidth = 1;
   waveformCtx.beginPath();
   waveformCtx.moveTo(0, height / 2);
   waveformCtx.lineTo(width, height / 2);
   waveformCtx.stroke();
 
-  // Draw waveform
-  waveformCtx.strokeStyle = getCSSVariable("--color-text-emphasis") || "#111";
-  waveformCtx.lineWidth = 1;
-  waveformCtx.beginPath();
+  if (waveformHistory.length > 1) {
+    // Draw peak envelope (shows maximum activity)
+    waveformCtx.strokeStyle = getCSSVariable("--color-primary") || "#007bff";
+    waveformCtx.lineWidth = 1.5;
+    waveformCtx.globalAlpha = 0.8;
+    waveformCtx.beginPath();
 
-  const step = Math.ceil(timeData.length / width);
-  let peak = 0;
-  let rms = 0;
+    for (let i = 0; i < waveformHistory.length; i++) {
+      const x = (i / (waveformHistory.length - 1)) * width;
+      const peakValue = Math.min(1, waveformHistory[i].peak); // Clamp to prevent overflow
 
-  for (let i = 0; i < width; i++) {
-    const index = Math.floor((i * timeData.length) / width);
-    const value = (timeData[index] - 128) / 128; // Convert from 0-255 to -1 to 1
-    const y = ((1 - value) * height) / 2;
+      // Draw both positive and negative peaks
+      const yTop = height / 2 - (peakValue * height) / 2;
+      const yBottom = height / 2 + (peakValue * height) / 2;
 
-    if (i === 0) {
-      waveformCtx.moveTo(i, y);
-    } else {
-      waveformCtx.lineTo(i, y);
+      if (i === 0) {
+        waveformCtx.moveTo(x, yTop);
+      } else {
+        waveformCtx.lineTo(x, yTop);
+      }
     }
 
-    peak = Math.max(peak, Math.abs(value));
-    rms += value * value;
+    // Draw bottom envelope
+    for (let i = waveformHistory.length - 1; i >= 0; i--) {
+      const x = (i / (waveformHistory.length - 1)) * width;
+      const peakValue = Math.min(1, waveformHistory[i].peak);
+      const yBottom = height / 2 + (peakValue * height) / 2;
+      waveformCtx.lineTo(x, yBottom);
+    }
+
+    waveformCtx.closePath();
+    waveformCtx.fillStyle = getCSSVariable("--color-primary") || "#007bff";
+    waveformCtx.globalAlpha = 0.2;
+    waveformCtx.fill();
+    waveformCtx.globalAlpha = 0.8;
+    waveformCtx.stroke();
+    waveformCtx.globalAlpha = 1.0;
+
+    // Draw RMS line (average level)
+    waveformCtx.strokeStyle = getCSSVariable("--color-success") || "#28a745";
+    waveformCtx.lineWidth = 1;
+    waveformCtx.globalAlpha = 0.6;
+    waveformCtx.beginPath();
+
+    for (let i = 0; i < waveformHistory.length; i++) {
+      const x = (i / (waveformHistory.length - 1)) * width;
+      const rmsValue = Math.min(1, waveformHistory[i].rms);
+      const y = height / 2 - (rmsValue * height) / 2;
+
+      if (i === 0) {
+        waveformCtx.moveTo(x, y);
+      } else {
+        waveformCtx.lineTo(x, y);
+      }
+    }
+    waveformCtx.stroke();
+    waveformCtx.globalAlpha = 1.0;
   }
 
-  waveformCtx.stroke();
-
-  // Update levels
-  rms = Math.sqrt(rms / width);
+  // Update level displays with current values
   document.getElementById("peakLevel").textContent =
     peak > 0 ? (20 * Math.log10(peak)).toFixed(1) + " dB" : "-∞ dB";
   document.getElementById("rmsLevel").textContent =
@@ -618,6 +813,10 @@ function updateMetrics() {
 // Update status
 function updateStatus(elementId, text, active) {
   const element = document.getElementById(elementId);
+  if (!element) {
+    console.warn(`Element with ID '${elementId}' not found`);
+    return;
+  }
   element.textContent = text;
   element.className = active
     ? "status-value status-active"
@@ -647,6 +846,14 @@ function setVolume(value) {
   if (gainNode) {
     gainNode.gain.value = value / 100;
   }
+}
+
+function setGain(value) {
+  gain = parseFloat(value);
+  document.getElementById("gainValue").textContent = value + " dB";
+  console.log("Gain updated to:", gain, "dB");
+  // Gain affects the visualization intensity, not the audio path
+  // The actual gain will be applied during FFT data processing
 }
 
 function updateFFTSize(value) {
@@ -791,6 +998,17 @@ function connectDetectionStream() {
 
 // Initialize livestream page
 function initializeLivestream() {
+  // Initialize canvas elements first
+  spectrogramCanvas = document.getElementById("spectrogramCanvas");
+  waveformCanvas = document.getElementById("waveformCanvas");
+
+  if (spectrogramCanvas) {
+    spectrogramCtx = spectrogramCanvas.getContext("2d", { alpha: false });
+  }
+  if (waveformCanvas) {
+    waveformCtx = waveformCanvas.getContext("2d", { alpha: false });
+  }
+
   // Add fadeIn animation style
   const style = document.createElement("style");
   style.textContent = `
@@ -814,7 +1032,7 @@ function initializeLivestream() {
 
   // Initialize components
   resizeCanvases();
-  addMessage("System ready - Client-side FFT mode");
+  addMessage("System ready");
 
   // Update initial FFT resolution display
   const resolution = 48000 / fftSize;
@@ -828,7 +1046,11 @@ function initializeLivestream() {
 // Initialize
 window.addEventListener("load", initializeLivestream);
 
-window.addEventListener("resize", resizeCanvases);
+window.addEventListener("resize", () => {
+  if (spectrogramCanvas && waveformCanvas) {
+    resizeCanvases();
+  }
+});
 
 // Keep connection alive
 setInterval(() => {
@@ -836,3 +1058,15 @@ setInterval(() => {
     audioWs.send("ping");
   }
 }, 30000);
+
+// Initialize everything when DOM is ready
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("DOM loaded, initializing livestream...");
+  initializeLivestream();
+  console.log("Livestream initialized - canvas contexts:", {
+    spectrogramCtx: !!spectrogramCtx,
+    waveformCtx: !!waveformCtx,
+    spectrogramCanvas: !!spectrogramCanvas,
+    waveformCanvas: !!waveformCanvas,
+  });
+});

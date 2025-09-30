@@ -1,32 +1,21 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Settings Editor - BirdNET-Pi</title>
+{% extends "base.html.j2" %}
+{% set page_name = 'Advanced Settings' %}
 
-    <!-- Main site stylesheet (includes YAML editor styles) -->
-    <link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}" />
-
+{% block styles %}
+    {{ super() }}
     <!-- CodeMirror CSS -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.css"
     />
-  </head>
-  <body>
-    <!-- Update and development warning banners -->
-    {% include 'includes/update_banner.html.j2' %}
+{% endblock %}
 
-    <!-- Header -->
-    <header>
-      <h1>BirdNET-Pi</h1>
-      <p class="tagline">Configuration Editor</p>
-    </header>
-
-    <!-- Navigation -->
+{% block navigation %}
     {% set active_page = 'settings' %}
-    {% include 'includes/navigation.html.j2' %}
+    {{ super() }}
+{% endblock %}
+
+{% block content %}
 
     <!-- Alert messages -->
     <div class="editor-alert success" id="successAlert"></div>
@@ -42,13 +31,13 @@
 
       <div class="editor-toolbar">
         <button class="editor-button primary" onclick="saveConfig()">
-          Save Configuration
+          {{ _('Save Configuration') }}
         </button>
         <button class="editor-button" onclick="validateConfig()">
-          Validate
+          {{ _('Validate') }}
         </button>
         <button class="editor-button" onclick="resetToOriginal()">
-          Reset Changes
+          {{ _('Reset Changes') }}
         </button>
         <button
           class="editor-button"
@@ -69,16 +58,20 @@
           Line <span id="lineNumber">1</span>, Column
           <span id="columnNumber">1</span>
         </span>
-        <span class="shortcuts-hint"> Ctrl+S save · Ctrl+Enter validate </span>
+        <span class="shortcuts-hint">{{ _('Ctrl+S save · Ctrl+Enter validate') }}</span>
       </div>
     </div>
 
-    <!-- Annotations -->
+{% endblock %}
+
+{% block footer_annotation %}
     <p class="annotation">
-      This editor provides direct access to the BirdNET-Pi configuration file.
-      Changes require a service restart to take effect. Use the Basic Settings
-      page for guided configuration.
+      {{ _('This editor provides direct access to the BirdNET-Pi configuration file.') }}
+      {{ _('Changes require a service restart to take effect.') }} {{ _('Use the Basic Settings page for guided configuration.') }}
     </p>
+{% endblock %}
+
+{% block scripts %}
 
     <!-- CodeMirror JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.js"></script>
@@ -132,8 +125,10 @@
       editor.on("change", function () {
         const currentContent = editor.getValue();
         hasChanges = currentContent !== originalContent;
+        const modifiedText = document.querySelector('#js-messages [data-msg="modified-status"]')?.textContent || "Modified";
+        const readyText = document.querySelector('#js-messages [data-msg="ready-status"]')?.textContent || "Ready";
         updateStatus(
-          hasChanges ? "Modified" : "Ready",
+          hasChanges ? modifiedText : readyText,
           hasChanges ? "modified" : "ready",
         );
       });
@@ -192,9 +187,12 @@
           const result = await response.json();
 
           if (result.valid) {
-            showAlert("success", "Configuration is valid");
+            const validMsg = document.querySelector('#js-messages [data-msg="validation-passed"]')?.textContent || "Configuration is valid";
+            showAlert("success", validMsg);
+            const modValidText = document.querySelector('#js-messages [data-msg="modified-valid-status"]')?.textContent || "Modified (valid)";
+            const readyText = document.querySelector('#js-messages [data-msg="ready-status"]')?.textContent || "Ready";
             updateStatus(
-              hasChanges ? "Modified (valid)" : "Ready",
+              hasChanges ? modValidText : readyText,
               hasChanges ? "modified" : "ready",
             );
           } else {
@@ -256,15 +254,18 @@
           if (saveResult.success) {
             showAlert(
               "success",
-              "Configuration saved. Restart BirdNET-Pi services to apply changes.",
+              document.querySelector('#js-messages [data-msg="config-saved"]')?.textContent || "Configuration saved. Restart BirdNET-Pi services to apply changes.",
             );
-            updateStatus("Saved", "saved");
+            const savedText = document.querySelector('#js-messages [data-msg="saved-status"]')?.textContent || "Saved";
+            updateStatus(savedText, "saved");
             hasChanges = false;
             // Update original content to new saved content
             originalContent = yamlContent;
           } else {
-            showAlert("error", "Failed to save: " + saveResult.error);
-            updateStatus("Save failed", "error");
+            const failedMsg = (document.querySelector('#js-messages [data-msg="save-failed"]')?.textContent || "Failed to save: %(error)s").replace('%(error)s', saveResult.error);
+            showAlert("error", failedMsg);
+            const failedStatus = document.querySelector('#js-messages [data-msg="save-failed-status"]')?.textContent || "Save failed";
+            updateStatus(failedStatus, "error");
           }
         } catch (error) {
           showAlert("error", "Network error: " + error.message);
@@ -275,14 +276,16 @@
       }
 
       function resetToOriginal() {
-        if (hasChanges && !confirm("Discard all unsaved changes?")) {
+        const msg = document.querySelector('#js-messages [data-msg="discard-changes"]')?.textContent || 'Discard all unsaved changes?';
+        if (hasChanges && !confirm(msg)) {
           return;
         }
 
         editor.setValue(originalContent);
         hasChanges = false;
         updateStatus("Ready", "ready");
-        showAlert("success", "Reset to saved configuration");
+        const resetMsg = document.querySelector('#js-messages [data-msg="reset-success"]')?.textContent || "Reset to saved configuration";
+        showAlert("success", resetMsg);
       }
 
       // Warn before leaving if there are unsaved changes
@@ -296,5 +299,4 @@
       // Initial status
       updateStatus("Ready", "ready");
     </script>
-  </body>
-</html>
+{% endblock %}

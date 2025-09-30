@@ -34,7 +34,7 @@ def test_detection_result():
     from pathlib import Path
 
     # Both paths should be the same relative path
-    relative_path = Path("recordings/Test_species/20240101_120000.wav")
+    relative_path = Path("Test_species/20240101_120000.wav")
     return {
         "file_path": relative_path,  # FileManager returns the same relative path
         "duration": 10.0,

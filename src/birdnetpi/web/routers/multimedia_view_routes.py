@@ -1,5 +1,7 @@
 """Multimedia view routes for livestream HTML pages."""
 
+from typing import Annotated
+
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -15,8 +17,8 @@ router = APIRouter()
 @inject
 async def get_livestream(
     request: Request,
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
-    config: BirdNETConfig = Depends(Provide[Container.config]),  # noqa: B008
+    templates: Annotated[Jinja2Templates, Depends(Provide[Container.templates])],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
 ) -> HTMLResponse:
     """Render the livestream page."""
     return templates.TemplateResponse(

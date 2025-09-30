@@ -1,6 +1,7 @@
 """Reports view routes for detection displays and analytics."""
 
 import logging
+from typing import Annotated
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Query, Request
@@ -22,15 +23,15 @@ router = APIRouter()
 @inject
 async def get_all_detections(
     request: Request,
+    templates: Annotated[Jinja2Templates, Depends(Provide[Container.templates])],
+    presentation_manager: Annotated[
+        PresentationManager, Depends(Provide[Container.presentation_manager])
+    ],
+    detection_query_service: Annotated[
+        DetectionQueryService, Depends(Provide[Container.detection_query_service])
+    ],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
     period: str = Query("day", description="Time period to display"),
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
-    presentation_manager: PresentationManager = Depends(  # noqa: B008
-        Provide[Container.presentation_manager]
-    ),
-    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
-        Provide[Container.detection_query_service]
-    ),
-    config: BirdNETConfig = Depends(Provide[Container.config]),  # noqa: B008
 ) -> HTMLResponse:
     """Render the detection display page with real-time data.
 
@@ -84,80 +85,40 @@ async def get_all_detections(
 @inject
 async def get_ecological_analysis(
     request: Request,
+    templates: Annotated[Jinja2Templates, Depends(Provide[Container.templates])],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
     period: str = Query("30d", description="Analysis period"),
     comparison: str = Query("none", description="Comparison period"),
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
-    presentation_manager: PresentationManager = Depends(  # noqa: B008
-        Provide[Container.presentation_manager]
-    ),
-    config: BirdNETConfig = Depends(Provide[Container.config]),  # noqa: B008
 ) -> HTMLResponse:
-    """Render the ecological analysis page with diversity metrics and visualizations."""
-    try:
-        # Map comparison value to PresentationManager format
-        comparison_period = None if comparison == "none" else comparison
-
-        # Get formatted data from PresentationManager
-        # Set progressive=False to load all analytics data at once
-        # With our weather query optimization, this should be fast now
-        template_data = await presentation_manager.get_analysis_page_data(
-            primary_period=period, comparison_period=comparison_period, progressive=False
-        )
-
-        # Add request context and site info
-        template_data["request"] = request
-        template_data["site_name"] = config.site_name
-        template_data["location"] = f"{config.latitude:.4f}, {config.longitude:.4f}"
-        template_data["confidence_threshold"] = config.species_confidence_threshold
-        template_data["period"] = period
-        template_data["comparison_period"] = comparison
-        # Debug: Log the values being passed
-        logger.info(f"Template variables: period={period}, comparison={comparison}")
-
-        # Add current timestamp for the template
-        import datetime
-
-        template_data["generated_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-
-        # Render template with data
-        return templates.TemplateResponse(
-            request,
-            "reports/analysis.html.j2",
-            template_data,
-        )
-
-    except Exception as e:
-        logger.error(f"Error rendering ecological analysis page: {e}", exc_info=True)
-
-        # Render with minimal fallback data
-        import datetime
-
-        return templates.TemplateResponse(
-            request,
-            "reports/analysis.html.j2",
-            {
-                "site_name": config.site_name,
-                "location": f"{config.latitude:.4f}, {config.longitude:.4f}",
-                "confidence_threshold": config.species_confidence_threshold,
-                "generated_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "error": str(e),
-                "analyses": {},
-                "summary": {
-                    "primary_period": {"start": "", "end": "", "total_detections": 0},
-                },
-            },
-        )
+    """Render the ecological analysis page shell for progressive loading."""
+    # Just render the template shell - all data will be loaded via AJAX
+    return templates.TemplateResponse(
+        request,
+        "reports/analysis.html.j2",
+        {
+            "request": request,
+            "site_name": config.site_name,
+            "location": f"{config.latitude:.4f}, {config.longitude:.4f}",
+            "confidence_threshold": config.species_confidence_threshold,
+            "period": period,
+            "comparison_period": comparison if comparison != "none" else None,
+            # Empty placeholders - JavaScript will fetch and populate
+            "analyses": {},
+            "summary": {},
+            "generated_at": "",
+        },
+    )
 
 
 @router.get("/reports/best", response_class=HTMLResponse)
 @inject
 async def get_best_recordings(
     request: Request,
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
-    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
-        Provide[Container.detection_query_service]
-    ),
-    config: BirdNETConfig = Depends(Provide[Container.config]),  # noqa: B008
+    templates: Annotated[Jinja2Templates, Depends(Provide[Container.templates])],
+    detection_query_service: Annotated[
+        DetectionQueryService, Depends(Provide[Container.detection_query_service])
+    ],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
 ) -> HTMLResponse:
     """Render the best recordings page with high-confidence detections."""
     try:

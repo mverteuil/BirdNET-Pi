@@ -1,29 +1,32 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BirdNET-Pi</title>
-    <link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}" />
-    <link rel="stylesheet" href="{{ request.url_for('static', path='css/dashboard.css') }}" />
-  </head>
-  <body>
-    <header>
-      <h1>{{ site_name | default('BirdNET-Pi') }} <span class="live" title="System Active"></span></h1>
-      <p class="tagline">
-        Continuous acoustic monitoring · <span id="device-name">Loading...</span> · {{ location | default('Location not set') }}
-      </p>
-    </header>
+{% extends "base.html.j2" %}
+{# Dashboard/homepage doesn't need a page_name - just shows site name #}
 
-    <!-- Update and development warning banners -->
-    {% include 'includes/update_banner.html.j2' %}
-
-    <!-- Navigation -->
+{% block navigation %}
     {% set active_page = 'dashboard' %}
-    {% include 'includes/navigation.html.j2' %}
+    {{ super() }}
+{% endblock %}
+
+{% block styles %}
+    {{ super() }}
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/dashboard.css') }}" />
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <!-- Load dashboard JavaScript with cache busting -->
+    <script src="{{ url_for('static', path='js/dashboard.js') }}?v={{ range(1000, 9999) | random }}"></script>
+{% endblock %}
+
+{% block content %}
+    <!-- Dashboard data for JavaScript -->
+    <div id="dashboard-data"
+         data-species-frequency='{{ species_frequency | tojson }}'
+         data-hourly-distribution='{{ hourly_distribution | tojson }}'
+         data-visualization='{{ visualization_data | tojson }}'
+         style="display: none;"></div>
 
     <!-- Hero Visualization -->
-    <div class="hero-viz">
+    <div class="hero-viz" role="img" aria-label="{{ _('Bird detection activity visualization') }}">
       <div id="visualization">
         <div class="time-gradient"></div>
         <div class="activity-wave"></div>
@@ -31,81 +34,81 @@
     </div>
 
     <!-- Primary metrics - inline presentation -->
-    <div class="primary-metrics">
-      <span class="metric">{{ metrics.species_detected }}</span> species detected ·
-      <span class="metric">{{ metrics.detections_today }}</span> detections today ·
-      <span class="metric">{{ metrics.species_week }}</span> active species this week ·
-      <span class="metric">{{ metrics.storage }}</span> recordings ·
-      <span class="metric">{{ metrics.hours }}</span> hours monitored · Confidence threshold
+    <div class="primary-metrics" role="region" aria-label="{{ _('Detection statistics summary') }}">
+      <span class="metric">{{ metrics.species_detected }}</span> {{ _('species detected') }} ·
+      <span class="metric">{{ metrics.detections_today }}</span> {{ _('detections today') }} ·
+      <span class="metric">{{ metrics.species_week }}</span> {{ _('active species this week') }} ·
+      <span class="metric">{{ metrics.storage }}</span> {{ _('recordings') }} ·
+      <span class="metric">{{ metrics.hours }}</span> {{ _('hours monitored') }} · {{ _('Confidence threshold') }}
       <span class="metric">{{ metrics.threshold }}</span>
     </div>
 
     <!-- System status bar (progressively loaded) -->
-    <div class="system-status" id="system-status">
-      <div class="status-segment">
-        <span class="status-tooltip" id="cpu-tooltip">Loading...</span>
-        <span class="status-label">CPU</span>
-        <span class="status-value" id="cpu-value">--</span>
-        <span class="status-indicator" id="cpu-indicator" style="width: 0%"></span>
+    <div class="system-status" id="system-status" role="region" aria-label="{{ _('System resource status') }}" aria-live="polite">
+      <div class="status-segment" role="group" aria-labelledby="cpu-label">
+        <span class="status-tooltip" id="cpu-tooltip" role="tooltip">{{ _('Loading...') }}</span>
+        <span class="status-label" id="cpu-label">{{ _('CPU') }}</span>
+        <span class="status-value" id="cpu-value" aria-live="polite">--</span>
+        <span class="status-indicator" id="cpu-indicator" style="width: 0%" aria-hidden="true"></span>
       </div>
 
-      <div class="status-segment">
-        <span class="status-tooltip" id="memory-tooltip">Loading...</span>
-        <span class="status-label">Mem</span>
-        <span class="status-value" id="memory-value">--</span>
-        <span class="status-indicator" id="memory-indicator" style="width: 0%"></span>
+      <div class="status-segment" role="group" aria-labelledby="memory-label">
+        <span class="status-tooltip" id="memory-tooltip" role="tooltip">{{ _('Loading...') }}</span>
+        <span class="status-label" id="memory-label">{{ _('Mem') }}</span>
+        <span class="status-value" id="memory-value" aria-live="polite">--</span>
+        <span class="status-indicator" id="memory-indicator" style="width: 0%" aria-hidden="true"></span>
       </div>
 
-      <div class="status-segment">
-        <span class="status-tooltip" id="disk-tooltip">Loading...</span>
-        <span class="status-label">Disk</span>
-        <span class="status-value" id="disk-value">--</span>
-        <span class="status-indicator" id="disk-indicator" style="width: 0%"></span>
+      <div class="status-segment" role="group" aria-labelledby="disk-label">
+        <span class="status-tooltip" id="disk-tooltip" role="tooltip">{{ _('Loading...') }}</span>
+        <span class="status-label" id="disk-label">{{ _('Disk') }}</span>
+        <span class="status-value" id="disk-value" aria-live="polite">--</span>
+        <span class="status-indicator" id="disk-indicator" style="width: 0%" aria-hidden="true"></span>
       </div>
 
-      <div class="status-segment">
-        <span class="status-tooltip" id="audio-tooltip">Loading...</span>
-        <span class="status-label">Audio</span>
-        <span class="status-value" id="audio-value">--</span>
-        <span class="status-indicator" id="audio-indicator" style="width: 0%"></span>
+      <div class="status-segment" role="group" aria-labelledby="audio-label">
+        <span class="status-tooltip" id="audio-tooltip" role="tooltip">{{ _('Loading...') }}</span>
+        <span class="status-label" id="audio-label">{{ _('Audio') }}</span>
+        <span class="status-value" id="audio-value" aria-live="polite">--</span>
+        <span class="status-indicator" id="audio-indicator" style="width: 0%" aria-hidden="true"></span>
       </div>
 
-      <div class="status-segment">
-        <span class="status-tooltip" id="uptime-tooltip">System uptime</span>
-        <span class="status-label">Up</span>
-        <span class="status-value" id="uptime-value">--</span>
-        <span class="status-indicator" id="uptime-indicator" style="width: 100%"></span>
+      <div class="status-segment" role="group" aria-labelledby="uptime-label">
+        <span class="status-tooltip" id="uptime-tooltip" role="tooltip">{{ _('System uptime') }}</span>
+        <span class="status-label" id="uptime-label">{{ _('Up') }}</span>
+        <span class="status-value" id="uptime-value" aria-live="polite">--</span>
+        <span class="status-indicator" id="uptime-indicator" style="width: 100%" aria-hidden="true"></span>
       </div>
     </div>
 
     <!-- Main content grid -->
-    <div class="main-grid">
+    <div class="main-grid" role="main">
       <!-- Detection log -->
-      <div class="detection-log">
-        <div class="log-header">
-          <span>Time</span>
-          <span>Species</span>
-          <span>Conf.</span>
+      <div class="detection-log" role="region" aria-label="{{ _('Recent detections log') }}">
+        <div class="log-header" role="row">
+          <span>{{ _('Time') }}</span>
+          <span>{{ _('Species') }}</span>
+          <span>{{ _('Conf.') }}</span>
         </div>
         {% for detection in detection_log[:10] %}
-        <div class="log-entry">
+        <div class="log-entry" role="row">
           <span class="time">{{ detection.time }}</span>
           <span>{{ detection.common_name }}</span>
           <span class="confidence">{{ detection.confidence }}</span>
         </div>
         {% endfor %}
         {% if not detection_log %}
-        <div class="log-entry">
+        <div class="log-entry" role="row">
           <span class="time">--:--</span>
-          <span>No recent detections</span>
+          <span>{{ _('No recent detections') }}</span>
           <span class="confidence">--</span>
         </div>
         {% endif %}
       </div>
 
       <!-- Species frequency -->
-      <div class="frequency-list">
-        <div class="list-header">Today's Species (24h)</div>
+      <div class="frequency-list" role="region" aria-label="{{ _('Species frequency chart') }}">
+        <div class="list-header" role="heading" aria-level="2">{{ _("Today's Species (24h)") }}</div>
         {% for species in species_frequency[:10] %}
         <div class="frequency-item">
           <span class="species-name">{{ species.name }}</span>
@@ -117,7 +120,7 @@
         {% endfor %}
         {% if not species_frequency %}
         <div class="frequency-item">
-          <span class="species-name">No species detected today</span>
+          <span class="species-name">{{ _('No species detected today') }}</span>
           <span class="freq-count">0</span>
           <span class="freq-bar"
             ><span class="bar" style="width: 0%"></span
@@ -127,34 +130,16 @@
       </div>
     </div>
 
+    <!-- Detection notification banner (initially hidden) -->
+    <div id="detection-banner" class="detection-banner d-none">
+      <span class="banner-content"></span>
+    </div>
+{% endblock %}
+
+{% block footer_annotation %}
     <p class="annotation">
       BirdNET v2.4 · Confidence threshold ≥0.70 · UTC-05:00 · Last model update:
       2025-01-15 · Microphone: USB Audio Device (48 kHz, 16-bit) · Recording: 3s
       segments every 12s
     </p>
-
-    <!-- Detection notification banner (initially hidden) -->
-    <div id="detection-banner" class="detection-banner d-none">
-      <span class="banner-content"></span>
-    </div>
-
-    <!-- Load dashboard JavaScript with cache busting -->
-    <script src="{{ url_for('static', path='js/dashboard.js') }}?v={{ range(1000, 9999) | random }}"></script>
-
-    <script>
-      // Initialize data from server
-      const speciesFrequencyData = {{ species_frequency | tojson }};
-      const hourlyDistributionData = {{ hourly_distribution | tojson }};
-      const visualizationDataFromServer = {{ visualization_data | tojson }};
-
-      // Pass data to dashboard functions
-      document.addEventListener("DOMContentLoaded", () => {
-        initializeSpeciesData(speciesFrequencyData);
-        setHourlyDistribution(hourlyDistributionData);
-        setVisualizationData(visualizationDataFromServer);
-      });
-
-      // Note: All main functions are now in dashboard.js
-    </script>
-  </body>
-</html>
+{% endblock %}

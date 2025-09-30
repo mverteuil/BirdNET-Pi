@@ -24,7 +24,7 @@ class SpeciesDatabaseService:
     """Service for multilingual bird name lookups across three databases."""
 
     def __init__(self, path_resolver: PathResolver):
-        """Initialize multilingual database service.
+        """Initialize species database service.
 
         Args:
             path_resolver: File path resolver for database locations

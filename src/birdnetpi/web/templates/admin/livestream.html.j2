@@ -1,169 +1,196 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BirdNET-Pi Livestream (Client FFT)</title>
-    <link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}">
+{% extends "base.html.j2" %}
+{% set page_name = 'Audio Stream' %}
+
+{% block navigation %}
+    {% set active_page = 'livestream' %}
+    {{ super() }}
+{% endblock %}
+
+{% block styles %}
+    {{ super() }}
     <link rel="stylesheet" href="{{ request.url_for('static', path='css/livestream.css') }}">
-</head>
-<body>
-<!-- Update and development warning banners -->
-{% include 'includes/update_banner.html.j2' %}
+{% endblock %}
 
-<header>
-    <h1>BirdNET-Pi <span class="live" title="System Active"></span></h1>
-    <p class="tagline">
-        Continuous acoustic monitoring · {{ location | default('Location not set') }}
-    </p>
-</header>
+{% block scripts %}
+    {{ super() }}
+    <!-- Load livestream JavaScript -->
+    <script>
+        // Set the AudioWorklet processor URL for the external script
+        window.audioProcessorUrl = '{{ request.url_for("static", path="js/audio-processor.js") }}';
+    </script>
+    <script src="{{ url_for('static', path='js/livestream.js') }}"></script>
+{% endblock %}
 
-<!-- Navigation -->
-{% set active_page = 'livestream' %}
-{% include 'includes/navigation.html.j2' %}
+{% block content %}
+<!-- Page header with status information -->
+<div class="page-header">
+    <h1 class="page-title">{{ _('Live Audio Stream') }}</h1>
+    <p class="subtitle">{{ _('Real-time acoustic monitoring') }} · {{ _('48 kHz sampling') }} · {{ _('Client-side processing') }}</p>
+</div>
 
-<!-- Page title -->
-<h1 class="page-title">Live Audio Stream (Client-Side FFT)</h1>
-<p class="subtitle">Real-time acoustic monitoring · 48 kHz sampling · Client-side processing</p>
-
-<!-- Connection status -->
+<!-- Connection status bar -->
 <div class="status-line">
-    Audio: <span id="audioStatus" class="status-value status-inactive">Disconnected</span>
-    ·
-    Performance: <span id="performanceStatus" class="status-value">-- ms/frame</span> ·
-    Updates: <span id="updateRate" class="status-value">0 Hz</span> ·
-    Buffer: <span id="bufferSize" class="status-value">0 KB</span> ·
-    <span style="color: var(--color-status-success);">● Single WebSocket</span>
+    <div class="status-item">
+        <span class="status-label">{{ _('Status:') }}</span>
+        <span id="connection-status" class="status-value status-inactive">{{ _('Disconnected') }}</span>
+    </div>
+    <div class="status-item">
+        <span class="status-label">{{ _('Sample Rate:') }}</span>
+        <span id="sample-rate" class="status-value">--</span> kHz
+    </div>
+    <div class="status-item">
+        <span class="status-label">{{ _('Buffer:') }}</span>
+        <span id="bufferSize" class="status-value">0</span> {{ _('samples') }}
+    </div>
+    <div class="status-item">
+        <span class="status-label">{{ _('Latency:') }}</span>
+        <span id="latency" class="status-value">--</span> ms
+    </div>
 </div>
 
-<!-- Controls -->
+<!-- Primary controls section -->
 <div class="controls">
+    <h2 class="section-title">{{ _('Audio Controls') }}</h2>
     <div class="control-row">
-        <button class="control-button" id="audioToggle" onclick="toggleAudio()">Connect Audio</button>
-        <span class="control-label">Volume:</span>
-        <input type="range" min="0" max="100" value="60"
-               class="volume-slider"
-               onchange="setVolume(this.value)">
-        <span id="volumeValue" class="status-value">60%</span>
-
-        <span class="control-label ml-2rem">FFT Size:</span>
-        <select id="fftSize" onchange="updateFFTSize(this.value)">
-            <option value="512">512</option>
-            <option value="1024">1024</option>
-            <option value="2048" selected>2048</option>
-            <option value="4096">4096</option>
-        </select>
-    </div>
-    <div class="control-row">
-        <span class="control-label">Frequency max:</span>
-        <input type="number" class="control-value" id="maxFreq" value="12000" min="1000"
-               max="24000" step="500" onchange="updateFrequencyRange()"> Hz
-        <span class="control-label ml-2rem">Time window:</span>
-        <input type="number" class="control-value" id="timeWindow" value="10" min="5"
-               max="60" step="5" onchange="updateTimeWindow()"> s
-        <span class="control-label ml-2rem">Gain:</span>
-        <input type="range" min="1" max="100" value="25"
-               class="gain-slider"
-               onchange="updateGain(this.value)">
+        <button id="audioToggle" class="control-button" onclick="toggleAudio()">
+            {{ _('Connect Audio') }}
+        </button>
+        <label class="control-label">{{ _('Volume:') }}</label>
+        <input type="range" id="volume" min="0" max="100" value="60" class="volume-slider" onchange="setVolume(this.value)">
+        <span id="volumeValue" class="control-value">60%</span>
+        <label class="control-label ml-2rem">{{ _('Gain:') }}</label>
+        <input type="range" id="gain" min="0" max="50" value="25" class="gain-slider" onchange="setGain(this.value)">
+        <span id="gainValue" class="control-value">25 dB</span>
     </div>
 </div>
 
-<!-- Main content -->
+<!-- Main grid: Spectrogram (hero) with detection log alongside -->
 <div class="main-grid">
-    <!-- Left column: Spectrogram and waveform -->
-    <div>
-        <!-- Spectrogram -->
-        <div class="spectrogram-section">
-            <h2 class="section-title">Spectrogram (Client-Side FFT)</h2>
-            <div class="spectrogram-container">
-                <div class="freq-axis-container">
-                    <span id="maxFreqLabel">12k</span>
-                    <span>9k</span>
-                    <span>6k</span>
-                    <span>3k</span>
-                    <span>0</span>
-                </div>
-                <div class="canvas-wrapper">
-                    <canvas id="spectrogramCanvas"></canvas>
-                    <div class="time-axis">
-                        <span id="timeStart">-10s</span>
-                        <span>-7.5s</span>
-                        <span>-5s</span>
-                        <span>-2.5s</span>
-                        <span>now</span>
-                    </div>
-                </div>
-                <div class="gradient-legend">
-                    <div class="text-center mb-0-5 text-xs">dB</div>
-                    <div class="gradient-bar"></div>
-                    <div class="gradient-labels">
-                        <span>0</span>
-                        <span>-20</span>
-                        <span>-40</span>
-                        <span>-60</span>
-                    </div>
+    <!-- Spectrogram panel (primary visualization) -->
+    <div class="spectrogram-section">
+        <h2 class="section-title">{{ _('Real-Time Spectrogram') }}</h2>
+        <div class="spectrogram-container">
+            <div class="freq-axis-container">
+                <span id="maxFreqLabel">12k</span>
+                <span>9k</span>
+                <span>6k</span>
+                <span>3k</span>
+                <span>0</span>
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="spectrogramCanvas" width="800" height="300"></canvas>
+                <div class="time-axis">
+                    <span id="timeStart">-10s</span>
+                    <span>-7.5s</span>
+                    <span>-5s</span>
+                    <span>-2.5s</span>
+                    <span>now</span>
                 </div>
             </div>
-            <div class="inline-metrics">
-                <div class="metric-item">FFT size: <span class="metric-value" id="fftSizeDisplay">2048</span>
-                </div>
-                <div class="metric-item">Resolution: <span class="metric-value" id="freqResolution">46.9 Hz</span></div>
-                <div class="metric-item">Frame rate: <span class="metric-value"
-                                                           id="frameRate">0 fps</span>
-                </div>
-                <div class="metric-item">Client CPU: <span class="metric-value" id="cpuUsage">0%</span>
+            <div class="gradient-legend">
+                <div class="text-center mb-0-5 text-xs">dB</div>
+                <div class="gradient-bar"></div>
+                <div class="gradient-labels">
+                    <span>0</span>
+                    <span>-20</span>
+                    <span>-40</span>
+                    <span>-60</span>
                 </div>
             </div>
         </div>
 
-        <!-- Waveform -->
-        <div class="waveform-container">
-            <h2 class="section-title">Audio Waveform</h2>
-            <canvas id="waveformCanvas"></canvas>
-            <div class="inline-metrics">
-                <div class="metric-item">Peak: <span class="metric-value" id="peakLevel">-∞ dB</span>
-                </div>
-                <div class="metric-item">RMS: <span class="metric-value" id="rmsLevel">-∞ dB</span>
-                </div>
-                <div class="metric-item">Samples: <span class="metric-value"
-                                                        id="sampleCount">0</span></div>
+        <!-- Spectrogram controls -->
+        <div class="control-row">
+            <label class="control-label">{{ _('Max Frequency:') }}</label>
+            <select id="maxFreq" class="control-value" onchange="updateMaxFreq()">
+                <option value="24000">24 kHz</option>
+                <option value="12000" selected>12 kHz</option>
+                <option value="8000">8 kHz</option>
+                <option value="5000">5 kHz</option>
+            </select>
+            <label class="control-label ml-2rem">{{ _('Time Window:') }}</label>
+            <select id="timeWindow" class="control-value" onchange="updateTimeWindow()">
+                <option value="5">5 seconds</option>
+                <option value="10" selected>10 seconds</option>
+                <option value="20">20 seconds</option>
+            </select>
+            <label class="control-label ml-2rem">{{ _('FFT Size:') }}</label>
+            <select id="fftSize" class="control-value" onchange="updateFFTSize(this.value)">
+                <option value="512">512</option>
+                <option value="1024">1024</option>
+                <option value="2048" selected>2048</option>
+                <option value="4096">4096</option>
+            </select>
+        </div>
+
+        <!-- Performance metrics for spectrogram -->
+        <div class="inline-metrics">
+            <div class="metric-item">
+                <span>{{ _('FFT Size:') }}</span>
+                <span id="fftSizeDisplay" class="metric-value">2048</span>
+            </div>
+            <div class="metric-item">
+                <span>{{ _('Resolution:') }}</span>
+                <span id="freqResolution" class="metric-value">46.9 Hz</span>
+            </div>
+            <div class="metric-item">
+                <span>{{ _('Frame Rate:') }}</span>
+                <span id="frameRate" class="metric-value">0 fps</span>
+            </div>
+            <div class="metric-item">
+                <span>{{ _('Update Rate:') }}</span>
+                <span id="updateRate" class="metric-value">0 Hz</span>
             </div>
         </div>
     </div>
 
-    <!-- Right column: Detection log -->
+    <!-- Detection log (alongside spectrogram) -->
     <div class="detection-log">
+        <h2 class="section-title">{{ _('Live Detections') }}</h2>
         <div class="log-header">
-            <span>Time</span>
-            <span>Species</span>
-            <span>Conf.</span>
+            <span>{{ _('Time') }}</span>
+            <span>{{ _('Species') }}</span>
+            <span>{{ _('Confidence') }}</span>
         </div>
         <div id="detectionList">
-            <div class="no-data">No detections yet</div>
+            <div class="no-data">{{ _('No detections yet') }}</div>
         </div>
     </div>
 </div>
 
-<!-- Message log -->
-<div class="message-log">
-    <h2 class="section-title">System Log</h2>
-    <div id="messageLog"></div>
-</div>
+<!-- Secondary debugging information -->
+<details class="viz-panel">
+    <summary class="section-title">{{ _('Debug Information') }}</summary>
 
-<p class="annotation">
-    WebSocket protocol · Binary PCM streaming · <strong>Client-side FFT via Web Audio API</strong> ·
-    Detection threshold ≥0.70 · Zero server-side processing
-</p>
+    <!-- Waveform for debugging -->
+    <div class="waveform-container">
+        <h3>{{ _('Audio Waveform') }}</h3>
+        <canvas id="waveformCanvas" width="800" height="60"></canvas>
+        <div class="inline-metrics">
+            <div class="metric-item">
+                <span>{{ _('Peak:') }}</span>
+                <span id="peakLevel" class="metric-value">-∞ dB</span>
+            </div>
+            <div class="metric-item">
+                <span>{{ _('RMS:') }}</span>
+                <span id="rmsLevel" class="metric-value">-∞ dB</span>
+            </div>
+            <div class="metric-item">
+                <span>{{ _('Samples:') }}</span>
+                <span id="sampleCount" class="metric-value">0</span>
+            </div>
+            <div class="metric-item">
+                <span>{{ _('Performance:') }}</span>
+                <span id="performanceStatus" class="metric-value">Idle</span>
+            </div>
+        </div>
+    </div>
 
-<!-- Load livestream JavaScript -->
-<script>
-    // Set the AudioWorklet processor URL for the external script
-    window.audioProcessorUrl = '{{ request.url_for("static", path="js/audio-processor.js") }}';
-</script>
-<script src="{{ url_for('static', path='js/livestream.js') }}"></script>
+    <!-- Message log -->
+    <div class="message-log">
+        <h3>{{ _('System Messages') }}</h3>
+        <div id="messageLog"></div>
+    </div>
+</details>
 
-<script>
-    // All livestream functionality has been moved to livestream.js
-</script>
-</body>
-</html>
+{% endblock %}

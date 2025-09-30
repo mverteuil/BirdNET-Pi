@@ -1,6 +1,7 @@
 """Multimedia API routes for serving audio and image files."""
 
 import logging
+from typing import Annotated
 from uuid import UUID
 
 from dependency_injector.wiring import Provide, inject
@@ -21,12 +22,8 @@ router = APIRouter()
 @inject
 async def get_audio_file(
     audio_file_id: UUID,
-    core_database: CoreDatabaseService = Depends(  # noqa: B008
-        Provide[Container.core_database]
-    ),
-    path_resolver: PathResolver = Depends(  # noqa: B008
-        Provide[Container.path_resolver]
-    ),
+    core_database: Annotated[CoreDatabaseService, Depends(Provide[Container.core_database])],
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
 ) -> FileResponse:
     """Serve WAV audio file directly by audio file ID.
 
@@ -55,7 +52,7 @@ async def get_audio_file(
                     detail=f"Audio file {audio_file_id} not found",
                 )
 
-            # Get the audio file path
+            # Get the audio file path (stored relative to recordings directory)
             audio_path = audio_file.file_path
 
             # If path is relative, resolve it against the recordings directory

@@ -77,7 +77,7 @@ class PathResolver:
             timestamp: Timestamp of the detection (datetime object)
 
         Returns:
-            Path relative to data_dir for the detection audio file
+            Path relative to recordings_dir for the detection audio file
         """
         # Create a safe filename from scientific name
         safe_name = scientific_name.replace(" ", "_")
@@ -85,12 +85,8 @@ class PathResolver:
         # Generate filename with timestamp including microseconds for uniqueness
         filename = f"{timestamp.strftime('%Y%m%d_%H%M%S')}_{timestamp.microsecond:06d}.wav"
 
-        # Get the recordings directory and make it relative to data_dir
-        recordings_dir = self.get_recordings_dir()
-        relative_recordings = recordings_dir.relative_to(self.data_dir)
-
-        # Return relative path from data_dir: recordings/safe_name/filename
-        return relative_recordings / safe_name / filename
+        # Return relative path from recordings_dir: safe_name/filename
+        return Path(safe_name) / filename
 
     def get_database_dir(self) -> Path:
         """Get the directory for database files."""

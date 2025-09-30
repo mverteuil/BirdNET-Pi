@@ -38,10 +38,10 @@ class TestPathResolver:
 
         path = resolver.get_detection_audio_path(scientific_name, timestamp)
 
-        # Should return a relative path from data_dir
+        # Should return a relative path from recordings_dir
         assert isinstance(path, Path)
         assert not path.is_absolute()
-        assert path == Path("recordings/Turdus_migratorius/20240315_143045_000000.wav")
+        assert path == Path("Turdus_migratorius/20240315_143045_000000.wav")
 
     def test_get_detection_audio_path_with_spaces(self, resolver):
         """Should detection audio path with spaces in scientific name."""
@@ -51,7 +51,7 @@ class TestPathResolver:
         path = resolver.get_detection_audio_path(scientific_name, timestamp)
 
         # Spaces should be replaced with underscores
-        assert path == Path("recordings/Corvus_corax/20241225_081530_000000.wav")
+        assert path == Path("Corvus_corax/20241225_081530_000000.wav")
 
     def test_get_recordings_dir(self, resolver):
         """Should recordings directory path."""
@@ -85,9 +85,9 @@ class TestPathResolver:
         # Get the detection path
         detection_path = resolver.get_detection_audio_path(scientific_name, timestamp)
 
-        # Verify it would resolve correctly when combined with data_dir
-        full_path = resolver.data_dir / detection_path
+        # Verify it would resolve correctly when combined with recordings_dir
         recordings_dir = resolver.get_recordings_dir()
+        full_path = recordings_dir / detection_path
 
         # The full path should be under recordings_dir
         assert str(full_path).startswith(str(recordings_dir))

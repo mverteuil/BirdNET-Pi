@@ -4,6 +4,7 @@ import datetime
 import json
 import logging
 from datetime import UTC
+from typing import Annotated
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Form, Request, Response
@@ -34,10 +35,8 @@ async def read_admin() -> dict[str, str]:
 @inject
 async def get_settings(
     request: Request,
-    path_resolver: PathResolver = Depends(  # noqa: B008
-        Provide[Container.path_resolver]
-    ),
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
+    templates: Annotated[Jinja2Templates, Depends(Provide[Container.templates])],
 ) -> Response:
     """Render the settings page with the current configuration."""
     config_manager = ConfigManager(path_resolver)
@@ -91,6 +90,7 @@ async def get_settings(
 @router.post("/settings", response_class=HTMLResponse)
 @inject
 async def post_settings(
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
     # Basic Settings (required)
     site_name: str = Form(...),
     latitude: float = Form(...),
@@ -137,9 +137,6 @@ async def post_settings(
     enable_webhooks: bool | None = Form(None),
     webhook_urls: str | None = Form(None),  # Will be parsed as comma-separated list
     webhook_events: str | None = Form(None),
-    path_resolver: PathResolver = Depends(  # noqa: B008
-        Provide[Container.path_resolver]
-    ),
 ) -> RedirectResponse:
     """Process the submitted settings form and save the updated configuration.
 
@@ -302,7 +299,7 @@ async def get_log_content() -> PlainTextResponse:
 @inject
 async def test_detection_form(
     request: Request,
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
+    templates: Annotated[Jinja2Templates, Depends(Provide[Container.templates])],
 ) -> HTMLResponse:
     """Render the form for testing detections."""
     return templates.TemplateResponse(request, "admin/test_detection_modal.html", {})
@@ -311,9 +308,7 @@ async def test_detection_form(
 @router.get("/test_detection")
 @inject
 async def test_detection(
-    data_manager: DataManager = Depends(  # noqa: B008
-        Provide[Container.data_manager]
-    ),
+    data_manager: Annotated[DataManager, Depends(Provide[Container.data_manager])],
     species: str = "Test Bird",
     confidence: float = 0.99,
     timestamp: str | None = None,
@@ -370,10 +365,8 @@ async def test_detection(
 @inject
 async def get_advanced_settings(
     request: Request,
-    path_resolver: PathResolver = Depends(  # noqa: B008
-        Provide[Container.path_resolver]
-    ),
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
+    templates: Annotated[Jinja2Templates, Depends(Provide[Container.templates])],
 ) -> Response:
     """Render the advanced YAML configuration editor."""
     config_manager = ConfigManager(path_resolver)

@@ -44,7 +44,7 @@ class AudioAnalysisManager:
         self.analysis_count = 0
         self.last_analysis_log_time = time.time()
 
-        # Initialize SpeciesParser with multilingual database service for canonical name lookups
+        # Initialize SpeciesParser with species database service for canonical name lookups
         self.species_parser = SpeciesParser(species_database)
         # Set the session for database queries
         SpeciesParser.set_session(session)

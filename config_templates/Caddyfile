@@ -1,3 +1,20 @@
+{
+	# Global options
+	log {
+		output stdout
+		format json {
+			# Rename core field keys to match our services
+			message_key event
+			time_key timestamp
+			level_key level
+			name_key logger
+			# Use ISO 8601 / RFC3339 format to match our services
+			time_format "2006-01-02T15:04:05.000000Z07:00"
+		}
+		level INFO
+	}
+}
+
 :8000 {
 	# Audio WebSocket route - proxy to standalone daemon (preserve path)
 	handle /ws/audio {

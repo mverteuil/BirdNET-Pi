@@ -11,14 +11,13 @@ from fastapi import APIRouter, Depends, HTTPException, Path
 
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.system.status import SystemInspector
-from birdnetpi.system.system_control import SystemControlService
+from birdnetpi.system.system_control import SERVICES_CONFIG, SystemControlService
 from birdnetpi.system.system_utils import SystemUtils
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.services import (
     ConfigReloadResponse,
     ServiceActionRequest,
     ServiceActionResponse,
-    ServiceConfig,
     ServicesStatusResponse,
     ServiceStatus,
     SystemInfo,
@@ -34,9 +33,9 @@ router = APIRouter()
 @router.get("/hardware/status")
 @inject
 async def get_hardware_status(
-    detection_query_service: DetectionQueryService = Depends(  # noqa: B008
-        Provide[Container.detection_query_service]
-    ),
+    detection_query_service: Annotated[
+        DetectionQueryService, Depends(Provide[Container.detection_query_service])
+    ],
 ) -> dict:
     """Get comprehensive hardware and system status.
 
@@ -78,35 +77,15 @@ async def get_hardware_status(
     }
 
 
-# Service management configuration
-SERVICES_CONFIG = {
-    "docker": [
-        ServiceConfig("fastapi", "Web interface and API", critical=True),
-        ServiceConfig("audio_capture", "Audio recording service"),
-        ServiceConfig("audio_analysis", "Bird detection service"),
-        ServiceConfig("audio_websocket", "Real-time audio streaming"),
-        ServiceConfig("caddy", "Web server and reverse proxy", critical=True),
-        ServiceConfig("redis", "Cache service (memory-only)"),
-        ServiceConfig("pulseaudio", "Audio system", optional=True),
-    ],
-    "sbc": [
-        ServiceConfig("birdnetpi-fastapi", "Web interface and API", critical=True),
-        ServiceConfig("birdnetpi-audio-capture", "Audio recording service"),
-        ServiceConfig("birdnetpi-audio-analysis", "Bird detection service"),
-        ServiceConfig("birdnetpi-audio-websocket", "Real-time audio streaming"),
-        ServiceConfig("caddy", "Web server and reverse proxy", critical=True),
-        ServiceConfig("redis", "Cache service (memory-only)"),
-        ServiceConfig("pulseaudio", "Audio system"),
-    ],
-}
+# Service configuration is now imported from system_control.py
 
 
 @router.get("/services/status", response_model=ServicesStatusResponse)
 @inject
 async def get_services_status(
-    system_control: SystemControlService = Depends(  # noqa: B008
-        Provide[Container.system_control_service]
-    ),
+    system_control: Annotated[
+        SystemControlService, Depends(Provide[Container.system_control_service])
+    ],
 ) -> ServicesStatusResponse:
     """Get the status of all services and system information.
 
@@ -154,9 +133,9 @@ async def get_services_status(
 @router.post("/services/reload-config", response_model=ConfigReloadResponse)
 @inject
 async def reload_configuration(
-    system_control: SystemControlService = Depends(  # noqa: B008
-        Provide[Container.system_control_service]
-    ),
+    system_control: Annotated[
+        SystemControlService, Depends(Provide[Container.system_control_service])
+    ],
 ) -> ConfigReloadResponse:
     """Reload service configuration without restarting services.
 
@@ -178,9 +157,9 @@ async def reload_configuration(
 @router.get("/services/info", response_model=SystemInfo)
 @inject
 async def get_system_info(
-    system_control: SystemControlService = Depends(  # noqa: B008
-        Provide[Container.system_control_service]
-    ),
+    system_control: Annotated[
+        SystemControlService, Depends(Provide[Container.system_control_service])
+    ],
 ) -> SystemInfo:
     """Get system/container information including uptime."""
     system_info_data = system_control.get_system_info()
@@ -202,9 +181,9 @@ async def get_system_info(
 @inject
 async def reboot_system(
     request: SystemRebootRequest,
-    system_control: SystemControlService = Depends(  # noqa: B008
-        Provide[Container.system_control_service]
-    ),
+    system_control: Annotated[
+        SystemControlService, Depends(Provide[Container.system_control_service])
+    ],
 ) -> SystemRebootResponse:
     """Reboot the system/container.
 
@@ -248,9 +227,9 @@ async def reboot_system(
 @router.get("/services")
 @inject
 async def get_services_list(
-    system_control: SystemControlService = Depends(  # noqa: B008
-        Provide[Container.system_control_service]
-    ),
+    system_control: Annotated[
+        SystemControlService, Depends(Provide[Container.system_control_service])
+    ],
 ) -> dict:
     """Get simplified list of available services for UI dropdowns.
 
@@ -286,9 +265,9 @@ async def perform_service_action(
     service_name: Annotated[str, Path(description="Name of the service")],
     action: Annotated[str, Path(pattern="^(start|stop|restart)$", description="Action to perform")],
     request: ServiceActionRequest,
-    system_control: SystemControlService = Depends(  # noqa: B008
-        Provide[Container.system_control_service]
-    ),
+    system_control: Annotated[
+        SystemControlService, Depends(Provide[Container.system_control_service])
+    ],
 ) -> ServiceActionResponse:
     """Perform an action on a service.
 

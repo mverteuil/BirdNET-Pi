@@ -1,0 +1,54 @@
+/* API Documentation (Swagger UI) Styles */
+
+/* Swagger UI container styling */
+#swagger-ui {
+  margin-top: 20px;
+}
+
+/* Override Swagger UI styles to match site theme */
+.swagger-ui .topbar {
+  display: none;
+}
+
+.swagger-ui {
+  font-family: inherit;
+}
+
+/* Adjust swagger section headers */
+.swagger-ui .opblock-tag {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* Style the info section */
+.swagger-ui .info {
+  margin: 20px 0;
+}
+
+.swagger-ui .info .title {
+  font-size: 1.5em;
+  color: var(--color-text-primary);
+}
+
+/* Adjust button colors to match site theme */
+.swagger-ui .btn.authorize {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.swagger-ui .btn.execute {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* Adjust response status colors */
+.swagger-ui .responses-inner h4 {
+  font-size: 1em;
+}
+
+/* Make sure swagger content is contained */
+main {
+  padding: 0 20px;
+  max-width: 100%;
+}

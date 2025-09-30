@@ -1,7 +1,7 @@
 """Lightweight service for IOC database queries.
 
 This service provides simple, efficient queries to the IOC World Bird Names database.
-For complex multilingual queries with fallback priorities, use SpeciesDatabaseService.
+For complex species queries with fallback priorities, use SpeciesDatabaseService.
 """
 
 from pathlib import Path

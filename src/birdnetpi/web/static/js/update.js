@@ -3,6 +3,8 @@
  * Handles update checking, application, and git configuration
  */
 
+// Migration: Now using global _() function from i18n.js
+
 // Update status and progress handling
 const updateManager = {
   checkButton: null,
@@ -47,7 +49,7 @@ const updateManager = {
   async checkForUpdates() {
     try {
       this.checkButton.disabled = true;
-      this.checkButton.textContent = "Checking...";
+      this.checkButton.textContent = _("checking");
 
       const response = await fetch("/api/update/check", {
         method: "POST",
@@ -62,7 +64,7 @@ const updateManager = {
         document.getElementById("latest-version").textContent =
           data.latest_version;
         document.getElementById("update-status").innerHTML =
-          '<span class="badge badge-warning">Update Available</span>';
+          `<span class="badge badge-warning">${_("update-available")}</span>`;
 
         if (data.release_notes) {
           document.getElementById("release-notes").innerHTML =
@@ -75,7 +77,7 @@ const updateManager = {
         }
       } else {
         document.getElementById("update-status").innerHTML =
-          '<span class="badge badge-success">Up to Date</span>';
+          `<span class="badge badge-success">${_("up-to-date")}</span>`;
 
         // Hide update actions
         if (this.updateActions) {
@@ -83,12 +85,12 @@ const updateManager = {
         }
       }
     } catch (error) {
-      console.error("Failed to check for updates:", error);
+      console.error(_("failed-to-check-updates"), error);
       document.getElementById("update-status").innerHTML =
-        `<span class="badge badge-error">Error: ${error.message}</span>`;
+        `<span class="badge badge-error">${_("error")}: ${error.message}</span>`;
     } finally {
       this.checkButton.disabled = false;
-      this.checkButton.textContent = "🔄 Check for Updates";
+      this.checkButton.textContent = _("check-for-updates");
     }
   },
 
@@ -99,8 +101,8 @@ const updateManager = {
       // Show progress panel
       this.progressPanel.style.display = "block";
       this.progressText.textContent = dryRun
-        ? "Starting test update..."
-        : "Starting update...";
+        ? _("starting-test-update")
+        : _("starting-update");
 
       // Disable buttons
       this.applyButton.disabled = true;
@@ -124,7 +126,7 @@ const updateManager = {
         this.progressText.textContent = `Error: ${data.error}`;
       }
     } catch (error) {
-      console.error("Failed to apply update:", error);
+      console.error(_("failed-to-apply-update"), error);
       this.progressText.textContent = `Error: ${error.message}`;
     }
   },
@@ -138,13 +140,13 @@ const updateManager = {
       const data = await response.json();
 
       if (data.success) {
-        this.progressText.textContent = "Update cancelled";
+        this.progressText.textContent = _("update-cancelled");
         setTimeout(() => {
           this.progressPanel.style.display = "none";
         }, 2000);
       }
     } catch (error) {
-      console.error("Failed to cancel update:", error);
+      console.error(_("failed-to-cancel-update"), error);
     }
   },
 };
@@ -177,12 +179,12 @@ const gitConfig = {
 
       // Validate inputs
       if (!gitRemote.match(/^[a-zA-Z0-9_-]+$/)) {
-        this.showMessage("Invalid remote name format", "error");
+        this.showMessage(_("invalid-remote-format"), "error");
         return;
       }
 
       if (!gitBranch.match(/^[a-zA-Z0-9/_-]+$/)) {
-        this.showMessage("Invalid branch name format", "error");
+        this.showMessage(_("invalid-branch-format"), "error");
         return;
       }
 
@@ -201,10 +203,10 @@ const gitConfig = {
       if (data.success) {
         this.showMessage(data.message, "success");
       } else {
-        this.showMessage(data.error || "Failed to save configuration", "error");
+        this.showMessage(data.error || _("failed-to-save-config"), "error");
       }
     } catch (error) {
-      console.error("Failed to save git configuration:", error);
+      console.error(_("failed-to-save-git-config"), error);
       this.showMessage(`Error: ${error.message}`, "error");
     }
   },

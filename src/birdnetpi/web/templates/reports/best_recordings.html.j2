@@ -1,265 +1,29 @@
 {% extends "base.html.j2" %}
-{% set active_page = 'best' %}
+{% set page_name = 'Best Recordings' %}
 
-{% block title %}Best Recordings - {{ site_name }}{% endblock %}
+{% block navigation %}
+    {% set active_page = 'best' %}
+    {{ super() }}
+{% endblock %}
 
 {% block styles %}
-<style>
-    /* Detection entry styles */
-    .detection-entry {
-        display: grid;
-        grid-template-columns: 40px 1fr 120px 80px 80px 100px;
-        gap: 1rem;
-        padding: 0.75rem 0;
-        border-bottom: 1px dotted var(--color-border-tertiary);
-        align-items: center;
-        font-size: 0.85rem;
-    }
-
-    .detection-entry:hover {
-        background: var(--color-bg-hover-subtle);
-    }
-
-    /* Play button states */
-    .play-button {
-        width: 30px;
-        height: 30px;
-        border: 1px solid var(--color-border-primary);
-        background: transparent;
-        cursor: pointer;
-        position: relative;
-        padding: 0;
-    }
-
-    .play-button:disabled {
-        opacity: 0.3;
-        cursor: not-allowed;
-    }
-
-    .play-button.loading::after {
-        content: '';
-        position: absolute;
-        left: 12px;
-        top: 12px;
-        width: 6px;
-        height: 6px;
-        background: var(--color-text-secondary);
-        animation: pulse 1s infinite;
-    }
-
-    .play-button.playing::before {
-        content: '■';
-        font-size: 12px;
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-    }
-
-    .play-button:not(.playing):not(.loading)::before {
-        content: '▶';
-        font-size: 10px;
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-40%, -50%);
-    }
-
-    /* Audio availability indicator */
-    .audio-status {
-        width: 30px;
-        text-align: center;
-        font-size: 0.7rem;
-        color: var(--color-text-tertiary);
-    }
-
-    .audio-available {
-        color: var(--color-text-secondary);
-    }
-
-    .audio-missing {
-        color: var(--color-text-tertiary);
-        font-style: italic;
-    }
-
-    /* Recording stats */
-    .recording-stats {
-        padding: 0.75rem 0;
-        font-size: 0.85rem;
-        color: var(--color-text-secondary);
-        border-bottom: 1px solid var(--color-border-secondary);
-        margin-bottom: 1rem;
-    }
-
-    .stat-value {
-        font-weight: 500;
-        color: var(--color-text-primary);
-    }
-
-    /* Recording controls */
-    .recording-controls {
-        padding: 1rem 0;
-        display: flex;
-        gap: 2rem;
-        flex-wrap: wrap;
-        align-items: center;
-        border-bottom: 1px solid var(--color-border-secondary);
-        margin-bottom: 1rem;
-    }
-
-    .filter-section {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        min-width: 200px;
-    }
-
-    .filter-label {
-        font-size: 0.85rem;
-        color: var(--color-text-secondary);
-        font-weight: 500;
-    }
-
-    .filter-selector {
-        background: var(--color-bg-secondary);
-        border: 1px solid var(--color-border-primary);
-        border-radius: 4px;
-        padding: 0.5rem;
-        font-size: 0.85rem;
-        width: 100%;
-        cursor: pointer;
-    }
-
-    .filter-selector:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    .filter-clear {
-        font-size: 0.75rem;
-        color: var(--color-text-secondary);
-        cursor: pointer;
-        text-decoration: underline;
-    }
-
-    .filter-clear:hover {
-        color: var(--color-text-primary);
-    }
-
-    /* Loading indicator */
-    .loading-indicator {
-        text-align: center;
-        padding: 2rem;
-        color: var(--color-text-secondary);
-        font-size: 0.9rem;
-    }
-
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.3; }
-    }
-
-    /* No results message */
-    .no-results {
-        text-align: center;
-        padding: 3rem 1rem;
-        color: var(--color-text-tertiary);
-        font-size: 0.9rem;
-    }
-
-    /* Active filters display */
-    .active-filters {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-        margin-bottom: 1rem;
-        font-size: 0.8rem;
-    }
-
-    .filter-tag {
-        background: var(--color-bg-secondary);
-        border: 1px solid var(--color-border-primary);
-        border-radius: 3px;
-        padding: 0.25rem 0.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-    }
-
-    .filter-tag-remove {
-        cursor: pointer;
-        color: var(--color-text-tertiary);
-        font-weight: bold;
-    }
-
-    .filter-tag-remove:hover {
-        color: var(--color-error);
-    }
-
-    /* Clickable taxonomy labels */
-    .taxonomy-link {
-        cursor: pointer;
-        text-decoration: underline dotted;
-        transition: color 0.2s ease;
-    }
-
-    .taxonomy-link:hover {
-        color: var(--color-primary);
-        text-decoration: underline solid;
-    }
-</style>
+    {{ super() }}
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/best_recordings.css') }}">
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/taxonomic_filters.css') }}">
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/taxonomy_display.css') }}">
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/pagination.css') }}">
 {% endblock %}
 
 {% block content %}
-<h2>Best Recordings</h2>
-
-<div class="recording-stats" id="stats">
-    <span>Loading statistics...</span>
+<!-- Statistics line (kept below navigation) -->
+<div class="recording-stats" id="stats" role="status" aria-live="polite" aria-label="{{ _('Recording statistics') }}">
+    <span>{{ _('Loading statistics...') }}</span>
 </div>
 
-<div class="recording-controls">
-    <!-- Hierarchical taxonomic filters -->
-    <div class="filter-section">
-        <label class="filter-label">Family</label>
-        <select class="filter-selector" id="family-filter" onchange="onFamilyChange()">
-            <option value="">All families</option>
-        </select>
-    </div>
+{% include 'includes/taxonomic_filters.html.j2' %}
 
-    <div class="filter-section">
-        <label class="filter-label">Genus</label>
-        <select class="filter-selector" id="genus-filter" onchange="onGenusChange()" disabled>
-            <option value="">Select family first</option>
-        </select>
-    </div>
-
-    <div class="filter-section">
-        <label class="filter-label">Species</label>
-        <select class="filter-selector" id="species-filter" onchange="onSpeciesChange()" disabled>
-            <option value="">Select genus first</option>
-        </select>
-    </div>
-
-    <div class="filter-section">
-        <label class="filter-label">Min Confidence</label>
-        <select class="filter-selector" id="confidence-filter" onchange="loadRecordings()">
-            <option value="0.7">70%</option>
-            <option value="0.8">80%</option>
-            <option value="0.9">90%</option>
-            <option value="0.95">95%</option>
-        </select>
-    </div>
-
-    <div class="filter-section">
-        <a class="filter-clear" onclick="clearAllFilters()">Clear all filters</a>
-    </div>
-</div>
-
-<div class="active-filters" id="active-filters" style="display: none;">
-</div>
-
-<div id="detections-container">
-    <div class="loading-indicator">Loading recordings...</div>
+<div id="detections-container" role="region" aria-label="{{ _('Best recordings list') }}" aria-live="polite">
+    <div class="loading-indicator">{{ _('Loading recordings...') }}</div>
 </div>
 
 <div id="pagination" class="pagination">
@@ -268,509 +32,65 @@
 
 {% include 'includes/pagination.html.j2' %}
 
-<script>
-// State management
-let currentFilters = {
-    family: null,
-    genus: null,
-    species: null,
-    minConfidence: 0.7
-};
-
-let currentRecordings = [];
-let currentPage = 1;
-
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    loadFamilies();
-    loadRecordings();
-});
-
-// Helper function to format order names (PASSERIFORMES -> Passeriformes)
-function formatOrderName(orderName) {
-    if (!orderName) return '';
-    return orderName.charAt(0).toUpperCase() + orderName.slice(1).toLowerCase();
-}
-
-// Set filter from clicked taxonomy label
-async function setFilterFromLabel(filterType, value, event) {
-    // Prevent event bubbling (e.g., playing audio when clicking label)
-    if (event) {
-        event.stopPropagation();
-    }
-
-    if (filterType === 'family') {
-        // Set family filter and reset dependent filters
-        document.getElementById('family-filter').value = value;
-        currentFilters.family = value;
-        currentFilters.genus = null;
-        currentFilters.species = null;
-        document.getElementById('genus-filter').value = '';
-        document.getElementById('species-filter').value = '';
-        // Load genera for this family
-        await loadGenera();
-    } else if (filterType === 'genus') {
-        // For genus, we need to extract it from the scientific name
-        const genus = value.split(' ')[0];
-
-        // Find the family for this genus from the current recordings
-        let family = null;
-        for (const recording of currentRecordings) {
-            if (recording.scientific_name.startsWith(genus + ' ')) {
-                family = recording.family;
-                break;
-            }
-        }
-
-        // Set both family and genus filters
-        if (family) {
-            document.getElementById('family-filter').value = family;
-            currentFilters.family = family;
-            // Load genera for this family
-            await loadGenera();
-            // Then set the genus filter
-            document.getElementById('genus-filter').value = genus;
-            currentFilters.genus = genus;
-        } else {
-            // Fallback: just set genus without family
-            currentFilters.genus = genus;
-            currentFilters.family = null;
-            document.getElementById('family-filter').value = '';
-            document.getElementById('genus-filter').disabled = false;
-            document.getElementById('genus-filter').innerHTML = `<option value="${genus}" selected>${genus}</option>`;
-        }
-
-        currentFilters.species = null;
-        document.getElementById('species-filter').value = '';
-        document.getElementById('species-filter').disabled = true;
-        document.getElementById('species-filter').innerHTML = '<option value="">Select genus first</option>';
-    } else if (filterType === 'species') {
-        // When clicking species, apply species filter and set family/genus
-        const genus = value.split(' ')[0];
-
-        // Find the family for this species from the current recordings
-        let family = null;
-        for (const recording of currentRecordings) {
-            if (recording.scientific_name === value) {
-                family = recording.family;
-                break;
-            }
-        }
-
-        // Set all three filters hierarchically
-        if (family) {
-            // Set family
-            document.getElementById('family-filter').value = family;
-            currentFilters.family = family;
-            // Load genera for this family
-            await loadGenera();
-            // Set genus
-            document.getElementById('genus-filter').value = genus;
-            currentFilters.genus = genus;
-            // Load species for this genus
-            await loadSpecies();
-            // Set species
-            document.getElementById('species-filter').value = value;
-            currentFilters.species = value;
-        } else {
-            // Fallback: just set species directly
-            currentFilters.species = value;
-            currentFilters.genus = null;
-            currentFilters.family = null;
-            document.getElementById('family-filter').value = '';
-            document.getElementById('genus-filter').disabled = false;
-            document.getElementById('genus-filter').innerHTML = `<option value="${genus}">${genus}</option>`;
-            document.getElementById('genus-filter').value = genus;
-            document.getElementById('species-filter').disabled = false;
-            document.getElementById('species-filter').innerHTML = `<option value="${value}" selected>${value}</option>`;
-        }
-    }
-
-    // Load recordings with the new filter
-    await loadRecordings();
-}
-
-// Load available families
-async function loadFamilies() {
-    try {
-        const response = await fetch('/api/detections/taxonomy/families?has_detections=true');
-        const data = await response.json();
-
-        const select = document.getElementById('family-filter');
-        select.innerHTML = '<option value="">All families</option>';
-
-        data.families.forEach(family => {
-            const option = document.createElement('option');
-            option.value = family;
-            option.textContent = family;
-            select.appendChild(option);
-        });
-    } catch (error) {
-        console.error('Error loading families:', error);
-    }
-}
-
-// Load genera for the current family filter
-async function loadGenera() {
-    const genusSelect = document.getElementById('genus-filter');
-
-    if (currentFilters.family) {
-        genusSelect.disabled = false;
-        genusSelect.innerHTML = '<option value="">Loading...</option>';
-
-        try {
-            const response = await fetch(`/api/detections/taxonomy/genera?family=${encodeURIComponent(currentFilters.family)}&has_detections=true`);
-            const data = await response.json();
-
-            genusSelect.innerHTML = '<option value="">All genera</option>';
-            data.genera.forEach(genus => {
-                const option = document.createElement('option');
-                option.value = genus;
-                option.textContent = genus;
-                genusSelect.appendChild(option);
-            });
-
-            // If we have a genus filter set, select it
-            if (currentFilters.genus && data.genera.includes(currentFilters.genus)) {
-                genusSelect.value = currentFilters.genus;
-            }
-        } catch (error) {
-            console.error('Error loading genera:', error);
-            genusSelect.innerHTML = '<option value="">Error loading genera</option>';
-        }
-    }
-}
-
-// Handle family selection
-async function onFamilyChange() {
-    const familySelect = document.getElementById('family-filter');
-    const genusSelect = document.getElementById('genus-filter');
-    const speciesSelect = document.getElementById('species-filter');
-
-    currentFilters.family = familySelect.value || null;
-    currentFilters.genus = null;
-    currentFilters.species = null;
-
-    if (currentFilters.family) {
-        // Load genera for selected family
-        await loadGenera();
-
-        // Reset species selector
-        speciesSelect.disabled = true;
-        speciesSelect.innerHTML = '<option value="">Select genus first</option>';
-    } else {
-        // Reset both selectors
-        genusSelect.disabled = true;
-        genusSelect.innerHTML = '<option value="">Select family first</option>';
-        speciesSelect.disabled = true;
-        speciesSelect.innerHTML = '<option value="">Select genus first</option>';
-    }
-
-    loadRecordings();
-}
-
-// Load species for the current genus filter
-async function loadSpecies() {
-    const speciesSelect = document.getElementById('species-filter');
-
-    if (currentFilters.genus) {
-        speciesSelect.disabled = false;
-        speciesSelect.innerHTML = '<option value="">Loading...</option>';
-
-        try {
-            const params = new URLSearchParams({
-                genus: currentFilters.genus,
-                has_detections: true
-            });
-            if (currentFilters.family) {
-                params.append('family', currentFilters.family);
-            }
-
-            const response = await fetch(`/api/detections/taxonomy/species?${params}`);
-            const data = await response.json();
-
-            speciesSelect.innerHTML = '<option value="">All species</option>';
-            data.species.forEach(species => {
-                const option = document.createElement('option');
-                option.value = species.scientific_name;
-                option.textContent = `${species.common_name} (${species.scientific_name})`;
-                if (species.count) {
-                    option.textContent += ` - ${species.count} detections`;
-                }
-                speciesSelect.appendChild(option);
-            });
-
-            // If we have a species filter set, select it
-            if (currentFilters.species) {
-                speciesSelect.value = currentFilters.species;
-            }
-        } catch (error) {
-            console.error('Error loading species:', error);
-            speciesSelect.innerHTML = '<option value="">Error loading species</option>';
-        }
-    }
-}
-
-// Handle genus selection
-async function onGenusChange() {
-    const genusSelect = document.getElementById('genus-filter');
-    const speciesSelect = document.getElementById('species-filter');
-
-    currentFilters.genus = genusSelect.value || null;
-    currentFilters.species = null;
-
-    if (currentFilters.genus) {
-        // Load species for selected genus
-        await loadSpecies();
-    } else {
-        // Reset species selector
-        speciesSelect.disabled = true;
-        speciesSelect.innerHTML = '<option value="">Select genus first</option>';
-    }
-
-    loadRecordings();
-}
-
-// Handle species selection
-function onSpeciesChange() {
-    const speciesSelect = document.getElementById('species-filter');
-    currentFilters.species = speciesSelect.value || null;
-    loadRecordings();
-}
-
-// Load recordings with current filters
-async function loadRecordings(page = 1) {
-    currentPage = page;
-    const container = document.getElementById('detections-container');
-    container.innerHTML = '<div class="loading-indicator">Loading recordings...</div>';
-
-    // Update confidence filter
-    const confidenceSelect = document.getElementById('confidence-filter');
-    currentFilters.minConfidence = parseFloat(confidenceSelect.value);
-
-    // Build query parameters
-    const params = new URLSearchParams({
-        page: page,
-        per_page: 50,
-        min_confidence: currentFilters.minConfidence
-    });
-
-    if (currentFilters.species) {
-        params.append('species', currentFilters.species);
-    } else if (currentFilters.genus) {
-        params.append('genus', currentFilters.genus);
-    } else if (currentFilters.family) {
-        params.append('family', currentFilters.family);
-    }
-
-    try {
-        const response = await fetch(`/api/detections/best-recordings?${params}`);
-        const data = await response.json();
-
-        currentRecordings = data.recordings;
-
-        // Update statistics
-        updateStatistics(data);
-
-        // Update active filters display
-        updateActiveFilters();
-
-        // Display recordings
-        if (currentRecordings.length > 0) {
-            displayRecordings(currentRecordings);
-        } else {
-            container.innerHTML = '<div class="no-results">No recordings found matching the selected filters.</div>';
-        }
-
-        // Render pagination
-        if (data.pagination) {
-            BirdNETPagination.render('pagination', data.pagination, 'loadRecordings', 'recordings');
-        }
-    } catch (error) {
-        console.error('Error loading recordings:', error);
-        container.innerHTML = '<div class="no-results">Error loading recordings. Please try again.</div>';
-    }
-}
-
-// Update statistics display
-function updateStatistics(data) {
-    const statsDiv = document.getElementById('stats');
-    statsDiv.innerHTML = `
-        <span><span class="stat-value">${data.count}</span> recordings</span> ·
-        <span><span class="stat-value">${data.unique_species}</span> species</span> ·
-        <span>Average confidence: <span class="stat-value">${data.avg_confidence}%</span></span> ·
-        <span>Date range: <span class="stat-value">${data.date_range}</span></span>
-    `;
-}
-
-// Update active filters display
-function updateActiveFilters() {
-    const container = document.getElementById('active-filters');
-    const filters = [];
-
-    if (currentFilters.family) {
-        filters.push(`<div class="filter-tag">
-            Family: ${currentFilters.family}
-            <span class="filter-tag-remove" onclick="removeFilter('family')">×</span>
-        </div>`);
-    }
-
-    if (currentFilters.genus) {
-        filters.push(`<div class="filter-tag">
-            Genus: ${currentFilters.genus}
-            <span class="filter-tag-remove" onclick="removeFilter('genus')">×</span>
-        </div>`);
-    }
-
-    if (currentFilters.species) {
-        filters.push(`<div class="filter-tag">
-            Species: ${currentFilters.species}
-            <span class="filter-tag-remove" onclick="removeFilter('species')">×</span>
-        </div>`);
-    }
-
-    if (filters.length > 0) {
-        container.style.display = 'flex';
-        container.innerHTML = filters.join('');
-    } else {
-        container.style.display = 'none';
-    }
-}
-
-// Display recordings
-function displayRecordings(recordings) {
-    const container = document.getElementById('detections-container');
-
-    const html = recordings.map(recording => `
+<!-- Hidden HTML Templates for JavaScript (for i18n) -->
+<div id="js-templates" style="display: none;">
+    <!-- Recording entry template -->
+    <template id="recording-entry-template">
         <div class="detection-entry">
-            <button class="play-button" onclick="playAudio('${recording.id}', '${recording.audio_file_id}', this)" title="Play recording"></button>
+            <button class="play-button" data-action="play" title="{{ _('Play recording') }}"></button>
             <div>
-                <div style="font-weight: 500;">${recording.common_name || recording.scientific_name}</div>
+                <div style="font-weight: 500;" data-field="name"></div>
                 <div style="font-size: 0.8rem; color: var(--color-text-tertiary);">
                     <em>
-                        <span class="taxonomy-link"
-                              onclick="setFilterFromLabel('genus', '${recording.scientific_name}', event)"
-                              title="Filter by genus ${recording.scientific_name.split(' ')[0]}">
-                            ${recording.scientific_name.split(' ')[0]}
-                        </span>
-                        <span class="taxonomy-link"
-                              onclick="setFilterFromLabel('species', '${recording.scientific_name}', event)"
-                              title="Filter by ${recording.scientific_name}">
-                            ${recording.scientific_name.split(' ').slice(1).join(' ')}
-                        </span>
+                        <span class="taxonomy-link" data-action="filter-genus" data-field="genus"></span>
+                        <span class="taxonomy-link" data-action="filter-species" data-field="species-part"></span>
                     </em>
                 </div>
                 <div style="font-size: 0.7rem; color: var(--color-text-tertiary);">
-                    ${formatOrderName(recording.order_name)} ·
-                    <span class="taxonomy-link"
-                          onclick="setFilterFromLabel('family', '${recording.family}', event)"
-                          title="Filter by ${recording.family} family">
-                        ${recording.family}
-                    </span>
+                    <span data-field="order"></span> ·
+                    <span class="taxonomy-link" data-action="filter-family" data-field="family"></span>
                 </div>
             </div>
-            <div>${recording.date}</div>
-            <div>${recording.time}</div>
-            <div style="text-align: right;">${recording.confidence}%</div>
-            <div class="audio-status" id="audio-status-${recording.id}"></div>
+            <div data-field="date"></div>
+            <div data-field="time"></div>
+            <div style="text-align: right;" data-field="confidence"></div>
+            <div class="audio-status"></div>
         </div>
-    `).join('');
+    </template>
 
-    container.innerHTML = html;
-}
+    <!-- Filter tag template -->
+    <template id="filter-tag-template">
+        <div class="filter-tag">
+            <span data-field="label"></span>: <span data-field="value"></span>
+            <span class="filter-tag-remove" data-action="remove">×</span>
+        </div>
+    </template>
 
-// Remove a specific filter
-function removeFilter(filterType) {
-    if (filterType === 'family') {
-        currentFilters.family = null;
-        currentFilters.genus = null;
-        currentFilters.species = null;
-        document.getElementById('family-filter').value = '';
-        onFamilyChange();
-    } else if (filterType === 'genus') {
-        currentFilters.genus = null;
-        currentFilters.species = null;
-        document.getElementById('genus-filter').value = '';
-        onGenusChange();
-    } else if (filterType === 'species') {
-        currentFilters.species = null;
-        document.getElementById('species-filter').value = '';
-        loadRecordings();
-    }
-}
+    <!-- Statistics template -->
+    <template id="stats-template">
+        <span><span class="stat-value" data-field="count"></span> {{ _('recordings') }}</span> ·
+        <span><span class="stat-value" data-field="species"></span> {{ _('species') }}</span> ·
+        <span>{{ _('Average confidence') }}: <span class="stat-value" data-field="avg-confidence"></span></span> ·
+        <span>{{ _('Date range') }}: <span class="stat-value" data-field="date-range"></span></span>
+    </template>
 
-// Clear all filters
-function clearAllFilters() {
-    currentFilters = {
-        family: null,
-        genus: null,
-        species: null,
-        minConfidence: 0.7
-    };
+    <!-- Loading indicator -->
+    <div id="loading-indicator-template" class="loading-indicator">{{ _('Loading recordings...') }}</div>
 
-    document.getElementById('family-filter').value = '';
-    document.getElementById('genus-filter').value = '';
-    document.getElementById('genus-filter').disabled = true;
-    document.getElementById('genus-filter').innerHTML = '<option value="">Select family first</option>';
-    document.getElementById('species-filter').value = '';
-    document.getElementById('species-filter').disabled = true;
-    document.getElementById('species-filter').innerHTML = '<option value="">Select genus first</option>';
-    document.getElementById('confidence-filter').value = '0.7';
+    <!-- No results message -->
+    <div id="no-results-template" class="no-results">{{ _('No recordings found matching the selected filters.') }}</div>
 
-    loadRecordings();
-}
+    <!-- Error message -->
+    <div id="error-template" class="no-results">{{ _('Error loading recordings. Please try again.') }}</div>
 
-// Audio playback functionality
-let currentAudio = null;
-let currentButton = null;
+</div>
 
-function playAudio(detectionId, audioFileId, button) {
-    // Stop current audio if playing
-    if (currentAudio && currentButton) {
-        currentAudio.pause();
-        currentButton.classList.remove('playing');
-    }
+{% endblock %}
 
-    // If clicking the same button, just stop
-    if (currentButton === button) {
-        currentAudio = null;
-        currentButton = null;
-        return;
-    }
-
-    // Start loading
-    button.classList.add('loading');
-    button.disabled = true;
-
-    // Create audio element using direct audio file endpoint
-    const audio = new Audio(`/api/audio/${audioFileId}`);
-
-    audio.addEventListener('canplay', () => {
-        button.classList.remove('loading');
-        button.classList.add('playing');
-        button.disabled = false;
-        audio.play();
-    });
-
-    audio.addEventListener('ended', () => {
-        button.classList.remove('playing');
-        currentAudio = null;
-        currentButton = null;
-    });
-
-    audio.addEventListener('error', () => {
-        button.classList.remove('loading');
-        button.disabled = false;
-        const statusDiv = document.getElementById(`audio-status-${detectionId}`);
-        if (statusDiv) {
-            statusDiv.classList.add('audio-missing');
-            statusDiv.textContent = 'N/A';
-        }
-        alert('Audio file not available');
-    });
-
-    currentAudio = audio;
-    currentButton = button;
-}
-</script>
+{% block scripts %}
+    {{ super() }}
+    <!-- Shared components -->
+    <script src="{{ request.url_for('static', path='js/taxonomic_filters.js') }}"></script>
+    <!-- Best recordings JavaScript -->
+    <script src="{{ request.url_for('static', path='js/best_recordings.js') }}"></script>
 {% endblock %}

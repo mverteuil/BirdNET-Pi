@@ -8,6 +8,7 @@ import asyncio
 import logging
 import threading
 import time
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -22,10 +23,8 @@ from birdnetpi.system.file_manager import FileManager
 @pytest.fixture
 def mock_file_manager():
     """Return a mock FileManager instance for integration tests."""
-    from pathlib import Path
-
     # FileManager returns the same relative path it receives
-    relative_path = Path("recordings/Test_bird/20240101_120000.wav")
+    relative_path = Path("Test_bird/20240101_120000.wav")
     mock = MagicMock(spec=FileManager)
     mock.save_detection_audio.return_value = MagicMock(
         file_path=relative_path,
@@ -39,9 +38,9 @@ def mock_file_manager():
 def mock_path_resolver(tmp_path, path_resolver):
     """Return a PathResolver instance for integration tests."""
     # Use the global path_resolver fixture and customize it
-    # get_detection_audio_path expects scientific_name and common_name parameters
-    path_resolver.get_detection_audio_path = lambda scientific_name, common_name: (
-        tmp_path / "recordings/Test_bird/20240101_120000.wav"
+    # get_detection_audio_path expects scientific_name and timestamp parameters
+    path_resolver.get_detection_audio_path = lambda scientific_name, timestamp: Path(
+        "Test_bird/20240101_120000.wav"
     )
     return path_resolver
 

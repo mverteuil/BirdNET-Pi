@@ -1,0 +1,104 @@
+/**
+ * Taxonomy Display Component Styles
+ */
+
+/* Full taxonomy display */
+.taxonomy-display {
+  font-family: var(--font-main);
+  line-height: 1.4;
+}
+
+.taxonomy-display .taxonomy-primary {
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--color-text-primary);
+  margin-bottom: 0.1rem;
+}
+
+.taxonomy-display .taxonomy-scientific {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.1rem;
+}
+
+.taxonomy-display .taxonomy-classification {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+}
+
+/* Compact taxonomy display for tables */
+.taxonomy-compact {
+  font-family: var(--font-main);
+}
+
+.taxonomy-compact .common-name {
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+}
+
+.taxonomy-compact .scientific-name {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-top: 0.1rem;
+}
+
+.taxonomy-compact .taxonomy-meta {
+  font-size: 0.7rem;
+  color: var(--color-text-tertiary);
+  margin-top: 0.1rem;
+}
+
+/* Clickable taxonomy links */
+.taxonomy-link {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  transition:
+    color 0.2s ease,
+    text-decoration 0.2s ease;
+}
+
+.taxonomy-link:hover {
+  color: var(--color-primary, var(--color-accent));
+  text-decoration: underline solid;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .taxonomy-display .taxonomy-primary,
+  .taxonomy-compact .common-name {
+    color: var(--color-text-primary-dark);
+  }
+
+  .taxonomy-display .taxonomy-scientific,
+  .taxonomy-compact .scientific-name {
+    color: var(--color-text-secondary-dark);
+  }
+
+  .taxonomy-display .taxonomy-classification,
+  .taxonomy-compact .taxonomy-meta {
+    color: var(--color-text-tertiary-dark);
+  }
+
+  .taxonomy-link:hover {
+    color: var(--color-accent-dark);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .taxonomy-display .taxonomy-primary,
+  .taxonomy-compact .common-name {
+    font-size: 0.9rem;
+  }
+
+  .taxonomy-display .taxonomy-scientific,
+  .taxonomy-compact .scientific-name {
+    font-size: 0.8rem;
+  }
+
+  .taxonomy-display .taxonomy-classification,
+  .taxonomy-compact .taxonomy-meta {
+    font-size: 0.65rem;
+  }
+}

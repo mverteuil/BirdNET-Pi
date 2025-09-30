@@ -1,6 +1,31 @@
 from typing import Any
 
 from birdnetpi.system.service_strategies import ServiceStrategySelector
+from birdnetpi.web.models.services import ServiceConfig
+
+# Centralized service configuration - single source of truth for all services
+SERVICES_CONFIG = {
+    "docker": [
+        ServiceConfig("fastapi", "Web interface and API", critical=True),
+        ServiceConfig("audio_capture", "Audio recording service"),
+        ServiceConfig("audio_analysis", "Bird detection service"),
+        ServiceConfig("audio_websocket", "Real-time audio streaming"),
+        ServiceConfig("update", "Update daemon for automatic updates"),
+        ServiceConfig("caddy", "Web server and reverse proxy", critical=True),
+        ServiceConfig("redis", "Cache service (memory-only)"),
+        ServiceConfig("pulseaudio", "Audio system", optional=True),
+    ],
+    "sbc": [
+        ServiceConfig("birdnetpi-fastapi", "Web interface and API", critical=True),
+        ServiceConfig("birdnetpi-audio-capture", "Audio recording service"),
+        ServiceConfig("birdnetpi-audio-analysis", "Bird detection service"),
+        ServiceConfig("birdnetpi-audio-websocket", "Real-time audio streaming"),
+        ServiceConfig("birdnetpi-update", "Update daemon for automatic updates"),
+        ServiceConfig("caddy", "Web server and reverse proxy", critical=True),
+        ServiceConfig("redis", "Cache service (memory-only)"),
+        ServiceConfig("pulseaudio", "Audio system"),
+    ],
+}
 
 
 class SystemControlService:

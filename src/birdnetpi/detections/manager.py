@@ -1,7 +1,7 @@
 """Single source of truth for all detection data access.
 
 This manager provides a unified interface for accessing detection data,
-coordinating between the database service, multilingual service, and
+coordinating between the database service, species service, and
 species display service. It acts as a facade to simplify data access
 patterns while preserving the underlying service architecture.
 """
@@ -96,7 +96,7 @@ class DataManager:
             detection_query_service: Legacy service for compatibility (will be absorbed)
         """
         self.database_service = database_service
-        self.multilingual = species_database
+        self.species = species_database
         self.species_display = species_display_service
         self.file_manager = file_manager
         self.path_resolver = path_resolver

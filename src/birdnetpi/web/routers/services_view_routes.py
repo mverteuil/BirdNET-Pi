@@ -2,7 +2,7 @@
 
 import logging
 from dataclasses import asdict
-from typing import Any
+from typing import Annotated, Any
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Request
@@ -10,36 +10,13 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.system.system_control import SystemControlService
+from birdnetpi.system.system_control import SERVICES_CONFIG, SystemControlService
 from birdnetpi.system.system_utils import SystemUtils
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.services import ServiceConfig, format_uptime
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-# Service configurations matching the API routes
-SERVICES_CONFIG: dict[str, list[ServiceConfig]] = {
-    "docker": [
-        ServiceConfig("fastapi", "Web interface and API", critical=True),
-        ServiceConfig("audio_capture", "Audio recording service"),
-        ServiceConfig("audio_analysis", "Bird detection service"),
-        ServiceConfig("audio_websocket", "Real-time audio streaming"),
-        ServiceConfig("caddy", "Web server and reverse proxy", critical=True),
-        ServiceConfig("redis", "Cache service (memory-only)"),
-        ServiceConfig("pulseaudio", "Audio system", optional=True),
-    ],
-    "sbc": [
-        ServiceConfig("birdnetpi-fastapi", "Web interface and API", critical=True),
-        ServiceConfig("birdnetpi-audio-capture", "Audio recording service"),
-        ServiceConfig("birdnetpi-audio-analysis", "Bird detection service"),
-        ServiceConfig("birdnetpi-audio-websocket", "Real-time audio streaming"),
-        ServiceConfig("caddy", "Web server and reverse proxy", critical=True),
-        ServiceConfig("redis", "Cache service (memory-only)"),
-        ServiceConfig("pulseaudio", "Audio system"),
-    ],
-}
 
 
 def _get_services_with_status(
@@ -126,11 +103,11 @@ def _get_system_info(
 @inject
 async def services_view(
     request: Request,
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
-    system_control: SystemControlService | None = Depends(  # noqa: B008
-        Provide[Container.system_control_service]
-    ),
-    config: BirdNETConfig = Depends(Provide[Container.config]),  # noqa: B008
+    templates: Annotated[Jinja2Templates, Depends(Provide[Container.templates])],
+    system_control: Annotated[
+        SystemControlService | None, Depends(Provide[Container.system_control_service])
+    ],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
 ) -> HTMLResponse:
     """Render the services status page.
 

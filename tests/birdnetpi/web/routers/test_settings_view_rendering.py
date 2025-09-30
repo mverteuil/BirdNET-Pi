@@ -24,6 +24,11 @@ class TestSettingsViewRendering:
         env.globals["update_available"] = lambda: False
         env.globals["show_development_warning"] = lambda: False
 
+        # Add translation function (just return the string unchanged for testing)
+        env.globals["_"] = lambda x, **kwargs: x % kwargs if kwargs else x
+        env.globals["gettext"] = env.globals["_"]
+        env.globals["ngettext"] = lambda singular, plural, n: plural if n != 1 else singular
+
         return env
 
     @pytest.fixture

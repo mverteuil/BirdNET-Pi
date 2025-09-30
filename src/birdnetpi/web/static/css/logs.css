@@ -3,21 +3,7 @@
  */
 
 /* Log level indicator colors */
-.log-level-debug {
-  background-color: #6c757d;
-}
-.log-level-info {
-  background-color: #0d6efd;
-}
-.log-level-warning {
-  background-color: #ffc107;
-}
-.log-level-error {
-  background-color: #dc3545;
-}
-.log-level-critical {
-  background-color: #721c24;
-}
+/* Removed broad log-level background colors - only indicators should be colored */
 
 /* Layout */
 .logs-container {
@@ -278,9 +264,12 @@ select.form-control {
 }
 
 .streaming-indicator {
-  display: flex;
   align-items: center;
   gap: 5px;
+}
+
+.streaming-indicator:not(.d-none) {
+  display: flex;
 }
 
 .spinner {
@@ -582,6 +571,28 @@ select.form-control {
   height: 12px;
   border-radius: 50%;
   display: inline-block;
+}
+
+/* Apply same colors to legend indicators as log level indicators */
+.log-legend-indicator.log-level-debug {
+  background-color: #6c757d; /* Gray */
+}
+
+.log-legend-indicator.log-level-info {
+  background-color: #0066cc; /* Blue */
+}
+
+.log-legend-indicator.log-level-warning {
+  background-color: #ff9900; /* Orange */
+}
+
+.log-legend-indicator.log-level-error {
+  background-color: #9933ff; /* Purple */
+}
+
+.log-legend-indicator.log-level-critical {
+  background-color: #330066; /* Dark purple */
+  border: 2px solid #fff; /* Add border for visibility on dark backgrounds */
 }
 
 /* Dark mode support */

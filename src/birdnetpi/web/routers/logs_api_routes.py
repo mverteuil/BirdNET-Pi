@@ -4,7 +4,7 @@ import json
 import logging
 from collections.abc import AsyncIterator
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Query
@@ -21,12 +21,10 @@ router = APIRouter()
 @router.get("/logs")
 @inject
 async def get_logs(
-    start_time: datetime | None = Query(None, description="Start of time range"),  # noqa: B008
-    end_time: datetime | None = Query(None, description="End of time range"),  # noqa: B008
-    limit: int = Query(1000, ge=1, le=10000, description="Maximum entries"),
-    log_reader: LogReaderService = Depends(  # noqa: B008
-        Provide[Container.log_reader]
-    ),
+    log_reader: Annotated[LogReaderService, Depends(Provide[Container.log_reader])],
+    start_time: Annotated[datetime | None, Query(description="Start of time range")] = None,
+    end_time: Annotated[datetime | None, Query(description="End of time range")] = None,
+    limit: Annotated[int, Query(ge=1, le=10000, description="Maximum entries")] = 1000,
 ) -> dict[str, Any]:
     """Get historical logs within time range.
 
@@ -121,9 +119,7 @@ async def get_logs(
 @router.get("/logs/stream")
 @inject
 async def stream_logs(
-    log_reader: LogReaderService = Depends(  # noqa: B008
-        Provide[Container.log_reader]
-    ),
+    log_reader: Annotated[LogReaderService, Depends(Provide[Container.log_reader])],
 ) -> StreamingResponse:
     """Stream logs using Server-Sent Events (SSE).
 

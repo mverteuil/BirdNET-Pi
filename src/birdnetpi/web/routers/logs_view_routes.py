@@ -1,6 +1,7 @@
 """View routes for log viewing interface."""
 
 import logging
+from typing import Annotated
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Request, Response
@@ -8,7 +9,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.system.system_control import SystemControlService
+from birdnetpi.system.system_control import SERVICES_CONFIG, SystemControlService
+from birdnetpi.system.system_utils import SystemUtils
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.logs import LOG_LEVELS
 
@@ -20,11 +22,11 @@ router = APIRouter()
 @inject
 async def view_logs(
     request: Request,
-    templates: Jinja2Templates = Depends(Provide[Container.templates]),  # noqa: B008
-    system_control: SystemControlService = Depends(  # noqa: B008
-        Provide[Container.system_control_service]
-    ),
-    config: BirdNETConfig = Depends(Provide[Container.config]),  # noqa: B008
+    templates: Annotated[Jinja2Templates, Depends(Provide[Container.templates])],
+    system_control: Annotated[
+        SystemControlService, Depends(Provide[Container.system_control_service])
+    ],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
 ) -> Response:
     """Render the log viewer page.
 
@@ -37,16 +39,12 @@ async def view_logs(
     Returns:
         Rendered HTML template
     """
-    # Define known BirdNET-Pi services
-    # In production, these would be discovered from supervisorctl or systemd
-    services = [
-        {"name": "fastapi", "running": True},
-        {"name": "audio_capture", "running": True},
-        {"name": "audio_analysis", "running": True},
-        {"name": "audio_websocket", "running": True},
-        {"name": "caddy", "running": True},
-        {"name": "memcached", "running": True},
-    ]
+    # Get services from centralized configuration
+    deployment_type = SystemUtils.get_deployment_environment()
+    service_configs = SERVICES_CONFIG.get(deployment_type, SERVICES_CONFIG["docker"])
+
+    # Convert to format expected by template
+    services = [{"name": service.name, "running": True} for service in service_configs]
 
     # In the future, we could check actual status for each service
     # for service in services:

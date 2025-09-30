@@ -1,12 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ request.headers.get('Accept-Language', 'en').split(',')[0].split('-')[0] }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}BirdNET-Pi{% endblock %}</title>
+    <title>{% if page_name %}{{ page_name }} - {{ site_name|default('BirdNET-Pi') }}{% else %}{{ site_name|default('BirdNET-Pi') }}{% endif %}</title>
 
     {# Core styles - always included #}
     <link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}">
+
+    {# Update banner styles - needed globally #}
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/update_banner.css') }}">
 
     {# Block for additional styles #}
     {% block styles %}{% endblock %}
@@ -16,13 +19,21 @@
 </head>
 <body>
     {# Header section - consistent across all pages #}
-    <header>
+    <header role="banner">
         {% block header %}
-        <h1>{{ site_name|default('BirdNET-Pi') }} <span class="live" title="System Active"></span></h1>
-        <p class="tagline">
-            Continuous acoustic monitoring ·
-            {% if system_status and system_status.device_name %}{{ system_status.device_name }}{% else %}Docker Container{% endif %} ·
-            {% if location %}{{ location }}{% else %}{{ latitude|default(0.0, true) }}, {{ longitude|default(0.0, true) }}{% endif %}
+        <h1>
+            {{ site_name|default('BirdNET-Pi') }}
+            {% if page_name %}
+            <span class="live" aria-label="{{ _('Audio capture status: Active') }}" role="status" id="audio-capture-indicator"></span>
+            {{ page_name }}
+            {% else %}
+            <span class="live" aria-label="{{ _('Audio capture status: Active') }}" role="status" id="audio-capture-indicator"></span>
+            {% endif %}
+        </h1>
+        <p class="tagline" aria-label="{{ _('System information') }}">
+            {{ _('Continuous acoustic monitoring') }} ·
+            {% if system_status and system_status.device_name %}{{ system_status.device_name }}{% else %}{{ _('Docker Container') }}{% endif %} ·
+            {% if location %}{{ location }}{% else %}{{ _('%(lat)s, %(lng)s', lat=latitude|default(0.0, true), lng=longitude|default(0.0, true)) }}{% endif %}
         </p>
         {% endblock %}
     </header>
@@ -32,24 +43,36 @@
 
     {# Navigation - can be overridden but usually included #}
     {% block navigation %}
-        {% set active_page = active_page|default('') %}
         {% include 'includes/navigation.html.j2' %}
     {% endblock %}
 
     {# Main content area #}
-    <main>
+    <main role="main">
         {% block content %}
         {# Page-specific content goes here #}
         {% endblock %}
     </main>
 
-    {# Footer section - optional #}
-    {% block footer %}
-    {% endblock %}
+    {# Footer section - templates can override or extend #}
+    <footer role="contentinfo">
+        {% block footer_annotation %}
+        {# Default footer annotation - pages can override or extend with super() #}
+        <p class="annotation">
+            {{ _('BirdNET') }} v{{ birdnet_version | default('2.4') }} ·
+            {{ _('Confidence threshold') }} ≥{{ confidence_threshold | default('0.70') }} ·
+            {% if timezone %}{{ timezone }}{% else %}UTC{% endif %}
+            {% if model_update_date %} · {{ _('Last model update:') }} {{ model_update_date }}{% endif %}
+        </p>
+        {% endblock %}
+    </footer>
 
-    {# Scripts section #}
-    {% block scripts %}
-    {# Only include script.js if it exists - child templates can override #}
-    {% endblock %}
+    {# Core JavaScript - always loaded #}
+    <script src="{{ request.url_for('static', path='js/i18n.js') }}"></script>
+    <script src="{{ request.url_for('static', path='js/base.js') }}"></script>
+    <script src="{{ request.url_for('static', path='js/navigation.js') }}"></script>
+    <script src="{{ request.url_for('static', path='js/update_banner.js') }}"></script>
+
+    {# Block for page-specific scripts #}
+    {% block scripts %}{% endblock %}
 </body>
 </html>

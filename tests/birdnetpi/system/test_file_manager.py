@@ -146,7 +146,9 @@ def test_save_detection_audio(file_manager):
         )
 
         # Verify soundfile.write was called correctly
-        expected_full_path = file_manager.base_path / relative_path
+        # The path should be relative to recordings directory, not base_path
+        recordings_dir = file_manager.path_resolver.get_recordings_dir()
+        expected_full_path = recordings_dir / relative_path
         # The second argument will be a numpy array, so we use ANY
         mock_sf_write.assert_called_once_with(
             str(expected_full_path), ANY, sample_rate, subtype="PCM_16"
@@ -159,8 +161,8 @@ def test_save_detection_audio(file_manager):
         assert audio_array_arg.dtype == np.int16
         assert len(audio_array_arg) == 1000  # 2000 bytes / 2 bytes per int16
 
-        # Verify the directory was created
-        assert (file_manager.base_path / "detections").exists()
+        # Verify the directory was created (inside recordings dir)
+        assert (recordings_dir / "detections").exists()
 
         # Verify the returned AudioFile object
         assert isinstance(result, AudioFile)

@@ -145,7 +145,7 @@ def cli(ctx: click.Context) -> None:
 @click.argument("version")
 @click.option("--include-models", is_flag=True, help="Include BirdNET models")
 @click.option("--include-ioc-db", is_flag=True, help="Include IOC reference database")
-@click.option("--include-avibase-db", is_flag=True, help="Include Avibase multilingual database")
+@click.option("--include-avibase-db", is_flag=True, help="Include Avibase species database")
 @click.option(
     "--include-patlevin-db", is_flag=True, help="Include PatLevin BirdNET labels database"
 )

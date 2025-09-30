@@ -4,13 +4,14 @@ import logging
 import tomllib
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy import text
 
 from birdnetpi.database.core import CoreDatabaseService
+from birdnetpi.utils.cache.cache import Cache
 from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)
@@ -64,8 +65,8 @@ async def liveness_probe() -> dict[str, str]:
 @router.get("/ready", status_code=200, response_model=None)
 @inject
 async def readiness_probe(
+    db_service: Annotated[CoreDatabaseService, Depends(Provide[Container.core_database])],
     response: Response,
-    db_service: CoreDatabaseService = Depends(Provide[Container.core_database]),  # noqa: B008
 ) -> dict[str, Any]:
     """Check if service is ready to handle requests (Kubernetes readiness probe).
 
@@ -111,9 +112,9 @@ async def readiness_probe(
 @router.get("/detailed", status_code=200, response_model=None)
 @inject
 async def detailed_health_check(
+    db_service: Annotated[CoreDatabaseService, Depends(Provide[Container.core_database])],
+    cache_service: Annotated[Cache, Depends(Provide[Container.cache_service])],
     response: Response,
-    db_service: CoreDatabaseService = Depends(Provide[Container.core_database]),  # noqa: B008
-    cache_service: Any = Depends(Provide[Container.cache_service]),  # noqa: B008, ANN401
 ) -> dict[str, Any]:
     """Provide detailed health check with component status.
 

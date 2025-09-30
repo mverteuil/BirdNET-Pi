@@ -1,6 +1,7 @@
 """API routes for progressive loading of analysis data."""
 
 import logging
+from typing import Annotated
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -10,17 +11,43 @@ from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.web.core.container import Container
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/analysis", tags=["analysis"])
+router = APIRouter(prefix="/api/analysis")
+
+
+@router.get("/all")
+@inject
+async def get_all_analysis_data(
+    presentation_manager: Annotated[
+        PresentationManager, Depends(Provide[Container.presentation_manager])
+    ],
+    period: str = Query("30d", description="Analysis period"),
+    comparison: str = Query("none", description="Comparison period"),
+) -> JSONResponse:
+    """Get all analysis data for the specified period."""
+    try:
+        # Map comparison value
+        comparison_period = None if comparison == "none" else comparison
+
+        # Get all data using the existing method
+        data = await presentation_manager.get_analysis_page_data(
+            primary_period=period, comparison_period=comparison_period, progressive=False
+        )
+
+        return JSONResponse(content=data)
+
+    except Exception as e:
+        logger.error(f"Error getting all analysis data: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/diversity")
 @inject
 async def get_diversity_analysis(
+    presentation_manager: Annotated[
+        PresentationManager, Depends(Provide[Container.presentation_manager])
+    ],
     period: str = Query("30d", description="Analysis period"),
     comparison: str | None = Query(None, description="Comparison period"),
-    presentation_manager: PresentationManager = Depends(  # noqa: B008
-        Provide[Container.presentation_manager]
-    ),
 ) -> JSONResponse:
     """Get diversity metrics for the specified period."""
     try:
@@ -62,10 +89,10 @@ async def get_diversity_analysis(
 @router.get("/accumulation")
 @inject
 async def get_accumulation_analysis(
+    presentation_manager: Annotated[
+        PresentationManager, Depends(Provide[Container.presentation_manager])
+    ],
     period: str = Query("30d", description="Analysis period"),
-    presentation_manager: PresentationManager = Depends(  # noqa: B008
-        Provide[Container.presentation_manager]
-    ),
 ) -> JSONResponse:
     """Get species accumulation curve for the specified period."""
     try:
@@ -91,10 +118,10 @@ async def get_accumulation_analysis(
 @router.get("/similarity")
 @inject
 async def get_similarity_analysis(
+    presentation_manager: Annotated[
+        PresentationManager, Depends(Provide[Container.presentation_manager])
+    ],
     period: str = Query("30d", description="Analysis period"),
-    presentation_manager: PresentationManager = Depends(  # noqa: B008
-        Provide[Container.presentation_manager]
-    ),
 ) -> JSONResponse:
     """Get community similarity matrix for the specified period."""
     try:
@@ -121,10 +148,10 @@ async def get_similarity_analysis(
 @router.get("/beta")
 @inject
 async def get_beta_diversity(
+    presentation_manager: Annotated[
+        PresentationManager, Depends(Provide[Container.presentation_manager])
+    ],
     period: str = Query("30d", description="Analysis period"),
-    presentation_manager: PresentationManager = Depends(  # noqa: B008
-        Provide[Container.presentation_manager]
-    ),
 ) -> JSONResponse:
     """Get beta diversity analysis for the specified period."""
     try:
@@ -147,10 +174,10 @@ async def get_beta_diversity(
 @router.get("/weather")
 @inject
 async def get_weather_correlations(
+    presentation_manager: Annotated[
+        PresentationManager, Depends(Provide[Container.presentation_manager])
+    ],
     period: str = Query("30d", description="Analysis period"),
-    presentation_manager: PresentationManager = Depends(  # noqa: B008
-        Provide[Container.presentation_manager]
-    ),
 ) -> JSONResponse:
     """Get weather correlation analysis for the specified period."""
     try:
@@ -172,10 +199,10 @@ async def get_weather_correlations(
 @router.get("/patterns")
 @inject
 async def get_temporal_patterns(
+    presentation_manager: Annotated[
+        PresentationManager, Depends(Provide[Container.presentation_manager])
+    ],
     period: str = Query("30d", description="Analysis period"),
-    presentation_manager: PresentationManager = Depends(  # noqa: B008
-        Provide[Container.presentation_manager]
-    ),
 ) -> JSONResponse:
     """Get temporal pattern analysis for the specified period."""
     try:

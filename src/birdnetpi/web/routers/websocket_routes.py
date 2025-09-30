@@ -1,6 +1,7 @@
 """WebSocket routes for real-time communication."""
 
 import logging
+from typing import Annotated
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
@@ -17,9 +18,9 @@ router = APIRouter()
 @inject
 async def websocket_endpoint(
     websocket: WebSocket,
-    notification_manager: NotificationManager = Depends(  # noqa: B008
-        Provide[Container.notification_manager]
-    ),
+    notification_manager: Annotated[
+        NotificationManager, Depends(Provide[Container.notification_manager])
+    ],
 ) -> None:
     """Handle WebSocket connections for real-time notifications and updates."""
     try:

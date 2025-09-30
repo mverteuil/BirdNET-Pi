@@ -1,35 +1,50 @@
 {% extends "base.html.j2" %}
-{% set active_page = 'analysis' %}
+{% set page_name = _('Analysis') %}
 
-{% block title %}Ecological Analysis - {{ site_name }}{% endblock %}
+{% block navigation %}
+    {% set active_page = 'analysis' %}
+    {{ super() }}
+{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{{ request.url_for('static', path='css/analysis.css') }}">
+    {{ super() }}
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/analysis.css') }}">
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <!-- Store period parameters for JavaScript to use -->
+    <script>
+    window.analysisConfig = {
+        period: "{{ period }}",
+        comparisonPeriod: "{{ comparison_period or 'none' }}"
+    };
+    </script>
+    <!-- Analysis JavaScript -->
+    <script src="{{ request.url_for('static', path='js/analysis.js') }}"></script>
 {% endblock %}
 
 {% block content %}
-
-<!-- Header with subtitle -->
-<h2 class="section-title">Ecological Analysis</h2>
-<p class="subtitle">Diversity indices · Community dynamics · Temporal patterns</p>
+<!-- Subtitle (kept below navigation) -->
+<p class="subtitle">{{ _('Diversity indices') }} · {{ _('Community dynamics') }} · {{ _('Temporal patterns') }}</p>
 
 <!-- Period Selection Controls -->
 <div class="analysis-controls">
     <div class="period-selector">
-        <span>Analysis period:</span>
+        <span>{{ _('Analysis period:') }}</span>
         <select class="period-select" id="primary-period" onchange="updateAnalysis()">
-            <option value="24h" {% if period == '24h' %}selected{% endif %}>24 hours</option>
-            <option value="7d" {% if period == '7d' %}selected{% endif %}>7 days</option>
-            <option value="30d" {% if period == '30d' or not period %}selected{% endif %}>30 days</option>
-            <option value="90d" {% if period == '90d' %}selected{% endif %}>Season (90 days)</option>
-            <option value="365d" {% if period == '365d' %}selected{% endif %}>Year</option>
+            <option value="24h" {% if period == '24h' %}selected{% endif %}>{{ _('24 hours') }}</option>
+            <option value="7d" {% if period == '7d' %}selected{% endif %}>{{ _('7 days') }}</option>
+            <option value="30d" {% if period == '30d' or not period %}selected{% endif %}>{{ _('30 days') }}</option>
+            <option value="90d" {% if period == '90d' %}selected{% endif %}>{{ _('Season (90 days)') }}</option>
+            <option value="365d" {% if period == '365d' %}selected{% endif %}>{{ _('Year') }}</option>
         </select>
 
-        <span class="ml-2">Compare with:</span>
+        <span class="ml-2">{{ _('Compare with:') }}</span>
         <select class="period-select" id="comparison-period" onchange="updateAnalysis()">
-            <option value="none" {% if not comparison_period or comparison_period == 'none' %}selected{% endif %}>None</option>
-            <option value="previous" {% if comparison_period == 'previous' %}selected{% endif %}>Previous period</option>
-            <option value="year_ago" {% if comparison_period == 'year_ago' %}selected{% endif %}>Same period last year</option>
+            <option value="none" {% if not comparison_period or comparison_period == 'none' %}selected{% endif %}>{{ _('None') }}</option>
+            <option value="previous" {% if comparison_period == 'previous' %}selected{% endif %}>{{ _('Previous period') }}</option>
+            <option value="year_ago" {% if comparison_period == 'year_ago' %}selected{% endif %}>{{ _('Same period last year') }}</option>
         </select>
     </div>
 </div>
@@ -37,28 +52,28 @@
 <!-- Summary Metrics Line -->
 {% if analyses.diversity %}
 <div class="metrics-summary">
-    Shannon H': <span class="metric-value">{{ analyses.diversity.shannon[-1]|default(0)|abs|round(4) }}</span>
+    {{ _("Shannon H':") }} <span class="metric-value">{{ analyses.diversity.shannon[-1]|default(0)|abs|round(4) }}</span>
     {% if analyses.diversity_comparison %}
         <span class="metric-change change-{{ analyses.diversity_comparison.changes.shannon_change.trend }}">
             ({{ analyses.diversity_comparison.changes.shannon_change.value|round(2) }})
         </span>
     {% endif %}
     ·
-    Simpson D: <span class="metric-value">{{ analyses.diversity.simpson[-1]|default(0)|abs|round(4) }}</span>
+    {{ _('Simpson D:') }} <span class="metric-value">{{ analyses.diversity.simpson[-1]|default(0)|abs|round(4) }}</span>
     {% if analyses.diversity_comparison %}
         <span class="metric-change change-{{ analyses.diversity_comparison.changes.simpson_change.trend }}">
             ({{ analyses.diversity_comparison.changes.simpson_change.value|round(2) }})
         </span>
     {% endif %}
     ·
-    Richness S: <span class="metric-value">{{ analyses.diversity.richness[-1]|default(0) }}</span>
+    {{ _('Richness S:') }} <span class="metric-value">{{ analyses.diversity.richness[-1]|default(0) }}</span>
     {% if analyses.diversity_comparison %}
         <span class="metric-change change-{{ analyses.diversity_comparison.changes.richness_change.trend }}">
             ({{ analyses.diversity_comparison.changes.richness_change.value|round(0) }})
         </span>
     {% endif %}
     ·
-    Evenness J': <span class="metric-value">{{ analyses.diversity.evenness[-1]|default(0) }}</span>
+    {{ _("Evenness J':") }} <span class="metric-value">{{ analyses.diversity.evenness[-1]|default(0) }}</span>
     {% if analyses.diversity_comparison %}
         <span class="metric-change change-{{ analyses.diversity_comparison.changes.evenness_change.trend }}">
             ({{ analyses.diversity_comparison.changes.evenness_change.value|round(2) }})
@@ -68,134 +83,82 @@
 {% endif %}
 
 <!-- Diversity Timeline -->
-{% if analyses.diversity %}
 <div class="analysis-section">
-    <h3 class="analysis-title">Diversity Indices Timeline</h3>
+    <h3 class="analysis-title">{{ _('Diversity Indices Timeline') }}</h3>
     <p class="analysis-subtitle">
-        Shannon entropy (H') and Simpson index (D) ·
-        Circle size indicates species richness
+        {{ _("Shannon entropy (H') and Simpson index (D)") }} ·
+        {{ _('Circle size indicates species richness') }}
     </p>
 
     <canvas id="diversity-timeline" class="chart-canvas" width="1100" height="250"></canvas>
 
     <p class="method-note">
-        H' = -&Sigma;(&pi;<sub>i</sub> &times; ln(&pi;<sub>i</sub>)) where &pi;<sub>i</sub> is proportion of species i &middot;
-        D = 1 - &Sigma;(&pi;<sub>i</sub>&sup2;) &middot;
-        J' = H'/ln(S) where S is species count
+        {{ _("H' = -&Sigma;(&pi;<sub>i</sub> &times; ln(&pi;<sub>i</sub>)) where &pi;<sub>i</sub> is proportion of species i") | safe }} &middot;
+        {{ _("D = 1 - &Sigma;(&pi;<sub>i</sub>&sup2;)") | safe }} &middot;
+        {{ _("J' = H'/ln(S) where S is species count") }}
     </p>
 </div>
-{% endif %}
 
 <!-- Species Accumulation Curve -->
 <div class="analysis-section" id="accumulation-section">
-    {% if analyses.accumulation %}
-    <h3 class="analysis-title">Species Accumulation</h3>
-    <p class="analysis-subtitle">
-        Collector's curve showing species discovery rate ·
-        {{ analyses.accumulation.total_species }} species from {{ analyses.accumulation.total_samples }} detections
+    <h3 class="analysis-title">{{ _('Species Accumulation') }}</h3>
+    <p class="analysis-subtitle" id="accumulation-subtitle">
+        {{ _("Collector's curve showing species discovery rate") }}
     </p>
 
     <canvas id="accumulation-curve" class="chart-canvas" width="1100" height="200"></canvas>
 
-    <p class="method-note">
-        Method: {{ analyses.accumulation.method }} ·
-        Asymptote suggests sampling completeness
+    <p class="method-note" id="accumulation-method-note">
+        {{ _('Method: collector') }} ·
+        {{ _('Asymptote suggests sampling completeness') }}
     </p>
-    {% else %}
-    <h3 class="analysis-title">Species Accumulation</h3>
-    <p class="analysis-subtitle">Loading species accumulation data...</p>
-    <div class="loading-indicator">
-        <span class="loading-spinner">⟳ Loading...</span>
-    </div>
-    {% endif %}
 </div>
 
 <!-- Community Similarity Matrix -->
 <div class="analysis-section" id="similarity-section">
-    {% if analyses.similarity %}
-    <h3 class="analysis-title">Community Similarity</h3>
-    <p class="analysis-subtitle">
-        {{ analyses.similarity.index_type|title }} similarity coefficients between time periods ·
-        Values shown as percentages for similarity >50%
+    <h3 class="analysis-title">{{ _('Community Similarity') }}</h3>
+    <p class="analysis-subtitle" id="similarity-subtitle">
+        {{ _('Jaccard similarity coefficients between time periods') }} ·
+        {{ _('Values shown as percentages for similarity >50%') }}
     </p>
 
-    <div class="similarity-matrix" style="grid-template-columns: 100px repeat({{ analyses.similarity.labels|length }}, 1fr);">
-        <!-- Header row -->
-        <div class="matrix-cell"></div>
-        {% for label in analyses.similarity.labels %}
-        <div class="matrix-cell font-normal">{{ label }}</div>
-        {% endfor %}
-
-        <!-- Data rows -->
-        {% for row in analyses.similarity.matrix %}
-        <div class="matrix-cell text-right font-normal">
-            {{ analyses.similarity.labels[loop.index0] }}
-        </div>
-        {% for cell in row %}
-        <div class="matrix-cell intensity-{{ cell.intensity }}">
-            {{ cell.display }}
-        </div>
-        {% endfor %}
-        {% endfor %}
+    <div class="similarity-matrix" id="similarity-matrix-container">
+        <!-- Will be populated by JavaScript -->
     </div>
 
-    {% if analyses.similarity.period_info %}
-    <p class="method-note">
-        Comparing {{ analyses.similarity.period_info.count }} periods of {{ analyses.similarity.period_info.size_days }} days each
-        &middot; Total period: {{ analyses.similarity.period_info.total_days }} days
-    </p>
-    {% endif %}
-    <p class="method-note">
+    <p class="method-note" id="similarity-method-note">
         Jaccard: <span class="font-sans font-normal">(A ∩ B) / (A ∪ B)</span> &middot; Higher values indicate more similar communities
     </p>
-    {% else %}
-    <h3 class="analysis-title">Community Similarity</h3>
-    <p class="analysis-subtitle">Loading community similarity matrix...</p>
-    <div class="loading-indicator">
-        <span class="loading-spinner">⟳ Loading...</span>
-    </div>
-    {% endif %}
 </div>
 
 <!-- Temporal Beta Diversity -->
 <div class="analysis-section" id="beta-section">
-    {% if analyses.beta_diversity %}
-    <h3 class="analysis-title">Temporal β-Diversity</h3>
+    <h3 class="analysis-title">{{ _('Temporal β-Diversity') }}</h3>
     <p class="analysis-subtitle">
-        Species turnover between consecutive time windows ·
-        Shows community stability vs change
+        {{ _('Species turnover between consecutive time windows') }} ·
+        {{ _('Shows community stability vs change') }}
     </p>
-
-    <div class="horizon-chart" id="beta-horizon"></div>
 
     <canvas id="beta-diversity" class="chart-canvas" width="1100" height="150"></canvas>
 
     <p class="method-note">
-        Whittaker's &beta; = (gained + lost) / (2 &times; total species) &middot;
-        0 = identical communities, 1 = complete turnover
+        {{ _("Whittaker's &beta; = (gained + lost) / (2 &times; total species)") | safe }} &middot;
+        {{ _('0 = identical communities, 1 = complete turnover') }}
     </p>
-    {% else %}
-    <h3 class="analysis-title">Temporal β-Diversity</h3>
-    <p class="analysis-subtitle">Loading beta diversity analysis...</p>
-    <div class="loading-indicator">
-        <span class="loading-spinner">⟳ Loading...</span>
-    </div>
-    {% endif %}
 </div>
 
 <!-- Weather Correlations -->
 <div class="analysis-section" id="weather-section">
-    {% if analyses.weather %}
-    <h3 class="analysis-title">Weather-Activity Correlations</h3>
+    <h3 class="analysis-title">{{ _('Weather-Activity Correlations') }}</h3>
     <p class="analysis-subtitle">
-        Detection frequency vs environmental conditions
+        {{ _('Detection frequency vs environmental conditions') }}
     </p>
 
     <div class="grid-3-cols">
         <div>
             <canvas id="temp-correlation" class="chart-canvas" width="350" height="200"></canvas>
             <div class="text-center mt-0-5">
-                Temperature:
+                {{ _('Temperature:') }}
                 {% if analyses.weather and analyses.weather.correlations %}
                 <span class="correlation-value {% if analyses.weather.correlations.temperature|default(0)|abs > 0.5 %}correlation-strong{% elif analyses.weather.correlations.temperature|default(0)|abs > 0.3 %}correlation-moderate{% else %}correlation-weak{% endif %}">
                     r = {{ analyses.weather.correlations.temperature|default(0) }}
@@ -209,7 +172,7 @@
         <div>
             <canvas id="humidity-correlation" class="chart-canvas" width="350" height="200"></canvas>
             <div class="text-center mt-0-5">
-                Humidity:
+                {{ _('Humidity:') }}
                 {% if analyses.weather and analyses.weather.correlations %}
                 <span class="correlation-value {% if analyses.weather.correlations.humidity|default(0)|abs > 0.5 %}correlation-strong{% elif analyses.weather.correlations.humidity|default(0)|abs > 0.3 %}correlation-moderate{% else %}correlation-weak{% endif %}">
                     r = {{ analyses.weather.correlations.humidity|default(0) }}
@@ -223,7 +186,7 @@
         <div>
             <canvas id="wind-correlation" class="chart-canvas" width="350" height="200"></canvas>
             <div class="text-center mt-0-5">
-                Wind Speed:
+                {{ _('Wind Speed:') }}
                 {% if analyses.weather and analyses.weather.correlations %}
                 <span class="correlation-value {% if analyses.weather.correlations.wind_speed|default(0)|abs > 0.5 %}correlation-strong{% elif analyses.weather.correlations.wind_speed|default(0)|abs > 0.3 %}correlation-moderate{% else %}correlation-weak{% endif %}">
                     r = {{ analyses.weather.correlations.wind_speed|default(0) }}
@@ -236,913 +199,37 @@
     </div>
 
     <p class="method-note">
-        Pearson correlation coefficient ·
-        |r| > 0.5: strong, 0.3-0.5: moderate, < 0.3: weak
+        {{ _('Pearson correlation coefficient') }} ·
+        {{ _('|r| > 0.5: strong, 0.3-0.5: moderate, < 0.3: weak') }}
     </p>
-    {% else %}
-    <h3 class="analysis-title">Weather-Activity Correlations</h3>
-    <p class="analysis-subtitle">Loading weather correlation data...</p>
-    <div class="loading-indicator">
-        <span class="loading-spinner">⟳ Loading...</span>
-    </div>
-    {% endif %}
 </div>
 
 <!-- Temporal Activity Patterns (existing heatmap) -->
 <div class="analysis-section" id="patterns-section">
-    {% if analyses.temporal_patterns %}
-    <h3 class="analysis-title">Activity Patterns</h3>
+    <h3 class="analysis-title">{{ _('Activity Patterns') }}</h3>
     <p class="analysis-subtitle">
-        24-hour detection frequency ·
-        Peak activity: {{ analyses.temporal_patterns.peak_hour }}:00
+        {{ _('24-hour detection frequency') }}
+        {% if analyses.temporal_patterns and analyses.temporal_patterns.peak_hour %}
+        · Peak activity: {{ analyses.temporal_patterns.peak_hour }}:00
+        {% endif %}
     </p>
 
     <canvas id="activity-heatmap" class="chart-canvas" width="1100" height="200"></canvas>
 
     <p class="method-note">
-        Darker cells indicate higher detection frequency ·
-        Rows: days of week, Columns: hours (0-23)
+        {{ _('Darker cells indicate higher detection frequency') }} ·
+        {{ _('Rows: days of week, Columns: hours (0-23)') }}
     </p>
-    {% else %}
-    <h3 class="analysis-title">Activity Patterns</h3>
-    <p class="analysis-subtitle">Loading temporal patterns...</p>
-    <div class="loading-indicator">
-        <span class="loading-spinner">⟳ Loading...</span>
-    </div>
-    {% endif %}
 </div>
 
 <!-- Footer annotation -->
-<p class="annotation mt-2 pt-1 border-top">
-    Analysis period: {{ summary.primary_period.start }} to {{ summary.primary_period.end }} ·
-    Total detections: {{ summary.primary_period.total_detections }} ·
-    Confidence threshold: ≥{{ confidence_threshold|default(0.7) }} ·
-    Generated {{ generated_at }}
+<p class="annotation mt-2 pt-1 border-top" id="analysis-footer">
+    {% if summary and summary.primary_period %}
+    {{ _('Analysis period: %(start)s to %(end)s', start=summary.primary_period.start, end=summary.primary_period.end) }} ·
+    {{ _('Total detections: %(total)s', total=summary.primary_period.total_detections) }} ·
+    {% endif %}
+    {{ _('Confidence threshold: ≥%(threshold)s', threshold=confidence_threshold|default(0.7)) }}
+    {% if generated_at %} · {{ _('Generated %(time)s', time=generated_at) }}{% endif %}
 </p>
 
-{% endblock %}
-
-{% block scripts %}
-<script>
-// Analysis data from server
-window.analysisData = {{ analyses | tojson }};
-{% if dates %}
-window.analysisData.dates = {{ dates | tojson }};
-{% else %}
-window.analysisData.dates = {};
-{% endif %}
-
-// Draw diversity timeline using canvas
-function drawDiversityTimeline() {
-    const canvas = document.getElementById('diversity-timeline');
-    if (!canvas || !analysisData.diversity) return;
-
-    const ctx = canvas.getContext('2d');
-    const data = analysisData.diversity;
-
-    // Canvas dimensions
-    const padding = { left: 50, right: 30, top: 20, bottom: 40 };
-    const width = canvas.width - padding.left - padding.right;
-    const height = canvas.height - padding.top - padding.bottom;
-
-    // Clear canvas
-    ctx.fillStyle = '#fdfcfa';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw axes
-    ctx.strokeStyle = '#111';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(padding.left, padding.top);
-    ctx.lineTo(padding.left, padding.top + height);
-    ctx.lineTo(padding.left + width, padding.top + height);
-    ctx.stroke();
-
-    // Scale data
-    const maxShannon = Math.max(...data.shannon);
-    const maxRichness = Math.max(...data.richness);
-
-    // Determine if we need to sample the data for cleaner lines
-    const maxLinePoints = 100; // Maximum points for smooth line drawing
-    let lineData = data;
-
-    if (data.periods.length > maxLinePoints) {
-        // Sample the data to reduce points
-        const sampleRate = Math.ceil(data.periods.length / maxLinePoints);
-        lineData = {
-            periods: [],
-            shannon: [],
-            simpson: [],
-            richness: [],
-            evenness: []
-        };
-
-        for (let i = 0; i < data.periods.length; i += sampleRate) {
-            lineData.periods.push(data.periods[i]);
-            lineData.shannon.push(data.shannon[i]);
-            lineData.simpson.push(data.simpson[i]);
-            lineData.richness.push(data.richness[i]);
-            lineData.evenness.push(data.evenness[i]);
-        }
-
-        // Always include the last point
-        if ((data.periods.length - 1) % sampleRate !== 0) {
-            lineData.periods.push(data.periods[data.periods.length - 1]);
-            lineData.shannon.push(data.shannon[data.shannon.length - 1]);
-            lineData.simpson.push(data.simpson[data.simpson.length - 1]);
-            lineData.richness.push(data.richness[data.richness.length - 1]);
-            lineData.evenness.push(data.evenness[data.evenness.length - 1]);
-        }
-    }
-
-    // Draw Shannon line with sampled data
-    ctx.strokeStyle = '#111';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-
-    lineData.periods.forEach((period, i) => {
-        const x = padding.left + (i / (lineData.periods.length - 1)) * width;
-        const y = padding.top + height - (lineData.shannon[i] / maxShannon) * height * 0.8;
-
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-
-    // Draw Simpson line with sampled data (thinner, gray)
-    ctx.strokeStyle = '#666';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-
-    lineData.periods.forEach((period, i) => {
-        const x = padding.left + (i / (lineData.periods.length - 1)) * width;
-        const y = padding.top + height - lineData.simpson[i] * height * 0.8;
-
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-
-    // Draw richness circles - intelligently sample points to avoid overlap
-    const maxCircles = 30; // Maximum number of circles to draw
-    let sampleInterval = 1;
-
-    if (data.richness.length > maxCircles) {
-        // Calculate sampling interval to get roughly maxCircles points
-        sampleInterval = Math.ceil(data.richness.length / maxCircles);
-    }
-
-    data.richness.forEach((richness, i) => {
-        // Only draw circles at sampled intervals or endpoints
-        if (i % sampleInterval !== 0 && i !== data.richness.length - 1) {
-            return;
-        }
-
-        const x = padding.left + (i / (data.periods.length - 1)) * width;
-        const shannonY = padding.top + height - (data.shannon[i] / maxShannon) * height * 0.8;
-
-        const radius = 2 + (richness / maxRichness) * 6;
-        const opacity = 0.3 + (data.evenness[i] * 0.7);
-
-        ctx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
-        ctx.beginPath();
-        ctx.arc(x, shannonY, radius, 0, Math.PI * 2);
-        ctx.fill();
-    });
-
-    // Y-axis labels
-    ctx.font = '10px Georgia';
-    ctx.fillStyle = '#666';
-    ctx.textAlign = 'right';
-
-    for (let i = 0; i <= 4; i++) {
-        const y = padding.top + height - (i / 4) * height;
-        ctx.fillText((i * maxShannon / 4).toFixed(1), padding.left - 5, y + 3);
-    }
-
-    // X-axis labels (sample based on period count)
-    ctx.textAlign = 'center';
-    const labelInterval = Math.max(1, Math.floor(data.periods.length / 10));
-
-    data.periods.forEach((period, i) => {
-        if (i % labelInterval === 0 || i === data.periods.length - 1) {
-            const x = padding.left + (i / (data.periods.length - 1)) * width;
-            const label = period.split(' ')[0]; // Simplify label
-            ctx.fillText(label, x, padding.top + height + 15);
-        }
-    });
-
-    // Legend
-    ctx.font = '11px Georgia';
-    ctx.fillStyle = '#111';
-    ctx.textAlign = 'left';
-    ctx.fillText('— Shannon H′', padding.left + width - 100, padding.top + 20);
-
-    ctx.fillStyle = '#666';
-    ctx.fillText('— Simpson D', padding.left + width - 100, padding.top + 35);
-}
-
-// Draw species accumulation curve
-function drawAccumulationCurve() {
-    const canvas = document.getElementById('accumulation-curve');
-    if (!canvas || !analysisData.accumulation) return;
-
-    const ctx = canvas.getContext('2d');
-    const data = analysisData.accumulation;
-
-    // Canvas dimensions
-    const padding = { left: 60, right: 30, top: 20, bottom: 50 };
-    const width = canvas.width - padding.left - padding.right;
-    const height = canvas.height - padding.top - padding.bottom;
-
-    // Clear canvas
-    ctx.fillStyle = '#fdfcfa';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw axes
-    ctx.strokeStyle = '#111';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(padding.left, padding.top);
-    ctx.lineTo(padding.left, padding.top + height);
-    ctx.lineTo(padding.left + width, padding.top + height);
-    ctx.stroke();
-
-    // Add axis labels
-    ctx.fillStyle = '#111';
-    ctx.font = '12px system-ui, -apple-system, sans-serif';
-
-    // Y-axis label (rotated)
-    ctx.save();
-    ctx.translate(15, padding.top + height / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.textAlign = 'center';
-    ctx.fillText('Species Count', 0, 0);
-    ctx.restore();
-
-    // X-axis label
-    ctx.textAlign = 'center';
-    ctx.fillText('Number of Detections', padding.left + width / 2, canvas.height - 10);
-
-    // Draw accumulation curve
-    ctx.strokeStyle = '#111';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-
-    const maxSpecies = Math.max(...data.species_counts);
-    const maxSamples = data.samples.length;
-
-    // Store points for labeling
-    const curvePoints = [];
-
-    data.samples.forEach((sample, i) => {
-        const x = padding.left + (i / (maxSamples - 1)) * width;
-        const y = padding.top + height - (data.species_counts[i] / maxSpecies) * height * 0.9;
-
-        curvePoints.push({ x, y, species: data.species_counts[i], samples: i });
-
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-
-    // Add point labels at regular intervals (5-6 points)
-    const labelInterval = Math.floor(maxSamples / 5);
-    ctx.fillStyle = '#111';
-    ctx.font = '10px system-ui, -apple-system, sans-serif';
-
-    // Track last labeled point to avoid overlap
-    let lastLabeledIndex = -1;
-
-    for (let i = 0; i < maxSamples; i += labelInterval) {
-        const point = curvePoints[i];
-        if (point) {
-            // Draw small circle at point
-            ctx.beginPath();
-            ctx.arc(point.x, point.y, 3, 0, 2 * Math.PI);
-            ctx.fillStyle = '#111';
-            ctx.fill();
-
-            // Add label above point
-            ctx.fillStyle = '#666';
-            ctx.textAlign = 'center';
-            ctx.fillText(`${point.common_name} sp.`, point.x, point.y - 8);
-            ctx.font = '9px system-ui, -apple-system, sans-serif';
-            ctx.fillText(`(${point.samples} det.)`, point.x, point.y - 20);
-            ctx.font = '10px system-ui, -apple-system, sans-serif';
-
-            lastLabeledIndex = i;
-        }
-    }
-
-    // Label the final point only if it's not too close to the last labeled point
-    if (maxSamples > 0) {
-        const lastPoint = curvePoints[curvePoints.length - 1];
-
-        // Check if final point is at least 10% of the width away from last labeled point
-        const minDistance = width * 0.1;
-        const shouldLabelFinal = lastLabeledIndex < 0 ||
-            (lastPoint.x - curvePoints[lastLabeledIndex].x) > minDistance;
-
-        if (shouldLabelFinal) {
-            ctx.beginPath();
-            ctx.arc(lastPoint.x, lastPoint.y, 3, 0, 2 * Math.PI);
-            ctx.fillStyle = '#111';
-            ctx.fill();
-
-            ctx.fillStyle = '#666';
-            ctx.textAlign = 'right';
-            ctx.fillText(`${lastPoint.common_name} sp.`, lastPoint.x - 5, lastPoint.y - 8);
-            ctx.font = '9px system-ui, -apple-system, sans-serif';
-            ctx.fillText(`(${lastPoint.samples} det.)`, lastPoint.x - 5, lastPoint.y - 20);
-        }
-    }
-}
-
-// Draw beta diversity horizon chart
-function drawBetaDiversity() {
-    const canvas = document.getElementById('beta-diversity');
-    if (!canvas || !analysisData.beta_diversity) return;
-
-    const ctx = canvas.getContext('2d');
-    const data = analysisData.beta_diversity;
-
-    // Canvas dimensions
-    const padding = { left: 60, right: 30, top: 30, bottom: 65 };
-    const width = canvas.width - padding.left - padding.right;
-    const height = canvas.height - padding.top - padding.bottom;
-
-    // Clear canvas
-    ctx.fillStyle = '#fdfcfa';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw Y-axis
-    ctx.strokeStyle = '#111';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(padding.left, padding.top);
-    ctx.lineTo(padding.left, padding.top + height);
-    ctx.stroke();
-
-    // Draw X-axis
-    ctx.beginPath();
-    ctx.moveTo(padding.left, padding.top + height);
-    ctx.lineTo(padding.left + width, padding.top + height);
-    ctx.stroke();
-
-    // Add axis labels
-    ctx.fillStyle = '#111';
-    ctx.font = '12px system-ui, -apple-system, sans-serif';
-
-    // Y-axis label (rotated)
-    ctx.save();
-    ctx.translate(15, padding.top + height / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.textAlign = 'center';
-    ctx.fillText('Turnover Rate (β)', 0, 0);
-    ctx.restore();
-
-    // X-axis label
-    ctx.textAlign = 'center';
-    ctx.fillText('Time Period', padding.left + width / 2, canvas.height - 5);
-
-    // Draw turnover rate bars with labels
-    const maxTurnover = Math.max(...data.turnover_rates, 0.1); // Ensure minimum scale
-    const barWidth = width / data.periods.length;
-
-    data.periods.forEach((period, i) => {
-        const x = padding.left + i * barWidth;
-        const barHeight = (data.turnover_rates[i] / maxTurnover) * height * 0.8;
-        const y = padding.top + height - barHeight;
-        const barActualWidth = barWidth * 0.7;
-        const barX = x + (barWidth - barActualWidth) / 2;
-
-        // Bar color based on turnover rate
-        const intensity = data.turnover_rates[i];
-        if (intensity > 0.6) ctx.fillStyle = 'rgba(200, 0, 0, 0.4)';
-        else if (intensity > 0.3) ctx.fillStyle = 'rgba(180, 180, 0, 0.4)';
-        else ctx.fillStyle = 'rgba(0, 150, 0, 0.4)';
-
-        ctx.fillRect(barX, y, barActualWidth, barHeight);
-
-        // Add value label above each bar
-        ctx.fillStyle = '#666';
-        ctx.font = '11px system-ui, -apple-system, sans-serif';
-        ctx.textAlign = 'center';
-        const value = data.turnover_rates[i].toFixed(2);
-        ctx.fillText(value, barX + barActualWidth / 2, y - 5);
-
-        // Add period label below X-axis
-        ctx.font = '10px system-ui, -apple-system, sans-serif';
-        ctx.fillStyle = '#666';
-
-        // Format date for display
-        const date = new Date(period);
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                           'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const label = `${monthNames[date.getMonth()]} ${date.getDate()}`;
-
-        // Check if we need to rotate based on number of bars
-        if (data.periods.length > 8) {
-            // Rotate for many bars
-            ctx.save();
-            ctx.translate(barX + barActualWidth / 2, padding.top + height + 20);
-            ctx.rotate(-Math.PI / 4); // Rotate 45 degrees
-            ctx.textAlign = 'right';
-            ctx.fillText(label, 0, 0);
-            ctx.restore();
-        } else {
-            // Horizontal for fewer bars
-            ctx.textAlign = 'center';
-            ctx.fillText(label, barX + barActualWidth / 2, padding.top + height + 20);
-        }
-    });
-
-    // Add Y-axis scale markers
-    ctx.fillStyle = '#666';
-    ctx.font = '10px system-ui, -apple-system, sans-serif';
-    ctx.textAlign = 'right';
-
-    // Add scale lines and labels at 0, 0.5, 1.0
-    const scalePoints = [0, 0.5, 1.0];
-    scalePoints.forEach(value => {
-        const y = padding.top + height - (value / maxTurnover) * height * 0.8;
-
-        // Draw tick mark
-        ctx.strokeStyle = '#ddd';
-        ctx.lineWidth = 0.5;
-        ctx.beginPath();
-        ctx.moveTo(padding.left - 5, y);
-        ctx.lineTo(padding.left + width, y);
-        ctx.stroke();
-
-        // Add label
-        ctx.fillStyle = '#666';
-        ctx.fillText(value.toFixed(1), padding.left - 10, y + 3);
-    });
-}
-
-// Draw weather correlation scatter plots
-function drawWeatherCorrelations() {
-    if (!analysisData.weather) return;
-
-    const variables = ['temperature', 'humidity', 'wind_speed'];
-    const canvasIds = ['temp-correlation', 'humidity-correlation', 'wind-correlation'];
-    const units = ['°C', '%', 'km/h'];
-    const labels = ['Temperature', 'Humidity', 'Wind Speed'];
-
-    variables.forEach((variable, idx) => {
-        const canvas = document.getElementById(canvasIds[idx]);
-        if (!canvas) return;
-
-        const ctx = canvas.getContext('2d');
-        const weatherData = analysisData.weather.weather_variables[variable];
-        const detectionData = analysisData.weather.detection_counts;
-
-        // Canvas dimensions with more padding for labels
-        const padding = { left: 45, right: 20, top: 20, bottom: 45 };
-        const width = canvas.width - padding.left - padding.right;
-        const height = canvas.height - padding.top - padding.bottom;
-
-        // Clear canvas
-        ctx.fillStyle = '#fdfcfa';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Draw axes
-        ctx.strokeStyle = '#ddd';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(padding.left, padding.top);
-        ctx.lineTo(padding.left, padding.top + height);
-        ctx.lineTo(padding.left + width, padding.top + height);
-        ctx.stroke();
-
-        // Plot points
-        const validPoints = [];
-        for (let i = 0; i < weatherData.length; i++) {
-            if (weatherData[i] !== null && detectionData[i] !== null) {
-                validPoints.push({ x: weatherData[i], y: detectionData[i] });
-            }
-        }
-
-        if (validPoints.length > 0) {
-            const maxX = Math.max(...validPoints.map(p => p.x));
-            const minX = Math.min(...validPoints.map(p => p.x));
-            const maxY = Math.max(...validPoints.map(p => p.y));
-            const minY = 0;
-
-            // Draw tick marks and labels for X axis
-            ctx.font = '9px Georgia';
-            ctx.fillStyle = '#666';
-            ctx.textAlign = 'center';
-            for (let i = 0; i <= 4; i++) {
-                const xVal = minX + (maxX - minX) * i / 4;
-                const xPos = padding.left + width * i / 4;
-
-                // Tick mark
-                ctx.beginPath();
-                ctx.moveTo(xPos, padding.top + height);
-                ctx.lineTo(xPos, padding.top + height + 3);
-                ctx.stroke();
-
-                // Label
-                ctx.fillText(xVal.toFixed(0), xPos, padding.top + height + 15);
-            }
-
-            // Draw tick marks and labels for Y axis
-            ctx.textAlign = 'right';
-            for (let i = 0; i <= 4; i++) {
-                const yVal = minY + (maxY - minY) * i / 4;
-                const yPos = padding.top + height - height * i / 4;
-
-                // Tick mark
-                ctx.beginPath();
-                ctx.moveTo(padding.left - 3, yPos);
-                ctx.lineTo(padding.left, yPos);
-                ctx.stroke();
-
-                // Label
-                ctx.fillText(yVal.toFixed(0), padding.left - 5, yPos + 3);
-            }
-
-            // Draw data points
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-            validPoints.forEach(point => {
-                const x = padding.left + ((point.x - minX) / (maxX - minX)) * width;
-                const y = padding.top + height - ((point.y - minY) / (maxY - minY)) * height;
-
-                ctx.beginPath();
-                ctx.arc(x, y, 2, 0, Math.PI * 2);
-                ctx.fill();
-            });
-
-            // X-axis label
-            ctx.font = '10px Georgia';
-            ctx.fillStyle = '#333';
-            ctx.textAlign = 'center';
-            ctx.fillText(`${labels[idx]} (${units[idx]})`, padding.left + width / 2, canvas.height - 5);
-
-            // Y-axis label (rotated)
-            ctx.save();
-            ctx.translate(12, padding.top + height / 2);
-            ctx.rotate(-Math.PI / 2);
-            ctx.fillText('Detections per hour', 0, 0);
-            ctx.restore();
-        }
-    });
-}
-
-// Update analysis when period changes
-async function updateAnalysis() {
-    const primaryPeriod = document.getElementById('primary-period').value;
-    const comparisonPeriod = document.getElementById('comparison-period').value;
-
-    // Reload page with new parameters
-    const params = new URLSearchParams({
-        period: primaryPeriod,
-        comparison: comparisonPeriod
-    });
-
-    window.location.href = `/reports/analysis?${params}`;
-}
-
-// Draw activity heatmap
-function drawActivityHeatmap() {
-    const canvas = document.getElementById('activity-heatmap');
-    if (!canvas || !analysisData.temporal_patterns) return;
-
-    const ctx = canvas.getContext('2d');
-    const data = analysisData.temporal_patterns.heatmap;
-
-    // Canvas dimensions
-    const padding = { left: 50, right: 30, top: 30, bottom: 40 };
-    const width = canvas.width - padding.left - padding.right;
-    const height = canvas.height - padding.top - padding.bottom;
-
-    // Clear canvas
-    ctx.fillStyle = '#fdfcfa';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Calculate cell dimensions
-    const hours = 24;
-    const days = data.length;
-    const cellWidth = width / hours;
-    const cellHeight = height / days;
-
-    // Find max value for intensity scaling
-    const maxValue = Math.max(...data.flat());
-
-    // Draw heatmap cells
-    data.forEach((dayData, dayIdx) => {
-        dayData.forEach((value, hourIdx) => {
-            const x = padding.left + hourIdx * cellWidth;
-            const y = padding.top + dayIdx * cellHeight;
-
-            // Calculate intensity (0 to 1)
-            const intensity = maxValue > 0 ? value / maxValue : 0;
-
-            // Set fill color based on intensity
-            const opacity = 0.1 + intensity * 0.9;
-            ctx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
-            ctx.fillRect(x, y, cellWidth - 1, cellHeight - 1);
-        });
-    });
-
-    // Draw axes
-    ctx.strokeStyle = '#111';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(padding.left, padding.top);
-    ctx.lineTo(padding.left, padding.top + height);
-    ctx.lineTo(padding.left + width, padding.top + height);
-    ctx.stroke();
-
-    // X-axis labels (hours)
-    ctx.font = '10px Georgia';
-    ctx.fillStyle = '#666';
-    ctx.textAlign = 'center';
-
-    for (let hour = 0; hour < 24; hour += 3) {
-        const x = padding.left + (hour + 0.5) * cellWidth;
-        ctx.fillText(hour.toString(), x, padding.top + height + 15);
-    }
-
-    // Y-axis labels - determine based on period
-    const period = document.getElementById('primary-period')?.value || 'week';
-    let dayLabels;
-
-    // Determine period length in days
-    const startDate = new Date(analysisData.dates?.primary?.start);
-    const endDate = new Date(analysisData.dates?.primary?.end);
-    const periodDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-
-    if (periodDays > 7) {
-        // For periods > 7 days, show weekday labels (averaged data)
-        dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    } else {
-        // For periods <= 7 days, show date labels
-        dayLabels = [];
-        const today = new Date();
-        for (let i = 6; i >= 0; i--) {
-            const date = new Date(today);
-            date.setDate(today.getDate() - i);
-            // Format as MM/DD
-            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-            const day = date.getDate().toString().padStart(2, '0');
-            dayLabels.push(`${month}/${day}`);
-        }
-    }
-
-    ctx.textAlign = 'right';
-    ctx.font = '10px Georgia';
-
-    data.forEach((_, idx) => {
-        if (idx < dayLabels.length) {
-            const y = padding.top + (idx + 0.5) * cellHeight;
-            ctx.fillText(dayLabels[idx], padding.left - 5, y + 3);
-        }
-    });
-
-    // Title
-    ctx.font = '11px Georgia';
-    ctx.fillStyle = '#111';
-    ctx.textAlign = 'left';
-    ctx.fillText('Hour of Day', padding.left + width / 2 - 30, canvas.height - 10);
-}
-
-// Progressive loading functions
-async function loadAccumulation() {
-    const period = document.getElementById('primary-period').value;
-    try {
-        const response = await fetch(`/api/analysis/accumulation?period=${period}`);
-        const data = await response.json();
-
-        if (data.accumulation) {
-            analysisData.accumulation = data.accumulation;
-
-            // Update the section HTML
-            const section = document.getElementById('accumulation-section');
-            section.innerHTML = `
-                <h3 class="analysis-title">Species Accumulation</h3>
-                <p class="analysis-subtitle">
-                    Collector's curve showing species discovery rate ·
-                    ${data.accumulation.total_species} species from ${data.accumulation.total_samples} detections
-                </p>
-                <canvas id="accumulation-curve" class="chart-canvas" width="1100" height="200"></canvas>
-                <p class="method-note">
-                    Method: ${data.accumulation.method} ·
-                    Asymptote suggests sampling completeness
-                </p>
-            `;
-
-            // Draw the chart
-            drawAccumulationCurve();
-        }
-    } catch (error) {
-        console.error('Failed to load accumulation data:', error);
-    }
-}
-
-async function loadSimilarity() {
-    const period = document.getElementById('primary-period').value;
-    try {
-        const response = await fetch(`/api/analysis/similarity?period=${period}`);
-        const data = await response.json();
-
-        if (data.similarity) {
-            analysisData.similarity = data.similarity;
-
-            // Build the similarity matrix HTML
-            const section = document.getElementById('similarity-section');
-            let matrixHtml = '<div class="similarity-matrix" style="grid-template-columns: 100px repeat(' + data.similarity.labels.length + ', 1fr);">\n';
-
-            // Header row
-            matrixHtml += '<div class="matrix-cell"></div>\n';
-            data.similarity.labels.forEach(label => {
-                matrixHtml += `<div class="matrix-cell" style="font-weight: normal;">${label}</div>\n`;
-            });
-
-            // Data rows
-            data.similarity.matrix.forEach((row, rowIdx) => {
-                matrixHtml += `<div class="matrix-cell" style="text-align: right; font-weight: normal;">${data.similarity.labels[rowIdx]}</div>\n`;
-                row.forEach(cell => {
-                    matrixHtml += `<div class="matrix-cell intensity-${cell.intensity}">${cell.display}</div>\n`;
-                });
-            });
-            matrixHtml += '</div>';
-
-            section.innerHTML = `
-                <h3 class="analysis-title">Community Similarity</h3>
-                <p class="analysis-subtitle">
-                    ${data.similarity.index_type.charAt(0).toUpperCase() + data.similarity.index_type.slice(1)} similarity coefficients between time periods ·
-                    Values shown as percentages for similarity >50%
-                </p>
-                ${matrixHtml}
-                <p class="method-note">
-                    Jaccard: <span style="font-family: 'Arial', sans-serif; font-style: normal; font-weight: normal;">(A ∩ B) / (A ∪ B)</span> · Higher values indicate more similar communities
-                </p>
-            `;
-        }
-    } catch (error) {
-        console.error('Failed to load similarity data:', error);
-    }
-}
-
-async function loadBetaDiversity() {
-    const period = document.getElementById('primary-period').value;
-    try {
-        const response = await fetch(`/api/analysis/beta?period=${period}`);
-        const data = await response.json();
-
-        if (data.beta_diversity) {
-            analysisData.beta_diversity = data.beta_diversity;
-
-            // Update the section HTML
-            const section = document.getElementById('beta-section');
-            section.innerHTML = `
-                <h3 class="analysis-title">Temporal β-Diversity</h3>
-                <p class="analysis-subtitle">
-                    Species turnover between consecutive time windows ·
-                    Shows community stability vs change
-                </p>
-                <div class="horizon-chart" id="beta-horizon"></div>
-                <canvas id="beta-diversity" class="chart-canvas" width="1100" height="150"></canvas>
-                <p class="method-note">
-                    Whittaker's β = (gained + lost) / (2 × total species) ·
-                    0 = identical communities, 1 = complete turnover
-                </p>
-            `;
-
-            // Draw the chart
-            drawBetaDiversity();
-        }
-    } catch (error) {
-        console.error('Failed to load beta diversity data:', error);
-    }
-}
-
-async function loadWeatherCorrelations() {
-    const period = document.getElementById('primary-period').value;
-    try {
-        const response = await fetch(`/api/analysis/weather?period=${period}`);
-        const data = await response.json();
-
-        if (data.weather) {
-            analysisData.weather = data.weather;
-
-            // Update the section HTML
-            const section = document.getElementById('weather-section');
-            const w = data.weather;
-            section.innerHTML = `
-                <h3 class="analysis-title">Weather-Activity Correlations</h3>
-                <p class="analysis-subtitle">
-                    Detection frequency vs environmental conditions
-                </p>
-                <div class="grid-3-cols">
-                    <div>
-                        <canvas id="temp-correlation" class="chart-canvas" width="350" height="200"></canvas>
-                        <div class="text-center mt-0-5">
-                            Temperature:
-                            <span class="correlation-value ${Math.abs(w.correlations.temperature) > 0.5 ? 'correlation-strong' : Math.abs(w.correlations.temperature) > 0.3 ? 'correlation-moderate' : 'correlation-weak'}">
-                                r = ${w.correlations.temperature || 0}
-                            </span>
-                        </div>
-                    </div>
-                    <div>
-                        <canvas id="humidity-correlation" class="chart-canvas" width="350" height="200"></canvas>
-                        <div class="text-center mt-0-5">
-                            Humidity:
-                            <span class="correlation-value ${Math.abs(w.correlations.humidity) > 0.5 ? 'correlation-strong' : Math.abs(w.correlations.humidity) > 0.3 ? 'correlation-moderate' : 'correlation-weak'}">
-                                r = ${w.correlations.humidity || 0}
-                            </span>
-                        </div>
-                    </div>
-                    <div>
-                        <canvas id="wind-correlation" class="chart-canvas" width="350" height="200"></canvas>
-                        <div class="text-center mt-0-5">
-                            Wind Speed:
-                            <span class="correlation-value ${Math.abs(w.correlations.wind_speed) > 0.5 ? 'correlation-strong' : Math.abs(w.correlations.wind_speed) > 0.3 ? 'correlation-moderate' : 'correlation-weak'}">
-                                r = ${w.correlations.wind_speed || 0}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-                <p class="method-note">
-                    Pearson correlation coefficient ·
-                    |r| > 0.5: strong, 0.3-0.5: moderate, < 0.3: weak
-                </p>
-            `;
-
-            // Draw the charts
-            drawWeatherCorrelations();
-        }
-    } catch (error) {
-        console.error('Failed to load weather data:', error);
-    }
-}
-
-async function loadTemporalPatterns() {
-    const period = document.getElementById('primary-period').value;
-    try {
-        const response = await fetch(`/api/analysis/patterns?period=${period}`);
-        const data = await response.json();
-
-        if (data.temporal_patterns) {
-            analysisData.temporal_patterns = data.temporal_patterns;
-
-            // Update the section HTML
-            const section = document.getElementById('patterns-section');
-            section.innerHTML = `
-                <h3 class="analysis-title">Activity Patterns</h3>
-                <p class="analysis-subtitle">
-                    24-hour detection frequency ·
-                    Peak activity: ${data.temporal_patterns.peak_hour}:00
-                </p>
-                <canvas id="activity-heatmap" class="chart-canvas" width="1100" height="200"></canvas>
-                <p class="method-note">
-                    Darker cells indicate higher detection frequency ·
-                    Rows: days of week, Columns: hours (0-23)
-                </p>
-            `;
-
-            // Draw the heatmap
-            drawActivityHeatmap();
-        }
-    } catch (error) {
-        console.error('Failed to load temporal patterns:', error);
-    }
-}
-
-// Initialize visualizations and progressive loading
-document.addEventListener('DOMContentLoaded', function() {
-    // Draw initially loaded data (diversity timeline if available)
-    if (analysisData.diversity) {
-        drawDiversityTimeline();
-    }
-
-    // Check if progressive loading is enabled
-    if (analysisData.progressive_loading) {
-        // Load remaining analyses progressively
-        setTimeout(() => {
-            if (!analysisData.accumulation) loadAccumulation();
-            if (!analysisData.similarity) loadSimilarity();
-        }, 100);
-
-        setTimeout(() => {
-            if (!analysisData.beta_diversity) loadBetaDiversity();
-            if (!analysisData.weather) loadWeatherCorrelations();
-        }, 500);
-
-        setTimeout(() => {
-            if (!analysisData.temporal_patterns) loadTemporalPatterns();
-        }, 1000);
-    } else {
-        // Draw all available data immediately (non-progressive mode)
-        if (analysisData.accumulation) drawAccumulationCurve();
-        if (analysisData.beta_diversity) drawBetaDiversity();
-        if (analysisData.weather) drawWeatherCorrelations();
-        if (analysisData.temporal_patterns) drawActivityHeatmap();
-    }
-});
-</script>
 {% endblock %}

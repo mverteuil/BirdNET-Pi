@@ -40,6 +40,8 @@ def mock_request():
     """Create a mock FastAPI Request."""
     request = MagicMock(spec=Request)
     request.headers = {"Accept-Language": "en-US,en;q=0.9,es;q=0.8"}
+    request.query_params = MagicMock()
+    request.query_params.get = MagicMock(return_value=None)
     return request
 
 
@@ -222,7 +224,7 @@ class TestJinja2Integration:
         mock_templates.env = mock_env
         mock_env.globals = {}
 
-        with patch("birdnetpi.i18n.translation_manager._") as mock_gettext:
+        with patch("builtins._", create=True) as mock_gettext:
             mock_gettext.return_value = "translated message"
 
             setup_jinja2_i18n(mock_templates)
@@ -262,6 +264,8 @@ class TestTranslationIntegration:
         # Create request with Spanish preference
         mock_request = MagicMock(spec=Request)
         mock_request.headers = {"Accept-Language": "es-MX,es;q=0.9,en;q=0.8"}
+        mock_request.query_params = MagicMock()
+        mock_request.query_params.get = MagicMock(return_value=None)
 
         # Execute translation installation
         result = manager.install_for_request(mock_request)
@@ -295,6 +299,8 @@ class TestTranslationIntegration:
         for accept_language, expected_lang in test_cases:
             mock_request = MagicMock(spec=Request)
             mock_request.headers = {"Accept-Language": accept_language} if accept_language else {}
+            mock_request.query_params = MagicMock()
+            mock_request.query_params.get = MagicMock(return_value=None)
             mock_trans = MagicMock(spec=gettext.GNUTranslations)
 
             with patch.object(

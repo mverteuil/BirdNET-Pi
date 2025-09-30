@@ -201,24 +201,659 @@ body > h1:nth-of-type(1) {
   background: var(--color-bg-hover);
 }
 
-/* Pagination */
-.pagination {
-  text-align: center;
-  margin-top: 1rem;
+/* Pagination styles moved to shared pagination.css */
+
+/* Period selector styles */
+.period-selector {
+  margin-bottom: 1.5rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--color-border-tertiary);
+  padding-bottom: 0.5rem;
+}
+
+.period-selector a {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  margin-right: 0.5rem;
+  transition: color 0.2s;
+  cursor: pointer;
+}
+
+.period-selector a:hover {
+  color: var(--color-text-emphasis);
+}
+
+.period-selector a.active {
+  color: var(--color-text-emphasis);
+  font-weight: bold;
+  border-bottom: 2px solid var(--color-text-emphasis);
+  padding-bottom: 0.25rem;
+}
+
+.date-nav {
+  margin-left: 1rem;
+}
+
+.date-nav a {
+  padding: 0 0.5rem;
+}
+
+/* Filter indicator */
+.filter-indicator {
+  background: var(--color-bg-secondary);
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  border-left: 3px solid var(--color-text-emphasis);
   font-size: 0.85rem;
 }
 
-.pagination a {
+.clear-filter-btn {
+  margin-left: 1rem;
+  padding: 0.2rem 0.5rem;
+  background: transparent;
+  border: 1px solid var(--color-border-primary);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.clear-filter-btn:hover {
+  background: var(--color-bg-hover);
+}
+
+/* Detection list - grid-based layout mimicking table */
+.detection-list {
+  margin-bottom: 2rem;
+}
+
+.detection-entry {
+  display: grid;
+  grid-template-columns: 40px 1fr 100px 60px 80px;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px dotted var(--color-border-tertiary);
+  align-items: center;
+  font-size: 0.85rem;
+  transition: background 0.15s;
+}
+
+.detection-entry:hover {
+  background: var(--color-bg-hover);
+}
+
+.detection-entry.new-detection {
+  animation: highlight 2s ease-out;
+}
+
+@keyframes highlight {
+  0% {
+    background: var(--color-accent-bg, #ffffcc);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+/* Play button */
+.play-button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--color-border-primary);
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  padding: 0;
+}
+
+.play-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.play-button::before {
+  content: "▶";
+  font-size: 10px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-40%, -50%);
+}
+
+.play-button.playing::before {
+  content: "■";
+  font-size: 12px;
+  transform: translate(-50%, -50%);
+}
+
+/* Species info */
+.species-info {
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.species-info:hover {
+  color: var(--color-text-emphasis);
+}
+
+.species-name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.species-common {
+  font-weight: 500;
   color: var(--color-text-primary);
-  padding: 0.2rem 0.4rem;
+}
+
+.species-scientific {
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+
+/* Audio status */
+.audio-status {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--color-bg-primary);
+  padding: 2rem;
+  border: 1px solid var(--color-border-primary);
+  max-width: 400px;
+  width: 90%;
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.modal-content input[type="date"] {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--color-border-primary);
+  font-size: 1rem;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.modal-buttons button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-secondary);
+  cursor: pointer;
+}
+
+.modal-buttons button:hover {
+  background: var(--color-bg-hover);
+}
+
+/* Additional styles moved from inline */
+
+.subtitle {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 1.5rem;
+  font-style: italic;
+}
+
+/* Time selector - minimal, text-based */
+.time-selector {
+  margin-bottom: 1.5rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--color-border-tertiary);
+  padding-bottom: 0.5rem;
+}
+
+.time-selector a {
+  color: var(--color-text-secondary);
   text-decoration: none;
-  border: 1px solid transparent;
+  margin-right: 1.5rem;
+  transition: color 0.2s;
+  cursor: pointer;
 }
 
-.pagination a:hover {
-  border-color: var(--color-text-tertiary);
+.time-selector a:hover {
+  color: var(--color-text-emphasis);
 }
 
-.pagination .current-page {
+.time-selector a.active {
+  color: var(--color-text-emphasis);
   font-weight: bold;
+}
+
+/* Main grid with minimal separation */
+.main-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+/* Species list styles */
+.species-name-cell {
+  padding: 0.25rem 0;
+}
+
+.common-name {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.scientific-name {
+  font-style: italic;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin-top: 0.1rem;
+}
+
+/* Make species rows clickable */
+.species-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.species-row:hover {
+  background-color: var(--color-bg-tertiary);
+}
+
+.species-row.selected {
+  background-color: var(--color-accent-bg);
+  font-weight: bold;
+}
+
+/* Sortable column headers */
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-right: 1.5rem;
+}
+
+/* Ensure count column header has enough space for sort indicator */
+#species-frequency-table th:last-child.sortable {
+  padding-right: 2.5rem;
+  min-width: 0; /* Allow text to wrap if needed */
+}
+
+/* Adjust sort indicator position for narrow columns */
+#species-frequency-table th:nth-child(2).sortable::after,
+#species-frequency-table th:last-child.sortable::after {
+  right: 0.25rem; /* Move indicator closer to edge */
+}
+
+.sortable:hover {
+  background-color: var(--color-bg-tertiary);
+}
+
+.sortable::after {
+  content: "⇅";
+  position: absolute;
+  right: 0.5rem;
+  opacity: 0.3;
+  font-size: 0.8rem;
+}
+
+.sortable.sort-asc::after {
+  content: "↑";
+  opacity: 1;
+}
+
+.sortable.sort-desc::after {
+  content: "↓";
+  opacity: 1;
+}
+
+/* Special handling for centered sortable headers */
+.sortable.text-center {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* Species table - fixed layout for consistent columns */
+#species-frequency-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* Pagination controls */
+.pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background: var(--color-bg-secondary);
+  border-radius: 4px;
+}
+
+.pagination-info {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.pagination-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pagination-buttons button {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-primary);
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 0.9rem;
+}
+
+.pagination-buttons button:hover:not(:disabled) {
+  background: var(--color-bg-tertiary);
+}
+
+.pagination-buttons button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-size-selector {
+  font-size: 0.9rem;
+}
+
+.page-size-selector select {
+  padding: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  background: var(--color-bg-primary);
+}
+
+.spark-bar:hover {
+  background: var(--color-text-emphasis);
+}
+
+/* Timeline using text and minimal marks */
+.timeline {
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.timeline-header {
+  font-weight: bold;
+  margin-bottom: 0;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--color-border-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.search-input {
+  font-weight: normal;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--color-input-border);
+  font-size: 0.8rem;
+  margin-left: 1rem;
+  width: 200px;
+}
+
+.timeline-entry {
+  display: grid;
+  grid-template-columns: 60px 1fr 80px 60px;
+  gap: 1rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px dotted var(--color-input-border);
+}
+
+.timeline-entry:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.time {
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+}
+
+.location {
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.count {
+  text-align: right;
+  font-size: 0.8rem;
+}
+
+/* Center alignment class */
+.text-center {
+  text-align: center;
+}
+
+/* Data table following Tufte's principles */
+.data-table {
+  width: 100%;
+  font-size: 0.85rem;
+  border-collapse: collapse;
+  margin-top: 1.875rem; /* 30px */
+  table-layout: fixed;
+}
+
+/* Specific margin for detections table */
+#detections-table {
+  margin-top: 0;
+}
+
+/* Column widths for alignment */
+#detections-table th:nth-child(1),
+#detections-table td:nth-child(1) {
+  width: 10%;
+} /* Time */
+#detections-table th:nth-child(2),
+#detections-table td:nth-child(2) {
+  width: 40%;
+} /* Species */
+#detections-table th:nth-child(3),
+#detections-table td:nth-child(3) {
+  width: 20%;
+} /* Date */
+#detections-table th:nth-child(4),
+#detections-table td:nth-child(4) {
+  width: 15%;
+} /* Confidence */
+#detections-table th:nth-child(5),
+#detections-table td:nth-child(5) {
+  width: 15%;
+} /* First Detection */
+
+/* Species frequency table has 3 columns: Species, Star indicator, Count */
+#species-frequency-table th:nth-child(1),
+#species-frequency-table td:nth-child(1) {
+  width: 65%;
+} /* Species name */
+#species-frequency-table th:nth-child(2),
+#species-frequency-table td:nth-child(2) {
+  width: 15%; /* Star indicator - needs space for sort arrow */
+  text-align: center;
+}
+#species-frequency-table th:nth-child(3),
+#species-frequency-table td:nth-child(3) {
+  width: 20%; /* Count */
+  text-align: right;
+}
+
+.data-table th {
+  text-align: left;
+  font-weight: normal;
+  padding: 0.75rem 0 0.5rem 0;
+  border-bottom: 1px solid var(--color-border-primary);
+  font-size: 0.8rem;
+}
+
+.data-table td {
+  padding: 0.3rem 0;
+  border-bottom: 1px dotted var(--color-border-secondary);
+}
+
+.data-table tr:hover {
+  background: var(--color-bg-tertiary);
+}
+
+/* Small multiples grid */
+.small-multiples {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.small-multiple {
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.small-multiple-title {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.mini-chart {
+  height: 40px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1px;
+  margin: 0.5rem 0;
+}
+
+.mini-bar {
+  width: 3px;
+  background: #999;
+}
+
+.small-multiple-value {
+  font-size: 0.8rem;
+  color: #111;
+}
+
+/* Stem and leaf style display */
+.stem-leaf-display {
+  font-family: "Courier New", monospace;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f8f8f8;
+  border-left: 2px solid #666;
+}
+
+.stem-leaf-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.stem {
+  width: 30px;
+  text-align: right;
+  color: #666;
+}
+
+.leaf {
+  color: #111;
+}
+
+/* Annotation style */
+.annotation {
+  font-size: 0.8rem;
+  color: #666;
+  font-style: italic;
+  margin-top: 0.5rem;
+  padding-left: 1rem;
+  border-left: 2px solid #e0e0e0;
+}
+
+/* Loading indicator */
+.loading-indicator {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 1rem 2rem;
+  border: 1px solid var(--color-border-primary);
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.loading-indicator.active {
+  display: block;
+}
+
+.loading-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.5);
+  z-index: 999;
+}
+
+.loading-overlay.active {
+  display: block;
+}
+
+/* Summary statistics - inline text */
+.inline-stats {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 1rem 0;
+  line-height: 1.6;
+}
+
+/* Remove all unnecessary visual elements */
+* {
+  border-radius: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .main-content {
+    grid-template-columns: 1fr;
+  }
+
+  .timeline-entry {
+    grid-template-columns: 50px 1fr 60px;
+  }
+
+  .location {
+    display: none;
+  }
 }

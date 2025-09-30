@@ -1,17 +1,25 @@
 {% extends "base.html.j2" %}
+{% set page_name = _('Logs') %}
 
-{% block title %}{{ _('System Logs') }}{% endblock %}
+{% block navigation %}
+    {% set active_page = 'logs' %}
+    {{ super() }}
+{% endblock %}
 
-{% block head %}
-<link rel="stylesheet" href="{{ request.url_for('static', path='css/logs.css') }}">
+{% block styles %}
+    {{ super() }}
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/logs.css') }}">
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script src="{{ request.url_for('static', path='js/logs.js') }}"></script>
 {% endblock %}
 
 {% block content %}
 <div class="logs-container">
     <!-- Skip navigation link for screen readers -->
     <a href="#log-content" class="skip-link">{{ _('Skip to log content') }}</a>
-
-    <h1>{{ _('System Logs') }}</h1>
 
     <!-- Control Panel -->
     <div class="control-panel">
@@ -114,10 +122,6 @@
     <div class="status-bar" role="status" aria-live="polite">
         <div class="status-info">
             <div>
-                <strong>{{ _('Status:') }}</strong>
-                <span id="connection-status">{{ _('Historical') }}</span>
-            </div>
-            <div>
                 <strong>{{ _('Logs:') }}</strong>
                 <span id="log-count">0</span>
             </div>
@@ -208,8 +212,7 @@
     {% for level in log_levels %}
     <div class="log-legend-item">
         <span
-            class="log-legend-indicator"
-            class="log-level-{{ level.name|lower }}"
+            class="log-legend-indicator log-level-{{ level.name|lower }}"
             aria-hidden="true"
         ></span>
         <span>{{ level.name }}</span>
@@ -217,8 +220,4 @@
     {% endfor %}
 </div>
 
-{% endblock %}
-
-{% block scripts %}
-<script src="{{ request.url_for('static', path='js/logs.js') }}"></script>
 {% endblock %}
