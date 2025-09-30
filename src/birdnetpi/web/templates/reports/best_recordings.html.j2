@@ -20,7 +20,7 @@
     <span>{{ _('Loading statistics...') }}</span>
 </div>
 
-{% include 'includes/taxonomic_filters.html.j2' %}
+{% include 'components/taxonomic_filters.html.j2' %}
 
 <div id="detections-container" role="region" aria-label="{{ _('Best recordings list') }}" aria-live="polite">
     <div class="loading-indicator">{{ _('Loading recordings...') }}</div>
@@ -30,7 +30,7 @@
     <!-- Pagination controls will be added here by JavaScript -->
 </div>
 
-{% include 'includes/pagination.html.j2' %}
+{% include 'components/pagination.html.j2' %}
 
 <!-- Hidden HTML Templates for JavaScript (for i18n) -->
 <div id="js-templates" style="display: none;">
