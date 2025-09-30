@@ -97,6 +97,26 @@ h1 {
   font-size: 1.5rem;
   font-weight: normal;
   margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Header title components */
+.main-title {
+  font-weight: 600;
+  color: var(--color-text-emphasis);
+}
+
+.subtitle-separator {
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+  margin: 0 0.25rem;
+}
+
+.subtitle-text {
+  font-weight: 300;
+  color: var(--color-text-secondary);
 }
 
 .tagline {
@@ -462,19 +482,34 @@ h1 {
   display: inline-block;
 }
 
-/* Audio capture indicator */
-.live {
+/* System health pulse indicator */
+.pulse-indicator {
   display: inline-block;
-  width: 6px;
-  height: 6px;
-  background: var(--color-status-live);
+  width: 8px;
+  height: 8px;
+  background: #6c757d; /* Gray - unknown/loading state */
   border-radius: 50%;
-  margin: 0 1rem;
+  margin-left: 10px;
+  margin-right: 0;
+  transition: background-color 0.3s ease;
 }
 
-/* Only pulse when audio capture is running */
-.live.pulse {
+/* Healthy status - blue (colorblind-safe, universally positive) */
+.pulse-indicator.healthy {
+  background: #0077bb; /* Blue - clear to all color vision types */
   animation: pulse 2s infinite;
+}
+
+/* Warning/degraded state - orange (colorblind-safe) */
+.pulse-indicator.warning {
+  background: #ee7733; /* Orange - distinguishable from blue and red */
+  animation: pulse-slow 3s infinite;
+}
+
+/* Unhealthy/error state - vermillion red (colorblind-safe) */
+.pulse-indicator.unhealthy {
+  background: #cc3311; /* Vermillion - visible to protanopes and deuteranopes */
+  animation: none;
 }
 
 @keyframes pulse {
@@ -484,6 +519,16 @@ h1 {
   }
   50% {
     opacity: 0.3;
+  }
+}
+
+@keyframes pulse-slow {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
   }
 }
 

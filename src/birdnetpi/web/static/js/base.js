@@ -2,35 +2,52 @@
  * Base JavaScript - Common functionality for all pages
  */
 
-// Check audio capture service status and update indicator
-async function updateAudioCaptureIndicator() {
+// Check system health status and update indicator
+async function updateSystemHealthIndicator() {
   try {
-    const response = await fetch("/api/system/services/status");
+    const response = await fetch("/api/health/detailed");
+    const indicator = document.getElementById("system-health-indicator");
+
+    if (!indicator) return;
+
     if (response.ok) {
       const data = await response.json();
-      const audioService = data.services.find(
-        (s) =>
-          s.name === "audio_capture" || s.name === "birdnetpi-audio-capture",
-      );
-      const indicator = document.getElementById("audio-capture-indicator");
-      if (indicator && audioService) {
-        if (audioService.status === "running") {
-          indicator.classList.add("pulse");
-          indicator.title = "Audio Capture Active";
-        } else {
-          indicator.classList.remove("pulse");
-          indicator.title = "Audio Capture Stopped";
-        }
+
+      // Remove all state classes
+      indicator.classList.remove("healthy", "warning", "unhealthy");
+
+      // Apply appropriate class based on status
+      if (data.status === "healthy") {
+        indicator.classList.add("healthy");
+        indicator.title = "System Healthy";
+      } else if (data.status === "degraded") {
+        indicator.classList.add("warning");
+        indicator.title = "System Degraded - Some components unavailable";
+      } else {
+        indicator.classList.add("unhealthy");
+        indicator.title = "System Unhealthy";
       }
+    } else {
+      // API returned error status (503, etc.)
+      indicator.classList.remove("healthy", "warning");
+      indicator.classList.add("unhealthy");
+      indicator.title = "Health Check Failed";
     }
   } catch (error) {
-    console.error("Failed to check audio capture status:", error);
+    // Network error or API unavailable
+    console.error("Failed to check system health:", error);
+    const indicator = document.getElementById("system-health-indicator");
+    if (indicator) {
+      indicator.classList.remove("healthy", "warning");
+      indicator.classList.add("unhealthy");
+      indicator.title = "Health Check Unavailable";
+    }
   }
 }
 
 // Initialize on DOM content loaded
 document.addEventListener("DOMContentLoaded", function () {
-  // Check on load and every 10 seconds
-  updateAudioCaptureIndicator();
-  setInterval(updateAudioCaptureIndicator, 10000);
+  // Check on load and every 2.5 minutes (150 seconds)
+  updateSystemHealthIndicator();
+  setInterval(updateSystemHealthIndicator, 150000);
 });

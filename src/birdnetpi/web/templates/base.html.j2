@@ -22,13 +22,12 @@
     <header role="banner">
         {% block header %}
         <h1>
-            {{ site_name|default('BirdNET-Pi') }}
+            <span class="main-title">{{ site_name|default('BirdNET-Pi') }}</span>
             {% if page_name %}
-            <span class="live" aria-label="{{ _('Audio capture status: Active') }}" role="status" id="audio-capture-indicator"></span>
-            {{ page_name }}
-            {% else %}
-            <span class="live" aria-label="{{ _('Audio capture status: Active') }}" role="status" id="audio-capture-indicator"></span>
+            <span class="subtitle-separator">|</span>
+            <span class="subtitle-text">{{ page_name }}</span>
             {% endif %}
+            <span class="pulse-indicator" aria-label="{{ _('System health status') }}" role="status" id="system-health-indicator"></span>
         </h1>
         <p class="tagline" aria-label="{{ _('System information') }}">
             {{ _('Continuous acoustic monitoring') }} ·
