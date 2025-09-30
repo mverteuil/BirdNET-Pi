@@ -2348,3 +2348,23 @@ msgstr ""
 #, python-format
 msgid "Showing %(shown)s of %(total)s detections"
 msgstr ""
+
+#: src/birdnetpi/web/static/js/base.js:22
+msgid "System Healthy"
+msgstr ""
+
+#: src/birdnetpi/web/static/js/base.js:25
+msgid "System Degraded - Some components unavailable"
+msgstr ""
+
+#: src/birdnetpi/web/static/js/base.js:28
+msgid "System Unhealthy"
+msgstr ""
+
+#: src/birdnetpi/web/static/js/base.js:34
+msgid "Health Check Failed"
+msgstr ""
+
+#: src/birdnetpi/web/static/js/base.js:43
+msgid "Health Check Unavailable"
+msgstr ""

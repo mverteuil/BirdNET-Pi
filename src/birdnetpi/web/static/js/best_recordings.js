@@ -276,7 +276,7 @@ function displayRecordings(recordings) {
         <div class="detection-entry">
             <button class="play-button" onclick="playAudio('${recording.id}', '${
               recording.audio_file_id
-            }', this)" title="${_("play-recording")}"></button>
+            }', this)" title="${_("Play recording")}"></button>
             <div>
                 <div style="font-weight: 500;">${recording.common_name || recording.scientific_name}</div>
                 <div style="font-size: 0.8rem; color: var(--color-text-tertiary);">

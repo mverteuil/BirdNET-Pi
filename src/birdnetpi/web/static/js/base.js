@@ -19,19 +19,19 @@ async function updateSystemHealthIndicator() {
       // Apply appropriate class based on status
       if (data.status === "healthy") {
         indicator.classList.add("healthy");
-        indicator.title = "System Healthy";
+        indicator.title = _("System Healthy");
       } else if (data.status === "degraded") {
         indicator.classList.add("warning");
-        indicator.title = "System Degraded - Some components unavailable";
+        indicator.title = _("System Degraded - Some components unavailable");
       } else {
         indicator.classList.add("unhealthy");
-        indicator.title = "System Unhealthy";
+        indicator.title = _("System Unhealthy");
       }
     } else {
       // API returned error status (503, etc.)
       indicator.classList.remove("healthy", "warning");
       indicator.classList.add("unhealthy");
-      indicator.title = "Health Check Failed";
+      indicator.title = _("Health Check Failed");
     }
   } catch (error) {
     // Network error or API unavailable
@@ -40,7 +40,7 @@ async function updateSystemHealthIndicator() {
     if (indicator) {
       indicator.classList.remove("healthy", "warning");
       indicator.classList.add("unhealthy");
-      indicator.title = "Health Check Unavailable";
+      indicator.title = _("Health Check Unavailable");
     }
   }
 }
