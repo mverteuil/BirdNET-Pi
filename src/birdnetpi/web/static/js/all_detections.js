@@ -716,69 +716,6 @@ if (document.readyState === "loading") {
   initializePage();
 }
 
-// SSE for real-time updates
-function startSSE() {
-  const evtSource = new EventSource("/api/detections/stream");
-
-  evtSource.onmessage = function (event) {
-    const detection = JSON.parse(event.data);
-    addNewDetection(detection);
-  };
-
-  evtSource.onerror = function () {
-    console.error("SSE connection error");
-    // Reconnect after 5 seconds
-    setTimeout(startSSE, 5000);
-  };
-}
-
-function addNewDetection(detection) {
-  // Only add if we're viewing today
-  const url = new URL(window.location);
-  const period = url.searchParams.get("period") || "today";
-  if (period !== "today") return;
-
-  // Create new row HTML
-  const rowHtml = `
-        <div class="detection-entry new-detection" data-species="${detection.scientific_name}">
-            <button class="play-button" onclick="playAudio('${detection.id}', '${detection.audio_file_id}', this)" title="Play recording"></button>
-            <div class="species-info" onclick="filterBySpecies('${detection.scientific_name}', this.parentElement)">
-                <span class="species-name">
-                    <span class="species-common">${detection.common_name || detection.scientific_name}</span>
-                    <span class="species-scientific">${detection.scientific_name}</span>
-                </span>
-            </div>
-            <div>${detection.time}</div>
-            <div>${detection.confidence}%</div>
-            <div class="audio-status" id="audio-status-${detection.id}"></div>
-        </div>
-    `;
-
-  // Add to top of list
-  const container = document.querySelector(".detection-list");
-  container.insertAdjacentHTML("afterbegin", rowHtml);
-
-  // Update counts
-  updateSpeciesCount();
-
-  // Remove highlight after animation
-  setTimeout(() => {
-    const newRow = container.querySelector(".new-detection");
-    if (newRow) {
-      newRow.classList.remove("new-detection");
-    }
-  }, 3000);
-}
-
-// Start SSE if viewing today
-document.addEventListener("DOMContentLoaded", function () {
-  const url = new URL(window.location);
-  const period = url.searchParams.get("period") || "today";
-  if (period === "today") {
-    startSSE();
-  }
-});
-
 // Export functions for global access
 window.setPeriod = setPeriod;
 window.playAudio = playAudio;
