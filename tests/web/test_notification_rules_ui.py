@@ -210,7 +210,7 @@ def test_validate_species_endpoint(app_for_api_test):
                 ]
             }
 
-            response = client.post("/admin/config/validate-species", json=request_data)
+            response = client.post("/api/settings/validate-species", json=request_data)
             assert response.status_code == status.HTTP_200_OK
 
             data = response.json()
