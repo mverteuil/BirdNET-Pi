@@ -246,8 +246,6 @@ class AnalyticsManager:
         Returns:
             List of 7 lists, each with 24 hourly counts
         """
-        from collections import defaultdict
-
         end_date = datetime.now().date()
 
         if days <= 7:
@@ -317,8 +315,6 @@ class AnalyticsManager:
         Returns:
             Dict with keys 'sun', 'mon', etc. and hourly count arrays
         """
-        from collections import defaultdict
-
         # Get past 28 days to have multiple samples per weekday
         days_to_analyze = 28
         end_date = datetime.now().date()
@@ -371,8 +367,6 @@ class AnalyticsManager:
         Returns:
             List of dicts with 'stem' and 'leaves' for display
         """
-        from collections import defaultdict
-
         # Collect all hourly counts for the period
         hourly_counts = []
         end_date = datetime.now().date()
