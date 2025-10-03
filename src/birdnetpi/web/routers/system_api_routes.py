@@ -16,27 +16,34 @@ from birdnetpi.system.system_utils import SystemUtils
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.services import (
     ConfigReloadResponse,
+    CPUResources,
+    DiskResources,
+    HardwareStatusResponse,
+    MemoryResources,
+    ResourcesBreakdown,
     ServiceActionRequest,
     ServiceActionResponse,
     ServicesStatusResponse,
     ServiceStatus,
     SystemInfo,
+    SystemInfoDetailed,
     SystemRebootRequest,
     SystemRebootResponse,
     format_uptime,
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+
+router = APIRouter(prefix="/system")
 
 
-@router.get("/hardware/status")
+@router.get("/hardware/status", response_model=HardwareStatusResponse)
 @inject
 async def get_hardware_status(
     detection_query_service: Annotated[
         DetectionQueryService, Depends(Provide[Container.detection_query_service])
     ],
-) -> dict:
+) -> HardwareStatusResponse:
     """Get comprehensive hardware and system status.
 
     This endpoint provides all system metrics needed for monitoring,
@@ -56,25 +63,43 @@ async def get_hardware_status(
     uptime_seconds = time.time() - boot_time
     uptime_days = int(uptime_seconds // 86400)
 
+    # Extract memory and disk info
+    memory_data = system_info.get("memory", {})
+    disk_data = system_info.get("disk", {})
+
     # Combine all data for comprehensive status
-    return {
-        **health_summary,  # Include base health summary
-        "system_info": {
-            "device_name": system_info.get("device_name", "Unknown"),
-            "platform": system_info.get("platform", "Unknown"),
-            "cpu_count": system_info.get("cpu_count", 0),
-            "uptime_days": uptime_days,
-        },
-        "resources": {
-            "cpu": {
-                "percent": system_info.get("cpu_percent", 0),
-                "temperature": system_info.get("cpu_temperature"),
-            },
-            "memory": system_info.get("memory", {}),
-            "disk": system_info.get("disk", {}),
-        },
-        "total_detections": total_detections,
-    }
+    return HardwareStatusResponse(
+        cpu_usage=health_summary.get("cpu_usage", 0.0),
+        memory_usage=health_summary.get("memory_usage", 0.0),
+        disk_usage=health_summary.get("disk_usage", 0.0),
+        temperature=health_summary.get("temperature"),
+        overall_status=health_summary.get("status", "healthy"),
+        system_info=SystemInfoDetailed(
+            device_name=system_info.get("device_name", "Unknown"),
+            platform=system_info.get("platform", "Unknown"),
+            cpu_count=system_info.get("cpu_count", 0),
+            uptime_days=uptime_days,
+        ),
+        resources=ResourcesBreakdown(
+            cpu=CPUResources(
+                percent=system_info.get("cpu_percent", 0.0),
+                temperature=system_info.get("cpu_temperature"),
+            ),
+            memory=MemoryResources(
+                total=memory_data.get("total", 0),
+                available=memory_data.get("available", 0),
+                percent=memory_data.get("percent", 0.0),
+                used=memory_data.get("used", 0),
+            ),
+            disk=DiskResources(
+                total=disk_data.get("total", 0),
+                used=disk_data.get("used", 0),
+                free=disk_data.get("free", 0),
+                percent=disk_data.get("percent", 0.0),
+            ),
+        ),
+        total_detections=total_detections,
+    )
 
 
 # Service configuration is now imported from system_control.py
@@ -307,7 +332,7 @@ async def perform_service_action(
         }
         action_past = action_messages.get(action, f"{action}ed")
 
-        logger.info(f"Service '{service_name}' {action_past} successfully")
+        logger.info("Service '%s' %s successfully", service_name, action_past)
         return ServiceActionResponse(
             success=True,
             message=f"Service '{service_name}' {action_past} successfully",
@@ -315,7 +340,7 @@ async def perform_service_action(
             action=action,
         )
     except Exception as e:
-        logger.exception(f"Failed to {action} service '{service_name}'")
+        logger.exception("Failed to %s service '%s'", action, service_name)
         return ServiceActionResponse(
             success=False,
             message=f"Failed to {action} service: {e!s}",

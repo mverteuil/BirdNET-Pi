@@ -2,6 +2,21 @@
  * All Detections JavaScript - Detection filtering and period management
  */
 
+// Global state for period bounds
+let currentPeriodBounds = null;
+
+// Callback for period selector changes
+function onDetectionsPeriodChange(bounds) {
+  currentPeriodBounds = bounds;
+
+  // Reset to first page when period changes
+  currentPage = 1;
+
+  // Reload data
+  loadDetections(1);
+  loadSpeciesList();
+}
+
 // Helper function to clone and populate a template
 function cloneTemplate(templateId) {
   const template = document.getElementById(templateId);
@@ -16,10 +31,8 @@ function cloneTemplate(templateId) {
 
 // Handler called when filters change - reload data
 function onFiltersChanged() {
-  // Update URL with current filters
-  updateURL();
-
   // Reload detections and species list with new filters
+  // (updateURL() is called by loadDetections())
   loadDetections(1);
   loadSpeciesList();
 }
@@ -63,39 +76,6 @@ function onConfidenceChange() {
 
   updateActiveFilters();
   onFiltersChanged();
-}
-
-// Update URL with current filter state
-function updateURL() {
-  const url = new URL(window.location);
-
-  // Set or remove filter parameters
-  if (taxonomicFilters.family) {
-    url.searchParams.set("family", taxonomicFilters.family);
-  } else {
-    url.searchParams.delete("family");
-  }
-
-  if (taxonomicFilters.genus) {
-    url.searchParams.set("genus", taxonomicFilters.genus);
-  } else {
-    url.searchParams.delete("genus");
-  }
-
-  if (taxonomicFilters.species) {
-    url.searchParams.set("species", taxonomicFilters.species);
-  } else {
-    url.searchParams.delete("species");
-  }
-
-  if (taxonomicFilters.minConfidence && taxonomicFilters.minConfidence > 0.7) {
-    url.searchParams.set("confidence", taxonomicFilters.minConfidence);
-  } else {
-    url.searchParams.delete("confidence");
-  }
-
-  // Update URL without reload
-  history.replaceState({}, "", url.toString());
 }
 
 function updateSpeciesCount() {
@@ -270,6 +250,7 @@ function goToSelectedDate() {
 // Global variables for state management
 let currentPage = 1;
 let currentPeriod = "today";
+let selectedDate = null; // For date picker mode
 let detectionsSortColumn = "timestamp";
 let detectionsSortDirection = "desc";
 let speciesSortColumn = "count";
@@ -281,31 +262,26 @@ let allSpeciesData = [];
 let speciesCurrentPage = 1;
 const speciesPageSize = 10; // Determined by trial and error for best fit
 
-// Loading functions
-function showLoading() {
-  const overlay = document.getElementById("loading-overlay");
-  const indicator = document.getElementById("loading-indicator");
-  if (overlay) overlay.classList.add("active");
-  if (indicator) indicator.classList.add("active");
-}
-
-function hideLoading() {
-  const overlay = document.getElementById("loading-overlay");
-  const indicator = document.getElementById("loading-indicator");
-  if (overlay) overlay.classList.remove("active");
-  if (indicator) indicator.classList.remove("active");
-}
-
 // Main data loading function
 async function loadDetections(page = 1) {
   currentPage = page;
+
+  // Build query parameters
   const searchParams = new URLSearchParams({
     page: page,
     per_page: 20,
-    period: currentPeriod,
     sort_by: detectionsSortColumn,
     sort_order: detectionsSortDirection,
   });
+
+  // Add period bounds if available (from new period selector)
+  if (currentPeriodBounds) {
+    searchParams.append("start_date", currentPeriodBounds.start_date);
+    searchParams.append("end_date", currentPeriodBounds.end_date);
+  } else {
+    // Fallback to old period parameter for initial load
+    searchParams.append("period", currentPeriod || "day");
+  }
 
   // Add taxonomic filters
   if (taxonomicFilters.family) {
@@ -321,14 +297,18 @@ async function loadDetections(page = 1) {
     searchParams.append("min_confidence", taxonomicFilters.minConfidence);
   }
 
-  showLoading();
+  // Show inline loading indicator
+  const detectionsList = document.getElementById("detections-list");
+  detectionsList.innerHTML =
+    '<tr><td colspan="5" class="loading-indicator">' +
+    _("loading-detections") +
+    "</td></tr>";
 
   try {
     const response = await fetch(`/api/detections/?${searchParams}`);
     const data = await response.json();
 
     // Render detections table
-    const detectionsList = document.getElementById("detections-list");
     if (!data.detections || data.detections.length === 0) {
       detectionsList.innerHTML =
         '<tr><td colspan="5" class="no-data">' +
@@ -381,19 +361,23 @@ async function loadDetections(page = 1) {
     await loadSpeciesList();
   } catch (error) {
     console.error("Failed to load detections:", error);
-    const detectionsList = document.getElementById("detections-list");
     detectionsList.innerHTML =
       '<tr><td colspan="5" class="no-data">Error loading detections</td></tr>';
-  } finally {
-    hideLoading();
   }
 }
 
 // Load species frequency list
 async function loadSpeciesList() {
-  const searchParams = new URLSearchParams({
-    period: currentPeriod,
-  });
+  const searchParams = new URLSearchParams();
+
+  // Add period bounds if available (from new period selector)
+  if (currentPeriodBounds) {
+    searchParams.append("start_date", currentPeriodBounds.start_date);
+    searchParams.append("end_date", currentPeriodBounds.end_date);
+  } else {
+    // Fallback to old period parameter
+    searchParams.append("period", currentPeriod || "day");
+  }
 
   try {
     const response = await fetch(
@@ -601,14 +585,21 @@ function sortSpeciesTable(column) {
 function updateURL() {
   const params = new URLSearchParams();
 
-  // Add period parameter
-  if (currentPeriod && currentPeriod !== "today") {
-    params.set("period", currentPeriod);
-  }
-
-  // Add date parameter if in date mode
-  if (currentPeriod === "date" && selectedDate) {
-    params.set("date", selectedDate);
+  // Add period/date parameters from period selector if available
+  if (currentPeriodBounds) {
+    params.set("period", currentPeriodBounds.period_type);
+    // Extract date from start_date (YYYY-MM-DD format)
+    if (currentPeriodBounds.start_date) {
+      params.set("date", currentPeriodBounds.start_date);
+    }
+  } else {
+    // Fallback to old period parameter
+    if (currentPeriod && currentPeriod !== "today") {
+      params.set("period", currentPeriod);
+    }
+    if (currentPeriod === "date" && selectedDate) {
+      params.set("date", selectedDate);
+    }
   }
 
   // Add page parameter if not on first page
@@ -632,7 +623,18 @@ function updateURL() {
     ? `${window.location.pathname}?${params.toString()}`
     : window.location.pathname;
 
-  window.history.pushState({}, "", newUrl);
+  // Build state object for browser history
+  const state = {};
+  if (currentPeriodBounds) {
+    state.period = currentPeriodBounds.period_type;
+    state.date = currentPeriodBounds.start_date;
+  } else if (currentPeriod) {
+    state.period = currentPeriod;
+    // Always include a date - default to today if not set
+    state.date = selectedDate || new Date().toISOString().split("T")[0];
+  }
+
+  window.history.pushState(state, "", newUrl);
 }
 
 // Initialize function

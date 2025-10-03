@@ -1,10 +1,4 @@
 {% extends "base.html.j2" %}
-{% set page_name = _('Settings') %}
-
-{% block navigation %}
-    {% set active_page = 'settings' %}
-    {{ super() }}
-{% endblock %}
 
 {% block content %}
 
@@ -151,7 +145,7 @@
                          onclick="selectAudioDevice(this, {{ device.index }})">
                         <div class="choice-radio"></div>
                         <div class="option-name">{{ device.name }}</div>
-                        <div class="option-details">{{ device.max_input_channels }} ch · {{ "%.0f"|format(device.default_samplerate) }} Hz{% if device.current_device %} · Currently active{% endif %}</div>
+                        <div class="option-details">{{ device.max_input_channels }} ch · {{ "%.0f"|format(device.default_samplerate) }} Hz{% if device.current_device | default(false) %} · Currently active{% endif %}</div>
                     </div>
                     {% endfor %}
 

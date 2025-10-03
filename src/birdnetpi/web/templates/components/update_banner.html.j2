@@ -2,17 +2,17 @@
 {# This should be included in base.html.j2 to appear on all pages #}
 
 {# Get the update status once for use in both banners #}
-{% set update_status = get_update_status() if get_update_status is defined else None %}
+{% set update_status = get_update_status() %}
 
 {# Development warning banner #}
-{% if show_development_warning is defined and show_development_warning() %}
+{% if show_development_warning() %}
 <div class="development-banner" id="development-banner" role="alert" aria-live="polite">
 <div class="development-banner-content">
         <span class="development-banner-icon" aria-hidden="true">⚠️</span>
         <span class="development-banner-message">
             {{ _('Development Version') }}
-            {% if update_status and update_status.current_version %}
-            <span class="development-banner-version">{{ update_status.current_version }}</span>
+            {% if update_status and 'current_version' in update_status %}
+            <span class="development-banner-version">{{ update_status['current_version'] }}</span>
             {% endif %}
             - {{ _('This is not a stable release. For production use, please install an official release.') }}
         </span>
@@ -21,25 +21,26 @@
 {% endif %}
 
 {# Update available banner #}
-{% if update_status and update_status.available %}
+{% if update_status %}
+{% if 'available' in update_status and update_status['available'] %}
 <div class="update-banner" id="update-banner" role="alert" aria-live="polite"
-     data-version="{{ update_status.latest_version }}">
+     data-version="{{ update_status['latest_version'] }}">
 <div class="update-banner-content">
         <span class="update-banner-icon" aria-hidden="true">🎉</span>
         <div class="update-banner-message">
             <span>{{ _('A new version is available!') }}</span>
-            <span class="update-banner-version">{{ update_status.latest_version }}</span>
-            {% if update_status.release_notes %}
+            <span class="update-banner-version">{{ update_status['latest_version'] }}</span>
+            {% if 'release_notes' in update_status and update_status['release_notes'] %}
             <span class="update-banner-summary">
                 {# Show first line of release notes as summary #}
-                {{ update_status.release_notes.split('\n')[0][:100] }}{% if update_status.release_notes.split('\n')[0]|length > 100 %}...{% endif %}
+                {{ update_status['release_notes'].split('\n')[0][:100] }}{% if update_status['release_notes'].split('\n')[0]|length > 100 %}...{% endif %}
             </span>
             {% endif %}
         </div>
     </div>
 
     <div class="update-banner-actions">
-        <a href="/admin/update" class="update-banner-link">
+        <a href="{{ url_for('update_page') }}" class="update-banner-link">
             {{ _('View Update') }}
         </a>
         <button
@@ -53,4 +54,5 @@
         </button>
     </div>
 </div>
+{% endif %}
 {% endif %}

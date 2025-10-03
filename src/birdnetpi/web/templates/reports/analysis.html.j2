@@ -1,13 +1,8 @@
 {% extends "base.html.j2" %}
-{% set page_name = _('Analysis') %}
-
-{% block navigation %}
-    {% set active_page = 'analysis' %}
-    {{ super() }}
-{% endblock %}
 
 {% block styles %}
     {{ super() }}
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/period_selector.css') }}">
     <link rel="stylesheet" href="{{ request.url_for('static', path='css/analysis.css') }}">
 {% endblock %}
 
@@ -20,216 +15,40 @@
         comparisonPeriod: "{{ comparison_period or 'none' }}"
     };
     </script>
-    <!-- Analysis JavaScript -->
+    <!-- Period selector and analysis JavaScript -->
+    <script src="{{ request.url_for('static', path='js/period_selector.js') }}"></script>
     <script src="{{ request.url_for('static', path='js/analysis.js') }}"></script>
 {% endblock %}
 
 {% block content %}
-<!-- Subtitle (kept below navigation) -->
-<p class="subtitle">{{ _('Diversity indices') }} · {{ _('Community dynamics') }} · {{ _('Temporal patterns') }}</p>
-
 <!-- Period Selection Controls -->
 <div class="analysis-controls">
-    <div class="period-selector">
-        <span>{{ _('Analysis period:') }}</span>
-        <select class="period-select" id="primary-period" onchange="updateAnalysis()">
-            <option value="24h" {% if period == '24h' %}selected{% endif %}>{{ _('24 hours') }}</option>
-            <option value="7d" {% if period == '7d' %}selected{% endif %}>{{ _('7 days') }}</option>
-            <option value="30d" {% if period == '30d' or not period %}selected{% endif %}>{{ _('30 days') }}</option>
-            <option value="90d" {% if period == '90d' %}selected{% endif %}>{{ _('Season (90 days)') }}</option>
-            <option value="365d" {% if period == '365d' %}selected{% endif %}>{{ _('Year') }}</option>
-        </select>
+    {% set id = 'primary-period' %}
+    {% set label = _('Analysis period:') %}
+    {% set initial_period = period|default('month') %}
+    {% set onchange_callback = 'onPrimaryPeriodChange' %}
+    {% set show_historical = true %}
+    {% include 'components/period_selector.html.j2' %}
 
-        <span class="ml-2">{{ _('Compare with:') }}</span>
-        <select class="period-select" id="comparison-period" onchange="updateAnalysis()">
-            <option value="none" {% if not comparison_period or comparison_period == 'none' %}selected{% endif %}>{{ _('None') }}</option>
-            <option value="previous" {% if comparison_period == 'previous' %}selected{% endif %}>{{ _('Previous period') }}</option>
-            <option value="year_ago" {% if comparison_period == 'year_ago' %}selected{% endif %}>{{ _('Same period last year') }}</option>
-        </select>
+    <div class="comparison-controls" style="margin-top: 1rem;">
+        <label style="font-size: 0.85rem; color: var(--color-text-secondary); margin-right: 0.5rem;">
+            <input type="checkbox" id="enable-comparison" onchange="toggleComparison()" {% if comparison_period and comparison_period != 'none' %}checked{% endif %}>
+            {{ _('Compare with previous period') }}
+        </label>
     </div>
 </div>
 
-<!-- Summary Metrics Line -->
-{% if analyses.diversity %}
-<div class="metrics-summary">
-    {{ _("Shannon H':") }} <span class="metric-value">{{ analyses.diversity.shannon[-1]|default(0)|abs|round(4) }}</span>
-    {% if analyses.diversity_comparison %}
-        <span class="metric-change change-{{ analyses.diversity_comparison.changes.shannon_change.trend }}">
-            ({{ analyses.diversity_comparison.changes.shannon_change.value|round(2) }})
-        </span>
-    {% endif %}
-    ·
-    {{ _('Simpson D:') }} <span class="metric-value">{{ analyses.diversity.simpson[-1]|default(0)|abs|round(4) }}</span>
-    {% if analyses.diversity_comparison %}
-        <span class="metric-change change-{{ analyses.diversity_comparison.changes.simpson_change.trend }}">
-            ({{ analyses.diversity_comparison.changes.simpson_change.value|round(2) }})
-        </span>
-    {% endif %}
-    ·
-    {{ _('Richness S:') }} <span class="metric-value">{{ analyses.diversity.richness[-1]|default(0) }}</span>
-    {% if analyses.diversity_comparison %}
-        <span class="metric-change change-{{ analyses.diversity_comparison.changes.richness_change.trend }}">
-            ({{ analyses.diversity_comparison.changes.richness_change.value|round(0) }})
-        </span>
-    {% endif %}
-    ·
-    {{ _("Evenness J':") }} <span class="metric-value">{{ analyses.diversity.evenness[-1]|default(0) }}</span>
-    {% if analyses.diversity_comparison %}
-        <span class="metric-change change-{{ analyses.diversity_comparison.changes.evenness_change.trend }}">
-            ({{ analyses.diversity_comparison.changes.evenness_change.value|round(2) }})
-        </span>
-    {% endif %}
+<!-- Analysis content container -->
+<div id="analysis-loading" class="loading-indicator" style="display: none;">
+    {{ _('Loading analysis data...') }}
 </div>
-{% endif %}
-
-<!-- Diversity Timeline -->
-<div class="analysis-section">
-    <h3 class="analysis-title">{{ _('Diversity Indices Timeline') }}</h3>
-    <p class="analysis-subtitle">
-        {{ _("Shannon entropy (H') and Simpson index (D)") }} ·
-        {{ _('Circle size indicates species richness') }}
-    </p>
-
-    <canvas id="diversity-timeline" class="chart-canvas" width="1100" height="250"></canvas>
-
-    <p class="method-note">
-        {{ _("H' = -&Sigma;(&pi;<sub>i</sub> &times; ln(&pi;<sub>i</sub>)) where &pi;<sub>i</sub> is proportion of species i") | safe }} &middot;
-        {{ _("D = 1 - &Sigma;(&pi;<sub>i</sub>&sup2;)") | safe }} &middot;
-        {{ _("J' = H'/ln(S) where S is species count") }}
-    </p>
-</div>
-
-<!-- Species Accumulation Curve -->
-<div class="analysis-section" id="accumulation-section">
-    <h3 class="analysis-title">{{ _('Species Accumulation') }}</h3>
-    <p class="analysis-subtitle" id="accumulation-subtitle">
-        {{ _("Collector's curve showing species discovery rate") }}
-    </p>
-
-    <canvas id="accumulation-curve" class="chart-canvas" width="1100" height="200"></canvas>
-
-    <p class="method-note" id="accumulation-method-note">
-        {{ _('Method: collector') }} ·
-        {{ _('Asymptote suggests sampling completeness') }}
-    </p>
-</div>
-
-<!-- Community Similarity Matrix -->
-<div class="analysis-section" id="similarity-section">
-    <h3 class="analysis-title">{{ _('Community Similarity') }}</h3>
-    <p class="analysis-subtitle" id="similarity-subtitle">
-        {{ _('Jaccard similarity coefficients between time periods') }} ·
-        {{ _('Values shown as percentages for similarity >50%') }}
-    </p>
-
-    <div class="similarity-matrix" id="similarity-matrix-container">
-        <!-- Will be populated by JavaScript -->
-    </div>
-
-    <p class="method-note" id="similarity-method-note">
-        Jaccard: <span class="font-sans font-normal">(A ∩ B) / (A ∪ B)</span> &middot; Higher values indicate more similar communities
-    </p>
-</div>
-
-<!-- Temporal Beta Diversity -->
-<div class="analysis-section" id="beta-section">
-    <h3 class="analysis-title">{{ _('Temporal β-Diversity') }}</h3>
-    <p class="analysis-subtitle">
-        {{ _('Species turnover between consecutive time windows') }} ·
-        {{ _('Shows community stability vs change') }}
-    </p>
-
-    <canvas id="beta-diversity" class="chart-canvas" width="1100" height="150"></canvas>
-
-    <p class="method-note">
-        {{ _("Whittaker's &beta; = (gained + lost) / (2 &times; total species)") | safe }} &middot;
-        {{ _('0 = identical communities, 1 = complete turnover') }}
-    </p>
-</div>
-
-<!-- Weather Correlations -->
-<div class="analysis-section" id="weather-section">
-    <h3 class="analysis-title">{{ _('Weather-Activity Correlations') }}</h3>
-    <p class="analysis-subtitle">
-        {{ _('Detection frequency vs environmental conditions') }}
-    </p>
-
-    <div class="grid-3-cols">
-        <div>
-            <canvas id="temp-correlation" class="chart-canvas" width="350" height="200"></canvas>
-            <div class="text-center mt-0-5">
-                {{ _('Temperature:') }}
-                {% if analyses.weather and analyses.weather.correlations %}
-                <span class="correlation-value {% if analyses.weather.correlations.temperature|default(0)|abs > 0.5 %}correlation-strong{% elif analyses.weather.correlations.temperature|default(0)|abs > 0.3 %}correlation-moderate{% else %}correlation-weak{% endif %}">
-                    r = {{ analyses.weather.correlations.temperature|default(0) }}
-                </span>
-                {% else %}
-                <span class="correlation-value correlation-weak">r = 0.0</span>
-                {% endif %}
-            </div>
-        </div>
-
-        <div>
-            <canvas id="humidity-correlation" class="chart-canvas" width="350" height="200"></canvas>
-            <div class="text-center mt-0-5">
-                {{ _('Humidity:') }}
-                {% if analyses.weather and analyses.weather.correlations %}
-                <span class="correlation-value {% if analyses.weather.correlations.humidity|default(0)|abs > 0.5 %}correlation-strong{% elif analyses.weather.correlations.humidity|default(0)|abs > 0.3 %}correlation-moderate{% else %}correlation-weak{% endif %}">
-                    r = {{ analyses.weather.correlations.humidity|default(0) }}
-                </span>
-                {% else %}
-                <span class="correlation-value correlation-weak">r = 0.0</span>
-                {% endif %}
-            </div>
-        </div>
-
-        <div>
-            <canvas id="wind-correlation" class="chart-canvas" width="350" height="200"></canvas>
-            <div class="text-center mt-0-5">
-                {{ _('Wind Speed:') }}
-                {% if analyses.weather and analyses.weather.correlations %}
-                <span class="correlation-value {% if analyses.weather.correlations.wind_speed|default(0)|abs > 0.5 %}correlation-strong{% elif analyses.weather.correlations.wind_speed|default(0)|abs > 0.3 %}correlation-moderate{% else %}correlation-weak{% endif %}">
-                    r = {{ analyses.weather.correlations.wind_speed|default(0) }}
-                </span>
-                {% else %}
-                <span class="correlation-value correlation-weak">r = 0.0</span>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <p class="method-note">
-        {{ _('Pearson correlation coefficient') }} ·
-        {{ _('|r| > 0.5: strong, 0.3-0.5: moderate, < 0.3: weak') }}
-    </p>
-</div>
-
-<!-- Temporal Activity Patterns (existing heatmap) -->
-<div class="analysis-section" id="patterns-section">
-    <h3 class="analysis-title">{{ _('Activity Patterns') }}</h3>
-    <p class="analysis-subtitle">
-        {{ _('24-hour detection frequency') }}
-        {% if analyses.temporal_patterns and analyses.temporal_patterns.peak_hour %}
-        · Peak activity: {{ analyses.temporal_patterns.peak_hour }}:00
-        {% endif %}
-    </p>
-
-    <canvas id="activity-heatmap" class="chart-canvas" width="1100" height="200"></canvas>
-
-    <p class="method-note">
-        {{ _('Darker cells indicate higher detection frequency') }} ·
-        {{ _('Rows: days of week, Columns: hours (0-23)') }}
-    </p>
+<div id="analysis-content">
+    <!-- Content loaded by JavaScript -->
 </div>
 
 <!-- Footer annotation -->
 <p class="annotation mt-2 pt-1 border-top" id="analysis-footer">
-    {% if summary and summary.primary_period %}
-    {{ _('Analysis period: %(start)s to %(end)s', start=summary.primary_period.start, end=summary.primary_period.end) }} ·
-    {{ _('Total detections: %(total)s', total=summary.primary_period.total_detections) }} ·
-    {% endif %}
-    {{ _('Confidence threshold: ≥%(threshold)s', threshold=confidence_threshold|default(0.7)) }}
-    {% if generated_at %} · {{ _('Generated %(time)s', time=generated_at) }}{% endif %}
+    {{ _('Confidence threshold: ≥%(threshold)s', threshold=config.species_confidence_threshold) }}
 </p>
 
 {% endblock %}

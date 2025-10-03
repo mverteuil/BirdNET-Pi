@@ -13,19 +13,20 @@ from fastapi.responses import StreamingResponse
 from birdnetpi.system.log_reader import LogReaderService
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.logs import LOG_LEVELS, LogEntry
+from birdnetpi.web.models.services import LogsResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/logs")
+@router.get("/logs", response_model=LogsResponse)
 @inject
 async def get_logs(
     log_reader: Annotated[LogReaderService, Depends(Provide[Container.log_reader])],
     start_time: Annotated[datetime | None, Query(description="Start of time range")] = None,
     end_time: Annotated[datetime | None, Query(description="End of time range")] = None,
     limit: Annotated[int, Query(ge=1, le=10000, description="Maximum entries")] = 1000,
-) -> dict[str, Any]:
+) -> LogsResponse:
     """Get historical logs within time range.
 
     All filtering is now done client-side for consistency between
@@ -57,7 +58,7 @@ async def get_logs(
             try:
                 # Skip non-dict entries
                 if not isinstance(log, dict):
-                    logger.debug(f"Skipping non-dict log entry: {log}")
+                    logger.debug("Skipping non-dict log entry: %s", log)
                     continue
 
                 # Map fields from supervisor-wrapper format to LogEntry format
@@ -87,7 +88,7 @@ async def get_logs(
 
                 entries.append(LogEntry(**mapped_log))
             except (ValueError, TypeError) as e:
-                logger.debug(f"Failed to parse log entry: {e}")
+                logger.debug("Failed to parse log entry: %s", e)
                 # Create a basic entry for dict logs that failed parsing
                 if isinstance(log, dict):
                     entries.append(
@@ -100,20 +101,22 @@ async def get_logs(
                         )
                     )
 
-        return {
-            "logs": [entry.model_dump() for entry in entries],
-            "total": len(entries),
-            "limit": limit,
-            "levels": LOG_LEVELS,
-        }
+        return LogsResponse(
+            logs=entries,
+            total=len(entries),
+            limit=limit,
+            levels=LOG_LEVELS,
+            error=None,
+        )
     except Exception as e:
-        logger.error(f"Failed to get logs: {e}", exc_info=True)
-        return {
-            "logs": [],
-            "total": 0,
-            "limit": limit,
-            "error": str(e),
-        }
+        logger.error("Failed to get logs: %s", e, exc_info=True)
+        return LogsResponse(
+            logs=[],
+            total=0,
+            limit=limit,
+            levels=LOG_LEVELS,
+            error=str(e),
+        )
 
 
 @router.get("/logs/stream")
@@ -177,12 +180,12 @@ async def stream_logs(
                     event_data = json.dumps(entry.model_dump(), default=str)
                     yield f"data: {event_data}\n\n"
                 except (ValueError, TypeError) as e:
-                    logger.debug(f"Failed to format log entry: {e}")
+                    logger.debug("Failed to format log entry: %s", e)
                     # Send raw entry
                     yield f"data: {json.dumps(log_entry, default=str)}\n\n"
 
         except Exception as e:
-            logger.error(f"Error in log streaming: {e}", exc_info=True)
+            logger.error("Error in log streaming: %s", e, exc_info=True)
             # Send error event
             yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
         finally:

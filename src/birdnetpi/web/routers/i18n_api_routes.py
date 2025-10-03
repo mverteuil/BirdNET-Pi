@@ -3,24 +3,26 @@
 from typing import Annotated
 
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Query, Request
 
 from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.web.core.container import Container
+from birdnetpi.web.models.i18n import LanguageCatalogResponse, TranslationsResponse
 
-router = APIRouter(prefix="/api/i18n")
+router = APIRouter()
 
 
-@router.get("/translations")
+@router.get("/i18n/translations", response_model=TranslationsResponse)
 @inject
 async def get_translations_json(
     request: Request,
     translation_manager: Annotated[
         TranslationManager, Depends(Provide[Container.translation_manager])
     ],
-    lang: str | None = None,
-) -> JSONResponse:
+    lang: str | None = Query(
+        None, description="Language code (defaults to Accept-Language header)"
+    ),
+) -> TranslationsResponse:
     """Get translations for JavaScript as JSON.
 
     Args:
@@ -110,17 +112,17 @@ async def get_translations_json(
     }
 
     # Use the language we determined earlier
-    return JSONResponse(content={"language": lang, "translations": js_translations})
+    return TranslationsResponse(language=lang, translations=js_translations)
 
 
-@router.get("/catalog/{lang}")
+@router.get("/catalog/{lang}", response_model=LanguageCatalogResponse)
 @inject
 async def get_language_catalog(
     lang: str,
     translation_manager: Annotated[
         TranslationManager, Depends(Provide[Container.translation_manager])
     ],
-) -> JSONResponse:
+) -> LanguageCatalogResponse:
     """Get the full translation catalog for a specific language.
 
     This can be used for loading complete translation sets in single-page applications.
@@ -145,4 +147,4 @@ async def get_language_catalog(
                 if msg.id and msg.string:
                     catalog[msg.id] = msg.string
 
-    return JSONResponse(content={"language": lang, "catalog": catalog})
+    return LanguageCatalogResponse(language=lang, catalog=catalog)

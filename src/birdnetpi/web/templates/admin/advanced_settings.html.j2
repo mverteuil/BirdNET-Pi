@@ -1,5 +1,4 @@
 {% extends "base.html.j2" %}
-{% set page_name = 'Advanced Settings' %}
 
 {% block styles %}
     {{ super() }}
@@ -8,11 +7,6 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.css"
     />
-{% endblock %}
-
-{% block navigation %}
-    {% set active_page = 'settings' %}
-    {{ super() }}
 {% endblock %}
 
 {% block content %}

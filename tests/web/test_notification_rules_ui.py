@@ -96,7 +96,7 @@ def test_settings_page_renders_notification_rules(
     assert "addNotificationRule" in response.text
 
 
-def test_post_settings_with_notification_rules(
+def test_post_settings_view_with_notification_rules(
     client_with_notification_rules, mock_config_with_rules
 ):
     """Should successfully post settings with notification rules data."""

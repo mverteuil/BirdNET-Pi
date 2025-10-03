@@ -8,7 +8,7 @@ from uuid import UUID
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.config import BirdNETConfig
@@ -20,11 +20,32 @@ from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.utils.cache import Cache
 from birdnetpi.utils.time_periods import calculate_period_boundaries
 from birdnetpi.web.core.container import Container
-from birdnetpi.web.models.detections import DetectionEvent, LocationUpdate
+from birdnetpi.web.models.detections import (
+    BestRecordingsFilters,
+    BestRecordingsResponse,
+    DetectionCountResponse,
+    DetectionCreatedResponse,
+    DetectionDetailResponse,
+    DetectionEvent,
+    DetectionResponse,
+    DetectionsSummaryResponse,
+    LocationUpdate,
+    LocationUpdateResponse,
+    PaginatedDetectionsResponse,
+    PaginationInfo,
+    RecentDetectionsResponse,
+    SpeciesFrequency,
+    SpeciesInfo,
+    SpeciesSummaryResponse,
+    TaxonomyFamiliesResponse,
+    TaxonomyGeneraResponse,
+    TaxonomySpeciesItem,
+    TaxonomySpeciesResponse,
+)
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(prefix="/detections")
 
 # Track if cache invalidation handler is registered
 _paginated_cache_handler_registered = False
@@ -40,30 +61,31 @@ def _get_cache_invalidation_handler(cache: Cache) -> Callable:
         try:
             # Delete all keys matching the paginated detections pattern
             deleted = cache.delete_pattern("birdnet_analytics:*paginated*")
-            logger.debug(f"Deleted {deleted} paginated detection cache entries")
+            logger.debug("Deleted %d paginated detection cache entries", deleted)
 
             # Also delete species analytics caches
             deleted = cache.delete_pattern("birdnet_analytics:*species_analytics*")
-            logger.debug(f"Deleted {deleted} species analytics cache entries")
+            logger.debug("Deleted %d species analytics cache entries", deleted)
         except Exception as e:
-            logger.warning(f"Failed to invalidate cache: {e}")
+            logger.warning("Failed to invalidate cache: %s", e)
 
     return _invalidate_paginated_cache
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=DetectionCreatedResponse)
 @inject
 async def create_detection(
     data_manager: Annotated[DataManager, Depends(Provide[Container.data_manager])],
     detection_event: DetectionEvent,
-) -> dict:
+) -> DetectionCreatedResponse:
     """Receive a new detection event and dispatch it.
 
     DataManager handles both audio file saving and database persistence.
     """
     logger.info(
-        f"Received detection: {detection_event.species_tensor or 'Unknown'} "
-        f"with confidence {detection_event.confidence}"
+        "Received detection: %s with confidence %s",
+        detection_event.species_tensor or "Unknown",
+        detection_event.confidence,
     )
 
     # Create detection - DataManager handles audio saving and database persistence
@@ -71,18 +93,20 @@ async def create_detection(
     # The @emit_detection_event decorator on create_detection handles event emission
     try:
         saved_detection = await data_manager.create_detection(detection_event)
-        return {"message": "Detection received and dispatched", "detection_id": saved_detection.id}
+        return DetectionCreatedResponse(
+            message="Detection received and dispatched", detection_id=saved_detection.id
+        )
     except Exception as e:
         import traceback
 
-        logger.error(f"Failed to create detection: {e}\n{traceback.format_exc()}")
+        logger.error("Failed to create detection: %s\n%s", e, traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create detection: {e!s}",
         ) from e
 
 
-@router.get("/recent")
+@router.get("/recent", response_model=RecentDetectionsResponse)
 @inject
 async def get_recent_detections(
     # Added for compatibility with old endpoint
@@ -91,9 +115,9 @@ async def get_recent_detections(
         DetectionQueryService, Depends(Provide[Container.detection_query_service])
     ],
     config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
-    limit: int = 10,
-    offset: int = 0,
-) -> JSONResponse:
+    limit: int = Query(10, ge=1, le=1000, description="Maximum number of detections to return"),
+    offset: int = Query(0, ge=0, description="Number of detections to skip"),
+) -> RecentDetectionsResponse:
     """Get recent bird detections with taxa and translation data."""
     try:
         # Always get detections with taxa enrichment
@@ -106,22 +130,30 @@ async def get_recent_detections(
         )
         detection_list = []
         for detection in detections:
-            # Use model_dump with config context - this automatically handles display_name
-            # and sets common_name for backward compatibility
-            det_dict = detection.model_dump(
-                mode="json",
-                exclude_none=True,
-                exclude={"species_tensor", "audio_file_id", "week", "hour_epoch"},
-                context={"config": config},
+            detection_list.append(
+                DetectionResponse(
+                    id=detection.id,
+                    scientific_name=detection.scientific_name,
+                    common_name=detection.common_name or detection.scientific_name,
+                    confidence=detection.confidence,
+                    timestamp=detection.timestamp,
+                    date=detection.date,
+                    time=detection.time,
+                    latitude=detection.latitude,
+                    longitude=detection.longitude,
+                    family=detection.family,
+                    genus=detection.genus,
+                    order_name=detection.order_name,
+                    audio_file_id=detection.audio_file_id,
+                )
             )
-            detection_list.append(det_dict)
-        return JSONResponse({"detections": detection_list, "count": len(detection_list)})
+        return RecentDetectionsResponse(detections=detection_list, count=len(detection_list))
     except Exception as e:
         logger.error("Error getting recent detections: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving recent detections") from e
 
 
-@router.get("/")
+@router.get("/", response_model=PaginatedDetectionsResponse)
 @inject
 async def get_detections(
     presentation_manager: Annotated[
@@ -130,17 +162,23 @@ async def get_detections(
     cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(20, ge=10, le=200, description="Items per page"),
-    period: str = Query("day", description="Time period filter"),
+    start_date: str | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: str | None = Query(None, description="End date (YYYY-MM-DD)"),
+    family: str | None = Query(None, description="Filter by taxonomic family"),
+    genus: str | None = Query(None, description="Filter by genus"),
+    species: str | None = Query(None, description="Filter by species"),
     search: str | None = Query(None, description="Search species name"),
     sort_by: str = Query(
         "timestamp", description="Field to sort by: timestamp, species, confidence, first"
     ),
     sort_order: str = Query("desc", description="Sort order: asc or desc"),
-) -> JSONResponse:
+) -> PaginatedDetectionsResponse:
     """Get paginated detections with filtering.
 
     This endpoint now delegates to PresentationManager for data processing
     and formatting, keeping the router focused on HTTP concerns.
+
+    If start_date and end_date are not provided, defaults to today.
     """
     # Register cache invalidation handler if not already registered
     global _paginated_cache_handler_registered
@@ -150,24 +188,38 @@ async def get_detections(
         _paginated_cache_handler_registered = True
 
     try:
+        # Default to today if dates not provided
+        if start_date is None or end_date is None:
+            today = datetime.now(UTC).date()
+            start_date = start_date or today.isoformat()
+            end_date = end_date or today.isoformat()
+
         # Generate cache key including all parameters
         search_part = search or "all"
+        family_part = family or "all"
+        genus_part = genus or "all"
+        species_part = species or "all"
         cache_key = (
-            f"paginated_detections_{page}_{per_page}_{period}_{search_part}_{sort_by}_{sort_order}"
+            f"paginated_detections_{page}_{per_page}_{start_date}_{end_date}_"
+            f"{family_part}_{genus_part}_{species_part}_{search_part}_{sort_by}_{sort_order}"
         )
 
         # Check cache first
         if cache:
             cached_response = cache.get("api_paginated", key=cache_key)
             if cached_response is not None:
-                logger.debug(f"Returning cached paginated detections: {cache_key}")
-                return JSONResponse(cached_response)
+                logger.debug("Returning cached paginated detections: %s", cache_key)
+                return PaginatedDetectionsResponse(**cached_response)
 
         # Delegate to PresentationManager for data processing and formatting
         response_data = await presentation_manager.format_paginated_detections(
-            period=period,
+            start_date=start_date,
+            end_date=end_date,
             page=page,
             per_page=per_page,
+            family=family,
+            genus=genus,
+            species=species,
             search=search,
             sort_by=sort_by,
             sort_order=sort_order,
@@ -176,22 +228,22 @@ async def get_detections(
         # Cache the response data before returning
         if cache:
             cache.set("api_paginated", response_data, key=cache_key, ttl=300)  # 5 minute TTL
-            logger.debug(f"Cached paginated detections: {cache_key}")
+            logger.debug("Cached paginated detections: %s", cache_key)
 
-        return JSONResponse(response_data)
+        return PaginatedDetectionsResponse(**response_data)
     except Exception as e:
         logger.error("Error getting paginated detections: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving detections") from e
 
 
-@router.get("/count")
+@router.get("/count", response_model=DetectionCountResponse)
 @inject
 async def get_detection_count(
     detection_query_service: Annotated[
         DetectionQueryService, Depends(Provide[Container.detection_query_service])
     ],
     target_date: date | None = None,
-) -> JSONResponse:
+) -> DetectionCountResponse:
     """Get detection count for a specific date (defaults to today)."""
     try:
         if target_date is None:
@@ -201,13 +253,13 @@ async def get_detection_count(
         counts = await detection_query_service.count_by_date()
         count = counts.get(target_date, 0)
 
-        return JSONResponse({"date": target_date.isoformat(), "count": count})
+        return DetectionCountResponse(date=target_date.isoformat(), count=count)
     except Exception as e:
         logger.error("Error getting detection count: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving detection count") from e
 
 
-@router.get("/best-recordings")
+@router.get("/best-recordings", response_model=BestRecordingsResponse)
 @inject
 async def get_best_recordings(
     detection_query_service: Annotated[
@@ -220,7 +272,7 @@ async def get_best_recordings(
     genus: str | None = Query(None, description="Filter by genus"),
     species: str | None = Query(None, description="Filter by species scientific name"),
     min_confidence: float = Query(0.7, ge=0.0, le=1.0, description="Minimum confidence threshold"),
-) -> JSONResponse:
+) -> BestRecordingsResponse:
     """Get best recordings with optional taxonomic filtering.
 
     This endpoint supports hierarchical filtering:
@@ -263,78 +315,66 @@ async def get_best_recordings(
         # Format response
         recordings = []
         for detection in detections:
-            # Use model_dump with config context - handles display_name automatically
-            det_dict = detection.model_dump(
-                mode="json",
-                exclude_none=True,
-                include={
-                    "id",
-                    "audio_file_id",  # Include audio_file_id for playback
-                    "scientific_name",
-                    "common_name",
-                    "family",
-                    "genus",
-                    "order_name",
-                    "confidence",
-                    "timestamp",
-                    "date",
-                    "time",
-                },
-                context={"config": config},
+            recordings.append(
+                DetectionResponse(
+                    id=detection.id,
+                    scientific_name=detection.scientific_name,
+                    common_name=detection.common_name or detection.scientific_name,
+                    confidence=detection.confidence,
+                    timestamp=detection.timestamp,
+                    date=detection.date,
+                    time=detection.timestamp.strftime("%H:%M:%S"),
+                    latitude=detection.latitude,
+                    longitude=detection.longitude,
+                    family=detection.family,
+                    genus=detection.genus,
+                    order_name=detection.order_name,
+                    audio_file_id=detection.audio_file_id,
+                )
             )
-            # Convert confidence to percentage for this endpoint
-            det_dict["confidence"] = round(detection.confidence * 100, 1)
-            # Override time format to include seconds for this endpoint
-            det_dict["time"] = detection.timestamp.strftime("%H:%M:%S")
-            recordings.append(det_dict)
 
         # Calculate summary stats
         if recordings:
-            avg_confidence = sum(r["confidence"] for r in recordings) / len(recordings)
+            avg_confidence = sum(r.confidence for r in recordings) / len(recordings)
             dates = [d.timestamp for d in detections]
             date_range = f"{min(dates).strftime('%Y-%m-%d')} to {max(dates).strftime('%Y-%m-%d')}"
-            unique_species = len({r["scientific_name"] for r in recordings})
+            unique_species = len({r.scientific_name for r in recordings})
         else:
-            avg_confidence = 0
+            avg_confidence = 0.0
             date_range = "No recordings"
             unique_species = 0
 
-        return JSONResponse(
-            {
-                "recordings": recordings,
-                "count": len(recordings),
-                "pagination": {
-                    "page": page,
-                    "per_page": per_page,
-                    "total": total_count,
-                    "total_pages": total_pages,
-                    "has_prev": has_prev,
-                    "has_next": has_next,
-                },
-                "avg_confidence": round(avg_confidence, 1),
-                "date_range": date_range,
-                "unique_species": unique_species,
-                "filters": {
-                    "family": family,
-                    "genus": genus,
-                    "species": species,
-                    "min_confidence": min_confidence,
-                },
-            }
+        return BestRecordingsResponse(
+            recordings=recordings,
+            count=len(recordings),
+            pagination=PaginationInfo(
+                page=page,
+                per_page=per_page,
+                total=total_count,
+                total_pages=total_pages,
+                has_prev=has_prev,
+                has_next=has_next,
+            ),
+            avg_confidence=round(avg_confidence, 1),
+            date_range=date_range,
+            unique_species=unique_species,
+            filters=BestRecordingsFilters(
+                family=family, genus=genus, species=species, min_confidence=min_confidence
+            ),
         )
     except Exception as e:
         logger.error("Error getting best recordings: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving best recordings") from e
 
 
-@router.get("/taxonomy/families")
+@router.get("/taxonomy/families", response_model=TaxonomyFamiliesResponse)
 @inject
 async def get_taxonomy_families(
     detection_query_service: Annotated[
         DetectionQueryService, Depends(Provide[Container.detection_query_service])
     ],
     has_detections: bool = Query(True, description="Only return families with detections"),
-) -> JSONResponse:
+) -> TaxonomyFamiliesResponse:
     """Get list of all taxonomic families, optionally filtered to those with detections."""
     try:
         if has_detections:
@@ -357,13 +397,13 @@ async def get_taxonomy_families(
                         families.add(family)
             family_list = sorted(families)
 
-        return JSONResponse({"families": family_list, "count": len(family_list)})
+        return TaxonomyFamiliesResponse(families=family_list, count=len(family_list))
     except Exception as e:
         logger.error("Error getting families: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving families") from e
 
 
-@router.get("/taxonomy/genera")
+@router.get("/taxonomy/genera", response_model=TaxonomyGeneraResponse)
 @inject
 async def get_taxonomy_genera(
     detection_query_service: Annotated[
@@ -371,7 +411,7 @@ async def get_taxonomy_genera(
     ],
     family: str = Query(..., description="Family to get genera for"),
     has_detections: bool = Query(True, description="Only return genera with detections"),
-) -> JSONResponse:
+) -> TaxonomyGeneraResponse:
     """Get list of genera within a family, optionally filtered to those with detections."""
     try:
         if has_detections:
@@ -394,13 +434,13 @@ async def get_taxonomy_genera(
                         genera.add(genus)
             genus_list = sorted(genera)
 
-        return JSONResponse({"genera": genus_list, "family": family, "count": len(genus_list)})
+        return TaxonomyGeneraResponse(genera=genus_list, family=family, count=len(genus_list))
     except Exception as e:
         logger.error("Error getting genera: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving genera") from e
 
 
-@router.get("/taxonomy/species")
+@router.get("/taxonomy/species", response_model=TaxonomySpeciesResponse)
 @inject
 async def get_taxonomy_species(
     detection_query_service: Annotated[
@@ -409,7 +449,7 @@ async def get_taxonomy_species(
     genus: str = Query(..., description="Genus to get species for"),
     family: str | None = Query(None, description="Optional family filter"),
     has_detections: bool = Query(True, description="Only return species with detections"),
-) -> JSONResponse:
+) -> TaxonomySpeciesResponse:
     """Get list of species within a genus, optionally filtered to those with detections."""
     try:
         # For now, always get species from actual detections
@@ -419,7 +459,7 @@ async def get_taxonomy_species(
 
         # Debug logging
         species_count = len(species_summary) if species_summary else 0
-        logger.info(f"Species summary for genus {genus}: {species_count} total species")
+        logger.info("Species summary for genus %s: %d total species", genus, species_count)
 
         if isinstance(species_summary, list):
             for species in species_summary:
@@ -427,28 +467,29 @@ async def get_taxonomy_species(
                     if not family or species.get("family") == family:
                         # Debug: log the species data
                         if species.get("scientific_name") == "Cyanocitta cristata":
-                            logger.info(f"Found Cyanocitta cristata data: {species}")
+                            logger.info("Found Cyanocitta cristata data: %s", species)
                         species_list.append(
-                            {
-                                "scientific_name": species.get("scientific_name"),
-                                "common_name": species.get("best_common_name")
-                                or species.get("ioc_english_name"),
-                                "count": species.get("detection_count", 0),
-                            }
+                            TaxonomySpeciesItem(
+                                scientific_name=species.get("scientific_name", ""),
+                                common_name=species.get("best_common_name")
+                                or species.get("ioc_english_name")
+                                or "",
+                                count=species.get("detection_count", 0),
+                            )
                         )
 
         # Sort by count descending
-        species_list.sort(key=lambda x: x["count"], reverse=True)
+        species_list.sort(key=lambda x: x.count, reverse=True)
 
-        return JSONResponse(
-            {"species": species_list, "genus": genus, "family": family, "count": len(species_list)}
+        return TaxonomySpeciesResponse(
+            species=species_list, genus=genus, family=family, count=len(species_list)
         )
     except Exception as e:
         logger.error("Error getting species: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving species") from e
 
 
-@router.get("/summary")
+@router.get("/summary", response_model=DetectionsSummaryResponse)
 @inject
 async def get_detections_summary(
     detection_query_service: Annotated[
@@ -457,7 +498,7 @@ async def get_detections_summary(
     period: str = Query(
         "day", description="Time period: day, week, month, season, year, historical"
     ),
-) -> JSONResponse:
+) -> DetectionsSummaryResponse:
     """Get detection summary data for period switching.
 
     This endpoint provides all the data needed to update the all_detections page
@@ -487,23 +528,24 @@ async def get_detections_summary(
         # Get species frequency data for the period
         species_summary = await detection_query_service.get_species_summary(since=since)
 
-        # Format species frequency table data - ALL species for the selected period
-        species_frequency = []
-        for species in species_summary if species_summary else []:
-            count = species.get("detection_count", 0)
-            species_frequency.append(
-                {
-                    "name": species.get("best_common_name")
-                    or species.get("ioc_english_name", "Unknown"),
-                    "scientific_name": species.get("scientific_name", ""),
-                    "count": count,  # Single count for the selected period
-                }
-            )
-
         # Get detection count for the period
         total_detections = await detection_query_service.get_detection_count(
             start_time=start_time, end_time=end_time
         )
+
+        # Format species frequency table data - ALL species for the selected period
+        species_frequency = []
+        for species in species_summary if species_summary else []:
+            count = species.get("detection_count", 0)
+            percentage = (count / total_detections * 100) if total_detections > 0 else 0.0
+            species_frequency.append(
+                SpeciesFrequency(
+                    species=species.get("best_common_name")
+                    or species.get("ioc_english_name", "Unknown"),
+                    count=count,
+                    percentage=round(percentage, 1),
+                )
+            )
 
         # Count unique species
         species_count = len(species_frequency)
@@ -526,31 +568,29 @@ async def get_detections_summary(
             f"({peak_count} detection{'s' if peak_count != 1 else ''})"
         )
 
-        return JSONResponse(
-            {
-                "species_frequency": species_frequency,
-                "subtitle": subtitle,
-                "statistics": statistics,
-                "species_count": species_count,
-                "total_detections": total_detections,
-            }
+        return DetectionsSummaryResponse(
+            species_frequency=species_frequency,
+            subtitle=subtitle,
+            statistics=statistics,
+            species_count=species_count,
+            total_detections=total_detections,
         )
 
     except Exception as e:
-        logger.error(f"Error getting detection summary: {e}")
+        logger.error("Error getting detection summary: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get detection summary: {e!s}",
         ) from e
 
 
-@router.post("/{detection_id}/location")
+@router.post("/{detection_id}/location", response_model=LocationUpdateResponse)
 @inject
 async def update_detection_location(
     data_manager: Annotated[DataManager, Depends(Provide[Container.data_manager])],
     detection_id: UUID,
     location: LocationUpdate,
-) -> JSONResponse:
+) -> LocationUpdateResponse:
     """Update detection location with GPS coordinates."""
     try:
         # Get the detection using DataManager
@@ -564,13 +604,11 @@ async def update_detection_location(
         )
 
         if updated_detection:
-            return JSONResponse(
-                {
-                    "message": "Location updated successfully",
-                    "detection_id": str(detection_id),
-                    "latitude": location.latitude,
-                    "longitude": location.longitude,
-                }
+            return LocationUpdateResponse(
+                message="Location updated successfully",
+                detection_id=str(detection_id),
+                latitude=location.latitude,
+                longitude=location.longitude,
             )
         else:
             raise HTTPException(status_code=500, detail="Failed to update detection location")
@@ -592,9 +630,9 @@ def _create_detection_handler(
         if detection:
             try:
                 loop.call_soon_threadsafe(queue.put_nowait, detection)
-                logger.info(f"Queued detection for SSE: {detection.id}")
+                logger.info("Queued detection for SSE: %s", detection.id)
             except Exception as e:
-                logger.error(f"Error queuing detection for SSE: {e}")
+                logger.error("Error queuing detection for SSE: %s", e)
 
     return handler
 
@@ -654,11 +692,11 @@ async def stream_detections(
                 try:
                     # Wait for new detection with timeout to keep connection alive
                     detection = await asyncio.wait_for(detection_queue.get(), timeout=30.0)
-                    logger.info(f"Got detection from queue for SSE: {detection.id}")
+                    logger.info("Got detection from queue for SSE: %s", detection.id)
 
                     # Format and send detection event
                     event_data = _format_detection_event(detection)
-                    logger.info(f"Sending detection event via SSE: {detection.scientific_name}")
+                    logger.info("Sending detection event via SSE: %s", detection.scientific_name)
                     yield f"event: detection\ndata: {json.dumps(event_data, default=str)}\n\n"
 
                 except TimeoutError:
@@ -667,14 +705,14 @@ async def stream_detections(
                     yield f"event: heartbeat\ndata: {json.dumps(heartbeat_data)}\n\n"
 
                 except Exception as e:
-                    logger.error(f"Error processing detection for SSE: {e}")
+                    logger.error("Error processing detection for SSE: %s", e)
                     # Continue streaming despite errors
 
         except asyncio.CancelledError:
             # Clean disconnection
             pass
         except Exception as e:
-            logger.error(f"Error in detection streaming: {e}")
+            logger.error("Error in detection streaming: %s", e)
             yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
         finally:
             # Disconnect from signal when done
@@ -691,7 +729,7 @@ async def stream_detections(
     )
 
 
-@router.get("/{detection_id}")
+@router.get("/{detection_id}", response_model=DetectionDetailResponse)
 @inject
 async def get_detection(
     detection_query_service: Annotated[
@@ -699,7 +737,7 @@ async def get_detection(
     ],
     config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
     detection_id: UUID,
-) -> JSONResponse:
+) -> DetectionDetailResponse:
     """Get a specific detection by ID with taxa and translation data."""
     try:
         # Get detection with taxa enrichment
@@ -707,32 +745,24 @@ async def get_detection(
         if not detection_with_taxa:
             raise HTTPException(status_code=404, detail="Detection not found")
 
-        # Use model_dump with config context for consistent serialization
-        # The model serializer handles display_name and sets common_name automatically
-        detection_data = detection_with_taxa.model_dump(
-            mode="json",
-            exclude_none=True,
-            include={
-                "id",
-                "scientific_name",
-                "common_name",
-                "confidence",
-                "timestamp",
-                "latitude",
-                "longitude",
-                "species_confidence_threshold",
-                "week",
-                "sensitivity_setting",
-                "overlap",
-                "ioc_english_name",
-                "translated_name",
-                "family",
-                "genus",
-                "order_name",
-            },
-            context={"config": config},
+        return DetectionDetailResponse(
+            id=detection_with_taxa.id,
+            scientific_name=detection_with_taxa.scientific_name,
+            common_name=detection_with_taxa.common_name or detection_with_taxa.scientific_name,
+            confidence=detection_with_taxa.confidence,
+            timestamp=detection_with_taxa.timestamp,
+            latitude=detection_with_taxa.latitude,
+            longitude=detection_with_taxa.longitude,
+            species_confidence_threshold=detection_with_taxa.species_confidence_threshold,
+            week=detection_with_taxa.week,
+            sensitivity_setting=detection_with_taxa.sensitivity_setting,
+            overlap=detection_with_taxa.overlap,
+            ioc_english_name=getattr(detection_with_taxa, "ioc_english_name", None),
+            translated_name=getattr(detection_with_taxa, "translated_name", None),
+            family=getattr(detection_with_taxa, "family", None),
+            genus=getattr(detection_with_taxa, "genus", None),
+            order_name=getattr(detection_with_taxa, "order_name", None),
         )
-        return JSONResponse(detection_data)
     except HTTPException:
         raise
     except Exception as e:
@@ -740,7 +770,7 @@ async def get_detection(
         raise HTTPException(status_code=500, detail="Error retrieving detection") from e
 
 
-@router.get("/species/summary")
+@router.get("/species/summary", response_model=SpeciesSummaryResponse)
 @inject
 async def get_species_summary(
     detection_query_service: Annotated[
@@ -753,7 +783,7 @@ async def get_species_summary(
     ),
     since: datetime | None = None,
     family_filter: str | None = Query(None, description="Filter by taxonomic family"),
-) -> JSONResponse:
+) -> SpeciesSummaryResponse:
     """Get species summary with detection counts and first detection info.
 
     Can be filtered by period (day/week/month/season/year) or by explicit date range.
@@ -838,35 +868,28 @@ async def get_species_summary(
                 order = getattr(species, "order_name", None)
 
             species_list.append(
-                {
-                    "name": name,
-                    "scientific_name": scientific_name,
-                    "detection_count": count,  # Use consistent field name
-                    "is_first_ever": is_first_ever,
-                    "first_ever_detection": first_ever_detection,
-                    "family": family,
-                    "genus": genus,
-                    "order": order,
-                }
+                SpeciesInfo(
+                    name=name,
+                    scientific_name=scientific_name,
+                    detection_count=count,
+                    is_first_ever=is_first_ever,
+                    first_ever_detection=first_ever_detection,
+                    family=family,
+                    genus=genus,
+                    order=order,
+                )
             )
 
         # Sort by count descending
-        species_list.sort(key=lambda x: x["detection_count"], reverse=True)
+        species_list.sort(key=lambda x: x.detection_count, reverse=True)
 
         # Calculate total detections
-        total_detections = sum(s["detection_count"] for s in species_list)
+        total_detections = sum(s.detection_count for s in species_list)
 
-        # Prepare response
-        response_data = {
-            "species": species_list,
-            "count": len(species_list),
-            "total_detections": total_detections,
-        }
-
-        # Add period info if provided
+        # Determine period label if provided
+        period_label = None
         if period:
-            response_data["period"] = period
-            response_data["period_label"] = {
+            period_label = {
                 "day": "Today",
                 "week": "This Week",
                 "month": "This Month",
@@ -875,7 +898,13 @@ async def get_species_summary(
                 "historical": "All Time",
             }.get(period, "This Period")
 
-        return JSONResponse(response_data)
+        return SpeciesSummaryResponse(
+            species=species_list,
+            count=len(species_list),
+            total_detections=total_detections,
+            period=period,
+            period_label=period_label,
+        )
     except Exception as e:
         logger.error("Error getting species summary: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving species summary") from e
@@ -926,7 +955,7 @@ async def get_detection_audio(
 
         # Check if file exists on disk
         if not audio_path.exists():
-            logger.warning(f"Audio file not found on disk: {audio_path}")
+            logger.warning("Audio file not found on disk: %s", audio_path)
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Audio file not found on disk"
             )
@@ -945,7 +974,7 @@ async def get_detection_audio(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error serving audio for detection {detection_id}: {e}")
+        logger.error("Error serving audio for detection %s: %s", detection_id, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error serving audio file"
         ) from e

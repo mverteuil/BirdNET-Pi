@@ -1,11 +1,6 @@
 {% extends "base.html.j2" %}
 {# Dashboard/homepage doesn't need a page_name - just shows site name #}
 
-{% block navigation %}
-    {% set active_page = 'dashboard' %}
-    {{ super() }}
-{% endblock %}
-
 {% block styles %}
     {{ super() }}
     <link rel="stylesheet" href="{{ request.url_for('static', path='css/dashboard.css') }}" />

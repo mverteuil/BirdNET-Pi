@@ -38,7 +38,8 @@ def sse_client(test_config):
     container.wire(modules=["birdnetpi.web.routers.detections_api_routes"])
 
     # Include the router
-    app.include_router(router, prefix="/api/detections")
+    # Router already has prefix="/detections", so we only add "/api"
+    app.include_router(router, prefix="/api")
 
     # Create and return test client
     client = TestClient(app)

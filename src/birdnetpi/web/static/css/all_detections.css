@@ -267,8 +267,8 @@ body > h1:nth-of-type(1) {
 
 .detection-entry {
   display: grid;
-  grid-template-columns: 40px 1fr 100px 60px 80px;
-  gap: 1rem;
+  grid-template-columns: 40px minmax(300px, 3fr) 80px 60px 60px;
+  gap: 0.75rem;
   padding: 0.5rem 0;
   border-bottom: 1px dotted var(--color-border-tertiary);
   align-items: center;
@@ -667,23 +667,23 @@ body > h1:nth-of-type(1) {
 /* Column widths for alignment */
 #detections-table th:nth-child(1),
 #detections-table td:nth-child(1) {
-  width: 10%;
+  width: 8%;
 } /* Time */
 #detections-table th:nth-child(2),
 #detections-table td:nth-child(2) {
-  width: 40%;
+  width: 52%;
 } /* Species */
 #detections-table th:nth-child(3),
 #detections-table td:nth-child(3) {
-  width: 20%;
+  width: 15%;
 } /* Date */
 #detections-table th:nth-child(4),
 #detections-table td:nth-child(4) {
-  width: 15%;
+  width: 12%;
 } /* Confidence */
 #detections-table th:nth-child(5),
 #detections-table td:nth-child(5) {
-  width: 15%;
+  width: 13%;
 } /* First Detection */
 
 /* Species frequency table has 3 columns: Species, Star indicator, Count */
@@ -793,41 +793,6 @@ body > h1:nth-of-type(1) {
   margin-top: 0.5rem;
   padding-left: 1rem;
   border-left: 2px solid #e0e0e0;
-}
-
-/* Loading indicator */
-.loading-indicator {
-  display: none;
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(255, 255, 255, 0.95);
-  padding: 1rem 2rem;
-  border: 1px solid var(--color-border-primary);
-  font-size: 0.9rem;
-  color: var(--color-text-secondary);
-  z-index: 1000;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.loading-indicator.active {
-  display: block;
-}
-
-.loading-overlay {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.5);
-  z-index: 999;
-}
-
-.loading-overlay.active {
-  display: block;
 }
 
 /* Summary statistics - inline text */

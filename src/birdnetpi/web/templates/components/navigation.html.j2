@@ -1,17 +1,17 @@
-{# Navigation component - pass 'active_page' to highlight current page #}
-{# Usage: {% include 'components/navigation.html.j2' with active_page='dashboard' %} #}
+{# Navigation component - requires 'active_page' to be set by parent template #}
+{# Usage: {% set active_page = 'dashboard' %} in parent template before including navigation #}
 
 <!-- Navigation -->
 <nav class="main-nav" role="navigation" aria-label="{{ _('Main navigation') }}">
-    <a href="/" class="nav-item{% if active_page == 'dashboard' %} active{% endif %}"
+    <a href="{{ url_for('get_settings_view') }}" class="nav-item{% if active_page == 'dashboard' %} active{% endif %}"
        {% if active_page == 'dashboard' %}aria-current="page"{% endif %}>{{ _('Dashboard') }}</a>
-    <a href="/detections" class="nav-item{% if active_page == 'detections' %} active{% endif %}"
+    <a href="{{ url_for('detections_view') }}" class="nav-item{% if active_page == 'detections' %} active{% endif %}"
        {% if active_page == 'detections' %}aria-current="page"{% endif %}>{{ _('Detections') }}</a>
-    <a href="/reports/best" class="nav-item{% if active_page == 'best' %} active{% endif %}"
+    <a href="{{ url_for('best_recordings_view') }}" class="nav-item{% if active_page == 'best' %} active{% endif %}"
        {% if active_page == 'best' %}aria-current="page"{% endif %}>{{ _('Best Recordings') }}</a>
-    <a href="/livestream" class="nav-item{% if active_page == 'livestream' %} active{% endif %}"
+    <a href="{{ url_for('get_livestream') }}" class="nav-item{% if active_page == 'livestream' %} active{% endif %}"
        {% if active_page == 'livestream' %}aria-current="page"{% endif %}>{{ _('Audio Stream') }}</a>
-    <a href="/reports/analysis" class="nav-item{% if active_page == 'analysis' %} active{% endif %}"
+    <a href="{{ url_for('analysis_view') }}" class="nav-item{% if active_page == 'analysis' %} active{% endif %}"
        {% if active_page == 'analysis' %}aria-current="page"{% endif %}>{{ _('Analysis') }}</a>
     <a href="/docs" class="nav-item{% if active_page == 'api' %} active{% endif %}"
        {% if active_page == 'api' %}aria-current="page"{% endif %}>{{ _('API') }}</a>
@@ -26,16 +26,16 @@
             {{ _('Admin') }}
         </button>
         <div class="admin-menu" id="admin-menu" role="menu" aria-labelledby="admin-button" style="display: none;">
-            <a href="/admin/settings" role="menuitem"
+            <a href="{{ url_for('get_settings_view') }}" role="menuitem"
                class="{% if active_page == 'settings' %}active{% endif %}"
                {% if active_page == 'settings' %}aria-current="page"{% endif %}>{{ _('Settings') }}</a>
-            <a href="/admin/services" role="menuitem"
+            <a href="{{ url_for('services_view') }}" role="menuitem"
                class="{% if active_page == 'services' %}active{% endif %}"
                {% if active_page == 'services' %}aria-current="page"{% endif %}>{{ _('System Services') }}</a>
-            <a href="/admin/update" role="menuitem"
+            <a href="{{ url_for('update_page') }}" role="menuitem"
                class="{% if active_page == 'update' %}active{% endif %}"
                {% if active_page == 'update' %}aria-current="page"{% endif %}>{{ _('System Update') }}</a>
-            <a href="/admin/logs" role="menuitem"
+            <a href="{{ url_for('view_logs') }}" role="menuitem"
                class="{% if active_page == 'logs' %}active{% endif %}"
                {% if active_page == 'logs' %}aria-current="page"{% endif %}>{{ _('Logs') }}</a>
             <a href="/admin/database" role="menuitem"

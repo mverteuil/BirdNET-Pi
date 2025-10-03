@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from birdnetpi.web.models.logs import LogEntry, LogLevelInfo
+
 
 @dataclass
 class ServiceConfig:
@@ -200,6 +202,78 @@ class ServicesStatusResponse(BaseModel):
 
     services: list[ServiceStatus] = Field(..., description="List of all services and their status")
     system: SystemInfo = Field(..., description="System/container information")
+
+
+class SystemInfoDetailed(BaseModel):
+    """Detailed system information."""
+
+    device_name: str = Field(..., description="Device hostname")
+    platform: str = Field(..., description="Platform/OS type")
+    cpu_count: int = Field(..., description="Number of CPU cores")
+    uptime_days: int = Field(..., description="System uptime in days")
+
+
+class CPUResources(BaseModel):
+    """CPU resource metrics."""
+
+    percent: float = Field(..., description="CPU usage percentage")
+    temperature: float | None = Field(None, description="CPU temperature in Celsius")
+
+
+class MemoryResources(BaseModel):
+    """Memory resource metrics."""
+
+    total: int = Field(..., description="Total memory in bytes")
+    available: int = Field(..., description="Available memory in bytes")
+    percent: float = Field(..., description="Memory usage percentage")
+    used: int = Field(..., description="Used memory in bytes")
+
+
+class DiskResources(BaseModel):
+    """Disk resource metrics."""
+
+    total: int = Field(..., description="Total disk space in bytes")
+    used: int = Field(..., description="Used disk space in bytes")
+    free: int = Field(..., description="Free disk space in bytes")
+    percent: float = Field(..., description="Disk usage percentage")
+
+
+class ResourcesBreakdown(BaseModel):
+    """Breakdown of system resources."""
+
+    cpu: CPUResources = Field(..., description="CPU metrics")
+    memory: MemoryResources = Field(..., description="Memory metrics")
+    disk: DiskResources = Field(..., description="Disk metrics")
+
+
+class HardwareStatusResponse(BaseModel):
+    """Model for comprehensive hardware and system status."""
+
+    # Health summary fields (from SystemInspector.get_health_summary)
+    cpu_usage: float = Field(..., description="CPU usage percentage")
+    memory_usage: float = Field(..., description="Memory usage percentage")
+    disk_usage: float = Field(..., description="Disk usage percentage")
+    temperature: float | None = Field(None, description="CPU temperature in Celsius")
+    overall_status: str = Field(..., description="Overall status (healthy/warning/critical)")
+
+    # System info
+    system_info: SystemInfoDetailed = Field(..., description="Detailed system information")
+
+    # Resources breakdown
+    resources: ResourcesBreakdown = Field(..., description="Resource metrics (CPU, memory, disk)")
+
+    # Detection stats
+    total_detections: int = Field(..., description="Total number of detections")
+
+
+class LogsResponse(BaseModel):
+    """Response for logs endpoint."""
+
+    logs: list[LogEntry] = Field(..., description="List of log entries")
+    total: int = Field(..., description="Total number of log entries returned")
+    limit: int = Field(..., description="Maximum number of entries requested")
+    levels: list[LogLevelInfo] = Field(..., description="Available log levels")
+    error: str | None = Field(None, description="Error message if retrieval failed")
 
 
 def format_uptime(seconds: float | None) -> str:

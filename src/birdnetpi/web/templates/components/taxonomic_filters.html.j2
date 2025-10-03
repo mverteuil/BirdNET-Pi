@@ -41,10 +41,10 @@
     <div class="filter-section">
         <label class="filter-label" for="confidence-filter">{{ _('Min Confidence') }}</label>
         <select class="filter-selector" id="confidence-filter" onchange="onConfidenceChange()" aria-label="{{ _('Minimum confidence threshold') }}">
-            <option value="0.7" aria-label="{{ _('70 percent confidence') }}" {% if default_confidence == 0.7 %}selected{% endif %}>70%</option>
-            <option value="0.8" {% if default_confidence == 0.8 %}selected{% endif %}>80%</option>
-            <option value="0.9" {% if default_confidence == 0.9 %}selected{% endif %}>90%</option>
-            <option value="0.95" {% if default_confidence == 0.95 %}selected{% endif %}>95%</option>
+            <option value="0.7" aria-label="{{ _('70 percent confidence') }}" {% if config['species_confidence_threshold'] == 0.7 %}selected{% endif %}>70%</option>
+            <option value="0.8" {% if config['species_confidence_threshold'] == 0.8 %}selected{% endif %}>80%</option>
+            <option value="0.9" {% if config['species_confidence_threshold'] == 0.9 %}selected{% endif %}>90%</option>
+            <option value="0.95" {% if config['species_confidence_threshold'] == 0.95 %}selected{% endif %}>95%</option>
         </select>
     </div>
     {% endif %}

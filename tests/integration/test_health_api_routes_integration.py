@@ -172,7 +172,11 @@ class TestHealthEndpointsVersionHandling:
 
     def test_health_with_missing_pyproject_file(self, client):
         """Should health check when pyproject.toml is not found."""
-        with patch("birdnetpi.web.routers.health_api_routes.Path") as mock_path:
+        # Mock both Path.exists() and open() to simulate missing file
+        with (
+            patch("birdnetpi.web.routers.health_api_routes.Path") as mock_path,
+            patch("builtins.open", side_effect=FileNotFoundError("pyproject.toml not found")),
+        ):
             # Make both paths not exist
             mock_path.return_value.exists.return_value = False
 

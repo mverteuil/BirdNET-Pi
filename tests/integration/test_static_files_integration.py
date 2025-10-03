@@ -11,14 +11,14 @@ class TestStaticFilesIntegration:
         """Should the static route is properly mounted by testing it works."""
         # Rather than checking route internals, test that static files are actually served
         with TestClient(app_with_temp_data) as client:
-            response = client.get("/static/style.css")
+            response = client.get("/static/css/style.css")
             # If we get a 200, the static route exists and works
             assert response.status_code == 200, "Static route not properly mounted"
 
     def test_static_css_file_is_served(self, app_with_temp_data: FastAPI):
         """Should the style.css file can be accessed via static route."""
         with TestClient(app_with_temp_data) as client:
-            response = client.get("/static/style.css")
+            response = client.get("/static/css/style.css")
 
             assert response.status_code == 200
             assert "text/css" in response.headers.get("content-type", "")
@@ -37,7 +37,7 @@ class TestStaticFilesIntegration:
             assert "text/html" in response.headers.get("content-type", "")
 
             # Check that the page references the CSS file
-            assert "/static/style.css" in response.text
+            assert "/static/css/style.css" in response.text
             assert '<link rel="stylesheet"' in response.text
 
     def test_settings_page_references_static_css(self, app_with_temp_data: FastAPI):
@@ -49,7 +49,7 @@ class TestStaticFilesIntegration:
             assert "text/html" in response.headers.get("content-type", "")
 
             # Check that the page references the CSS file
-            assert "/static/style.css" in response.text
+            assert "/static/css/style.css" in response.text
             assert '<link rel="stylesheet"' in response.text
             assert "Settings" in response.text or "Configuration" in response.text
 
@@ -62,7 +62,7 @@ class TestStaticFilesIntegration:
             assert "text/html" in response.headers.get("content-type", "")
 
             # Check that the page references the CSS file
-            assert "/static/style.css" in response.text
+            assert "/static/css/style.css" in response.text
             assert '<link rel="stylesheet"' in response.text
             assert "Live" in response.text or "Stream" in response.text
 
@@ -77,8 +77,8 @@ class TestStaticFilesIntegration:
         """Should multiple static file requests work correctly."""
         with TestClient(app_with_temp_data) as client:
             # Make multiple requests for the same static file
-            response1 = client.get("/static/style.css")
-            response2 = client.get("/static/style.css")
+            response1 = client.get("/static/css/style.css")
+            response2 = client.get("/static/css/style.css")
 
             assert response1.status_code == 200
             assert response2.status_code == 200
@@ -89,7 +89,7 @@ class TestStaticFilesIntegration:
     def test_css_variables_are_defined(self, app_with_temp_data: FastAPI):
         """Should CSS variables are properly defined in the stylesheet."""
         with TestClient(app_with_temp_data) as client:
-            response = client.get("/static/style.css")
+            response = client.get("/static/css/style.css")
 
             assert response.status_code == 200
 
@@ -108,7 +108,7 @@ class TestStaticFilesIntegration:
     def test_page_styles_are_included(self, app_with_temp_data: FastAPI):
         """Should page-specific styles are included in the stylesheet."""
         with TestClient(app_with_temp_data) as client:
-            response = client.get("/static/style.css")
+            response = client.get("/static/css/style.css")
 
             assert response.status_code == 200
 

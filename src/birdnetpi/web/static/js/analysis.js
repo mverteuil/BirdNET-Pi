@@ -2,6 +2,127 @@
  * Analysis JavaScript - Data visualization and chart rendering
  */
 
+// Global state for period bounds
+let primaryPeriodBounds = null;
+let comparisonEnabled = false;
+
+// Callback for primary period selector changes
+function onPrimaryPeriodChange(bounds) {
+  console.log("[Analysis] Primary period changed:", bounds);
+  primaryPeriodBounds = bounds;
+
+  // Update URL with current state
+  updateURL();
+
+  // Reload analysis with new period
+  loadAnalysisData();
+}
+
+// Update URL with current state (period, date, comparison)
+function updateURL() {
+  const params = new URLSearchParams();
+
+  // Add period/date parameters from period selector if available
+  if (primaryPeriodBounds) {
+    params.set("period", primaryPeriodBounds.period_type);
+    if (primaryPeriodBounds.start_date) {
+      params.set("date", primaryPeriodBounds.start_date);
+    }
+  }
+
+  // Add comparison parameter if enabled
+  if (comparisonEnabled) {
+    params.set("comparison", "previous");
+  }
+
+  const newUrl = params.toString()
+    ? `${window.location.pathname}?${params.toString()}`
+    : window.location.pathname;
+
+  // Build state object for browser history
+  const state = {};
+  if (primaryPeriodBounds) {
+    state.period = primaryPeriodBounds.period_type;
+    state.date = primaryPeriodBounds.start_date;
+  }
+  if (comparisonEnabled) {
+    state.comparison = "previous";
+  }
+
+  window.history.pushState(state, "", newUrl);
+}
+
+// Toggle comparison mode
+function toggleComparison() {
+  const checkbox = document.getElementById("enable-comparison");
+  comparisonEnabled = checkbox ? checkbox.checked : false;
+
+  console.log("[Analysis] Comparison toggled:", comparisonEnabled);
+
+  // Update URL with current state
+  updateURL();
+
+  // Reload analysis with comparison
+  loadAnalysisData();
+}
+
+// Load analysis data from API
+async function loadAnalysisData() {
+  if (!primaryPeriodBounds) {
+    console.log("[Analysis] No period bounds yet");
+    return;
+  }
+
+  const analysisLoading = document.getElementById("analysis-loading");
+  const analysisContent = document.getElementById("analysis-content");
+
+  // Show inline loading indicator, hide content
+  analysisLoading.style.display = "block";
+  analysisContent.style.display = "none";
+
+  try {
+    const params = new URLSearchParams({
+      start_date: primaryPeriodBounds.start_date,
+      end_date: primaryPeriodBounds.end_date,
+      comparison: comparisonEnabled ? "previous" : "none",
+    });
+
+    console.log("[Analysis] Fetching data from API...");
+    const response = await fetch(`/api/analysis?${params}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Store the analyses data globally
+    window.analysisData = data.analyses || {};
+    if (data.dates) {
+      window.analysisData.dates = data.dates;
+    }
+
+    console.log(
+      "[Analysis] Data loaded, keys:",
+      Object.keys(window.analysisData),
+    );
+
+    // Hide loading, show content
+    analysisLoading.style.display = "none";
+    analysisContent.style.display = "block";
+
+    // Re-initialize all visualizations
+    initializeAnalysis();
+  } catch (error) {
+    console.error("[Analysis] Error fetching data:", error);
+
+    // Hide loading, show content with error
+    analysisLoading.style.display = "none";
+    analysisContent.style.display = "block";
+
+    showErrorState(error.message);
+  }
+}
+
 // Initialize analysis data via AJAX
 async function initAnalysisPage() {
   console.log("[Analysis] Initializing analysis page...");
@@ -12,62 +133,12 @@ async function initAnalysisPage() {
     return;
   }
 
-  // Read parameters from URL query string if present
-  const urlParams = new URLSearchParams(window.location.search);
-  const urlPeriod = urlParams.get("period");
-  const urlComparison = urlParams.get("comparison");
-
-  // Update config from URL parameters if present
-  if (urlPeriod) {
-    window.analysisConfig.period = urlPeriod;
-    // Update the select element to match
-    const periodSelect = document.getElementById("primary-period");
-    if (periodSelect) {
-      periodSelect.value = urlPeriod;
-    }
-  }
-
-  if (urlComparison) {
-    window.analysisConfig.comparisonPeriod = urlComparison;
-    // Update the select element to match
-    const comparisonSelect = document.getElementById("comparison-period");
-    if (comparisonSelect) {
-      comparisonSelect.value = urlComparison;
-    }
-  }
-
-  try {
-    // Fetch analysis data from API
-    const params = new URLSearchParams({
-      period: window.analysisConfig.period,
-      comparison: window.analysisConfig.comparisonPeriod,
-    });
-
-    console.log("[Analysis] Fetching data from API...");
-    const response = await fetch(`/api/analysis/all?${params}`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // Store the analyses data globally - use analysisData for compatibility
-    window.analysisData = data.analyses || {};
-    if (data.dates) {
-      window.analysisData.dates = data.dates;
-    }
-
-    console.log(
-      "[Analysis] Data loaded via AJAX, keys:",
-      Object.keys(window.analysisData),
-    );
-
-    // Initialize all visualizations
-    initializeAnalysis();
-  } catch (error) {
-    console.error("[Analysis] Error fetching data:", error);
-    showErrorState(error.message);
-  }
+  // Note: We don't load data here. The period selector will trigger the initial
+  // data load via onPrimaryPeriodChange() callback once it's initialized.
+  // This prevents duplicate API calls on page load.
+  console.log(
+    "[Analysis] Waiting for period selector to trigger initial load...",
+  );
 }
 
 function showErrorState(message) {
@@ -303,7 +374,7 @@ function drawDiversityTimeline() {
 
   // X-axis labels (dates) - show 4 labels
   ctx.textAlign = "center";
-  const dateInterval = Math.floor(lineData.periods.length / 3);
+  const dateInterval = Math.max(1, Math.floor(lineData.periods.length / 3));
 
   for (let i = 0; i < lineData.periods.length; i += dateInterval) {
     const x = padding.left + (i / (lineData.periods.length - 1)) * width;
@@ -403,7 +474,7 @@ function drawAccumulationCurve() {
   ctx.stroke();
 
   // Add point labels at regular intervals (5-6 points)
-  const labelInterval = Math.floor(maxSamples / 5);
+  const labelInterval = Math.max(1, Math.floor(maxSamples / 5));
   ctx.fillStyle = "#111";
   ctx.font = "10px system-ui, -apple-system, sans-serif";
 

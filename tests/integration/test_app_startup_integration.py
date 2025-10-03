@@ -121,8 +121,9 @@ class TestAppStartupIntegration:
             response = client.get("/api/system/hardware/status")
             assert response.status_code == 200
             data = response.json()
-            assert "components" in data
-            assert "cpu" in data["components"]
+            assert "resources" in data
+            assert "cpu" in data["resources"]
+            assert "overall_status" in data
 
     def test_container_providers_are_instantiable(self, app_with_real_container: FastAPI):
         """Should container providers can be instantiated."""

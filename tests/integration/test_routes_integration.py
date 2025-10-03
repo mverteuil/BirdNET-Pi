@@ -63,8 +63,10 @@ class TestSystemRoutesIntegration:
         data = response.json()
 
         # Check health summary fields
-        assert "components" in data
         assert "overall_status" in data
+        assert "cpu_usage" in data
+        assert "memory_usage" in data
+        assert "disk_usage" in data
 
         # Check new comprehensive fields
         assert "system_info" in data

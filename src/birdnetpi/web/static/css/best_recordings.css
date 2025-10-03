@@ -93,14 +93,6 @@
 
 /* Filter controls are now in taxonomic_filters.css */
 
-/* Loading indicator */
-.loading-indicator {
-  text-align: center;
-  padding: 2rem;
-  color: var(--color-text-secondary);
-  font-size: 0.9rem;
-}
-
 @keyframes pulse {
   0%,
   100% {

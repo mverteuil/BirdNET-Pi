@@ -61,7 +61,7 @@ async def get_audio_file(
 
             # Check if file exists on disk
             if not audio_path.exists():
-                logger.warning(f"Audio file not found on disk: {audio_path}")
+                logger.warning("Audio file not found on disk: %s", audio_path)
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Audio file not found on disk",
@@ -81,7 +81,7 @@ async def get_audio_file(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error serving audio file {audio_file_id}: {e}")
+        logger.error("Error serving audio file %s: %s", audio_file_id, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error serving audio file",

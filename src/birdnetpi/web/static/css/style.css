@@ -1975,3 +1975,15 @@ h1 {
     background: #3a3a3a;
   }
 }
+
+/* ============================================
+   Inline Loading Indicator Component
+   ============================================ */
+
+/* Inline loading indicator - displays in content flow */
+.loading-indicator {
+  text-align: center;
+  padding: 2rem;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}

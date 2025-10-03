@@ -18,10 +18,7 @@ from birdnetpi.detections.models import DetectionBase, DetectionWithTaxa
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.notifications.signals import detection_signal
 from birdnetpi.utils.cache.cache import Cache
-from birdnetpi.utils.time_periods import (
-    calculate_period_boundaries,
-    get_period_label,
-)
+from birdnetpi.utils.time_periods import get_period_label
 
 logger = logging.getLogger(__name__)
 
@@ -652,36 +649,48 @@ class PresentationManager:
 
     async def get_analysis_page_data(
         self,
-        primary_period: str,
+        start_date: str,
+        end_date: str,
         comparison_period: str | None = None,
-        analysis_types: list[str] | None = None,
-        progressive: bool = True,
     ) -> dict:
         """Format comprehensive analysis page data.
 
         Args:
-            primary_period: Main period to analyze ("day", "week", "month", "season", "year")
+            start_date: Start date for analysis (ISO format YYYY-MM-DD)
+            end_date: End date for analysis (ISO format YYYY-MM-DD)
             comparison_period: Optional comparison period
-            analysis_types: Which analyses to include
-            progressive: If True, only load essential data initially
 
         Returns:
             Formatted data for analysis template
         """
-        # Determine which analyses to load
-        analysis_types = self._determine_analysis_types(progressive, analysis_types)
+        # Load all analysis types
+        analysis_types = [
+            "diversity",
+            "accumulation",
+            "similarity",
+            "beta",
+            "weather",
+            "patterns",
+        ]
 
-        # Calculate date ranges
-        primary_dates = self._calculate_analysis_period_dates(primary_period)
+        # Parse date strings to datetime objects
+        primary_start = datetime.fromisoformat(start_date).replace(tzinfo=UTC)
+        primary_end = datetime.fromisoformat(end_date).replace(tzinfo=UTC)
+        primary_dates = (primary_start, primary_end)
+
+        # Calculate number of days in the date range
+        num_days = (primary_end - primary_start).days
+
+        # Calculate comparison dates if requested
         comparison_dates = (
             self._calculate_analysis_period_dates(comparison_period) if comparison_period else None
         )
 
         result = {
-            "period": primary_period,
+            "start_date": start_date,
+            "end_date": end_date,
             "comparison_period": comparison_period,
             "analyses": {},
-            "progressive_loading": progressive,
             "dates": {
                 "primary": {
                     "start": primary_dates[0].isoformat(),
@@ -704,7 +713,7 @@ class PresentationManager:
 
         # Build tasks dictionary
         tasks = self._build_analysis_tasks(
-            analysis_types, primary_dates, comparison_dates, primary_period
+            analysis_types, primary_dates, comparison_dates, num_days
         )
 
         # Execute all tasks in parallel
@@ -743,30 +752,39 @@ class PresentationManager:
 
         return result
 
-    def _determine_analysis_types(
-        self, progressive: bool, analysis_types: list[str] | None
-    ) -> list[str]:
-        """Determine which analysis types to load based on settings."""
-        if progressive:
-            return ["diversity", "summary"]
-        else:
-            return analysis_types or [
-                "diversity",
-                "accumulation",
-                "similarity",
-                "beta",
-                "weather",
-                "patterns",
-            ]
+    def _determine_analysis_types(self, analysis_types: list[str] | None) -> list[str]:
+        """Determine which analysis types to load.
+
+        Args:
+            analysis_types: Optional list of analysis types to include
+
+        Returns:
+            List of analysis types to load (defaults to all)
+        """
+        return analysis_types or [
+            "diversity",
+            "accumulation",
+            "similarity",
+            "beta",
+            "weather",
+            "patterns",
+        ]
 
     def _build_analysis_tasks(
         self,
         analysis_types: list[str],
         primary_dates: tuple,
         comparison_dates: tuple | None,
-        primary_period: str,
+        num_days: int,
     ) -> dict:
-        """Build dictionary of analysis tasks to run in parallel."""
+        """Build dictionary of analysis tasks to run in parallel.
+
+        Args:
+            analysis_types: List of analysis types to include
+            primary_dates: Tuple of (start_date, end_date) for primary period
+            comparison_dates: Optional tuple for comparison period
+            num_days: Number of days in the primary period
+        """
         tasks = {}
 
         # Diversity timeline task
@@ -774,7 +792,7 @@ class PresentationManager:
             tasks["diversity"] = self.analytics_manager.calculate_diversity_timeline(
                 start_date=primary_dates[0],
                 end_date=primary_dates[1],
-                temporal_resolution=self._get_resolution_for_period(primary_period),
+                temporal_resolution=self._get_resolution_for_days(num_days),
             )
             # Add comparison task if requested
             if comparison_dates:
@@ -799,7 +817,7 @@ class PresentationManager:
 
         # Beta diversity task
         if "beta" in analysis_types:
-            window_size = self._get_window_size_for_period(primary_period)
+            window_size = self._get_window_size_for_days(num_days)
             tasks["beta"] = self.analytics_manager.calculate_beta_diversity(
                 start_date=primary_dates[0], end_date=primary_dates[1], window_size=window_size
             )
@@ -813,9 +831,8 @@ class PresentationManager:
         # Pattern analyses tasks
         if "patterns" in analysis_types:
             tasks["temporal"] = self.analytics_manager.get_temporal_patterns()
-            # Add heatmap data based on period
-            days = (primary_dates[1] - primary_dates[0]).days
-            tasks["heatmap"] = self.analytics_manager.get_weekly_heatmap_data(days=days)
+            # Add heatmap data based on number of days
+            tasks["heatmap"] = self.analytics_manager.get_weekly_heatmap_data(days=num_days)
 
         # Summary statistics task
         tasks["summary"] = self._generate_analysis_summary(primary_dates, comparison_dates)
@@ -1039,6 +1056,24 @@ class PresentationManager:
 
         return periods.get(normalized_period, periods["day"])
 
+    def _get_resolution_for_days(self, num_days: int) -> str:
+        """Get appropriate temporal resolution based on number of days.
+
+        Args:
+            num_days: Number of days in the date range
+
+        Returns:
+            Temporal resolution ("hourly", "daily", "weekly", "monthly")
+        """
+        if num_days <= 1:
+            return "hourly"
+        elif num_days <= 7:
+            return "daily"
+        elif num_days <= 90:
+            return "weekly"
+        else:
+            return "monthly"
+
     def _get_resolution_for_period(self, period: str) -> str:
         """Get appropriate temporal resolution for period."""
         # Normalize period format
@@ -1065,6 +1100,24 @@ class PresentationManager:
             "year": "weekly",
         }
         return resolutions.get(normalized_period, "daily")
+
+    def _get_window_size_for_days(self, num_days: int) -> timedelta:
+        """Get appropriate window size for beta diversity based on number of days.
+
+        Args:
+            num_days: Number of days in the date range
+
+        Returns:
+            Window size as a timedelta
+        """
+        if num_days <= 1:
+            return timedelta(hours=6)
+        elif num_days <= 7:
+            return timedelta(days=1)
+        elif num_days <= 90:
+            return timedelta(days=7)
+        else:
+            return timedelta(days=30)
 
     def _get_window_size_for_period(self, period: str) -> timedelta:
         """Get appropriate window size for beta diversity."""
@@ -1177,9 +1230,13 @@ class PresentationManager:
 
     async def format_paginated_detections(
         self,
-        period: str,
+        start_date: str,
+        end_date: str,
         page: int = 1,
         per_page: int = 20,
+        family: str | None = None,
+        genus: str | None = None,
+        species: str | None = None,
         search: str | None = None,
         sort_by: str = "timestamp",
         sort_order: str = "desc",
@@ -1187,9 +1244,13 @@ class PresentationManager:
         """Format paginated detections for API response.
 
         Args:
-            period: Time period filter
+            start_date: Start date (YYYY-MM-DD)
+            end_date: End date (YYYY-MM-DD)
             page: Page number (1-based)
             per_page: Items per page
+            family: Filter by taxonomic family
+            genus: Filter by genus
+            species: Filter by species
             search: Search term for species filtering
             sort_by: Field to sort by
             sort_order: Sort order (asc/desc)
@@ -1197,14 +1258,15 @@ class PresentationManager:
         Returns:
             Paginated detection data with formatting
         """
-        # Calculate period boundaries
-        start_date, end_date = calculate_period_boundaries(period, timezone=self.config.timezone)
+        # Parse date strings to datetime objects
+        from datetime import UTC, date
 
-        # Convert to UTC for queries
-        from datetime import UTC
+        start = date.fromisoformat(start_date)
+        end = date.fromisoformat(end_date)
 
-        start_utc = start_date.astimezone(UTC)
-        end_utc = end_date.astimezone(UTC)
+        # Convert to datetime at start/end of day in UTC
+        start_utc = datetime.combine(start, datetime.min.time()).replace(tzinfo=UTC)
+        end_utc = datetime.combine(end, datetime.max.time()).replace(tzinfo=UTC)
 
         # Map sort_by to database column names
         sort_column_map = {
@@ -1223,10 +1285,13 @@ class PresentationManager:
             order_by_column = sort_column_map.get(sort_by, "timestamp")
             order_desc = sort_order.lower() == "desc"
 
-        # Get all detections for the period
+        # Get all detections for the period with taxonomic filters
         all_detections = await self.detection_query_service.query_detections(
             start_date=start_utc,
             end_date=end_utc,
+            family=family,
+            genus=genus,
+            species=species,
             order_by=order_by_column,
             order_desc=order_desc,
             limit=None,  # Get all detections, don't use default limit
@@ -1265,6 +1330,15 @@ class PresentationManager:
             for detection in page_detections
         ]
 
+        # Calculate summary statistics
+        unique_species = len({d.scientific_name for d in all_detections if d.scientific_name})
+        avg_confidence = (
+            sum(d.confidence for d in all_detections) / len(all_detections)
+            if all_detections
+            else None
+        )
+        date_range = f"{start_date} to {end_date}" if start_date != end_date else start_date
+
         return {
             "detections": detection_list,
             "pagination": {
@@ -1274,6 +1348,12 @@ class PresentationManager:
                 "total_pages": total_pages,
                 "has_next": page < total_pages,
                 "has_prev": page > 1,
+            },
+            "summary": {
+                "total_detections": total,
+                "unique_species": unique_species,
+                "date_range": date_range,
+                "avg_confidence": avg_confidence,
             },
         }
 

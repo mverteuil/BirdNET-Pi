@@ -1,0 +1,91 @@
+{#
+Period Selector Component
+
+Parameters:
+  - id: Unique identifier for this selector instance (required)
+  - label: Optional label text to display before selector (e.g., "Analysis period:")
+  - initial_period: Initial period type - "day", "week", "month", "season", "year", "historical" (default: "day")
+  - initial_date: Initial date as ISO string (default: today)
+  - onchange_callback: JavaScript function name to call on period change (required)
+  - show_historical: Whether to show "Historical" option (default: true)
+  - latitude: Latitude for hemisphere detection (optional, uses config if not provided)
+  - longitude: Longitude for future use (optional, uses config if not provided)
+
+Example usage:
+  {% include 'components/period_selector.html.j2' with
+     id='primary-period',
+     label='Analysis period:',
+     initial_period='month',
+     onchange_callback='updateAnalysis',
+     show_historical=true
+  %}
+#}
+
+{# Set defaults #}
+{% set selector_id = id %}
+{% set selector_label = label|default('') %}
+{% set selector_initial_period = initial_period|default('day') %}
+{% set selector_initial_date = initial_date|default('') %}
+{% set selector_callback = onchange_callback %}
+{% set selector_show_historical = show_historical if show_historical is defined else true %}
+{% set selector_latitude = config['latitude'] %}
+{% set selector_longitude = config['longitude'] %}
+
+{# Container for period selector - will be populated by JavaScript #}
+<div class="period-selector-wrapper">
+  {% if selector_label %}
+  <span class="period-selector-label">{{ selector_label }}</span>
+  {% endif %}
+  <div id="{{ selector_id }}"
+       class="period-selector-container"
+       data-initial-period="{{ selector_initial_period }}"
+       data-initial-date="{{ selector_initial_date }}"
+       data-callback="{{ selector_callback }}"
+       data-show-historical="{{ 'true' if selector_show_historical else 'false' }}"
+       data-latitude="{{ selector_latitude }}"
+       data-longitude="{{ selector_longitude }}">
+    {# Placeholder content - will be replaced by JavaScript #}
+    <div class="period-loading">{{ _('Loading period selector...') }}</div>
+  </div>
+</div>
+
+{# Initialize the selector with JavaScript #}
+<script>
+(function() {
+  // Wait for DOM and PeriodSelector class to be available
+  function initSelector() {
+    if (typeof PeriodSelector === 'undefined') {
+      setTimeout(initSelector, 50);
+      return;
+    }
+
+    const container = document.getElementById('{{ selector_id }}');
+    if (!container) {
+      console.error('Period selector container not found: {{ selector_id }}');
+      return;
+    }
+
+    const options = {
+      initialPeriod: container.dataset.initialPeriod || 'day',
+      initialDate: container.dataset.initialDate || null,
+      showHistorical: container.dataset.showHistorical === 'true',
+      latitude: parseFloat(container.dataset.latitude) || 0,
+      longitude: parseFloat(container.dataset.longitude) || 0,
+      onChangeCallback: window['{{ selector_callback }}'] || null
+    };
+
+    // Create selector instance
+    const selector = new PeriodSelector('{{ selector_id }}', options);
+
+    // Store reference for external access
+    container.periodSelector = selector;
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSelector);
+  } else {
+    initSelector();
+  }
+})();
+</script>

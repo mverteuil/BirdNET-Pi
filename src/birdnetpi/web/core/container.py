@@ -27,8 +27,19 @@ from birdnetpi.web.core.config import get_config
 
 
 def create_jinja2_templates(resolver: PathResolver) -> Jinja2Templates:
-    """Create Jinja2Templates with dynamic path from resolver."""
-    return Jinja2Templates(directory=str(resolver.get_templates_dir()))
+    """Create Jinja2Templates with dynamic path from resolver and strict undefined handling.
+
+    Configures Jinja2 to raise errors on undefined variables (like Django),
+    making missing template context painfully obvious during development.
+    """
+    from jinja2 import StrictUndefined
+
+    templates = Jinja2Templates(directory=str(resolver.get_templates_dir()))
+
+    # Enable strict mode - undefined variables raise errors instead of silently failing
+    templates.env.undefined = StrictUndefined
+
+    return templates
 
 
 class Container(containers.DeclarativeContainer):

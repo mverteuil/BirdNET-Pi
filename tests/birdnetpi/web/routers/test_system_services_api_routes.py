@@ -29,7 +29,8 @@ def client():
     container.wire(modules=["birdnetpi.web.routers.system_api_routes"])
 
     # Include the router with the correct prefix
-    app.include_router(router, prefix="/api/system")
+    # Router already has prefix="/system", so we only add "/api"
+    app.include_router(router, prefix="/api")
 
     # Create test client
     test_client = TestClient(app)

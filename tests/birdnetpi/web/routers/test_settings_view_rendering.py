@@ -24,6 +24,9 @@ class TestSettingsViewRendering:
         env.globals["update_available"] = lambda: False
         env.globals["show_development_warning"] = lambda: False
 
+        # Add url_for function for navigation links
+        env.globals["url_for"] = lambda name, **kwargs: f"/{name}"
+
         # Add translation function (just return the string unchanged for testing)
         env.globals["_"] = lambda x, **kwargs: x % kwargs if kwargs else x
         env.globals["gettext"] = env.globals["_"]
@@ -102,9 +105,17 @@ class TestSettingsViewRendering:
         """Should render settings template with actual data correctly."""
         template = template_env.get_template("admin/settings.html.j2")
 
-        # Render with test data
+        # Render with test data including required base template context
         html = template.render(
-            request=mock_request, config=sample_config, audio_devices=sample_audio_devices
+            request=mock_request,
+            config=sample_config,
+            audio_devices=sample_audio_devices,
+            model_files=["BirdNET_GLOBAL_6K_V2.4_Model_FP16"],
+            metadata_model_files=["BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16"],
+            system_status={"device_name": "Test Device"},
+            language="en",
+            page_name="Settings",
+            active_page="settings",
         )
 
         # Verify key elements are present
@@ -122,8 +133,16 @@ class TestSettingsViewRendering:
         """Should handle case with no audio devices in settings template."""
         template = template_env.get_template("admin/settings.html.j2")
 
-        # Render with empty audio devices
-        html = template.render(request=mock_request, config=sample_config, audio_devices=[])
+        # Render with empty audio devices but complete context
+        html = template.render(
+            request=mock_request,
+            config=sample_config,
+            audio_devices=[],
+            model_files=["BirdNET_GLOBAL_6K_V2.4_Model_FP16"],
+            metadata_model_files=["BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16"],
+            system_status={"device_name": "Test Device"},
+            language="en",
+        )
 
         # Should show "no devices" message
         assert "No audio devices detected" in html
@@ -140,7 +159,13 @@ class TestSettingsViewRendering:
         try:
             template = template_env.get_template("admin/settings.html.j2")
             html = template.render(
-                request=mock_request, config=config, audio_devices=sample_audio_devices
+                request=mock_request,
+                config=config,
+                audio_devices=sample_audio_devices,
+                model_files=["BirdNET_GLOBAL_6K_V2.4_Model_FP16"],
+                metadata_model_files=["BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16"],
+                system_status={"device_name": "Test Device"},
+                language="en",
             )
             # Should render without errors even with None values
             assert html is not None
@@ -153,7 +178,13 @@ class TestSettingsViewRendering:
         """Should render all required form inputs in the template."""
         template = template_env.get_template("admin/settings.html.j2")
         html = template.render(
-            request=mock_request, config=sample_config, audio_devices=sample_audio_devices
+            request=mock_request,
+            config=sample_config,
+            audio_devices=sample_audio_devices,
+            model_files=["BirdNET_GLOBAL_6K_V2.4_Model_FP16"],
+            metadata_model_files=["BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16"],
+            system_status={"device_name": "Test Device"},
+            language="en",
         )
 
         # Check for required hidden inputs
@@ -174,7 +205,13 @@ class TestSettingsViewRendering:
         """Should include all required JavaScript functions in the template."""
         template = template_env.get_template("admin/settings.html.j2")
         html = template.render(
-            request=mock_request, config=sample_config, audio_devices=sample_audio_devices
+            request=mock_request,
+            config=sample_config,
+            audio_devices=sample_audio_devices,
+            model_files=["BirdNET_GLOBAL_6K_V2.4_Model_FP16"],
+            metadata_model_files=["BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16"],
+            system_status={"device_name": "Test Device"},
+            language="en",
         )
 
         # Check for JavaScript functions
@@ -214,7 +251,13 @@ class TestSettingsViewRendering:
 
         template = template_env.get_template("admin/settings.html.j2")
         html = template.render(
-            request=mock_request, config=config, audio_devices=sample_audio_devices
+            request=mock_request,
+            config=config,
+            audio_devices=sample_audio_devices,
+            model_files=["BirdNET_GLOBAL_6K_V2.4_Model_FP16"],
+            metadata_model_files=["BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16"],
+            system_status={"device_name": "Test Device"},
+            language="en",
         )
 
         # Script tags should be escaped

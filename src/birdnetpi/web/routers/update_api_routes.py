@@ -5,56 +5,23 @@ from typing import Annotated, Any
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.config.manager import ConfigManager
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.utils.cache import Cache
 from birdnetpi.web.core.container import Container
+from birdnetpi.web.models.update import (
+    GitConfigRequest,
+    UpdateActionResponse,
+    UpdateApplyRequest,
+    UpdateCheckRequest,
+    UpdateStatusResponse,
+)
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
 
-
-class UpdateCheckRequest(BaseModel):
-    """Request model for checking for updates."""
-
-    force: bool = False  # Force check even if recently checked
-
-
-class UpdateApplyRequest(BaseModel):
-    """Request model for applying an update."""
-
-    version: str  # Version to update to
-    dry_run: bool = False  # Test update without applying
-
-
-class UpdateStatusResponse(BaseModel):
-    """Response model for update status."""
-
-    available: bool
-    current_version: str | None = None
-    latest_version: str | None = None
-    release_notes: str | None = None
-    release_url: str | None = None
-    can_auto_update: bool = False
-    error: str | None = None
-
-
-class UpdateActionResponse(BaseModel):
-    """Response model for update actions."""
-
-    success: bool
-    message: str | None = None
-    error: str | None = None
-
-
-class GitConfigRequest(BaseModel):
-    """Request model for updating git configuration."""
-
-    git_remote: str
-    git_branch: str
+router = APIRouter(prefix="/update")
 
 
 @router.post("/check")
@@ -88,7 +55,7 @@ async def check_for_updates(
         )
 
     except Exception as e:
-        logger.error(f"Failed to check for updates: {e}")
+        logger.error("Failed to check for updates: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -112,7 +79,7 @@ async def get_update_status(
         )
 
     except Exception as e:
-        logger.error(f"Failed to get update status: {e}")
+        logger.error("Failed to get update status: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -157,7 +124,7 @@ async def apply_update(
         )
 
     except Exception as e:
-        logger.error(f"Failed to apply update: {e}")
+        logger.error("Failed to apply update: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -182,7 +149,7 @@ async def get_update_result(
         }
 
     except Exception as e:
-        logger.error(f"Failed to get update result: {e}")
+        logger.error("Failed to get update result: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -221,7 +188,7 @@ async def cancel_update(
         )
 
     except Exception as e:
-        logger.error(f"Failed to cancel update: {e}")
+        logger.error("Failed to cancel update: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -252,7 +219,9 @@ async def update_git_config(
         config_manager.save(config)
 
         logger.info(
-            f"Updated git configuration: remote={request.git_remote}, branch={request.git_branch}"
+            "Updated git configuration: remote=%s, branch=%s",
+            request.git_remote,
+            request.git_branch,
         )
 
         return UpdateActionResponse(
@@ -262,11 +231,11 @@ async def update_git_config(
 
     except ValueError as e:
         # Validation error from config model
-        logger.warning(f"Invalid git configuration: {e}")
+        logger.warning("Invalid git configuration: %s", e)
         return UpdateActionResponse(
             success=False,
             error=str(e),
         )
     except Exception as e:
-        logger.error(f"Failed to update git configuration: {e}")
+        logger.error("Failed to update git configuration: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e

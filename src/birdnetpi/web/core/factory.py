@@ -9,6 +9,7 @@ from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.lifespan import lifespan
 from birdnetpi.web.middleware.i18n import LanguageMiddleware
 from birdnetpi.web.middleware.request_logging import StructuredRequestLoggingMiddleware
+from birdnetpi.web.middleware.update_banner import add_update_status_to_templates
 from birdnetpi.web.routers import (
     analysis_api_routes,
     detections_api_routes,
@@ -91,7 +92,6 @@ def create_app() -> FastAPI:
     setup_jinja2_i18n(templates)
 
     # Add update status to template context
-    from birdnetpi.web.middleware.update_banner import add_update_status_to_templates
 
     add_update_status_to_templates(templates, container)
 
@@ -123,35 +123,32 @@ def create_app() -> FastAPI:
 
     # === API Routes (included in documentation) ===
 
-    # Health check routes (no authentication required)
-    # Note: health router already has tags=["health"] defined internally
-    app.include_router(health_api_routes.router, prefix="/api/health")
+    # Analysis API routes for progressive loading
+    app.include_router(analysis_api_routes.router, prefix="/api", tags=["Analysis API"])
 
     # Settings API routes
     app.include_router(settings_api_routes.router, prefix="/admin/config", tags=["Settings API"])
 
-    # System API routes
-    app.include_router(system_api_routes.router, prefix="/api/system", tags=["System API"])
-
-    # Update API routes
-    app.include_router(update_api_routes.router, prefix="/api/update", tags=["Update API"])
-
     # Core API routes (detections endpoints)
-    app.include_router(
-        detections_api_routes.router, prefix="/api/detections", tags=["Detections API"]
-    )
+    app.include_router(detections_api_routes.router, prefix="/api", tags=["Detections API"])
 
-    # Multimedia API routes (audio/image serving)
-    app.include_router(multimedia_api_routes.router, prefix="/api", tags=["Multimedia API"])
+    # Health check routes (no authentication required)
+    app.include_router(health_api_routes.router, prefix="/api", tags=["Health Check API"])
 
-    # Analysis API routes for progressive loading
-    app.include_router(analysis_api_routes.router, tags=["Analysis API"])
+    # i18n API routes (translation support for JavaScript)
+    app.include_router(i18n_api_routes.router, prefix="/api", tags=["i18n API"])
 
     # Logs API routes (historical and streaming)
     app.include_router(logs_api_routes.router, prefix="/api", tags=["Logs API"])
 
-    # i18n API routes (translation support for JavaScript)
-    app.include_router(i18n_api_routes.router, tags=["i18n API"])
+    # Multimedia API routes (audio/image serving)
+    app.include_router(multimedia_api_routes.router, prefix="/api", tags=["Multimedia API"])
+
+    # System API routes
+    app.include_router(system_api_routes.router, prefix="/api", tags=["System API"])
+
+    # Update API routes
+    app.include_router(update_api_routes.router, prefix="/api", tags=["Update API"])
 
     # Real-time communication
     app.include_router(websocket_routes.router, prefix="/ws", tags=["WebSocket"])
@@ -218,10 +215,23 @@ def create_app() -> FastAPI:
         # Get landing page data
         landing_data = await presentation_manager.get_landing_page_data_safe()
 
+        # Get system status and language for base template
+        from birdnetpi.system.status import SystemInspector
+        from birdnetpi.utils.language import get_user_language
+
+        language = get_user_language(request, config)
+
         return templates.TemplateResponse(
             request,
             "index.html.j2",
             {
+                # Base template context requirements
+                "config": config,
+                "system_status": {"device_name": SystemInspector.get_device_name()},
+                "language": language,
+                "page_name": None,  # Dashboard doesn't need a page name
+                "active_page": "dashboard",
+                # Page-specific context
                 "site_name": config.site_name,
                 "location": f"{config.latitude:.4f}, {config.longitude:.4f}",
                 # Safe: Using request hostname for WebSocket URL in same-origin context
@@ -236,12 +246,26 @@ def create_app() -> FastAPI:
         """Render custom API documentation page with site styling."""
         config = container.config()
         templates = container.templates()
+        translation_manager = container.translation_manager()
+
+        # Get system status and language for base template
+        from birdnetpi.system.status import SystemInspector
+        from birdnetpi.utils.language import get_user_language
+
+        language = get_user_language(request, config)
+        _ = translation_manager.get_translation(language).gettext
 
         return templates.TemplateResponse(
             request,
             "api_docs.html.j2",
             {
+                # Base template context requirements
                 "config": config,
+                "system_status": {"device_name": SystemInspector.get_device_name()},
+                "language": language,
+                "page_name": _("API Documentation"),
+                "active_page": "api",
+                # Page-specific context
                 "openapi_url": app.openapi_url,
                 "title": app.title,
             },

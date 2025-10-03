@@ -61,7 +61,8 @@ def client(path_resolver, test_config):
     container.wire(modules=["birdnetpi.web.routers.detections_api_routes"])
 
     # Include the router
-    app.include_router(router, prefix="/api/detections")
+    # Router already has prefix="/detections", so we only add "/api"
+    app.include_router(router, prefix="/api")
 
     # Create and return test client
     client = TestClient(app)
@@ -79,8 +80,11 @@ class TestDetectionsAPIRoutes:
 
     def test_create_detection(self, client, model_factory):
         """Should create detection successfully."""
+        from uuid import UUID
+
+        test_uuid = UUID("12345678-1234-5678-1234-567812345678")
         mock_detection = model_factory.create_detection()
-        mock_detection.id = 123
+        mock_detection.id = test_uuid
         client.mock_data_manager.create_detection = AsyncMock(return_value=mock_detection)
 
         import base64
@@ -109,7 +113,7 @@ class TestDetectionsAPIRoutes:
         assert response.status_code == 201
         data = response.json()
         assert data["message"] == "Detection received and dispatched"
-        assert data["detection_id"] == 123
+        assert data["detection_id"] == str(test_uuid)
 
     def test_create_detection_validation_error(self, client):
         """Should handle validation errors when creating detection."""
@@ -431,7 +435,7 @@ class TestBestRecordings:
         assert response.status_code == 200
         data = response.json()
         assert len(data["recordings"]) == 2
-        assert data["recordings"][0]["confidence"] == 98.0
+        assert data["recordings"][0]["confidence"] == 0.98  # Confidence is 0-1, not percentage
         assert data["count"] == 2
         assert data["unique_species"] == 2
         assert data["avg_confidence"] > 0

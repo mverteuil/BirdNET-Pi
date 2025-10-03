@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="{{ request.headers.get('Accept-Language', 'en').split(',')[0].split('-')[0] }}">
+<html lang="{{ language }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if page_name %}{{ page_name }} - {{ site_name|default('BirdNET-Pi') }}{% else %}{{ site_name|default('BirdNET-Pi') }}{% endif %}</title>
+    <title>{% if page_name %}{{ page_name }} - {{ config['site_name'] }}{% else %}{{ config['site_name'] }}{% endif %}</title>
 
     {# Core styles - always included #}
-    <link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}">
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/style.css') }}">
 
     {# Update banner styles - needed globally #}
     <link rel="stylesheet" href="{{ request.url_for('static', path='css/update_banner.css') }}">
@@ -22,7 +22,7 @@
     <header role="banner">
         {% block header %}
         <h1>
-            <span class="main-title">{{ site_name|default('BirdNET-Pi') }}</span>
+            <span class="main-title">{{ config['site_name'] }}</span>
             {% if page_name %}
             <span class="subtitle-separator">|</span>
             <span class="subtitle-text">{{ page_name }}</span>
@@ -32,7 +32,7 @@
         <p class="tagline" aria-label="{{ _('System information') }}">
             {{ _('Continuous acoustic monitoring') }} ·
             {% if system_status and system_status.device_name %}{{ system_status.device_name }}{% else %}{{ _('Docker Container') }}{% endif %} ·
-            {% if location %}{{ location }}{% else %}{{ _('%(lat)s, %(lng)s', lat=latitude|default(0.0, true), lng=longitude|default(0.0, true)) }}{% endif %}
+            {{ _('%(lat)s, %(lng)s', lat=config['latitude'], lng=config['longitude']) }}
         </p>
         {% endblock %}
     </header>
@@ -57,13 +57,22 @@
         {% block footer_annotation %}
         {# Default footer annotation - pages can override or extend with super() #}
         <p class="annotation">
-            {{ _('BirdNET') }} v{{ birdnet_version | default('2.4') }} ·
-            {{ _('Confidence threshold') }} ≥{{ confidence_threshold | default('0.70') }} ·
-            {% if timezone %}{{ timezone }}{% else %}UTC{% endif %}
+            {{ _('BirdNET') }} {{ config['model'].split('_')[3] if '_' in config['model'] else config['model'] }} ·
+            {{ _('Confidence threshold') }} ≥{{ config['species_confidence_threshold'] }} ·
+            {{ config['timezone'] }}
             {% if model_update_date %} · {{ _('Last model update:') }} {{ model_update_date }}{% endif %}
         </p>
         {% endblock %}
     </footer>
+
+    {# Site configuration - available to all JavaScript #}
+    <script>
+    window.siteConfig = {
+        latitude: {{ config['latitude'] }},
+        longitude: {{ config['longitude'] }},
+        timezone: "{{ config['timezone'] }}"
+    };
+    </script>
 
     {# Core JavaScript - always loaded #}
     <script src="{{ request.url_for('static', path='js/i18n.js') }}"></script>

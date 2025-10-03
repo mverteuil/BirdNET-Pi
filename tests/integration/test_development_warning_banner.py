@@ -148,7 +148,11 @@ class TestDevelopmentWarningBanner:
         """Should render development banner correctly in template."""
         # Create a test environment with our templates
         template_dir = repo_root / "src/birdnetpi/web/templates"
-        env = Environment(loader=FileSystemLoader([template_dir, template_dir / "includes"]))
+        env = Environment(
+            loader=FileSystemLoader(
+                [template_dir, template_dir / "includes", template_dir / "components"]
+            )
+        )
 
         # Mock the template functions
         def mock_get_update_status():
@@ -166,9 +170,13 @@ class TestDevelopmentWarningBanner:
         def mock_translation(text):
             return text  # Simple passthrough for testing
 
+        def mock_url_for(name):
+            return f"/{name}"  # Simple URL generation for testing
+
         env.globals["get_update_status"] = mock_get_update_status
         env.globals["show_development_warning"] = mock_show_development_warning
         env.globals["_"] = mock_translation
+        env.globals["url_for"] = mock_url_for
         env.globals["update_status"] = mock_get_update_status()
 
         # Load and render the update banner template
@@ -188,7 +196,11 @@ class TestDevelopmentWarningBanner:
         """Should render update banner when update is available."""
         # Create a test environment with our templates
         template_dir = repo_root / "src/birdnetpi/web/templates"
-        env = Environment(loader=FileSystemLoader([template_dir, template_dir / "includes"]))
+        env = Environment(
+            loader=FileSystemLoader(
+                [template_dir, template_dir / "includes", template_dir / "components"]
+            )
+        )
 
         # Mock the template functions
         def mock_get_update_status():
@@ -206,9 +218,13 @@ class TestDevelopmentWarningBanner:
         def mock_translation(text):
             return text  # Simple passthrough for testing
 
+        def mock_url_for(name):
+            return f"/{name}"  # Simple URL generation for testing
+
         env.globals["get_update_status"] = mock_get_update_status
         env.globals["show_development_warning"] = mock_show_development_warning
         env.globals["_"] = mock_translation
+        env.globals["url_for"] = mock_url_for
         env.globals["update_status"] = mock_get_update_status()
 
         # Load and render the update banner template
@@ -228,7 +244,11 @@ class TestDevelopmentWarningBanner:
         """Should show both banners when on dev version AND update available."""
         # Create a test environment with our templates
         template_dir = repo_root / "src/birdnetpi/web/templates"
-        env = Environment(loader=FileSystemLoader([template_dir, template_dir / "includes"]))
+        env = Environment(
+            loader=FileSystemLoader(
+                [template_dir, template_dir / "includes", template_dir / "components"]
+            )
+        )
 
         # Mock the template functions
         def mock_get_update_status():
@@ -247,9 +267,13 @@ class TestDevelopmentWarningBanner:
         def mock_translation(text):
             return text  # Simple passthrough for testing
 
+        def mock_url_for(name):
+            return f"/{name}"  # Simple URL generation for testing
+
         env.globals["get_update_status"] = mock_get_update_status
         env.globals["show_development_warning"] = mock_show_development_warning
         env.globals["_"] = mock_translation
+        env.globals["url_for"] = mock_url_for
         env.globals["update_status"] = mock_get_update_status()
 
         # Load and render the update banner template

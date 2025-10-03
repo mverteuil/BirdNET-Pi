@@ -1,13 +1,10 @@
 {% extends "base.html.j2" %}
 {% set page_name = 'Detections' %}
-
-{% block navigation %}
-    {% set active_page = 'detections' %}
-    {{ super() }}
-{% endblock %}
+{% set active_page = 'detections' %}
 
 {% block styles %}
     {{ super() }}
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/period_selector.css') }}" />
     <link rel="stylesheet" href="{{ request.url_for('static', path='css/all_detections.css') }}" />
     <link rel="stylesheet" href="{{ request.url_for('static', path='css/taxonomy_display.css') }}" />
     <link rel="stylesheet" href="{{ request.url_for('static', path='css/taxonomic_filters.css') }}" />
@@ -16,6 +13,7 @@
 
 {% block scripts %}
     {{ super() }}
+    <script src="{{ request.url_for('static', path='js/period_selector.js') }}"></script>
     <script src="{{ request.url_for('static', path='js/pagination.js') }}"></script>
     <script src="{{ request.url_for('static', path='js/taxonomic_filters.js') }}"></script>
     <script src="{{ request.url_for('static', path='js/taxonomy_display.js') }}"></script>
@@ -25,24 +23,14 @@
 {% block content %}
 
     <!-- Subtitle info (kept below navigation) -->
-    <p class="subtitle" role="status" aria-live="polite"><span id="period-date"></span> · <span id="species-count">0</span> {{ _('species active') }} · <span id="total-detection-count">0</span> {{ _('detections') }}</p>
+    <p class="subtitle" role="status" aria-live="polite"><span id="species-count">0</span> {{ _('species active') }} · <span id="total-detection-count">0</span> {{ _('detections') }}</p>
 
-    <!-- Time period selector - minimal text links -->
-    <div class="period-selector" role="navigation" aria-label="{{ _('Time period selection') }}">
-        <a href="javascript:void(0)" onclick="setPeriod('today')" class="{% if period == 'today' %}active{% endif %}" aria-label="{{ _('View today\'s detections') }}" {% if period == 'today' %}aria-current="page"{% endif %}>{{ _('Today') }}</a> ·
-        <a href="javascript:void(0)" onclick="setPeriod('week')" class="{% if period == 'week' %}active{% endif %}" aria-label="{{ _('View this week\'s detections') }}" {% if period == 'week' %}aria-current="page"{% endif %}>{{ _('Week') }}</a> ·
-        <a href="javascript:void(0)" onclick="setPeriod('month')" class="{% if period == 'month' %}active{% endif %}" aria-label="{{ _('View this month\'s detections') }}" {% if period == 'month' %}aria-current="page"{% endif %}>{{ _('Month') }}</a> ·
-        <a href="javascript:void(0)" onclick="setPeriod('all')" class="{% if period == 'all' %}active{% endif %}" aria-label="{{ _('View all detections') }}" {% if period == 'all' %}aria-current="page"{% endif %}>{{ _('All') }}</a> ·
-        <a href="javascript:void(0)" onclick="openDatePicker()" class="{% if period == 'date' %}active{% endif %}" aria-label="{{ _('Select specific date') }}" {% if period == 'date' %}aria-current="page"{% endif %}>{{ _('Date') }}</a>
-
-        <!-- Navigation arrows for date mode -->
-        {% if period == 'date' %}
-        <span class="date-nav">
-            <a href="javascript:void(0)" onclick="goToPreviousPeriod()" aria-label="{{ _('Previous day') }}">←</a>
-            <a href="javascript:void(0)" onclick="goToNextPeriod()" aria-label="{{ _('Next day') }}">→</a>
-        </span>
-        {% endif %}
-    </div>
+    <!-- Time period selector -->
+    {% set id = 'detections-period' %}
+    {% set initial_period = period|default('day') %}
+    {% set onchange_callback = 'onDetectionsPeriodChange' %}
+    {% set show_historical = false %}
+    {% include 'components/period_selector.html.j2' %}
 
     <!-- Taxonomic filters (without confidence filter) -->
     {% set show_confidence = false %}
@@ -141,16 +129,11 @@
 
     </div>
 
-    <!-- Loading indicator -->
-    <div class="loading-overlay" id="loading-overlay"></div>
-    <div class="loading-indicator" id="loading-indicator">{{ _('Loading detections...') }}</div>
-
 {% endblock %}
 
 {% block footer_annotation %}
     <p class="annotation">
-        {{ _('Confidence threshold ≥%(threshold)s', threshold=confidence_threshold|default(0.7)) }} ·
-        {% if timezone %}{{ timezone }}{% else %}{{ _('UTC') }}{% endif %} ·
-        {{ _('Showing %(shown)s of %(total)s detections', shown=detections|length, total=total_count) }}
+        {{ _('Confidence threshold ≥%(threshold)s', threshold=config['species_confidence_threshold']) }} ·
+        {{ config['timezone'] }}
     </p>
 {% endblock %}

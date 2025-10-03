@@ -15,10 +15,17 @@ from starlette.status import HTTP_303_SEE_OTHER
 from birdnetpi.audio.devices import AudioDeviceService
 from birdnetpi.config import BirdNETConfig, ConfigManager
 from birdnetpi.detections.manager import DataManager
+from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.system.log_reader import LogReaderService
 from birdnetpi.system.path_resolver import PathResolver
+from birdnetpi.system.status import SystemInspector
+from birdnetpi.utils.language import get_user_language
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.detections import DetectionEvent
+from birdnetpi.web.models.template_contexts import (
+    AdvancedSettingsPageContext,
+    SettingsPageContext,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -33,10 +40,13 @@ async def read_admin() -> dict[str, str]:
 # Settings Management
 @router.get("/settings", response_class=HTMLResponse)
 @inject
-async def get_settings(
+async def get_settings_view(
     request: Request,
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
     templates: Annotated[Jinja2Templates, Depends(Provide[Container.templates])],
+    translation_manager: Annotated[
+        TranslationManager, Depends(Provide[Container.translation_manager])
+    ],
 ) -> Response:
     """Render the settings page with the current configuration."""
     config_manager = ConfigManager(path_resolver)
@@ -66,6 +76,10 @@ async def get_settings(
     model_files.sort()
     metadata_model_files.sort()
 
+    # Get user language for template
+    language = get_user_language(request, app_config)
+    _ = translation_manager.get_translation(language).gettext
+
     # Normalize config model names by removing .tflite extension if present
     # This ensures the comparison in the template works correctly
     normalized_config = app_config.model_copy()
@@ -74,22 +88,33 @@ async def get_settings(
     if normalized_config.metadata_model and normalized_config.metadata_model.endswith(".tflite"):
         normalized_config.metadata_model = normalized_config.metadata_model[:-7]  # Remove .tflite
 
+    # Create validated context
+    context = SettingsPageContext(
+        config=normalized_config,
+        language=language,
+        system_status={"device_name": SystemInspector.get_device_name()},
+        page_name=_("Settings"),
+        active_page="settings",
+        model_update_date=None,
+        audio_devices=audio_devices,
+        model_files=model_files,
+        metadata_model_files=metadata_model_files,
+    )
+
+    # Convert context to dict but preserve audio_devices as objects
+    context_dict = context.model_dump()
+    context_dict["audio_devices"] = audio_devices  # Restore AudioDevice objects
+
     return templates.TemplateResponse(
         request,
         "admin/settings.html.j2",
-        {
-            "config": normalized_config,
-            "audio_devices": audio_devices,
-            "model_files": model_files,
-            "metadata_model_files": metadata_model_files,
-            "active_page": "settings",  # Set active page for navigation
-        },
+        context_dict,
     )
 
 
 @router.post("/settings", response_class=HTMLResponse)
 @inject
-async def post_settings(
+async def post_settings_view(
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
     # Basic Settings (required)
     site_name: str = Form(...),
@@ -363,16 +388,35 @@ async def test_detection(
 # Advanced YAML Editor
 @router.get("/advanced-settings", response_class=HTMLResponse)
 @inject
-async def get_advanced_settings(
+async def advanced_settings_view(
     request: Request,
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
     templates: Annotated[Jinja2Templates, Depends(Provide[Container.templates])],
+    translation_manager: Annotated[
+        TranslationManager, Depends(Provide[Container.translation_manager])
+    ],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
 ) -> Response:
     """Render the advanced YAML configuration editor."""
     config_manager = ConfigManager(path_resolver)
     # Load raw YAML content for editor
     config_yaml = config_manager.config_path.read_text()
 
+    # Get user language for template
+    language = get_user_language(request, config)
+    _ = translation_manager.get_translation(language).gettext
+
+    # Create validated context
+    context = AdvancedSettingsPageContext(
+        config=config,
+        language=language,
+        system_status={"device_name": SystemInspector.get_device_name()},
+        page_name=_("Advanced Settings"),
+        active_page="settings",
+        model_update_date=None,
+        config_yaml=config_yaml,
+    )
+
     return templates.TemplateResponse(
-        request, "admin/advanced_settings.html.j2", {"config_yaml": config_yaml}
+        request, "admin/advanced_settings.html.j2", context.model_dump()
     )

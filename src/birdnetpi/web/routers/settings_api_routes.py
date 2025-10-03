@@ -11,7 +11,7 @@ from birdnetpi.config import ConfigManager
 from birdnetpi.database.ioc import IOCDatabaseService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.web.core.container import Container
-from birdnetpi.web.models.admin import YAMLConfigRequest
+from birdnetpi.web.models.admin import SaveConfigResponse, ValidationResponse, YAMLConfigRequest
 
 router = APIRouter()
 
@@ -63,28 +63,29 @@ def _validate_yaml_config_impl(yaml_content: str, path_resolver: PathResolver) -
         return {"valid": False, "error": f"Validation error: {e!s}"}
 
 
-@router.post("/validate")
+@router.post("/validate", response_model=ValidationResponse)
 @inject
 async def validate_yaml_config(
     config_request: YAMLConfigRequest,
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
-) -> dict:
+) -> ValidationResponse:
     """Validate YAML configuration content."""
-    return _validate_yaml_config_impl(config_request.yaml_content, path_resolver)
+    result = _validate_yaml_config_impl(config_request.yaml_content, path_resolver)
+    return ValidationResponse(**result)
 
 
-@router.post("/save")
+@router.post("/save", response_model=SaveConfigResponse)
 @inject
 async def save_yaml_config(
     config_request: YAMLConfigRequest,
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
-) -> dict:
+) -> SaveConfigResponse:
     """Save YAML configuration content."""
     try:
         # First validate the YAML using the shared implementation
         validation_result = _validate_yaml_config_impl(config_request.yaml_content, path_resolver)
         if not validation_result["valid"]:
-            return {"success": False, "error": validation_result["error"]}
+            return SaveConfigResponse(success=False, message=None, error=validation_result["error"])
 
         # Get config file path
         config_path = path_resolver.get_birdnetpi_config_path()
@@ -93,10 +94,14 @@ async def save_yaml_config(
         with open(config_path, "w") as f:
             f.write(config_request.yaml_content)
 
-        return {"success": True, "message": "Configuration saved successfully"}
+        return SaveConfigResponse(
+            success=True, message="Configuration saved successfully", error=None
+        )
 
     except Exception as e:
-        return {"success": False, "error": f"Failed to save configuration: {e!s}"}
+        return SaveConfigResponse(
+            success=False, message=None, error=f"Failed to save configuration: {e!s}"
+        )
 
 
 @router.post("/validate-species", response_model=SpeciesValidationResponse)

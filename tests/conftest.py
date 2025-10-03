@@ -84,6 +84,7 @@ def path_resolver(tmp_path: Path, repo_root: Path) -> PathResolver:
     resolver.get_config_template_path = lambda: real_app_dir / "config_templates" / "birdnetpi.yaml"
     resolver.get_static_dir = lambda: real_app_dir / "src" / "birdnetpi" / "web" / "static"
     resolver.get_templates_dir = lambda: real_app_dir / "src" / "birdnetpi" / "web" / "templates"
+    resolver.get_repo_path = lambda: real_app_dir  # Repository root for tests
 
     # For config tests, copy template to temp config location
     template_path = Path(resolver.get_config_template_path())
