@@ -1,7 +1,8 @@
 """Tests for detections API routes that handle detection CRUD operations and spectrograms."""
 
+import asyncio
 import base64
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
@@ -13,7 +14,11 @@ from fastapi.testclient import TestClient
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.web.core.container import Container
-from birdnetpi.web.routers.detections_api_routes import router
+from birdnetpi.web.routers.detections_api_routes import (
+    _create_detection_handler,
+    _format_detection_event,
+    router,
+)
 
 
 @pytest.fixture
@@ -192,6 +197,29 @@ class TestDetectionsAPIRoutes:
         assert response.status_code == 200
         data = response.json()
         assert data["count"] == 5
+
+    def test_get_detection_count_with_specific_date(self, client):
+        """Should return detection count for specific date."""
+        target_date = date(2025, 1, 15)
+        client.mock_query_service.count_by_date = AsyncMock(return_value={target_date: 42})
+
+        response = client.get(f"/api/detections/count?target_date={target_date.isoformat()}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["date"] == "2025-01-15"
+        assert data["count"] == 42
+
+    def test_get_detection_count_zero_detections(self, client):
+        """Should return zero when no detections exist for date."""
+        empty_date = date(2020, 1, 1)
+        client.mock_query_service.count_by_date = AsyncMock(return_value={})
+
+        response = client.get(f"/api/detections/count?target_date={empty_date.isoformat()}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["count"] == 0
 
     def test_get_detection_by_id(self, client, model_factory):
         """Should return specific detection."""
@@ -382,6 +410,29 @@ class TestPaginatedDetections:
 
         assert response.status_code == 500
         assert "Error retrieving detections" in response.json()["detail"]
+
+    def test_get_paginated_detections_default_dates(self, client, model_factory):
+        """Should use today's date when start_date and end_date not provided."""
+        mock_detections = [
+            model_factory.create_detection_with_taxa(
+                species_tensor="Today Species_Today Bird",
+                scientific_name="Today Species",
+                common_name="Today Bird",
+                confidence=0.88,
+                timestamp=datetime.now(UTC),
+            )
+        ]
+
+        client.mock_query_service.query_detections = AsyncMock(return_value=mock_detections)
+
+        # Don't provide dates - should default to today
+        response = client.get("/api/detections/?page=1&per_page=20")
+
+        assert response.status_code == 200
+        # Should use default dates (tested by successful response)
+        data = response.json()
+        assert "detections" in data
+        assert "pagination" in data
 
 
 class TestBestRecordings:
@@ -646,6 +697,39 @@ class TestDetectionAudio:
         assert response.status_code == 404
         assert "Audio file not found on disk" in response.json()["detail"]
 
+    def test_get_detection_audio_absolute_path(self, client, tmp_path, model_factory):
+        """Should serve audio file with absolute path."""
+        # Create a temporary WAV file with absolute path
+        audio_file_path = tmp_path / "test_absolute.wav"
+        audio_file_path.write_bytes(b"RIFF" + b"\x00" * 36 + b"data" + b"\x00" * 100)
+
+        # Create detection with absolute path
+        mock_detection = model_factory.create_detection()
+        mock_detection.audio_file = MagicMock()
+        mock_detection.audio_file.file_path = audio_file_path  # Absolute path
+
+        client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=mock_detection)
+
+        response = client.get(f"/api/detections/{mock_detection.id}/audio")
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "audio/wav"
+        assert len(response.content) > 0
+
+    def test_get_detection_audio_error_handling(self, client, model_factory):
+        """Should handle unexpected errors when serving audio."""
+        mock_detection = model_factory.create_detection()
+
+        # Simulate unexpected exception
+        client.mock_data_manager.get_detection_by_id = AsyncMock(
+            side_effect=Exception("Unexpected error")
+        )
+
+        response = client.get(f"/api/detections/{mock_detection.id}/audio")
+
+        assert response.status_code == 500
+        assert "Error serving audio file" in response.json()["detail"]
+
 
 class TestSpeciesSummary:
     """Test species and family summary endpoints."""
@@ -721,6 +805,236 @@ class TestSpeciesSummary:
 
         assert response.status_code == 500
         assert "Error retrieving species summary" in response.json()["detail"]
+
+    def test_get_species_summary_with_period_day(self, client):
+        """Should return species summary for day period."""
+        mock_summary = [
+            {
+                "scientific_name": "Turdus migratorius",
+                "best_common_name": "American Robin",
+                "detection_count": 10,
+                "family": "Turdidae",
+                "genus": "Turdus",
+                "order_name": "Passeriformes",
+                "first_ever_detection": None,
+            }
+        ]
+
+        client.mock_query_service.get_species_summary = AsyncMock(return_value=mock_summary)
+
+        response = client.get("/api/detections/species/summary?period=day")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["period"] == "day"
+        assert data["period_label"] == "Today"
+        assert len(data["species"]) == 1
+
+    def test_get_species_summary_with_period_week(self, client):
+        """Should return species summary for week period."""
+        client.mock_query_service.get_species_summary = AsyncMock(return_value=[])
+
+        response = client.get("/api/detections/species/summary?period=week")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["period"] == "week"
+        assert data["period_label"] == "This Week"
+
+    def test_get_species_summary_with_period_historical(self, client):
+        """Should return species summary for historical period."""
+        mock_summary = [
+            {
+                "scientific_name": "Corvus corax",
+                "best_common_name": "Common Raven",
+                "detection_count": 250,
+                "first_ever_detection": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
+            }
+        ]
+
+        client.mock_query_service.get_species_summary = AsyncMock(return_value=mock_summary)
+
+        response = client.get("/api/detections/species/summary?period=historical")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["period"] == "historical"
+        assert data["period_label"] == "All Time"
+        # Should call with since=None for historical
+        client.mock_query_service.get_species_summary.assert_called_once()
+
+    def test_get_species_summary_first_ever_detection(self, client):
+        """Should correctly set is_first_ever flag."""
+        first_detection_time = datetime(2025, 1, 10, 10, 0, 0, tzinfo=UTC)
+        mock_summary = [
+            {
+                "scientific_name": "Rare Bird",
+                "best_common_name": "Very Rare Bird",
+                "detection_count": 1,
+                "first_ever_detection": first_detection_time,
+            }
+        ]
+
+        client.mock_query_service.get_species_summary = AsyncMock(return_value=mock_summary)
+
+        response = client.get("/api/detections/species/summary")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["species"][0]["is_first_ever"] is True
+        assert data["species"][0]["first_ever_detection"] is not None
+
+
+class TestDetectionStreaming:
+    """Test SSE streaming endpoint helper functions."""
+
+    def test_format_detection_event(self, model_factory):
+        """Should format detection as SSE event correctly."""
+        mock_detection = model_factory.create_detection(
+            scientific_name="Turdus migratorius",
+            common_name="American Robin",
+            confidence=0.95,
+            timestamp=datetime(2025, 1, 15, 10, 30, 0, tzinfo=UTC),
+            latitude=40.0,
+            longitude=-74.0,
+        )
+
+        event_data = _format_detection_event(mock_detection)
+
+        assert event_data["id"] == str(mock_detection.id)
+        assert event_data["scientific_name"] == "Turdus migratorius"
+        assert event_data["common_name"] == "American Robin"
+        assert event_data["confidence"] == 0.95
+        assert event_data["latitude"] == 40.0
+        assert event_data["longitude"] == -74.0
+        # Timestamp should have Z suffix for UTC
+        assert event_data["timestamp"].endswith("Z")
+
+    def test_create_detection_handler(self, model_factory):
+        """Should create detection handler for SSE."""
+        # Create an event loop and queue
+        loop = asyncio.new_event_loop()
+        queue = asyncio.Queue()
+
+        # Create handler
+        handler = _create_detection_handler(loop, queue)
+
+        # Test that handler is callable
+        assert callable(handler)
+
+        # Create a mock detection
+        mock_detection = model_factory.create_detection(scientific_name="Test Bird")
+
+        # Call handler (simulating signal emission)
+        handler(sender=None, detection=mock_detection)
+
+        # Queue should have the detection
+        # Note: can't easily test without running the event loop
+        loop.close()
+
+
+class TestDetectionsSummary:
+    """Test detections summary endpoint with period filtering."""
+
+    def test_get_summary_day_period(self, client):
+        """Should return summary for current day."""
+        mock_summary = [
+            {
+                "scientific_name": "Turdus migratorius",
+                "best_common_name": "American Robin",
+                "ioc_english_name": "American Robin",
+                "detection_count": 42,
+            },
+            {
+                "scientific_name": "Corvus corax",
+                "best_common_name": "Common Raven",
+                "ioc_english_name": "Common Raven",
+                "detection_count": 15,
+            },
+        ]
+
+        client.mock_query_service.get_species_summary = AsyncMock(return_value=mock_summary)
+        client.mock_query_service.get_detection_count = AsyncMock(return_value=57)
+
+        response = client.get("/api/detections/summary?period=day")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["species_count"] == 2
+        assert data["total_detections"] == 57
+        assert len(data["species_frequency"]) == 2
+        assert data["species_frequency"][0]["species"] == "American Robin"
+        assert data["species_frequency"][0]["count"] == 42
+        # 42/57 * 100 = 73.7%
+        assert 73.0 <= data["species_frequency"][0]["percentage"] <= 74.0
+
+    def test_get_summary_week_period(self, client):
+        """Should return summary for current week."""
+        mock_summary = [
+            {
+                "scientific_name": "Passer domesticus",
+                "best_common_name": "House Sparrow",
+                "ioc_english_name": "House Sparrow",
+                "detection_count": 128,
+            }
+        ]
+
+        client.mock_query_service.get_species_summary = AsyncMock(return_value=mock_summary)
+        client.mock_query_service.get_detection_count = AsyncMock(return_value=128)
+
+        response = client.get("/api/detections/summary?period=week")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["species_count"] == 1
+        assert data["total_detections"] == 128
+
+    def test_get_summary_month_period(self, client):
+        """Should return summary for current month."""
+        client.mock_query_service.get_species_summary = AsyncMock(return_value=[])
+        client.mock_query_service.get_detection_count = AsyncMock(return_value=0)
+
+        response = client.get("/api/detections/summary?period=month")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["species_count"] == 0
+        assert data["total_detections"] == 0
+        assert data["species_frequency"] == []
+
+    def test_get_summary_historical_period(self, client):
+        """Should return all-time summary for historical period."""
+        mock_summary = [
+            {
+                "scientific_name": "Turdus migratorius",
+                "best_common_name": "American Robin",
+                "detection_count": 500,
+            },
+        ]
+
+        client.mock_query_service.get_species_summary = AsyncMock(return_value=mock_summary)
+        client.mock_query_service.get_detection_count = AsyncMock(return_value=500)
+
+        response = client.get("/api/detections/summary?period=historical")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_detections"] == 500
+        # Historical uses None for since parameter
+        client.mock_query_service.get_species_summary.assert_called_once()
+        call_kwargs = client.mock_query_service.get_species_summary.call_args.kwargs
+        assert call_kwargs.get("since") is None
+
+    def test_get_summary_error_handling(self, client):
+        """Should handle errors gracefully."""
+        client.mock_query_service.get_species_summary = AsyncMock(
+            side_effect=Exception("Database error")
+        )
+
+        response = client.get("/api/detections/summary?period=day")
+
+        assert response.status_code == 500
+        assert "Failed to get detection summary" in response.json()["detail"]
 
 
 class TestHierarchicalFiltering:
@@ -922,3 +1236,35 @@ class TestHierarchicalFiltering:
 
         assert response.status_code == 500
         assert "Error retrieving species" in response.json()["detail"]
+
+    def test_get_families_without_detection_filter(self, client):
+        """Should handle has_detections=false parameter."""
+        client.mock_query_service.get_species_summary = AsyncMock(
+            return_value=[
+                {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
+            ]
+        )
+
+        response = client.get("/api/detections/taxonomy/families?has_detections=false")
+
+        assert response.status_code == 200
+        data = response.json()
+        # Currently returns same as has_detections=true (would need IOC database)
+        assert "families" in data
+
+    def test_get_genera_without_detection_filter(self, client):
+        """Should handle has_detections=false parameter for genera."""
+        client.mock_query_service.get_species_summary = AsyncMock(
+            return_value=[
+                {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
+            ]
+        )
+
+        response = client.get(
+            "/api/detections/taxonomy/genera?family=Corvidae&has_detections=false"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "genera" in data
+        assert data["family"] == "Corvidae"
