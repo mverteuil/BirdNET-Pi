@@ -1,0 +1,69 @@
+id: no-if-main-imports
+language: python
+severity: error
+message: |
+  Import inside 'if __name__ == "__main__"' block detected. Move imports to module level.
+
+  Imports should be at the top of the file, even for script entry points.
+  This ensures:
+  - Consistent import organization
+  - Better static analysis
+  - Clearer dependency tracking
+  - Easier refactoring
+
+  Example fix:
+    # Before (wrong):
+    if __name__ == "__main__":
+        from module import something
+        something()
+
+    # After (correct):
+    from module import something
+
+    if __name__ == "__main__":
+        something()
+
+note: Enforces module-level imports even in main execution blocks.
+
+rule:
+  any:
+    # Detect 'import ...' inside if __name__ == "__main__"
+    - pattern: |
+        if __name__ == "__main__":
+            $$$
+            import $MODULE
+            $$$
+
+    # Detect 'import ... as ...' inside if __name__ == "__main__"
+    - pattern: |
+        if __name__ == "__main__":
+            $$$
+            import $MODULE as $ALIAS
+            $$$
+
+    # Detect 'from ... import ...' inside if __name__ == "__main__"
+    - pattern: |
+        if __name__ == "__main__":
+            $$$
+            from $MODULE import $NAME
+            $$$
+
+    # Detect 'from ... import ... as ...' inside if __name__ == "__main__"
+    - pattern: |
+        if __name__ == "__main__":
+            $$$
+            from $MODULE import $NAME as $ALIAS
+            $$$
+
+metadata:
+  category: best-practice
+  technology:
+    - python
+  confidence: HIGH
+  likelihood: MEDIUM
+  impact: LOW
+  subcategory:
+    - code-quality
+    - maintainability
+  references:
+    - https://peps.python.org/pep-0008/#imports

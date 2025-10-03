@@ -1,0 +1,74 @@
+id: no-function-local-imports
+language: python
+severity: error
+message: |
+  Function-local import detected. All imports must be at module level.
+
+  Function-local imports:
+  - Hide dependencies from static analysis tools
+  - Impact performance by importing repeatedly
+  - Reduce code readability
+  - Make dependency management harder
+
+  Move this import to the top of the file with other module-level imports.
+
+  If you need lazy imports to avoid circular dependencies, consider:
+  - Restructuring your modules to eliminate the circular dependency
+  - Using TYPE_CHECKING for type hints only
+
+  Example fix:
+    # Before (wrong):
+    def my_function():
+        from module import something
+        return something()
+
+    # After (correct):
+    from module import something
+
+    def my_function():
+        return something()
+
+rule:
+  any:
+    # Detect 'import ...' inside functions
+    - pattern: |
+        def $FUNC($$$):
+          $$$
+          import $MODULE
+          $$$
+
+    # Detect 'import ... as ...' inside functions
+    - pattern: |
+        def $FUNC($$$):
+          $$$
+          import $MODULE as $ALIAS
+          $$$
+
+    # Detect 'from ... import ...' inside functions
+    - pattern: |
+        def $FUNC($$$):
+          $$$
+          from $MODULE import $NAME
+          $$$
+
+    # Detect 'from ... import ... as ...' inside functions
+    - pattern: |
+        def $FUNC($$$):
+          $$$
+          from $MODULE import $NAME as $ALIAS
+          $$$
+
+metadata:
+  category: best-practice
+  technology:
+    - python
+  confidence: HIGH
+  likelihood: HIGH
+  impact: MEDIUM
+  subcategory:
+    - code-quality
+    - performance
+    - maintainability
+  references:
+    - https://peps.python.org/pep-0008/#imports
+    - https://google.github.io/styleguide/pyguide.html#22-imports

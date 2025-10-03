@@ -1,0 +1,55 @@
+id: pytest-docstring-should-prefix
+snapshots:
+  ? |
+    # Invalid: test method without "Should" prefix
+    class TestMyClass:
+        def test_behavior(self):
+            """Test the behavior."""
+            pass
+  : labels:
+    - source: |-
+        def test_behavior(self):
+                """Test the behavior."""
+                pass
+      style: primary
+      start: 70
+      end: 140
+  ? |
+    # Invalid: test with descriptive docstring
+    def test_calculation():
+        """The calculation returns correct result."""
+        assert calculate(2, 2) == 4
+  : labels:
+    - source: |-
+        def test_calculation():
+            """The calculation returns correct result."""
+            assert calculate(2, 2) == 4
+      style: primary
+      start: 43
+      end: 148
+  ? |
+    # Invalid: test with different docstring
+    def test_feature():
+        """Verify feature works."""
+        assert True
+  : labels:
+    - source: |-
+        def test_feature():
+            """Verify feature works."""
+            assert True
+      style: primary
+      start: 41
+      end: 108
+  ? |
+    # Invalid: test without "Should" prefix
+    def test_something():
+        """Test the thing."""
+        assert True
+  : labels:
+    - source: |-
+        def test_something():
+            """Test the thing."""
+            assert True
+      style: primary
+      start: 40
+      end: 103

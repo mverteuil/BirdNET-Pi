@@ -7,10 +7,12 @@ to MQTT brokers for integration with home automation systems and IoT platforms.
 import asyncio
 import json
 import logging
+import platform
 from datetime import UTC, datetime
 from typing import Any
 
 import paho.mqtt.client as mqtt
+import psutil
 
 from birdnetpi.detections.models import Detection
 
@@ -392,10 +394,6 @@ class MQTTService:
             return False
 
         try:
-            import platform
-
-            import psutil
-
             payload = {
                 "timestamp": datetime.now(UTC).isoformat(),
                 "system": {

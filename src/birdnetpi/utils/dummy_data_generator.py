@@ -1,10 +1,17 @@
+import asyncio
+import base64
 import datetime
 import random
 from datetime import UTC
 
+import aiosqlite
+
+from birdnetpi.config import ConfigManager
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.manager import DataManager
+from birdnetpi.species.display import SpeciesDisplayService
+from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.web.models.detections import DetectionEvent
 
@@ -21,8 +28,6 @@ async def get_random_ioc_species(
     Returns:
         List of tuples (scientific_name, common_name)
     """
-    import aiosqlite
-
     # Query the IOC database for random species
     ioc_db_path = path_resolver.get_ioc_database_path()
 
@@ -116,8 +121,6 @@ async def generate_dummy_detections(
         scientific_name, common_name = species_tensor.split("_", 1)
 
         # Generate dummy audio data (base64 encoded)
-        import base64
-
         dummy_audio = b"\x00" * 1024  # 1KB of null bytes as dummy audio
         audio_data_base64 = base64.b64encode(dummy_audio).decode("utf-8")
 
@@ -144,12 +147,6 @@ async def generate_dummy_detections(
 
 
 if __name__ == "__main__":
-    import asyncio
-
-    from birdnetpi.config import ConfigManager
-    from birdnetpi.species.display import SpeciesDisplayService
-    from birdnetpi.system.file_manager import FileManager
-    from birdnetpi.system.path_resolver import PathResolver
 
     async def run() -> None:
         """Run the dummy data generator."""

@@ -1,11 +1,13 @@
 import asyncio
 import json
 import logging
+import traceback
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any
 from uuid import UUID
 
+import pytz
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import FileResponse, StreamingResponse
@@ -97,8 +99,6 @@ async def create_detection(
             message="Detection received and dispatched", detection_id=saved_detection.id
         )
     except Exception as e:
-        import traceback
-
         logger.error("Failed to create detection: %s\n%s", e, traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -792,8 +792,6 @@ async def get_species_summary(
     try:
         # If period is provided, calculate date range using calendar boundaries
         if period:
-            import pytz
-
             # Get the configured timezone
             user_tz = pytz.timezone(config.timezone) if config.timezone != "UTC" else UTC
 

@@ -1,0 +1,68 @@
+id: no-function-local-imports
+snapshots:
+  ? |
+    # Invalid: from ... import ... as ... inside function
+    def bad_function():
+        from pathlib import Path as P
+        return P(".")
+  : labels:
+    - source: |-
+        def bad_function():
+            from pathlib import Path as P
+            return P(".")
+      style: primary
+      start: 54
+      end: 125
+  ? |
+    # Invalid: from ... import ... inside function
+    def bad_function():
+        from pathlib import Path
+        return Path(".")
+  : labels:
+    - source: |-
+        def bad_function():
+            from pathlib import Path
+            return Path(".")
+      style: primary
+      start: 47
+      end: 116
+  ? |
+    # Invalid: import ... as ... inside function
+    def bad_function():
+        import os as operating_system
+        return operating_system.path.exists("test")
+  : labels:
+    - source: |-
+        def bad_function():
+            import os as operating_system
+            return operating_system.path.exists("test")
+      style: primary
+      start: 45
+      end: 146
+  ? |
+    # Invalid: import inside function
+    def bad_function():
+        import os
+        return os.path.exists("test")
+  : labels:
+    - source: |-
+        def bad_function():
+            import os
+            return os.path.exists("test")
+      style: primary
+      start: 34
+      end: 101
+  ? |
+    # Invalid: nested in method
+    class MyClass:
+        def my_method(self):
+            from module import something
+            return something()
+  : labels:
+    - source: |-
+        def my_method(self):
+                from module import something
+                return something()
+      style: primary
+      start: 47
+      end: 131

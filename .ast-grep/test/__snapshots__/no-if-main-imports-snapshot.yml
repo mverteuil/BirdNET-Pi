@@ -1,0 +1,71 @@
+id: no-if-main-imports
+snapshots:
+  ? |
+    # Invalid: from ... import ... as ... inside if main
+    if __name__ == "__main__":
+        from pathlib import Path as P
+        print(P.cwd())
+  : labels:
+    - source: |-
+        if __name__ == "__main__":
+            from pathlib import Path as P
+            print(P.cwd())
+      style: primary
+      start: 53
+      end: 132
+  ? |
+    # Invalid: from ... import ... inside if main
+    if __name__ == "__main__":
+        from pathlib import Path
+        print(Path.cwd())
+  : labels:
+    - source: |-
+        if __name__ == "__main__":
+            from pathlib import Path
+            print(Path.cwd())
+      style: primary
+      start: 46
+      end: 123
+  ? |
+    # Invalid: import ... as ... inside if main
+    if __name__ == "__main__":
+        import os as operating_system
+        print(operating_system.getcwd())
+  : labels:
+    - source: |-
+        if __name__ == "__main__":
+            import os as operating_system
+            print(operating_system.getcwd())
+      style: primary
+      start: 44
+      end: 141
+  ? |
+    # Invalid: import inside if main
+    if __name__ == "__main__":
+        import os
+        print(os.getcwd())
+  : labels:
+    - source: |-
+        if __name__ == "__main__":
+            import os
+            print(os.getcwd())
+      style: primary
+      start: 33
+      end: 96
+  ? |
+    # Invalid: multiple imports in if main
+    if __name__ == "__main__":
+        from birdnetpi.config import ConfigManager
+        from birdnetpi.system import PathResolver
+
+        config = ConfigManager(PathResolver())
+  : labels:
+    - source: |-
+        if __name__ == "__main__":
+            from birdnetpi.config import ConfigManager
+            from birdnetpi.system import PathResolver
+
+            config = ConfigManager(PathResolver())
+      style: primary
+      start: 39
+      end: 202

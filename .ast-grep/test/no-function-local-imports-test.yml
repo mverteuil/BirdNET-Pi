@@ -1,0 +1,53 @@
+id: no-function-local-imports
+language: python
+
+valid:
+  - |
+    # Valid: module-level imports
+    import os
+    from pathlib import Path
+
+    def good_function():
+        return os.path.exists("test")
+
+  - |
+    # Valid: TYPE_CHECKING imports
+    from typing import TYPE_CHECKING
+
+    if TYPE_CHECKING:
+        from module import SomeType
+
+    def my_function():
+        pass
+
+invalid:
+  - |
+    # Invalid: import inside function
+    def bad_function():
+        import os
+        return os.path.exists("test")
+
+  - |
+    # Invalid: import ... as ... inside function
+    def bad_function():
+        import os as operating_system
+        return operating_system.path.exists("test")
+
+  - |
+    # Invalid: from ... import ... inside function
+    def bad_function():
+        from pathlib import Path
+        return Path(".")
+
+  - |
+    # Invalid: from ... import ... as ... inside function
+    def bad_function():
+        from pathlib import Path as P
+        return P(".")
+
+  - |
+    # Invalid: nested in method
+    class MyClass:
+        def my_method(self):
+            from module import something
+            return something()

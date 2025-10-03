@@ -57,7 +57,6 @@ repos:
     -   id: semgrep
         args: [
           '--config=auto',
-          '--config=.semgrep/rules/',
           '--exclude-rule=python.flask.security.xss.audit.direct-use-of-jinja2.direct-use-of-jinja2',
           '--error'
         ]
@@ -65,3 +64,7 @@ repos:
         language_version: python3.11
         additional_dependencies: []
         verbose: false
+-   repo: https://github.com/boidolr/ast-grep-pre-commit
+    rev: 0.39.5
+    hooks:
+      - id: ast-grep

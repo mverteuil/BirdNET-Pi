@@ -1,0 +1,58 @@
+id: pytest-docstring-should-prefix
+language: python
+severity: warning
+message: |
+  Test docstring should start with "Should" to describe expected behavior.
+  Consider rewriting the docstring to follow BDD conventions.
+note: |
+  This rule enforces BDD-style docstrings for pytest test functions and methods.
+  Excludes pytest fixtures from this requirement.
+
+rule:
+  all:
+    - any:
+        # Single-line docstrings in test functions
+        - pattern: |
+            def $FUNC($$$):
+              """$DOCSTRING"""
+              $$$
+
+        # Single-line docstrings in test methods
+        - all:
+            - inside:
+                kind: class_definition
+            - pattern: |
+                def $METHOD($$$):
+                  """$DOCSTRING"""
+                  $$$
+
+    # Exclude fixtures
+    - not:
+        has:
+          any:
+            - pattern: '@pytest.fixture'
+            - pattern: '@pytest.fixture($$$)'
+
+constraints:
+  FUNC:
+    regex: ^test_
+  METHOD:
+    regex: ^test_
+  DOCSTRING:
+    not:
+      regex: ^Should\s
+
+metadata:
+  category: best-practice
+  technology:
+    - pytest
+    - python
+  confidence: HIGH
+  likelihood: LOW
+  impact: LOW
+  subcategory:
+    - documentation
+    - bdd
+  references:
+    - https://pytest.org
+    - https://docs.pytest.org/en/stable/goodpractices.html

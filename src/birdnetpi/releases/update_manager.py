@@ -536,8 +536,6 @@ class UpdateManager:
             # Get latest version from remote (needs config for git remote)
             # This needs to be fixed to pass config
             # For now, create a minimal config with defaults
-            from birdnetpi.config import BirdNETConfig
-
             config = BirdNETConfig()
             latest_version = self.get_latest_version(config)
 

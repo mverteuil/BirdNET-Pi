@@ -1,0 +1,62 @@
+id: pytest-docstring-should-prefix
+language: python
+
+valid:
+  - |
+    # Valid: test with "Should" prefix
+    def test_something():
+        """Should do something correctly."""
+        assert True
+
+  - |
+    # Valid: fixture without "Should" prefix (excluded)
+    @pytest.fixture
+    def my_fixture():
+        """Provide test data."""
+        return {"key": "value"}
+
+  - |
+    # Valid: fixture with params
+    @pytest.fixture(scope="module")
+    def another_fixture():
+        """Setup test environment."""
+        return None
+
+  - |
+    # Valid: test method with "Should" prefix
+    class TestMyClass:
+        def test_behavior(self):
+            """Should exhibit expected behavior."""
+            pass
+
+  - |
+    # Valid: non-test function (excluded)
+    def helper_function():
+        """Helper for tests."""
+        return True
+
+invalid:
+  - |
+    # Invalid: test without "Should" prefix
+    def test_something():
+        """Test the thing."""
+        assert True
+
+  - |
+    # Invalid: test with different docstring
+    def test_feature():
+        """Verify feature works."""
+        assert True
+
+  - |
+    # Invalid: test method without "Should" prefix
+    class TestMyClass:
+        def test_behavior(self):
+            """Test the behavior."""
+            pass
+
+  - |
+    # Invalid: test with descriptive docstring
+    def test_calculation():
+        """The calculation returns correct result."""
+        assert calculate(2, 2) == 4

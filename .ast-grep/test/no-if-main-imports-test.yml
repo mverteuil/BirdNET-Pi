@@ -1,0 +1,63 @@
+id: no-if-main-imports
+language: python
+
+valid:
+  - |
+    # Valid: imports at module level
+    import os
+    from pathlib import Path
+
+    if __name__ == "__main__":
+        print(os.getcwd())
+        print(Path.cwd())
+
+  - |
+    # Valid: only code in main block
+    from module import function
+
+    if __name__ == "__main__":
+        function()
+
+  - |
+    # Valid: imports outside if main
+    import sys
+    from typing import Any
+
+    def main():
+        print(sys.version)
+
+    if __name__ == "__main__":
+        main()
+
+invalid:
+  - |
+    # Invalid: import inside if main
+    if __name__ == "__main__":
+        import os
+        print(os.getcwd())
+
+  - |
+    # Invalid: import ... as ... inside if main
+    if __name__ == "__main__":
+        import os as operating_system
+        print(operating_system.getcwd())
+
+  - |
+    # Invalid: from ... import ... inside if main
+    if __name__ == "__main__":
+        from pathlib import Path
+        print(Path.cwd())
+
+  - |
+    # Invalid: from ... import ... as ... inside if main
+    if __name__ == "__main__":
+        from pathlib import Path as P
+        print(P.cwd())
+
+  - |
+    # Invalid: multiple imports in if main
+    if __name__ == "__main__":
+        from birdnetpi.config import ConfigManager
+        from birdnetpi.system import PathResolver
+
+        config = ConfigManager(PathResolver())
