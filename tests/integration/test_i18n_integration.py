@@ -117,13 +117,12 @@ class TestLanguageSwitching:
 class TestTranslationContent:
     """Test actual translation content."""
 
-    @pytest.mark.skip(reason="Skipped until templates are replaced with proper i18n support")
     def test_message_extraction_coverage(self, path_resolver):
         """Should key UI elements are marked for translation."""
         templates_dir = path_resolver.get_templates_dir()
 
         # Check that templates have translation markers
-        html_files = list(templates_dir.glob("**/*.html"))
+        html_files = list(templates_dir.glob("**/*.html.j2"))
 
         translation_markers = [
             "{{ _(",
@@ -199,10 +198,9 @@ class TestTranslationContent:
                 f"\nSpanish translations: {translated_count}/{len(common_strings)} common strings"
             )
 
-    @pytest.mark.skip(reason="Skipped until .mo files are compiled as part of build process")
-    def test_mo_files_compiled(self, path_resolver):
+    def test_mo_files_compiled(self, repo_root):
         """Should .mo files are properly compiled."""
-        locales_dir = path_resolver.get_locales_dir()
+        locales_dir = repo_root / "locales"
 
         # Check for compiled .mo files
         mo_files = list(locales_dir.glob("*/LC_MESSAGES/*.mo"))
@@ -301,7 +299,6 @@ class TestSpeciesTranslation:
 class TestEndToEndTranslation:
     """Test complete translation flow."""
 
-    @pytest.mark.skip(reason="Skipped until templates are replaced with proper i18n support")
     def test_translation_extraction_update_compile_cycle(self):
         """Should the complete translation workflow."""
         import subprocess
