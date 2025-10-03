@@ -28,7 +28,7 @@ def client(tmp_path, path_resolver):
     container.wire(modules=["birdnetpi.web.routers.settings_api_routes"])
 
     # Include the router with the same prefix as in factory
-    app.include_router(router, prefix="/admin/config")
+    app.include_router(router, prefix="/api")
 
     # Create and return test client
     client = TestClient(app)
@@ -58,7 +58,7 @@ longitude: -19.3647
 species_confidence_threshold: 0.03
         """
 
-        response = client.post("/admin/config/validate", json={"yaml_content": valid_yaml})
+        response = client.post("/api/settings/validate", json={"yaml_content": valid_yaml})
 
         assert response.status_code == 200
         data = response.json()
@@ -79,7 +79,7 @@ site_name: "Test BirdNET-Pi"
 invalid_yaml: [unclosed bracket
         """
 
-        response = client.post("/admin/config/validate", json={"yaml_content": invalid_yaml})
+        response = client.post("/api/settings/validate", json={"yaml_content": invalid_yaml})
 
         assert response.status_code == 200  # The endpoint returns 200 with error in body
         data = response.json()
@@ -102,7 +102,7 @@ longitude: -75.0
 species_confidence_threshold: 0.05
         """
 
-        response = client.post("/admin/config/save", json={"yaml_content": new_yaml})
+        response = client.post("/api/settings/save", json={"yaml_content": new_yaml})
 
         assert response.status_code == 200
         data = response.json()
@@ -123,7 +123,7 @@ site_name: "Test BirdNET-Pi"
 invalid_yaml: [unclosed bracket
         """
 
-        response = client.post("/admin/config/save", json={"yaml_content": invalid_yaml})
+        response = client.post("/api/settings/save", json={"yaml_content": invalid_yaml})
 
         assert response.status_code == 200  # The endpoint returns 200 with error in body
         data = response.json()

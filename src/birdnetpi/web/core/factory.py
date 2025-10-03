@@ -127,7 +127,7 @@ def create_app() -> FastAPI:
     app.include_router(analysis_api_routes.router, prefix="/api", tags=["Analysis API"])
 
     # Settings API routes
-    app.include_router(settings_api_routes.router, prefix="/admin/config", tags=["Settings API"])
+    app.include_router(settings_api_routes.router, prefix="/api", tags=["Settings API"])
 
     # Core API routes (detections endpoints)
     app.include_router(detections_api_routes.router, prefix="/api", tags=["Detections API"])

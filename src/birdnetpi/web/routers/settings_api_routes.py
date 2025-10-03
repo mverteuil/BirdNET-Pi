@@ -63,7 +63,7 @@ def _validate_yaml_config_impl(yaml_content: str, path_resolver: PathResolver) -
         return {"valid": False, "error": f"Validation error: {e!s}"}
 
 
-@router.post("/validate", response_model=ValidationResponse)
+@router.post("/settings/validate", response_model=ValidationResponse)
 @inject
 async def validate_yaml_config(
     config_request: YAMLConfigRequest,
@@ -74,7 +74,7 @@ async def validate_yaml_config(
     return ValidationResponse(**result)
 
 
-@router.post("/save", response_model=SaveConfigResponse)
+@router.post("/settings/save", response_model=SaveConfigResponse)
 @inject
 async def save_yaml_config(
     config_request: YAMLConfigRequest,
@@ -104,7 +104,7 @@ async def save_yaml_config(
         )
 
 
-@router.post("/validate-species", response_model=SpeciesValidationResponse)
+@router.post("/settings/validate-species", response_model=SpeciesValidationResponse)
 @inject
 async def validate_species(
     request: SpeciesValidationRequest,

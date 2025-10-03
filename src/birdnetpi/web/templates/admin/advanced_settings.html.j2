@@ -170,7 +170,7 @@
         updateStatus("Validating...", "modified");
 
         try {
-          const response = await fetch("/admin/config/validate", {
+          const response = await fetch("/api/settings/validate", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -217,7 +217,7 @@
 
         try {
           // Validate first
-          const validateResponse = await fetch("/admin/config/validate", {
+          const validateResponse = await fetch("/api/settings/validate", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -235,7 +235,7 @@
           }
 
           // If valid, save
-          const saveResponse = await fetch("/admin/config/save", {
+          const saveResponse = await fetch("/api/settings/save", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
