@@ -1,12 +1,18 @@
 """Integration tests for the complete i18n system."""
 
+import subprocess
+import tempfile
 from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
+from jinja2 import DictLoader, Environment
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from birdnetpi.config import BirdNETConfig
-from birdnetpi.i18n.translation_manager import TranslationManager
+from birdnetpi.database.species import SpeciesDatabaseService
+from birdnetpi.i18n.translation_manager import TranslationManager, setup_jinja2_i18n
+from birdnetpi.species.display import SpeciesDisplayService
 
 
 @pytest.fixture
@@ -220,8 +226,6 @@ class TestSpeciesTranslation:
 
     def test_species_display_modes(self, config_with_language):
         """Should different species display modes."""
-        from birdnetpi.species.display import SpeciesDisplayService
-
         # Test different display modes
         modes = ["full", "common_name", "scientific_name"]
 
@@ -232,7 +236,6 @@ class TestSpeciesTranslation:
             service = SpeciesDisplayService(config)
 
             # Test formatting with mock detection
-            from unittest.mock import Mock
 
             detection = Mock()
             detection.scientific_name = "Turdus migratorius"
@@ -256,10 +259,6 @@ class TestSpeciesTranslation:
     @pytest.mark.asyncio
     async def test_multilingual_species_names(self, path_resolver):
         """Should species names work in multiple languages using actual databases."""
-        from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-
-        from birdnetpi.database.species import SpeciesDatabaseService
-
         # The path_resolver fixture already points to data/database/ for the databases
         # The global check_required_assets fixture ensures databases are available
 
@@ -301,10 +300,6 @@ class TestEndToEndTranslation:
 
     def test_translation_extraction_update_compile_cycle(self):
         """Should the complete translation workflow."""
-        import subprocess
-        import tempfile
-        from pathlib import Path
-
         # This test verifies the translation workflow but doesn't modify actual files
 
         # 1. Check babel.cfg exists
@@ -336,10 +331,6 @@ class TestEndToEndTranslation:
 
     def test_template_rendering_with_translations(self):
         """Should templates can render with translations."""
-        from jinja2 import DictLoader, Environment
-
-        from birdnetpi.i18n.translation_manager import setup_jinja2_i18n
-
         # Create a simple template
         templates = {
             "test.html": """

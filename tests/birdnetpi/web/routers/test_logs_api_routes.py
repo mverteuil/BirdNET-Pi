@@ -7,8 +7,11 @@ import pytest
 from dependency_injector import providers
 from fastapi.testclient import TestClient
 
+from birdnetpi.config import ConfigManager
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.system.log_reader import LogReaderService
 from birdnetpi.web.core.container import Container
+from birdnetpi.web.core.factory import create_app
 from birdnetpi.web.models.logs import LOG_LEVELS
 
 
@@ -30,12 +33,6 @@ async def app_with_mock_log_reader(path_resolver, mock_log_reader):
     This fixture overrides the log reader BEFORE creating the app,
     ensuring the mock is properly wired.
     """
-    from dependency_injector import providers
-
-    from birdnetpi.config import ConfigManager
-    from birdnetpi.database.core import CoreDatabaseService
-    from birdnetpi.web.core.factory import create_app
-
     # Override Container providers BEFORE creating app
     Container.path_resolver.override(providers.Singleton(lambda: path_resolver))
     Container.database_path.override(providers.Factory(lambda: path_resolver.get_database_path()))

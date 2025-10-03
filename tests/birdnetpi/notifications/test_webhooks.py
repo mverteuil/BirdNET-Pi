@@ -1,8 +1,10 @@
 """Tests for the WebhookService."""
 
+import logging
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from birdnetpi.notifications.webhooks import WebhookConfig, WebhookService
@@ -650,8 +652,6 @@ class TestWebhookService:
 
     async def test_send_to_webhooks__no_relevant_webhooks(self, enabled_webhook_service, caplog):
         """Should _send_to_webhooks logs and returns when no relevant webhooks."""
-        import logging
-
         service = enabled_webhook_service
         service.client = AsyncMock()
         service.webhooks = []  # No webhooks configured
@@ -675,8 +675,6 @@ class TestWebhookService:
 
     async def test_send_webhook_request_timeout_exception(self, enabled_webhook_service, caplog):
         """Should _send_webhook_request handles timeout exception."""
-        import httpx
-
         service = enabled_webhook_service
         webhook = WebhookConfig(url="https://example.com", retry_count=0)
 
@@ -693,8 +691,6 @@ class TestWebhookService:
         self, enabled_webhook_service, caplog
     ):
         """Should handle request error exception in _send_webhook_request."""
-        import httpx
-
         service = enabled_webhook_service
         webhook = WebhookConfig(url="https://example.com", retry_count=0)
 

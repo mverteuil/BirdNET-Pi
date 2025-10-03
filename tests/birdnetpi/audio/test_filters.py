@@ -155,7 +155,6 @@ class TestAudioFilter:
 
     def test_abstract_filter_process_method(self):
         """Should allow calling abstract process method from subclass."""
-        from birdnetpi.audio.filters import AudioFilter
 
         # Create a minimal concrete implementation that implements process
         class MinimalFilter(AudioFilter):

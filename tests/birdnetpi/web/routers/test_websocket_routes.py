@@ -7,6 +7,9 @@ import pytest
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from starlette.routing import WebSocketRoute
 
+import birdnetpi.web.routers.websocket_routes as websocket_routes
+from birdnetpi.web.routers.websocket_routes import router, websocket_endpoint
+
 
 class TestWebSocketRouter:
     """Test class for WebSocket router endpoints."""
@@ -14,15 +17,11 @@ class TestWebSocketRouter:
     @pytest.fixture
     def websocket_router(self):
         """Import router once to avoid multiple imports."""
-        from birdnetpi.web.routers.websocket_routes import router
-
         return router
 
     @pytest.fixture
     def websocket_endpoint_func(self):
         """Import endpoint function once."""
-        from birdnetpi.web.routers.websocket_routes import websocket_endpoint
-
         return websocket_endpoint
 
     def test_websocket_routes_endpoints_exist(self, websocket_router):
@@ -49,9 +48,6 @@ class TestWebSocketRouter:
 
     def test_websocket_routes_imports(self):
         """Should router imports work correctly."""
-        # Import the module to test its attributes
-        import birdnetpi.web.routers.websocket_routes as websocket_routes
-
         # Should have router
         assert hasattr(websocket_routes, "router")
 
@@ -79,8 +75,6 @@ class TestWebSocketRouter:
 
     def test_websocket_logger_configured(self):
         """Should WebSocket router has logger configured."""
-        import birdnetpi.web.routers.websocket_routes as websocket_routes
-
         assert hasattr(websocket_routes, "logger")
         assert websocket_routes.logger.name == "birdnetpi.web.routers.websocket_routes"
 

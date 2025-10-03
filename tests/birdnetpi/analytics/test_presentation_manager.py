@@ -1,12 +1,13 @@
 """Unit tests for PresentationManager."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
+from birdnetpi.config.models import BirdNETConfig
 from birdnetpi.detections.models import Detection
 from birdnetpi.detections.queries import DetectionQueryService
 
@@ -21,7 +22,6 @@ def mock_analytics_manager():
 def mock_config():
     """Create a mock BirdNETConfig."""
     # Create actual instance with test values
-    from birdnetpi.config.models import BirdNETConfig
 
     config = BirdNETConfig(species_confidence_threshold=0.7, timezone="UTC")
     return config
@@ -632,8 +632,6 @@ class TestPeriodCalculations:
 
     def test_get_window_size_for_period(self, presentation_manager):
         """Should window size calculation for periods."""
-        from datetime import timedelta
-
         assert presentation_manager._get_window_size_for_period("day") == timedelta(hours=6)
         assert presentation_manager._get_window_size_for_period("week") == timedelta(days=1)
         assert presentation_manager._get_window_size_for_period("month") == timedelta(days=5)

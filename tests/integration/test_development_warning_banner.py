@@ -1,11 +1,16 @@
 """Integration tests for development warning banner functionality."""
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from jinja2 import Environment, FileSystemLoader
 
 from birdnetpi.config.models import BirdNETConfig, UpdateConfig
+from birdnetpi.daemons.update_daemon import DaemonState, process_update_request
+from birdnetpi.releases.update_manager import UpdateManager
+from birdnetpi.utils.cache import Cache
+from birdnetpi.web.core.container import Container
+from birdnetpi.web.middleware.update_banner import add_update_status_to_templates
 
 
 class TestDevelopmentWarningBanner:
@@ -31,10 +36,6 @@ class TestDevelopmentWarningBanner:
 
     def test_development_warning_shows_when_enabled(self):
         """Should show development warning when on dev version and enabled."""
-        from jinja2 import Environment
-
-        from birdnetpi.web.core.container import Container
-
         # Create mock container with configured services
         container = Container()
         mock_cache = MagicMock()
@@ -59,8 +60,6 @@ class TestDevelopmentWarningBanner:
                 templates = Environment()
 
                 # Add the update status functions
-                from birdnetpi.web.middleware.update_banner import add_update_status_to_templates
-
                 add_update_status_to_templates(templates, container)
 
                 # Test the show_development_warning function
@@ -70,10 +69,6 @@ class TestDevelopmentWarningBanner:
 
     def test_development_warning_hidden_when_disabled(self):
         """Should not show development warning when disabled in config."""
-        from jinja2 import Environment
-
-        from birdnetpi.web.core.container import Container
-
         # Create mock container with configured services
         container = Container()
         mock_cache = MagicMock()
@@ -98,8 +93,6 @@ class TestDevelopmentWarningBanner:
                 templates = Environment()
 
                 # Add the update status functions
-                from birdnetpi.web.middleware.update_banner import add_update_status_to_templates
-
                 add_update_status_to_templates(templates, container)
 
                 # Test the show_development_warning function
@@ -108,10 +101,6 @@ class TestDevelopmentWarningBanner:
 
     def test_development_warning_hidden_on_release(self):
         """Should not show development warning when on a release version."""
-        from jinja2 import Environment
-
-        from birdnetpi.web.core.container import Container
-
         # Create mock container with configured services
         container = Container()
         mock_cache = MagicMock()
@@ -136,8 +125,6 @@ class TestDevelopmentWarningBanner:
                 templates = Environment()
 
                 # Add the update status functions
-                from birdnetpi.web.middleware.update_banner import add_update_status_to_templates
-
                 add_update_status_to_templates(templates, container)
 
                 # Test the show_development_warning function
@@ -293,12 +280,6 @@ class TestUpdateDaemonIntegration:
     @pytest.mark.asyncio
     async def test_daemon_sets_version_type_on_check(self, path_resolver):
         """Should set version_type when daemon performs update check."""
-        from unittest.mock import AsyncMock
-
-        from birdnetpi.daemons.update_daemon import DaemonState
-        from birdnetpi.releases.update_manager import UpdateManager
-        from birdnetpi.utils.cache import Cache
-
         # Set up daemon state
         DaemonState.cache_service = MagicMock(spec=Cache)
         DaemonState.update_manager = MagicMock(spec=UpdateManager)
@@ -312,9 +293,6 @@ class TestUpdateDaemonIntegration:
             "checked_at": "2024-01-01T12:00:00",
         }
         DaemonState.update_manager.check_for_updates = AsyncMock(return_value=mock_status)
-
-        # Import and call the check function
-        from birdnetpi.daemons.update_daemon import process_update_request
 
         # Process a check request
         await process_update_request({"action": "check"})

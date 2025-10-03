@@ -1,5 +1,6 @@
 """Tests for IOC database service."""
 
+import concurrent.futures
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -234,7 +235,6 @@ class TestIOCDatabaseService:
 
     def test_concurrent_access(self, ioc_service):
         """Should handle concurrent database access."""
-        import concurrent.futures
 
         def query_species(name):
             return ioc_service.get_species_core(name)

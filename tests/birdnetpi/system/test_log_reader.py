@@ -98,7 +98,6 @@ class TestLogReaderService:
         output = """First log line
 {"level": "INFO", "message": "JSON log"}
 Third line with WARNING text"""
-
         results = log_reader._parse_supervisord_logs(output, "test_service")
 
         assert len(results) == 3

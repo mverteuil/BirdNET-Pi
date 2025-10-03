@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
+from birdnetpi.detections.manager import DataManager
 from birdnetpi.web.core.container import Container
 
 # Note: HardwareMonitorManager has been replaced with SystemInspector static methods
@@ -102,8 +103,6 @@ class TestDependencyInjectionValidation:
         This test validates that the DI container is wired correctly and would
         catch the type annotation errors we fixed.
         """
-        from birdnetpi.detections.manager import DataManager
-
         container = Container()
 
         # Get the actual instances from the container

@@ -3,14 +3,14 @@ import logging
 import numpy as np
 import pytest
 
+from birdnetpi.detections.birdnet import BirdDetectionService
+
 log = logging.getLogger(__name__)
 
 
 @pytest.fixture
 def bird_detection_service(test_config, path_resolver, mocker):
     """Provide a BirdDetectionService instance for testing using real models."""
-    from birdnetpi.detections.birdnet import BirdDetectionService
-
     # Mock PathResolver to use our test resolver
     # It's imported inside the _load_model method
     mocker.patch(

@@ -1,12 +1,14 @@
 """Simple tests for AnalyticsManager that actually work."""
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 import pytest
 
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.config import BirdNETConfig
+from birdnetpi.detections.models import Detection, DetectionWithTaxa
 from birdnetpi.detections.queries import DetectionQueryService
 
 
@@ -183,10 +185,6 @@ class TestAnalyticsManagerBasics:
     ):
         """Should generate scatter plot data correctly."""
         # Setup mock detections
-        from datetime import UTC
-        from uuid import uuid4
-
-        from birdnetpi.detections.models import Detection, DetectionWithTaxa
 
         detection = Detection(
             id=uuid4(),

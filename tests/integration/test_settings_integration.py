@@ -4,6 +4,7 @@ Tests config persistence and audio device discovery.
 """
 
 import os
+import shutil
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -46,8 +47,6 @@ class TestSettingsConfigIntegration:
             os.environ["BIRDNETPI_DATA"] = old_env
         else:
             os.environ.pop("BIRDNETPI_DATA", None)
-
-        import shutil
 
         shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -277,8 +276,6 @@ class TestSettingsEndToEndFlow:
             os.environ["BIRDNETPI_DATA"] = old_env
         else:
             os.environ.pop("BIRDNETPI_DATA", None)
-
-        import shutil
 
         shutil.rmtree(temp_dir, ignore_errors=True)
 

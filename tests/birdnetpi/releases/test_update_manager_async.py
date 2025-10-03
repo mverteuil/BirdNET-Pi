@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from birdnetpi.config.models import BirdNETConfig, UpdateConfig
 from birdnetpi.releases.update_manager import StateFileManager, UpdateManager
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.system_control import SystemControlService
@@ -288,8 +289,6 @@ class TestUpdateManagerAsync:
     @patch("birdnetpi.releases.update_manager.subprocess.run", autospec=True)
     def test_get_latest_version(self, mock_run, update_manager_with_state):
         """Should get latest version from remote."""
-        from birdnetpi.config.models import BirdNETConfig, UpdateConfig
-
         config = BirdNETConfig(updates=UpdateConfig())
 
         # Mock git ls-remote output format with commit hashes

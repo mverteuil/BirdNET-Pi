@@ -1,10 +1,11 @@
 import logging
 import signal
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 import birdnetpi.daemons.audio_analysis_daemon as daemon
+from birdnetpi.config import BirdNETConfig
 
 
 @pytest.fixture(autouse=True)
@@ -93,10 +94,6 @@ class TestAudioAnalysisDaemon:
     @pytest.mark.asyncio
     async def test_init_session_and_service(self, mocker, path_resolver):
         """Should initialize session and audio analysis service."""
-        from unittest.mock import AsyncMock
-
-        from birdnetpi.config import BirdNETConfig
-
         # Mock the imports and classes
         mock_multilingual = MagicMock()
         mock_multilingual.attach_all_to_session = AsyncMock()

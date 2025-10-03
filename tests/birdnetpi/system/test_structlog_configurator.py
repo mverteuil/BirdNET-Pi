@@ -11,6 +11,7 @@ import structlog
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.config.models import LoggingConfig
 from birdnetpi.system.structlog_configurator import (
+    _add_journald_handler,
     _add_static_context,
     _configure_handlers,
     _configure_processors,
@@ -372,8 +373,6 @@ class TestJournaldHandler:
     @patch("birdnetpi.system.structlog_configurator.logging.StreamHandler")
     def test_fallback_when_systemd_not_available(self, mock_stream_handler, mock_stderr):
         """Should fallback to stderr when systemd module is not available."""
-        from birdnetpi.system.structlog_configurator import _add_journald_handler
-
         test_config = Mock()
         mock_logger = Mock()
         mock_formatter = Mock()

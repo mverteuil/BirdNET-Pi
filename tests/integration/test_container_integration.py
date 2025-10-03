@@ -1,6 +1,8 @@
 """Integration tests for the Container with real dependency injection."""
 
+import gc
 import shutil
+import time
 from pathlib import Path
 
 import pytest
@@ -71,9 +73,6 @@ class TestContainerIntegration:
     @pytest.fixture
     def container_with_overrides(self, test_resolver: PathResolver):
         """Create a Container with test path overrides."""
-        import gc
-        import time
-
         container = Container()
 
         # Override path_resolver

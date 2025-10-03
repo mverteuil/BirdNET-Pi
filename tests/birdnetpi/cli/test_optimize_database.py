@@ -1,5 +1,6 @@
 """Tests for the optimize_database CLI command."""
 
+import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -237,9 +238,6 @@ class TestExportReport:
         assert "Report exported to" in captured.out
         assert str(export_path) in captured.out
         assert export_path.exists()
-
-        # Verify JSON content
-        import json
 
         with open(export_path) as f:
             report = json.load(f)

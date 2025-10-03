@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from birdnetpi.config.models import BirdNETConfig, UpdateConfig
 from birdnetpi.releases.update_manager import UpdateManager
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.system_control import SystemControlService
@@ -437,8 +438,6 @@ class TestVersionCheckFailures:
 
     def test_get_latest_version_no_remote(self, update_manager, mocker):
         """Should handle missing remote repository."""
-        from birdnetpi.config.models import BirdNETConfig, UpdateConfig
-
         mock_run = mocker.patch("birdnetpi.releases.update_manager.subprocess.run")
         config = BirdNETConfig(updates=UpdateConfig())
 

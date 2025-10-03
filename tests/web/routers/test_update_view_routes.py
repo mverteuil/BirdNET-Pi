@@ -1,19 +1,22 @@
 """Tests for update view routes."""
 
+import inspect
+import os
+import tempfile
 from unittest.mock import patch
 
 import pytest
+from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
+
+from birdnetpi.web.routers import update_view_routes
+from birdnetpi.web.routers.update_view_routes import update_page
 
 
 @pytest.fixture
 def client(app_with_temp_data):
     """Create test client from app."""
     # Mount static files to avoid template rendering errors
-    import os
-    import tempfile
-
-    from fastapi.staticfiles import StaticFiles
 
     # Create a temporary static directory
     static_dir = tempfile.mkdtemp()
@@ -177,7 +180,6 @@ class TestUpdateViewCoverage:
     def test_update_view_route_imports(self):
         """Should have all imports in update_view_routes be valid."""
         # This just imports the module to ensure coverage
-        from birdnetpi.web.routers import update_view_routes
 
         # Check that router is defined
         assert hasattr(update_view_routes, "router")
@@ -185,8 +187,6 @@ class TestUpdateViewCoverage:
 
     def test_update_view_route_logger(self):
         """Should have logger configured."""
-        from birdnetpi.web.routers import update_view_routes
-
         # Check that logger is defined
         assert hasattr(update_view_routes, "logger")
         assert update_view_routes.logger is not None
@@ -194,12 +194,9 @@ class TestUpdateViewCoverage:
     @patch("birdnetpi.web.routers.update_view_routes.logger")
     def test_update_page_function_signature(self, mock_logger):
         """Should have correct update_page function signature."""
-        from birdnetpi.web.routers.update_view_routes import update_page
-
         # Check function exists and has correct annotations
         assert update_page.__name__ == "update_page"
         # The function should be async
-        import inspect
 
         assert inspect.iscoroutinefunction(update_page)
 

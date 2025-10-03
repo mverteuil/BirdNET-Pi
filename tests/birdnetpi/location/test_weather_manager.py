@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
@@ -548,7 +548,6 @@ async def test_backfill_weather_bulk_multi_day(weather_manager, session):
         assert stats["records_created"] == 72  # 3 days * 24 hours
 
     # Clean up previous weather records to avoid conflicts
-    from sqlalchemy import delete
 
     await session.execute(delete(Weather))
     await session.commit()

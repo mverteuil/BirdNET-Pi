@@ -242,6 +242,5 @@ class TestEdgeCases:
         """Should handle TYPE_CHECKING import correctly."""
         # This tests that the TYPE_CHECKING guard works properly
         # The import should not fail even though we're not in type checking mode
-        from birdnetpi.species.display import SpeciesDisplayService
 
         assert SpeciesDisplayService is not None

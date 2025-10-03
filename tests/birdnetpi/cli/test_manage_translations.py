@@ -1,13 +1,22 @@
 """Test the manage_translations CLI module."""
 
+import os
 import subprocess
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 from click.testing import CliRunner
 
-from birdnetpi.cli.manage_translations import cli, run_command
+from birdnetpi.cli.manage_translations import (
+    _process_pot_file,
+    _reverse_text_with_placeholders,
+    _transform_string,
+    cli,
+    main,
+    run_command,
+)
 
 
 class TestRunCommand:
@@ -575,8 +584,6 @@ class TestMainFunction:
     @patch("birdnetpi.cli.manage_translations.cli")
     def test_main_function(self, mock_cli):
         """Should call CLI with proper arguments."""
-        from birdnetpi.cli.manage_translations import main
-
         main()
 
         mock_cli.assert_called_once_with(obj={})
@@ -592,8 +599,6 @@ class TestEnvironmentSetup:
 
     def test_sets_birdnetpi_app_env_var(self, runner):
         """Should set BIRDNETPI_APP environment variable."""
-        import os
-
         # Clear the environment variable first
         original_value = os.environ.pop("BIRDNETPI_APP", None)
 
@@ -618,36 +623,26 @@ class TestTransformString:
 
     def test_empty_string(self):
         """Should return empty string unchanged."""
-        from birdnetpi.cli.manage_translations import _transform_string
-
         assert _transform_string("", reverse=True, brackets=True) == ""
         assert _transform_string("", reverse=False, brackets=False) == ""
 
     def test_simple_text_reverse_only(self):
         """Should reverse simple text."""
-        from birdnetpi.cli.manage_translations import _transform_string
-
         assert _transform_string("Hello", reverse=True, brackets=False) == "olleH"
         assert _transform_string("Settings", reverse=True, brackets=False) == "sgnitteS"
 
     def test_simple_text_brackets_only(self):
         """Should add brackets to simple text."""
-        from birdnetpi.cli.manage_translations import _transform_string
-
         assert _transform_string("Hello", reverse=False, brackets=True) == "[[Hello]]"
         assert _transform_string("Settings", reverse=False, brackets=True) == "[[Settings]]"
 
     def test_simple_text_reverse_and_brackets(self):
         """Should reverse text and add brackets."""
-        from birdnetpi.cli.manage_translations import _transform_string
-
         assert _transform_string("Hello", reverse=True, brackets=True) == "[[olleH]]"
         assert _transform_string("Settings", reverse=True, brackets=True) == "[[sgnitteS]]"
 
     def test_preserve_python_string_placeholders(self):
         """Should preserve %(name)s style placeholders."""
-        from birdnetpi.cli.manage_translations import _transform_string
-
         text = "Hello %(name)s"
         assert _transform_string(text, reverse=True, brackets=False) == " olleH%(name)s"
         assert _transform_string(text, reverse=True, brackets=True) == "[[ olleH%(name)s]]"
@@ -658,8 +653,6 @@ class TestTransformString:
 
     def test_preserve_multiple_placeholders(self):
         """Should preserve multiple placeholders in correct positions."""
-        from birdnetpi.cli.manage_translations import _transform_string
-
         text = "User %(user)s has %(count)d messages"
         # When reversed, the text segments between placeholders are reversed
         expected_reversed = " resU%(user)s sah %(count)dsegassem "
@@ -668,8 +661,6 @@ class TestTransformString:
 
     def test_preserve_html_entities(self):
         """Should preserve HTML entities."""
-        from birdnetpi.cli.manage_translations import _transform_string
-
         text = "Items &times; Price"
         assert _transform_string(text, reverse=True, brackets=False) == " smetI&times;ecirP "
 
@@ -678,8 +669,6 @@ class TestTransformString:
 
     def test_preserve_numeric_html_entities(self):
         """Should preserve numeric HTML entities."""
-        from birdnetpi.cli.manage_translations import _transform_string
-
         text = "Price &#8364; 100"  # Euro symbol
         assert _transform_string(text, reverse=True, brackets=False) == " ecirP&#8364;001 "
 
@@ -688,8 +677,6 @@ class TestTransformString:
 
     def test_complex_mixed_content(self):
         """Should handle complex strings with multiple special elements."""
-        from birdnetpi.cli.manage_translations import _transform_string
-
         text = "%(user)s posted &ldquo;Hello&rdquo; at %(time)s"
         result = _transform_string(text, reverse=True, brackets=False)
         # The actual implementation preserves placeholders and entities
@@ -706,22 +693,16 @@ class TestReverseTextWithPlaceholders:
 
     def test_text_without_placeholders(self):
         """Should reverse simple text."""
-        from birdnetpi.cli.manage_translations import _reverse_text_with_placeholders
-
         assert _reverse_text_with_placeholders("Hello World") == "dlroW olleH"
 
     def test_text_with_single_placeholder(self):
         """Should reverse text around placeholder markers."""
-        from birdnetpi.cli.manage_translations import _reverse_text_with_placeholders
-
         text = "Hello __PLACEHOLDER_0__ World"
         # Text before placeholder gets reversed, placeholder stays, text after gets reversed
         assert _reverse_text_with_placeholders(text) == " olleH__PLACEHOLDER_0__dlroW "
 
     def test_text_with_multiple_placeholders(self):
         """Should handle multiple placeholder markers."""
-        from birdnetpi.cli.manage_translations import _reverse_text_with_placeholders
-
         text = "Start __PLACEHOLDER_0__ middle __PLACEHOLDER_1__ end"
         assert (
             _reverse_text_with_placeholders(text)
@@ -730,22 +711,16 @@ class TestReverseTextWithPlaceholders:
 
     def test_placeholder_at_start(self):
         """Should handle placeholder at the beginning."""
-        from birdnetpi.cli.manage_translations import _reverse_text_with_placeholders
-
         text = "__PLACEHOLDER_0__ after"
         assert _reverse_text_with_placeholders(text) == "__PLACEHOLDER_0__retfa "
 
     def test_placeholder_at_end(self):
         """Should handle placeholder at the end."""
-        from birdnetpi.cli.manage_translations import _reverse_text_with_placeholders
-
         text = "before __PLACEHOLDER_0__"
         assert _reverse_text_with_placeholders(text) == " erofeb__PLACEHOLDER_0__"
 
     def test_consecutive_placeholders(self):
         """Should handle consecutive placeholders."""
-        from birdnetpi.cli.manage_translations import _reverse_text_with_placeholders
-
         text = "start __PLACEHOLDER_0____PLACEHOLDER_1__ end"
         assert (
             _reverse_text_with_placeholders(text) == " trats__PLACEHOLDER_0____PLACEHOLDER_1__dne "
@@ -757,8 +732,6 @@ class TestProcessPotFile:
 
     def test_simple_pot_file(self):
         """Should process a simple POT file."""
-        from birdnetpi.cli.manage_translations import _process_pot_file
-
         pot_content = """# Translation file
 msgid ""
 msgstr ""
@@ -779,8 +752,6 @@ msgstr ""
 
     def test_multiline_msgid(self):
         """Should handle multi-line msgid entries."""
-        from birdnetpi.cli.manage_translations import _process_pot_file
-
         pot_content = """msgid ""
 "This is a very long message that spans "
 "multiple lines in the POT file"
@@ -800,8 +771,6 @@ msgstr ""
 
     def test_preserve_comments(self):
         """Should preserve comments and metadata."""
-        from birdnetpi.cli.manage_translations import _process_pot_file
-
         pot_content = """# Translator comment
 #. Developer comment
 #: source.py:42
@@ -818,8 +787,6 @@ msgstr ""
 
     def test_empty_msgid(self):
         """Should not transform empty msgid (header)."""
-        from birdnetpi.cli.manage_translations import _process_pot_file
-
         pot_content = """msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\\n"
@@ -833,8 +800,6 @@ msgstr ""
 
     def test_msgid_with_placeholders(self):
         """Should handle msgid with placeholders."""
-        from birdnetpi.cli.manage_translations import _process_pot_file
-
         pot_content = """msgid "Hello %(name)s"
 msgstr ""
 
@@ -850,8 +815,6 @@ msgstr ""
 
     def test_no_transformation_options(self):
         """Should pass through unchanged when no transformations requested."""
-        from birdnetpi.cli.manage_translations import _process_pot_file
-
         pot_content = """msgid "Hello World"
 msgstr ""
 """
@@ -872,8 +835,6 @@ class TestFakeLocaleCommand:
     @pytest.fixture
     def mock_resolver(self):
         """Create a mock path resolver with temp directory."""
-        import tempfile
-
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
             resolver = MagicMock()

@@ -381,6 +381,7 @@ This branch contains binary assets for BirdNET-Pi version {config.version}.
             readme_content += f"- **{asset.target_name}**: {asset.description}\n"
 
         readme_content += f"""
+
 ## Installation
 
 These assets are automatically downloaded during BirdNET-Pi installation.
@@ -399,7 +400,6 @@ without bloating the main repository history. Credit to Ben Webber for this appr
 - **Asset Tag**: {config.asset_branch_name}
 - **Created**: Automated release system
 """
-
         readme_path = self.repo_path / "README.md"
         readme_path.write_text(readme_content)
 
@@ -416,6 +416,7 @@ This release includes the following binary assets distributed via orphaned commi
             notes += f"- **{asset.target_name}**: {asset.description}\n"
 
         notes += f"""
+
 ### Asset Download
 
 Binary assets are available from the orphaned commit tagged as `{config.asset_branch_name}`

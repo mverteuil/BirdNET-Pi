@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -73,7 +74,6 @@ class TestAudioWebsocketDaemon:
 
     def test_main_keyboard_interrupt(self):
         """Should handle keyboard interrupt gracefully."""
-        import asyncio
 
         async def consume_coro(coro):
             """Properly consume the coroutine."""
@@ -100,7 +100,6 @@ class TestAudioWebsocketDaemon:
 
     def test_main_general_exception(self):
         """Should handle general exceptions gracefully."""
-        import asyncio
 
         async def consume_coro(coro):
             """Properly consume the coroutine."""

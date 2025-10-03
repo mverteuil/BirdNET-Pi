@@ -1,4 +1,6 @@
 import datetime
+import subprocess
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -14,8 +16,6 @@ from birdnetpi.web.models.detections import DetectionEvent
 @pytest.fixture
 def mock_data_manager():
     """Mock DataManager instance."""
-    from unittest.mock import AsyncMock
-
     mock = MagicMock(spec=DataManager)
     mock.create_detection = AsyncMock()
     return mock
@@ -44,9 +44,6 @@ class TestDummyDataGenerator:
 
     def test_main_entry_point_via_subprocess(self, repo_root):
         """Should the __main__ block by running module as script."""
-        import subprocess
-        import sys
-
         # Get the path to the module
         module_path = repo_root / "src" / "birdnetpi" / "utils" / "dummy_data_generator.py"
 

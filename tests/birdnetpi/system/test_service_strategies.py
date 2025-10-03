@@ -1,3 +1,4 @@
+import logging
 import os
 import subprocess
 from datetime import datetime
@@ -287,8 +288,6 @@ class TestDockerSupervisordStrategy:
 
     def test_should_inform_on_enable_service(self, caplog):
         """Should log an informative message for enable_service."""
-        import logging
-
         caplog.set_level(logging.INFO)
         strategy = DockerSupervisordStrategy()
         strategy.enable_service("test_service")
@@ -296,8 +295,6 @@ class TestDockerSupervisordStrategy:
 
     def test_should_inform_on_disable_service(self, caplog):
         """Should log an informative message for disable_service."""
-        import logging
-
         caplog.set_level(logging.INFO)
         strategy = DockerSupervisordStrategy()
         strategy.disable_service("test_service")

@@ -1,10 +1,13 @@
+import asyncio
+import json
 import logging
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.notifications.manager import NotificationManager
+from birdnetpi.notifications.signals import detection_signal
 
 
 @pytest.fixture
@@ -122,9 +125,6 @@ class TestAsyncNotifications:
     @pytest.mark.asyncio
     async def test_send_websocket_notifications(self, notification_manager, model_factory):
         """Should send notifications to all connected websockets."""
-        import json
-        from unittest.mock import AsyncMock
-
         # Create mock websockets with async send methods
         ws1 = Mock()
         ws1.send_text = AsyncMock()
@@ -164,8 +164,6 @@ class TestAsyncNotifications:
         self, notification_manager, caplog, model_factory
     ):
         """Should handle disconnected websockets gracefully."""
-        from unittest.mock import AsyncMock
-
         # Create mock websocket that raises exception on send
         ws_disconnected = Mock()
         ws_disconnected.send_text = AsyncMock(side_effect=Exception("Connection closed"))
@@ -194,8 +192,6 @@ class TestAsyncNotifications:
     @pytest.mark.asyncio
     async def test_send_iot_notifications_mqtt(self, notification_manager, model_factory):
         """Should send MQTT notifications when service is available."""
-        from unittest.mock import AsyncMock
-
         mock_mqtt = Mock()
         mock_mqtt.publish_detection = AsyncMock()
         notification_manager.mqtt_service = mock_mqtt
@@ -214,8 +210,6 @@ class TestAsyncNotifications:
     @pytest.mark.asyncio
     async def test_send_iot_notifications_webhook(self, notification_manager, model_factory):
         """Should send webhook notifications when service is available."""
-        from unittest.mock import AsyncMock
-
         mock_webhook = Mock()
         mock_webhook.send_detection_webhook = AsyncMock()
         notification_manager.webhook_service = mock_webhook
@@ -234,8 +228,6 @@ class TestAsyncNotifications:
     @pytest.mark.asyncio
     async def test_send_iot_notifications_both_services(self, notification_manager, model_factory):
         """Should send both MQTT and webhook notifications when both services available."""
-        from unittest.mock import AsyncMock
-
         mock_mqtt = Mock()
         mock_mqtt.publish_detection = AsyncMock()
         notification_manager.mqtt_service = mock_mqtt
@@ -391,9 +383,6 @@ class TestEventLoopHandling:
     @pytest.mark.asyncio
     async def test_handle_detection_with_event_loop(self, notification_manager, model_factory):
         """Should handle detection events when event loop is running."""
-        import asyncio
-        from unittest.mock import AsyncMock
-
         # Create mock websocket
         ws = Mock()
         ws.send_text = AsyncMock()
@@ -421,8 +410,6 @@ class TestSignalRegistration:
 
     def test_register_listeners(self, mock_active_websockets, test_config, caplog):
         """Should register detection signal listeners."""
-        from birdnetpi.notifications.signals import detection_signal
-
         # Create new manager (without auto-registration)
         manager = NotificationManager(mock_active_websockets, test_config)
 
@@ -444,8 +431,6 @@ class TestSystemNotifications:
     @pytest.mark.asyncio
     async def test_send_system_health_notification(self, notification_manager):
         """Should send system health notifications to all configured services."""
-        from unittest.mock import AsyncMock
-
         # Setup mock services
         mock_mqtt = Mock()
         mock_mqtt.publish_system_health = AsyncMock()
@@ -483,8 +468,6 @@ class TestSystemNotifications:
     @pytest.mark.asyncio
     async def test_send_system_health_notification_with_error(self, notification_manager, caplog):
         """Should log error when system health notification fails."""
-        from unittest.mock import AsyncMock
-
         mock_mqtt = Mock()
         mock_mqtt.publish_system_health = AsyncMock(side_effect=Exception("MQTT connection failed"))
         notification_manager.mqtt_service = mock_mqtt
@@ -500,8 +483,6 @@ class TestSystemNotifications:
     @pytest.mark.asyncio
     async def test_send_gps_notification(self, notification_manager):
         """Should send GPS notifications to all configured services."""
-        from unittest.mock import AsyncMock
-
         # Setup mock services
         mock_mqtt = Mock()
         mock_mqtt.publish_gps_location = AsyncMock()
@@ -524,8 +505,6 @@ class TestSystemNotifications:
     @pytest.mark.asyncio
     async def test_send_gps_notification_without_accuracy(self, notification_manager):
         """Should send GPS notifications without accuracy parameter."""
-        from unittest.mock import AsyncMock
-
         mock_mqtt = Mock()
         mock_mqtt.publish_gps_location = AsyncMock()
         notification_manager.mqtt_service = mock_mqtt
@@ -541,8 +520,6 @@ class TestSystemNotifications:
     @pytest.mark.asyncio
     async def test_send_gps_notification_with_error(self, notification_manager, caplog):
         """Should log error when GPS notification fails."""
-        from unittest.mock import AsyncMock
-
         mock_webhook = Mock()
         mock_webhook.send_gps_webhook = AsyncMock(side_effect=Exception("Webhook timeout"))
         notification_manager.webhook_service = mock_webhook
@@ -556,8 +533,6 @@ class TestSystemNotifications:
     @pytest.mark.asyncio
     async def test_send_system_stats_notification(self, notification_manager):
         """Should send system stats notifications to all configured services."""
-        from unittest.mock import AsyncMock
-
         # Setup mock services
         mock_mqtt = Mock()
         mock_mqtt.publish_system_stats = AsyncMock()
@@ -583,8 +558,6 @@ class TestSystemNotifications:
     @pytest.mark.asyncio
     async def test_send_system_stats_notification_mqtt_only(self, notification_manager):
         """Should send system stats to MQTT only when webhook not configured."""
-        from unittest.mock import AsyncMock
-
         mock_mqtt = Mock()
         mock_mqtt.publish_system_stats = AsyncMock()
         notification_manager.mqtt_service = mock_mqtt
@@ -599,8 +572,6 @@ class TestSystemNotifications:
     @pytest.mark.asyncio
     async def test_send_system_stats_notification_with_error(self, notification_manager, caplog):
         """Should log error when system stats notification fails."""
-        from unittest.mock import AsyncMock
-
         mock_mqtt = Mock()
         mock_mqtt.publish_system_stats = AsyncMock(side_effect=Exception("Connection refused"))
         notification_manager.mqtt_service = mock_mqtt
@@ -639,8 +610,6 @@ class TestEdgeCases:
         self, notification_manager, caplog, model_factory
     ):
         """Should handle and log errors in IoT notifications."""
-        from unittest.mock import AsyncMock
-
         # Setup service that raises an exception
         mock_mqtt = Mock()
         mock_mqtt.publish_detection = AsyncMock(side_effect=Exception("Network error"))

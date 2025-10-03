@@ -1,6 +1,8 @@
 import logging
 import os
 import signal
+import subprocess
+import sys
 from unittest.mock import DEFAULT, MagicMock, patch
 
 import pytest
@@ -350,9 +352,6 @@ class TestAudioCaptureDaemon:
 
     def test_run_daemon_as_script(self, mocker, repo_root):
         """Should execute main when run as script."""
-        import subprocess
-        import sys
-
         # Get the path to the module
         module_path = repo_root / "src" / "birdnetpi" / "daemons" / "audio_capture_daemon.py"
 

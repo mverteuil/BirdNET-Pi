@@ -6,6 +6,7 @@ buffering with admin operations like generate_dummy_data.
 
 import asyncio
 import logging
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -17,6 +18,7 @@ import pytest
 
 import birdnetpi.cli.generate_dummy_data as gdd
 from birdnetpi.audio.analysis import AudioAnalysisManager
+from birdnetpi.species.parser import SpeciesParser
 from birdnetpi.system.file_manager import FileManager
 
 
@@ -66,7 +68,6 @@ def audio_analysis_service_integration(
         mock_session = MagicMock()
 
         # Initialize SpeciesParser with the mock service
-        from birdnetpi.species.parser import SpeciesParser
 
         SpeciesParser._instance = None  # Reset singleton
         SpeciesParser(mock_species_database)  # Initialize with mock
@@ -237,7 +238,6 @@ class TestDetectionBufferingEndToEnd:
         mock_session = MagicMock()
 
         # Initialize SpeciesParser with the mock service
-        from birdnetpi.species.parser import SpeciesParser
 
         SpeciesParser._instance = None  # Reset singleton
         SpeciesParser(mock_species_database)  # Initialize with mock
@@ -450,7 +450,6 @@ class TestDetectionBufferingWithAdminOperations:
                 patch("birdnetpi.cli.generate_dummy_data.ConfigManager") as mock_config_parser,
             ):
                 # Configure mocks for generate_dummy_data
-                from pathlib import Path
 
                 mock_db_path = MagicMock(spec=Path)
                 mock_db_path.exists.return_value = False
@@ -458,7 +457,6 @@ class TestDetectionBufferingWithAdminOperations:
                 mock_path_resolver.return_value.get_database_path.return_value = mock_db_path
 
                 # Create a proper temp config path to avoid MagicMock file creation
-                import tempfile
 
                 with tempfile.NamedTemporaryFile(
                     mode="w", suffix=".yaml", delete=False

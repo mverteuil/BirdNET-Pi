@@ -1,17 +1,22 @@
 """End-to-end tests for settings functionality including UI interaction simulation."""
 
 import os
+import shutil
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
+from dependency_injector import providers
+from fastapi.templating import Jinja2Templates
 from fastapi.testclient import TestClient
 
 from birdnetpi.audio.devices import AudioDevice, AudioDeviceService
 from birdnetpi.config import BirdNETConfig, ConfigManager
 from birdnetpi.system.path_resolver import PathResolver
+from birdnetpi.web.core.container import Container
+from birdnetpi.web.core.factory import create_app
 
 
 class TestSettingsE2E:
@@ -37,7 +42,6 @@ class TestSettingsE2E:
             os.environ.pop("BIRDNETPI_DATA", None)
 
         # Cleanup
-        import shutil
 
         shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -74,12 +78,6 @@ class TestSettingsE2E:
     @pytest.fixture
     def e2e_app(self, temp_data_dir, mock_audio_devices, repo_root):
         """Create app with real components for E2E testing."""
-        from dependency_injector import providers
-        from fastapi.templating import Jinja2Templates
-
-        from birdnetpi.web.core.container import Container
-        from birdnetpi.web.core.factory import create_app
-
         # Use real PathResolver with temp directory
         path_resolver = PathResolver()
         # Create test config path

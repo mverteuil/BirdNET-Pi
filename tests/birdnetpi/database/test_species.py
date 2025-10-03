@@ -3,7 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 from birdnetpi.database.species import SpeciesDatabaseService
@@ -503,7 +503,6 @@ class TestIntegrationWithRealSession:
         patlevin_db = tmp_path / "patlevin.db"
 
         # Create the database files with minimal schema
-        from sqlalchemy import create_engine
 
         for db_path in [ioc_db, avibase_db, patlevin_db]:
             engine = create_engine(f"sqlite:///{db_path}")

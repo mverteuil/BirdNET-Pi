@@ -1,14 +1,18 @@
 """Simple integration test for the web app."""
 
+import tempfile
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
+from birdnetpi.web.routers import settings_view_routes
 
 
 def test_simple_startup():
     """Should the app can start up without errors."""
     # Create a minimal app without complex dependencies
-    from fastapi import FastAPI
 
     app = FastAPI()
 
@@ -24,13 +28,6 @@ def test_simple_startup():
 
 def test_settings_view_routes_endpoints():
     """Should have settings router endpoints accessible."""
-    import tempfile
-    from pathlib import Path
-
-    from fastapi import FastAPI
-
-    from birdnetpi.web.routers import settings_view_routes
-
     # Use temporary directory for mock paths to prevent MagicMock folder creation
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)

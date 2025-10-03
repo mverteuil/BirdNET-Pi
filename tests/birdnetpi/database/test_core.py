@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 import pytest_asyncio
@@ -34,8 +34,6 @@ async def core_database_service(tmp_path):
 @pytest.mark.asyncio
 async def test_clear_database(core_database_service):
     """Should clear all data from the database tables successfully"""
-    from unittest.mock import AsyncMock, PropertyMock
-
     # Mock the database session to avoid actual database operations
     with patch.object(core_database_service, "get_async_db") as mock_get_async_db:
         mock_session = AsyncMock()
@@ -59,8 +57,6 @@ async def test_clear_database(core_database_service):
 @pytest.mark.asyncio
 async def test_clear_database_failure(core_database_service):
     """Should handle clear database failure and rollback"""
-    from unittest.mock import AsyncMock, PropertyMock
-
     # Mock the database session to simulate a failure
     with patch.object(core_database_service, "get_async_db") as mock_get_async_db:
         mock_session = AsyncMock()
@@ -86,8 +82,6 @@ async def test_clear_database_failure(core_database_service):
 @pytest.mark.asyncio
 async def test_checkpoint_wal(core_database_service):
     """Should successfully checkpoint WAL file"""
-    from unittest.mock import AsyncMock
-
     with patch.object(core_database_service, "get_async_db") as mock_get_async_db:
         mock_session = AsyncMock()
 
@@ -109,8 +103,6 @@ async def test_checkpoint_wal(core_database_service):
 @pytest.mark.asyncio
 async def test_checkpoint_wal_failure(core_database_service):
     """Should handle WAL checkpoint failure gracefully"""
-    from unittest.mock import AsyncMock
-
     with patch.object(core_database_service, "get_async_db") as mock_get_async_db:
         mock_session = AsyncMock()
         mock_session.execute.side_effect = SQLAlchemyError("WAL Error")
@@ -126,8 +118,6 @@ async def test_checkpoint_wal_failure(core_database_service):
 @pytest.mark.asyncio
 async def test_get_database_stats(core_database_service, tmp_path):
     """Should return database statistics"""
-    from unittest.mock import AsyncMock
-
     # Create fake database files
     db_path = tmp_path / "test.db"
     db_path.write_text("fake db content")
@@ -173,8 +163,6 @@ async def test_get_database_stats(core_database_service, tmp_path):
 @pytest.mark.asyncio
 async def test_vacuum_database(core_database_service):
     """Should successfully vacuum database"""
-    from unittest.mock import AsyncMock
-
     with patch.object(core_database_service, "get_async_db") as mock_get_async_db:
         mock_session = AsyncMock()
         mock_get_async_db.return_value.__aenter__.return_value = mock_session
@@ -189,8 +177,6 @@ async def test_vacuum_database(core_database_service):
 @pytest.mark.asyncio
 async def test_vacuum_database_failure(core_database_service):
     """Should handle vacuum database failure"""
-    from unittest.mock import AsyncMock
-
     with patch.object(core_database_service, "get_async_db") as mock_get_async_db:
         mock_session = AsyncMock()
         mock_session.execute.side_effect = SQLAlchemyError("Vacuum Error")

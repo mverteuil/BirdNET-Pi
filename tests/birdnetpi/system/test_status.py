@@ -1,6 +1,7 @@
 """Tests for SystemInspector class."""
 
 import subprocess
+import time
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -521,8 +522,6 @@ class TestContainerUptime:
 
     def test_uptime_calculation_from_boot_time(self):
         """Should calculate uptime correctly with container boot time."""
-        import time
-
         # Create a mock boot time 10 minutes ago
         ten_minutes_ago = time.time() - 600
 

@@ -1,13 +1,14 @@
 """Test the install_assets CLI module."""
 
 import json
+import subprocess
 import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
 from click.testing import CliRunner
 
-from birdnetpi.cli.install_assets import cli
+from birdnetpi.cli.install_assets import cli, main
 
 
 @pytest.fixture
@@ -237,16 +238,12 @@ class TestMainFunction:
     @patch("birdnetpi.cli.install_assets.cli")
     def test_main_function(self, mock_cli):
         """Should call CLI with proper arguments."""
-        from birdnetpi.cli.install_assets import main
-
         main()
 
         mock_cli.assert_called_once_with(obj={})
 
     def test_script_entry_point(self, repo_root):
         """Should module can be run as script."""
-        import subprocess
-
         module_path = repo_root / "src" / "birdnetpi" / "cli" / "install_assets.py"
 
         # Try to run with --help to avoid actual execution

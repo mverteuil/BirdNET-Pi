@@ -5,8 +5,10 @@ including database connectivity and file system access.
 """
 
 import tempfile
+import time
+from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from dependency_injector import providers
@@ -15,6 +17,7 @@ from sqlalchemy.exc import OperationalError
 
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.web.core.container import Container
+from birdnetpi.web.core.factory import create_app
 
 
 @pytest.fixture
@@ -79,10 +82,6 @@ class TestHealthEndpointsDatabaseFailure:
 
     def test_readiness_with_database_error(self, tmp_path, path_resolver):
         """Should readiness probe when database connection fails."""
-        from unittest.mock import AsyncMock, MagicMock, patch
-
-        from birdnetpi.web.core.factory import create_app
-
         # Create a mock database service that simulates connection failure
         mock_db_service = MagicMock(spec=CoreDatabaseService)
         mock_db_service.async_engine = MagicMock()  # Add async_engine for sqladmin
@@ -122,10 +121,6 @@ class TestHealthEndpointsDatabaseFailure:
 
     def test_detailed_health_with_database_error(self, tmp_path, path_resolver):
         """Should detailed health check when database fails."""
-        from unittest.mock import AsyncMock, MagicMock, patch
-
-        from birdnetpi.web.core.factory import create_app
-
         # Create a mock database service that simulates query failure
         mock_db_service = MagicMock(spec=CoreDatabaseService)
         mock_db_service.async_engine = MagicMock()  # Add async_engine for sqladmin
@@ -239,8 +234,6 @@ class TestHealthEndpointsConsistency:
 
     def test_timestamp_format_consistency(self, client):
         """Should timestamps are in consistent ISO format."""
-        from datetime import datetime
-
         endpoints = [
             "/api/health/",
             "/api/health/ready",
@@ -290,8 +283,6 @@ class TestHealthEndpointsPerformance:
 
     def test_health_endpoints_are_fast(self, client):
         """Should health endpoints respond quickly."""
-        import time
-
         endpoints = [
             "/api/health/",
             "/api/health/live",
@@ -312,8 +303,6 @@ class TestHealthEndpointsPerformance:
 
     def test_liveness_is_lightweight(self, client):
         """Should liveness probe is very lightweight."""
-        import time
-
         # Run multiple times to ensure consistency
         durations = []
         for _ in range(5):

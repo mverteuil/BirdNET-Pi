@@ -1,5 +1,6 @@
 """Tests for the DataManager - single source of truth for detection data access."""
 
+import base64
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
@@ -10,9 +11,7 @@ from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import AudioFile, Detection
-from birdnetpi.detections.queries import (
-    DetectionQueryService,
-)
+from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.web.models.detections import DetectionEvent
 
@@ -102,7 +101,6 @@ class TestCoreOperations:
         ].get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Create valid base64-encoded audio data (just a few bytes for testing)
-        import base64
 
         test_audio_bytes = b"test audio data"
         encoded_audio = base64.b64encode(test_audio_bytes).decode("utf-8")
@@ -235,8 +233,6 @@ class TestErrorHandling:
 
         # Make commit fail
         mock_session.commit.side_effect = SQLAlchemyError("Commit failed")
-
-        import base64
 
         test_audio_bytes = b"test audio data"
         encoded_audio = base64.b64encode(test_audio_bytes).decode("utf-8")

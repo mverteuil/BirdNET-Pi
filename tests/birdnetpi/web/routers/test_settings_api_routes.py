@@ -57,7 +57,6 @@ latitude: 63.4591
 longitude: -19.3647
 species_confidence_threshold: 0.03
         """
-
         response = client.post("/api/settings/validate", json={"yaml_content": valid_yaml})
 
         assert response.status_code == 200
@@ -78,7 +77,6 @@ species_confidence_threshold: 0.03
 site_name: "Test BirdNET-Pi"
 invalid_yaml: [unclosed bracket
         """
-
         response = client.post("/api/settings/validate", json={"yaml_content": invalid_yaml})
 
         assert response.status_code == 200  # The endpoint returns 200 with error in body
@@ -101,7 +99,6 @@ latitude: 41.0
 longitude: -75.0
 species_confidence_threshold: 0.05
         """
-
         response = client.post("/api/settings/save", json={"yaml_content": new_yaml})
 
         assert response.status_code == 200
@@ -122,7 +119,6 @@ species_confidence_threshold: 0.05
 site_name: "Test BirdNET-Pi"
 invalid_yaml: [unclosed bracket
         """
-
         response = client.post("/api/settings/save", json={"yaml_content": invalid_yaml})
 
         assert response.status_code == 200  # The endpoint returns 200 with error in body

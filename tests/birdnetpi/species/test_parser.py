@@ -1,7 +1,10 @@
 """Tests for species name parsing utilities."""
 
+from unittest.mock import MagicMock, Mock
+
 import pytest
 
+from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.species.parser import (
     SpeciesComponents,
     SpeciesDisplayOptions,
@@ -173,8 +176,6 @@ class TestConfigIntegration:
 
     def test_create_display_options_from_config_full(self):
         """Should creating display options from config for full display."""
-        from unittest.mock import Mock
-
         config = Mock()
         config.species_display_mode = "full"
         config.language = "en"
@@ -187,8 +188,6 @@ class TestConfigIntegration:
 
     def test_create_display_options_from_config_common_only(self):
         """Should creating display options from config for common name only."""
-        from unittest.mock import Mock
-
         config = Mock()
         config.species_display_mode = "common_name"
         config.language = "es"
@@ -201,8 +200,6 @@ class TestConfigIntegration:
 
     def test_create_display_options_from_config_scientific_only(self):
         """Should creating display options from config for scientific name only."""
-        from unittest.mock import Mock
-
         config = Mock()
         config.species_display_mode = "scientific_name"
         config.language = "fr"
@@ -215,8 +212,6 @@ class TestConfigIntegration:
 
     def test_create_display_options_from_config_defaults(self):
         """Should creating display options from config with missing attributes."""
-        from unittest.mock import Mock
-
         config = Mock()
         # Set attributes to what the function expects as defaults
         config.species_display_mode = "full"
@@ -235,9 +230,6 @@ class TestSpeciesParserWithIOC:
     def test_species_parser_initialization__ioc_service(self):
         """Should speciesParser initialization with IOC service."""
         # Create a temporary database service for testing
-        from unittest.mock import MagicMock
-
-        from birdnetpi.database.species import SpeciesDatabaseService
 
         # Mock SpeciesDatabaseService since SpeciesParser now requires it
         mock_species_database = MagicMock(spec=SpeciesDatabaseService)

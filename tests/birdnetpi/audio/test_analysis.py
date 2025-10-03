@@ -3,6 +3,7 @@ import logging
 import threading
 import time
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -10,6 +11,7 @@ import numpy as np
 import pytest
 
 from birdnetpi.audio.analysis import AudioAnalysisManager
+from birdnetpi.species.parser import SpeciesComponents, SpeciesParser
 from birdnetpi.system.file_manager import FileManager
 
 
@@ -31,8 +33,6 @@ def test_config_data():
 @pytest.fixture
 def test_detection_result():
     """Should provide test detection result data."""
-    from pathlib import Path
-
     # Both paths should be the same relative path
     relative_path = Path("Test_species/20240101_120000.wav")
     return {
@@ -77,7 +77,6 @@ def mock_path_resolver(path_resolver, test_detection_result):
     Uses the global path_resolver fixture as a base to prevent MagicMock file creation.
     """
     # Create a Mock that returns the test path but doesn't create files
-    from unittest.mock import MagicMock
 
     mock_method = MagicMock(return_value=test_detection_result["audio_path"])
     path_resolver.get_detection_audio_path = mock_method
@@ -103,7 +102,6 @@ def audio_analysis_service(
     mock_session = MagicMock()
 
     # Initialize SpeciesParser with the mock service
-    from birdnetpi.species.parser import SpeciesParser
 
     SpeciesParser._instance = None  # Reset singleton
     SpeciesParser(mock_species_database)  # Initialize with mock
@@ -268,7 +266,6 @@ class TestAudioAnalysisManager:
         mock_async_client.return_value.__aenter__.return_value.post = mock_post
 
         # Use test data for species information - import SpeciesParser here
-        from birdnetpi.species.parser import SpeciesParser
 
         species_tensor, confidence = test_species_data["confident"][
             0
@@ -315,7 +312,6 @@ class TestAudioAnalysisManager:
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
         # Parse species tensor to get proper components
-        from birdnetpi.species.parser import SpeciesParser
 
         species_components = await SpeciesParser.parse_tensor_species(species)
         await audio_analysis_service._send_detection_event(
@@ -343,7 +339,6 @@ class TestAudioAnalysisManager:
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
         # Parse species tensor to get proper components
-        from birdnetpi.species.parser import SpeciesParser
 
         species_components = await SpeciesParser.parse_tensor_species(species)
         await audio_analysis_service._send_detection_event(
@@ -370,7 +365,6 @@ class TestAudioAnalysisManager:
         raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
         # Parse species tensor to get proper components
-        from birdnetpi.species.parser import SpeciesParser
 
         species_components = await SpeciesParser.parse_tensor_species(species)
         await audio_analysis_service._send_detection_event(
@@ -519,7 +513,6 @@ class TestDetectionBuffering:
             raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
             # Create mock SpeciesComponents for test species
-            from birdnetpi.species.parser import SpeciesComponents
 
             species_components = SpeciesComponents(
                 "Test species", "Test Species", "Test Species (Test species)"
@@ -557,7 +550,6 @@ class TestDetectionBuffering:
             raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
             # Create mock SpeciesComponents for test species
-            from birdnetpi.species.parser import SpeciesComponents
 
             species_components = SpeciesComponents(
                 "Test species", "Test Species", "Test Species (Test species)"
@@ -590,7 +582,6 @@ class TestDetectionBuffering:
             raw_audio_bytes = np.array([1, 2, 3], dtype=np.int16).tobytes()
 
             # Create mock SpeciesComponents for test species
-            from birdnetpi.species.parser import SpeciesComponents
 
             species_components = SpeciesComponents(
                 "Test species", "Test Species", "Test Species (Test species)"
@@ -802,7 +793,6 @@ class TestDetectionBuffering:
         mock_session = MagicMock()
 
         # Initialize SpeciesParser with the mock service
-        from birdnetpi.species.parser import SpeciesParser
 
         SpeciesParser._instance = None  # Reset singleton
         SpeciesParser(mock_species_database)  # Initialize with mock

@@ -1,9 +1,10 @@
 """Tests for detections API routes that handle detection CRUD operations and spectrograms."""
 
+import base64
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi import FastAPI
@@ -80,14 +81,10 @@ class TestDetectionsAPIRoutes:
 
     def test_create_detection(self, client, model_factory):
         """Should create detection successfully."""
-        from uuid import UUID
-
         test_uuid = UUID("12345678-1234-5678-1234-567812345678")
         mock_detection = model_factory.create_detection()
         mock_detection.id = test_uuid
         client.mock_data_manager.create_detection = AsyncMock(return_value=mock_detection)
-
-        import base64
 
         test_audio = base64.b64encode(b"test audio data").decode("utf-8")
 
@@ -187,8 +184,6 @@ class TestDetectionsAPIRoutes:
 
     def test_get_detection_count(self, client):
         """Should return detection count for date."""
-        from datetime import UTC, datetime
-
         today = datetime.now(UTC).date()
         client.mock_query_service.count_by_date = AsyncMock(return_value={today: 5})
 
@@ -225,8 +220,6 @@ class TestDetectionsAPIRoutes:
 
     def test_get_detection_by_id_not_found(self, client):
         """Should return 404 for non-existent detection."""
-        from uuid import uuid4
-
         # Mock the correct method on the correct service
         client.mock_query_service.get_detection_with_taxa = AsyncMock(return_value=None)
 
@@ -255,8 +248,6 @@ class TestDetectionsAPIRoutes:
 
     def test_update_detection_location_not_found(self, client):
         """Should return 404 when updating location of non-existent detection."""
-        from uuid import uuid4
-
         client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=None)
 
         location_data = {"latitude": 41.0, "longitude": -75.0}
@@ -281,8 +272,6 @@ class TestDetectionsAPIRoutes:
 
     def test_update_detection_location_error(self, client):
         """Should handle unexpected errors in location update."""
-        from uuid import uuid4
-
         client.mock_data_manager.get_detection_by_id = AsyncMock(
             side_effect=Exception("Database error")
         )
@@ -590,8 +579,6 @@ class TestDetectionAudio:
 
     def test_get_detection_uuid_not_found(self, client):
         """Should return 404 for non-existent UUID detection."""
-        from uuid import uuid4
-
         client.mock_query_service.get_detection_with_taxa = AsyncMock(return_value=None)
         client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=None)
 

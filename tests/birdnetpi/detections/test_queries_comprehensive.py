@@ -1,10 +1,11 @@
 """Comprehensive tests for DetectionQueryService to improve coverage."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from birdnetpi.database.core import CoreDatabaseService
@@ -85,10 +86,6 @@ class TestFilterMethods:
 
     def test_apply_date_filters_both(self, detection_query_service):
         """Should apply both start and end date filters."""
-        from sqlalchemy import select
-
-        from birdnetpi.detections.models import Detection
-
         stmt = select(Detection)
         start = datetime(2024, 1, 1)
         end = datetime(2024, 1, 31)
@@ -101,10 +98,6 @@ class TestFilterMethods:
 
     def test_apply_date_filters_start_only(self, detection_query_service):
         """Should apply only start date filter."""
-        from sqlalchemy import select
-
-        from birdnetpi.detections.models import Detection
-
         stmt = select(Detection)
         start = datetime(2024, 1, 1)
 
@@ -115,10 +108,6 @@ class TestFilterMethods:
 
     def test_apply_date_filters_end_only(self, detection_query_service):
         """Should apply only end date filter."""
-        from sqlalchemy import select
-
-        from birdnetpi.detections.models import Detection
-
         stmt = select(Detection)
         end = datetime(2024, 1, 31)
 
@@ -129,10 +118,6 @@ class TestFilterMethods:
 
     def test_apply_confidence_filters_both(self, detection_query_service):
         """Should apply both min and max confidence filters."""
-        from sqlalchemy import select
-
-        from birdnetpi.detections.models import Detection
-
         stmt = select(Detection)
         filtered = detection_query_service._apply_confidence_filters(stmt, 0.5, 0.9)
 
@@ -142,10 +127,6 @@ class TestFilterMethods:
 
     def test_apply_confidence_filters_min_only(self, detection_query_service):
         """Should apply only min confidence filter."""
-        from sqlalchemy import select
-
-        from birdnetpi.detections.models import Detection
-
         stmt = select(Detection)
         filtered = detection_query_service._apply_confidence_filters(stmt, 0.5, None)
 
@@ -153,10 +134,6 @@ class TestFilterMethods:
 
     def test_apply_confidence_filters_max_only(self, detection_query_service):
         """Should apply only max confidence filter."""
-        from sqlalchemy import select
-
-        from birdnetpi.detections.models import Detection
-
         stmt = select(Detection)
         filtered = detection_query_service._apply_confidence_filters(stmt, None, 0.9)
 
@@ -164,10 +141,6 @@ class TestFilterMethods:
 
     def test_apply_ordering_default_column(self, detection_query_service):
         """Should use default column when invalid order_by specified."""
-        from sqlalchemy import select
-
-        from birdnetpi.detections.models import Detection
-
         stmt = select(Detection)
         ordered = detection_query_service._apply_ordering(stmt, "invalid_column", True)
 
@@ -176,10 +149,6 @@ class TestFilterMethods:
 
     def test_apply_ordering_ascending(self, detection_query_service):
         """Should apply ascending order."""
-        from sqlalchemy import select
-
-        from birdnetpi.detections.models import Detection
-
         stmt = select(Detection)
         ordered = detection_query_service._apply_ordering(stmt, "confidence", False)
 
@@ -453,7 +422,6 @@ class TestCountingMethods:
     @pytest.mark.asyncio
     async def test_get_species_counts(self, detection_query_service, mock_core_database):
         """Should get species counts for time range."""
-        # Setup mock
         mock_session = AsyncMock()
 
         # Mock rows with species counts - need to be directly iterable
@@ -481,9 +449,6 @@ class TestCountingMethods:
     @pytest.mark.asyncio
     async def test_get_hourly_counts(self, detection_query_service, mock_core_database):
         """Should get hourly detection counts."""
-        import datetime as dt_module
-
-        # Setup mock
         mock_session = AsyncMock()
 
         # Mock hourly data - needs to be directly iterable
@@ -500,7 +465,7 @@ class TestCountingMethods:
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute
-        target_date = dt_module.date(2024, 1, 15)
+        target_date = date(2024, 1, 15)
         result = await detection_query_service.get_hourly_counts(target_date)
 
         # Verify
@@ -511,7 +476,6 @@ class TestCountingMethods:
     @pytest.mark.asyncio
     async def test_count_by_species_with_filters(self, detection_query_service, mock_core_database):
         """Should count detections by species with date filters."""
-        # Setup mock
         mock_session = AsyncMock()
 
         # Mock species count results - needs to be dict-like iterable
@@ -540,12 +504,9 @@ class TestCountingMethods:
     @pytest.mark.asyncio
     async def test_count_by_date(self, detection_query_service, mock_core_database):
         """Should count detections by date."""
-        # Setup mock
         mock_session = AsyncMock()
 
         # Mock date count results - needs to be dict-like iterable
-        from datetime import date
-
         date1 = date(2024, 1, 15)
         date2 = date(2024, 1, 16)
         date3 = date(2024, 1, 17)
@@ -576,7 +537,6 @@ class TestAdvancedQueries:
     @pytest.mark.asyncio
     async def test_get_species_counts_by_period(self, detection_query_service, mock_core_database):
         """Should get species counts grouped by time period."""
-        # Setup mock
         mock_session = AsyncMock()
 
         # Mock periodic counts
@@ -615,7 +575,6 @@ class TestAdvancedQueries:
         self, detection_query_service, mock_core_database
     ):
         """Should get detections for species accumulation curve."""
-        # Setup mock
         mock_session = AsyncMock()
 
         # Mock detection results
@@ -651,7 +610,6 @@ class TestAdvancedQueries:
         self, detection_query_service, mock_core_database
     ):
         """Should get species counts for multiple time periods."""
-        # Setup mock
         mock_session = AsyncMock()
 
         # Mock periodic species counts
@@ -691,7 +649,6 @@ class TestAdvancedQueries:
     @pytest.mark.asyncio
     async def test_get_species_sets_by_window(self, detection_query_service, mock_core_database):
         """Should get unique species sets by time window."""
-        # Setup mock
         mock_session = AsyncMock()
 
         # Mock window results
@@ -706,7 +663,6 @@ class TestAdvancedQueries:
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute - takes window_size as timedelta, not window_type
-        from datetime import timedelta
 
         result = await detection_query_service.get_species_sets_by_window(
             start_date=datetime(2024, 1, 15),
@@ -720,7 +676,6 @@ class TestAdvancedQueries:
     @pytest.mark.asyncio
     async def test_get_weather_correlations(self, detection_query_service, mock_core_database):
         """Should get weather correlations with detections."""
-        # Setup mock
         mock_session = AsyncMock()
 
         # Mock correlation results
@@ -869,7 +824,6 @@ class TestFilterBuilding:
         self, detection_query_service, mock_core_database
     ):
         """Should handle complex filter combinations in count_detections."""
-        # Setup mock
         mock_session = AsyncMock()
         mock_session.scalar = AsyncMock(return_value=250)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
@@ -933,7 +887,6 @@ class TestEdgeCases:
         self, detection_query_service, mock_core_database, mock_species_database
     ):
         """Should handle large limit values."""
-        # Setup mock
         mock_session = AsyncMock()
         mock_result = MagicMock()
         mock_result.mappings.return_value.all.return_value = []

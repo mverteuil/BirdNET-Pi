@@ -1,10 +1,13 @@
 """Unhappy path integration tests for the update system."""
 
 import asyncio
+import os
+import tempfile
 from datetime import datetime
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
 
 from birdnetpi.utils.cache import Cache
@@ -14,10 +17,6 @@ from birdnetpi.utils.cache import Cache
 def client(app_with_temp_data):
     """Create test client from app."""
     # Mount static files to avoid template rendering errors
-    import os
-    import tempfile
-
-    from fastapi.staticfiles import StaticFiles
 
     # Create a temporary static directory
     static_dir = tempfile.mkdtemp()

@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from birdnetpi.config.manager import ConfigManager
+from birdnetpi.web.middleware.pyinstrument_profiling import PyInstrumentProfilerMiddleware
 
 
 class TestProfilingIntegration:
@@ -17,7 +18,6 @@ class TestProfilingIntegration:
         with patch.dict(os.environ, {"ENABLE_PROFILING": ""}, clear=True):
             with patch.object(ConfigManager, "should_enable_profiling", return_value=False):
                 # We need to mock the entire factory creation process
-                from fastapi import FastAPI
 
                 app = FastAPI()
 
@@ -47,12 +47,6 @@ class TestProfilingIntegration:
                     mock_profiler.is_running = False
                     mock_profiler.output_html.return_value = "<html>Profiling output</html>"
                     mock_profiler_class.return_value = mock_profiler
-
-                    from fastapi import FastAPI
-
-                    from birdnetpi.web.middleware.pyinstrument_profiling import (
-                        PyInstrumentProfilerMiddleware,
-                    )
 
                     app = FastAPI()
                     app.add_middleware(PyInstrumentProfilerMiddleware, html_output=True)
@@ -143,7 +137,6 @@ class TestProfilingMiddlewareEndToEnd:
             return {"status": "ok", "value": 42}
 
         # Add profiling middleware
-        from birdnetpi.web.middleware.pyinstrument_profiling import PyInstrumentProfilerMiddleware
 
         app.add_middleware(PyInstrumentProfilerMiddleware, html_output=True)
 
@@ -177,7 +170,6 @@ class TestProfilingMiddlewareEndToEnd:
             return {"deleted": True}
 
         # Add profiling middleware
-        from birdnetpi.web.middleware.pyinstrument_profiling import PyInstrumentProfilerMiddleware
 
         app.add_middleware(PyInstrumentProfilerMiddleware, html_output=False)
 
@@ -233,7 +225,6 @@ class TestProfilingMiddlewareEndToEnd:
             return {"query": q, "limit": limit, "results": []}
 
         # Add profiling middleware
-        from birdnetpi.web.middleware.pyinstrument_profiling import PyInstrumentProfilerMiddleware
 
         app.add_middleware(PyInstrumentProfilerMiddleware, html_output=True)
 

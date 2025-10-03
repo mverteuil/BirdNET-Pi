@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.notifications.signals import detection_signal
 from birdnetpi.web.core.container import Container
-from birdnetpi.web.routers.detections_api_routes import router
+from birdnetpi.web.routers.detections_api_routes import router, stream_detections
 
 
 @pytest.fixture
@@ -381,7 +381,6 @@ class TestSSEStreaming:
         """Should send initial connection event."""
         # TestClient doesn't support SSE streaming well
         # We verify the basic structure exists
-        from birdnetpi.web.routers.detections_api_routes import stream_detections
 
         # Verify the function exists and has correct signature
         assert stream_detections is not None
@@ -422,7 +421,6 @@ class TestSSEStreaming:
         # Verify the endpoint is registered
         # Check that the route exists by inspecting router paths
         # Note: FastAPI routes have different attributes, so we check for the function
-        from birdnetpi.web.routers.detections_api_routes import stream_detections
 
         assert stream_detections is not None
 
@@ -431,7 +429,6 @@ class TestSSEStreaming:
         """Should have proper type annotations for detection_handler."""
         # This is more of a compile-time check, but we can verify
         # the function signature matches what we expect
-        from birdnetpi.web.routers.detections_api_routes import stream_detections
 
         # The function should be properly typed
         assert stream_detections.__annotations__.get("return") is not None
@@ -439,7 +436,6 @@ class TestSSEStreaming:
     def test_sse_response_headers(self):
         """Should return correct SSE headers."""
         # TestClient doesn't handle SSE well, so we verify the endpoint configuration
-        from birdnetpi.web.routers.detections_api_routes import stream_detections
 
         # The function should return a StreamingResponse
         assert stream_detections.__name__ == "stream_detections"
@@ -477,7 +473,6 @@ class TestSSEErrorHandling:
     def test_stream_handles_query_service_errors(self):
         """Should handle errors from query service gracefully."""
         # Verify error handling exists in the implementation
-        from birdnetpi.web.routers.detections_api_routes import stream_detections
 
         # The function should exist and handle errors internally
         assert stream_detections is not None
@@ -497,7 +492,6 @@ class TestSSEErrorHandling:
     def test_stream_handles_cancellation(self):
         """Should handle client disconnection gracefully."""
         # Verify the implementation handles CancelledError
-        from birdnetpi.web.routers.detections_api_routes import stream_detections
 
         # The function should handle asyncio.CancelledError
         assert stream_detections is not None
@@ -524,7 +518,6 @@ class TestSSEPerformance:
     def test_no_buffering_headers(self):
         """Should disable buffering for real-time updates."""
         # Verify the implementation uses proper SSE configuration
-        from birdnetpi.web.routers.detections_api_routes import stream_detections
 
         # The function should be configured for SSE
         assert stream_detections is not None

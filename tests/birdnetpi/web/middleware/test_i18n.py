@@ -1,14 +1,16 @@
 """Tests for internationalization middleware and translation system."""
 
-from gettext import GNUTranslations, NullTranslations
+from gettext import GNUTranslations, NullTranslations, ngettext
+from gettext import gettext as _
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
+from jinja2 import Environment
 
-from birdnetpi.i18n.translation_manager import TranslationManager
+from birdnetpi.i18n.translation_manager import TranslationManager, setup_jinja2_i18n
 from birdnetpi.web.middleware.i18n import LanguageMiddleware
 
 
@@ -46,8 +48,6 @@ def app_with_middleware(translation_manager):
 
     @app.get("/test")
     async def test_endpoint(request: Request):
-        from gettext import gettext as _
-
         return {
             "message": _("Hello"),
             "language": request.headers.get("Accept-Language", "en").split(",")[0].split("-")[0],
@@ -55,8 +55,6 @@ def app_with_middleware(translation_manager):
 
     @app.get("/plural")
     async def plural_endpoint(request: Request):
-        from gettext import ngettext
-
         count = request.query_params.get("count", 1)
         count = int(count)
         return {
@@ -195,9 +193,6 @@ class TestJinja2Integration:
 
     def test_setup_jinja2_i18n(self):
         """Should jinja2 i18n setup."""
-        from jinja2 import Environment
-
-        from birdnetpi.i18n.translation_manager import setup_jinja2_i18n
 
         # Create a mock Jinja2Templates object
         class MockTemplates:
@@ -214,9 +209,6 @@ class TestJinja2Integration:
 
     def test_template_translation_functions(self):
         """Should template translation functions work."""
-        from jinja2 import Environment
-
-        from birdnetpi.i18n.translation_manager import setup_jinja2_i18n
 
         class MockTemplates:
             def __init__(self):

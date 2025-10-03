@@ -1,3 +1,6 @@
+import subprocess
+import sys
+from pathlib import Path
 from unittest.mock import DEFAULT, AsyncMock, MagicMock, patch
 
 import pytest
@@ -31,7 +34,6 @@ def mock_dependencies(mocker, tmp_path):
         time=DEFAULT,
     ) as mocks:
         # Create MagicMock for database path that behaves like a Path
-        from pathlib import Path
 
         mock_db_path = MagicMock(spec=Path)
         mock_db_path.__str__ = lambda: str(tmp_path / "database" / "birdnetpi.db")
@@ -261,9 +263,6 @@ class TestGenerateDummyData:
 
     def test_main_entry_point_via_subprocess(self, repo_root):
         """Should the __main__ block by running module as script."""
-        import subprocess
-        import sys
-
         # Get the path to the module
         module_path = repo_root / "src" / "birdnetpi" / "cli" / "generate_dummy_data.py"
 

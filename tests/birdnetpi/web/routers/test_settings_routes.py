@@ -1,14 +1,18 @@
 """Tests for settings routes including GET and POST functionality."""
 
+import shutil
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from dependency_injector import providers
+from fastapi.templating import Jinja2Templates
 from fastapi.testclient import TestClient
 
 from birdnetpi.audio.devices import AudioDevice, AudioDeviceService
 from birdnetpi.config import BirdNETConfig, ConfigManager
+from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
 
 
@@ -73,11 +77,6 @@ def test_config():
 @pytest.fixture
 def app_with_settings_routes(path_resolver, repo_root, test_config, mock_audio_devices):
     """Create FastAPI app with settings routes and mocked dependencies."""
-    from dependency_injector import providers
-    from fastapi.templating import Jinja2Templates
-
-    from birdnetpi.web.core.container import Container
-
     # Create a temporary config file
     temp_dir = tempfile.mkdtemp(prefix="test_settings_")
     config_dir = Path(temp_dir) / "config"
@@ -130,7 +129,6 @@ def app_with_settings_routes(path_resolver, repo_root, test_config, mock_audio_d
     Container.templates.reset_override()
 
     # Clean up temp directory
-    import shutil
 
     shutil.rmtree(temp_dir, ignore_errors=True)
 
