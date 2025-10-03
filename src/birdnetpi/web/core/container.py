@@ -2,6 +2,7 @@
 
 from dependency_injector import containers, providers
 from fastapi.templating import Jinja2Templates
+from jinja2 import StrictUndefined
 
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
@@ -32,8 +33,6 @@ def create_jinja2_templates(resolver: PathResolver) -> Jinja2Templates:
     Configures Jinja2 to raise errors on undefined variables (like Django),
     making missing template context painfully obvious during development.
     """
-    from jinja2 import StrictUndefined
-
     templates = Jinja2Templates(directory=str(resolver.get_templates_dir()))
 
     # Enable strict mode - undefined variables raise errors instead of silently failing

@@ -4,10 +4,14 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
+from birdnetpi.config.manager import ConfigManager
 from birdnetpi.i18n.translation_manager import setup_jinja2_i18n
+from birdnetpi.system.status import SystemInspector
+from birdnetpi.utils.language import get_user_language
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.lifespan import lifespan
 from birdnetpi.web.middleware.i18n import LanguageMiddleware
+from birdnetpi.web.middleware.pyinstrument_profiling import PyInstrumentProfilerMiddleware
 from birdnetpi.web.middleware.request_logging import StructuredRequestLoggingMiddleware
 from birdnetpi.web.middleware.update_banner import add_update_status_to_templates
 from birdnetpi.web.routers import (
@@ -80,11 +84,7 @@ def create_app() -> FastAPI:
 
     # Add pyinstrument profiling middleware (only in development)
     # Access any endpoint with ?profile=1 to see profiling output
-    from birdnetpi.config.manager import ConfigManager
-
     if ConfigManager.should_enable_profiling():
-        from birdnetpi.web.middleware.pyinstrument_profiling import PyInstrumentProfilerMiddleware
-
         app.add_middleware(PyInstrumentProfilerMiddleware, html_output=True)
 
     # Configure Jinja2 templates with i18n support
@@ -216,9 +216,6 @@ def create_app() -> FastAPI:
         landing_data = await presentation_manager.get_landing_page_data_safe()
 
         # Get system status and language for base template
-        from birdnetpi.system.status import SystemInspector
-        from birdnetpi.utils.language import get_user_language
-
         language = get_user_language(request, config)
 
         return templates.TemplateResponse(
@@ -249,9 +246,6 @@ def create_app() -> FastAPI:
         translation_manager = container.translation_manager()
 
         # Get system status and language for base template
-        from birdnetpi.system.status import SystemInspector
-        from birdnetpi.utils.language import get_user_language
-
         language = get_user_language(request, config)
         _ = translation_manager.get_translation(language).gettext
 

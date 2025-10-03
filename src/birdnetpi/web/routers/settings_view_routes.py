@@ -1,5 +1,6 @@
 """Settings view routes for configuration UI and testing tools."""
 
+import base64
 import datetime
 import json
 import logging
@@ -358,8 +359,6 @@ async def test_detection(
         common_name = species
 
     # Create test audio data for the detection
-    import base64
-
     test_audio_bytes = b"test audio data for detection"
     encoded_audio = base64.b64encode(test_audio_bytes).decode("utf-8")
 

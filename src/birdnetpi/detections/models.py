@@ -12,6 +12,7 @@ from sqlalchemy import Column, Index, String
 from sqlalchemy.orm import relationship
 from sqlmodel import Field, Relationship, SQLModel
 
+from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.utils.field_type_annotations import PathType
 
 if TYPE_CHECKING:
@@ -180,8 +181,6 @@ class DetectionWithTaxa(DetectionBase):
 
             if config:
                 # Create a display service with the config and use it
-                from birdnetpi.species.display import SpeciesDisplayService
-
                 display_service = SpeciesDisplayService(config)
                 # Always prefer translation (as recommended)
                 display_name = display_service.format_species_display(self, prefer_translation=True)
