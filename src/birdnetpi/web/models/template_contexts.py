@@ -6,7 +6,7 @@ providing type safety and early detection of missing variables.
 
 from typing import Any
 
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 from birdnetpi.audio.devices import AudioDevice
 from birdnetpi.config.models import BirdNETConfig
@@ -38,6 +38,8 @@ class BaseTemplateContext(BaseModel):
         default=None, description="Date of last model update (for footer)"
     )
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     @field_serializer("config")
     def serialize_config(
         self,
@@ -46,11 +48,6 @@ class BaseTemplateContext(BaseModel):
     ) -> dict[str, Any]:
         """Serialize config to dict for template access via config['key']."""
         return config.model_dump()
-
-    class Config:
-        """Pydantic config."""
-
-        arbitrary_types_allowed = True  # Allow BirdNETConfig
 
 
 class DetectionsPageContext(BaseTemplateContext):
