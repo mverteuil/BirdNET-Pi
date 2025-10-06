@@ -1,0 +1,132 @@
+id: test-mock-must-have-spec
+snapshots:
+  ? |
+    @pytest.fixture
+    def mock_service():
+        return MagicMock()
+  : labels:
+    - source: MagicMock()
+      style: primary
+      start: 47
+      end: 58
+  ? |
+    def test_something():
+        mock_obj = Mock()
+        assert mock_obj.anything.works()
+  : labels:
+    - source: Mock()
+      style: primary
+      start: 37
+      end: 43
+  ? |
+    from unittest.mock import AsyncMock
+    mock_obj = AsyncMock()
+  : labels:
+    - source: AsyncMock()
+      style: primary
+      start: 47
+      end: 58
+  ? |
+    from unittest.mock import AsyncMock
+    mock_obj = AsyncMock(return_value="test")
+  : labels:
+    - source: AsyncMock(return_value="test")
+      style: primary
+      start: 47
+      end: 77
+  ? |
+    from unittest.mock import AsyncMock
+    mock_obj = AsyncMock(return_value="test", name="async_mock")
+  : labels:
+    - source: AsyncMock(return_value="test", name="async_mock")
+      style: primary
+      start: 47
+      end: 96
+  ? |
+    from unittest.mock import AsyncMock
+    mock_obj = AsyncMock(side_effect=RuntimeError("error"))
+  : labels:
+    - source: AsyncMock(side_effect=RuntimeError("error"))
+      style: primary
+      start: 47
+      end: 91
+  ? |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock()
+  : labels:
+    - source: MagicMock()
+      style: primary
+      start: 47
+      end: 58
+  ? |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(name="magic_mock")
+  : labels:
+    - source: MagicMock(name="magic_mock")
+      style: primary
+      start: 47
+      end: 75
+  ? |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(name="test", return_value=None)
+  : labels:
+    - source: MagicMock(name="test", return_value=None)
+      style: primary
+      start: 47
+      end: 88
+  ? |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(return_value=None)
+  : labels:
+    - source: MagicMock(return_value=None)
+      style: primary
+      start: 47
+      end: 75
+  ? |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(side_effect=lambda: None)
+  : labels:
+    - source: 'MagicMock(side_effect=lambda: None)'
+      style: primary
+      start: 47
+      end: 82
+  ? |
+    from unittest.mock import Mock
+    mock_obj = Mock()
+  : labels:
+    - source: Mock()
+      style: primary
+      start: 42
+      end: 48
+  ? |
+    from unittest.mock import Mock
+    mock_obj = Mock(name="my_mock")
+  : labels:
+    - source: Mock(name="my_mock")
+      style: primary
+      start: 42
+      end: 62
+  ? |
+    from unittest.mock import Mock
+    mock_obj = Mock(return_value=42)
+  : labels:
+    - source: Mock(return_value=42)
+      style: primary
+      start: 42
+      end: 63
+  ? |
+    from unittest.mock import Mock
+    mock_obj = Mock(return_value=42, side_effect=None)
+  : labels:
+    - source: Mock(return_value=42, side_effect=None)
+      style: primary
+      start: 42
+      end: 81
+  ? |
+    from unittest.mock import Mock
+    mock_obj = Mock(side_effect=ValueError)
+  : labels:
+    - source: Mock(side_effect=ValueError)
+      style: primary
+      start: 42
+      end: 70

@@ -1,0 +1,125 @@
+id: test-mock-must-have-spec
+language: python
+
+valid:
+  # Mock with spec parameter
+  - |
+    from unittest.mock import Mock
+    mock_obj = Mock(spec=MyClass)
+  - |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(spec=SomeInterface)
+  - |
+    from unittest.mock import AsyncMock
+    mock_obj = AsyncMock(spec=AsyncService)
+
+  # Mock with autospec parameter
+  - |
+    from unittest.mock import Mock
+    mock_obj = Mock(autospec=True)
+  - |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(autospec=True)
+  - |
+    from unittest.mock import AsyncMock
+    mock_obj = AsyncMock(autospec=True)
+
+  # Mock with spec_set parameter
+  - |
+    from unittest.mock import Mock
+    mock_obj = Mock(spec_set=MyClass)
+  - |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(spec_set=MyInterface)
+  - |
+    from unittest.mock import AsyncMock
+    mock_obj = AsyncMock(spec_set=AsyncService)
+
+  # Mock with spec and other parameters
+  - |
+    from unittest.mock import Mock
+    mock_obj = Mock(spec=MyClass, return_value=42)
+  - |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(return_value=None, spec=SomeClass)
+  - |
+    from unittest.mock import AsyncMock
+    mock_obj = AsyncMock(side_effect=ValueError, spec_set=MyService)
+
+  # Mock with autospec and other parameters
+  - |
+    from unittest.mock import Mock
+    mock_obj = Mock(autospec=True, return_value=42)
+  - |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(return_value=None, autospec=True)
+
+  # patch with autospec (not applicable to this rule)
+  - |
+    with patch('module.Class', autospec=True) as mock_class:
+        pass
+
+invalid:
+  # Mock without any spec-related parameters
+  - |
+    from unittest.mock import Mock
+    mock_obj = Mock()
+  - |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock()
+  - |
+    from unittest.mock import AsyncMock
+    mock_obj = AsyncMock()
+
+  # Mock with return_value but no spec
+  - |
+    from unittest.mock import Mock
+    mock_obj = Mock(return_value=42)
+  - |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(return_value=None)
+  - |
+    from unittest.mock import AsyncMock
+    mock_obj = AsyncMock(return_value="test")
+
+  # Mock with side_effect but no spec
+  - |
+    from unittest.mock import Mock
+    mock_obj = Mock(side_effect=ValueError)
+  - |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(side_effect=lambda: None)
+  - |
+    from unittest.mock import AsyncMock
+    mock_obj = AsyncMock(side_effect=RuntimeError("error"))
+
+  # Mock with name but no spec
+  - |
+    from unittest.mock import Mock
+    mock_obj = Mock(name="my_mock")
+  - |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(name="magic_mock")
+
+  # Mock with multiple parameters but no spec
+  - |
+    from unittest.mock import Mock
+    mock_obj = Mock(return_value=42, side_effect=None)
+  - |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(name="test", return_value=None)
+  - |
+    from unittest.mock import AsyncMock
+    mock_obj = AsyncMock(return_value="test", name="async_mock")
+
+  # Mock in fixture
+  - |
+    @pytest.fixture
+    def mock_service():
+        return MagicMock()
+
+  # Mock in test
+  - |
+    def test_something():
+        mock_obj = Mock()
+        assert mock_obj.anything.works()

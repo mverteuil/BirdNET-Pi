@@ -1,0 +1,44 @@
+id: test-mock-must-have-spec
+language: python
+severity: error
+message: Mock objects must use spec, autospec, or spec_set parameter to prevent unrealistic mocks
+
+note: |
+  Mock objects without a spec can accept any attribute access, hiding bugs.
+  Always use one of these parameters:
+  - spec=ClassName: Mock will only allow attributes/methods from ClassName
+  - autospec=True: Automatically creates spec from the target
+  - spec_set=ClassName: Like spec, but raises AttributeError on setting invalid attributes
+
+  Examples:
+    BAD:  mock_obj = Mock()
+    BAD:  mock_obj = MagicMock(return_value=42)
+
+    GOOD: mock_obj = Mock(spec=MyClass)
+    GOOD: mock_obj = MagicMock(autospec=True)
+    GOOD: mock_obj = AsyncMock(spec_set=MyInterface)
+
+rule:
+  all:
+    - pattern: $MOCK($$$)
+    - not:
+        any:
+          # Match spec parameter in any position
+          - pattern: $MOCK($$$, spec=$S)
+          - pattern: $MOCK($$$, spec=$S, $$$)
+          - pattern: $MOCK(spec=$S)
+          - pattern: $MOCK(spec=$S, $$$)
+          # Match autospec parameter in any position
+          - pattern: $MOCK($$$, autospec=$A)
+          - pattern: $MOCK($$$, autospec=$A, $$$)
+          - pattern: $MOCK(autospec=$A)
+          - pattern: $MOCK(autospec=$A, $$$)
+          # Match spec_set parameter in any position
+          - pattern: $MOCK($$$, spec_set=$SS)
+          - pattern: $MOCK($$$, spec_set=$SS, $$$)
+          - pattern: $MOCK(spec_set=$SS)
+          - pattern: $MOCK(spec_set=$SS, $$$)
+
+constraints:
+  MOCK:
+    regex: '^(Mock|MagicMock|AsyncMock)$'
