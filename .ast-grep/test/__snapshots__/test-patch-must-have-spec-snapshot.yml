@@ -1,0 +1,132 @@
+id: test-patch-must-have-spec
+snapshots:
+  ? |
+    @patch('module.Class')
+    def test_something():
+        pass
+  : labels:
+    - source: patch('module.Class')
+      style: primary
+      start: 1
+      end: 22
+  ? |
+    @patch('module.Class', return_value=None)
+    def test_something():
+        pass
+  : labels:
+    - source: patch('module.Class', return_value=None)
+      style: primary
+      start: 1
+      end: 41
+  ? |
+    @patch('module.service')
+    @patch('module.client', autospec=True)
+    def test_something():
+        pass
+  : labels:
+    - source: patch('module.service')
+      style: primary
+      start: 1
+      end: 24
+  ? |
+    @patch('module.service', create=True)
+    def test_something():
+        pass
+  : labels:
+    - source: patch('module.service', create=True)
+      style: primary
+      start: 1
+      end: 37
+  ? |
+    @patch.object(service, 'client')
+    def test_something():
+        pass
+  : labels:
+    - source: patch.object(service, 'client')
+      style: primary
+      start: 1
+      end: 32
+  ? |
+    @patch.object(service, 'client', return_value=None)
+    def test_something():
+        pass
+  : labels:
+    - source: patch.object(service, 'client', return_value=None)
+      style: primary
+      start: 1
+      end: 51
+  ? |
+    @patch.object(service, 'process', create=True)
+    def test_something():
+        pass
+  : labels:
+    - source: patch.object(service, 'process', create=True)
+      style: primary
+      start: 1
+      end: 46
+  ? |
+    def test_something():
+        with patch('module.service'):
+            pass
+  : labels:
+    - source: patch('module.service')
+      style: primary
+      start: 31
+      end: 54
+  ? |
+    def test_something():
+        with patch.object(manager, 'process'):
+            pass
+  : labels:
+    - source: patch.object(manager, 'process')
+      style: primary
+      start: 31
+      end: 63
+  ? |
+    with patch('module.func'):
+        pass
+  : labels:
+    - source: patch('module.func')
+      style: primary
+      start: 5
+      end: 25
+  ? |
+    with patch('module.func', return_value=42):
+        pass
+  : labels:
+    - source: patch('module.func', return_value=42)
+      style: primary
+      start: 5
+      end: 42
+  ? |
+    with patch('module.func', side_effect=ValueError):
+        pass
+  : labels:
+    - source: patch('module.func', side_effect=ValueError)
+      style: primary
+      start: 5
+      end: 49
+  ? |
+    with patch.object(obj, 'attr', side_effect=RuntimeError):
+        pass
+  : labels:
+    - source: patch.object(obj, 'attr', side_effect=RuntimeError)
+      style: primary
+      start: 5
+      end: 56
+  ? |
+    with patch.object(obj, 'method'):
+        pass
+  : labels:
+    - source: patch.object(obj, 'method')
+      style: primary
+      start: 5
+      end: 32
+  ? |
+    with patch.object(obj, 'method', return_value=42):
+        pass
+  : labels:
+    - source: patch.object(obj, 'method', return_value=42)
+      style: primary
+      start: 5
+      end: 49

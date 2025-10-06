@@ -1,0 +1,60 @@
+id: test-patch-must-have-spec
+language: python
+severity: error
+message: patch() calls without a replacement must use spec, autospec, spec_set, or new_callable parameter
+
+note: |
+  patch() calls that don't provide a replacement object should use spec-related
+  parameters to prevent unrealistic mocks that can hide bugs.
+
+  Valid spec-type parameters:
+  - spec=ClassName: Mock will only allow attributes/methods from ClassName
+  - autospec=True: Automatically creates spec from the target
+  - spec_set=ClassName: Like spec, but raises AttributeError on setting invalid attributes
+  - new=replacement: Provides explicit replacement object (no spec needed)
+  - new_callable=callable: Specifies callable to create mock (no spec needed)
+
+  Examples:
+    BAD:  @patch('module.func')
+    BAD:  with patch('module.Class'):
+    BAD:  patch.object(obj, 'method')
+
+    GOOD: @patch('module.func', autospec=True)
+    GOOD: with patch('module.Class', spec=OriginalClass):
+    GOOD: patch.object(obj, 'method', new=mock_value)
+    GOOD: @patch('module.func', new_callable=AsyncMock)
+
+rule:
+  all:
+    # Match all patch and patch.object calls
+    - any:
+        - pattern: patch($$$)
+        - pattern: patch.object($$$)
+    # Exclude if has any valid spec-type or replacement parameters
+    - not:
+        any:
+          # Has new parameter (keyword replacement)
+          - pattern: patch($$$, new=$N)
+          - pattern: patch($$$, new=$N, $$$)
+          - pattern: patch.object($$$, new=$N)
+          - pattern: patch.object($$$, new=$N, $$$)
+          # Has new_callable parameter
+          - pattern: patch($$$, new_callable=$NC)
+          - pattern: patch($$$, new_callable=$NC, $$$)
+          - pattern: patch.object($$$, new_callable=$NC)
+          - pattern: patch.object($$$, new_callable=$NC, $$$)
+          # Has spec parameter
+          - pattern: patch($$$, spec=$S)
+          - pattern: patch($$$, spec=$S, $$$)
+          - pattern: patch.object($$$, spec=$S)
+          - pattern: patch.object($$$, spec=$S, $$$)
+          # Has autospec parameter
+          - pattern: patch($$$, autospec=$A)
+          - pattern: patch($$$, autospec=$A, $$$)
+          - pattern: patch.object($$$, autospec=$A)
+          - pattern: patch.object($$$, autospec=$A, $$$)
+          # Has spec_set parameter
+          - pattern: patch($$$, spec_set=$SS)
+          - pattern: patch($$$, spec_set=$SS, $$$)
+          - pattern: patch.object($$$, spec_set=$SS)
+          - pattern: patch.object($$$, spec_set=$SS, $$$)
