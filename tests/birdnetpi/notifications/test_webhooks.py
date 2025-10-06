@@ -458,7 +458,7 @@ class TestWebhookService:
         assert result is False
 
     def test_can_send(self, enabled_webhook_service):
-        """Should the _can_send method."""
+        """Should validate sending capability via _can_send method."""
         service = enabled_webhook_service
 
         # No client, no webhooks

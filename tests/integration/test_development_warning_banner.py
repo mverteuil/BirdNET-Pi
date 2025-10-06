@@ -275,7 +275,7 @@ class TestDevelopmentWarningBanner:
 
 
 class TestUpdateDaemonIntegration:
-    """Test that update daemon properly sets version_type."""
+    """Update daemon properly sets version_type."""
 
     @pytest.mark.asyncio
     async def test_daemon_sets_version_type_on_check(self, path_resolver):

@@ -44,7 +44,7 @@ def analytics_manager(mock_detection_query_service, test_config):
 
 
 class TestAnalyticsManagerBasics:
-    """Should provide basic AnalyticsManager functionality."""
+    """Basic AnalyticsManager functionality."""
 
     @pytest.mark.asyncio
     async def test_get_dashboard_summary(self, analytics_manager, mock_detection_query_service):

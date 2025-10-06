@@ -108,7 +108,7 @@ class TestConfigManager:
         assert saved_data["config_version"] == "2.0.0"
 
     def test_backup_creation(self, path_resolver):
-        """Should backups are created when saving over existing config."""
+        """Should create backups when saving over existing config."""
         config_path = path_resolver.get_birdnetpi_config_path()
         backup_path = config_path.with_suffix(".yaml.backup")
         config_path.parent.mkdir(parents=True, exist_ok=True)

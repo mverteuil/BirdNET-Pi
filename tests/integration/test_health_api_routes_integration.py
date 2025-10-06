@@ -217,7 +217,7 @@ class TestHealthEndpointsConsistency:
     """Test consistency across health endpoints."""
 
     def test_version_consistent_across_endpoints(self, client):
-        """Should version is consistent across all endpoints that include it."""
+        """Should have consistent version across all endpoints that include it."""
         # Get version from main health endpoint
         response = client.get("/api/health/")
         main_version = response.json()["version"]
@@ -233,7 +233,7 @@ class TestHealthEndpointsConsistency:
         assert detailed_version == main_version
 
     def test_timestamp_format_consistency(self, client):
-        """Should timestamps are in consistent ISO format."""
+        """Should have timestamps in consistent ISO format."""
         endpoints = [
             "/api/health/",
             "/api/health/ready",

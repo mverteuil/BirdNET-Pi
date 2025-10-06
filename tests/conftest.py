@@ -1,11 +1,27 @@
-from datetime import UTC
+import os
+import subprocess
+import time
+import uuid
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, cast
+from unittest.mock import MagicMock
 
 import matplotlib
 import pytest
+from dependency_injector import providers
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
 
+from birdnetpi.config import ConfigManager
 from birdnetpi.database.core import CoreDatabaseService
+from birdnetpi.detections.models import AudioFile, Detection, DetectionWithTaxa
+from birdnetpi.location.models import Weather
+from birdnetpi.releases.asset_manifest import AssetManifest
 from birdnetpi.system.path_resolver import PathResolver
+from birdnetpi.web.core.container import Container
+from birdnetpi.web.core.factory import create_app
 
 # Configure matplotlib to use non-GUI backend for testing
 matplotlib.use("Agg")
@@ -108,11 +124,6 @@ async def app_with_temp_data(path_resolver):
     during app creation, which would instantiate DatabaseService with the default
     /var/lib/birdnetpi path and cause a PermissionError.
     """
-    from dependency_injector import providers
-
-    from birdnetpi.config import ConfigManager
-    from birdnetpi.web.core.container import Container
-
     # Override the Container's providers at the class level BEFORE app creation
     # This ensures that when sqladmin calls container.core_database(),
     # it gets our test version with the temp path
@@ -133,8 +144,6 @@ async def app_with_temp_data(path_resolver):
     Container.core_database.override(providers.Singleton(lambda: temp_db_service))
 
     # Mock the cache service to avoid Redis connection issues in tests
-    from unittest.mock import MagicMock
-
     mock_cache = MagicMock()
     mock_cache.get.return_value = None
     mock_cache.set.return_value = True
@@ -155,8 +164,6 @@ async def app_with_temp_data(path_resolver):
     Container.cache_service.override(providers.Singleton(lambda: mock_cache))
 
     # Now create the app with our overridden providers
-    from birdnetpi.web.core.factory import create_app
-
     app = create_app()
 
     # Store a reference to the temp_db_service to prevent garbage collection
@@ -184,12 +191,6 @@ async def async_in_memory_session():
     This is a global fixture that can be used consistently across all tests
     that need an async SQLAlchemy session for testing.
     """
-    from typing import cast
-
-    from sqlalchemy import text
-    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-    from sqlalchemy.orm import sessionmaker
-
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     # Use sessionmaker with class_=AsyncSession which is the standard pattern
     session_local = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -217,8 +218,6 @@ async def async_in_memory_session():
 @pytest.fixture
 def test_config(path_resolver: PathResolver):
     """Should load test configuration from the test config file."""
-    from birdnetpi.config import ConfigManager
-
     manager = ConfigManager(path_resolver)
     return manager.load()
 
@@ -226,9 +225,6 @@ def test_config(path_resolver: PathResolver):
 @pytest.fixture(scope="session", autouse=True)
 def ensure_redis_running():
     """Ensure Redis is running for tests that require it."""
-    import subprocess
-    import time
-
     # Check if Redis is already running
     try:
         result = subprocess.run(["redis-cli", "ping"], capture_output=True, text=True, timeout=2)
@@ -268,11 +264,6 @@ def ensure_redis_running():
 @pytest.fixture(scope="session", autouse=True)
 def check_required_assets(repo_root: Path):
     """Check that required assets are available for testing."""
-    import os
-
-    from birdnetpi.releases.asset_manifest import AssetManifest
-    from birdnetpi.system.path_resolver import PathResolver
-
     real_data_dir = repo_root / "data"
 
     stashed_data_dir = os.environ.get("BIRDNETPI_DATA")
@@ -339,12 +330,6 @@ def model_factory():
     eliminating the need for MagicMock objects that can't be JSON serialized and reducing
     duplication across test files.
     """
-    import uuid
-    from datetime import datetime
-    from typing import Any
-
-    from birdnetpi.detections.models import AudioFile, Detection, DetectionWithTaxa
-    from birdnetpi.location.models import Weather
 
     class ModelFactory:
         """Factory class for creating test model instances."""

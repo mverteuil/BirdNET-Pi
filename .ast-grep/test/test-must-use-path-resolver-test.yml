@@ -1,0 +1,41 @@
+id: test-must-use-path-resolver-fixture
+language: python
+
+valid:
+  - |
+    # Valid: using path_resolver fixture
+    def test_something(path_resolver):
+        assert path_resolver.get_app_path()
+
+  - |
+    # Valid: test method using path_resolver
+    class TestPaths:
+        def test_config(self, path_resolver):
+            assert path_resolver.get_config_path()
+
+  - |
+    # Valid: path_resolver with other fixtures
+    def test_with_multiple(path_resolver, mock_db):
+        assert path_resolver
+
+  - |
+    # Valid: non-test function can use any fixture
+    def helper_with_resolver(mock_path_resolver):
+        return mock_path_resolver.get_app_path()
+
+invalid:
+  - |
+    # Invalid: using mock_path_resolver instead of path_resolver
+    def test_something(mock_path_resolver):
+        assert mock_path_resolver.get_app_path()
+
+  - |
+    # Invalid: using custom_resolver fixture
+    def test_with_custom(custom_resolver):
+        assert custom_resolver
+
+  - |
+    # Invalid: test method with mock_path_resolver
+    class TestPaths:
+        def test_config(self, mock_path_resolver):
+            assert mock_path_resolver.get_config_path()

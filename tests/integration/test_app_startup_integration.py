@@ -14,7 +14,7 @@ from birdnetpi.web.core.factory import create_app
 
 
 class TestAppStartupIntegration:
-    """Test that the FastAPI app starts correctly with real Container."""
+    """FastAPI app starts correctly with real Container."""
 
     @pytest.fixture
     def test_paths(self, tmp_path: Path, repo_root: Path):
@@ -83,13 +83,13 @@ class TestAppStartupIntegration:
         Container.database_path.reset_override()
 
     def test_app_creation_succeeds(self, app_with_real_container: FastAPI):
-        """Should the app can be created without errors."""
+        """Should create app without errors."""
         assert app_with_real_container is not None
         assert isinstance(app_with_real_container, FastAPI)
         # Container is now accessed via Container() singleton, not attached to app
 
     def test_app_container_is_wired(self, app_with_real_container: FastAPI):
-        """Should the app's container is properly wired."""
+        """Should properly wire app container."""
         container = Container()
         assert container is not None
         # Check that it has the expected Container attributes rather than exact type
@@ -98,7 +98,7 @@ class TestAppStartupIntegration:
         assert hasattr(container, "core_database")
 
     def test_app_has_routes(self, app_with_real_container: FastAPI):
-        """Should the app has routes registered."""
+        """Should register routes in app."""
         routes = [route.path for route in app_with_real_container.routes]  # type: ignore[attr-defined]
 
         # Check for expected routes
@@ -109,7 +109,7 @@ class TestAppStartupIntegration:
         assert "/admin/settings" in routes
 
     def test_root_endpoint_works(self, app_with_real_container: FastAPI):
-        """Should the root endpoint returns a successful response."""
+        """Should return successful response for root endpoint."""
         with TestClient(app_with_real_container) as client:
             response = client.get("/")
             assert response.status_code == 200
@@ -152,12 +152,12 @@ class TestAppStartupIntegration:
             assert response3.status_code == 200
 
     def test_websocket_endpoints_exist(self, app_with_real_container: FastAPI):
-        """Should WebSocket endpoints are registered."""
+        """Should register WebSocket endpoints."""
         # Check for WebSocket routes
         assert "/ws/notifications" in [route.path for route in app_with_real_container.routes]  # type: ignore[attr-defined]
 
     def test_admin_sqladmin_is_setup(self, app_with_real_container: FastAPI):
-        """Should SQLAdmin is properly set up."""
+        """Should set up SQLAdmin properly."""
         # Check that admin routes are registered
         admin_routes = [
             route.path  # type: ignore[attr-defined]
@@ -167,7 +167,7 @@ class TestAppStartupIntegration:
         assert len(admin_routes) > 0
 
     def test_middleware_is_configured(self, app_with_real_container: FastAPI):
-        """Should middleware is properly configured."""
+        """Should configure middleware properly."""
         # Check that the app has the translation manager in state (set by LanguageMiddleware)
         assert hasattr(app_with_real_container.state, "translation_manager")
         assert app_with_real_container.state.translation_manager is not None

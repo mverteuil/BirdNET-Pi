@@ -197,7 +197,7 @@ def app_for_api_test(path_resolver, repo_root):
 
 
 def test_validate_species_endpoint(app_for_api_test):
-    """Should the species validation API endpoint."""
+    """Should validate species via API endpoint."""
     with patch("birdnetpi.web.routers.settings_api_routes.IOCDatabaseService") as mock_ioc:
         mock_ioc.return_value.species_exists.side_effect = lambda name: name == "Turdus migratorius"
 

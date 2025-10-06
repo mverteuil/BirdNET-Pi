@@ -47,7 +47,7 @@ class TestLanguageSwitching:
     """Test language switching in the web interface."""
 
     def test_config_language_respected(self, config_with_language, mock_path_resolver):
-        """Should the configured language is used by default."""
+        """Should use configured language by default."""
         # Test with Spanish config
         config_with_language("es")  # Config created but not used directly
         translation_manager = TranslationManager(mock_path_resolver)
@@ -90,7 +90,7 @@ class TestLanguageSwitching:
         ],
     )
     def test_multiple_language_support(self, mock_path_resolver, accept_header, expected_lang):
-        """Should various languages are properly extracted from headers."""
+        """Should properly extract various languages from headers."""
         translation_manager = TranslationManager(mock_path_resolver)
 
         request = Mock()
@@ -106,9 +106,9 @@ class TestLanguageSwitching:
         trans = translation_manager.install_for_request(request)
         assert trans is not None
 
-    def test_fallback_to_english(self, mock_path_resolver):
+    def test_fallback_to_english(self, path_resolver):
         """Should fallback to English for unsupported languages."""
-        translation_manager = TranslationManager(mock_path_resolver)
+        translation_manager = TranslationManager(path_resolver)
 
         request = Mock()
         request.headers = {"Accept-Language": "xyz-XY"}  # Non-existent language
@@ -205,7 +205,7 @@ class TestTranslationContent:
             )
 
     def test_mo_files_compiled(self, repo_root):
-        """Should .mo files are properly compiled."""
+        """Should properly compile .mo files."""
         locales_dir = repo_root / "locales"
 
         # Check for compiled .mo files
@@ -299,7 +299,7 @@ class TestEndToEndTranslation:
     """Test complete translation flow."""
 
     def test_translation_extraction_update_compile_cycle(self):
-        """Should the complete translation workflow."""
+        """Should complete translation workflow successfully."""
         # This test verifies the translation workflow but doesn't modify actual files
 
         # 1. Check babel.cfg exists
@@ -330,7 +330,7 @@ class TestEndToEndTranslation:
             assert msgid_count > 50, f"Only {msgid_count} messages extracted, expected more"
 
     def test_template_rendering_with_translations(self):
-        """Should templates can render with translations."""
+        """Should render templates with translations."""
         # Create a simple template
         templates = {
             "test.html": """

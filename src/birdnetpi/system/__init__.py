@@ -14,7 +14,6 @@ This package contains system-level management components:
 """
 
 from birdnetpi.system import structlog_configurator
-from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.log_reader import LogReaderService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.pulseaudio_setup import PulseAudioSetup
@@ -24,7 +23,6 @@ from birdnetpi.system.system_control import SystemControlService
 from birdnetpi.system.system_utils import SystemUtils
 
 __all__ = [
-    "FileManager",
     "HealthStatus",
     "LogReaderService",
     "PathResolver",

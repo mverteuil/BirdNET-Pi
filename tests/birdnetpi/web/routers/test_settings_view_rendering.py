@@ -11,7 +11,7 @@ from birdnetpi.config import BirdNETConfig
 
 
 class TestSettingsViewRendering:
-    """Test that settings views render correctly with proper data."""
+    """Settings views render correctly with proper data."""
 
     @pytest.fixture
     def template_env(self, repo_root):

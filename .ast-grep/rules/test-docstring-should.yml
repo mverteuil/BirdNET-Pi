@@ -1,6 +1,6 @@
 id: pytest-docstring-should-prefix
 language: python
-severity: warning
+severity: error
 message: |
   Test docstring should start with "Should" to describe expected behavior.
   Consider rewriting the docstring to follow BDD conventions.
@@ -26,9 +26,9 @@ rule:
                   """$DOCSTRING"""
                   $$$
 
-    # Exclude fixtures
+    # Exclude fixtures by checking if function follows @pytest.fixture decorator
     - not:
-        has:
+        follows:
           any:
             - pattern: '@pytest.fixture'
             - pattern: '@pytest.fixture($$$)'

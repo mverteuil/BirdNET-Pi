@@ -119,17 +119,17 @@ class TestReleaseConfig:
 class TestReleaseManager:
     """Test ReleaseManager functionality."""
 
-    def test_init__repo_path(self, mock_path_resolver, tmp_path):
+    def test_init__repo_path(self, path_resolver, tmp_path):
         """Should initialize with provided repo path."""
-        manager = ReleaseManager(mock_path_resolver, tmp_path)
-        assert manager.path_resolver == mock_path_resolver
+        manager = ReleaseManager(path_resolver, tmp_path)
+        assert manager.path_resolver == path_resolver
         assert manager.repo_path == tmp_path
 
-    def test_init_without_repo_path(self, mock_path_resolver):
+    def test_init_without_repo_path(self, path_resolver):
         """Should initialize with current directory as repo path."""
         with patch("pathlib.Path.cwd") as mock_cwd:
             mock_cwd.return_value = Path("/current/dir")
-            manager = ReleaseManager(mock_path_resolver)
+            manager = ReleaseManager(path_resolver)
             assert manager.repo_path == Path("/current/dir")
 
     def test_validate_assets_exist(self, release_manager, sample_assets):

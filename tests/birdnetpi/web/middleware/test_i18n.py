@@ -125,15 +125,15 @@ class TestLanguageMiddleware:
 class TestTranslationManager:
     """Test TranslationManager functionality."""
 
-    def test_initialization(self, mock_path_resolver):
+    def test_initialization(self, path_resolver):
         """Should translationManager initialization."""
-        manager = TranslationManager(mock_path_resolver)
-        assert manager.path_resolver == mock_path_resolver
+        manager = TranslationManager(path_resolver)
+        assert manager.path_resolver == path_resolver
         assert manager.default_language == "en"
         assert isinstance(manager.translations, dict)
 
     def test_get_translation_caching(self, translation_manager):
-        """Should translations are cached."""
+        """Should cache translations."""
         trans1 = translation_manager.get_translation("en")
         trans2 = translation_manager.get_translation("en")
         assert trans1 is trans2  # Same object, cached

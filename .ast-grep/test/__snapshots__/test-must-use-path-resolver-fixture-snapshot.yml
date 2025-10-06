@@ -1,0 +1,36 @@
+id: test-must-use-path-resolver-fixture
+snapshots:
+  ? |
+    # Invalid: test method with mock_path_resolver
+    class TestPaths:
+        def test_config(self, mock_path_resolver):
+            assert mock_path_resolver.get_config_path()
+  : labels:
+    - source: |-
+        def test_config(self, mock_path_resolver):
+                assert mock_path_resolver.get_config_path()
+      style: primary
+      start: 68
+      end: 162
+  ? |
+    # Invalid: using custom_resolver fixture
+    def test_with_custom(custom_resolver):
+        assert custom_resolver
+  : labels:
+    - source: |-
+        def test_with_custom(custom_resolver):
+            assert custom_resolver
+      style: primary
+      start: 41
+      end: 106
+  ? |
+    # Invalid: using mock_path_resolver instead of path_resolver
+    def test_something(mock_path_resolver):
+        assert mock_path_resolver.get_app_path()
+  : labels:
+    - source: |-
+        def test_something(mock_path_resolver):
+            assert mock_path_resolver.get_app_path()
+      style: primary
+      start: 61
+      end: 145

@@ -1,0 +1,49 @@
+id: test-prefer-app-with-temp-data-fixture
+language: python
+
+valid:
+  - |
+    # Valid: using app_with_temp_data fixture
+    def test_endpoint(app_with_temp_data):
+        client = app_with_temp_data.test_client()
+        response = client.get("/")
+        assert response.status_code == 200
+
+  - |
+    # Valid: test method using app_with_temp_data
+    class TestEndpoints:
+        def test_health(self, app_with_temp_data):
+            client = app_with_temp_data.test_client()
+            assert client.get("/health")
+
+  - |
+    # Valid: app_with_temp_data with other fixtures
+    def test_with_multiple(app_with_temp_data, mock_db):
+        assert app_with_temp_data
+
+  - |
+    # Valid: non-test function can use any app fixture
+    def helper_with_app(app_with_custom_config):
+        return app_with_custom_config
+
+  - |
+    # Valid: fixture not starting with app_with_
+    def test_something(fastapi_app):
+        assert fastapi_app
+
+invalid:
+  - |
+    # Invalid: using app_with_custom instead of app_with_temp_data
+    def test_something(app_with_custom):
+        client = app_with_custom.test_client()
+
+  - |
+    # Invalid: using app_with_real_db
+    def test_with_db(app_with_real_db):
+        assert app_with_real_db
+
+  - |
+    # Invalid: test method with app_with_custom
+    class TestEndpoints:
+        def test_api(self, app_with_custom):
+            assert app_with_custom

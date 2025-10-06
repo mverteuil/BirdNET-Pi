@@ -22,7 +22,7 @@ def analytics_manager(mock_detection_query_service, test_config):
 
 
 class TestScatterDataLimit:
-    """Test that scatter data properly handles high detection volumes."""
+    """Scatter data properly handles high detection volumes."""
 
     @pytest.mark.asyncio
     async def test_get_detection_scatter_data_uses_higher_limit(

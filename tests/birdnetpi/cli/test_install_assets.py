@@ -243,7 +243,7 @@ class TestMainFunction:
         mock_cli.assert_called_once_with(obj={})
 
     def test_script_entry_point(self, repo_root):
-        """Should module can be run as script."""
+        """Should run module as script."""
         module_path = repo_root / "src" / "birdnetpi" / "cli" / "install_assets.py"
 
         # Try to run with --help to avoid actual execution

@@ -276,7 +276,7 @@ class TestSettingsE2E:
                 assert "ValidationError" in str(type(e).__name__) or "ValueError" in str(e)
 
     def test_e2e_settings_handles_concurrent_access(self, e2e_app):
-        """Should settings can handle concurrent access (simulated)."""
+        """Should handle concurrent access to settings (simulated)."""
         app, path_resolver, _ = e2e_app
 
         with TestClient(app) as client:

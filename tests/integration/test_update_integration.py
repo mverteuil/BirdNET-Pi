@@ -147,7 +147,7 @@ class TestUpdateFlowIntegration:
         assert "update:status" in calls
 
     def test_cancel_pending_update(self, client, cache):
-        """Should be able to cancel pending update requests."""
+        """Should cancel pending update requests."""
         # Use cache fixture directly
         # Cache is provided by fixture
 

@@ -11,7 +11,7 @@ from birdnetpi.web.routers import settings_view_routes
 
 
 def test_simple_startup():
-    """Should the app can start up without errors."""
+    """Should start up app without errors."""
     # Create a minimal app without complex dependencies
 
     app = FastAPI()

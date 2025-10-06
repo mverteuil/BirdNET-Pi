@@ -8,11 +8,17 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.config.manager import ConfigManager
+from birdnetpi.system.git_operations import GitOperationsService
 from birdnetpi.system.path_resolver import PathResolver
+from birdnetpi.system.system_utils import SystemUtils
 from birdnetpi.utils.cache import Cache
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.update import (
+    GitBranchListResponse,
     GitConfigRequest,
+    GitRemoteListResponse,
+    GitRemoteModel,
+    GitRemoteRequest,
     UpdateActionResponse,
     UpdateApplyRequest,
     UpdateCheckRequest,
@@ -238,4 +244,197 @@ async def update_git_config(
         )
     except Exception as e:
         logger.error("Failed to update git configuration: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/git/remotes")
+@inject
+async def list_git_remotes(
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
+) -> GitRemoteListResponse:
+    """List all configured git remotes.
+
+    Returns:
+        List of git remotes with names and URLs
+    """
+    try:
+        # Only allow for SBC deployments
+        deployment_type = SystemUtils.get_deployment_environment()
+        if deployment_type == "docker":
+            return GitRemoteListResponse(remotes=[])
+
+        git_service = GitOperationsService(path_resolver)
+        remotes = git_service.list_remotes()
+
+        return GitRemoteListResponse(
+            remotes=[GitRemoteModel(name=r.name, url=r.url) for r in remotes]
+        )
+    except Exception as e:
+        logger.error("Failed to list git remotes: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/git/remotes")
+@inject
+async def add_git_remote(
+    request: GitRemoteRequest,
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
+) -> UpdateActionResponse:
+    """Add a new git remote.
+
+    Args:
+        request: Remote name and URL
+        path_resolver: Path resolver for repository location
+
+    Returns:
+        Success/error response
+    """
+    try:
+        # Only allow for SBC deployments
+        deployment_type = SystemUtils.get_deployment_environment()
+        if deployment_type == "docker":
+            return UpdateActionResponse(
+                success=False,
+                error="Git remote management is not available for Docker deployments",
+            )
+
+        git_service = GitOperationsService(path_resolver)
+        git_service.add_remote(request.name, request.url)
+
+        return UpdateActionResponse(
+            success=True,
+            message=f"Git remote '{request.name}' added successfully",
+        )
+    except ValueError as e:
+        logger.warning("Invalid git remote request: %s", e)
+        return UpdateActionResponse(success=False, error=str(e))
+    except Exception as e:
+        logger.error("Failed to add git remote: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.put("/git/remotes/{remote_name}")
+@inject
+async def update_git_remote(
+    remote_name: str,
+    request: GitRemoteRequest,
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
+) -> UpdateActionResponse:
+    """Update an existing git remote URL.
+
+    Args:
+        remote_name: Name of remote to update
+        request: New remote configuration
+        path_resolver: Path resolver for repository location
+
+    Returns:
+        Success/error response
+    """
+    try:
+        # Only allow for SBC deployments
+        deployment_type = SystemUtils.get_deployment_environment()
+        if deployment_type == "docker":
+            return UpdateActionResponse(
+                success=False,
+                error="Git remote management is not available for Docker deployments",
+            )
+
+        git_service = GitOperationsService(path_resolver)
+
+        # If name is changing, delete old and add new
+        if remote_name != request.name:
+            # Can't rename origin
+            if remote_name == "origin":
+                return UpdateActionResponse(
+                    success=False,
+                    error="Cannot rename 'origin' remote. Edit URL only.",
+                )
+            git_service.delete_remote(remote_name)
+            git_service.add_remote(request.name, request.url)
+        else:
+            # Just update URL
+            git_service.update_remote(request.name, request.url)
+
+        return UpdateActionResponse(
+            success=True,
+            message=f"Git remote '{request.name}' updated successfully",
+        )
+    except ValueError as e:
+        logger.warning("Invalid git remote update: %s", e)
+        return UpdateActionResponse(success=False, error=str(e))
+    except Exception as e:
+        logger.error("Failed to update git remote: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.delete("/git/remotes/{remote_name}")
+@inject
+async def delete_git_remote(
+    remote_name: str,
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
+) -> UpdateActionResponse:
+    """Delete a git remote.
+
+    Args:
+        remote_name: Name of remote to delete
+        path_resolver: Path resolver for repository location
+
+    Returns:
+        Success/error response
+
+    Note:
+        The 'origin' remote cannot be deleted for safety.
+    """
+    try:
+        # Only allow for SBC deployments
+        deployment_type = SystemUtils.get_deployment_environment()
+        if deployment_type == "docker":
+            return UpdateActionResponse(
+                success=False,
+                error="Git remote management is not available for Docker deployments",
+            )
+
+        git_service = GitOperationsService(path_resolver)
+        git_service.delete_remote(remote_name)
+
+        return UpdateActionResponse(
+            success=True,
+            message=f"Git remote '{remote_name}' deleted successfully",
+        )
+    except ValueError as e:
+        logger.warning("Cannot delete git remote: %s", e)
+        return UpdateActionResponse(success=False, error=str(e))
+    except Exception as e:
+        logger.error("Failed to delete git remote: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/git/branches/{remote_name}")
+@inject
+async def list_git_branches(
+    remote_name: str,
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
+) -> GitBranchListResponse:
+    """List branches and tags for a git remote.
+
+    Args:
+        remote_name: Name of remote to query
+        path_resolver: Path resolver for repository location
+
+    Returns:
+        Lists of tags and branches
+    """
+    try:
+        # Only allow for SBC deployments
+        deployment_type = SystemUtils.get_deployment_environment()
+        if deployment_type == "docker":
+            return GitBranchListResponse(tags=[], branches=[])
+
+        git_service = GitOperationsService(path_resolver)
+        tags = git_service.list_tags(remote_name)
+        branches = git_service.list_branches(remote_name)
+
+        return GitBranchListResponse(tags=tags, branches=branches)
+    except Exception as e:
+        logger.error("Failed to list branches for remote '%s': %s", remote_name, e)
         raise HTTPException(status_code=500, detail=str(e)) from e

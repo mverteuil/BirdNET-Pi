@@ -140,3 +140,4 @@ class UpdatePageContext(BaseTemplateContext):
     sse_endpoint: str = Field(..., description="Server-Sent Events endpoint URL")
     git_remote: str = Field(..., description="Git remote name")
     git_branch: str = Field(..., description="Git branch name")
+    deployment_type: str = Field(..., description="Deployment type (docker/sbc/unknown)")

@@ -63,15 +63,15 @@ async def in_memory_session(async_in_memory_session):
 class TestSpeciesDatabaseServiceInitialization:
     """Test multilingual database service initialization."""
 
-    def test_service_initialization_all_databases_available(self, mock_path_resolver):
+    def test_service_initialization_all_databases_available(self, path_resolver):
         """Should initialize service with all databases paths set."""
-        service = SpeciesDatabaseService(mock_path_resolver)
+        service = SpeciesDatabaseService(path_resolver)
 
-        assert service.path_resolver == mock_path_resolver
+        assert service.path_resolver == path_resolver
         # Check that paths match what the fixture provides
-        assert service.ioc_db_path == mock_path_resolver.get_ioc_database_path()
-        assert service.avibase_db_path == mock_path_resolver.get_avibase_database_path()
-        assert service.patlevin_db_path == mock_path_resolver.get_patlevin_database_path()
+        assert service.ioc_db_path == path_resolver.get_ioc_database_path()
+        assert service.avibase_db_path == path_resolver.get_avibase_database_path()
+        assert service.patlevin_db_path == path_resolver.get_patlevin_database_path()
 
 
 class TestAttachDetachDatabases:

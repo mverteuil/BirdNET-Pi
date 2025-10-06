@@ -1,0 +1,36 @@
+id: test-prefer-app-with-temp-data-fixture
+snapshots:
+  ? |
+    # Invalid: test method with app_with_custom
+    class TestEndpoints:
+        def test_api(self, app_with_custom):
+            assert app_with_custom
+  : labels:
+    - source: |-
+        def test_api(self, app_with_custom):
+                assert app_with_custom
+      style: primary
+      start: 69
+      end: 136
+  ? |
+    # Invalid: using app_with_custom instead of app_with_temp_data
+    def test_something(app_with_custom):
+        client = app_with_custom.test_client()
+  : labels:
+    - source: |-
+        def test_something(app_with_custom):
+            client = app_with_custom.test_client()
+      style: primary
+      start: 63
+      end: 142
+  ? |
+    # Invalid: using app_with_real_db
+    def test_with_db(app_with_real_db):
+        assert app_with_real_db
+  : labels:
+    - source: |-
+        def test_with_db(app_with_real_db):
+            assert app_with_real_db
+      style: primary
+      start: 34
+      end: 97

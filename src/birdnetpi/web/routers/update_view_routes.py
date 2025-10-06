@@ -11,6 +11,7 @@ from fastapi.templating import Jinja2Templates
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.system.status import SystemInspector
+from birdnetpi.system.system_utils import SystemUtils
 from birdnetpi.utils.cache import Cache
 from birdnetpi.utils.language import get_user_language
 from birdnetpi.web.core.container import Container
@@ -72,6 +73,9 @@ async def update_page(
     else:
         update_result = None
 
+    # Get deployment type
+    deployment_type = SystemUtils.get_deployment_environment()
+
     # Create validated context
     context = UpdatePageContext(
         config=config,
@@ -86,6 +90,7 @@ async def update_page(
         sse_endpoint="/api/update/stream",
         git_remote=config.updates.git_remote,
         git_branch=config.updates.git_branch,
+        deployment_type=deployment_type,
     )
 
     # Render the update template

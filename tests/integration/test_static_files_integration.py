@@ -5,10 +5,10 @@ from fastapi.testclient import TestClient
 
 
 class TestStaticFilesIntegration:
-    """Test that static files are properly served and templates can reference them."""
+    """Static files are properly served and templates can reference them."""
 
     def test_static_route_exists(self, app_with_temp_data: FastAPI):
-        """Should the static route is properly mounted by testing it works."""
+        """Should properly mount static route for serving files."""
         # Rather than checking route internals, test that static files are actually served
         with TestClient(app_with_temp_data) as client:
             response = client.get("/static/css/style.css")
@@ -16,7 +16,7 @@ class TestStaticFilesIntegration:
             assert response.status_code == 200, "Static route not properly mounted"
 
     def test_static_css_file_is_served(self, app_with_temp_data: FastAPI):
-        """Should the style.css file can be accessed via static route."""
+        """Should serve style.css file via static route."""
         with TestClient(app_with_temp_data) as client:
             response = client.get("/static/css/style.css")
 
@@ -29,7 +29,7 @@ class TestStaticFilesIntegration:
             assert "body" in response.text
 
     def test_index_page_references_static_css(self, app_with_temp_data: FastAPI):
-        """Should the index page correctly references the static CSS file."""
+        """Should correctly reference static CSS file in index page."""
         with TestClient(app_with_temp_data) as client:
             response = client.get("/")
 
@@ -41,7 +41,7 @@ class TestStaticFilesIntegration:
             assert '<link rel="stylesheet"' in response.text
 
     def test_settings_page_references_static_css(self, app_with_temp_data: FastAPI):
-        """Should the settings page correctly references the static CSS file."""
+        """Should correctly reference static CSS file in settings page."""
         with TestClient(app_with_temp_data) as client:
             response = client.get("/admin/settings")
 
@@ -54,7 +54,7 @@ class TestStaticFilesIntegration:
             assert "Settings" in response.text or "Configuration" in response.text
 
     def test_livestream_page_references_static_css(self, app_with_temp_data: FastAPI):
-        """Should the livestream page correctly references the static CSS file."""
+        """Should correctly reference static CSS file in livestream page."""
         with TestClient(app_with_temp_data) as client:
             response = client.get("/livestream")
 

@@ -112,7 +112,7 @@ class TestConfigureProcessors:
 
     @pytest.fixture
     def test_config(self, test_config):
-        """Create a mock BirdNET config."""
+        """Should create a mock BirdNET config."""
         test_config.logging = LoggingConfig(
             level="info",
             json_logs=None,
@@ -288,7 +288,7 @@ class TestConfigureHandlers:
 
     @pytest.fixture
     def test_config(self):
-        """Create a mock BirdNET config."""
+        """Should create a mock BirdNET config."""
         config = MagicMock(spec=BirdNETConfig)
         config.logging = LoggingConfig(
             level="info",
@@ -394,7 +394,7 @@ class TestConfigureStructlog:
 
     @pytest.fixture
     def test_config(self):
-        """Create a mock BirdNET config."""
+        """Should create a mock BirdNET config."""
         config = MagicMock(spec=BirdNETConfig)
         config.logging = LoggingConfig(
             level="info",

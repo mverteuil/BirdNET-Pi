@@ -115,7 +115,7 @@ class TestConfigPermissions:
                 os.environ.pop("BIRDNETPI_DATA", None)
 
     def test_config_handles_existing_file(self):
-        """Should existing config files are properly overwritten."""
+        """Should properly overwrite existing config files."""
         with tempfile.TemporaryDirectory() as temp_dir:
             os.environ["BIRDNETPI_DATA"] = temp_dir
 

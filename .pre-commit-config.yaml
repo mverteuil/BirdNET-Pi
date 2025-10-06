@@ -14,10 +14,17 @@ repos:
         name: "ruff-import-order"
         args: [ "--select", "I", "--fix" ]
         exclude: ^build/
+        stages: [pre-commit, pre-merge-commit, pre-push]
       - id: ruff-check
         name: "ruff-check"
         args: [ "--fix" ]
         exclude: ^build/
+        stages: [pre-commit, pre-merge-commit, pre-push]
+      - id: ruff-check
+        name: "ruff-check-no-fix"
+        args: [ ]
+        exclude: ^build/
+        stages: [manual]
       - id: ruff-format
         name: "ruff-format"
         exclude: ^build/

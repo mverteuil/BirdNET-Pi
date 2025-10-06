@@ -1,0 +1,45 @@
+id: test-must-use-path-resolver-fixture
+language: python
+severity: error
+message: |
+  Test functions must use the 'path_resolver' fixture from root conftest.py.
+  Custom path resolvers should be created by overriding methods on the standard fixture
+  or passing it through dependency injection, not by creating new fixtures.
+note: |
+  The global path_resolver fixture provides proper test isolation and prevents issues.
+  If you absolutely need a custom resolver fixture, add: # ast-grep-ignore
+
+  See TESTING_GUIDELINES.md for details on proper PathResolver usage in tests.
+
+rule:
+  any:
+    # Test methods (with self) - method pattern FIRST
+    - pattern: |
+        def $NAME(self, $PARAM):
+          $$$
+    # Test functions - function patterns SECOND
+    - pattern: |
+        def $NAME($PARAM):
+          $$$
+
+constraints:
+  NAME:
+    regex: '^test_'
+  PARAM:
+    regex: '_resolver$'
+    not:
+      regex: '^path_resolver$'
+
+metadata:
+  category: best-practice
+  technology:
+    - pytest
+    - python
+  confidence: HIGH
+  likelihood: MEDIUM
+  impact: HIGH
+  subcategory:
+    - testing
+    - fixtures
+  references:
+    - /TESTING_GUIDELINES.md

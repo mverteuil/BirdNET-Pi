@@ -26,6 +26,7 @@ class UpdateStatusResponse(BaseModel):
     release_url: str | None = None
     can_auto_update: bool = False
     error: str | None = None
+    deployment_type: str | None = None  # docker, sbc, or unknown
 
 
 class UpdateActionResponse(BaseModel):
@@ -41,3 +42,30 @@ class GitConfigRequest(BaseModel):
 
     git_remote: str
     git_branch: str
+
+
+class GitRemoteModel(BaseModel):
+    """Model for a git remote."""
+
+    name: str
+    url: str
+
+
+class GitRemoteListResponse(BaseModel):
+    """Response model for listing git remotes."""
+
+    remotes: list[GitRemoteModel]
+
+
+class GitRemoteRequest(BaseModel):
+    """Request model for adding/updating a git remote."""
+
+    name: str
+    url: str
+
+
+class GitBranchListResponse(BaseModel):
+    """Response model for listing branches and tags."""
+
+    tags: list[str]
+    branches: list[str]

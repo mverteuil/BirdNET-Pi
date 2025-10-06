@@ -12,7 +12,7 @@ from birdnetpi.utils.cache.cache import Cache
 
 
 class TestCacheInitialization:
-    """Should test Cache class initialization with Redis backend."""
+    """Cache class initialization with Redis backend."""
 
     @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool")
     @patch("birdnetpi.utils.cache.backends.redis.Redis")

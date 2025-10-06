@@ -56,12 +56,12 @@ def mock_app_with_translation_manager(translation_manager):
 class TestTranslationManager:
     """Test TranslationManager functionality."""
 
-    def test_init(self, mock_path_resolver):
+    def test_init(self, path_resolver):
         """Should initialize with file resolver and default settings."""
-        manager = TranslationManager(mock_path_resolver)
+        manager = TranslationManager(path_resolver)
 
-        assert manager.path_resolver == mock_path_resolver
-        assert manager.locales_dir == mock_path_resolver.get_locales_dir()
+        assert manager.path_resolver == path_resolver
+        assert manager.locales_dir == path_resolver.get_locales_dir()
         assert manager.translations == {}
         assert manager.default_language == "en"
 

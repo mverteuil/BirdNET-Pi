@@ -8,7 +8,8 @@
 {% block scripts %}
     {{ super() }}
     <script>
-        // Store SSE endpoint for JavaScript to use
+        // Store configuration for JavaScript
+        const deploymentType = "{{ deployment_type }}";
         const sseEndpoint = "{{ sse_endpoint }}";
     </script>
     <script src="{{ request.url_for('static', path='js/update.js') }}"></script>
@@ -18,6 +19,17 @@
 <div class="update-container">
     <!-- Skip navigation link for screen readers -->
     <a href="#update-content" class="skip-link">{{ _('Skip to update content') }}</a>
+
+    <!-- Deployment Type Banner -->
+    <div class="deployment-banner" role="status" aria-live="polite">
+        {% if deployment_type == 'docker' %}
+            <span class="deployment-badge docker">{{ _('Docker Deployment') }}</span>
+        {% elif deployment_type == 'sbc' %}
+            <span class="deployment-badge sbc">{{ _('SBC Deployment') }}</span>
+        {% else %}
+            <span class="deployment-badge unknown">{{ _('Unknown Deployment') }}</span>
+        {% endif %}
+    </div>
 
     <!-- Update Status Panel -->
     <div class="update-status-panel" id="update-status-panel" role="region" aria-label="{{ _('Update status') }}">
@@ -82,6 +94,7 @@
             </div>
             {% endif %}
 
+            {% if deployment_type == 'sbc' %}
             <div class="update-buttons">
                 <button
                     type="button"
@@ -109,43 +122,109 @@
             {% if not update_status.can_auto_update %}
             <div class="alert alert-info" role="alert">
                 <strong>{{ _('Manual Update Required') }}</strong>
-                <p>{{ _('This update cannot be applied automatically. Please follow the manual update instructions.') }}</p>
+                <p>{{ _('This update cannot be applied automatically. Please see instructions below.') }}</p>
             </div>
+            {% endif %}
             {% endif %}
         </div>
     </div>
 
-    <!-- Git Configuration Panel -->
+    <!-- Deployment-Specific Configuration -->
+    {% if deployment_type == 'docker' %}
+    <!-- Docker Deployment Instructions -->
+    <div class="docker-config-panel" id="docker-config-panel" role="region" aria-label="{{ _('Docker update instructions') }}">
+        <h2>{{ _('Docker Update Instructions') }}</h2>
+
+        <div class="info-section">
+            <p class="info-text">
+                {{ _('BirdNET-Pi runs in a Docker container. Updates are managed through Docker image updates.') }}
+            </p>
+        </div>
+
+        <details class="instructions-details">
+            <summary>{{ _('Production Deployment (Tagged Releases)') }}</summary>
+            <div class="instructions-content">
+                <p>{{ _('For production deployments using tagged releases:') }}</p>
+                <ol>
+                    <li>{{ _('Stop the current container:') }}
+                        <pre><code>docker compose down</code></pre>
+                    </li>
+                    <li>{{ _('Pull the new image:') }}
+                        <pre><code>docker compose pull</code></pre>
+                    </li>
+                    <li>{{ _('Start the container:') }}
+                        <pre><code>docker compose up -d</code></pre>
+                    </li>
+                    <li>{{ _('Database migrations run automatically on container restart') }}</li>
+                </ol>
+            </div>
+        </details>
+
+        <details class="instructions-details">
+            <summary>{{ _('Development Deployment (Latest Code)') }}</summary>
+            <div class="instructions-content">
+                <p>{{ _('For development deployments building from source:') }}</p>
+                <ol>
+                    <li>{{ _('Stop the current container:') }}
+                        <pre><code>docker compose down</code></pre>
+                    </li>
+                    <li>{{ _('Rebuild the image:') }}
+                        <pre><code>docker compose build</code></pre>
+                    </li>
+                    <li>{{ _('Start the container:') }}
+                        <pre><code>docker compose up -d</code></pre>
+                    </li>
+                    <li>{{ _('Database migrations run automatically on container restart') }}</li>
+                </ol>
+            </div>
+        </details>
+
+        <div class="alert alert-info" role="alert">
+            <strong>{{ _('Note:') }}</strong>
+            {{ _('Git remote and branch settings are not used for Docker deployments. Updates come from Docker images.') }}
+        </div>
+    </div>
+
+    {% elif deployment_type == 'sbc' %}
+    <!-- SBC Deployment Git Configuration -->
     <div class="git-config-panel" id="git-config-panel" role="region" aria-label="{{ _('Git configuration') }}">
         <h2>{{ _('Git Configuration') }}</h2>
 
         <form id="git-config-form" class="git-config-form">
             <div class="config-row">
                 <label for="git-remote">{{ _('Git Remote:') }}</label>
-                <input
-                    type="text"
-                    id="git-remote"
-                    name="git_remote"
-                    value="{{ git_remote }}"
-                    pattern="^[a-zA-Z0-9_-]+$"
-                    title="{{ _('Remote name (e.g., origin)') }}"
-                    aria-describedby="git-remote-help"
-                >
-                <small id="git-remote-help">{{ _('Git remote for updates (default: origin)') }}</small>
+                <div class="input-group">
+                    <select
+                        id="git-remote"
+                        name="git_remote"
+                        aria-describedby="git-remote-help"
+                        required
+                    >
+                        <option value="">{{ _('Loading remotes...') }}</option>
+                    </select>
+                    <button
+                        type="button"
+                        id="manage-remotes-btn"
+                        class="btn btn-secondary"
+                        aria-label="{{ _('Manage git remotes') }}"
+                    >
+                        {{ _('Manage Remotes') }}
+                    </button>
+                </div>
+                <small id="git-remote-help">{{ _('Select the git remote to track for updates') }}</small>
             </div>
 
             <div class="config-row">
-                <label for="git-branch">{{ _('Git Branch:') }}</label>
-                <input
-                    type="text"
+                <label for="git-branch">{{ _('Git Branch/Tag:') }}</label>
+                <select
                     id="git-branch"
                     name="git_branch"
-                    value="{{ git_branch }}"
-                    pattern="^[a-zA-Z0-9/_-]+$"
-                    title="{{ _('Branch name (e.g., main)') }}"
                     aria-describedby="git-branch-help"
+                    required
                 >
-                <small id="git-branch-help">{{ _('Git branch to track (default: main)') }}</small>
+                    <option value="">{{ _('Select a remote first') }}</option>
+                </select>
+                <small id="git-branch-help">{{ _('Select the branch or tag to track') }}</small>
             </div>
 
             <div class="config-actions">
@@ -156,10 +235,80 @@
                 >
                     {{ _('Save Configuration') }}
                 </button>
-                <div id="git-config-message" class="config-message" style="display: none;"></div>
+                <div id="git-config-message" class="config-message" role="status" aria-live="polite" style="display: none;"></div>
             </div>
         </form>
     </div>
+
+    <!-- Git Remote Management Modal -->
+    <div id="remote-management-modal" class="modal" role="dialog" aria-labelledby="modal-title" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">{{ _('Manage Git Remotes') }}</h3>
+                <button
+                    type="button"
+                    class="modal-close"
+                    aria-label="{{ _('Close modal') }}"
+                >
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Remote List -->
+                <div class="remote-list" id="remote-list" role="list">
+                    <!-- Populated by JavaScript -->
+                </div>
+
+                <!-- Add New Remote Form -->
+                <details class="add-remote-details">
+                    <summary>{{ _('Add New Remote') }}</summary>
+                    <form id="add-remote-form" class="remote-form">
+                        <div class="form-row">
+                            <label for="new-remote-name">{{ _('Remote Name:') }}</label>
+                            <input
+                                type="text"
+                                id="new-remote-name"
+                                name="name"
+                                pattern="[a-zA-Z0-9_-]+"
+                                title="{{ _('Letters, numbers, underscore, and dash only') }}"
+                                required
+                                aria-describedby="remote-name-help"
+                            >
+                            <small id="remote-name-help">{{ _('e.g., upstream, fork') }}</small>
+                        </div>
+
+                        <div class="form-row">
+                            <label for="new-remote-url">{{ _('Remote URL:') }}</label>
+                            <input
+                                type="url"
+                                id="new-remote-url"
+                                name="url"
+                                placeholder="https://github.com/user/repo.git"
+                                required
+                                aria-describedby="remote-url-help"
+                            >
+                            <small id="remote-url-help">{{ _('Git repository URL') }}</small>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            {{ _('Add Remote') }}
+                        </button>
+                    </form>
+                </details>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Unknown Deployment Type -->
+    <div class="unknown-deployment-panel" role="region" aria-label="{{ _('Unknown deployment information') }}">
+        <h2>{{ _('Deployment Type Unknown') }}</h2>
+        <div class="alert alert-warning" role="alert">
+            <p>{{ _('Unable to determine deployment type. Update functionality may be limited.') }}</p>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Update Progress Panel -->
     <div class="update-progress-panel" id="update-progress-panel" style="display: none;"
@@ -196,14 +345,14 @@
 
         <div class="result-content">
             {% if update_result.success %}
-                <div class="alert alert-success">
+                <div class="alert alert-success" role="status">
                     <strong>{{ _('Update Successful') }}</strong>
                     {% if update_result.message %}
                         <p>{{ update_result.message }}</p>
                     {% endif %}
                 </div>
             {% else %}
-                <div class="alert alert-error">
+                <div class="alert alert-error" role="alert">
                     <strong>{{ _('Update Failed') }}</strong>
                     {% if update_result.error %}
                         <p>{{ update_result.error }}</p>
@@ -218,10 +367,12 @@
     <div class="help-panel" id="help-panel" role="region" aria-label="{{ _('Update help') }}">
         <h2>{{ _('Update Help') }}</h2>
 
+        {% if deployment_type == 'sbc' %}
         <details>
             <summary>{{ _('About Automatic Updates') }}</summary>
             <div class="help-content">
-                <p>{{ _('BirdNET-Pi supports automatic updates for minor versions and patches. Major version updates may require manual intervention.') }}</p>
+                <p>{{ _('BirdNET-Pi supports automatic updates on SBC deployments through the update daemon.') }}</p>
+                <p>{{ _('The update daemon monitors the configured git remote and branch for new releases.') }}</p>
                 <p>{{ _('Before applying an update:') }}</p>
                 <ul>
                     <li>{{ _('Ensure your system has sufficient disk space') }}</li>
@@ -232,17 +383,31 @@
         </details>
 
         <details>
-            <summary>{{ _('Manual Update Instructions') }}</summary>
+            <summary>{{ _('SBC Update Process') }}</summary>
             <div class="help-content">
-                <p>{{ _('If automatic updates are not available, you can update manually:') }}</p>
+                <p>{{ _('For SBC deployments, updates are performed by the update daemon:') }}</p>
                 <ol>
-                    <li>{{ _('SSH into your BirdNET-Pi device') }}</li>
-                    <li>{{ _('Navigate to the BirdNET-Pi directory') }}</li>
-                    <li>{{ _('Run: git pull origin main') }}</li>
-                    <li>{{ _('Restart the services: sudo systemctl restart birdnetpi') }}</li>
+                    <li>{{ _('The daemon checks the configured remote/branch for updates') }}</li>
+                    <li>{{ _('If an update is available, it can be applied through the web interface') }}</li>
+                    <li>{{ _('The daemon pulls the latest code and runs migrations') }}</li>
+                    <li>{{ _('Services are restarted automatically') }}</li>
                 </ol>
             </div>
         </details>
+        {% elif deployment_type == 'docker' %}
+        <details>
+            <summary>{{ _('Docker Update Best Practices') }}</summary>
+            <div class="help-content">
+                <p>{{ _('For Docker deployments:') }}</p>
+                <ul>
+                    <li>{{ _('Always use docker compose down (never docker compose down -v which deletes data)') }}</li>
+                    <li>{{ _('Back up your data volume before major version updates') }}</li>
+                    <li>{{ _('Check the release notes on GitHub for breaking changes') }}</li>
+                    <li>{{ _('Database migrations run automatically when the container starts') }}</li>
+                </ul>
+            </div>
+        </details>
+        {% endif %}
 
         <details>
             <summary>{{ _('Troubleshooting') }}</summary>
@@ -251,7 +416,13 @@
                 <ul>
                     <li>{{ _('Check the system logs for error messages') }}</li>
                     <li>{{ _('Ensure your device has internet connectivity') }}</li>
-                    <li>{{ _('Verify that the update service is running') }}</li>
+                    {% if deployment_type == 'sbc' %}
+                    <li>{{ _('Verify that the update daemon is running') }}</li>
+                    <li>{{ _('Check git remote configuration is correct') }}</li>
+                    {% elif deployment_type == 'docker' %}
+                    <li>{{ _('Verify Docker daemon is running') }}</li>
+                    <li>{{ _('Check Docker image pull permissions') }}</li>
+                    {% endif %}
                     <li>{{ _('Report issues on GitHub with error details') }}</li>
                 </ul>
             </div>

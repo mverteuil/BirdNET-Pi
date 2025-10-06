@@ -243,7 +243,7 @@ class TestLandingPageIntegration:
 
     @pytest.mark.asyncio
     async def test_species_frequency_sorting(self, presentation_manager):
-        """Should species are sorted by frequency."""
+        """Should sort species by frequency."""
         # Only get species frequency data, not the entire landing page
         analytics = presentation_manager.analytics_manager
         frequency = await analytics.get_species_frequency_analysis()

@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 
 def test_read_main(path_resolver, tmp_path) -> None:
-    """Should the main endpoint of the web application with simplified mocking."""
+    """Should return response from main endpoint with simplified mocking."""
     # Create a simple FastAPI app for testing
     app = FastAPI()
 

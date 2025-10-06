@@ -6,7 +6,7 @@ from birdnetpi.audio.devices import AudioDevice, AudioDeviceService
 
 
 class TestAudioDeviceService:
-    """Should test the AudioDeviceService class."""
+    """Tests for AudioDeviceService class."""
 
     @pytest.fixture(autouse=True)
     def audio_device_service(self):

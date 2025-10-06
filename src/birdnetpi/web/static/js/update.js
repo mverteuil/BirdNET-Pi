@@ -151,21 +151,150 @@ const updateManager = {
   },
 };
 
-// Git configuration handling
+// Git configuration handling (SBC only)
 const gitConfig = {
   form: null,
-  remoteInput: null,
-  branchInput: null,
+  remoteSelect: null,
+  branchSelect: null,
   messageDiv: null,
+  manageRemotesBtn: null,
+  currentRemotes: [],
 
   init() {
+    // Only init for SBC deployments
+    if (typeof deploymentType === "undefined" || deploymentType !== "sbc") {
+      return;
+    }
+
     this.form = document.getElementById("git-config-form");
-    this.remoteInput = document.getElementById("git-remote");
-    this.branchInput = document.getElementById("git-branch");
+    this.remoteSelect = document.getElementById("git-remote");
+    this.branchSelect = document.getElementById("git-branch");
     this.messageDiv = document.getElementById("git-config-message");
+    this.manageRemotesBtn = document.getElementById("manage-remotes-btn");
 
     if (this.form) {
       this.form.addEventListener("submit", (e) => this.handleSubmit(e));
+    }
+
+    if (this.remoteSelect) {
+      this.remoteSelect.addEventListener("change", () => this.loadBranches());
+    }
+
+    if (this.manageRemotesBtn) {
+      this.manageRemotesBtn.addEventListener("click", () =>
+        gitRemoteManager.openModal(),
+      );
+    }
+
+    // Load remotes on init
+    this.loadRemotes();
+  },
+
+  async loadRemotes() {
+    try {
+      const response = await fetch("/api/update/git/remotes");
+      const data = await response.json();
+
+      this.currentRemotes = data.remotes;
+
+      // Populate remote select
+      this.remoteSelect.innerHTML = "";
+
+      if (data.remotes.length === 0) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = _("no-remotes-configured");
+        this.remoteSelect.appendChild(option);
+      } else {
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = _("select-remote");
+        this.remoteSelect.appendChild(placeholder);
+
+        data.remotes.forEach((remote) => {
+          const option = document.createElement("option");
+          option.value = remote.name;
+          option.textContent = `${remote.name} (${remote.url})`;
+          this.remoteSelect.appendChild(option);
+        });
+
+        // Try to select current remote if available
+        const currentRemoteValue = this.remoteSelect.dataset.currentValue;
+        if (currentRemoteValue) {
+          this.remoteSelect.value = currentRemoteValue;
+          // Load branches for current remote
+          this.loadBranches();
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load git remotes:", error);
+      this.showMessage(_("failed-to-load-remotes"), "error");
+    }
+  },
+
+  async loadBranches() {
+    const remoteName = this.remoteSelect.value;
+
+    if (!remoteName) {
+      this.branchSelect.innerHTML =
+        '<option value="">' + _("select-remote-first") + "</option>";
+      return;
+    }
+
+    try {
+      this.branchSelect.innerHTML =
+        '<option value="">' + _("loading-branches") + "</option>";
+      this.branchSelect.disabled = true;
+
+      const response = await fetch(
+        `/api/update/git/branches/${encodeURIComponent(remoteName)}`,
+      );
+      const data = await response.json();
+
+      this.branchSelect.innerHTML = "";
+      this.branchSelect.disabled = false;
+
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = _("select-branch-or-tag");
+      this.branchSelect.appendChild(placeholder);
+
+      // Add tags group
+      if (data.tags && data.tags.length > 0) {
+        const tagsGroup = document.createElement("optgroup");
+        tagsGroup.label = _("tags");
+        data.tags.forEach((tag) => {
+          const option = document.createElement("option");
+          option.value = tag;
+          option.textContent = tag;
+          tagsGroup.appendChild(option);
+        });
+        this.branchSelect.appendChild(tagsGroup);
+      }
+
+      // Add branches group
+      if (data.branches && data.branches.length > 0) {
+        const branchesGroup = document.createElement("optgroup");
+        branchesGroup.label = _("branches");
+        data.branches.forEach((branch) => {
+          const option = document.createElement("option");
+          option.value = branch;
+          option.textContent = branch;
+          branchesGroup.appendChild(option);
+        });
+        this.branchSelect.appendChild(branchesGroup);
+      }
+
+      // Try to select current branch if available
+      const currentBranchValue = this.branchSelect.dataset.currentValue;
+      if (currentBranchValue) {
+        this.branchSelect.value = currentBranchValue;
+      }
+    } catch (error) {
+      console.error("Failed to load branches:", error);
+      this.branchSelect.innerHTML =
+        '<option value="">' + _("failed-to-load-branches") + "</option>";
+      this.branchSelect.disabled = false;
     }
   },
 
@@ -173,18 +302,11 @@ const gitConfig = {
     event.preventDefault();
 
     try {
-      // Get form values
-      const gitRemote = this.remoteInput.value.trim();
-      const gitBranch = this.branchInput.value.trim();
+      const gitRemote = this.remoteSelect.value;
+      const gitBranch = this.branchSelect.value;
 
-      // Validate inputs
-      if (!gitRemote.match(/^[a-zA-Z0-9_-]+$/)) {
-        this.showMessage(_("invalid-remote-format"), "error");
-        return;
-      }
-
-      if (!gitBranch.match(/^[a-zA-Z0-9/_-]+$/)) {
-        this.showMessage(_("invalid-branch-format"), "error");
+      if (!gitRemote || !gitBranch) {
+        this.showMessage(_("select-remote-and-branch"), "error");
         return;
       }
 
@@ -225,8 +347,235 @@ const gitConfig = {
   },
 };
 
+// Git Remote Management Modal
+const gitRemoteManager = {
+  modal: null,
+  remoteList: null,
+  addRemoteForm: null,
+  closeBtn: null,
+
+  init() {
+    // Only init for SBC deployments
+    if (typeof deploymentType === "undefined" || deploymentType !== "sbc") {
+      return;
+    }
+
+    this.modal = document.getElementById("remote-management-modal");
+    this.remoteList = document.getElementById("remote-list");
+    this.addRemoteForm = document.getElementById("add-remote-form");
+    this.closeBtn = this.modal?.querySelector(".modal-close");
+
+    if (this.closeBtn) {
+      this.closeBtn.addEventListener("click", () => this.closeModal());
+    }
+
+    if (this.addRemoteForm) {
+      this.addRemoteForm.addEventListener("submit", (e) =>
+        this.handleAddRemote(e),
+      );
+    }
+
+    // Close modal on background click
+    if (this.modal) {
+      this.modal.addEventListener("click", (e) => {
+        if (e.target === this.modal) {
+          this.closeModal();
+        }
+      });
+    }
+  },
+
+  openModal() {
+    if (this.modal) {
+      this.modal.style.display = "block";
+      this.modal.setAttribute("aria-hidden", "false");
+      this.loadRemotesList();
+    }
+  },
+
+  closeModal() {
+    if (this.modal) {
+      this.modal.style.display = "none";
+      this.modal.setAttribute("aria-hidden", "true");
+      // Reload main remotes list
+      gitConfig.loadRemotes();
+    }
+  },
+
+  async loadRemotesList() {
+    try {
+      const response = await fetch("/api/update/git/remotes");
+      const data = await response.json();
+
+      this.remoteList.innerHTML = "";
+
+      if (data.remotes.length === 0) {
+        this.remoteList.innerHTML = `<p>${_("no-remotes-configured")}</p>`;
+        return;
+      }
+
+      data.remotes.forEach((remote) => {
+        const remoteItem = this.createRemoteItem(remote);
+        this.remoteList.appendChild(remoteItem);
+      });
+    } catch (error) {
+      console.error("Failed to load remotes list:", error);
+      this.remoteList.innerHTML = `<p class="error">${_("failed-to-load-remotes")}</p>`;
+    }
+  },
+
+  createRemoteItem(remote) {
+    const item = document.createElement("div");
+    item.className = "remote-item";
+    item.setAttribute("role", "listitem");
+
+    const info = document.createElement("div");
+    info.className = "remote-info";
+
+    const name = document.createElement("strong");
+    name.textContent = remote.name;
+    info.appendChild(name);
+
+    const url = document.createElement("div");
+    url.className = "remote-url";
+    url.textContent = remote.url;
+    info.appendChild(url);
+
+    item.appendChild(info);
+
+    const actions = document.createElement("div");
+    actions.className = "remote-actions";
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "btn btn-sm btn-secondary";
+    editBtn.textContent = _("edit");
+    editBtn.setAttribute("aria-label", `${_("edit")} ${remote.name}`);
+    editBtn.addEventListener("click", () => this.editRemote(remote));
+    actions.appendChild(editBtn);
+
+    // Only allow deletion for non-origin remotes
+    if (remote.name !== "origin") {
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "btn btn-sm btn-danger";
+      deleteBtn.textContent = _("delete");
+      deleteBtn.setAttribute("aria-label", `${_("delete")} ${remote.name}`);
+      deleteBtn.addEventListener("click", () => this.deleteRemote(remote.name));
+      actions.appendChild(deleteBtn);
+    }
+
+    item.appendChild(actions);
+
+    return item;
+  },
+
+  async handleAddRemote(event) {
+    event.preventDefault();
+
+    const formData = new FormData(this.addRemoteForm);
+    const name = formData.get("name");
+    const url = formData.get("url");
+
+    try {
+      const response = await fetch("/api/update/git/remotes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, url }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        this.addRemoteForm.reset();
+        this.loadRemotesList();
+        this.showNotification(data.message, "success");
+      } else {
+        this.showNotification(data.error, "error");
+      }
+    } catch (error) {
+      console.error("Failed to add remote:", error);
+      this.showNotification(_("failed-to-add-remote"), "error");
+    }
+  },
+
+  editRemote(remote) {
+    const newUrl = prompt(
+      _("enter-new-url-for-remote") + ` ${remote.name}:`,
+      remote.url,
+    );
+
+    if (newUrl && newUrl !== remote.url) {
+      this.updateRemote(remote.name, remote.name, newUrl);
+    }
+  },
+
+  async updateRemote(oldName, newName, newUrl) {
+    try {
+      const response = await fetch(
+        `/api/update/git/remotes/${encodeURIComponent(oldName)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: newName, url: newUrl }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        this.loadRemotesList();
+        this.showNotification(data.message, "success");
+      } else {
+        this.showNotification(data.error, "error");
+      }
+    } catch (error) {
+      console.error("Failed to update remote:", error);
+      this.showNotification(_("failed-to-update-remote"), "error");
+    }
+  },
+
+  async deleteRemote(name) {
+    if (name === "origin") {
+      this.showNotification(_("cannot-delete-origin"), "error");
+      return;
+    }
+
+    if (!confirm(_("confirm-delete-remote") + ` ${name}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/update/git/remotes/${encodeURIComponent(name)}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        this.loadRemotesList();
+        this.showNotification(data.message, "success");
+      } else {
+        this.showNotification(data.error, "error");
+      }
+    } catch (error) {
+      console.error("Failed to delete remote:", error);
+      this.showNotification(_("failed-to-delete-remote"), "error");
+    }
+  },
+
+  showNotification(message, type) {
+    // Create a simple notification (could be enhanced with a toast system)
+    alert(message);
+  },
+};
+
 // Initialize on page load
 document.addEventListener("DOMContentLoaded", () => {
   updateManager.init();
   gitConfig.init();
+  gitRemoteManager.init();
 });

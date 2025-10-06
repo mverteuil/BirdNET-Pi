@@ -43,7 +43,7 @@ class TestDummyDataGenerator:
             assert isinstance(detection_event.channels, int)
 
     def test_main_entry_point_via_subprocess(self, repo_root):
-        """Should the __main__ block by running module as script."""
+        """Should execute __main__ block when running module as script."""
         # Get the path to the module
         module_path = repo_root / "src" / "birdnetpi" / "utils" / "dummy_data_generator.py"
 

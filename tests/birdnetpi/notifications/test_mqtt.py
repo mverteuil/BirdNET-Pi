@@ -365,7 +365,7 @@ class TestMQTTService:
             assert payload["mqtt"]["topic_prefix"] == "test_birdnet"
 
     def test_can_publish(self, enabled_mqtt_service):
-        """Should the _can_publish method."""
+        """Should validate publishing capability via _can_publish method."""
         service = enabled_mqtt_service
 
         # Not connected, no client

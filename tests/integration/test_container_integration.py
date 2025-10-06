@@ -14,7 +14,7 @@ from birdnetpi.web.core.container import Container
 
 
 class TestContainerIntegration:
-    """Test that the Container can be properly instantiated with test paths."""
+    """Container can be properly instantiated with test paths."""
 
     @pytest.fixture
     def test_paths(self, tmp_path: Path, repo_root: Path):
@@ -104,7 +104,7 @@ class TestContainerIntegration:
         time.sleep(0.01)
 
     def test_container_creation(self):
-        """Should container can be created without errors."""
+        """Should create container without errors."""
         container = Container()
         assert container is not None
         assert hasattr(container, "path_resolver")
@@ -112,7 +112,7 @@ class TestContainerIntegration:
         assert hasattr(container, "core_database")
 
     def test_container_wiring(self, container_with_overrides: Container):
-        """Should container can be wired with all modules."""
+        """Should wire container with all modules."""
         container_with_overrides.wire(
             modules=[
                 "birdnetpi.web.core.factory",
@@ -153,12 +153,12 @@ class TestContainerIntegration:
             pass
 
     def test_species_database_provider(self, container_with_overrides: Container):
-        """Should species_database can be instantiated."""
+        """Should instantiate species_database."""
         species_database = container_with_overrides.species_database()
         assert species_database is not None
 
     def test_cache_service_provider(self, container_with_overrides: Container):
-        """Should cache_service can be instantiated (falls back to in-memory)."""
+        """Should instantiate cache_service (falls back to in-memory)."""
         cache_service = container_with_overrides.cache_service()
         assert cache_service is not None
 
@@ -211,7 +211,7 @@ class TestContainerIntegration:
         assert service1 is not service2
 
     def test_container_reset_overrides(self, test_resolver: PathResolver):
-        """Should overrides can be properly reset."""
+        """Should reset overrides properly."""
         container = Container()
 
         # Apply overrides

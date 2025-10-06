@@ -1,0 +1,49 @@
+id: test-prefer-app-with-temp-data-fixture
+language: python
+severity: warning
+message: |
+  Consider using 'app_with_temp_data' fixture from root conftest.py.
+  This fixture provides proper test isolation with temporary data paths.
+note: |
+  The global app_with_temp_data fixture ensures all components get test paths
+  and prevents writing to the real data folder during tests.
+
+  Only create custom app fixtures if you have a specific need that
+  app_with_temp_data doesn't meet. If this is intentional, document why
+  in a comment above the test.
+
+  See tests/conftest.py for the app_with_temp_data fixture implementation.
+
+rule:
+  any:
+    # Test methods (with self) - method pattern FIRST
+    - pattern: |
+        def $NAME(self, $PARAM):
+          $$$
+    # Test functions - function patterns SECOND
+    - pattern: |
+        def $NAME($PARAM):
+          $$$
+
+constraints:
+  NAME:
+    regex: '^test_'
+  PARAM:
+    regex: '^app_with_'
+    not:
+      regex: '^app_with_temp_data$'
+
+metadata:
+  category: best-practice
+  technology:
+    - pytest
+    - python
+  confidence: MEDIUM
+  likelihood: LOW
+  impact: MEDIUM
+  subcategory:
+    - testing
+    - fixtures
+  references:
+    - tests/conftest.py
+    - /TESTING_GUIDELINES.md

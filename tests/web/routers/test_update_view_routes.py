@@ -262,3 +262,166 @@ class TestUpdateViewIntegration:
         # The response should be rendered HTML
         # We can't easily check the template name without mocking,
         # but we know it should render admin/update.html.j2
+
+
+class TestUpdatePageDeploymentSpecific:
+    """Tests for deployment-specific UI rendering in update page."""
+
+    def test_update_page_docker_deployment(self, client, cache):
+        """Should show Docker-specific instructions on update page."""
+        cache.get.return_value = None
+
+        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+            mock_utils.get_deployment_environment.return_value = "docker"
+
+            response = client.get("/admin/update/")
+
+            assert response.status_code == 200
+            content = response.text
+
+            # Check for Docker deployment badge
+            assert "Docker Deployment" in content
+            assert "Docker Update Instructions" in content
+            assert "docker compose down" in content
+            assert "docker compose pull" in content
+
+            # Check that SBC-specific elements are NOT present
+            assert "Manage Remotes" not in content
+
+    def test_update_page_sbc_deployment(self, client, cache):
+        """Should show SBC-specific git configuration on update page."""
+        cache.get.return_value = None
+
+        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+            mock_utils.get_deployment_environment.return_value = "sbc"
+
+            response = client.get("/admin/update/")
+
+            assert response.status_code == 200
+            content = response.text
+
+            # Check for SBC deployment badge
+            assert "SBC Deployment" in content
+
+            # Check for SBC-specific git configuration
+            assert "Git Configuration" in content
+            assert "Manage Remotes" in content
+
+            # Check that Docker-specific elements are NOT present
+            assert "docker compose down" not in content
+
+    def test_update_page_unknown_deployment(self, client, cache):
+        """Should handle unknown deployment type gracefully."""
+        cache.get.return_value = None
+
+        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+            mock_utils.get_deployment_environment.return_value = "unknown"
+
+            response = client.get("/admin/update/")
+
+            assert response.status_code == 200
+            content = response.text
+
+            # Check for unknown deployment badge
+            assert "Unknown Deployment" in content
+            assert "Unable to determine deployment type" in content
+
+    def test_update_page_docker_javascript_variable(self, client, cache):
+        """Should set JavaScript deployment type variable for Docker."""
+        cache.get.return_value = None
+
+        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+            mock_utils.get_deployment_environment.return_value = "docker"
+
+            response = client.get("/admin/update/")
+
+            assert response.status_code == 200
+            content = response.text
+
+            # Check that deployment type is passed to JavaScript
+            assert 'const deploymentType = "docker"' in content
+
+    def test_update_page_sbc_javascript_variable(self, client, cache):
+        """Should set JavaScript deployment type variable for SBC."""
+        cache.get.return_value = None
+
+        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+            mock_utils.get_deployment_environment.return_value = "sbc"
+
+            response = client.get("/admin/update/")
+
+            assert response.status_code == 200
+            content = response.text
+
+            # Check that deployment type is passed to JavaScript
+            assert 'const deploymentType = "sbc"' in content
+
+    def test_update_page_docker_help_section(self, client, cache):
+        """Should display Docker-specific help content."""
+        cache.get.return_value = None
+
+        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+            mock_utils.get_deployment_environment.return_value = "docker"
+
+            response = client.get("/admin/update/")
+
+            assert response.status_code == 200
+            content = response.text
+
+            # Check for Docker-specific help topics
+            assert "Docker Update Best Practices" in content
+            assert "Database migrations run automatically" in content
+
+    def test_update_page_sbc_help_section(self, client, cache):
+        """Should display SBC-specific help content."""
+        cache.get.return_value = None
+
+        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+            mock_utils.get_deployment_environment.return_value = "sbc"
+
+            response = client.get("/admin/update/")
+
+            assert response.status_code == 200
+            content = response.text
+
+            # Check for SBC-specific help topics
+            assert "About Automatic Updates" in content
+            assert "SBC Update Process" in content
+
+    def test_update_page_accessibility_docker(self, client, cache):
+        """Should include accessibility features for Docker deployment."""
+        cache.get.return_value = None
+
+        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+            mock_utils.get_deployment_environment.return_value = "docker"
+
+            response = client.get("/admin/update/")
+
+            assert response.status_code == 200
+            content = response.text
+
+            # Check for skip link
+            assert "Skip to update content" in content
+
+            # Check for ARIA labels
+            assert 'role="status"' in content
+            assert 'role="region"' in content
+
+    def test_update_page_accessibility_sbc(self, client, cache):
+        """Should include accessibility features for SBC deployment."""
+        cache.get.return_value = None
+
+        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+            mock_utils.get_deployment_environment.return_value = "sbc"
+
+            response = client.get("/admin/update/")
+
+            assert response.status_code == 200
+            content = response.text
+
+            # Check for modal accessibility
+            assert 'role="dialog"' in content
+
+            # Check for status message region
+            assert 'role="status"' in content
+            assert 'aria-live="polite"' in content
