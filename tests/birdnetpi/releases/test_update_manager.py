@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, create_autospec, mock_open, patch
 
 import httpx
 import pytest
@@ -129,10 +129,10 @@ class TestVersionResolution:
     @patch("httpx.Client", autospec=True)
     def test_resolve_version_latest(self, mock_client_class, update_manager):
         """Should resolve 'latest' to actual release tag."""
-        mock_client = MagicMock()
-        mock_client_class.return_value.__enter__.return_value = mock_client
+        # mock_client_class is already autospec'd by @patch, use its return_value
+        mock_client = mock_client_class.return_value.__enter__.return_value
 
-        mock_response = MagicMock()
+        mock_response = create_autospec(httpx.Response, spec_set=True)
         mock_response.json.return_value = {"tag_name": "v2.1.1"}
         mock_client.get.return_value = mock_response
 
@@ -152,10 +152,9 @@ class TestVersionResolution:
     @patch("httpx.Client", autospec=True)
     def test_resolve_latest_asset_version(self, mock_client_class, update_manager):
         """Should resolve latest asset version from releases."""
-        mock_client = MagicMock()
-        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_client = mock_client_class.return_value.__enter__.return_value
 
-        mock_response = MagicMock()
+        mock_response = create_autospec(httpx.Response, spec_set=True)
         mock_response.json.return_value = [
             {"tag_name": "assets-v2.1.1"},
             {"tag_name": "v2.1.1"},
@@ -171,10 +170,9 @@ class TestVersionResolution:
     @patch("httpx.Client", autospec=True)
     def test_resolve_latest_asset_version__no_assets(self, mock_client_class, update_manager):
         """Should raise error when no asset releases found."""
-        mock_client = MagicMock()
-        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_client = mock_client_class.return_value.__enter__.return_value
 
-        mock_response = MagicMock()
+        mock_response = create_autospec(httpx.Response, spec_set=True)
         mock_response.json.return_value = [
             {"tag_name": "v2.1.1"},
             {"tag_name": "v2.0.0"},
@@ -187,8 +185,7 @@ class TestVersionResolution:
     @patch("httpx.Client", autospec=True)
     def test_resolve_latest_asset_version_http_error(self, mock_client_class, update_manager):
         """Should handle HTTP errors during asset version resolution."""
-        mock_client = MagicMock()
-        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_client = mock_client_class.return_value.__enter__.return_value
 
         mock_client.get.side_effect = httpx.HTTPError("Network error")
 
@@ -202,10 +199,9 @@ class TestAssetValidation:
     @patch("httpx.Client", autospec=True)
     def test_validate_asset_release_exists(self, mock_client_class, update_manager):
         """Should validate existing asset release."""
-        mock_client = MagicMock()
-        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_client = mock_client_class.return_value.__enter__.return_value
 
-        mock_response = MagicMock()
+        mock_response = create_autospec(httpx.Response, spec_set=True)
         mock_response.status_code = 200
         mock_client.get.return_value = mock_response
 
@@ -219,10 +215,9 @@ class TestAssetValidation:
     @patch("httpx.Client", autospec=True)
     def test_validate_asset_release__v_prefix(self, mock_client_class, update_manager):
         """Should handle version with 'v' prefix correctly."""
-        mock_client = MagicMock()
-        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_client = mock_client_class.return_value.__enter__.return_value
 
-        mock_response = MagicMock()
+        mock_response = create_autospec(httpx.Response, spec_set=True)
         mock_response.status_code = 200
         mock_client.get.return_value = mock_response
 
@@ -233,10 +228,9 @@ class TestAssetValidation:
     @patch("httpx.Client", autospec=True)
     def test_validate_asset_release_without_v_prefix(self, mock_client_class, update_manager):
         """Should handle version without 'v' prefix correctly."""
-        mock_client = MagicMock()
-        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_client = mock_client_class.return_value.__enter__.return_value
 
-        mock_response = MagicMock()
+        mock_response = create_autospec(httpx.Response, spec_set=True)
         mock_response.status_code = 200
         mock_client.get.return_value = mock_response
 
@@ -245,15 +239,14 @@ class TestAssetValidation:
         assert result == "assets-v1.0.0"
 
     @patch("httpx.Client", autospec=True)
-    @patch.object(UpdateManager, "list_available_asset_versions")
+    @patch.object(UpdateManager, "list_available_asset_versions", autospec=True)
     def test_validate_asset_release_not_found(
         self, mock_list_versions, mock_client_class, update_manager
     ):
         """Should raise error for non-existent asset release."""
-        mock_client = MagicMock()
-        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_client = mock_client_class.return_value.__enter__.return_value
 
-        mock_response = MagicMock()
+        mock_response = create_autospec(httpx.Response, spec_set=True)
         mock_response.status_code = 404
         mock_client.get.return_value = mock_response
 
@@ -266,8 +259,8 @@ class TestAssetValidation:
 class TestAssetDownload:
     """Test asset download functionality."""
 
-    @patch("tempfile.mkdtemp")
-    @patch("shutil.unpack_archive")
+    @patch("tempfile.mkdtemp", autospec=True)
+    @patch("shutil.unpack_archive", autospec=True)
     @patch("httpx.Client", autospec=True)
     @patch("builtins.open", new_callable=mock_open)
     def test_download__extract_assets(
@@ -284,10 +277,9 @@ class TestAssetDownload:
         extracted_dir.mkdir(parents=True)
 
         # Setup HTTP client mock
-        mock_client = MagicMock()
-        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_client = mock_client_class.return_value.__enter__.return_value
 
-        mock_response = MagicMock()
+        mock_response = create_autospec(httpx.Response, spec_set=True)
         mock_response.headers = {"content-length": "1024"}
         mock_response.iter_bytes.return_value = [b"chunk1", b"chunk2"]
         mock_client.stream.return_value.__enter__.return_value = mock_response
@@ -300,8 +292,8 @@ class TestAssetDownload:
         )
         mock_unpack.assert_called_once()
 
-    @patch("tempfile.mkdtemp")
-    @patch("shutil.unpack_archive")
+    @patch("tempfile.mkdtemp", autospec=True)
+    @patch("shutil.unpack_archive", autospec=True)
     @patch("httpx.Client", autospec=True)
     def test_download__extract_assets__no_extracted_dir(
         self, mock_client_class, mock_unpack, mock_mkdtemp, update_manager, tmp_path
@@ -315,10 +307,9 @@ class TestAssetDownload:
         extracted_dir = temp_dir / "extracted"
         extracted_dir.mkdir()
 
-        mock_client = MagicMock()
-        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_client = mock_client_class.return_value.__enter__.return_value
 
-        mock_response = MagicMock()
+        mock_response = create_autospec(httpx.Response, spec_set=True)
         mock_response.headers = {"content-length": "1024"}
         mock_response.iter_bytes.return_value = [b"data"]
         mock_client.stream.return_value.__enter__.return_value = mock_response
@@ -330,10 +321,10 @@ class TestAssetDownload:
 class TestDownloadReleaseAssets:
     """Test complete asset download workflow."""
 
-    @patch.object(UpdateManager, "_download_and_extract_assets")
-    @patch.object(UpdateManager, "_validate_asset_release")
-    @patch.object(UpdateManager, "_resolve_latest_asset_version")
-    @patch("shutil.copy2")
+    @patch.object(UpdateManager, "_download_and_extract_assets", autospec=True)
+    @patch.object(UpdateManager, "_validate_asset_release", autospec=True)
+    @patch.object(UpdateManager, "_resolve_latest_asset_version", autospec=True)
+    @patch("shutil.copy2", autospec=True)
     def test_download_release_assets(
         self,
         mock_copy,
@@ -375,12 +366,13 @@ class TestDownloadReleaseAssets:
         assert len(result["downloaded_assets"]) == 3  # 2 models + 1 database
         assert len(result["errors"]) == 0
 
-        mock_resolve_latest.assert_called_once_with("owner/repo")
-        mock_validate.assert_called_once_with("v1.0.0", "owner/repo")
-        mock_download_extract.assert_called_once_with("assets-v1.0.0", "owner/repo")
+        # With autospec=True, instance methods include self as first parameter
+        mock_resolve_latest.assert_called_once_with(update_manager, "owner/repo")
+        mock_validate.assert_called_once_with(update_manager, "v1.0.0", "owner/repo")
+        mock_download_extract.assert_called_once_with(update_manager, "assets-v1.0.0", "owner/repo")
 
-    @patch.object(UpdateManager, "_download_and_extract_assets")
-    @patch.object(UpdateManager, "_validate_asset_release")
+    @patch.object(UpdateManager, "_download_and_extract_assets", autospec=True)
+    @patch.object(UpdateManager, "_validate_asset_release", autospec=True)
     def test_download_release_assets_models_only(
         self,
         mock_validate,
@@ -409,8 +401,8 @@ class TestDownloadReleaseAssets:
         assert len(result["downloaded_assets"]) == 1
         assert "Model: model1.tflite" in result["downloaded_assets"]
 
-    @patch.object(UpdateManager, "_download_and_extract_assets")
-    @patch.object(UpdateManager, "_validate_asset_release")
+    @patch.object(UpdateManager, "_download_and_extract_assets", autospec=True)
+    @patch.object(UpdateManager, "_validate_asset_release", autospec=True)
     def test_download_release_assets__missing_models(
         self,
         mock_validate,
@@ -437,7 +429,7 @@ class TestDownloadReleaseAssets:
         assert len(result["downloaded_assets"]) == 0
         assert "Models directory not found in release" in result["errors"]
 
-    @patch.object(UpdateManager, "_validate_asset_release")
+    @patch.object(UpdateManager, "_validate_asset_release", autospec=True)
     def test_download_release_assets_validation_error(self, mock_validate, update_manager):
         """Should handle asset validation errors."""
         mock_validate.side_effect = RuntimeError("Asset not found")
@@ -452,10 +444,9 @@ class TestListVersions:
     @patch("httpx.Client", autospec=True)
     def test_list_available_versions(self, mock_client_class, update_manager):
         """Should list available code release versions."""
-        mock_client = MagicMock()
-        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_client = mock_client_class.return_value.__enter__.return_value
 
-        mock_response = MagicMock()
+        mock_response = create_autospec(httpx.Response, spec_set=True)
         mock_response.json.return_value = [
             {"tag_name": "v2.1.1"},
             {"tag_name": "assets-v2.1.1"},  # Should be filtered out
@@ -472,10 +463,9 @@ class TestListVersions:
     @patch("httpx.Client", autospec=True)
     def test_list_available_asset_versions(self, mock_client_class, update_manager):
         """Should list available asset release versions."""
-        mock_client = MagicMock()
-        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_client = mock_client_class.return_value.__enter__.return_value
 
-        mock_response = MagicMock()
+        mock_response = create_autospec(httpx.Response, spec_set=True)
         mock_response.json.return_value = [
             {"tag_name": "v2.1.1"},  # Should be filtered out
             {"tag_name": "assets-v2.1.1"},
@@ -492,8 +482,7 @@ class TestListVersions:
     @patch("httpx.Client", autospec=True)
     def test_list_available_versions_error(self, mock_client_class, update_manager):
         """Should handle errors gracefully and return empty list."""
-        mock_client = MagicMock()
-        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_client = mock_client_class.return_value.__enter__.return_value
 
         mock_client.get.side_effect = httpx.HTTPError("Network error")
 
@@ -504,8 +493,7 @@ class TestListVersions:
     @patch("httpx.Client", autospec=True)
     def test_list_available_asset_versions_error(self, mock_client_class, update_manager):
         """Should handle errors gracefully and return empty list."""
-        mock_client = MagicMock()
-        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_client = mock_client_class.return_value.__enter__.return_value
 
         mock_client.get.side_effect = httpx.HTTPError("Network error")
 

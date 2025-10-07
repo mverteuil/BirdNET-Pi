@@ -2,11 +2,14 @@
 
 import asyncio
 import signal
-from unittest.mock import DEFAULT, AsyncMock, MagicMock, patch
+from unittest.mock import DEFAULT, MagicMock, create_autospec, patch
 
+import aiohttp.web
 import pytest
 
 import birdnetpi.daemons.update_daemon as daemon
+from birdnetpi.config.manager import ConfigManager
+from birdnetpi.config.models import BirdNETConfig, UpdateConfig
 from birdnetpi.daemons.update_daemon import DaemonState
 from birdnetpi.releases.update_manager import StateFileManager, UpdateManager
 from birdnetpi.system.file_manager import FileManager
@@ -25,8 +28,8 @@ def reset_daemon_state():
 @pytest.fixture
 def test_config():
     """Provide test configuration."""
-    config = MagicMock()
-    config.updates = MagicMock()
+    config = MagicMock(spec=BirdNETConfig)
+    config.updates = MagicMock(spec=UpdateConfig)
     config.updates.check_interval_hours = 24
     config.updates.check_enabled = True
     config.updates.auto_check_on_startup = False
@@ -46,16 +49,18 @@ def mock_cache():
 @pytest.fixture
 def mock_update_manager():
     """Mock UpdateManager for testing."""
+    # Use MagicMock with spec instead of create_autospec because create_autospec
+    # doesn't include instance attributes like file_manager
     manager = MagicMock(spec=UpdateManager)
-    manager.check_for_updates = AsyncMock(
-        return_value={
-            "current_version": "v1.0.0",
-            "latest_version": "v1.1.0",
-            "update_available": True,
-            "checked_at": "2024-01-01T12:00:00",
-        }
-    )
-    manager.apply_update = AsyncMock(return_value={"success": True, "version": "v1.1.0"})
+    # Configure the already-spec'd methods instead of replacing them
+    manager.check_for_updates.return_value = {
+        "current_version": "v1.0.0",
+        "latest_version": "v1.1.0",
+        "update_available": True,
+        "checked_at": "2024-01-01T12:00:00",
+    }
+    manager.apply_update.return_value = {"success": True, "version": "v1.1.0"}
+    # Add instance attributes that exist on real UpdateManager
     manager.file_manager = MagicMock(spec=FileManager)
     manager.path_resolver = MagicMock(spec=PathResolver)
     return manager
@@ -149,11 +154,16 @@ class TestSSEEndpoint:
     """Test Server-Sent Events streaming endpoint."""
 
     @pytest.mark.asyncio
-    async def test_sse_stream_with_state(self, mock_update_manager, mock_state_manager):
+    async def test_sse_stream_with_state(
+        self, mock_update_manager, mock_state_manager, mock_dependencies
+    ):
         """Should stream update state as SSE events."""
         # Set up daemon state
         DaemonState.update_manager = mock_update_manager
         DaemonState.shutdown_flag = False
+
+        # Configure StateFileManager mock from fixture (already patched by mock_dependencies)
+        mock_dependencies["StateFileManager"].return_value = mock_state_manager
 
         # Mock state manager to return state once then None
         mock_state_manager.read_state.side_effect = [
@@ -162,71 +172,66 @@ class TestSSEEndpoint:
         ]
 
         # Mock the StreamResponse to avoid actual HTTP operations
-        with patch("birdnetpi.daemons.update_daemon.aiohttp.web.StreamResponse") as mock_resp_class:
-            mock_response = AsyncMock()
-            mock_resp_class.return_value = mock_response
-            mock_response.prepare = AsyncMock()
-            mock_response.write = AsyncMock()
-            mock_response.drain = AsyncMock()
+        with patch(
+            "birdnetpi.daemons.update_daemon.aiohttp.web.StreamResponse", autospec=True
+        ) as mock_resp_class:
+            # mock_resp_class is already autospec'd, just use its return_value
+            mock_response = mock_resp_class.return_value
 
-            with patch("birdnetpi.daemons.update_daemon.StateFileManager") as mock_state_class:
-                mock_state_class.return_value = mock_state_manager
+            # Create mock request
+            request = create_autospec(aiohttp.web.Request, spec_set=True, instance=True)
 
-                # Create mock request
-                request = MagicMock()
+            # Run SSE handler briefly
+            DaemonState.shutdown_flag = False
+            task = asyncio.create_task(daemon.handle_sse_stream(request))
+            await asyncio.sleep(0.1)
 
-                # Run SSE handler briefly
-                DaemonState.shutdown_flag = False
-                task = asyncio.create_task(daemon.handle_sse_stream(request))
-                await asyncio.sleep(0.1)
+            # Stop the task
+            DaemonState.shutdown_flag = True
+            task.cancel()
 
-                # Stop the task
-                DaemonState.shutdown_flag = True
-                task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
-
-                # Verify response was prepared and data was written
-                mock_response.prepare.assert_called_once_with(request)
-                assert mock_response.write.called
+            # Verify response was prepared and data was written
+            mock_response.prepare.assert_called_once_with(request)
+            assert mock_response.write.called
 
     @pytest.mark.asyncio
-    async def test_sse_heartbeat(self, mock_update_manager, mock_state_manager):
+    async def test_sse_heartbeat(self, mock_update_manager, mock_state_manager, mock_dependencies):
         """Should send heartbeat when no state available."""
         DaemonState.update_manager = mock_update_manager
         mock_state_manager.read_state.return_value = None
 
         # Mock the StreamResponse
-        with patch("birdnetpi.daemons.update_daemon.aiohttp.web.StreamResponse") as mock_resp_class:
-            mock_response = AsyncMock()
-            mock_resp_class.return_value = mock_response
-            mock_response.prepare = AsyncMock()
-            mock_response.write = AsyncMock()
-            mock_response.drain = AsyncMock()
+        with patch(
+            "birdnetpi.daemons.update_daemon.aiohttp.web.StreamResponse", autospec=True
+        ) as mock_resp_class:
+            # mock_resp_class is already autospec'd, just use its return_value
+            mock_response = mock_resp_class.return_value
 
-            with patch("birdnetpi.daemons.update_daemon.StateFileManager") as mock_state_class:
-                mock_state_class.return_value = mock_state_manager
+            # Configure StateFileManager mock from fixture (already patched by mock_dependencies)
+            mock_dependencies["StateFileManager"].return_value = mock_state_manager
 
-                request = MagicMock()
+            request = create_autospec(aiohttp.web.Request, spec_set=True, instance=True)
 
-                # Run briefly and check heartbeat is sent
-                DaemonState.shutdown_flag = False
-                task = asyncio.create_task(daemon.handle_sse_stream(request))
-                await asyncio.sleep(0.1)
+            # Run briefly and check heartbeat is sent
+            DaemonState.shutdown_flag = False
+            task = asyncio.create_task(daemon.handle_sse_stream(request))
+            await asyncio.sleep(0.1)
 
-                DaemonState.shutdown_flag = True
-                task.cancel()
+            DaemonState.shutdown_flag = True
+            task.cancel()
 
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
-                # Should write heartbeat
-                mock_response.write.assert_called()
+            # Should write heartbeat
+            mock_response.write.assert_called()
 
 
 class TestMonitorLoop:
@@ -238,7 +243,7 @@ class TestMonitorLoop:
         # Set up daemon state
         DaemonState.cache_service = mock_cache
         DaemonState.update_manager = mock_update_manager
-        DaemonState.config_manager = MagicMock()
+        DaemonState.config_manager = MagicMock(spec=ConfigManager)
         DaemonState.config_manager.load.return_value = test_config
         DaemonState.shutdown_flag = False
 
@@ -271,7 +276,7 @@ class TestMonitorLoop:
         """Should perform periodic update checks."""
         DaemonState.cache_service = mock_cache
         DaemonState.update_manager = mock_update_manager
-        DaemonState.config_manager = MagicMock()
+        DaemonState.config_manager = MagicMock(spec=ConfigManager)
 
         # Enable startup check to ensure at least one check happens
         test_config.updates.auto_check_on_startup = True
@@ -303,7 +308,7 @@ class TestMonitorLoop:
         """Should perform periodic checks after interval expires."""
         DaemonState.cache_service = mock_cache
         DaemonState.update_manager = mock_update_manager
-        DaemonState.config_manager = MagicMock()
+        DaemonState.config_manager = MagicMock(spec=ConfigManager)
 
         # Disable startup check, set very short interval
         test_config.updates.auto_check_on_startup = False
@@ -337,7 +342,7 @@ class TestMonitorLoop:
             await original_sleep(0.01)
 
         # Create a mock event loop with our time method
-        mock_loop = MagicMock()
+        mock_loop = create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=True)
         mock_loop.time.side_effect = lambda: mock_time_value
 
         with patch("birdnetpi.daemons.update_daemon.asyncio.sleep", mock_sleep):
@@ -397,7 +402,7 @@ class TestUpdateProcessing:
 
         request = {"action": "apply", "version": "v1.1.0"}
 
-        with patch("birdnetpi.daemons.update_daemon._signal_handler") as mock_signal:
+        with patch("birdnetpi.daemons.update_daemon._signal_handler", autospec=True) as mock_signal:
             await daemon.process_update_request(request)
 
             # Should process pending signal
@@ -413,7 +418,7 @@ class TestUpdateWithRedisMonitoring:
         """Should monitor Redis for update requests."""
         DaemonState.cache_service = mock_cache
         DaemonState.update_manager = mock_update_manager
-        DaemonState.config_manager = MagicMock()
+        DaemonState.config_manager = MagicMock(spec=ConfigManager)
         DaemonState.config_manager.load.return_value = test_config
         DaemonState.shutdown_flag = False
 
@@ -427,7 +432,9 @@ class TestUpdateWithRedisMonitoring:
                 return {"action": "check"}
             return None
 
-        with patch("birdnetpi.daemons.update_daemon.check_for_update_request") as mock_check:
+        with patch(
+            "birdnetpi.daemons.update_daemon.check_for_update_request", autospec=True
+        ) as mock_check:
             mock_check.side_effect = get_request
 
             # Run monitoring loop briefly
@@ -454,11 +461,13 @@ class TestDaemonInitialization:
         """Should run in monitor mode."""
         mock_dependencies["Cache"].return_value = mock_cache
 
-        with patch("birdnetpi.daemons.update_daemon.run_monitor_loop") as mock_loop:
+        with patch("birdnetpi.daemons.update_daemon.run_monitor_loop", autospec=True) as mock_loop:
             mock_loop.return_value = asyncio.Future()
             mock_loop.return_value.set_result(None)
 
-            with patch("birdnetpi.daemons.update_daemon.start_http_server") as mock_http:
+            with patch(
+                "birdnetpi.daemons.update_daemon.start_http_server", autospec=True
+            ) as mock_http:
                 mock_http.return_value = asyncio.Future()
                 mock_http.return_value.set_result(None)
 
@@ -473,11 +482,15 @@ class TestDaemonInitialization:
         """Should run in both mode (SBC)."""
         mock_dependencies["Cache"].return_value = mock_cache
 
-        with patch("birdnetpi.daemons.update_daemon.run_update_with_redis_monitoring") as mock_both:
+        with patch(
+            "birdnetpi.daemons.update_daemon.run_update_with_redis_monitoring", autospec=True
+        ) as mock_both:
             mock_both.return_value = asyncio.Future()
             mock_both.return_value.set_result(None)
 
-            with patch("birdnetpi.daemons.update_daemon.start_http_server") as mock_http:
+            with patch(
+                "birdnetpi.daemons.update_daemon.start_http_server", autospec=True
+            ) as mock_http:
                 mock_http.return_value = asyncio.Future()
                 mock_http.return_value.set_result(None)
 
@@ -517,11 +530,13 @@ class TestDaemonInitialization:
             "target_version": "v1.1.0",
         }
 
-        with patch("birdnetpi.daemons.update_daemon.run_monitor_loop") as mock_loop:
+        with patch("birdnetpi.daemons.update_daemon.run_monitor_loop", autospec=True) as mock_loop:
             mock_loop.return_value = asyncio.Future()
             mock_loop.return_value.set_result(None)
 
-            with patch("birdnetpi.daemons.update_daemon.start_http_server") as mock_http:
+            with patch(
+                "birdnetpi.daemons.update_daemon.start_http_server", autospec=True
+            ) as mock_http:
                 mock_http.return_value = asyncio.Future()
                 mock_http.return_value.set_result(None)
 
@@ -537,17 +552,15 @@ class TestHTTPServer:
     @pytest.mark.asyncio
     async def test_start_http_server(self):
         """Should start HTTP server on localhost only."""
-        with patch("aiohttp.web.Application") as mock_app_class:
-            app = MagicMock()
-            mock_app_class.return_value = app
+        with patch("aiohttp.web.Application", autospec=True) as mock_app_class:
+            # mock_app_class is already autospec'd, just use return_value
+            app = mock_app_class.return_value
 
-            with patch("aiohttp.web.AppRunner") as mock_runner_class:
-                runner = AsyncMock()
-                mock_runner_class.return_value = runner
+            with patch("aiohttp.web.AppRunner", autospec=True) as mock_runner_class:
+                runner = mock_runner_class.return_value
 
-                with patch("aiohttp.web.TCPSite") as mock_site_class:
-                    site = AsyncMock()
-                    mock_site_class.return_value = site
+                with patch("aiohttp.web.TCPSite", autospec=True) as mock_site_class:
+                    site = mock_site_class.return_value
 
                     await daemon.start_http_server()
 
@@ -600,14 +613,14 @@ class TestCLICommand:
         assert hasattr(daemon, "main")
         assert callable(daemon.main)
 
-    @patch("birdnetpi.daemons.update_daemon.asyncio.run")
-    @patch("birdnetpi.daemons.update_daemon.signal.signal")
+    @patch("birdnetpi.daemons.update_daemon.asyncio.run", autospec=True)
+    @patch("birdnetpi.daemons.update_daemon.signal.signal", autospec=True)
     def test_main_entry_point(self, mock_signal, mock_asyncio_run):
         """Should set up signal handlers and run async main."""
         mock_asyncio_run.return_value = 0
 
         with patch("sys.argv", ["update-daemon", "monitor"]):
-            with patch("birdnetpi.daemons.update_daemon.click") as mock_click:
+            with patch("birdnetpi.daemons.update_daemon.click", autospec=True) as mock_click:
                 # Mock the click decorator chain
                 mock_click.command.return_value = lambda f: f
                 mock_click.argument.return_value = lambda f: f

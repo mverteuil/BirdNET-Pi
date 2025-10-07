@@ -11,6 +11,7 @@ import yaml
 from dependency_injector import providers
 from fastapi.templating import Jinja2Templates
 from fastapi.testclient import TestClient
+from sqladmin import Admin
 
 from birdnetpi.audio.devices import AudioDevice, AudioDeviceService
 from birdnetpi.config import BirdNETConfig, ConfigManager
@@ -123,7 +124,7 @@ class TestSettingsE2E:
             ),
             patch(
                 "birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin",
-                side_effect=lambda app: MagicMock(),
+                side_effect=lambda app: MagicMock(spec=Admin),
             ),
         ):
             app = create_app()

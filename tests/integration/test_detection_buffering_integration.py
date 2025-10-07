@@ -15,9 +15,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import numpy as np
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 import birdnetpi.cli.generate_dummy_data as gdd
-from birdnetpi.audio.analysis import AudioAnalysisManager
+from birdnetpi.audio.analysis import AudioAnalysisManager, BirdDetectionService
+from birdnetpi.config.models import BirdNETConfig
+from birdnetpi.database.species import SpeciesDatabaseService
+from birdnetpi.detections.models import AudioFile
 from birdnetpi.species.parser import SpeciesParser
 from birdnetpi.system.file_manager import FileManager
 
@@ -29,6 +33,7 @@ def mock_file_manager():
     relative_path = Path("Test_bird/20240101_120000.wav")
     mock = MagicMock(spec=FileManager)
     mock.save_detection_audio.return_value = MagicMock(
+        spec=AudioFile,
         file_path=relative_path,
         duration=3.0,
         size_bytes=1000,
@@ -54,18 +59,20 @@ def audio_analysis_service_integration(
     test_config,
 ):
     """Yield an AudioAnalysisManager instance for integration testing with proper cleanup."""
-    with patch("birdnetpi.audio.analysis.BirdDetectionService") as mock_analysis_client_class:
+    with patch(
+        "birdnetpi.audio.analysis.BirdDetectionService", autospec=True
+    ) as mock_analysis_client_class:
         # Mock the BirdDetectionService constructor
-        mock_analysis_client = MagicMock()
+        mock_analysis_client = MagicMock(spec=BirdDetectionService)
         mock_analysis_client_class.return_value = mock_analysis_client
 
         # Mock SpeciesDatabaseService and AsyncSession
-        mock_species_database = MagicMock()
+        mock_species_database = MagicMock(spec=SpeciesDatabaseService)
         # Make get_best_common_name async and return a dict with common_name
         mock_species_database.get_best_common_name = AsyncMock(
-            return_value={"common_name": "Test Bird"}
+            return_value={"common_name": "Test Bird"}, spec=dict
         )
-        mock_session = MagicMock()
+        mock_session = MagicMock(spec=AsyncSession)
 
         # Initialize SpeciesParser with the mock service
 
@@ -114,9 +121,9 @@ class TestDetectionBufferingEndToEnd:
         ]
 
         # Phase 1: FastAPI unavailable - detections should be buffered
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
             mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
-                "Connection failed", request=MagicMock()
+                "Connection failed", request=MagicMock(spec=httpx.Request)
             )
 
             # Clear buffer
@@ -139,9 +146,9 @@ class TestDetectionBufferingEndToEnd:
             assert "Buffered detection event for Corvus brachyrhynchos" in caplog.text
 
         # Phase 2: FastAPI becomes available - buffered detections should flush
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_response = MagicMock()
-            mock_response.raise_for_status = MagicMock()
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
+            mock_response = MagicMock(spec=httpx.Response)
+            mock_response.raise_for_status = MagicMock(spec=callable)
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
             # Wait for background flush to occur
@@ -191,9 +198,9 @@ class TestDetectionBufferingEndToEnd:
             service.detection_buffer.clear()
 
         # Patch HTTP client for the entire test duration to simulate FastAPI being down
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
             mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
-                "Connection failed", request=MagicMock()
+                "Connection failed", request=MagicMock(spec=httpx.Request)
             )
 
             # Start concurrent operations
@@ -217,25 +224,19 @@ class TestDetectionBufferingEndToEnd:
             assert buffer_size > 0, "Some detections should be buffered during admin operation"
         assert "Buffered detection event for Turdus migratorius" in caplog.text
 
-    @patch("birdnetpi.audio.analysis.BirdDetectionService")
     async def test_buffer_overflow_handling_during_extended_outage(
         self,
-        mock_analysis_client_class,
         audio_analysis_service_integration,
         caplog,
     ):
         """Should handle buffer overflow gracefully during extended FastAPI outages."""
-        # Mock the BirdDetectionService constructor
-        mock_analysis_client = MagicMock()
-        mock_analysis_client_class.return_value = mock_analysis_client
-
         # Mock SpeciesDatabaseService and AsyncSession
-        mock_species_database = MagicMock()
+        mock_species_database = MagicMock(spec=SpeciesDatabaseService)
         # Make get_best_common_name async and return a dict with common_name
         mock_species_database.get_best_common_name = AsyncMock(
-            return_value={"common_name": "Test Bird"}
+            return_value={"common_name": "Test Bird"}, spec=dict
         )
-        mock_session = MagicMock()
+        mock_session = MagicMock(spec=AsyncSession)
 
         # Initialize SpeciesParser with the mock service
 
@@ -254,16 +255,16 @@ class TestDetectionBufferingEndToEnd:
         )
 
         # Mock analysis
-        service.analysis_client = MagicMock()
+        service.analysis_client = MagicMock(spec=BirdDetectionService)
         service.analysis_client.get_analysis_results.return_value = [
             ("Turdus migratorius_American Robin", 0.85)
         ]
 
         try:
-            with patch("httpx.AsyncClient") as mock_client:
+            with patch("httpx.AsyncClient", autospec=True) as mock_client:
                 # Mock persistent HTTP failure
                 mock_client.return_value.__aenter__.return_value.post.side_effect = (
-                    httpx.RequestError("Connection failed", request=MagicMock())
+                    httpx.RequestError("Connection failed", request=MagicMock(spec=httpx.Request))
                 )
 
                 # Clear buffer
@@ -297,9 +298,9 @@ class TestDetectionBufferingEndToEnd:
         ]
 
         # Phase 1: Service unavailable, buffer detections
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
             mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
-                "Connection failed", request=MagicMock()
+                "Connection failed", request=MagicMock(spec=httpx.Request)
             )
 
             # Clear buffer and add detections
@@ -316,10 +317,10 @@ class TestDetectionBufferingEndToEnd:
                 assert len(service.detection_buffer) == 3
 
         # Phase 2: Simulate service recovery
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
             # Mock successful responses
-            mock_response = MagicMock()
-            mock_response.raise_for_status = MagicMock()
+            mock_response = MagicMock(spec=httpx.Response)
+            mock_response.raise_for_status = MagicMock(spec=callable)
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
             # Wait for background flush to process buffered detections
@@ -346,19 +347,21 @@ class TestDetectionBufferingEndToEnd:
             ("Cardinalis cardinalis_Northern Cardinal", 0.90),
         ]
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
             post_mock = mock_client.return_value.__aenter__.return_value.post
 
             # Mock intermittent failures: success, fail, success, fail
             responses = []
             for i in range(4):
                 if i % 2 == 0:  # Even indices succeed
-                    success_response = MagicMock()
-                    success_response.raise_for_status = MagicMock()
+                    success_response = MagicMock(spec=httpx.Response)
+                    success_response.raise_for_status = MagicMock(spec=callable)
                     responses.append(success_response)
                 else:  # Odd indices fail
                     responses.append(
-                        httpx.RequestError("Intermittent failure", request=MagicMock())
+                        httpx.RequestError(
+                            "Intermittent failure", request=MagicMock(spec=httpx.Request)
+                        )
                     )
 
             post_mock.side_effect = responses
@@ -412,9 +415,9 @@ class TestDetectionBufferingWithAdminOperations:
 
         try:
             # Start with working FastAPI
-            with patch("httpx.AsyncClient") as mock_client:
-                mock_response = MagicMock()
-                mock_response.raise_for_status = MagicMock()
+            with patch("httpx.AsyncClient", autospec=True) as mock_client:
+                mock_response = MagicMock(spec=httpx.Response)
+                mock_response.raise_for_status = MagicMock(spec=callable)
                 mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
                 # Clear buffer
@@ -434,20 +437,26 @@ class TestDetectionBufferingWithAdminOperations:
 
             # Simulate admin operation affecting FastAPI
             with (
-                patch("birdnetpi.cli.generate_dummy_data.PathResolver") as mock_path_resolver,
                 patch(
-                    "birdnetpi.cli.generate_dummy_data.CoreDatabaseService"
+                    "birdnetpi.cli.generate_dummy_data.PathResolver", autospec=True
+                ) as mock_path_resolver,
+                patch(
+                    "birdnetpi.cli.generate_dummy_data.CoreDatabaseService", autospec=True
                 ) as _mock_database_service,
-                patch("birdnetpi.cli.generate_dummy_data.DataManager") as mock_data_manager,
                 patch(
-                    "birdnetpi.cli.generate_dummy_data.SystemControlService"
+                    "birdnetpi.cli.generate_dummy_data.DataManager", autospec=True
+                ) as mock_data_manager,
+                patch(
+                    "birdnetpi.cli.generate_dummy_data.SystemControlService", autospec=True
                 ) as mock_system_control_service,
                 patch(
-                    "birdnetpi.cli.generate_dummy_data.generate_dummy_detections"
+                    "birdnetpi.cli.generate_dummy_data.generate_dummy_detections", autospec=True
                 ) as _mock_generate_dummy_detections,
-                patch("birdnetpi.cli.generate_dummy_data.time") as _mock_time,
-                patch("birdnetpi.cli.generate_dummy_data.os") as mock_os,
-                patch("birdnetpi.cli.generate_dummy_data.ConfigManager") as mock_config_parser,
+                patch("birdnetpi.cli.generate_dummy_data.time", autospec=True) as _mock_time,
+                patch("birdnetpi.cli.generate_dummy_data.os", autospec=True) as mock_os,
+                patch(
+                    "birdnetpi.cli.generate_dummy_data.ConfigManager", autospec=True
+                ) as mock_config_parser,
             ):
                 # Configure mocks for generate_dummy_data
 
@@ -465,7 +474,7 @@ class TestDetectionBufferingWithAdminOperations:
                     config_path = Path(config_file.name)
 
                 mock_path_resolver.return_value.get_birdnetpi_config_path.return_value = config_path
-                mock_config_parser.return_value.load.return_value = MagicMock()
+                mock_config_parser.return_value.load.return_value = MagicMock(spec=BirdNETConfig)
 
                 mock_os.path.exists.return_value = False
                 mock_os.getenv.return_value = "false"  # SBC environment
@@ -473,9 +482,11 @@ class TestDetectionBufferingWithAdminOperations:
                 mock_data_manager.return_value.get_all_detections.return_value = []
 
                 # During admin operation, simulate FastAPI being down
-                with patch("httpx.AsyncClient") as mock_client:
+                with patch("httpx.AsyncClient", autospec=True) as mock_client:
                     mock_client.return_value.__aenter__.return_value.post.side_effect = (
-                        httpx.RequestError("Service temporarily unavailable", request=MagicMock())
+                        httpx.RequestError(
+                            "Service temporarily unavailable", request=MagicMock(spec=httpx.Request)
+                        )
                     )
 
                     # Process detections during admin operation
@@ -491,9 +502,9 @@ class TestDetectionBufferingWithAdminOperations:
                     await gdd.run()
 
             # After admin operation, FastAPI should be available again
-            with patch("httpx.AsyncClient") as mock_client:
-                mock_response = MagicMock()
-                mock_response.raise_for_status = MagicMock()
+            with patch("httpx.AsyncClient", autospec=True) as mock_client:
+                mock_response = MagicMock(spec=httpx.Response)
+                mock_response.raise_for_status = MagicMock(spec=callable)
                 mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
                 # Wait for background flush to process buffered detection
@@ -525,9 +536,9 @@ class TestDetectionBufferingWithAdminOperations:
                 service.detection_buffer.clear()
 
             # Cycle 1: Build up buffer during first admin operation
-            with patch("httpx.AsyncClient") as mock_client:
+            with patch("httpx.AsyncClient", autospec=True) as mock_client:
                 mock_client.return_value.__aenter__.return_value.post.side_effect = (
-                    httpx.RequestError("Service down", request=MagicMock())
+                    httpx.RequestError("Service down", request=MagicMock(spec=httpx.Request))
                 )
 
                 # Add detections to buffer
@@ -540,18 +551,20 @@ class TestDetectionBufferingWithAdminOperations:
                 assert cycle1_buffer_size == 3
 
             # Cycle 2: Partial flush, then more failures
-            with patch("httpx.AsyncClient") as mock_client:
+            with patch("httpx.AsyncClient", autospec=True) as mock_client:
                 post_mock = mock_client.return_value.__aenter__.return_value.post
 
                 # First flush attempt: partial success
                 responses = [
-                    MagicMock(),  # Success
-                    httpx.RequestError("Still failing", request=MagicMock()),  # Failure
-                    MagicMock(),  # Success
+                    MagicMock(spec=httpx.Response),  # Success
+                    httpx.RequestError(
+                        "Still failing", request=MagicMock(spec=httpx.Request)
+                    ),  # Failure
+                    MagicMock(spec=httpx.Response),  # Success
                 ]
                 for response in responses:
                     if hasattr(response, "raise_for_status"):
-                        response.raise_for_status = MagicMock()
+                        response.raise_for_status = MagicMock(spec=callable)
 
                 post_mock.side_effect = responses
 
@@ -565,7 +578,7 @@ class TestDetectionBufferingWithAdminOperations:
 
                 # Add more detections during continued issues
                 mock_client.return_value.__aenter__.return_value.post.side_effect = (
-                    httpx.RequestError("Still down", request=MagicMock())
+                    httpx.RequestError("Still down", request=MagicMock(spec=httpx.Request))
                 )
 
                 for _ in range(2):
@@ -577,9 +590,9 @@ class TestDetectionBufferingWithAdminOperations:
                 assert cycle2_final_buffer_size == 3  # 1 from partial flush + 2 new
 
             # Cycle 3: Full recovery and complete flush
-            with patch("httpx.AsyncClient") as mock_client:
-                mock_response = MagicMock()
-                mock_response.raise_for_status = MagicMock()
+            with patch("httpx.AsyncClient", autospec=True) as mock_client:
+                mock_response = MagicMock(spec=httpx.Response)
+                mock_response.raise_for_status = MagicMock(spec=callable)
                 mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
                 # Wait for background flush

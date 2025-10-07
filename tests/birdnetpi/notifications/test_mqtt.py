@@ -5,6 +5,8 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+from paho.mqtt.client import Client as MQTTClient
+from paho.mqtt.client import MQTTMessageInfo
 
 from birdnetpi.notifications.mqtt import MQTTService
 
@@ -78,10 +80,10 @@ class TestMQTTService:
         service = enabled_mqtt_service
 
         with (
-            patch("paho.mqtt.client.Client") as mock_client_class,
-            patch("asyncio.sleep"),
+            patch("paho.mqtt.client.Client", autospec=True) as mock_client_class,
+            patch("asyncio.sleep", autospec=True),
         ):  # Mock sleep to prevent slowness
-            mock_client = MagicMock()
+            mock_client = MagicMock(spec=MQTTClient)
             mock_client.connect.return_value = 0  # MQTT_ERR_SUCCESS
             mock_client_class.return_value = mock_client
 
@@ -100,10 +102,10 @@ class TestMQTTService:
         service.password = "auth_pass"
 
         with (
-            patch("paho.mqtt.client.Client") as mock_client_class,
-            patch("asyncio.sleep"),
+            patch("paho.mqtt.client.Client", autospec=True) as mock_client_class,
+            patch("asyncio.sleep", autospec=True),
         ):  # Mock sleep to prevent slowness
-            mock_client = MagicMock()
+            mock_client = MagicMock(spec=MQTTClient)
             mock_client.connect.return_value = 0
             mock_client_class.return_value = mock_client
 
@@ -121,11 +123,11 @@ class TestMQTTService:
     async def test_stop_enabled(self, enabled_mqtt_service):
         """Should stopping MQTT service when enabled."""
         service = enabled_mqtt_service
-        mock_client = MagicMock()
+        mock_client = MagicMock(spec=MQTTClient)
         service.client = mock_client
         service.is_connected = True
 
-        with patch.object(service, "_publish_status") as mock_publish:
+        with patch.object(service, "_publish_status", autospec=True) as mock_publish:
             await service.stop()
 
             mock_publish.assert_called_once_with("offline")
@@ -191,11 +193,11 @@ class TestMQTTService:
     async def test_publish_detection_enabled(self, enabled_mqtt_service, model_factory):
         """Should publishing detection when MQTT is enabled."""
         service = enabled_mqtt_service
-        service.client = MagicMock()
+        service.client = MagicMock(spec=MQTTClient)
         service.is_connected = True
 
         # Mock successful publish
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=MQTTMessageInfo)
         mock_result.rc = 0  # MQTT_ERR_SUCCESS
         service.client.publish.return_value = mock_result
 
@@ -231,10 +233,10 @@ class TestMQTTService:
     async def test_publish_gps_location(self, enabled_mqtt_service):
         """Should publishing GPS location."""
         service = enabled_mqtt_service
-        service.client = MagicMock()
+        service.client = MagicMock(spec=MQTTClient)
         service.is_connected = True
 
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=MQTTMessageInfo)
         mock_result.rc = 0
         service.client.publish.return_value = mock_result
 
@@ -255,10 +257,10 @@ class TestMQTTService:
     async def test_publish_system_health(self, enabled_mqtt_service):
         """Should publishing system health data."""
         service = enabled_mqtt_service
-        service.client = MagicMock()
+        service.client = MagicMock(spec=MQTTClient)
         service.is_connected = True
 
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=MQTTMessageInfo)
         mock_result.rc = 0
         service.client.publish.return_value = mock_result
 
@@ -286,10 +288,10 @@ class TestMQTTService:
     async def test_publish_system_stats(self, enabled_mqtt_service):
         """Should publishing system statistics."""
         service = enabled_mqtt_service
-        service.client = MagicMock()
+        service.client = MagicMock(spec=MQTTClient)
         service.is_connected = True
 
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=MQTTMessageInfo)
         mock_result.rc = 0
         service.client.publish.return_value = mock_result
 
@@ -307,9 +309,9 @@ class TestMQTTService:
     async def test_publish_status(self, enabled_mqtt_service):
         """Should publishing service status."""
         service = enabled_mqtt_service
-        service.client = MagicMock()
+        service.client = MagicMock(spec=MQTTClient)
 
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=MQTTMessageInfo)
         mock_result.rc = 0
         service.client.publish.return_value = mock_result
 
@@ -328,22 +330,22 @@ class TestMQTTService:
     async def test_publish_system_info(self, enabled_mqtt_service):
         """Should publishing system information."""
         service = enabled_mqtt_service
-        service.client = MagicMock()
+        service.client = MagicMock(spec=MQTTClient)
         service.is_connected = True
 
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=MQTTMessageInfo)
         mock_result.rc = 0
         service.client.publish.return_value = mock_result
 
         # Mock platform and psutil
         with (
-            patch("platform.system") as mock_system,
-            patch("platform.release") as mock_release,
-            patch("platform.machine") as mock_machine,
-            patch("platform.node") as mock_node,
-            patch("platform.python_version") as mock_python,
-            patch("psutil.cpu_count") as mock_cpu_count,
-            patch("psutil.virtual_memory") as mock_memory,
+            patch("platform.system", autospec=True) as mock_system,
+            patch("platform.release", autospec=True) as mock_release,
+            patch("platform.machine", autospec=True) as mock_machine,
+            patch("platform.node", autospec=True) as mock_node,
+            patch("platform.python_version", autospec=True) as mock_python,
+            patch("psutil.cpu_count", autospec=True) as mock_cpu_count,
+            patch("psutil.virtual_memory", autospec=True) as mock_memory,
         ):
             mock_system.return_value = "Linux"
             mock_release.return_value = "5.4.0"
@@ -376,7 +378,7 @@ class TestMQTTService:
         assert service._can_publish() is False
 
         # Connected with client
-        service.client = MagicMock()
+        service.client = MagicMock(spec=MQTTClient)
         assert service._can_publish() is True
 
         # Disabled service
@@ -404,11 +406,11 @@ class TestMQTTService:
     async def test_publish_failure(self, enabled_mqtt_service, model_factory):
         """Should handling publish failures."""
         service = enabled_mqtt_service
-        service.client = MagicMock()
+        service.client = MagicMock(spec=MQTTClient)
         service.is_connected = True
 
         # Mock failed publish
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=MQTTMessageInfo)
         mock_result.rc = 1  # MQTT_ERR_NOMEM or other error
         service.client.publish.return_value = mock_result
 
@@ -431,7 +433,7 @@ class TestMQTTService:
     async def test_publish__exception_handling(self, enabled_mqtt_service, model_factory):
         """Should exception handling during publish."""
         service = enabled_mqtt_service
-        service.client = MagicMock()
+        service.client = MagicMock(spec=MQTTClient)
         service.is_connected = True
 
         # Mock exception during publish
@@ -457,13 +459,13 @@ class TestMQTTService:
         """Should connection retry logic."""
         service = enabled_mqtt_service
 
-        with patch("paho.mqtt.client.Client") as mock_client_class:
-            mock_client = MagicMock()
+        with patch("paho.mqtt.client.Client", autospec=True) as mock_client_class:
+            mock_client = MagicMock(spec=MQTTClient)
             # First attempt fails, second succeeds
             mock_client.connect.side_effect = [Exception("Connection failed"), 0]
             mock_client_class.return_value = mock_client
 
-            with patch("asyncio.sleep") as mock_sleep:
+            with patch("asyncio.sleep", autospec=True) as mock_sleep:
                 await service.start()
 
                 # Should have called connect twice
@@ -479,12 +481,12 @@ class TestMQTTService:
         """Should behavior when max retries are exceeded."""
         service = enabled_mqtt_service
 
-        with patch("paho.mqtt.client.Client") as mock_client_class:
-            mock_client = MagicMock()
+        with patch("paho.mqtt.client.Client", autospec=True) as mock_client_class:
+            mock_client = MagicMock(spec=MQTTClient)
             mock_client.connect.side_effect = Exception("Connection failed")
             mock_client_class.return_value = mock_client
 
-            with patch("asyncio.sleep") as mock_sleep:
+            with patch("asyncio.sleep", autospec=True) as mock_sleep:
                 # Start method should not raise (it catches and logs exceptions)
                 await service.start()
 

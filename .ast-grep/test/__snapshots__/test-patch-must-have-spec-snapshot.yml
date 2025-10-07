@@ -4,7 +4,11 @@ snapshots:
     @patch('module.Class')
     def test_something():
         pass
-  : labels:
+  : fixed: |
+      @patch('module.Class', autospec=True)
+      def test_something():
+          pass
+    labels:
     - source: patch('module.Class')
       style: primary
       start: 1
@@ -23,7 +27,12 @@ snapshots:
     @patch('module.client', autospec=True)
     def test_something():
         pass
-  : labels:
+  : fixed: |
+      @patch('module.service', autospec=True)
+      @patch('module.client', autospec=True)
+      def test_something():
+          pass
+    labels:
     - source: patch('module.service')
       style: primary
       start: 1
@@ -68,7 +77,11 @@ snapshots:
     def test_something():
         with patch('module.service'):
             pass
-  : labels:
+  : fixed: |
+      def test_something():
+          with patch('module.service', autospec=True):
+              pass
+    labels:
     - source: patch('module.service')
       style: primary
       start: 31
@@ -85,7 +98,10 @@ snapshots:
   ? |
     with patch('module.func'):
         pass
-  : labels:
+  : fixed: |
+      with patch('module.func', autospec=True):
+          pass
+    labels:
     - source: patch('module.func')
       style: primary
       start: 5

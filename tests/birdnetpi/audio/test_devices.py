@@ -13,9 +13,9 @@ class TestAudioDeviceService:
         """Set up test fixtures."""
         self.service = AudioDeviceService()
 
-    @patch("sounddevice._initialize")
-    @patch("sounddevice._terminate")
-    @patch("sounddevice.query_devices")
+    @patch("sounddevice._initialize", autospec=True)
+    @patch("sounddevice._terminate", autospec=True)
+    @patch("sounddevice.query_devices", autospec=True)
     def test_discover_input_devices(self, mock_query_devices, mock_terminate, mock_initialize):
         """Should correctly identify and return input devices."""
         # Mock sounddevice.query_devices to return a list of dummy devices

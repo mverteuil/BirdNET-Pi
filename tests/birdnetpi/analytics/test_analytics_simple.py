@@ -26,14 +26,23 @@ def mock_detection_query_service():
     """Mock detection query service."""
     mock = MagicMock(spec=DetectionQueryService)
     # Set up default async returns
-    mock.get_detection_count = AsyncMock(return_value=100)
-    mock.get_unique_species_count = AsyncMock(return_value=25)
-    mock.get_storage_metrics = AsyncMock(
-        return_value={"total_bytes": 1073741824, "total_duration": 7200, "total_files": 100}
+    mock.get_detection_count = AsyncMock(
+        spec=DetectionQueryService.get_detection_count, return_value=100
     )
-    mock.get_species_counts = AsyncMock(return_value=[])
-    mock.get_hourly_counts = AsyncMock(return_value=[])
-    mock.query_detections = AsyncMock(return_value=[])
+    mock.get_unique_species_count = AsyncMock(
+        spec=DetectionQueryService.get_unique_species_count, return_value=25
+    )
+    mock.get_storage_metrics = AsyncMock(
+        spec=DetectionQueryService.get_storage_metrics,
+        return_value={"total_bytes": 1073741824, "total_duration": 7200, "total_files": 100},
+    )
+    mock.get_species_counts = AsyncMock(
+        spec=DetectionQueryService.get_species_counts, return_value=[]
+    )
+    mock.get_hourly_counts = AsyncMock(
+        spec=DetectionQueryService.get_hourly_counts, return_value=[]
+    )
+    mock.query_detections = AsyncMock(spec=DetectionQueryService.query_detections, return_value=[])
     return mock
 
 

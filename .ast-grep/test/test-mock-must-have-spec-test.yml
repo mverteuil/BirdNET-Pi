@@ -13,17 +13,6 @@ valid:
     from unittest.mock import AsyncMock
     mock_obj = AsyncMock(spec=AsyncService)
 
-  # Mock with autospec parameter
-  - |
-    from unittest.mock import Mock
-    mock_obj = Mock(autospec=True)
-  - |
-    from unittest.mock import MagicMock
-    mock_obj = MagicMock(autospec=True)
-  - |
-    from unittest.mock import AsyncMock
-    mock_obj = AsyncMock(autospec=True)
-
   # Mock with spec_set parameter
   - |
     from unittest.mock import Mock
@@ -46,15 +35,7 @@ valid:
     from unittest.mock import AsyncMock
     mock_obj = AsyncMock(side_effect=ValueError, spec_set=MyService)
 
-  # Mock with autospec and other parameters
-  - |
-    from unittest.mock import Mock
-    mock_obj = Mock(autospec=True, return_value=42)
-  - |
-    from unittest.mock import MagicMock
-    mock_obj = MagicMock(return_value=None, autospec=True)
-
-  # patch with autospec (not applicable to this rule)
+  # patch with autospec (not applicable to this rule - patch can use autospec)
   - |
     with patch('module.Class', autospec=True) as mock_class:
         pass
@@ -123,3 +104,52 @@ invalid:
     def test_something():
         mock_obj = Mock()
         assert mock_obj.anything.works()
+
+  # Mock with autospec=True (only works with patch())
+  - |
+    from unittest.mock import Mock
+    mock_obj = Mock(autospec=True)
+  - |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(autospec=True)
+  - |
+    from unittest.mock import AsyncMock
+    mock_obj = AsyncMock(autospec=True, return_value=None)
+
+  # Mock with spec=True (meaningless boolean)
+  - |
+    from unittest.mock import Mock
+    mock_obj = Mock(spec=True)
+  - |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(spec=True)
+
+  # Mock with spec=False (meaningless boolean)
+  - |
+    from unittest.mock import Mock
+    mock_obj = Mock(spec=False)
+
+  # Mock with spec=[] (empty list)
+  - |
+    from unittest.mock import Mock
+    mock_obj = Mock(spec=[])
+
+  # Mock with spec=() (empty tuple)
+  - |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(spec=())
+
+  # Mock with spec=["attr"] (list - should use class)
+  - |
+    from unittest.mock import Mock
+    mock_obj = Mock(spec=["method", "attribute"])
+
+  # Mock with spec=("attr",) (single-item tuple - should use class)
+  - |
+    from unittest.mock import Mock
+    mock_obj = Mock(spec=("method",))
+
+  # Mock with spec=("a", "b") (multi-item tuple - should use class)
+  - |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(spec=("method", "attribute"))

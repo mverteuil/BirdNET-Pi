@@ -7,6 +7,7 @@ Redis is the exclusive backend for caching in BirdNET-Pi.
 from unittest.mock import MagicMock, patch
 
 import pytest
+from redis import Redis
 
 from birdnetpi.utils.cache.cache import Cache
 
@@ -14,11 +15,11 @@ from birdnetpi.utils.cache.cache import Cache
 class TestCacheInitialization:
     """Cache class initialization with Redis backend."""
 
-    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool")
-    @patch("birdnetpi.utils.cache.backends.redis.Redis")
+    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool", autospec=True)
+    @patch("birdnetpi.utils.cache.backends.redis.Redis", autospec=True)
     def test_init_with_redis_success(self, mock_redis, mock_pool):
         """Should successfully initialize with Redis backend."""
-        mock_client = MagicMock()
+        mock_client = MagicMock(spec=Redis)
         mock_redis.return_value = mock_client
         mock_client.ping.return_value = True
 
@@ -35,11 +36,11 @@ class TestCacheInitialization:
         assert cache.backend_type == "redis"
         mock_client.ping.assert_called()
 
-    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool")
-    @patch("birdnetpi.utils.cache.backends.redis.Redis")
+    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool", autospec=True)
+    @patch("birdnetpi.utils.cache.backends.redis.Redis", autospec=True)
     def test_init_redis_connection_failure(self, mock_redis, mock_pool):
         """Should raise RuntimeError when Redis is unavailable."""
-        mock_client = MagicMock()
+        mock_client = MagicMock(spec=Redis)
         mock_redis.return_value = mock_client
         # Simulate connection failure on all retries
         mock_client.ping.side_effect = Exception("Connection refused")
@@ -55,11 +56,11 @@ class TestCacheInitialization:
         error_msg = str(exc_info.value)
         assert "Failed to" in error_msg and ("Redis" in error_msg or "backend" in error_msg)
 
-    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool")
-    @patch("birdnetpi.utils.cache.backends.redis.Redis")
+    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool", autospec=True)
+    @patch("birdnetpi.utils.cache.backends.redis.Redis", autospec=True)
     def test_init_with_default_parameters(self, mock_redis, mock_pool):
         """Should initialize with default parameters."""
-        mock_client = MagicMock()
+        mock_client = MagicMock(spec=Redis)
         mock_redis.return_value = mock_client
         mock_client.ping.return_value = True
 
@@ -69,11 +70,11 @@ class TestCacheInitialization:
         assert cache.enable_cache_warming is True
         assert cache.backend_type == "redis"
 
-    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool")
-    @patch("birdnetpi.utils.cache.backends.redis.Redis")
+    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool", autospec=True)
+    @patch("birdnetpi.utils.cache.backends.redis.Redis", autospec=True)
     def test_init_statistics_tracking(self, mock_redis, mock_pool):
         """Should initialize statistics correctly."""
-        mock_client = MagicMock()
+        mock_client = MagicMock(spec=Redis)
         mock_redis.return_value = mock_client
         mock_client.ping.return_value = True
 
@@ -88,11 +89,11 @@ class TestCacheInitialization:
             "errors": 0,
         }
 
-    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool")
-    @patch("birdnetpi.utils.cache.backends.redis.Redis")
+    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool", autospec=True)
+    @patch("birdnetpi.utils.cache.backends.redis.Redis", autospec=True)
     def test_init_with_custom_ttl(self, mock_redis, mock_pool):
         """Should initialize with custom TTL."""
-        mock_client = MagicMock()
+        mock_client = MagicMock(spec=Redis)
         mock_redis.return_value = mock_client
         mock_client.ping.return_value = True
 
@@ -100,11 +101,11 @@ class TestCacheInitialization:
 
         assert cache.default_ttl == 1800
 
-    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool")
-    @patch("birdnetpi.utils.cache.backends.redis.Redis")
+    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool", autospec=True)
+    @patch("birdnetpi.utils.cache.backends.redis.Redis", autospec=True)
     def test_init_with_cache_warming_disabled(self, mock_redis, mock_pool):
         """Should initialize with cache warming disabled."""
-        mock_client = MagicMock()
+        mock_client = MagicMock(spec=Redis)
         mock_redis.return_value = mock_client
         mock_client.ping.return_value = True
 
@@ -112,11 +113,11 @@ class TestCacheInitialization:
 
         assert cache.enable_cache_warming is False
 
-    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool")
-    @patch("birdnetpi.utils.cache.backends.redis.Redis")
+    @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool", autospec=True)
+    @patch("birdnetpi.utils.cache.backends.redis.Redis", autospec=True)
     def test_repr_method(self, mock_redis, mock_pool):
         """Should provide informative string representation."""
-        mock_client = MagicMock()
+        mock_client = MagicMock(spec=Redis)
         mock_redis.return_value = mock_client
         mock_client.ping.return_value = True
 

@@ -6,6 +6,7 @@ import pytest
 from click.testing import CliRunner
 
 from birdnetpi.cli.process_ioc_data import cli
+from birdnetpi.utils.ioc_database_builder import IocDatabaseBuilder
 
 
 @pytest.fixture
@@ -17,11 +18,11 @@ def runner():
 class TestIOCDataProcessor:
     """Test IOC database builder commands."""
 
-    @patch("birdnetpi.cli.process_ioc_data.IocDatabaseBuilder")
+    @patch("birdnetpi.cli.process_ioc_data.IocDatabaseBuilder", autospec=True)
     def test_build_command_with_xml_only(self, mock_builder_class, runner, tmp_path):
         """Should build database from XML file only."""
         # Setup mocks
-        mock_builder = MagicMock()
+        mock_builder = MagicMock(spec=IocDatabaseBuilder)
         mock_builder_class.return_value = mock_builder
 
         # Create test files
@@ -49,11 +50,11 @@ class TestIOCDataProcessor:
         mock_builder_class.assert_called_once_with(db_path=db_file)
         mock_builder.populate_from_files.assert_called_once_with(xml_file, None)
 
-    @patch("birdnetpi.cli.process_ioc_data.IocDatabaseBuilder")
+    @patch("birdnetpi.cli.process_ioc_data.IocDatabaseBuilder", autospec=True)
     def test_build_command_with_xml_and_xlsx(self, mock_builder_class, runner, tmp_path):
         """Should build database from XML and XLSX files."""
         # Setup mocks
-        mock_builder = MagicMock()
+        mock_builder = MagicMock(spec=IocDatabaseBuilder)
         mock_builder_class.return_value = mock_builder
 
         # Create test files
@@ -86,11 +87,11 @@ class TestIOCDataProcessor:
         mock_builder_class.assert_called_once_with(db_path=db_file)
         mock_builder.populate_from_files.assert_called_once_with(xml_file, xlsx_file)
 
-    @patch("birdnetpi.cli.process_ioc_data.IocDatabaseBuilder")
+    @patch("birdnetpi.cli.process_ioc_data.IocDatabaseBuilder", autospec=True)
     def test_build_command_file_not_found(self, mock_builder_class, runner, tmp_path):
         """Should handle file not found error gracefully."""
         # Setup mocks
-        mock_builder = MagicMock()
+        mock_builder = MagicMock(spec=IocDatabaseBuilder)
         mock_builder.populate_from_files.side_effect = FileNotFoundError("XML file not found")
         mock_builder_class.return_value = mock_builder
 
@@ -113,11 +114,11 @@ class TestIOCDataProcessor:
         assert result.exit_code == 1
         assert "✗ File not found: XML file not found" in result.output
 
-    @patch("birdnetpi.cli.process_ioc_data.IocDatabaseBuilder")
+    @patch("birdnetpi.cli.process_ioc_data.IocDatabaseBuilder", autospec=True)
     def test_build_command_general_error(self, mock_builder_class, runner, tmp_path):
         """Should handle general errors gracefully."""
         # Setup mocks
-        mock_builder = MagicMock()
+        mock_builder = MagicMock(spec=IocDatabaseBuilder)
         mock_builder.populate_from_files.side_effect = Exception("Database error")
         mock_builder_class.return_value = mock_builder
 

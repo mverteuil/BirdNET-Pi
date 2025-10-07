@@ -1,10 +1,13 @@
 """Tests for multilingual database service."""
 
+from collections import namedtuple
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Result
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from birdnetpi.database.species import SpeciesDatabaseService
 
@@ -43,8 +46,7 @@ def species_database(mock_path_resolver):
 @pytest.fixture
 def mock_session():
     """Create mock SQLAlchemy async session."""
-    session = AsyncMock()
-    session.execute = AsyncMock()
+    session = AsyncMock(spec=AsyncSession)
     return session
 
 
@@ -137,12 +139,16 @@ class TestGetBestCommonName:
         self, species_database, mock_session
     ):
         """Should build query with all databases for IOC English lookup."""
-        # Mock query result - now using proper SQLAlchemy queries
-        mock_result = MagicMock()
-        mock_result.english_name = "American Robin"
-        mock_execute_result = AsyncMock()
-        mock_execute_result.first = MagicMock(return_value=mock_result)
-        mock_session.execute.return_value = mock_execute_result
+        # Create a simple object with the required attributes (like a SQLAlchemy Row)
+
+        MockRow = namedtuple("MockRow", ["english_name"])
+        mock_row = MockRow(english_name="American Robin")
+
+        # Mock the Result object from execute()
+        # Note: .first() is synchronous, not async
+        mock_execute_result = MagicMock(spec=Result)
+        mock_execute_result.first = MagicMock(spec=callable, return_value=mock_row)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_execute_result)
 
         result = await species_database.get_best_common_name(
             mock_session, "Turdus migratorius", "en"
@@ -160,11 +166,16 @@ class TestGetBestCommonName:
         self, species_database, mock_session
     ):
         """Should build query without IOC species table for non-English languages."""
-        mock_result = MagicMock()
-        mock_result.common_name = "Petirrojo Americano"
-        mock_execute_result = AsyncMock()
-        mock_execute_result.first = MagicMock(return_value=mock_result)
-        mock_session.execute.return_value = mock_execute_result
+        # Create a simple object with the required attributes (like a SQLAlchemy Row)
+
+        MockRow = namedtuple("MockRow", ["common_name"])
+        mock_row = MockRow(common_name="Petirrojo Americano")
+
+        # Mock the Result object from execute()
+        # Note: .first() is synchronous, not async
+        mock_execute_result = MagicMock(spec=Result)
+        mock_execute_result.first = MagicMock(spec=callable, return_value=mock_row)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_execute_result)
 
         result = await species_database.get_best_common_name(
             mock_session, "Turdus migratorius", "es"
@@ -179,8 +190,8 @@ class TestGetBestCommonName:
     @pytest.mark.asyncio
     async def test_get_best_common_name__no_result(self, species_database, mock_session):
         """Should return empty result when no match is found."""
-        mock_execute_result = AsyncMock()
-        mock_execute_result.first = MagicMock(return_value=None)
+        mock_execute_result = AsyncMock(spec=Result)
+        mock_execute_result.first.return_value = None
         mock_session.execute.return_value = mock_execute_result
 
         result = await species_database.get_best_common_name(
@@ -195,8 +206,8 @@ class TestGetBestCommonName:
         self, species_database, mock_session
     ):
         """Should prevent SQL injection through parameterized queries."""
-        mock_execute_result = AsyncMock()
-        mock_execute_result.first = MagicMock(return_value=None)
+        mock_execute_result = AsyncMock(spec=Result)
+        mock_execute_result.first.return_value = None
         mock_session.execute.return_value = mock_execute_result
 
         # Try injection through scientific name
@@ -214,11 +225,14 @@ class TestGetBestCommonName:
     ):
         """Should correctly detect source based on priority order."""
         # Test when IOC English name is found (highest priority for English)
-        mock_result = MagicMock()
-        mock_result.english_name = "American Robin"
-        mock_execute_result = AsyncMock()
-        mock_execute_result.first = MagicMock(return_value=mock_result)
-        mock_session.execute.return_value = mock_execute_result
+
+        MockRow = namedtuple("MockRow", ["english_name", "common_name"])
+        mock_row_english = MockRow(english_name="American Robin", common_name=None)
+
+        # Note: .first() is synchronous, not async
+        mock_execute_result = MagicMock(spec=Result)
+        mock_execute_result.first = MagicMock(spec=callable, return_value=mock_row_english)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_execute_result)
 
         result = await species_database.get_best_common_name(
             mock_session, "Turdus migratorius", "en"
@@ -229,20 +243,30 @@ class TestGetBestCommonName:
 
         # Test when PatLevin is found (lower priority) - For non-English, no IOC english check
         mock_session.reset_mock()
-        mock_result.common_name = "American Robin"
+        mock_row_patlevin = MockRow(english_name=None, common_name="American Robin")
         # For Spanish, it goes: IOC translations, PatLevin, Avibase
-        mock_execute_result1 = AsyncMock()
-        mock_execute_result1.first = MagicMock(return_value=None)  # IOC translation not found
-        mock_execute_result2 = AsyncMock()
-        mock_execute_result2.first = MagicMock(return_value=mock_result)  # PatLevin found
-        mock_execute_result3 = AsyncMock()
-        mock_execute_result3.first = MagicMock(return_value=None)  # Won't reach Avibase
+        # Note: .first() is synchronous, not async
+        mock_execute_result1 = MagicMock(spec=object)
+        mock_execute_result1.first = MagicMock(
+            spec=callable, return_value=None
+        )  # IOC translation not found
+        mock_execute_result2 = MagicMock(spec=object)
+        mock_execute_result2.first = MagicMock(
+            spec=callable, return_value=mock_row_patlevin
+        )  # PatLevin found
+        mock_execute_result3 = MagicMock(spec=object)
+        mock_execute_result3.first = MagicMock(
+            spec=callable, return_value=None
+        )  # Won't reach Avibase
 
-        mock_session.execute.side_effect = [
-            mock_execute_result1,
-            mock_execute_result2,
-            mock_execute_result3,
-        ]
+        mock_session.execute = AsyncMock(
+            spec=callable,
+            side_effect=[
+                mock_execute_result1,
+                mock_execute_result2,
+                mock_execute_result3,
+            ],
+        )
 
         result = await species_database.get_best_common_name(
             mock_session, "Turdus migratorius", "es"
@@ -256,57 +280,43 @@ class TestGetAllTranslations:
     @pytest.mark.asyncio
     async def test_get_all_translations_all_databases(self, species_database, mock_session):
         """Should retrieve translations from all available databases."""
-        # Create mock result for IOC species (first() returns single row)
-        ioc_species_result = MagicMock()
-        ioc_species_result.english_name = "American Robin"
+        # Create namedtuples for row results
+        EnglishRow = namedtuple("EnglishRow", ["english_name"])
+        TransRow = namedtuple("TransRow", ["language_code", "common_name"])
 
-        # Create mock results for translations (iteration returns multiple rows)
-        ioc_trans_row1 = MagicMock()
-        ioc_trans_row1.language_code = "es"
-        ioc_trans_row1.common_name = "Petirrojo Americano"
+        # IOC species (first() returns single row)
+        ioc_species_row = EnglishRow(english_name="American Robin")
 
-        ioc_trans_row2 = MagicMock()
-        ioc_trans_row2.language_code = "fr"
-        ioc_trans_row2.common_name = "Merle d'Amérique"
+        # Translation rows
+        ioc_trans_row1 = TransRow(language_code="es", common_name="Petirrojo Americano")
+        ioc_trans_row2 = TransRow(language_code="fr", common_name="Merle d'Amérique")
 
-        patlevin_row1 = MagicMock()
-        patlevin_row1.language_code = "de"
-        patlevin_row1.common_name = "Wanderdrossel"
+        patlevin_row1 = TransRow(language_code="de", common_name="Wanderdrossel")
+        patlevin_row2 = TransRow(language_code="es", common_name="Petirrojo")
 
-        patlevin_row2 = MagicMock()
-        patlevin_row2.language_code = "es"
-        patlevin_row2.common_name = "Petirrojo"  # Duplicate language, different name
-
-        avibase_row1 = MagicMock()
-        avibase_row1.language_code = "it"
-        avibase_row1.common_name = "Pettirosso americano"
-
-        avibase_row2 = MagicMock()
-        avibase_row2.language_code = "pt"
-        avibase_row2.common_name = "Tordo-americano"
+        avibase_row1 = TransRow(language_code="it", common_name="Pettirosso americano")
+        avibase_row2 = TransRow(language_code="pt", common_name="Tordo-americano")
 
         # Mock execute to return different results for each query
-        # First call: IOC species (uses .first())
-        first_result = AsyncMock()
-        first_result.first = MagicMock(return_value=ioc_species_result)
+        # First call: IOC species (uses .first() which is synchronous)
+        first_result = MagicMock(spec=object)
+        first_result.first = MagicMock(spec=callable, return_value=ioc_species_row)
 
-        # Create mocks for translation queries that return iterable results
-        ioc_trans_result = MagicMock()
-        ioc_trans_result.__iter__ = lambda self: iter([ioc_trans_row1, ioc_trans_row2])
+        # Subsequent calls: translations (use iteration) - these must be iterable
+        ioc_trans_result = [ioc_trans_row1, ioc_trans_row2]
+        patlevin_result = [patlevin_row1, patlevin_row2]
+        avibase_result = [avibase_row1, avibase_row2]
 
-        patlevin_result = MagicMock()
-        patlevin_result.__iter__ = lambda self: iter([patlevin_row1, patlevin_row2])
-
-        avibase_result = MagicMock()
-        avibase_result.__iter__ = lambda self: iter([avibase_row1, avibase_row2])
-
-        # Subsequent calls: translations (use iteration)
-        mock_session.execute.side_effect = [
-            first_result,  # IOC species query
-            ioc_trans_result,  # IOC translations
-            patlevin_result,  # PatLevin
-            avibase_result,  # Avibase
-        ]
+        # Set up side_effect for execute to return different results for each call
+        mock_session.execute = AsyncMock(
+            spec=callable,
+            side_effect=[
+                first_result,  # IOC species query
+                ioc_trans_result,  # IOC translations
+                patlevin_result,  # PatLevin
+                avibase_result,  # Avibase
+            ],
+        )
 
         result = await species_database.get_all_translations(mock_session, "Turdus migratorius")
 
@@ -337,54 +347,52 @@ class TestGetAllTranslations:
     @pytest.mark.asyncio
     async def test_get_all_translations__deduplication(self, species_database, mock_session):
         """Should deduplicate identical names from different sources."""
-        # Create proper mock result objects with fetchone() method
-        ioc_species_result = MagicMock()
-        mock_row = MagicMock()
-        mock_row.english_name = "American Robin"  # Set the english_name attribute
-        ioc_species_result.fetchone.return_value = mock_row
+        EnglishRow = namedtuple("EnglishRow", ["english_name"])
+        TransRow = namedtuple("TransRow", ["language_code", "common_name"])
 
-        # Create mock Row objects with proper attributes
-        ioc_row = MagicMock()
-        ioc_row.language_code = "en"
-        ioc_row.common_name = "American Robin"
-        ioc_translations_result = MagicMock()
-        ioc_translations_result.__iter__.return_value = iter([ioc_row])  # Duplicate
+        # IOC species row with English name
+        ioc_species_row = EnglishRow(english_name="American Robin")
 
-        patlevin_row = MagicMock()
-        patlevin_row.language_code = "en"
-        patlevin_row.common_name = "American Robin"
-        patlevin_result = MagicMock()
-        patlevin_result.__iter__.return_value = iter([patlevin_row])  # Another duplicate
+        # Mock result for IOC species query (.first() is synchronous)
+        first_result = MagicMock(spec=object)
+        first_result.first = MagicMock(spec=callable, return_value=ioc_species_row)
 
-        avibase_row = MagicMock()
-        avibase_row.language_code = "en"
-        avibase_row.common_name = "Robin"
-        avibase_result = MagicMock()
-        avibase_result.__iter__.return_value = iter(
-            [avibase_row]
-        )  # Different name, should be included
+        # Translation rows - duplicates will be filtered
+        ioc_trans_row = TransRow(language_code="en", common_name="American Robin")  # Duplicate
+        patlevin_row = TransRow(language_code="en", common_name="American Robin")  # Duplicate
+        avibase_row = TransRow(language_code="en", common_name="Robin")  # Different
 
-        mock_session.execute.side_effect = [
-            ioc_species_result,
-            ioc_translations_result,
-            patlevin_result,
-            avibase_result,
-        ]
+        # Mock results for iteration queries
+        ioc_trans_result = [ioc_trans_row]
+        patlevin_result = [patlevin_row]
+        avibase_result = [avibase_row]
+
+        mock_session.execute = AsyncMock(
+            spec=callable,
+            side_effect=[
+                first_result,
+                ioc_trans_result,
+                patlevin_result,
+                avibase_result,
+            ],
+        )
 
         result = await species_database.get_all_translations(mock_session, "Turdus migratorius")
 
         assert "en" in result
-        # Based on the test failure, it looks like we get 3 results:
-        # 2 from IOC (species and translations) + 1 from Avibase
-        # The actual implementation may not deduplicate across source tables within IOC
-        assert len(result["en"]) == 3  # IOC species, IOC translations, Avibase
+        # Should have 3 entries:
+        # 1. "American Robin" from IOC species table
+        # 2. "American Robin" from IOC translations table (not deduplicated within IOC)
+        # 3. "Robin" from Avibase (different name)
+        # PatLevin's "American Robin" is filtered as duplicate
+        assert len(result["en"]) == 3
         names = [t["name"] for t in result["en"]]
-        assert "American Robin" in names
+        assert names.count("American Robin") == 2  # From IOC species and translations
         assert "Robin" in names
 
-        # Should have IOC sources and Avibase
+        # Should have IOC (twice) and Avibase sources
         sources = [t["source"] for t in result["en"]]
-        assert "IOC" in sources
+        assert sources.count("IOC") == 2
         assert "Avibase" in sources
 
     @pytest.mark.asyncio
@@ -392,19 +400,22 @@ class TestGetAllTranslations:
         self, species_database, mock_session
     ):
         """Should prevent SQL injection in all query parameters."""
-        # Create proper mock result objects for empty results
-        empty_fetchone_result = MagicMock()
-        empty_fetchone_result.fetchone.return_value = None
+        # Mock results for empty queries (.first() is synchronous)
+        empty_first_result = MagicMock(spec=object)
+        empty_first_result.first = MagicMock(spec=callable, return_value=None)
 
-        empty_iter_result = MagicMock()
-        empty_iter_result.__iter__.return_value = iter([])
+        # Empty iteration results
+        empty_list = []
 
-        mock_session.execute.side_effect = [
-            empty_fetchone_result,  # IOC species - empty
-            empty_iter_result,  # IOC translations - empty
-            empty_iter_result,  # PatLevin - empty
-            empty_iter_result,  # Avibase - empty
-        ]
+        mock_session.execute = AsyncMock(
+            spec=callable,
+            side_effect=[
+                empty_first_result,  # IOC species - empty
+                empty_list,  # IOC translations - empty
+                empty_list,  # PatLevin - empty
+                empty_list,  # Avibase - empty
+            ],
+        )
 
         await species_database.get_all_translations(mock_session, "'; DROP TABLE species; --")
 
@@ -454,27 +465,28 @@ class TestErrorHandling:
         self, species_database, mock_session
     ):
         """Should handle errors from individual database queries gracefully."""
-        # Create proper mock result object for successful query
-        success_result = MagicMock()
-        mock_row = MagicMock()
+        EnglishRow = namedtuple("EnglishRow", ["english_name"])
+        TransRow = namedtuple("TransRow", ["language_code", "common_name"])
 
-        # Set attributes on mock_row based on tuple values
+        # First query succeeds (.first() is synchronous)
+        ioc_species_row = EnglishRow(english_name="American Robin")
+        first_result = MagicMock(spec=object)
+        first_result.first = MagicMock(spec=callable, return_value=ioc_species_row)
 
-        success_result.fetchone.return_value = mock_row
+        # PatLevin and Avibase rows for when they succeed
+        patlevin_row = TransRow(language_code="de", common_name="Wanderdrossel")
+        avibase_row = TransRow(language_code="it", common_name="Pettirosso americano")
 
-        patlevin_success_result = MagicMock()
-        patlevin_success_result.__iter__.return_value = iter([("de", "Wanderdrossel")])
-
-        avibase_success_result = MagicMock()
-        avibase_success_result.__iter__.return_value = iter([("it", "Pettirosso americano")])
-
-        # First query succeeds, second fails, third succeeds
-        mock_session.execute.side_effect = [
-            success_result,  # IOC species - success
-            SQLAlchemyError("IOC translations failed"),  # IOC translations - fail
-            patlevin_success_result,  # PatLevin - success
-            avibase_success_result,  # Avibase - success
-        ]
+        # First query succeeds, second fails, subsequent queries won't be reached
+        mock_session.execute = AsyncMock(
+            spec=callable,
+            side_effect=[
+                first_result,  # IOC species - success
+                SQLAlchemyError("IOC translations failed"),  # IOC translations - fail
+                [patlevin_row],  # PatLevin - won't be reached
+                [avibase_row],  # Avibase - won't be reached
+            ],
+        )
 
         with pytest.raises(SQLAlchemyError):
             await species_database.get_all_translations(mock_session, "Turdus migratorius")
@@ -545,9 +557,9 @@ class TestIntegrationWithRealSession:
     async def test_query_building_integration(self, species_database, in_memory_session):
         """Should build and execute valid SQL queries."""
         # Test that the query building doesn't have syntax errors
-        with patch.object(in_memory_session, "execute") as mock_execute:
-            mock_result = AsyncMock()
-            mock_result.first = MagicMock(return_value=None)
+        with patch.object(in_memory_session, "execute", autospec=True) as mock_execute:
+            mock_result = AsyncMock(spec=Result)
+            mock_result.first.return_value = None
             mock_execute.return_value = mock_result
 
             await species_database.get_best_common_name(
@@ -575,8 +587,8 @@ class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_empty_scientific_name(self, species_database, mock_session):
         """Should handle empty scientific name gracefully."""
-        mock_execute_result = AsyncMock()
-        mock_execute_result.first = MagicMock(return_value=None)
+        mock_execute_result = AsyncMock(spec=Result)
+        mock_execute_result.first.return_value = None
         mock_session.execute.return_value = mock_execute_result
 
         result = await species_database.get_best_common_name(mock_session, "", "en")
@@ -593,8 +605,8 @@ class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_special_characters_in_scientific_name(self, species_database, mock_session):
         """Should handle special characters in scientific names."""
-        mock_execute_result = AsyncMock()
-        mock_execute_result.first = MagicMock(return_value=None)
+        mock_execute_result = AsyncMock(spec=Result)
+        mock_execute_result.first.return_value = None
         mock_session.execute.return_value = mock_execute_result
 
         special_name = "Turdus (migratorius) x merula"
@@ -607,8 +619,8 @@ class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_unusual_language_codes(self, species_database, mock_session):
         """Should handle unusual language codes."""
-        mock_execute_result = AsyncMock()
-        mock_execute_result.first = MagicMock(return_value=None)
+        mock_execute_result = AsyncMock(spec=Result)
+        mock_execute_result.first.return_value = None
 
         unusual_codes = ["zh-CN", "pt-BR", "en-US", "fr-CA", "x-custom"]
 
@@ -623,8 +635,8 @@ class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_case_sensitivity_in_queries(self, species_database, mock_session):
         """Should handle case variations in scientific names through LOWER() function."""
-        mock_execute_result = AsyncMock()
-        mock_execute_result.first = MagicMock(return_value=None)
+        mock_execute_result = AsyncMock(spec=Result)
+        mock_execute_result.first.return_value = None
         mock_session.execute.return_value = mock_execute_result
 
         await species_database.get_best_common_name(mock_session, "TURDUS MIGRATORIUS", "en")

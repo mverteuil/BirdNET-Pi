@@ -1,12 +1,15 @@
 """Comprehensive tests for DetectionQueryService to improve coverage."""
 
 from datetime import UTC, date, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.engine import Result, Row
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
@@ -18,7 +21,7 @@ from birdnetpi.detections.queries import DetectionQueryService
 def mock_core_database():
     """Mock core database."""
     mock = MagicMock(spec=CoreDatabaseService)
-    mock.get_async_db = MagicMock()
+    mock.get_async_db = MagicMock(spec=callable)
     return mock
 
 
@@ -26,8 +29,8 @@ def mock_core_database():
 def mock_species_database():
     """Mock species database."""
     mock = MagicMock(spec=SpeciesDatabaseService)
-    mock.attach_all_to_session = AsyncMock()
-    mock.detach_all_from_session = AsyncMock()
+    mock.attach_all_to_session = AsyncMock(spec=callable)
+    mock.detach_all_from_session = AsyncMock(spec=callable)
     return mock
 
 
@@ -44,7 +47,7 @@ def detection_query_service(mock_core_database, mock_species_database, test_conf
 @pytest.fixture
 def mock_session():
     """Create a mock async session."""
-    session = AsyncMock()
+    session = AsyncMock(spec=AsyncSession)
     return session
 
 
@@ -166,10 +169,10 @@ class TestMainQueryMethods:
     ):
         """Should delegate to _execute_join_query."""
         # Setup mock
-        mock_session = AsyncMock()
-        mock_result = MagicMock()
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = MagicMock(spec=Result)
         mock_result.fetchall.return_value = []
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Mock the internal method
@@ -209,10 +212,10 @@ class TestMainQueryMethods:
     ):
         """Should support legacy 'since' parameter."""
         # Setup mock
-        mock_session = AsyncMock()
-        mock_result = MagicMock()
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = MagicMock(spec=Result)
         mock_result.mappings.return_value.all.return_value = []
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Test with since parameter
@@ -229,10 +232,10 @@ class TestMainQueryMethods:
     ):
         """Should apply all filters in get_detections_with_taxa."""
         # Setup mock
-        mock_session = AsyncMock()
-        mock_result = MagicMock()
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = MagicMock(spec=Result)
         mock_result.mappings.return_value.all.return_value = []
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Test with all filters
@@ -262,33 +265,34 @@ class TestMainQueryMethods:
     ):
         """Should return detection with taxa when found."""
         # Setup mock
-        mock_session = AsyncMock()
+        mock_session = AsyncMock(spec=AsyncSession)
         detection_id = uuid4()
 
-        # Mock result row
-        mock_row = MagicMock()
-        mock_row.id = str(detection_id)
-        mock_row.species_tensor = "tensor"
-        mock_row.scientific_name = "Turdus migratorius"
-        mock_row.common_name = "American Robin"
-        mock_row.confidence = 0.9
-        mock_row.timestamp = "2024-01-15T10:30:00"
-        mock_row.audio_file_id = str(uuid4())
-        mock_row.latitude = 45.5
-        mock_row.longitude = -73.6
-        mock_row.species_confidence_threshold = 0.7
-        mock_row.week = 3
-        mock_row.sensitivity_setting = 1.5
-        mock_row.overlap = 2.0
-        mock_row.ioc_english_name = "American Robin"
-        mock_row.translated_name = "Merle d'Amérique"
-        mock_row.family = "Turdidae"
-        mock_row.genus = "Turdus"
-        mock_row.order_name = "Passeriformes"
+        # Mock result row using SimpleNamespace to avoid mock spec issues
+        mock_row = SimpleNamespace(
+            id=str(detection_id),
+            species_tensor="tensor",
+            scientific_name="Turdus migratorius",
+            common_name="American Robin",
+            confidence=0.9,
+            timestamp="2024-01-15T10:30:00",
+            audio_file_id=str(uuid4()),
+            latitude=45.5,
+            longitude=-73.6,
+            species_confidence_threshold=0.7,
+            week=3,
+            sensitivity_setting=1.5,
+            overlap=2.0,
+            ioc_english_name="American Robin",
+            translated_name="Merle d'Amérique",
+            family="Turdidae",
+            genus="Turdus",
+            order_name="Passeriformes",
+        )
 
-        mock_result = MagicMock()
-        mock_result.fetchone.return_value = mock_row
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_result = MagicMock(spec=Result)
+        mock_result.fetchone = Mock(spec=callable, return_value=mock_row)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute
@@ -307,10 +311,10 @@ class TestMainQueryMethods:
     ):
         """Should return None when detection not found."""
         # Setup mock
-        mock_session = AsyncMock()
-        mock_result = MagicMock()
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = MagicMock(spec=Result)
         mock_result.fetchone.return_value = None
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute
@@ -329,11 +333,12 @@ class TestSummaryMethods:
     ):
         """Should get species summary with counts."""
         # Setup mock
-        mock_session = AsyncMock()
+        mock_session = AsyncMock(spec=AsyncSession)
 
         # Mock species results - need to mock fetchall() not mappings()
         mock_rows = [
             MagicMock(
+                spec=Row,
                 scientific_name="Species1",
                 detection_count=50,
                 avg_confidence=0.75,
@@ -345,6 +350,7 @@ class TestSummaryMethods:
                 order_name="Passeriformes",
             ),
             MagicMock(
+                spec=Row,
                 scientific_name="Species2",
                 detection_count=30,
                 avg_confidence=0.8,
@@ -357,9 +363,9 @@ class TestSummaryMethods:
             ),
         ]
 
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=Result)
         mock_result.fetchall.return_value = mock_rows
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute
@@ -379,11 +385,12 @@ class TestSummaryMethods:
     ):
         """Should get family summary with counts."""
         # Setup mock
-        mock_session = AsyncMock()
+        mock_session = AsyncMock(spec=AsyncSession)
 
         # Mock family results - need to mock fetchall() not mappings()
         mock_rows = [
             MagicMock(
+                spec=Row,
                 family="Turdidae",
                 order_name="Passeriformes",
                 detection_count=100,
@@ -392,6 +399,7 @@ class TestSummaryMethods:
                 latest_detection="2024-01-20T18:00:00",
             ),
             MagicMock(
+                spec=Row,
                 family="Corvidae",
                 order_name="Passeriformes",
                 detection_count=75,
@@ -401,9 +409,9 @@ class TestSummaryMethods:
             ),
         ]
 
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=Result)
         mock_result.fetchall.return_value = mock_rows
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute
@@ -422,18 +430,18 @@ class TestCountingMethods:
     @pytest.mark.asyncio
     async def test_get_species_counts(self, detection_query_service, mock_core_database):
         """Should get species counts for time range."""
-        mock_session = AsyncMock()
+        mock_session = AsyncMock(spec=AsyncSession)
 
         # Mock rows with species counts - need to be directly iterable
         mock_rows = [
-            MagicMock(scientific_name="Species1", common_name="Bird 1", count=25),
-            MagicMock(scientific_name="Species2", common_name="Bird 2", count=15),
+            MagicMock(spec=Row, scientific_name="Species1", common_name="Bird 1", count=25),
+            MagicMock(spec=Row, scientific_name="Species2", common_name="Bird 2", count=15),
         ]
 
         # Mock result to be directly iterable
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=Result)
         mock_result.__iter__ = lambda self: iter(mock_rows)
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute
@@ -449,19 +457,19 @@ class TestCountingMethods:
     @pytest.mark.asyncio
     async def test_get_hourly_counts(self, detection_query_service, mock_core_database):
         """Should get hourly detection counts."""
-        mock_session = AsyncMock()
+        mock_session = AsyncMock(spec=AsyncSession)
 
         # Mock hourly data - needs to be directly iterable
         mock_rows = [
-            MagicMock(hour=6, count=10),
-            MagicMock(hour=7, count=15),
-            MagicMock(hour=8, count=20),
+            MagicMock(spec=Row, hour=6, count=10),
+            MagicMock(spec=Row, hour=7, count=15),
+            MagicMock(spec=Row, hour=8, count=20),
         ]
 
         # Mock result to be directly iterable
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=Result)
         mock_result.__iter__ = lambda self: iter(mock_rows)
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute
@@ -476,7 +484,7 @@ class TestCountingMethods:
     @pytest.mark.asyncio
     async def test_count_by_species_with_filters(self, detection_query_service, mock_core_database):
         """Should count detections by species with date filters."""
-        mock_session = AsyncMock()
+        mock_session = AsyncMock(spec=AsyncSession)
 
         # Mock species count results - needs to be dict-like iterable
         mock_rows = [
@@ -485,9 +493,9 @@ class TestCountingMethods:
             {"scientific_name": "Species3", "count": 50},
         ]
 
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=Result)
         mock_result.__iter__ = lambda self: iter(mock_rows)
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute - count_by_species doesn't accept min_confidence
@@ -504,7 +512,7 @@ class TestCountingMethods:
     @pytest.mark.asyncio
     async def test_count_by_date(self, detection_query_service, mock_core_database):
         """Should count detections by date."""
-        mock_session = AsyncMock()
+        mock_session = AsyncMock(spec=AsyncSession)
 
         # Mock date count results - needs to be dict-like iterable
         date1 = date(2024, 1, 15)
@@ -516,9 +524,9 @@ class TestCountingMethods:
             {"date": date3, "count": 45},
         ]
 
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=Result)
         mock_result.__iter__ = lambda self: iter(mock_rows)
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute
@@ -537,17 +545,19 @@ class TestAdvancedQueries:
     @pytest.mark.asyncio
     async def test_get_species_counts_by_period(self, detection_query_service, mock_core_database):
         """Should get species counts grouped by time period."""
-        mock_session = AsyncMock()
+        mock_session = AsyncMock(spec=AsyncSession)
 
         # Mock periodic counts
         mock_rows = [
             MagicMock(
+                spec=Row,
                 period="2024-01",
                 scientific_name="Species1",
                 common_name="Bird 1",
                 count=150,
             ),
             MagicMock(
+                spec=Row,
                 period="2024-01",
                 scientific_name="Species2",
                 common_name="Bird 2",
@@ -555,9 +565,9 @@ class TestAdvancedQueries:
             ),
         ]
 
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=Result)
         mock_result.all.return_value = mock_rows
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute - uses temporal_resolution not period, no min_confidence
@@ -575,25 +585,27 @@ class TestAdvancedQueries:
         self, detection_query_service, mock_core_database
     ):
         """Should get detections for species accumulation curve."""
-        mock_session = AsyncMock()
+        mock_session = AsyncMock(spec=AsyncSession)
 
         # Mock detection results
         mock_rows = [
             MagicMock(
+                spec=Row,
                 timestamp="2024-01-15T10:00:00",
                 scientific_name="Species1",
                 common_name="Bird 1",
             ),
             MagicMock(
+                spec=Row,
                 timestamp="2024-01-15T11:00:00",
                 scientific_name="Species2",
                 common_name="Bird 2",
             ),
         ]
 
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=Result)
         mock_result.all.return_value = mock_rows
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute - only accepts start_date and end_date
@@ -610,17 +622,19 @@ class TestAdvancedQueries:
         self, detection_query_service, mock_core_database
     ):
         """Should get species counts for multiple time periods."""
-        mock_session = AsyncMock()
+        mock_session = AsyncMock(spec=AsyncSession)
 
         # Mock periodic species counts
         mock_rows = [
             MagicMock(
+                spec=Row,
                 period_label="Morning",
                 scientific_name="Species1",
                 common_name="Bird 1",
                 count=25,
             ),
             MagicMock(
+                spec=Row,
                 period_label="Evening",
                 scientific_name="Species2",
                 common_name="Bird 2",
@@ -628,9 +642,9 @@ class TestAdvancedQueries:
             ),
         ]
 
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=Result)
         mock_result.all.return_value = mock_rows
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Define time periods - should be list of (start, end) tuples only
@@ -649,17 +663,17 @@ class TestAdvancedQueries:
     @pytest.mark.asyncio
     async def test_get_species_sets_by_window(self, detection_query_service, mock_core_database):
         """Should get unique species sets by time window."""
-        mock_session = AsyncMock()
+        mock_session = AsyncMock(spec=AsyncSession)
 
         # Mock window results
         mock_rows = [
-            MagicMock(window="2024-01-15", species_list="Species1,Species2,Species3"),
-            MagicMock(window="2024-01-16", species_list="Species1,Species2"),
+            MagicMock(spec=Row, window="2024-01-15", species_list="Species1,Species2,Species3"),
+            MagicMock(spec=Row, window="2024-01-16", species_list="Species1,Species2"),
         ]
 
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=Result)
         mock_result.all.return_value = mock_rows
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute - takes window_size as timedelta, not window_type
@@ -676,31 +690,35 @@ class TestAdvancedQueries:
     @pytest.mark.asyncio
     async def test_get_weather_correlations(self, detection_query_service, mock_core_database):
         """Should get weather correlations with detections."""
-        mock_session = AsyncMock()
+        mock_session = AsyncMock(spec=AsyncSession)
 
-        # Mock correlation results
+        # Mock correlation results using SimpleNamespace
         mock_rows = [
-            MagicMock(
+            SimpleNamespace(
                 hour=6,
                 detection_count=10,
-                avg_temperature=15.5,
-                avg_humidity=65.0,
-                avg_pressure=1013.25,
-                avg_wind_speed=5.2,
+                species_count=5,
+                temperature=15.5,
+                humidity=65.0,
+                pressure=1013.25,
+                wind_speed=5.2,
+                precipitation=0.0,
             ),
-            MagicMock(
+            SimpleNamespace(
                 hour=7,
                 detection_count=15,
-                avg_temperature=16.2,
-                avg_humidity=62.0,
-                avg_pressure=1013.5,
-                avg_wind_speed=4.8,
+                species_count=8,
+                temperature=16.2,
+                humidity=62.0,
+                pressure=1013.5,
+                wind_speed=4.8,
+                precipitation=0.5,
             ),
         ]
 
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=Result)
         mock_result.all.return_value = mock_rows
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute - only accepts start_date and end_date
@@ -722,7 +740,7 @@ class TestErrorHandling:
     ):
         """Should handle database errors gracefully."""
         # Setup mock to raise error
-        mock_session = AsyncMock()
+        mock_session = AsyncMock(spec=AsyncSession)
         mock_session.execute.side_effect = SQLAlchemyError("Database connection failed")
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
@@ -739,7 +757,7 @@ class TestErrorHandling:
     ):
         """Should ensure cleanup happens even on error."""
         # Setup mock to raise SQLAlchemyError during execution
-        mock_session = AsyncMock()
+        mock_session = AsyncMock(spec=AsyncSession)
         mock_session.execute.side_effect = SQLAlchemyError("Database error", "", "")
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
@@ -824,8 +842,8 @@ class TestFilterBuilding:
         self, detection_query_service, mock_core_database
     ):
         """Should handle complex filter combinations in count_detections."""
-        mock_session = AsyncMock()
-        mock_session.scalar = AsyncMock(return_value=250)
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_session.scalar = AsyncMock(spec=callable, return_value=250)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Test with multiple filter types
@@ -869,10 +887,10 @@ class TestEdgeCases:
     ):
         """Should handle empty result sets properly."""
         # Setup mock with empty results
-        mock_session = AsyncMock()
-        mock_result = MagicMock()
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = MagicMock(spec=Result)
         mock_result.mappings.return_value.all.return_value = []
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Execute
@@ -887,10 +905,10 @@ class TestEdgeCases:
         self, detection_query_service, mock_core_database, mock_species_database
     ):
         """Should handle large limit values."""
-        mock_session = AsyncMock()
-        mock_result = MagicMock()
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = MagicMock(spec=Result)
         mock_result.mappings.return_value.all.return_value = []
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Test with very large limit

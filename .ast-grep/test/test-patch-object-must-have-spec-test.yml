@@ -1,0 +1,84 @@
+id: test-patch-object-must-have-spec
+language: python
+
+valid:
+  # patch.object with new keyword parameter (explicit replacement)
+  - |
+    with patch.object(obj, 'attr', new=new_value):
+        pass
+  - |
+    @patch.object(service, 'client', new=mock_client)
+    def test_something():
+        pass
+
+  # patch.object with new_callable parameter
+  - |
+    with patch.object(obj, 'method', new_callable=AsyncMock):
+        pass
+  - |
+    @patch.object(service, 'async_method', new_callable=MagicMock)
+    def test_something():
+        pass
+
+  # patch.object with spec parameter
+  - |
+    with patch.object(obj, 'method', spec=OriginalMethod):
+        pass
+  - |
+    @patch.object(service, 'client', spec=ClientClass)
+    def test_something():
+        pass
+
+  # patch.object with autospec parameter
+  - |
+    with patch.object(obj, 'method', autospec=True):
+        pass
+  - |
+    @patch.object(service, 'client', autospec=True)
+    def test_something():
+        pass
+
+  # patch.object with spec_set parameter
+  - |
+    with patch.object(obj, 'attr', spec_set=SomeClass):
+        pass
+  - |
+    @patch.object(service, 'process', spec_set=ProcessClass)
+    def test_something():
+        pass
+
+  # patch.object with spec and other parameters
+  - |
+    with patch.object(obj, 'method', spec=Foo, return_value=42):
+        pass
+  - |
+    @patch.object(service, 'client', autospec=True, return_value=None)
+    def test_something():
+        pass
+
+invalid:
+  # patch.object with only target and attribute (simple cases)
+  - |
+    with patch.object(obj, 'method'):
+        pass
+  - |
+    @patch.object(service, 'client')
+    def test_something():
+        pass
+  - |
+    def test_something():
+        with patch.object(manager, 'process'):
+            pass
+
+  # Nested context managers
+  - |
+    def test_something():
+        with patch.object(obj, 'attr'):
+            do_something()
+
+  # Multiple patch.object in decorators (first one is invalid)
+  - |
+    @patch.object(service, 'method1')
+    @patch.object(service, 'method2', autospec=True)
+    def test_something():
+        pass

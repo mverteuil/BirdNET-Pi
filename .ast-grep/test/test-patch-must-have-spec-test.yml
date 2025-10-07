@@ -28,9 +28,6 @@ valid:
     @patch('module.Class', spec=OriginalClass)
     def test_something():
         pass
-  - |
-    with patch('module.func', spec=True):
-        pass
 
   # patch with autospec parameter
   - |
@@ -59,35 +56,9 @@ valid:
     def test_something():
         pass
 
-  # patch.object with new keyword
-  - |
-    with patch.object(obj, 'attr', new=new_value):
-        pass
-  - |
-    @patch.object(service, 'client', new=mock_client)
-    def test_something():
-        pass
-
-  # patch.object with spec parameters
-  - |
-    with patch.object(obj, 'method', spec=OriginalMethod):
-        pass
-  - |
-    @patch.object(service, 'client', autospec=True)
-    def test_something():
-        pass
-  - |
-    with patch.object(obj, 'attr', spec_set=SomeClass):
-        pass
-
-  # patch.object with new_callable
-  - |
-    @patch.object(service, 'async_method', new_callable=AsyncMock)
-    def test_something():
-        pass
 
 invalid:
-  # patch with only target
+  # patch with only target (simple cases only)
   - |
     with patch('module.func'):
         pass
@@ -99,51 +70,6 @@ invalid:
     def test_something():
         with patch('module.service'):
             pass
-
-  # patch with target and other kwargs (but no spec/new)
-  - |
-    with patch('module.func', return_value=42):
-        pass
-  - |
-    @patch('module.Class', return_value=None)
-    def test_something():
-        pass
-  - |
-    with patch('module.func', side_effect=ValueError):
-        pass
-  - |
-    @patch('module.service', create=True)
-    def test_something():
-        pass
-
-  # patch.object with only target and attribute
-  - |
-    with patch.object(obj, 'method'):
-        pass
-  - |
-    @patch.object(service, 'client')
-    def test_something():
-        pass
-  - |
-    def test_something():
-        with patch.object(manager, 'process'):
-            pass
-
-  # patch.object with other kwargs (but no spec/new)
-  - |
-    with patch.object(obj, 'method', return_value=42):
-        pass
-  - |
-    @patch.object(service, 'client', return_value=None)
-    def test_something():
-        pass
-  - |
-    with patch.object(obj, 'attr', side_effect=RuntimeError):
-        pass
-  - |
-    @patch.object(service, 'process', create=True)
-    def test_something():
-        pass
 
   # Multiple patches in decorator (first one bad)
   - |

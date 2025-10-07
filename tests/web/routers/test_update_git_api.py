@@ -5,19 +5,19 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from birdnetpi.system.git_operations import GitRemote
+from birdnetpi.system.git_operations import GitOperationsService, GitRemote
 
 
 @pytest.fixture
 def mock_git_service():
     """Create a mock GitOperationsService."""
-    return MagicMock()
+    return MagicMock(spec=GitOperationsService)
 
 
 @pytest.fixture
 def mock_deployment_docker():
     """Mock deployment environment as Docker."""
-    with patch("birdnetpi.web.routers.update_api_routes.SystemUtils") as mock:
+    with patch("birdnetpi.web.routers.update_api_routes.SystemUtils", autospec=True) as mock:
         mock.get_deployment_environment.return_value = "docker"
         yield mock
 
@@ -25,7 +25,7 @@ def mock_deployment_docker():
 @pytest.fixture
 def mock_deployment_sbc():
     """Mock deployment environment as SBC."""
-    with patch("birdnetpi.web.routers.update_api_routes.SystemUtils") as mock:
+    with patch("birdnetpi.web.routers.update_api_routes.SystemUtils", autospec=True) as mock:
         mock.get_deployment_environment.return_value = "sbc"
         yield mock
 
@@ -42,8 +42,10 @@ class TestListGitRemotes:
             GitRemote("upstream", "https://github.com/original/repo.git"),
         ]
 
-        with patch("birdnetpi.web.routers.update_api_routes.GitOperationsService") as mock_service:
-            mock_instance = MagicMock()
+        with patch(
+            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
+        ) as mock_service:
+            mock_instance = MagicMock(spec=GitOperationsService)
             mock_instance.list_remotes.return_value = mock_remotes
             mock_service.return_value = mock_instance
 
@@ -70,8 +72,10 @@ class TestListGitRemotes:
         """Should handle errors when listing remotes fails."""
         client = TestClient(app_with_temp_data)
 
-        with patch("birdnetpi.web.routers.update_api_routes.GitOperationsService") as mock_service:
-            mock_instance = MagicMock()
+        with patch(
+            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
+        ) as mock_service:
+            mock_instance = MagicMock(spec=GitOperationsService)
             mock_instance.list_remotes.side_effect = Exception("Git error")
             mock_service.return_value = mock_instance
 
@@ -87,8 +91,10 @@ class TestAddGitRemote:
         """Should add new remote for SBC deployment."""
         client = TestClient(app_with_temp_data)
 
-        with patch("birdnetpi.web.routers.update_api_routes.GitOperationsService") as mock_service:
-            mock_instance = MagicMock()
+        with patch(
+            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
+        ) as mock_service:
+            mock_instance = MagicMock(spec=GitOperationsService)
             mock_service.return_value = mock_instance
 
             response = client.post(
@@ -123,8 +129,10 @@ class TestAddGitRemote:
         """Should handle adding duplicate remote."""
         client = TestClient(app_with_temp_data)
 
-        with patch("birdnetpi.web.routers.update_api_routes.GitOperationsService") as mock_service:
-            mock_instance = MagicMock()
+        with patch(
+            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
+        ) as mock_service:
+            mock_instance = MagicMock(spec=GitOperationsService)
             mock_instance.add_remote.side_effect = ValueError("Remote 'upstream' already exists")
             mock_service.return_value = mock_instance
 
@@ -146,8 +154,10 @@ class TestUpdateGitRemote:
         """Should update only the URL of a remote."""
         client = TestClient(app_with_temp_data)
 
-        with patch("birdnetpi.web.routers.update_api_routes.GitOperationsService") as mock_service:
-            mock_instance = MagicMock()
+        with patch(
+            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
+        ) as mock_service:
+            mock_instance = MagicMock(spec=GitOperationsService)
             mock_service.return_value = mock_instance
 
             response = client.put(
@@ -168,8 +178,10 @@ class TestUpdateGitRemote:
         """Should rename non-origin remote."""
         client = TestClient(app_with_temp_data)
 
-        with patch("birdnetpi.web.routers.update_api_routes.GitOperationsService") as mock_service:
-            mock_instance = MagicMock()
+        with patch(
+            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
+        ) as mock_service:
+            mock_instance = MagicMock(spec=GitOperationsService)
             mock_service.return_value = mock_instance
 
             response = client.put(
@@ -191,8 +203,10 @@ class TestUpdateGitRemote:
         """Should block renaming origin remote."""
         client = TestClient(app_with_temp_data)
 
-        with patch("birdnetpi.web.routers.update_api_routes.GitOperationsService") as mock_service:
-            mock_instance = MagicMock()
+        with patch(
+            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
+        ) as mock_service:
+            mock_instance = MagicMock(spec=GitOperationsService)
             mock_service.return_value = mock_instance
 
             response = client.put(
@@ -227,8 +241,10 @@ class TestDeleteGitRemote:
         """Should delete non-origin remote."""
         client = TestClient(app_with_temp_data)
 
-        with patch("birdnetpi.web.routers.update_api_routes.GitOperationsService") as mock_service:
-            mock_instance = MagicMock()
+        with patch(
+            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
+        ) as mock_service:
+            mock_instance = MagicMock(spec=GitOperationsService)
             mock_service.return_value = mock_instance
 
             response = client.delete("/api/update/git/remotes/upstream")
@@ -244,8 +260,10 @@ class TestDeleteGitRemote:
         """Should block deleting origin remote."""
         client = TestClient(app_with_temp_data)
 
-        with patch("birdnetpi.web.routers.update_api_routes.GitOperationsService") as mock_service:
-            mock_instance = MagicMock()
+        with patch(
+            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
+        ) as mock_service:
+            mock_instance = MagicMock(spec=GitOperationsService)
             mock_instance.delete_remote.side_effect = ValueError("Cannot delete 'origin' remote")
             mock_service.return_value = mock_instance
 
@@ -275,8 +293,10 @@ class TestListGitBranches:
         """Should list branches for SBC deployment."""
         client = TestClient(app_with_temp_data)
 
-        with patch("birdnetpi.web.routers.update_api_routes.GitOperationsService") as mock_service:
-            mock_instance = MagicMock()
+        with patch(
+            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
+        ) as mock_service:
+            mock_instance = MagicMock(spec=GitOperationsService)
             mock_instance.list_tags.return_value = ["v2.1.0", "v2.0.0"]
             mock_instance.list_branches.return_value = ["main", "develop"]
             mock_service.return_value = mock_instance
@@ -306,8 +326,10 @@ class TestListGitBranches:
         """Should handle errors when listing branches fails."""
         client = TestClient(app_with_temp_data)
 
-        with patch("birdnetpi.web.routers.update_api_routes.GitOperationsService") as mock_service:
-            mock_instance = MagicMock()
+        with patch(
+            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
+        ) as mock_service:
+            mock_instance = MagicMock(spec=GitOperationsService)
             mock_instance.list_tags.side_effect = Exception("Git error")
             mock_service.return_value = mock_instance
 

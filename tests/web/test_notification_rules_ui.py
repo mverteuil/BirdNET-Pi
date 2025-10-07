@@ -11,6 +11,8 @@ from fastapi import status
 from fastapi.templating import Jinja2Templates
 from fastapi.testclient import TestClient
 
+from birdnetpi.audio.capture import AudioDeviceService
+from birdnetpi.config.manager import ConfigManager
 from birdnetpi.config.models import BirdNETConfig
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
@@ -32,13 +34,13 @@ def app_with_notification_rules(path_resolver, repo_root, mock_config_with_rules
         )
 
         # Mock ConfigManager
-        mock_config_manager = MagicMock()
+        mock_config_manager = MagicMock(spec=ConfigManager)
         mock_config_manager.load.return_value = mock_config_with_rules
-        mock_config_manager.save = MagicMock()
+        mock_config_manager.save = MagicMock(spec=callable)
         mock_config_manager.config_path = config_file
 
         # Mock AudioDeviceService
-        mock_audio_service = MagicMock()
+        mock_audio_service = MagicMock(spec=AudioDeviceService)
         mock_audio_service.discover_input_devices.return_value = []
 
         # Override providers BEFORE creating the app
@@ -63,7 +65,7 @@ def app_with_notification_rules(path_resolver, repo_root, mock_config_with_rules
                 "birdnetpi.web.routers.settings_view_routes.PathResolver",
                 return_value=path_resolver,
             ),
-            patch("birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin"),
+            patch("birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin", autospec=True),
         ):
             app = create_app()
             yield app, mock_config_manager, mock_audio_service
@@ -186,7 +188,7 @@ def app_for_api_test(path_resolver, repo_root):
     templates = Jinja2Templates(directory=str(templates_dir))
     Container.templates.override(providers.Singleton(lambda: templates))
 
-    with patch("birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin"):
+    with patch("birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin", autospec=True):
         app = create_app()
 
     yield app
@@ -198,7 +200,9 @@ def app_for_api_test(path_resolver, repo_root):
 
 def test_validate_species_endpoint(app_for_api_test):
     """Should validate species via API endpoint."""
-    with patch("birdnetpi.web.routers.settings_api_routes.IOCDatabaseService") as mock_ioc:
+    with patch(
+        "birdnetpi.web.routers.settings_api_routes.IOCDatabaseService", autospec=True
+    ) as mock_ioc:
         mock_ioc.return_value.species_exists.side_effect = lambda name: name == "Turdus migratorius"
 
         with TestClient(app_for_api_test) as client:

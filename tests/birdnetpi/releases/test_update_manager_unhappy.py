@@ -1,8 +1,10 @@
 """Unhappy path tests for UpdateManager."""
 
+import subprocess
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, create_autospec
 
+import httpx
 import pytest
 
 from birdnetpi.config.models import BirdNETConfig, UpdateConfig
@@ -15,10 +17,6 @@ from birdnetpi.system.system_control import SystemControlService
 def mock_system_control():
     """Provide a mock SystemControlService."""
     mock = MagicMock(spec=SystemControlService)
-    mock.restart_service = MagicMock()
-    mock.stop_service = MagicMock()
-    mock.start_service = MagicMock()
-    mock.daemon_reload = MagicMock()
     return mock
 
 
@@ -80,7 +78,8 @@ class TestNetworkFailures:
     async def test_check_for_updates_github_api_error(self, update_manager, mocker):
         """Should handle GitHub API errors gracefully."""
         # Mock httpx.get to raise HTTP error
-        mock_response = MagicMock()
+
+        mock_response = create_autospec(httpx.Response, spec_set=True)
         mock_response.raise_for_status.side_effect = Exception("403 Forbidden")
 
         mocker.patch("httpx.get", return_value=mock_response)
@@ -98,9 +97,7 @@ class TestNetworkFailures:
     async def test_git_fetch_network_failure(self, update_manager, mocker):
         """Should handle git fetch failures."""
         # Setup for apply_update
-        update_manager.state_manager.acquire_lock = MagicMock(return_value=True)
-        update_manager.state_manager.write_state = MagicMock()
-        update_manager.state_manager.release_lock = MagicMock()
+        mocker.patch.object(update_manager.state_manager, "acquire_lock", return_value=True)
 
         # Mock rollback creation
         mocker.patch.object(
@@ -137,9 +134,8 @@ class TestFileSystemErrors:
     async def test_apply_update_disk_full(self, update_manager, mocker):
         """Should handle disk full errors during update."""
         # Setup
-        update_manager.state_manager.acquire_lock = MagicMock(return_value=True)
-        update_manager.state_manager.write_state = MagicMock()
-        update_manager.state_manager.release_lock = MagicMock()
+        mocker.patch.object(update_manager.state_manager, "acquire_lock", return_value=True)
+        mock_release = mocker.patch.object(update_manager.state_manager, "release_lock")
 
         # Mock rollback point creation to fail with disk full
         mocker.patch.object(
@@ -153,7 +149,7 @@ class TestFileSystemErrors:
 
         assert result["success"] is False
         assert "no space" in result["error"].lower() or "oserror" in result["error"].lower()
-        update_manager.state_manager.release_lock.assert_called_once()
+        mock_release.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_rollback_with_corrupted_backup(self, update_manager, mocker):
@@ -296,9 +292,7 @@ class TestDependencyFailures:
             update_manager, "_perform_rollback", new_callable=AsyncMock
         )
 
-        update_manager.state_manager.acquire_lock = MagicMock(return_value=True)
-        update_manager.state_manager.write_state = MagicMock()
-        update_manager.state_manager.release_lock = MagicMock()
+        mocker.patch.object(update_manager.state_manager, "acquire_lock", return_value=True)
 
         result = await update_manager.apply_update("v1.1.0")
 
@@ -331,9 +325,7 @@ class TestDependencyFailures:
             update_manager, "_perform_rollback", new_callable=AsyncMock
         )
 
-        update_manager.state_manager.acquire_lock = MagicMock(return_value=True)
-        update_manager.state_manager.write_state = MagicMock()
-        update_manager.state_manager.release_lock = MagicMock()
+        mocker.patch.object(update_manager.state_manager, "acquire_lock", return_value=True)
 
         result = await update_manager.apply_update("v1.1.0")
 
@@ -367,9 +359,7 @@ class TestServiceRestartFailures:
             update_manager, "_perform_rollback", new_callable=AsyncMock
         )
 
-        update_manager.state_manager.acquire_lock = MagicMock(return_value=True)
-        update_manager.state_manager.write_state = MagicMock()
-        update_manager.state_manager.release_lock = MagicMock()
+        mocker.patch.object(update_manager.state_manager, "acquire_lock", return_value=True)
 
         result = await update_manager.apply_update("v1.1.0")
 
@@ -409,9 +399,7 @@ class TestServiceRestartFailures:
             update_manager, "_perform_rollback", new_callable=AsyncMock
         )
 
-        update_manager.state_manager.acquire_lock = MagicMock(return_value=True)
-        update_manager.state_manager.write_state = MagicMock()
-        update_manager.state_manager.release_lock = MagicMock()
+        mocker.patch.object(update_manager.state_manager, "acquire_lock", return_value=True)
 
         result = await update_manager.apply_update("v1.1.0")
 
@@ -426,8 +414,7 @@ class TestVersionCheckFailures:
         """Should handle missing git repository."""
         mock_run = mocker.patch("birdnetpi.releases.update_manager.subprocess.run")
 
-        # First call for git describe fails
-        mock_result = MagicMock()
+        mock_result = subprocess.CompletedProcess(args=[], returncode=0)
         mock_result.returncode = 128
         mock_result.stdout = ""
         mock_run.return_value = mock_result
@@ -442,7 +429,7 @@ class TestVersionCheckFailures:
         config = BirdNETConfig(updates=UpdateConfig())
 
         # Mock to raise exception (no tags found)
-        mock_result = MagicMock()
+        mock_result = subprocess.CompletedProcess(args=[], returncode=0)
         mock_result.returncode = 0
         mock_result.stdout = ""  # Empty output means no tags
         mock_run.return_value = mock_result
@@ -498,9 +485,7 @@ class TestMigrationFailures:
             update_manager, "_perform_rollback", new_callable=AsyncMock
         )
 
-        update_manager.state_manager.acquire_lock = MagicMock(return_value=True)
-        update_manager.state_manager.write_state = MagicMock()
-        update_manager.state_manager.release_lock = MagicMock()
+        mocker.patch.object(update_manager.state_manager, "acquire_lock", return_value=True)
 
         result = await update_manager.apply_update("v1.1.0")
 
@@ -541,9 +526,8 @@ class TestInterruptedUpdate:
             update_manager, "_perform_rollback", new_callable=AsyncMock
         )
 
-        update_manager.state_manager.acquire_lock = MagicMock(return_value=True)
-        update_manager.state_manager.write_state = MagicMock()
-        update_manager.state_manager.release_lock = MagicMock()
+        mocker.patch.object(update_manager.state_manager, "acquire_lock", return_value=True)
+        mock_release = mocker.patch.object(update_manager.state_manager, "release_lock")
 
         # SystemExit is a BaseException, not caught by Exception handler
         with pytest.raises(SystemExit):
@@ -552,7 +536,7 @@ class TestInterruptedUpdate:
         # Rollback shouldn't be called for BaseException
         mock_rollback.assert_not_called()
         # But lock should still be released via finally block
-        update_manager.state_manager.release_lock.assert_called_once()
+        mock_release.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_cleanup_after_unexpected_exception(self, update_manager, mocker):
@@ -565,12 +549,11 @@ class TestInterruptedUpdate:
             side_effect=RuntimeError("Unexpected error"),
         )
 
-        update_manager.state_manager.acquire_lock = MagicMock(return_value=True)
-        update_manager.state_manager.write_state = MagicMock()
-        update_manager.state_manager.release_lock = MagicMock()
+        mocker.patch.object(update_manager.state_manager, "acquire_lock", return_value=True)
+        mock_release = mocker.patch.object(update_manager.state_manager, "release_lock")
 
         result = await update_manager.apply_update("v1.1.0")
 
         assert result["success"] is False
         # Lock should always be released
-        update_manager.state_manager.release_lock.assert_called_once()
+        mock_release.assert_called_once()

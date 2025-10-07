@@ -9,6 +9,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from birdnetpi.detections.models import Detection
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.notifications.signals import detection_signal
 from birdnetpi.web.core.container import Container
@@ -81,7 +82,8 @@ class TestSpeciesFrequency:
         ]
 
         sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            return_value=mock_frequency
+            spec=DetectionQueryService.get_species_summary,
+            return_value=mock_frequency,
         )
 
         response = sse_client.get("/api/detections/species/summary")
@@ -104,7 +106,8 @@ class TestSpeciesFrequency:
         ]
 
         sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            return_value=mock_frequency
+            spec=DetectionQueryService.get_species_summary,
+            return_value=mock_frequency,
         )
 
         response = sse_client.get("/api/detections/species/summary?hours=48")
@@ -119,7 +122,9 @@ class TestSpeciesFrequency:
 
     def test_get_species_frequency_empty_result(self, sse_client):
         """Should handle empty results gracefully."""
-        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(return_value=[])
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary, return_value=[]
+        )
 
         response = sse_client.get("/api/detections/species/summary?hours=1")
 
@@ -131,7 +136,8 @@ class TestSpeciesFrequency:
     def test_get_species_frequency_error(self, sse_client):
         """Should handle errors in species frequency analysis."""
         sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            side_effect=Exception("Analysis failed")
+            spec=DetectionQueryService.get_species_summary,
+            side_effect=Exception("Analysis failed"),
         )
 
         response = sse_client.get("/api/detections/species/summary")
@@ -142,7 +148,9 @@ class TestSpeciesFrequency:
     def test_get_species_frequency_negative_hours(self, sse_client):
         """Should handle negative hours gracefully."""
         # Even with negative hours, the analytics manager should handle it
-        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(return_value=[])
+        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary, return_value=[]
+        )
 
         response = sse_client.get("/api/detections/species/summary?hours=-1")
 
@@ -159,7 +167,8 @@ class TestSpeciesFrequency:
         ]
 
         sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            return_value=mock_frequency
+            spec=DetectionQueryService.get_species_summary,
+            return_value=mock_frequency,
         )
 
         response = sse_client.get("/api/detections/species/summary?hours=720")  # 30 days
@@ -178,7 +187,8 @@ class TestSpeciesFrequency:
         ]
 
         sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            return_value=mock_frequency
+            spec=DetectionQueryService.get_species_summary,
+            return_value=mock_frequency,
         )
 
         response = sse_client.get("/api/detections/species/summary?period=day")
@@ -198,7 +208,8 @@ class TestSpeciesFrequency:
         ]
 
         sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            return_value=mock_frequency
+            spec=DetectionQueryService.get_species_summary,
+            return_value=mock_frequency,
         )
 
         response = sse_client.get("/api/detections/species/summary?period=week")
@@ -217,7 +228,8 @@ class TestSpeciesFrequency:
         ]
 
         sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            return_value=mock_frequency
+            spec=DetectionQueryService.get_species_summary,
+            return_value=mock_frequency,
         )
 
         response = sse_client.get("/api/detections/species/summary?period=month")
@@ -235,7 +247,8 @@ class TestSpeciesFrequency:
         ]
 
         sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            return_value=mock_frequency
+            spec=DetectionQueryService.get_species_summary,
+            return_value=mock_frequency,
         )
 
         response = sse_client.get("/api/detections/species/summary?period=season")
@@ -253,7 +266,8 @@ class TestSpeciesFrequency:
         ]
 
         sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            return_value=mock_frequency
+            spec=DetectionQueryService.get_species_summary,
+            return_value=mock_frequency,
         )
 
         response = sse_client.get("/api/detections/species/summary?period=year")
@@ -271,7 +285,8 @@ class TestSpeciesFrequency:
         ]
 
         sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            return_value=mock_frequency
+            spec=DetectionQueryService.get_species_summary,
+            return_value=mock_frequency,
         )
 
         response = sse_client.get("/api/detections/species/summary?period=historical")
@@ -295,7 +310,8 @@ class TestSpeciesFrequency:
         ]
 
         sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            return_value=mock_frequency
+            spec=DetectionQueryService.get_species_summary,
+            return_value=mock_frequency,
         )
 
         # Test with uppercase - API preserves case
@@ -319,7 +335,8 @@ class TestSpeciesFrequency:
         ]
 
         sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            return_value=mock_frequency
+            spec=DetectionQueryService.get_species_summary,
+            return_value=mock_frequency,
         )
 
         # Provide both parameters - period should take precedence
@@ -339,7 +356,8 @@ class TestSpeciesFrequency:
         ]
 
         sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            return_value=mock_frequency
+            spec=DetectionQueryService.get_species_summary,
+            return_value=mock_frequency,
         )
 
         # Invalid period should default to 24 hours
@@ -358,7 +376,8 @@ class TestSpeciesFrequency:
         ]
 
         sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            return_value=mock_frequency
+            spec=DetectionQueryService.get_species_summary,
+            return_value=mock_frequency,
         )
 
         # Empty period should default to 24 hours
@@ -395,6 +414,7 @@ class TestSSEStreaming:
         mock_query_service = MagicMock(spec=DetectionQueryService)
         detection_id = uuid4()
         mock_detection = MagicMock(
+            spec=Detection,
             id=detection_id,
             scientific_name="Corvus corax",
             common_name="Common Raven",
@@ -404,7 +424,9 @@ class TestSSEStreaming:
             longitude=-80.0,
         )
 
-        mock_query_service.get_detection_with_taxa = AsyncMock(return_value=mock_detection)
+        mock_query_service.get_detection_with_taxa = AsyncMock(
+            spec=DetectionQueryService.get_detection_with_taxa, return_value=mock_detection
+        )
 
         # We'd need to set up a more complex test harness to fully test the SSE generator
         # For now, we've verified the endpoint is accessible and returns correct headers
@@ -480,7 +502,8 @@ class TestSSEErrorHandling:
     def test_species_frequency_handles_analytics_errors(self, sse_client):
         """Should return 500 when analytics manager fails."""
         sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            side_effect=Exception("Analytics error")
+            spec=DetectionQueryService.get_species_summary,
+            side_effect=Exception("Analytics error"),
         )
 
         response = sse_client.get("/api/detections/species/summary")

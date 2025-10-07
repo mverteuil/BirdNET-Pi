@@ -191,7 +191,7 @@ class TestUpdateViewCoverage:
         assert hasattr(update_view_routes, "logger")
         assert update_view_routes.logger is not None
 
-    @patch("birdnetpi.web.routers.update_view_routes.logger")
+    @patch("birdnetpi.web.routers.update_view_routes.logger", autospec=True)
     def test_update_page_function_signature(self, mock_logger):
         """Should have correct update_page function signature."""
         # Check function exists and has correct annotations
@@ -271,7 +271,9 @@ class TestUpdatePageDeploymentSpecific:
         """Should show Docker-specific instructions on update page."""
         cache.get.return_value = None
 
-        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+        with patch(
+            "birdnetpi.web.routers.update_view_routes.SystemUtils", autospec=True
+        ) as mock_utils:
             mock_utils.get_deployment_environment.return_value = "docker"
 
             response = client.get("/admin/update/")
@@ -292,7 +294,9 @@ class TestUpdatePageDeploymentSpecific:
         """Should show SBC-specific git configuration on update page."""
         cache.get.return_value = None
 
-        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+        with patch(
+            "birdnetpi.web.routers.update_view_routes.SystemUtils", autospec=True
+        ) as mock_utils:
             mock_utils.get_deployment_environment.return_value = "sbc"
 
             response = client.get("/admin/update/")
@@ -314,7 +318,9 @@ class TestUpdatePageDeploymentSpecific:
         """Should handle unknown deployment type gracefully."""
         cache.get.return_value = None
 
-        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+        with patch(
+            "birdnetpi.web.routers.update_view_routes.SystemUtils", autospec=True
+        ) as mock_utils:
             mock_utils.get_deployment_environment.return_value = "unknown"
 
             response = client.get("/admin/update/")
@@ -330,7 +336,9 @@ class TestUpdatePageDeploymentSpecific:
         """Should set JavaScript deployment type variable for Docker."""
         cache.get.return_value = None
 
-        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+        with patch(
+            "birdnetpi.web.routers.update_view_routes.SystemUtils", autospec=True
+        ) as mock_utils:
             mock_utils.get_deployment_environment.return_value = "docker"
 
             response = client.get("/admin/update/")
@@ -345,7 +353,9 @@ class TestUpdatePageDeploymentSpecific:
         """Should set JavaScript deployment type variable for SBC."""
         cache.get.return_value = None
 
-        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+        with patch(
+            "birdnetpi.web.routers.update_view_routes.SystemUtils", autospec=True
+        ) as mock_utils:
             mock_utils.get_deployment_environment.return_value = "sbc"
 
             response = client.get("/admin/update/")
@@ -360,7 +370,9 @@ class TestUpdatePageDeploymentSpecific:
         """Should display Docker-specific help content."""
         cache.get.return_value = None
 
-        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+        with patch(
+            "birdnetpi.web.routers.update_view_routes.SystemUtils", autospec=True
+        ) as mock_utils:
             mock_utils.get_deployment_environment.return_value = "docker"
 
             response = client.get("/admin/update/")
@@ -376,7 +388,9 @@ class TestUpdatePageDeploymentSpecific:
         """Should display SBC-specific help content."""
         cache.get.return_value = None
 
-        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+        with patch(
+            "birdnetpi.web.routers.update_view_routes.SystemUtils", autospec=True
+        ) as mock_utils:
             mock_utils.get_deployment_environment.return_value = "sbc"
 
             response = client.get("/admin/update/")
@@ -392,7 +406,9 @@ class TestUpdatePageDeploymentSpecific:
         """Should include accessibility features for Docker deployment."""
         cache.get.return_value = None
 
-        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+        with patch(
+            "birdnetpi.web.routers.update_view_routes.SystemUtils", autospec=True
+        ) as mock_utils:
             mock_utils.get_deployment_environment.return_value = "docker"
 
             response = client.get("/admin/update/")
@@ -411,7 +427,9 @@ class TestUpdatePageDeploymentSpecific:
         """Should include accessibility features for SBC deployment."""
         cache.get.return_value = None
 
-        with patch("birdnetpi.web.routers.update_view_routes.SystemUtils") as mock_utils:
+        with patch(
+            "birdnetpi.web.routers.update_view_routes.SystemUtils", autospec=True
+        ) as mock_utils:
             mock_utils.get_deployment_environment.return_value = "sbc"
 
             response = client.get("/admin/update/")

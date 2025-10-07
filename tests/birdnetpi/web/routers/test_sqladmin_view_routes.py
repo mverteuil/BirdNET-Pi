@@ -3,7 +3,11 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi import FastAPI
+from sqladmin import Admin
+from sqlalchemy.ext.asyncio import AsyncEngine
 
+from birdnetpi.database.core import CoreDatabaseService
+from birdnetpi.web.core.container import Container
 from birdnetpi.web.routers.sqladmin_view_routes import (
     AudioFileAdmin,
     DetectionAdmin,
@@ -61,23 +65,23 @@ class TestSQLAdminViewRoutes:
         for expected_col in expected_columns:
             assert expected_col in column_names
 
-    @patch("birdnetpi.web.routers.sqladmin_view_routes.Container")
-    @patch("birdnetpi.web.routers.sqladmin_view_routes.Admin")
+    @patch("birdnetpi.web.routers.sqladmin_view_routes.Container", autospec=True)
+    @patch("birdnetpi.web.routers.sqladmin_view_routes.Admin", autospec=True)
     def test_setup_sqladmin_creates_admin_instance(self, mock_admin_class, mock_container_class):
         """Should setup_sqladmin creates and configures Admin instance."""
         # Create mock FastAPI app
         app = FastAPI()
 
         # Set up mock container instance
-        mock_container = MagicMock()
-        mock_db_service = MagicMock()
-        mock_async_engine = AsyncMock()
+        mock_container = MagicMock(spec=Container)
+        mock_db_service = MagicMock(spec=CoreDatabaseService)
+        mock_async_engine = AsyncMock(spec=AsyncEngine)
         mock_db_service.async_engine = mock_async_engine
         mock_container.core_database.return_value = mock_db_service
         mock_container_class.return_value = mock_container
 
         # Create mock Admin instance
-        mock_admin_instance = MagicMock()
+        mock_admin_instance = MagicMock(spec=Admin)
         mock_admin_class.return_value = mock_admin_instance
 
         # Call setup function
@@ -100,21 +104,21 @@ class TestSQLAdminViewRoutes:
         # Verify return value
         assert result == mock_admin_instance
 
-    @patch("birdnetpi.web.routers.sqladmin_view_routes.Container")
-    @patch("birdnetpi.web.routers.sqladmin_view_routes.Admin")
+    @patch("birdnetpi.web.routers.sqladmin_view_routes.Container", autospec=True)
+    @patch("birdnetpi.web.routers.sqladmin_view_routes.Admin", autospec=True)
     def test_setup_sqladmin_returns_admin_instance(self, mock_admin_class, mock_container_class):
         """Should setup_sqladmin returns the Admin instance."""
         app = FastAPI()
 
         # Set up mock container instance
-        mock_container = MagicMock()
-        mock_db_service = MagicMock()
-        mock_async_engine = AsyncMock()
+        mock_container = MagicMock(spec=Container)
+        mock_db_service = MagicMock(spec=CoreDatabaseService)
+        mock_async_engine = AsyncMock(spec=AsyncEngine)
         mock_db_service.async_engine = mock_async_engine
         mock_container.core_database.return_value = mock_db_service
         mock_container_class.return_value = mock_container
 
-        mock_admin_instance = MagicMock()
+        mock_admin_instance = MagicMock(spec=Admin)
         mock_admin_class.return_value = mock_admin_instance
 
         result = setup_sqladmin(app)

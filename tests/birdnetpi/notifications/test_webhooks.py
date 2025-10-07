@@ -2,7 +2,7 @@
 
 import logging
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 
 import httpx
 import pytest
@@ -122,7 +122,7 @@ class TestWebhookService:
         """Should starting webhook service when enabled."""
         service = enabled_webhook_service
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client_class:
             await service.start()
 
             mock_client_class.assert_called_once()
@@ -138,7 +138,7 @@ class TestWebhookService:
     async def test_stop_enabled(self, enabled_webhook_service):
         """Should stopping webhook service when enabled."""
         service = enabled_webhook_service
-        mock_client = AsyncMock()
+        mock_client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
         service.client = mock_client
 
         await service.stop()
@@ -203,7 +203,7 @@ class TestWebhookService:
             "https://another-valid.com/webhook",
         ]
 
-        with patch("birdnetpi.notifications.webhooks.logger") as mock_logger:
+        with patch("birdnetpi.notifications.webhooks.logger", autospec=True) as mock_logger:
             service.configure_webhooks_from_urls(urls)
 
             # Only valid URLs should be added
@@ -234,7 +234,7 @@ class TestWebhookService:
     async def test_send_detection_webhook_enabled(self, enabled_webhook_service, model_factory):
         """Should sending detection webhook when service is enabled."""
         service = enabled_webhook_service
-        service.client = AsyncMock()
+        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
 
         # Add a webhook
         config = WebhookConfig(url="https://example.com/webhook", events=["detection"])
@@ -272,7 +272,7 @@ class TestWebhookService:
     async def test_send_health_webhook(self, enabled_webhook_service):
         """Should sending health webhook."""
         service = enabled_webhook_service
-        service.client = AsyncMock()
+        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
 
         config = WebhookConfig(url="https://example.com/webhook", events=["health"])
         service.add_webhook(config)
@@ -294,7 +294,7 @@ class TestWebhookService:
     async def test_send_gps_webhook(self, enabled_webhook_service):
         """Should sending GPS webhook."""
         service = enabled_webhook_service
-        service.client = AsyncMock()
+        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
 
         config = WebhookConfig(url="https://example.com/webhook", events=["gps"])
         service.add_webhook(config)
@@ -315,7 +315,7 @@ class TestWebhookService:
     async def test_send_system_webhook(self, enabled_webhook_service):
         """Should sending system webhook."""
         service = enabled_webhook_service
-        service.client = AsyncMock()
+        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
 
         config = WebhookConfig(url="https://example.com/webhook", events=["system"])
         service.add_webhook(config)
@@ -337,7 +337,7 @@ class TestWebhookService:
     async def test_send_to_multiple_webhooks(self, enabled_webhook_service, model_factory):
         """Should sending to multiple webhooks concurrently."""
         service = enabled_webhook_service
-        service.client = AsyncMock()
+        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
 
         # Add multiple webhooks
         config1 = WebhookConfig(url="https://webhook1.com/api", events=["detection"])
@@ -374,11 +374,12 @@ class TestWebhookService:
         """Should successful webhook request."""
         service = enabled_webhook_service
 
-        mock_response = MagicMock()
+        # Use MagicMock with spec (not spec_set) because httpx.Response has read-only properties
+        mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
         mock_response.text = "OK"
 
-        mock_client = AsyncMock()
+        mock_client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
         mock_client.post.return_value = mock_response
         service.client = mock_client
 
@@ -407,11 +408,12 @@ class TestWebhookService:
         """Should failed webhook request."""
         service = enabled_webhook_service
 
-        mock_response = MagicMock()
+        # Use MagicMock with spec (not spec_set) because httpx.Response has read-only properties
+        mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 404
         mock_response.text = "Not Found"
 
-        mock_client = AsyncMock()
+        mock_client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
         mock_client.post.return_value = mock_response
         service.client = mock_client
 
@@ -427,14 +429,14 @@ class TestWebhookService:
         """Should webhook request timeout."""
         service = enabled_webhook_service
 
-        mock_client = AsyncMock()
+        mock_client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
         mock_client.post.side_effect = TimeoutError("Request timeout")
         service.client = mock_client
 
         config = WebhookConfig(url="https://example.com/webhook", retry_count=1)
         payload = {"test": "data"}
 
-        with patch("asyncio.sleep") as mock_sleep:
+        with patch("asyncio.sleep", autospec=True) as mock_sleep:
             result = await service._send_webhook_request(config, payload)
 
             assert result is False
@@ -446,7 +448,7 @@ class TestWebhookService:
         """Should webhook request with unexpected exception."""
         service = enabled_webhook_service
 
-        mock_client = AsyncMock()
+        mock_client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
         mock_client.post.side_effect = Exception("Connection error")
         service.client = mock_client
 
@@ -465,7 +467,7 @@ class TestWebhookService:
         assert service._can_send() is False
 
         # Client but no webhooks
-        service.client = AsyncMock()
+        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
         assert service._can_send() is False
 
         # Client and webhooks
@@ -505,7 +507,7 @@ class TestWebhookService:
     async def test_webhook(self, enabled_webhook_service):
         """Should webhook testing functionality - success case."""
         service = enabled_webhook_service
-        service.client = AsyncMock()
+        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
 
         with patch.object(service, "_send_webhook_request", return_value=True) as mock_send:
             result = await service.test_webhook("https://example.com/webhook")
@@ -519,7 +521,7 @@ class TestWebhookService:
     async def test_webhook_failure(self, enabled_webhook_service):
         """Should webhook testing functionality - failure case."""
         service = enabled_webhook_service
-        service.client = AsyncMock()
+        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
 
         with patch.object(service, "_send_webhook_request", return_value=False):
             result = await service.test_webhook("https://example.com/webhook")
@@ -543,7 +545,7 @@ class TestWebhookService:
     async def test_webhook_exception(self, enabled_webhook_service):
         """Should webhook testing with exception."""
         service = enabled_webhook_service
-        service.client = AsyncMock()
+        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
 
         with patch.object(service, "_send_webhook_request", side_effect=Exception("Test error")):
             result = await service.test_webhook("https://example.com/webhook")
@@ -556,14 +558,14 @@ class TestWebhookService:
         """Should exponential backoff in webhook request retries."""
         service = enabled_webhook_service
 
-        mock_client = AsyncMock()
+        mock_client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
         mock_client.post.side_effect = Exception("Connection error")
         service.client = mock_client
 
         config = WebhookConfig(url="https://example.com/webhook", retry_count=3)
         payload = {"test": "data"}
 
-        with patch("asyncio.sleep") as mock_sleep:
+        with patch("asyncio.sleep", autospec=True) as mock_sleep:
             result = await service._send_webhook_request(config, payload)
 
             assert result is False
@@ -578,7 +580,7 @@ class TestWebhookService:
     async def test_event_filtering(self, enabled_webhook_service):
         """Should webhooks only receive events they're configured for."""
         service = enabled_webhook_service
-        service.client = AsyncMock()
+        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
 
         # Webhook 1: Only detection events
         config1 = WebhookConfig(url="https://webhook1.com/api", events=["detection"])
@@ -611,7 +613,7 @@ class TestWebhookService:
         # Disable the service to make _can_send() return False
         service.enabled = False
 
-        with patch.object(service, "_send_webhook_request") as mock_send:
+        with patch.object(service, "_send_webhook_request", autospec=True) as mock_send:
             await service.send_health_webhook({"status": "healthy"})
             # Should not call _send_webhook_request (covers line 198)
             mock_send.assert_not_called()
@@ -623,7 +625,7 @@ class TestWebhookService:
         # Disable the service to make _can_send() return False
         service.enabled = False
 
-        with patch.object(service, "_send_webhook_request") as mock_send:
+        with patch.object(service, "_send_webhook_request", autospec=True) as mock_send:
             await service.send_gps_webhook(63.4591, -19.3647, 10.0)
             # Should not call _send_webhook_request (covers line 219)
             mock_send.assert_not_called()
@@ -635,7 +637,7 @@ class TestWebhookService:
         # Disable the service to make _can_send() return False
         service.enabled = False
 
-        with patch.object(service, "_send_webhook_request") as mock_send:
+        with patch.object(service, "_send_webhook_request", autospec=True) as mock_send:
             await service.send_system_webhook({"cpu": 50.0})
             # Should not call _send_webhook_request (covers line 240)
             mock_send.assert_not_called()
@@ -645,7 +647,7 @@ class TestWebhookService:
         service = enabled_webhook_service
         service.client = None  # Set client to None
 
-        with patch("birdnetpi.notifications.webhooks.logger") as mock_logger:
+        with patch("birdnetpi.notifications.webhooks.logger", autospec=True) as mock_logger:
             await service._send_to_webhooks("test", {"data": "test"})
             # Should return early without logging (covers line 258)
             mock_logger.debug.assert_not_called()
@@ -653,7 +655,7 @@ class TestWebhookService:
     async def test_send_to_webhooks__no_relevant_webhooks(self, enabled_webhook_service, caplog):
         """Should _send_to_webhooks logs and returns when no relevant webhooks."""
         service = enabled_webhook_service
-        service.client = AsyncMock()
+        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
         service.webhooks = []  # No webhooks configured
 
         # Set debug level to capture the log
@@ -679,7 +681,7 @@ class TestWebhookService:
         webhook = WebhookConfig(url="https://example.com", retry_count=0)
 
         # Mock client to raise TimeoutException
-        service.client = AsyncMock()
+        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
         service.client.post.side_effect = httpx.TimeoutException("Timeout")
 
         result = await service._send_webhook_request(webhook, {"data": "test"})
@@ -695,7 +697,7 @@ class TestWebhookService:
         webhook = WebhookConfig(url="https://example.com", retry_count=0)
 
         # Mock client to raise RequestError
-        service.client = AsyncMock()
+        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
         service.client.post.side_effect = httpx.RequestError("Connection failed")
 
         result = await service._send_webhook_request(webhook, {"data": "test"})

@@ -130,3 +130,91 @@ snapshots:
       style: primary
       start: 42
       end: 70
+  ? |
+    from unittest.mock import Mock
+    mock_obj = Mock(autospec=True)
+  : labels:
+    - source: Mock(autospec=True)
+      style: primary
+      start: 42
+      end: 61
+  ? |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(autospec=True)
+  : labels:
+    - source: MagicMock(autospec=True)
+      style: primary
+      start: 47
+      end: 71
+  ? |
+    from unittest.mock import AsyncMock
+    mock_obj = AsyncMock(autospec=True, return_value=None)
+  : labels:
+    - source: AsyncMock(autospec=True, return_value=None)
+      style: primary
+      start: 47
+      end: 90
+  ? |
+    from unittest.mock import Mock
+    mock_obj = Mock(spec=True)
+  : labels:
+    - source: Mock(spec=True)
+      style: primary
+      start: 42
+      end: 57
+  ? |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(spec=True)
+  : labels:
+    - source: MagicMock(spec=True)
+      style: primary
+      start: 47
+      end: 67
+  ? |
+    from unittest.mock import Mock
+    mock_obj = Mock(spec=False)
+  : labels:
+    - source: Mock(spec=False)
+      style: primary
+      start: 42
+      end: 58
+  ? |
+    from unittest.mock import Mock
+    mock_obj = Mock(spec=[])
+  : labels:
+    - source: Mock(spec=[])
+      style: primary
+      start: 42
+      end: 55
+  ? |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(spec=())
+  : labels:
+    - source: MagicMock(spec=())
+      style: primary
+      start: 47
+      end: 65
+  ? |
+    from unittest.mock import Mock
+    mock_obj = Mock(spec=["method", "attribute"])
+  : labels:
+    - source: Mock(spec=["method", "attribute"])
+      style: primary
+      start: 42
+      end: 76
+  ? |
+    from unittest.mock import Mock
+    mock_obj = Mock(spec=("method",))
+  : labels:
+    - source: Mock(spec=("method",))
+      style: primary
+      start: 42
+      end: 64
+  ? |
+    from unittest.mock import MagicMock
+    mock_obj = MagicMock(spec=("method", "attribute"))
+  : labels:
+    - source: MagicMock(spec=("method", "attribute"))
+      style: primary
+      start: 47
+      end: 86

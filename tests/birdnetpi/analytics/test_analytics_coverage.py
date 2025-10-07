@@ -40,7 +40,8 @@ class TestWeeklyHeatmapExtended:
 
         # Return different data for each call
         mock_detection_query_service.get_hourly_counts = AsyncMock(
-            side_effect=mock_hourly_data * 5  # Repeat pattern for 15 days
+            spec=DetectionQueryService.get_hourly_counts,
+            side_effect=mock_hourly_data * 5,  # Repeat pattern for 15 days
         )
 
         result = await analytics_manager.get_weekly_heatmap_data(days=14)
@@ -62,12 +63,13 @@ class TestWeeklyHeatmapExtended:
         """Should handle weekdays with no data when averaging."""
         # Only return data for some days
         mock_detection_query_service.get_hourly_counts = AsyncMock(
+            spec=DetectionQueryService.get_hourly_counts,
             side_effect=[
                 [{"hour": 12, "count": 5}],  # Monday
                 [],  # Tuesday - no data
                 [{"hour": 14, "count": 3}],  # Wednesday
             ]
-            + [[]] * 11  # Rest empty
+            + [[]] * 11,  # Rest empty
         )
 
         result = await analytics_manager.get_weekly_heatmap_data(days=14)
@@ -99,12 +101,13 @@ class TestStemLeafDistribution:
     ):
         """Should create stem-and-leaf plot from hourly counts."""
         mock_detection_query_service.get_hourly_counts = AsyncMock(
+            spec=DetectionQueryService.get_hourly_counts,
             side_effect=[
                 [{"hour": 0, "count": 12}, {"hour": 1, "count": 23}, {"hour": 2, "count": 15}],
                 [{"hour": 0, "count": 31}, {"hour": 1, "count": 28}],
                 [{"hour": 0, "count": 45}],
             ]
-            + [[]] * 4  # Rest empty for 7 days
+            + [[]] * 4,  # Rest empty for 7 days
         )
 
         result = await analytics_manager.get_detection_frequency_distribution(days=7)
@@ -127,7 +130,9 @@ class TestStemLeafDistribution:
         self, analytics_manager, mock_detection_query_service
     ):
         """Should handle case with no detection data."""
-        mock_detection_query_service.get_hourly_counts = AsyncMock(return_value=[])
+        mock_detection_query_service.get_hourly_counts = AsyncMock(
+            spec=DetectionQueryService.get_hourly_counts, return_value=[]
+        )
 
         result = await analytics_manager.get_detection_frequency_distribution(days=7)
 
@@ -184,7 +189,9 @@ class TestSpeciesHourlyPatterns:
             ),
         ]
 
-        mock_detection_query_service.query_detections = AsyncMock(return_value=mock_detections)
+        mock_detection_query_service.query_detections = AsyncMock(
+            spec=DetectionQueryService.query_detections, return_value=mock_detections
+        )
 
         result = await analytics_manager.get_species_hourly_patterns("American Robin", days=7)
 
@@ -212,7 +219,9 @@ class TestSpeciesHourlyPatterns:
             ),
         ]
 
-        mock_detection_query_service.query_detections = AsyncMock(return_value=mock_detections)
+        mock_detection_query_service.query_detections = AsyncMock(
+            spec=DetectionQueryService.query_detections, return_value=mock_detections
+        )
 
         # Test with scientific name
         result = await analytics_manager.get_species_hourly_patterns("Turdus migratorius", days=1)
@@ -251,13 +260,14 @@ class TestSpeciesAccumulationMethods:
         mock_accumulation_data = [(det.timestamp, det.scientific_name) for det in mock_detections]
 
         mock_detection_query_service.get_detections_for_accumulation = AsyncMock(
-            return_value=mock_accumulation_data
+            spec=DetectionQueryService.get_detections_for_accumulation,
+            return_value=mock_accumulation_data,
         )
 
         end_date = datetime.now()
         start_date = end_date - timedelta(days=7)
 
-        with patch("random.shuffle"):  # Control randomization for testing
+        with patch("random.shuffle", autospec=True):  # Control randomization for testing
             result = await analytics_manager.calculate_species_accumulation(
                 start_date=start_date, end_date=end_date, method="random"
             )
@@ -299,7 +309,8 @@ class TestSpeciesAccumulationMethods:
         mock_accumulation_data = [(det.timestamp, det.scientific_name) for det in detections]
 
         mock_detection_query_service.get_detections_for_accumulation = AsyncMock(
-            return_value=mock_accumulation_data
+            spec=DetectionQueryService.get_detections_for_accumulation,
+            return_value=mock_accumulation_data,
         )
 
         end_date = datetime.now()
@@ -345,7 +356,7 @@ class TestBetaDiversity:
         ]
 
         mock_detection_query_service.get_species_sets_by_window = AsyncMock(
-            return_value=mock_windows
+            spec=DetectionQueryService.get_species_sets_by_window, return_value=mock_windows
         )
 
         end_date = datetime.now()
@@ -381,7 +392,7 @@ class TestBetaDiversity:
         ]
 
         mock_detection_query_service.get_species_sets_by_window = AsyncMock(
-            return_value=mock_windows
+            spec=DetectionQueryService.get_species_sets_by_window, return_value=mock_windows
         )
 
         end_date = datetime.now()
@@ -417,7 +428,9 @@ class TestWeatherCorrelations:
             "data_points": 100,
         }
 
-        mock_detection_query_service.get_weather_correlations = AsyncMock(return_value=mock_data)
+        mock_detection_query_service.get_weather_correlations = AsyncMock(
+            spec=DetectionQueryService.get_weather_correlations, return_value=mock_data
+        )
 
         end_date = datetime.now()
         start_date = end_date - timedelta(days=7)

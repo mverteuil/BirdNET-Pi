@@ -4,14 +4,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import websockets
+from websockets import Request
+from websockets.asyncio.server import Server, ServerConnection
 
 from birdnetpi.audio.websocket import AudioWebSocketService
+from birdnetpi.config.models import BirdNETConfig
 
 
 @pytest.fixture
 def mock_config():
     """Mock BirdNETConfig for testing."""
-    mock = MagicMock()
+    mock = MagicMock(spec=BirdNETConfig)
     mock.sample_rate = 44100
     mock.audio_channels = 1
     return mock
@@ -48,8 +51,12 @@ class TestAudioWebSocketService:
     @pytest.mark.asyncio
     async def test_websocket_handler_audio_path(self, audio_websocket_service):
         """Should handle audio websocket connections correctly."""
-        mock_websocket = AsyncMock()
-        mock_websocket.request.path = "/ws/audio"
+        # Create mock without spec to allow dynamic attribute setting
+        mock_websocket = AsyncMock(spec=ServerConnection)
+        # Configure request mock with path
+        mock_request = MagicMock(spec=Request)
+        mock_request.path = "/ws/audio"
+        mock_websocket.request = mock_request
 
         # Configure the websocket to be async iterable (empty iteration - immediate exit)
         mock_websocket.__aiter__.return_value = [].__iter__()
@@ -62,9 +69,12 @@ class TestAudioWebSocketService:
     @pytest.mark.asyncio
     async def test_websocket_handler_unknown_path(self, audio_websocket_service):
         """Should close unknown websocket connections."""
-        mock_websocket = MagicMock()
-        mock_websocket.request.path = "/unknown"
-        mock_websocket.close = AsyncMock()
+        # Create mock without spec to allow dynamic attribute setting
+        mock_websocket = AsyncMock(spec=ServerConnection)
+        # Configure request mock with path
+        mock_request = MagicMock(spec=Request)
+        mock_request.path = "/unknown"
+        mock_websocket.request = mock_request
 
         await audio_websocket_service._websocket_handler(mock_websocket)
 
@@ -74,8 +84,8 @@ class TestAudioWebSocketService:
     async def test_broadcast_audio_data(self, audio_websocket_service):
         """Should broadcast audio data to connected clients."""
         # Setup mock clients
-        mock_client1 = AsyncMock()
-        mock_client2 = AsyncMock()
+        mock_client1 = AsyncMock(spec=ServerConnection)
+        mock_client2 = AsyncMock(spec=ServerConnection)
         audio_websocket_service._audio_clients.add(mock_client1)
         audio_websocket_service._audio_clients.add(mock_client2)
 
@@ -93,8 +103,8 @@ class TestAudioWebSocketService:
     async def test_broadcast_audio_data_removes_disconnected_clients(self, audio_websocket_service):
         """Should remove disconnected clients during broadcast."""
         # Setup mock clients
-        mock_client1 = AsyncMock()
-        mock_client2 = AsyncMock()
+        mock_client1 = AsyncMock(spec=ServerConnection)
+        mock_client2 = AsyncMock(spec=ServerConnection)
         mock_client2.send.side_effect = websockets.exceptions.ConnectionClosed(None, None)
 
         audio_websocket_service._audio_clients.add(mock_client1)
@@ -112,11 +122,11 @@ class TestAudioWebSocketService:
         """Should start service successfully."""
         with (
             patch("birdnetpi.audio.websocket.os.open", return_value=123) as mock_open,
-            patch("birdnetpi.audio.websocket.serve") as mock_serve,
-            patch("birdnetpi.audio.websocket.signal"),
-            patch("birdnetpi.audio.websocket.atexit"),
+            patch("birdnetpi.audio.websocket.serve", autospec=True) as mock_serve,
+            patch("birdnetpi.audio.websocket.signal", autospec=True),
+            patch("birdnetpi.audio.websocket.atexit", autospec=True),
         ):
-            mock_server = MagicMock()  # Regular mock, not AsyncMock
+            mock_server = MagicMock(spec=Server)  # Regular mock, not AsyncMock
 
             # Mock serve to return an awaitable
             async def mock_serve_func(*args, **kwargs):
@@ -154,7 +164,7 @@ class TestAudioWebSocketService:
         """Should stop service and clean up resources."""
         # Setup mock resources
         audio_websocket_service._fifo_livestream_fd = 123
-        audio_websocket_service._websocket_server = MagicMock()
+        audio_websocket_service._websocket_server = MagicMock(spec=Server)
 
         # Create a real asyncio task that we can cancel
         async def dummy_fifo_loop():
@@ -164,7 +174,7 @@ class TestAudioWebSocketService:
         task = asyncio.create_task(dummy_fifo_loop())
         audio_websocket_service._fifo_task = task
 
-        with patch("birdnetpi.audio.websocket.os.close") as mock_close:
+        with patch("birdnetpi.audio.websocket.os.close", autospec=True) as mock_close:
             await audio_websocket_service.stop()
 
             # Verify shutdown flag is set

@@ -81,6 +81,7 @@ class TestLandingPageData:
         """Should assemble complete landing page data correctly."""
         # Configure analytics manager mocks (as async)
         mock_analytics_manager.get_dashboard_summary = AsyncMock(
+            spec=AnalyticsManager.get_dashboard_summary,
             return_value={
                 "species_total": 150,
                 "detections_today": 25,
@@ -88,10 +89,11 @@ class TestLandingPageData:
                 "storage_gb": 5.5,
                 "hours_monitored": 120.0,
                 "confidence_threshold": 0.7,
-            }
+            },
         )
 
         mock_analytics_manager.get_species_frequency_analysis = AsyncMock(
+            spec=AnalyticsManager.get_species_frequency_analysis,
             return_value=[
                 {"name": "American Robin", "count": 50, "percentage": 40.0, "category": "common"},
                 {
@@ -101,10 +103,11 @@ class TestLandingPageData:
                     "category": "regular",
                 },
                 {"name": "Blue Jay", "count": 20, "percentage": 16.0, "category": "regular"},
-            ]
+            ],
         )
 
         mock_analytics_manager.get_temporal_patterns = AsyncMock(
+            spec=AnalyticsManager.get_temporal_patterns,
             return_value={
                 "hourly_distribution": [
                     0,
@@ -141,13 +144,16 @@ class TestLandingPageData:
                     "evening": 12,
                     "night_late": 14,
                 },
-            }
+            },
         )
 
         # Mock detection query service method
-        mock_detection_query_service.query_detections = AsyncMock(return_value=sample_detections)
+        mock_detection_query_service.query_detections = AsyncMock(
+            spec=DetectionQueryService.query_detections, return_value=sample_detections
+        )
 
         mock_analytics_manager.get_detection_scatter_data = AsyncMock(
+            spec=AnalyticsManager.get_detection_scatter_data,
             return_value=[
                 {
                     "time": 6.25,
@@ -161,7 +167,7 @@ class TestLandingPageData:
                     "species": "Northern Cardinal",
                     "frequency_category": "regular",
                 },
-            ]
+            ],
         )
 
         # Get landing page data
@@ -347,7 +353,7 @@ class TestAPIFormatting:
         """Should successful API response formatting."""
         data = {"result": "test", "count": 42}
 
-        with patch("birdnetpi.analytics.presentation.datetime") as mock_datetime:
+        with patch("birdnetpi.analytics.presentation.datetime", autospec=True) as mock_datetime:
             mock_datetime.now.return_value.isoformat.return_value = "2024-01-01T12:00:00"
             response = presentation_manager.format_api_response(data)
 
@@ -359,7 +365,7 @@ class TestAPIFormatting:
         """Should error API response formatting."""
         error_data = {"error": "Not found"}
 
-        with patch("birdnetpi.analytics.presentation.datetime") as mock_datetime:
+        with patch("birdnetpi.analytics.presentation.datetime", autospec=True) as mock_datetime:
             mock_datetime.now.return_value.isoformat.return_value = "2024-01-01T12:00:00"
             response = presentation_manager.format_api_response(error_data, status="error")
 
@@ -386,6 +392,7 @@ class TestSparklineGeneration:
         """Should sparkline data generation for species trends."""
         # Mock the hourly patterns method
         mock_analytics_manager.get_species_hourly_patterns = AsyncMock(
+            spec=AnalyticsManager.get_species_hourly_patterns,
             side_effect=[
                 [
                     5,
@@ -439,7 +446,7 @@ class TestSparklineGeneration:
                     7,
                     6,
                 ],  # 24 hours
-            ]
+            ],
         )
 
         top_species = [

@@ -4,10 +4,13 @@ import logging
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from starlette.websockets import WebSocket
 
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.notifications.manager import NotificationManager
+from birdnetpi.notifications.mqtt import MQTTService
 from birdnetpi.notifications.signals import detection_signal
+from birdnetpi.notifications.webhooks import WebhookService
 
 
 @pytest.fixture
@@ -41,7 +44,7 @@ def test_handle_detection_event_basic(notification_manager, caplog, model_factor
             common_name="Common Blackbird",
             confidence=0.95,
         )
-        notification_manager.active_websockets.add(Mock())  # Add a mock websocket
+        notification_manager.active_websockets.add(Mock(spec=WebSocket))  # Add a mock websocket
         notification_manager._handle_detection_event(None, detection)
         assert (
             f"NotificationManager received detection: {detection.get_display_name()}" in caplog.text
@@ -66,7 +69,7 @@ def test_handle_detection_event__notification_rules_enabled(
             common_name="European Robin",
             confidence=0.88,
         )
-        notification_manager.active_websockets.add(Mock())  # Add a mock websocket
+        notification_manager.active_websockets.add(Mock(spec=WebSocket))  # Add a mock websocket
         notification_manager._handle_detection_event(None, detection)
         assert (
             f"NotificationManager received detection: {detection.get_display_name()}" in caplog.text
@@ -79,7 +82,7 @@ class TestWebSocketManagement:
 
     def test_add_websocket(self, notification_manager, caplog):
         """Should add websocket to active connections."""
-        mock_ws = Mock()
+        mock_ws = Mock(spec=WebSocket)
 
         with caplog.at_level(logging.INFO):
             notification_manager.add_websocket(mock_ws)
@@ -89,9 +92,9 @@ class TestWebSocketManagement:
 
     def test_add_multiple_websockets(self, notification_manager):
         """Should handle multiple websocket connections."""
-        ws1 = Mock()
-        ws2 = Mock()
-        ws3 = Mock()
+        ws1 = Mock(spec=WebSocket)
+        ws2 = Mock(spec=WebSocket)
+        ws3 = Mock(spec=WebSocket)
 
         notification_manager.add_websocket(ws1)
         notification_manager.add_websocket(ws2)
@@ -102,7 +105,7 @@ class TestWebSocketManagement:
 
     def test_remove_websocket(self, notification_manager, caplog):
         """Should remove websocket from active connections."""
-        mock_ws = Mock()
+        mock_ws = Mock(spec=WebSocket)
         notification_manager.add_websocket(mock_ws)
 
         with caplog.at_level(logging.INFO):
@@ -113,7 +116,7 @@ class TestWebSocketManagement:
 
     def test_remove_non_existent_websocket(self, notification_manager):
         """Should handle removing non-existent websocket gracefully."""
-        mock_ws = Mock()
+        mock_ws = Mock(spec=WebSocket)
         # Should not raise error
         notification_manager.remove_websocket(mock_ws)
         assert len(notification_manager.active_websockets) == 0
@@ -126,10 +129,10 @@ class TestAsyncNotifications:
     async def test_send_websocket_notifications(self, notification_manager, model_factory):
         """Should send notifications to all connected websockets."""
         # Create mock websockets with async send methods
-        ws1 = Mock()
-        ws1.send_text = AsyncMock()
-        ws2 = Mock()
-        ws2.send_text = AsyncMock()
+        ws1 = Mock(spec=WebSocket)
+        ws1.send_text = AsyncMock(spec=callable)
+        ws2 = Mock(spec=WebSocket)
+        ws2.send_text = AsyncMock(spec=callable)
 
         notification_manager.add_websocket(ws1)
         notification_manager.add_websocket(ws2)
@@ -165,11 +168,13 @@ class TestAsyncNotifications:
     ):
         """Should handle disconnected websockets gracefully."""
         # Create mock websocket that raises exception on send
-        ws_disconnected = Mock()
-        ws_disconnected.send_text = AsyncMock(side_effect=Exception("Connection closed"))
+        ws_disconnected = Mock(spec=WebSocket)
+        ws_disconnected.send_text = AsyncMock(
+            spec=callable, side_effect=Exception("Connection closed")
+        )
 
-        ws_active = Mock()
-        ws_active.send_text = AsyncMock()
+        ws_active = Mock(spec=WebSocket)
+        ws_active.send_text = AsyncMock(spec=callable)
 
         notification_manager.add_websocket(ws_disconnected)
         notification_manager.add_websocket(ws_active)
@@ -192,8 +197,8 @@ class TestAsyncNotifications:
     @pytest.mark.asyncio
     async def test_send_iot_notifications_mqtt(self, notification_manager, model_factory):
         """Should send MQTT notifications when service is available."""
-        mock_mqtt = Mock()
-        mock_mqtt.publish_detection = AsyncMock()
+        mock_mqtt = Mock(spec=MQTTService)
+        mock_mqtt.publish_detection = AsyncMock(spec=callable)
         notification_manager.mqtt_service = mock_mqtt
 
         detection = model_factory.create_detection(
@@ -210,8 +215,8 @@ class TestAsyncNotifications:
     @pytest.mark.asyncio
     async def test_send_iot_notifications_webhook(self, notification_manager, model_factory):
         """Should send webhook notifications when service is available."""
-        mock_webhook = Mock()
-        mock_webhook.send_detection_webhook = AsyncMock()
+        mock_webhook = Mock(spec=WebhookService)
+        mock_webhook.send_detection_webhook = AsyncMock(spec=callable)
         notification_manager.webhook_service = mock_webhook
 
         detection = model_factory.create_detection(
@@ -228,12 +233,12 @@ class TestAsyncNotifications:
     @pytest.mark.asyncio
     async def test_send_iot_notifications_both_services(self, notification_manager, model_factory):
         """Should send both MQTT and webhook notifications when both services available."""
-        mock_mqtt = Mock()
-        mock_mqtt.publish_detection = AsyncMock()
+        mock_mqtt = Mock(spec=MQTTService)
+        mock_mqtt.publish_detection = AsyncMock(spec=callable)
         notification_manager.mqtt_service = mock_mqtt
 
-        mock_webhook = Mock()
-        mock_webhook.send_detection_webhook = AsyncMock()
+        mock_webhook = Mock(spec=WebhookService)
+        mock_webhook.send_detection_webhook = AsyncMock(spec=callable)
         notification_manager.webhook_service = mock_webhook
 
         detection = model_factory.create_detection(
@@ -371,7 +376,7 @@ class TestEventLoopHandling:
         )
 
         # Add websocket to trigger async code path
-        notification_manager.add_websocket(Mock())
+        notification_manager.add_websocket(Mock(spec=WebSocket))
 
         with caplog.at_level(logging.DEBUG):
             # This runs in sync context (no event loop)
@@ -384,8 +389,8 @@ class TestEventLoopHandling:
     async def test_handle_detection_with_event_loop(self, notification_manager, model_factory):
         """Should handle detection events when event loop is running."""
         # Create mock websocket
-        ws = Mock()
-        ws.send_text = AsyncMock()
+        ws = Mock(spec=WebSocket)
+        ws.send_text = AsyncMock(spec=callable)
         notification_manager.add_websocket(ws)
 
         detection = model_factory.create_detection(
@@ -432,12 +437,12 @@ class TestSystemNotifications:
     async def test_send_system_health_notification(self, notification_manager):
         """Should send system health notifications to all configured services."""
         # Setup mock services
-        mock_mqtt = Mock()
-        mock_mqtt.publish_system_health = AsyncMock()
+        mock_mqtt = Mock(spec=MQTTService)
+        mock_mqtt.publish_system_health = AsyncMock(spec=callable)
         notification_manager.mqtt_service = mock_mqtt
 
-        mock_webhook = Mock()
-        mock_webhook.send_health_webhook = AsyncMock()
+        mock_webhook = Mock(spec=WebhookService)
+        mock_webhook.send_health_webhook = AsyncMock(spec=callable)
         notification_manager.webhook_service = mock_webhook
 
         health_data = {
@@ -468,8 +473,10 @@ class TestSystemNotifications:
     @pytest.mark.asyncio
     async def test_send_system_health_notification_with_error(self, notification_manager, caplog):
         """Should log error when system health notification fails."""
-        mock_mqtt = Mock()
-        mock_mqtt.publish_system_health = AsyncMock(side_effect=Exception("MQTT connection failed"))
+        mock_mqtt = Mock(spec=MQTTService)
+        mock_mqtt.publish_system_health = AsyncMock(
+            spec=callable, side_effect=Exception("MQTT connection failed")
+        )
         notification_manager.mqtt_service = mock_mqtt
 
         health_data = {"cpu_usage": 45.2}
@@ -484,12 +491,12 @@ class TestSystemNotifications:
     async def test_send_gps_notification(self, notification_manager):
         """Should send GPS notifications to all configured services."""
         # Setup mock services
-        mock_mqtt = Mock()
-        mock_mqtt.publish_gps_location = AsyncMock()
+        mock_mqtt = Mock(spec=MQTTService)
+        mock_mqtt.publish_gps_location = AsyncMock(spec=callable)
         notification_manager.mqtt_service = mock_mqtt
 
-        mock_webhook = Mock()
-        mock_webhook.send_gps_webhook = AsyncMock()
+        mock_webhook = Mock(spec=WebhookService)
+        mock_webhook.send_gps_webhook = AsyncMock(spec=callable)
         notification_manager.webhook_service = mock_webhook
 
         latitude = 51.5074
@@ -505,8 +512,8 @@ class TestSystemNotifications:
     @pytest.mark.asyncio
     async def test_send_gps_notification_without_accuracy(self, notification_manager):
         """Should send GPS notifications without accuracy parameter."""
-        mock_mqtt = Mock()
-        mock_mqtt.publish_gps_location = AsyncMock()
+        mock_mqtt = Mock(spec=MQTTService)
+        mock_mqtt.publish_gps_location = AsyncMock(spec=callable)
         notification_manager.mqtt_service = mock_mqtt
 
         latitude = 40.7128
@@ -520,8 +527,10 @@ class TestSystemNotifications:
     @pytest.mark.asyncio
     async def test_send_gps_notification_with_error(self, notification_manager, caplog):
         """Should log error when GPS notification fails."""
-        mock_webhook = Mock()
-        mock_webhook.send_gps_webhook = AsyncMock(side_effect=Exception("Webhook timeout"))
+        mock_webhook = Mock(spec=WebhookService)
+        mock_webhook.send_gps_webhook = AsyncMock(
+            spec=callable, side_effect=Exception("Webhook timeout")
+        )
         notification_manager.webhook_service = mock_webhook
 
         with caplog.at_level(logging.ERROR):
@@ -534,12 +543,12 @@ class TestSystemNotifications:
     async def test_send_system_stats_notification(self, notification_manager):
         """Should send system stats notifications to all configured services."""
         # Setup mock services
-        mock_mqtt = Mock()
-        mock_mqtt.publish_system_stats = AsyncMock()
+        mock_mqtt = Mock(spec=MQTTService)
+        mock_mqtt.publish_system_stats = AsyncMock(spec=callable)
         notification_manager.mqtt_service = mock_mqtt
 
-        mock_webhook = Mock()
-        mock_webhook.send_system_webhook = AsyncMock()
+        mock_webhook = Mock(spec=WebhookService)
+        mock_webhook.send_system_webhook = AsyncMock(spec=callable)
         notification_manager.webhook_service = mock_webhook
 
         stats_data = {
@@ -558,8 +567,8 @@ class TestSystemNotifications:
     @pytest.mark.asyncio
     async def test_send_system_stats_notification_mqtt_only(self, notification_manager):
         """Should send system stats to MQTT only when webhook not configured."""
-        mock_mqtt = Mock()
-        mock_mqtt.publish_system_stats = AsyncMock()
+        mock_mqtt = Mock(spec=MQTTService)
+        mock_mqtt.publish_system_stats = AsyncMock(spec=callable)
         notification_manager.mqtt_service = mock_mqtt
         notification_manager.webhook_service = None
 
@@ -572,8 +581,10 @@ class TestSystemNotifications:
     @pytest.mark.asyncio
     async def test_send_system_stats_notification_with_error(self, notification_manager, caplog):
         """Should log error when system stats notification fails."""
-        mock_mqtt = Mock()
-        mock_mqtt.publish_system_stats = AsyncMock(side_effect=Exception("Connection refused"))
+        mock_mqtt = Mock(spec=MQTTService)
+        mock_mqtt.publish_system_stats = AsyncMock(
+            spec=callable, side_effect=Exception("Connection refused")
+        )
         notification_manager.mqtt_service = mock_mqtt
 
         with caplog.at_level(logging.ERROR):
@@ -611,8 +622,10 @@ class TestEdgeCases:
     ):
         """Should handle and log errors in IoT notifications."""
         # Setup service that raises an exception
-        mock_mqtt = Mock()
-        mock_mqtt.publish_detection = AsyncMock(side_effect=Exception("Network error"))
+        mock_mqtt = Mock(spec=MQTTService)
+        mock_mqtt.publish_detection = AsyncMock(
+            spec=callable, side_effect=Exception("Network error")
+        )
         notification_manager.mqtt_service = mock_mqtt
 
         detection = model_factory.create_detection(

@@ -107,7 +107,7 @@ async def test_weather_handler_handles_detection_event(weather_handler, session,
         await session.commit()
 
         # Mock the weather fetching
-        with patch.object(weather_handler, "_fetch_and_link_weather") as mock_fetch:
+        with patch.object(weather_handler, "_fetch_and_link_weather", autospec=True) as mock_fetch:
             mock_fetch.return_value = asyncio.create_task(asyncio.sleep(0))
 
             # Simulate the detection signal being sent
@@ -157,7 +157,7 @@ async def test_weather_handler_skips_detection_with_weather(
         session.add(detection)
         await session.commit()
 
-        with patch.object(weather_handler, "_fetch_and_link_weather") as mock_fetch:
+        with patch.object(weather_handler, "_fetch_and_link_weather", autospec=True) as mock_fetch:
             # Send the signal
             detection_signal.send(None, detection=detection)
 
@@ -196,7 +196,7 @@ async def test_fetch_and_link_weather_uses_existing(weather_handler, session, mo
 
     # Mock the WeatherManager's get_or_create_and_link_weather method
     with patch(
-        "birdnetpi.location.weather.WeatherManager.get_or_create_and_link_weather"
+        "birdnetpi.location.weather.WeatherManager.get_or_create_and_link_weather", autospec=True
     ) as mock_fetch:
         mock_fetch.return_value = weather
 
@@ -204,9 +204,10 @@ async def test_fetch_and_link_weather_uses_existing(weather_handler, session, mo
         await weather_handler._fetch_and_link_weather(detection)
 
         # Should have called the manager's method with the detection ID
+        # With autospec=True, call_args[0] is self, call_args[1] is detection_id
         mock_fetch.assert_called_once()
         call_args = mock_fetch.call_args[0]
-        assert call_args[0] == str(detection.id)
+        assert call_args[1] == str(detection.id)
 
 
 @pytest.mark.asyncio
@@ -233,7 +234,7 @@ async def test_fetch_and_link_weather_fetches_new(weather_handler, session, mode
 
     # Mock the WeatherManager's get_or_create_and_link_weather method
     with patch(
-        "birdnetpi.location.weather.WeatherManager.get_or_create_and_link_weather"
+        "birdnetpi.location.weather.WeatherManager.get_or_create_and_link_weather", autospec=True
     ) as mock_fetch:
         mock_fetch.return_value = mock_weather
 
@@ -241,9 +242,10 @@ async def test_fetch_and_link_weather_fetches_new(weather_handler, session, mode
         await weather_handler._fetch_and_link_weather(detection)
 
         # Should have called the manager's method with the detection ID
+        # With autospec=True, call_args[0] is self, call_args[1] is detection_id
         mock_fetch.assert_called_once()
         call_args = mock_fetch.call_args[0]
-        assert call_args[0] == str(detection.id)
+        assert call_args[1] == str(detection.id)
 
 
 @pytest.mark.asyncio
@@ -261,7 +263,7 @@ async def test_weather_handler_handles_fetch_error(weather_handler, session, mod
 
     # Mock the WeatherManager to raise error
     with patch(
-        "birdnetpi.location.weather.WeatherManager.get_or_create_and_link_weather"
+        "birdnetpi.location.weather.WeatherManager.get_or_create_and_link_weather", autospec=True
     ) as mock_fetch:
         mock_fetch.side_effect = Exception("API Error")
 
@@ -269,9 +271,10 @@ async def test_weather_handler_handles_fetch_error(weather_handler, session, mod
         await weather_handler._fetch_and_link_weather(detection)
 
         # Should have tried to fetch
+        # With autospec=True, call_args[0] is self, call_args[1] is detection_id
         mock_fetch.assert_called_once()
         call_args = mock_fetch.call_args[0]
-        assert call_args[0] == str(detection.id)
+        assert call_args[1] == str(detection.id)
 
 
 def test_weather_handler_handles_no_event_loop(weather_handler, model_factory):
@@ -285,7 +288,7 @@ def test_weather_handler_handles_no_event_loop(weather_handler, model_factory):
     )
 
     with patch("asyncio.get_running_loop", side_effect=RuntimeError("No event loop")):
-        with patch.object(weather_handler, "_fetch_and_link_weather") as mock_fetch:
+        with patch.object(weather_handler, "_fetch_and_link_weather", autospec=True) as mock_fetch:
             # Should not raise, just skip
             weather_handler._handle_detection_event(None, detection=detection)
 

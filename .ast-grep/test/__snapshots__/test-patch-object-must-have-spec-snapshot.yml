@@ -1,0 +1,67 @@
+id: test-patch-object-must-have-spec
+snapshots:
+  ? |
+    @patch.object(service, 'client')
+    def test_something():
+        pass
+  : fixed: |
+      @patch.object(service, 'client', autospec=True)
+      def test_something():
+          pass
+    labels:
+    - source: patch.object(service, 'client')
+      style: primary
+      start: 1
+      end: 32
+  ? |
+    @patch.object(service, 'method1')
+    @patch.object(service, 'method2', autospec=True)
+    def test_something():
+        pass
+  : fixed: |
+      @patch.object(service, 'method1', autospec=True)
+      @patch.object(service, 'method2', autospec=True)
+      def test_something():
+          pass
+    labels:
+    - source: patch.object(service, 'method1')
+      style: primary
+      start: 1
+      end: 33
+  ? |
+    def test_something():
+        with patch.object(manager, 'process'):
+            pass
+  : fixed: |
+      def test_something():
+          with patch.object(manager, 'process', autospec=True):
+              pass
+    labels:
+    - source: patch.object(manager, 'process')
+      style: primary
+      start: 31
+      end: 63
+  ? |
+    def test_something():
+        with patch.object(obj, 'attr'):
+            do_something()
+  : fixed: |
+      def test_something():
+          with patch.object(obj, 'attr', autospec=True):
+              do_something()
+    labels:
+    - source: patch.object(obj, 'attr')
+      style: primary
+      start: 31
+      end: 56
+  ? |
+    with patch.object(obj, 'method'):
+        pass
+  : fixed: |
+      with patch.object(obj, 'method', autospec=True):
+          pass
+    labels:
+    - source: patch.object(obj, 'method')
+      style: primary
+      start: 5
+      end: 32

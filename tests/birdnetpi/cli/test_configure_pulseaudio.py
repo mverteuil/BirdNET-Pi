@@ -17,8 +17,8 @@ def runner():
 class TestPulseAudioTool:
     """Test PulseAudio tool commands."""
 
-    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.setup_streaming")
-    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.get_container_ip")
+    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.setup_streaming", autospec=True)
+    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.get_container_ip", autospec=True)
     def test_setup_command(self, mock_get_ip, mock_setup, runner):
         """Should successfully run setup command."""
         mock_get_ip.return_value = "192.168.1.100"
@@ -38,8 +38,8 @@ class TestPulseAudioTool:
             container_name="birdnet-pi",
         )
 
-    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.setup_streaming")
-    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.get_container_ip")
+    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.setup_streaming", autospec=True)
+    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.get_container_ip", autospec=True)
     def test_setup_command_auto_detect(self, mock_get_ip, mock_setup, runner):
         """Should auto-detect container IP when not specified."""
         mock_get_ip.return_value = "172.17.0.2"
@@ -51,8 +51,8 @@ class TestPulseAudioTool:
         assert "Auto-detected container IP: 172.17.0.2" in result.output
         mock_get_ip.assert_called_once_with("birdnet-pi")
 
-    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.test_connection")
-    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.get_container_ip")
+    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.test_connection", autospec=True)
+    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.get_container_ip", autospec=True)
     def test_test_command(self, mock_get_ip, mock_test, runner):
         """Should test connection to container."""
         mock_get_ip.return_value = "192.168.1.100"
@@ -64,7 +64,7 @@ class TestPulseAudioTool:
         assert "Testing connection to 192.168.1.100:4713" in result.output
         assert "✓ Connection successful" in result.output
 
-    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.get_status")
+    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.get_status", autospec=True)
     def test_status_command(self, mock_status, runner):
         """Should show current status."""
         mock_status.return_value = {
@@ -85,7 +85,7 @@ class TestPulseAudioTool:
         assert "PulseAudio installed: ✓" in result.output
         assert "MacBook Pro Microphone" in result.output
 
-    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.get_audio_devices")
+    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.get_audio_devices", autospec=True)
     def test_devices_command(self, mock_devices, runner):
         """Should list audio devices."""
         mock_devices.return_value = [
@@ -108,7 +108,7 @@ class TestPulseAudioTool:
         assert "Built-in Microphone" in result.output
         assert "USB Audio Device" in result.output
 
-    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.cleanup_config")
+    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.cleanup_config", autospec=True)
     def test_cleanup_command_with_force(self, mock_cleanup, runner):
         """Should cleanup configuration with force flag."""
         mock_cleanup.return_value = (True, "Cleanup completed")
@@ -120,7 +120,7 @@ class TestPulseAudioTool:
         assert "✓ Cleanup completed" in result.output
         mock_cleanup.assert_called_once()
 
-    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.cleanup_config")
+    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.cleanup_config", autospec=True)
     def test_cleanup_command_cancelled(self, mock_cleanup, runner):
         """Should cancel cleanup when user declines."""
         result = runner.invoke(cli, ["cleanup"], input="n\n")
@@ -129,7 +129,7 @@ class TestPulseAudioTool:
         assert "Cleanup cancelled" in result.output
         mock_cleanup.assert_not_called()
 
-    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.get_container_ip")
+    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.get_container_ip", autospec=True)
     def test_detect_ip_command(self, mock_get_ip, runner):
         """Should detect container IP."""
         mock_get_ip.return_value = "172.17.0.3"
@@ -141,9 +141,11 @@ class TestPulseAudioTool:
         assert "Detected IP: 172.17.0.3" in result.output
         mock_get_ip.assert_called_once_with("my-container")
 
-    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.is_macos")
-    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.is_pulseaudio_installed")
-    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.install_pulseaudio")
+    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.is_macos", autospec=True)
+    @patch(
+        "birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.is_pulseaudio_installed", autospec=True
+    )
+    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.install_pulseaudio", autospec=True)
     def test_install_command(self, mock_install, mock_is_installed, mock_is_macos, runner):
         """Should install PulseAudio on macOS."""
         mock_is_macos.return_value = True
@@ -157,7 +159,7 @@ class TestPulseAudioTool:
         assert "✓ PulseAudio installed successfully" in result.output
         mock_install.assert_called_once()
 
-    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.is_macos")
+    @patch("birdnetpi.cli.configure_pulseaudio.PulseAudioSetup.is_macos", autospec=True)
     def test_install_command_not_macos(self, mock_is_macos, runner):
         """Should fail install on non-macOS."""
         mock_is_macos.return_value = False

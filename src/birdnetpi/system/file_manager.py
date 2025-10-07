@@ -12,7 +12,7 @@ class FileManager:
 
     def __init__(self, path_resolver: PathResolver) -> None:
         self.path_resolver = path_resolver
-        self.base_path = path_resolver.data_dir
+        self.base_path = path_resolver.get_data_dir()
 
     def create_directory(self, relative_path: Path, exist_ok: bool = True) -> None:
         """Create a directory within the base_path."""

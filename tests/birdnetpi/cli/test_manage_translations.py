@@ -17,6 +17,7 @@ from birdnetpi.cli.manage_translations import (
     main,
     run_command,
 )
+from birdnetpi.system.path_resolver import PathResolver
 
 
 class TestRunCommand:
@@ -39,7 +40,7 @@ class TestRunCommand:
         result = run_command(["false"], "Test command")
         assert result is False
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_run_command_with_exception(self, mock_run):
         """Should handle subprocess exceptions."""
         mock_run.side_effect = subprocess.CalledProcessError(1, ["test"], stderr="Error message")
@@ -70,7 +71,7 @@ class TestExtractCommand:
 
         return path_resolver, locales_dir
 
-    @patch("birdnetpi.cli.manage_translations.PathResolver")
+    @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
     def test_extract_success(self, mock_resolver_class, runner, tmp_path):
         """Should extract translatable strings successfully."""
         # Create all paths under tmp_path to avoid relative path issues
@@ -89,7 +90,7 @@ class TestExtractCommand:
         pot_file = locales_dir / "messages.pot"
 
         # Create a mock path resolver with all paths under tmp_path
-        path_resolver = MagicMock()
+        path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_babel_config_path.return_value = babel_cfg
         path_resolver.get_messages_pot_path.return_value = pot_file
@@ -115,8 +116,8 @@ class TestExtractCommand:
         pot_content = pot_file.read_text()
         assert "Hello World" in pot_content
 
-    @patch("birdnetpi.cli.manage_translations.run_command")
-    @patch("birdnetpi.cli.manage_translations.PathResolver")
+    @patch("birdnetpi.cli.manage_translations.run_command", autospec=True)
+    @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
     def test_extract_failure(self, mock_resolver_class, mock_run_command, runner, tmp_path):
         """Should handle extraction failure."""
         # Create paths under tmp_path
@@ -126,7 +127,7 @@ class TestExtractCommand:
         pot_file = locales_dir / "messages.pot"
 
         # Create a mock path resolver
-        path_resolver = MagicMock()
+        path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_babel_config_path.return_value = babel_cfg
         path_resolver.get_messages_pot_path.return_value = pot_file
@@ -184,8 +185,8 @@ msgstr "Hola"
 
         return path_resolver, locales_dir
 
-    @patch("birdnetpi.cli.manage_translations.run_command")
-    @patch("birdnetpi.cli.manage_translations.PathResolver")
+    @patch("birdnetpi.cli.manage_translations.run_command", autospec=True)
+    @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
     def test_update_success(self, mock_resolver_class, mock_run_command, runner, tmp_path):
         """Should update translation files successfully."""
         # Set up paths
@@ -193,7 +194,7 @@ msgstr "Hola"
         pot_file = tmp_path / "locales" / "messages.pot"
         locales_dir = tmp_path / "locales"
 
-        path_resolver = MagicMock()
+        path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_messages_pot_path.return_value = pot_file
         path_resolver.get_locales_dir.return_value = locales_dir
@@ -207,8 +208,8 @@ msgstr "Hola"
         assert "✓ Translation update completed successfully" in result.output
         mock_run_command.assert_called_once()
 
-    @patch("birdnetpi.cli.manage_translations.run_command")
-    @patch("birdnetpi.cli.manage_translations.PathResolver")
+    @patch("birdnetpi.cli.manage_translations.run_command", autospec=True)
+    @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
     def test_update_failure(self, mock_resolver_class, mock_run_command, runner, tmp_path):
         """Should handle update failure."""
         # Set up paths
@@ -216,7 +217,7 @@ msgstr "Hola"
         pot_file = tmp_path / "locales" / "messages.pot"
         locales_dir = tmp_path / "locales"
 
-        path_resolver = MagicMock()
+        path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_messages_pot_path.return_value = pot_file
         path_resolver.get_locales_dir.return_value = locales_dir
@@ -265,7 +266,7 @@ msgstr "Adiós"
 
         return path_resolver, locales_dir
 
-    @patch("birdnetpi.cli.manage_translations.PathResolver")
+    @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
     def test_compile_success(self, mock_resolver_class, runner, tmp_path):
         """Should compile translation files successfully."""
         # Set up paths
@@ -291,7 +292,7 @@ msgstr "Adiós"
 """)
 
         # Create mock path resolver
-        path_resolver = MagicMock()
+        path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_locales_dir.return_value = locales_dir
 
@@ -310,8 +311,8 @@ msgstr "Adiós"
         assert mo_file.exists()
         assert mo_file.stat().st_size > 0
 
-    @patch("birdnetpi.cli.manage_translations.PathResolver")
-    @patch("birdnetpi.cli.manage_translations.run_command")
+    @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
+    @patch("birdnetpi.cli.manage_translations.run_command", autospec=True)
     def test_compile_failure(self, mock_run_command, mock_resolver_class, runner, tmp_path):
         """Should handle compilation failure."""
         # Set up paths under tmp_path
@@ -321,7 +322,7 @@ msgstr "Adiós"
         locales_dir.mkdir()
 
         # Create mock path resolver
-        path_resolver = MagicMock()
+        path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_locales_dir.return_value = locales_dir
 
@@ -369,7 +370,7 @@ msgstr ""
 
         return path_resolver, locales_dir
 
-    @patch("birdnetpi.cli.manage_translations.PathResolver")
+    @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
     def test_init_language_success(self, mock_resolver_class, runner, tmp_path):
         """Should initialize a new language successfully."""
         # Set up paths
@@ -394,7 +395,7 @@ msgstr ""
 """)
 
         # Create mock path resolver
-        path_resolver = MagicMock()
+        path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_messages_pot_path.return_value = pot_file
         path_resolver.get_locales_dir.return_value = locales_dir
@@ -415,8 +416,8 @@ msgstr ""
         po_content = it_po_file.read_text()
         assert "Italian" in po_content or "it" in po_content
 
-    @patch("birdnetpi.cli.manage_translations.PathResolver")
-    @patch("birdnetpi.cli.manage_translations.run_command")
+    @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
+    @patch("birdnetpi.cli.manage_translations.run_command", autospec=True)
     def test_init_language_failure(self, mock_run_command, mock_resolver_class, runner, tmp_path):
         """Should handle language initialization failure."""
         # Set up paths under tmp_path
@@ -435,7 +436,7 @@ msgstr ""
 """)
 
         # Create mock path resolver
-        path_resolver = MagicMock()
+        path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_messages_pot_path.return_value = pot_file
         path_resolver.get_locales_dir.return_value = locales_dir
@@ -482,7 +483,7 @@ msgstr "Prueba"
 
         return path_resolver, locales_dir
 
-    @patch("birdnetpi.cli.manage_translations.PathResolver")
+    @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
     def test_all_workflow_success(self, mock_resolver_class, runner, tmp_path):
         """Should run complete translation workflow successfully."""
         # Set up paths
@@ -513,7 +514,7 @@ msgstr "Prueba"
 """)
 
         # Create mock path resolver
-        path_resolver = MagicMock()
+        path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_babel_config_path.return_value = babel_cfg
         path_resolver.get_messages_pot_path.return_value = locales_dir / "messages.pot"
@@ -544,8 +545,8 @@ msgstr "Prueba"
         mo_file = locales_dir / "es" / "LC_MESSAGES" / "messages.mo"
         assert mo_file.exists()
 
-    @patch("birdnetpi.cli.manage_translations.PathResolver")
-    @patch("birdnetpi.cli.manage_translations.run_command")
+    @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
+    @patch("birdnetpi.cli.manage_translations.run_command", autospec=True)
     def test_all_workflow_failure_at_extract(
         self, mock_run_command, mock_resolver_class, runner, tmp_path
     ):
@@ -560,7 +561,7 @@ msgstr "Prueba"
         pot_file = locales_dir / "messages.pot"
 
         # Create mock path resolver
-        path_resolver = MagicMock()
+        path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_babel_config_path.return_value = babel_cfg
         path_resolver.get_messages_pot_path.return_value = pot_file
@@ -581,7 +582,7 @@ msgstr "Prueba"
 class TestMainFunction:
     """Test the main entry point."""
 
-    @patch("birdnetpi.cli.manage_translations.cli")
+    @patch("birdnetpi.cli.manage_translations.cli", autospec=True)
     def test_main_function(self, mock_cli):
         """Should call CLI with proper arguments."""
         main()
@@ -837,7 +838,7 @@ class TestFakeLocaleCommand:
         """Create a mock path resolver with temp directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
-            resolver = MagicMock()
+            resolver = MagicMock(spec=PathResolver)
             resolver.get_messages_pot_path.return_value = str(tmp_path / "messages.pot")
             resolver.get_locales_dir.return_value = str(tmp_path / "locales")
             yield resolver, tmp_path
@@ -858,7 +859,7 @@ msgid "Settings"
 msgstr ""
 """)
 
-        with patch("subprocess.run") as mock_run:
+        with patch("subprocess.run", autospec=True) as mock_run:
             # Mock successful msgfmt execution
             mock_run.return_value.returncode = 0
 
@@ -905,7 +906,7 @@ msgstr ""
 """)
 
         # Test with --no-reverse
-        with patch("subprocess.run") as mock_run:
+        with patch("subprocess.run", autospec=True) as mock_run:
             mock_run.return_value.returncode = 0
             result = runner.invoke(
                 cli,
@@ -917,7 +918,7 @@ msgstr ""
         assert "--no-reverse" in str(result) or "Creating fake locale" in result.output
 
         # Test with --no-brackets
-        with patch("subprocess.run") as mock_run:
+        with patch("subprocess.run", autospec=True) as mock_run:
             mock_run.return_value.returncode = 0
             result = runner.invoke(
                 cli,
@@ -938,7 +939,7 @@ msgstr ""
 msgstr ""
 """)
 
-        with patch("subprocess.run") as mock_run:
+        with patch("subprocess.run", autospec=True) as mock_run:
             # Mock failed msgfmt execution
             mock_run.return_value.returncode = 1
             mock_run.return_value.stderr = "msgfmt: error"

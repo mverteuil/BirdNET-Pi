@@ -1,6 +1,7 @@
 """Tests for the GPSService."""
 
 from datetime import UTC, datetime
+from types import ModuleType
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,7 +19,8 @@ def gps_service():
 def enabled_gps_service():
     """Create an enabled GPSService instance for testing."""
     # Mock the gpsd module at import time
-    mock_gpsd = MagicMock()
+    # Module mock needs spec for module-level attributes
+    mock_gpsd = MagicMock(spec=ModuleType)
     with patch.dict("sys.modules", {"gpsd": mock_gpsd}):
         service = GPSService(enable_gps=True, update_interval=1.0)
         return service
@@ -39,7 +41,7 @@ class TestGPSService:
     def test_initialization_enabled(self):
         """Should gPSService initialization when GPS is enabled."""
         # Mock the gpsd module at import time
-        mock_gpsd = MagicMock()
+        mock_gpsd = MagicMock(spec=ModuleType)
         with patch.dict("sys.modules", {"gpsd": mock_gpsd}):
             service = GPSService(enable_gps=True, update_interval=2.0)
             assert service.enable_gps
@@ -58,7 +60,8 @@ class TestGPSService:
     async def test_start_stop_enabled(self, enabled_gps_service):
         """Should starting and stopping GPS service when enabled."""
         service = enabled_gps_service
-        service.gpsd_client.connect = MagicMock()
+        # Mock connect as a callable
+        service.gpsd_client.connect = MagicMock(spec=lambda: None)
 
         await service.start()
         assert service.is_running
@@ -230,7 +233,8 @@ class TestGPSService:
         service = enabled_gps_service
 
         # Mock GPS packet with no fix
-        mock_packet = MagicMock()
+        # GPS packet has mode, lat, lon, alt, eps, sats attributes
+        mock_packet = MagicMock(spec=object)
         mock_packet.mode = 1  # No valid fix
         service.gpsd_client.get_current.return_value = mock_packet
 
@@ -243,7 +247,7 @@ class TestGPSService:
         service = enabled_gps_service
 
         # Mock GPS packet with valid fix
-        mock_packet = MagicMock()
+        mock_packet = MagicMock(spec=object)
         mock_packet.mode = 3  # 3D fix
         mock_packet.lat = 63.4591
         mock_packet.lon = -19.3647
@@ -274,7 +278,7 @@ class TestGPSService:
         ]
 
         # Mock GPS packet with valid fix
-        mock_packet = MagicMock()
+        mock_packet = MagicMock(spec=object)
         mock_packet.mode = 3
         mock_packet.lat = 41.0
         mock_packet.lon = -75.0

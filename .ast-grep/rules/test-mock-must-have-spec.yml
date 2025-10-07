@@ -1,43 +1,113 @@
 id: test-mock-must-have-spec
 language: python
 severity: error
-message: Mock objects must use spec, autospec, or spec_set parameter to prevent unrealistic mocks
+message: MANDATORY - Mock objects MUST use spec, autospec, or spec_set parameter
 
 note: |
-  Mock objects without a spec can accept any attribute access, hiding bugs.
-  Always use one of these parameters:
-  - spec=ClassName: Mock will only allow attributes/methods from ClassName
-  - autospec=True: Automatically creates spec from the target
-  - spec_set=ClassName: Like spec, but raises AttributeError on setting invalid attributes
+  ⛔ THIS IS NOT OPTIONAL - SPEC PARAMETERS ARE REQUIRED ⛔
 
-  Examples:
-    BAD:  mock_obj = Mock()
-    BAD:  mock_obj = MagicMock(return_value=42)
+  Mock objects without proper specs create unrealistic test doubles that can
+  accept ANY attribute/method call, completely defeating the purpose of testing.
+  This hides bugs, breaks refactoring safety, and wastes development time.
 
-    GOOD: mock_obj = Mock(spec=MyClass)
-    GOOD: mock_obj = MagicMock(autospec=True)
-    GOOD: mock_obj = AsyncMock(spec_set=MyInterface)
+  ✅ RECOMMENDED SOLUTIONS (use one of these):
+
+  1. Use create_autospec() - BEST for most cases:
+     from unittest.mock import create_autospec
+     mock_obj = create_autospec(MyClass)
+     mock_obj = create_autospec(MyClass, instance=True)
+
+  2. Use spec parameter with the actual class/object:
+     mock_obj = Mock(spec=MyClass)
+     mock_obj = MagicMock(spec=MyInterface)
+     mock_obj = AsyncMock(spec=AsyncService)
+
+  3. Use spec_set for stricter attribute control:
+     mock_obj = Mock(spec_set=MyClass)
+
+  ❌ FORBIDDEN PATTERNS (will be caught and rejected):
+    mock_obj = Mock()                    # No spec at all
+    mock_obj = MagicMock(return_value=42) # No spec parameter
+    mock_obj = Mock(autospec=True)       # autospec=True only works with patch()
+    mock_obj = Mock(spec=True)           # spec=True is meaningless
+    mock_obj = Mock(spec=False)          # spec=False is meaningless
+    mock_obj = Mock(spec=[])             # Empty list is useless
+    mock_obj = Mock(spec=())             # Empty tuple is useless
+    mock_obj = Mock(spec=["attr"])       # List specs are wrong - use class
+    mock_obj = Mock(spec=("attr",))      # Tuple specs are wrong - use class
+    mock_obj = Mock(spec=("a", "b"))     # Tuple specs are wrong - use class
+
+  DO NOT attempt to circumvent this rule. The requirement exists to prevent
+  bugs, not to make your life difficult. Do the work properly.
 
 rule:
-  all:
-    - pattern: $MOCK($$$)
-    - not:
-        any:
-          # Match spec parameter in any position
-          - pattern: $MOCK($$$, spec=$S)
-          - pattern: $MOCK($$$, spec=$S, $$$)
-          - pattern: $MOCK(spec=$S)
-          - pattern: $MOCK(spec=$S, $$$)
-          # Match autospec parameter in any position
-          - pattern: $MOCK($$$, autospec=$A)
-          - pattern: $MOCK($$$, autospec=$A, $$$)
-          - pattern: $MOCK(autospec=$A)
-          - pattern: $MOCK(autospec=$A, $$$)
-          # Match spec_set parameter in any position
-          - pattern: $MOCK($$$, spec_set=$SS)
-          - pattern: $MOCK($$$, spec_set=$SS, $$$)
-          - pattern: $MOCK(spec_set=$SS)
-          - pattern: $MOCK(spec_set=$SS, $$$)
+  any:
+    # Catch mocks with no spec-related parameters
+    - all:
+        - pattern: $MOCK($$$)
+        - not:
+            any:
+              # Match spec parameter in any position
+              - pattern: $MOCK($$$, spec=$S)
+              - pattern: $MOCK($$$, spec=$S, $$$)
+              - pattern: $MOCK(spec=$S)
+              - pattern: $MOCK(spec=$S, $$$)
+              # Match autospec parameter in any position
+              - pattern: $MOCK($$$, autospec=$A)
+              - pattern: $MOCK($$$, autospec=$A, $$$)
+              - pattern: $MOCK(autospec=$A)
+              - pattern: $MOCK(autospec=$A, $$$)
+              # Match spec_set parameter in any position
+              - pattern: $MOCK($$$, spec_set=$SS)
+              - pattern: $MOCK($$$, spec_set=$SS, $$$)
+              - pattern: $MOCK(spec_set=$SS)
+              - pattern: $MOCK(spec_set=$SS, $$$)
+
+    # Catch spec=True (meaningless)
+    - pattern: $MOCK($$$, spec=True, $$$)
+    - pattern: $MOCK(spec=True)
+    - pattern: $MOCK(spec=True, $$$)
+
+    # Catch spec=False (meaningless)
+    - pattern: $MOCK($$$, spec=False, $$$)
+    - pattern: $MOCK(spec=False)
+    - pattern: $MOCK(spec=False, $$$)
+
+    # Catch spec=[] (empty list - useless)
+    - pattern: $MOCK($$$, spec=[], $$$)
+    - pattern: $MOCK(spec=[])
+    - pattern: $MOCK(spec=[], $$$)
+
+    # Catch spec=() (empty tuple - useless)
+    - pattern: $MOCK($$$, spec=(), $$$)
+    - pattern: $MOCK(spec=())
+    - pattern: $MOCK(spec=(), $$$)
+
+    # Catch spec=[...] (list spec - should use class/object)
+    - pattern: $MOCK($$$, spec=[$$$], $$$)
+    - pattern: $MOCK(spec=[$$$])
+    - pattern: $MOCK(spec=[$$$], $$$)
+
+    # Catch spec=(...) (tuple spec - should use class/object)
+    # Note: Tuples require comma - either (a,) or (a, b, ...)
+    # Single item with trailing comma: (item,)
+    - pattern: $MOCK($$$, spec=($ITEM,), $$$)
+    - pattern: $MOCK(spec=($ITEM,))
+    - pattern: $MOCK(spec=($ITEM,), $$$)
+    # Multiple items: (a, b) or (a, b, c, ...)
+    - pattern: $MOCK($$$, spec=($$$, $$$), $$$)
+    - pattern: $MOCK(spec=($$$, $$$))
+    - pattern: $MOCK(spec=($$$, $$$), $$$)
+
+    # Catch autospec=True (only works with patch(), not Mock())
+    - pattern: $MOCK($$$, autospec=True, $$$)
+    - pattern: $MOCK(autospec=True)
+    - pattern: $MOCK(autospec=True, $$$)
+
+    # Catch autospec=False (meaningless)
+    - pattern: $MOCK($$$, autospec=False, $$$)
+    - pattern: $MOCK(autospec=False)
+    - pattern: $MOCK(autospec=False, $$$)
 
 constraints:
   MOCK:

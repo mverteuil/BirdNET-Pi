@@ -22,7 +22,7 @@ def mock_detection_query_service():
     This fixture creates the mock and handles cleanup.
     """
     mock = MagicMock(spec=DetectionQueryService)
-    mock.count_detections = AsyncMock(return_value=1234)
+    mock.count_detections = AsyncMock(spec=callable, return_value=1234)
     yield mock
     # No cleanup needed - mock is garbage collected
 

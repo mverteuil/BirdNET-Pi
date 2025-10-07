@@ -22,8 +22,8 @@ def test_backfill_weather_help():
     assert "--smart" in result.output
 
 
-@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
-@patch("birdnetpi.cli.backfill_weather.ConfigManager.load")
+@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService", autospec=True)
+@patch("birdnetpi.cli.backfill_weather.ConfigManager.load", autospec=True)
 def test_backfill_weather_no_location(mock_load, mock_db, path_resolver, test_config):
     """Should error when location is not configured."""
     # Mock config without location
@@ -32,7 +32,7 @@ def test_backfill_weather_no_location(mock_load, mock_db, path_resolver, test_co
     mock_load.return_value = test_config
 
     # Patch PathResolver with the global fixture
-    with patch("birdnetpi.cli.backfill_weather.PathResolver") as mock_path:
+    with patch("birdnetpi.cli.backfill_weather.PathResolver", autospec=True) as mock_path:
         mock_path.return_value = path_resolver
 
         runner = CliRunner()
@@ -42,9 +42,9 @@ def test_backfill_weather_no_location(mock_load, mock_db, path_resolver, test_co
         assert "Latitude and longitude must be configured" in result.output
 
 
-@patch("birdnetpi.cli.backfill_weather.WeatherManager")
-@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
-@patch("birdnetpi.cli.backfill_weather.ConfigManager.load")
+@patch("birdnetpi.cli.backfill_weather.WeatherManager", autospec=True)
+@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService", autospec=True)
+@patch("birdnetpi.cli.backfill_weather.ConfigManager.load", autospec=True)
 def test_backfill_weather_days_option(
     mock_load, mock_db, mock_weather_manager, path_resolver, test_config
 ):
@@ -54,26 +54,27 @@ def test_backfill_weather_days_option(
 
     mock_weather_instance = MagicMock(spec=WeatherManager)
     mock_weather_instance.backfill_weather_bulk = AsyncMock(
+        spec=WeatherManager.backfill_weather_bulk,
         return_value={
             "total_days": 7,
             "api_calls": 1,
             "records_created": 168,
             "detections_updated": 50,
-        }
+        },
     )
     mock_weather_manager.return_value = mock_weather_instance
 
     # Mock database service methods
     mock_db_instance = MagicMock(spec=CoreDatabaseService)
-    mock_db_instance.initialize = AsyncMock()
-    mock_db_instance.get_async_db = MagicMock()
-    mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock()
-    mock_db_instance.get_async_db.return_value.__aexit__ = AsyncMock()
-    mock_db_instance.dispose = AsyncMock()
+    mock_db_instance.initialize = AsyncMock(spec=lambda: None)
+    mock_db_instance.get_async_db = MagicMock(spec=lambda: None)
+    mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock(spec=lambda: None)
+    mock_db_instance.get_async_db.return_value.__aexit__ = AsyncMock(spec=lambda: None)
+    mock_db_instance.dispose = AsyncMock(spec=lambda: None)
     mock_db.return_value = mock_db_instance
 
     # Patch PathResolver with the global fixture
-    with patch("birdnetpi.cli.backfill_weather.PathResolver") as mock_path:
+    with patch("birdnetpi.cli.backfill_weather.PathResolver", autospec=True) as mock_path:
         mock_path.return_value = path_resolver
 
         runner = CliRunner()
@@ -85,9 +86,9 @@ def test_backfill_weather_days_option(
         assert "50 detections to weather data" in result.output
 
 
-@patch("birdnetpi.cli.backfill_weather.WeatherManager")
-@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
-@patch("birdnetpi.cli.backfill_weather.ConfigManager.load")
+@patch("birdnetpi.cli.backfill_weather.WeatherManager", autospec=True)
+@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService", autospec=True)
+@patch("birdnetpi.cli.backfill_weather.ConfigManager.load", autospec=True)
 def test_backfill_weather_date_range(
     mock_load, mock_db, mock_weather_manager, path_resolver, test_config
 ):
@@ -97,26 +98,27 @@ def test_backfill_weather_date_range(
 
     mock_weather_instance = MagicMock(spec=WeatherManager)
     mock_weather_instance.backfill_weather_bulk = AsyncMock(
+        spec=WeatherManager.backfill_weather_bulk,
         return_value={
             "total_days": 31,
             "api_calls": 3,
             "records_created": 744,
             "detections_updated": 150,
-        }
+        },
     )
     mock_weather_manager.return_value = mock_weather_instance
 
     # Mock database service methods
     mock_db_instance = MagicMock(spec=CoreDatabaseService)
-    mock_db_instance.initialize = AsyncMock()
-    mock_db_instance.get_async_db = MagicMock()
-    mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock()
-    mock_db_instance.get_async_db.return_value.__aexit__ = AsyncMock()
-    mock_db_instance.dispose = AsyncMock()
+    mock_db_instance.initialize = AsyncMock(spec=lambda: None)
+    mock_db_instance.get_async_db = MagicMock(spec=lambda: None)
+    mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock(spec=lambda: None)
+    mock_db_instance.get_async_db.return_value.__aexit__ = AsyncMock(spec=lambda: None)
+    mock_db_instance.dispose = AsyncMock(spec=lambda: None)
     mock_db.return_value = mock_db_instance
 
     # Patch PathResolver with the global fixture
-    with patch("birdnetpi.cli.backfill_weather.PathResolver") as mock_path:
+    with patch("birdnetpi.cli.backfill_weather.PathResolver", autospec=True) as mock_path:
         mock_path.return_value = path_resolver
 
         runner = CliRunner()
@@ -132,9 +134,9 @@ def test_backfill_weather_date_range(
         assert "Weather records created: 744" in result.output
 
 
-@patch("birdnetpi.cli.backfill_weather.WeatherManager")
-@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
-@patch("birdnetpi.cli.backfill_weather.ConfigManager.load")
+@patch("birdnetpi.cli.backfill_weather.WeatherManager", autospec=True)
+@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService", autospec=True)
+@patch("birdnetpi.cli.backfill_weather.ConfigManager.load", autospec=True)
 def test_backfill_weather_smart_mode(
     mock_load, mock_db, mock_weather_manager, path_resolver, test_config
 ):
@@ -144,26 +146,27 @@ def test_backfill_weather_smart_mode(
 
     mock_weather_instance = MagicMock(spec=WeatherManager)
     mock_weather_instance.smart_backfill = AsyncMock(
+        spec=WeatherManager.smart_backfill,
         return_value={
             "total_days": 5,
             "api_calls": 1,
             "records_created": 120,
             "detections_updated": 75,
-        }
+        },
     )
     mock_weather_manager.return_value = mock_weather_instance
 
     # Mock database service methods
     mock_db_instance = MagicMock(spec=CoreDatabaseService)
-    mock_db_instance.initialize = AsyncMock()
-    mock_db_instance.get_async_db = MagicMock()
-    mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock()
-    mock_db_instance.get_async_db.return_value.__aexit__ = AsyncMock()
-    mock_db_instance.dispose = AsyncMock()
+    mock_db_instance.initialize = AsyncMock(spec=lambda: None)
+    mock_db_instance.get_async_db = MagicMock(spec=lambda: None)
+    mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock(spec=lambda: None)
+    mock_db_instance.get_async_db.return_value.__aexit__ = AsyncMock(spec=lambda: None)
+    mock_db_instance.dispose = AsyncMock(spec=lambda: None)
     mock_db.return_value = mock_db_instance
 
     # Patch PathResolver with the global fixture
-    with patch("birdnetpi.cli.backfill_weather.PathResolver") as mock_path:
+    with patch("birdnetpi.cli.backfill_weather.PathResolver", autospec=True) as mock_path:
         mock_path.return_value = path_resolver
 
         runner = CliRunner()
@@ -175,9 +178,9 @@ def test_backfill_weather_smart_mode(
         assert "Backfill Complete!" in result.output
 
 
-@patch("birdnetpi.cli.backfill_weather.WeatherManager")
-@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
-@patch("birdnetpi.cli.backfill_weather.ConfigManager.load")
+@patch("birdnetpi.cli.backfill_weather.WeatherManager", autospec=True)
+@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService", autospec=True)
+@patch("birdnetpi.cli.backfill_weather.ConfigManager.load", autospec=True)
 def test_backfill_weather_smart_no_detections(
     mock_load, mock_db, mock_weather_manager, path_resolver, test_config
 ):
@@ -187,21 +190,22 @@ def test_backfill_weather_smart_no_detections(
 
     mock_weather_instance = MagicMock(spec=WeatherManager)
     mock_weather_instance.smart_backfill = AsyncMock(
-        return_value={"message": "No detections need weather data"}
+        spec=WeatherManager.smart_backfill,
+        return_value={"message": "No detections need weather data"},
     )
     mock_weather_manager.return_value = mock_weather_instance
 
     # Mock database service methods
     mock_db_instance = MagicMock(spec=CoreDatabaseService)
-    mock_db_instance.initialize = AsyncMock()
-    mock_db_instance.get_async_db = MagicMock()
-    mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock()
-    mock_db_instance.get_async_db.return_value.__aexit__ = AsyncMock()
-    mock_db_instance.dispose = AsyncMock()
+    mock_db_instance.initialize = AsyncMock(spec=lambda: None)
+    mock_db_instance.get_async_db = MagicMock(spec=lambda: None)
+    mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock(spec=lambda: None)
+    mock_db_instance.get_async_db.return_value.__aexit__ = AsyncMock(spec=lambda: None)
+    mock_db_instance.dispose = AsyncMock(spec=lambda: None)
     mock_db.return_value = mock_db_instance
 
     # Patch PathResolver with the global fixture
-    with patch("birdnetpi.cli.backfill_weather.PathResolver") as mock_path:
+    with patch("birdnetpi.cli.backfill_weather.PathResolver", autospec=True) as mock_path:
         mock_path.return_value = path_resolver
 
         runner = CliRunner()
@@ -211,9 +215,9 @@ def test_backfill_weather_smart_no_detections(
         assert "No detections need weather data" in result.output
 
 
-@patch("birdnetpi.cli.backfill_weather.WeatherManager")
-@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
-@patch("birdnetpi.cli.backfill_weather.ConfigManager.load")
+@patch("birdnetpi.cli.backfill_weather.WeatherManager", autospec=True)
+@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService", autospec=True)
+@patch("birdnetpi.cli.backfill_weather.ConfigManager.load", autospec=True)
 def test_backfill_weather_force_option(
     mock_load, mock_db, mock_weather_manager, path_resolver, test_config
 ):
@@ -223,26 +227,27 @@ def test_backfill_weather_force_option(
 
     mock_weather_instance = MagicMock(spec=WeatherManager)
     mock_weather_instance.backfill_weather_bulk = AsyncMock(
+        spec=WeatherManager.backfill_weather_bulk,
         return_value={
             "total_days": 3,
             "api_calls": 1,
             "records_created": 72,
             "detections_updated": 20,
-        }
+        },
     )
     mock_weather_manager.return_value = mock_weather_instance
 
     # Mock database service methods
     mock_db_instance = MagicMock(spec=CoreDatabaseService)
-    mock_db_instance.initialize = AsyncMock()
-    mock_db_instance.get_async_db = MagicMock()
-    mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock()
-    mock_db_instance.get_async_db.return_value.__aexit__ = AsyncMock()
-    mock_db_instance.dispose = AsyncMock()
+    mock_db_instance.initialize = AsyncMock(spec=lambda: None)
+    mock_db_instance.get_async_db = MagicMock(spec=lambda: None)
+    mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock(spec=lambda: None)
+    mock_db_instance.get_async_db.return_value.__aexit__ = AsyncMock(spec=lambda: None)
+    mock_db_instance.dispose = AsyncMock(spec=lambda: None)
     mock_db.return_value = mock_db_instance
 
     # Patch PathResolver with the global fixture
-    with patch("birdnetpi.cli.backfill_weather.PathResolver") as mock_path:
+    with patch("birdnetpi.cli.backfill_weather.PathResolver", autospec=True) as mock_path:
         mock_path.return_value = path_resolver
 
         runner = CliRunner()
@@ -257,9 +262,9 @@ def test_backfill_weather_force_option(
         assert call_kwargs["skip_existing"] is False
 
 
-@patch("birdnetpi.cli.backfill_weather.WeatherManager")
-@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService")
-@patch("birdnetpi.cli.backfill_weather.ConfigManager.load")
+@patch("birdnetpi.cli.backfill_weather.WeatherManager", autospec=True)
+@patch("birdnetpi.cli.backfill_weather.CoreDatabaseService", autospec=True)
+@patch("birdnetpi.cli.backfill_weather.ConfigManager.load", autospec=True)
 def test_backfill_weather_no_bulk_option(
     mock_load, mock_db, mock_weather_manager, path_resolver, test_config
 ):
@@ -269,28 +274,31 @@ def test_backfill_weather_no_bulk_option(
 
     mock_weather_instance = MagicMock(spec=WeatherManager)
     mock_weather_instance.backfill_weather = AsyncMock(
+        spec=WeatherManager.backfill_weather,
         return_value={
             "total_hours": 24,
             "fetched": 24,
             "skipped": 0,
             "errors": 0,
             "detections_updated": 10,
-        }
+        },
     )
-    mock_weather_instance.backfill_weather_bulk = AsyncMock()  # Need this for assert_not_called
+    mock_weather_instance.backfill_weather_bulk = AsyncMock(
+        spec=lambda: None
+    )  # Need this for assert_not_called
     mock_weather_manager.return_value = mock_weather_instance
 
     # Mock database service methods
     mock_db_instance = MagicMock(spec=CoreDatabaseService)
-    mock_db_instance.initialize = AsyncMock()
-    mock_db_instance.get_async_db = MagicMock()
-    mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock()
-    mock_db_instance.get_async_db.return_value.__aexit__ = AsyncMock()
-    mock_db_instance.dispose = AsyncMock()
+    mock_db_instance.initialize = AsyncMock(spec=lambda: None)
+    mock_db_instance.get_async_db = MagicMock(spec=lambda: None)
+    mock_db_instance.get_async_db.return_value.__aenter__ = AsyncMock(spec=lambda: None)
+    mock_db_instance.get_async_db.return_value.__aexit__ = AsyncMock(spec=lambda: None)
+    mock_db_instance.dispose = AsyncMock(spec=lambda: None)
     mock_db.return_value = mock_db_instance
 
     # Patch PathResolver with the global fixture
-    with patch("birdnetpi.cli.backfill_weather.PathResolver") as mock_path:
+    with patch("birdnetpi.cli.backfill_weather.PathResolver", autospec=True) as mock_path:
         mock_path.return_value = path_resolver
 
         runner = CliRunner()

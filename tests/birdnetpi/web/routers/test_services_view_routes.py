@@ -6,6 +6,7 @@ import pytest
 from dependency_injector import providers
 from fastapi.testclient import TestClient
 
+from birdnetpi.system.system_control import SystemControlService
 from birdnetpi.web.core.container import Container
 
 
@@ -16,7 +17,7 @@ class TestServicesViewRoutes:
     async def test_services_page_renders_successfully(self, app_with_temp_data, path_resolver):
         """Should render services page with correct context."""
         # Mock the system control service
-        mock_system_control = MagicMock()
+        mock_system_control = MagicMock(spec=SystemControlService)
         mock_services = [
             {
                 "name": "fastapi",
@@ -61,7 +62,7 @@ class TestServicesViewRoutes:
     async def test_services_page_handles_service_error(self, app_with_temp_data, path_resolver):
         """Should handle errors when getting service status."""
         # Mock the system control service to raise an error
-        mock_system_control = MagicMock()
+        mock_system_control = MagicMock(spec=SystemControlService)
         mock_system_control.get_all_services_status.side_effect = Exception("Service error")
         mock_system_control.get_system_info.return_value = {
             "uptime_seconds": 0,
@@ -84,7 +85,7 @@ class TestServicesViewRoutes:
     async def test_services_page_handles_system_info_error(self, app_with_temp_data, path_resolver):
         """Should handle errors when getting system info."""
         # Mock the system control service
-        mock_system_control = MagicMock()
+        mock_system_control = MagicMock(spec=SystemControlService)
         mock_system_control.get_all_services_status.return_value = []
         mock_system_control.get_system_info.side_effect = Exception("System info error")
 
@@ -102,7 +103,7 @@ class TestServicesViewRoutes:
     async def test_services_page_formats_uptime(self, app_with_temp_data, path_resolver):
         """Should format service uptime correctly."""
         # Mock the system control service with various uptime values
-        mock_system_control = MagicMock()
+        mock_system_control = MagicMock(spec=SystemControlService)
         mock_services = [
             {
                 "name": "service1",
@@ -156,7 +157,7 @@ class TestServicesViewRoutes:
     ):
         """Should correctly identify critical services."""
         # Mock the system control service
-        mock_system_control = MagicMock()
+        mock_system_control = MagicMock(spec=SystemControlService)
         mock_services = [
             {
                 "name": "fastapi",
@@ -199,7 +200,7 @@ class TestServicesViewRoutes:
     async def test_services_page_service_status_variations(self, app_with_temp_data, path_resolver):
         """Should handle various service status values."""
         # Mock the system control service with different statuses
-        mock_system_control = MagicMock()
+        mock_system_control = MagicMock(spec=SystemControlService)
         mock_services = [
             {
                 "name": "srv1",
@@ -270,7 +271,7 @@ class TestServicesViewRoutes:
         self, app_with_temp_data, path_resolver
     ):
         """Should handle different deployment types."""
-        mock_system_control = MagicMock()
+        mock_system_control = MagicMock(spec=SystemControlService)
 
         for deployment_type in ["docker", "sbc", "unknown"]:
             # Update mock to return different deployment type
@@ -298,7 +299,7 @@ class TestServicesViewRoutes:
     ):
         """Should use SystemUtils for deployment type when needed."""
         # Mock the system control service
-        mock_system_control = MagicMock()
+        mock_system_control = MagicMock(spec=SystemControlService)
         mock_system_control.get_all_services_status.return_value = []
         mock_system_control.get_system_info.return_value = {
             "uptime_seconds": 86400,
@@ -311,7 +312,9 @@ class TestServicesViewRoutes:
         Container.system_control_service.override(providers.Object(mock_system_control))
 
         # Mock SystemUtils to return a specific deployment type
-        with patch("birdnetpi.web.routers.services_view_routes.SystemUtils") as mock_utils:
+        with patch(
+            "birdnetpi.web.routers.services_view_routes.SystemUtils", autospec=True
+        ) as mock_utils:
             mock_utils.get_deployment_environment.return_value = "sbc"
 
             # Create test client

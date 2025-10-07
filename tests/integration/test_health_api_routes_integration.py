@@ -14,6 +14,7 @@ import pytest
 from dependency_injector import providers
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.web.core.container import Container
@@ -84,10 +85,10 @@ class TestHealthEndpointsDatabaseFailure:
         """Should readiness probe when database connection fails."""
         # Create a mock database service that simulates connection failure
         mock_db_service = MagicMock(spec=CoreDatabaseService)
-        mock_db_service.async_engine = MagicMock()  # Add async_engine for sqladmin
+        mock_db_service.async_engine = AsyncMock(spec=AsyncEngine)  # Add async_engine for sqladmin
 
         # Create a mock session context manager that raises an error
-        mock_session = AsyncMock()
+        mock_session = AsyncMock(spec=AsyncSession)
         mock_session.execute.side_effect = OperationalError(
             "Cannot connect to database", None, None
         )
@@ -102,7 +103,7 @@ class TestHealthEndpointsDatabaseFailure:
 
         try:
             # Patch sqladmin setup to avoid issues
-            with patch("birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin"):
+            with patch("birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin", autospec=True):
                 # Create app with the mocked database
                 app = create_app()
 
@@ -123,13 +124,14 @@ class TestHealthEndpointsDatabaseFailure:
         """Should detailed health check when database fails."""
         # Create a mock database service that simulates query failure
         mock_db_service = MagicMock(spec=CoreDatabaseService)
-        mock_db_service.async_engine = MagicMock()  # Add async_engine for sqladmin
+        mock_db_service.async_engine = AsyncMock(spec=AsyncEngine)  # Add async_engine for sqladmin
 
         # Create a mock session that fails
-        mock_session = AsyncMock()
+        mock_session = AsyncMock(spec=AsyncSession)
         mock_session.execute.side_effect = Exception("Database is locked")
-        mock_session.__aenter__.return_value = mock_session
-        mock_session.__aexit__.return_value = None
+        # __aenter__ and __aexit__ must be AsyncMocks to be awaitable in async context managers
+        mock_session.__aenter__ = AsyncMock(spec=callable, return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(spec=callable, return_value=None)
 
         mock_db_service.get_async_db.return_value = mock_session
 
@@ -139,7 +141,7 @@ class TestHealthEndpointsDatabaseFailure:
 
         try:
             # Patch sqladmin setup to avoid issues
-            with patch("birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin"):
+            with patch("birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin", autospec=True):
                 # Create app with the mocked database
                 app = create_app()
 
@@ -169,7 +171,7 @@ class TestHealthEndpointsVersionHandling:
         """Should health check when pyproject.toml is not found."""
         # Mock both Path.exists() and open() to simulate missing file
         with (
-            patch("birdnetpi.web.routers.health_api_routes.Path") as mock_path,
+            patch("birdnetpi.web.routers.health_api_routes.Path", autospec=True) as mock_path,
             patch("builtins.open", side_effect=FileNotFoundError("pyproject.toml not found")),
         ):
             # Make both paths not exist
@@ -193,9 +195,9 @@ class TestHealthEndpointsVersionHandling:
             temp_path = tf.name
 
         try:
-            with patch("birdnetpi.web.routers.health_api_routes.Path") as mock_path:
+            with patch("birdnetpi.web.routers.health_api_routes.Path", autospec=True) as mock_path:
                 # Create a mock Path object
-                mock_path_instance = MagicMock()
+                mock_path_instance = MagicMock(spec=Path)
                 mock_path_instance.exists.return_value = True
                 mock_path_instance.open.return_value.__enter__.return_value.read.return_value = (
                     b"This is not valid TOML {]{[}"

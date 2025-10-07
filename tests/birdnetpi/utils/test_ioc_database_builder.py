@@ -1,5 +1,6 @@
 """Tests for IOC database builder utility."""
 
+import xml.etree.ElementTree as ET
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,7 +18,7 @@ class TestIocDatabaseBuilder:
         assert builder.db_path == db_path
         assert db_path.parent.exists()
 
-    @patch("birdnetpi.utils.ioc_database_builder.ET.parse")
+    @patch("birdnetpi.utils.ioc_database_builder.ET.parse", autospec=True)
     def test_populate_from_files_xml_only(self, mock_parse, tmp_path):
         """Should populate database from XML file."""
         # Create test files
@@ -26,8 +27,8 @@ class TestIocDatabaseBuilder:
         db_path = tmp_path / "test.db"
 
         # Mock XML parsing
-        mock_tree = MagicMock()
-        mock_root = MagicMock()
+        mock_tree = MagicMock(spec=ET.ElementTree)
+        mock_root = MagicMock(spec=ET.Element)
         mock_root.get.return_value = "15.1"
         mock_root.findall.return_value = []
         mock_tree.getroot.return_value = mock_root

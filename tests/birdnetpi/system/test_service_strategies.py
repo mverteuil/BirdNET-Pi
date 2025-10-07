@@ -13,6 +13,9 @@ from birdnetpi.system.service_strategies import (
     ServiceStrategySelector,
 )
 
+# Type for os.stat_result mock spec
+StatResult = os.stat_result
+
 
 class TestServiceManagementStrategy:
     """Tests for the ServiceManagementStrategy abstract base class."""
@@ -26,21 +29,21 @@ class TestServiceManagementStrategy:
 class TestEmbeddedSystemdStrategy:
     """Tests for the EmbeddedSystemdStrategy implementation."""
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_start_service(self, mock_run):
         """Should call systemctl start for the given service."""
         strategy = EmbeddedSystemdStrategy()
         strategy.start_service("test_service")
         mock_run.assert_called_once_with(["sudo", "systemctl", "start", "test_service"], check=True)
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_stop_service(self, mock_run):
         """Should call systemctl stop for the given service."""
         strategy = EmbeddedSystemdStrategy()
         strategy.stop_service("test_service")
         mock_run.assert_called_once_with(["sudo", "systemctl", "stop", "test_service"], check=True)
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_restart_service(self, mock_run):
         """Should call systemctl restart for the given service."""
         strategy = EmbeddedSystemdStrategy()
@@ -49,7 +52,7 @@ class TestEmbeddedSystemdStrategy:
             ["sudo", "systemctl", "restart", "test_service"], check=True
         )
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_enable_service(self, mock_run):
         """Should call systemctl enable for the given service."""
         strategy = EmbeddedSystemdStrategy()
@@ -58,7 +61,7 @@ class TestEmbeddedSystemdStrategy:
             ["sudo", "systemctl", "enable", "test_service"], check=True
         )
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_disable_service(self, mock_run):
         """Should call systemctl disable for the given service."""
         strategy = EmbeddedSystemdStrategy()
@@ -67,7 +70,7 @@ class TestEmbeddedSystemdStrategy:
             ["sudo", "systemctl", "disable", "test_service"], check=True
         )
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_get_service_status_active(self, mock_run):
         """Should return 'active' for an active service."""
         mock_run.return_value.stdout = "active\n"
@@ -127,14 +130,14 @@ class TestEmbeddedSystemdStrategy:
         status = strategy.get_service_status("test_service")
         assert status == "unknown"
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_reload_daemon(self, mock_run):
         """Should call systemctl daemon-reload."""
         strategy = EmbeddedSystemdStrategy()
         strategy.daemon_reload()
         mock_run.assert_called_once_with(["sudo", "systemctl", "daemon-reload"], check=True)
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_get_service_details_with_full_info(self, mock_run):
         """Should parse service details from systemctl show output."""
         mock_run.return_value.returncode = 0
@@ -145,7 +148,7 @@ class TestEmbeddedSystemdStrategy:
             "SubState=running\n"
         )
 
-        with patch("birdnetpi.system.service_strategies.datetime") as mock_datetime:
+        with patch("birdnetpi.system.service_strategies.datetime", autospec=True) as mock_datetime:
             mock_datetime.now.return_value = datetime(2024, 1, 15, 11, 30, 45)
             mock_datetime.strptime = datetime.strptime
 
@@ -158,7 +161,7 @@ class TestEmbeddedSystemdStrategy:
         assert details["uptime_seconds"] == 3600.0  # 1 hour difference
         assert details["sub_state"] == "running"
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_handle_empty_timestamp(self, mock_run):
         """Should handle n/a timestamp in service details."""
         mock_run.return_value.returncode = 0
@@ -171,7 +174,7 @@ class TestEmbeddedSystemdStrategy:
         assert details["pid"] is None
         assert details["uptime_seconds"] is None
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_handle_service_details_error(self, mock_run, caplog):
         """Should handle errors when getting service details."""
         mock_run.side_effect = Exception("Connection error")
@@ -206,7 +209,7 @@ class TestEmbeddedSystemdStrategy:
             assert uptime == 0.0
             assert "Error getting system uptime" in caplog.text
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_reboot_system(self, mock_run):
         """Should call systemctl reboot."""
         strategy = EmbeddedSystemdStrategy()
@@ -234,7 +237,7 @@ class TestEmbeddedSystemdStrategy:
         """Should parse valid systemd timestamp."""
         strategy = EmbeddedSystemdStrategy()
 
-        with patch("birdnetpi.system.service_strategies.datetime") as mock_datetime:
+        with patch("birdnetpi.system.service_strategies.datetime", autospec=True) as mock_datetime:
             mock_datetime.now.return_value = datetime(2024, 1, 15, 11, 30, 45)
             mock_datetime.strptime = datetime.strptime
 
@@ -265,21 +268,21 @@ class TestEmbeddedSystemdStrategy:
 class TestDockerSupervisordStrategy:
     """Tests for the DockerSupervisordStrategy implementation."""
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_start_service(self, mock_run):
         """Should call supervisorctl start for the given service."""
         strategy = DockerSupervisordStrategy()
         strategy.start_service("test_service")
         mock_run.assert_called_once_with(["supervisorctl", "start", "test_service"], check=True)
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_stop_service(self, mock_run):
         """Should call supervisorctl stop for the given service."""
         strategy = DockerSupervisordStrategy()
         strategy.stop_service("test_service")
         mock_run.assert_called_once_with(["supervisorctl", "stop", "test_service"], check=True)
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_restart_service(self, mock_run):
         """Should call supervisorctl restart for the given service."""
         strategy = DockerSupervisordStrategy()
@@ -300,7 +303,7 @@ class TestDockerSupervisordStrategy:
         strategy.disable_service("test_service")
         assert "not directly supported" in caplog.text
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_get_service_status_running(self, mock_run):
         """Should return status for a running service."""
         mock_run.return_value.stdout = (
@@ -365,7 +368,7 @@ class TestDockerSupervisordStrategy:
         status = strategy.get_service_status("test_service")
         assert status == "unknown"
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_reload_daemon(self, mock_run):
         """Should call supervisorctl reread and update for daemon reload."""
         strategy = DockerSupervisordStrategy()
@@ -376,7 +379,7 @@ class TestDockerSupervisordStrategy:
         mock_run.assert_any_call(["supervisorctl", "reread"], check=True)
         mock_run.assert_any_call(["supervisorctl", "update"], check=True)
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_get_service_details_with_running_status(self, mock_run):
         """Should parse service details from supervisorctl status output."""
         mock_run.return_value.returncode = 0
@@ -394,7 +397,7 @@ class TestDockerSupervisordStrategy:
         expected_uptime = 2 * 86400 + 15 * 3600 + 45 * 60 + 30
         assert details["uptime_seconds"] == expected_uptime
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_get_service_details_with_stopped_status(self, mock_run):
         """Should handle stopped service in details."""
         mock_run.return_value.returncode = 0
@@ -407,7 +410,7 @@ class TestDockerSupervisordStrategy:
         assert details["pid"] is None
         assert details["uptime_seconds"] is None
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_get_service_details_with_starting_status(self, mock_run):
         """Should handle starting service status."""
         mock_run.return_value.returncode = 0
@@ -418,7 +421,7 @@ class TestDockerSupervisordStrategy:
 
         assert details["status"] == "starting"
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_get_service_details_with_fatal_status(self, mock_run):
         """Should handle fatal service status."""
         mock_run.return_value.returncode = 0
@@ -429,7 +432,7 @@ class TestDockerSupervisordStrategy:
 
         assert details["status"] == "failed"
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_should_handle_service_details_error(self, mock_run, caplog):
         """Should handle errors when getting service details."""
         mock_run.side_effect = Exception("Connection error")
@@ -476,7 +479,7 @@ class TestDockerSupervisordStrategy:
         """Should calculate container uptime from /proc/1 stat time."""
         strategy = DockerSupervisordStrategy()
 
-        mock_stat = Mock()
+        mock_stat = Mock(spec=StatResult)
         mock_stat.st_mtime = 1000000.0
 
         with patch("time.time", return_value=1100000.0):
@@ -489,7 +492,7 @@ class TestDockerSupervisordStrategy:
         """Should fall back to /proc/uptime for invalid container uptime."""
         strategy = DockerSupervisordStrategy()
 
-        mock_stat = Mock()
+        mock_stat = Mock(spec=StatResult)
         mock_stat.st_mtime = 1000000.0
 
         # Time that would give negative uptime
@@ -519,7 +522,7 @@ class TestDockerSupervisordStrategy:
             assert "Error getting container uptime" in caplog.text
 
     @patch("builtins.open", new_callable=mock_open, read_data="/usr/bin/supervisord\x00")
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_reboot_container_with_supervisord_as_init(self, mock_run, mock_file):
         """Should reboot container by signaling supervisord when it's PID 1."""
         strategy = DockerSupervisordStrategy()
@@ -530,7 +533,7 @@ class TestDockerSupervisordStrategy:
         assert result is True
 
     @patch("builtins.open", new_callable=mock_open, read_data="/bin/bash\x00")
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_reboot_container_fallback_to_reboot_command(self, mock_run, mock_file):
         """Should try reboot command when supervisord is not PID 1."""
         # Since supervisord not in cmdline, it won't try kill
@@ -543,7 +546,7 @@ class TestDockerSupervisordStrategy:
         assert result is True
 
     @patch("builtins.open", new_callable=mock_open, read_data="/bin/bash\x00")
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_reboot_container_fallback_to_supervisorctl_shutdown(self, mock_run, mock_file):
         """Should try supervisorctl shutdown as final fallback."""
         # Reboot command fails, supervisorctl shutdown succeeds
@@ -581,7 +584,7 @@ class TestDockerSupervisordStrategy:
         assert "Failed to reboot container" in caplog.text
 
     @patch("builtins.open", new_callable=mock_open, read_data="/bin/bash\x00")
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_reboot_container_all_methods_fail_gracefully(self, mock_run, mock_file, caplog):
         """Should return False when all reboot methods fail without exceptions."""
         # All methods fail with FileNotFoundError (handled gracefully)

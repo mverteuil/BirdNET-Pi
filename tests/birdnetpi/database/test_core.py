@@ -1,8 +1,9 @@
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, create_autospec, patch
 
 import pytest
 import pytest_asyncio
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from birdnetpi.database.core import CoreDatabaseService
 
@@ -13,7 +14,7 @@ async def core_database_service(tmp_path):
     db_path = tmp_path / "test.db"
 
     # Patch problematic parts during initialization
-    with patch("birdnetpi.database.core.SQLModel.metadata.create_all"):
+    with patch("birdnetpi.database.core.SQLModel.metadata.create_all", autospec=True):
         service = CoreDatabaseService(db_path)
 
     # The service is now created without trying to initialize the database
@@ -35,13 +36,17 @@ async def core_database_service(tmp_path):
 async def test_clear_database(core_database_service):
     """Should clear all data from the database tables successfully"""
     # Mock the database session to avoid actual database operations
-    with patch.object(core_database_service, "get_async_db") as mock_get_async_db:
-        mock_session = AsyncMock()
+    with patch.object(core_database_service, "get_async_db", autospec=True) as mock_get_async_db:
+        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
+        # create_autospec already creates async-aware mocks for async methods
+        # Just configure them directly without replacement
         mock_get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Mock SQLModel.metadata.sorted_tables as a property
-        mock_table = MagicMock()
-        mock_table.delete.return_value = MagicMock()
+        from sqlalchemy import Table
+
+        mock_table = create_autospec(Table, spec_set=True, name="test_table")
+        mock_table.delete.return_value = create_autospec(spec=["__str__"], spec_set=True)
 
         with patch(
             "birdnetpi.database.core.SQLModel.metadata", new_callable=PropertyMock
@@ -58,14 +63,17 @@ async def test_clear_database(core_database_service):
 async def test_clear_database_failure(core_database_service):
     """Should handle clear database failure and rollback"""
     # Mock the database session to simulate a failure
-    with patch.object(core_database_service, "get_async_db") as mock_get_async_db:
-        mock_session = AsyncMock()
+    with patch.object(core_database_service, "get_async_db", autospec=True) as mock_get_async_db:
+        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
+        # Configure the side effect on the already-spec'd async method
         mock_session.execute.side_effect = SQLAlchemyError("Test Error")
         mock_get_async_db.return_value.__aenter__.return_value = mock_session
 
         # Mock SQLModel.metadata.sorted_tables
-        mock_table = MagicMock()
-        mock_table.delete.return_value = MagicMock()
+        from sqlalchemy import Table
+
+        mock_table = create_autospec(Table, spec_set=True, name="test_table")
+        mock_table.delete.return_value = create_autospec(spec=["__str__"], spec_set=True)
 
         with patch(
             "birdnetpi.database.core.SQLModel.metadata", new_callable=PropertyMock
@@ -82,12 +90,15 @@ async def test_clear_database_failure(core_database_service):
 @pytest.mark.asyncio
 async def test_checkpoint_wal(core_database_service):
     """Should successfully checkpoint WAL file"""
-    with patch.object(core_database_service, "get_async_db") as mock_get_async_db:
-        mock_session = AsyncMock()
+    with patch.object(core_database_service, "get_async_db", autospec=True) as mock_get_async_db:
+        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
 
         # Create a mock result object with fetchone method
-        mock_result = MagicMock()
+        from sqlalchemy.engine import Result
+
+        mock_result = create_autospec(Result, spec_set=True)
         mock_result.fetchone.return_value = (0, 10, 10)  # busy, log_pages, checkpointed
+        # Configure the return value on the already-spec'd async method
         mock_session.execute.return_value = mock_result
 
         # Setup async context manager
@@ -103,8 +114,9 @@ async def test_checkpoint_wal(core_database_service):
 @pytest.mark.asyncio
 async def test_checkpoint_wal_failure(core_database_service):
     """Should handle WAL checkpoint failure gracefully"""
-    with patch.object(core_database_service, "get_async_db") as mock_get_async_db:
-        mock_session = AsyncMock()
+    with patch.object(core_database_service, "get_async_db", autospec=True) as mock_get_async_db:
+        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
+        # Configure the side effect on the already-spec'd async method
         mock_session.execute.side_effect = SQLAlchemyError("WAL Error")
         mock_get_async_db.return_value.__aenter__.return_value = mock_session
 
@@ -131,15 +143,17 @@ async def test_get_database_stats(core_database_service, tmp_path):
     # Mock the database path and session queries
     core_database_service.db_path = db_path
 
-    with patch.object(core_database_service, "get_async_db") as mock_get_async_db:
-        mock_session = AsyncMock()
+    with patch.object(core_database_service, "get_async_db", autospec=True) as mock_get_async_db:
+        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
 
         # Mock pragma results
+        from sqlalchemy.engine import Result
+
         mock_results = [
-            MagicMock(fetchone=lambda: [1000]),  # page_count
-            MagicMock(fetchone=lambda: [4096]),  # page_size
-            MagicMock(fetchone=lambda: [0, 50, 50]),  # wal_checkpoint
-            MagicMock(fetchone=lambda: ["wal"]),  # journal_mode
+            create_autospec(Result, spec_set=True, fetchone=lambda: [1000]),  # page_count
+            create_autospec(Result, spec_set=True, fetchone=lambda: [4096]),  # page_size
+            create_autospec(Result, spec_set=True, fetchone=lambda: [0, 50, 50]),  # wal_checkpoint
+            create_autospec(Result, spec_set=True, fetchone=lambda: ["wal"]),  # journal_mode
         ]
         mock_session.execute.side_effect = mock_results
         mock_get_async_db.return_value.__aenter__.return_value = mock_session
@@ -163,8 +177,8 @@ async def test_get_database_stats(core_database_service, tmp_path):
 @pytest.mark.asyncio
 async def test_vacuum_database(core_database_service):
     """Should successfully vacuum database"""
-    with patch.object(core_database_service, "get_async_db") as mock_get_async_db:
-        mock_session = AsyncMock()
+    with patch.object(core_database_service, "get_async_db", autospec=True) as mock_get_async_db:
+        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
         mock_get_async_db.return_value.__aenter__.return_value = mock_session
 
         await core_database_service.vacuum_database()
@@ -177,8 +191,8 @@ async def test_vacuum_database(core_database_service):
 @pytest.mark.asyncio
 async def test_vacuum_database_failure(core_database_service):
     """Should handle vacuum database failure"""
-    with patch.object(core_database_service, "get_async_db") as mock_get_async_db:
-        mock_session = AsyncMock()
+    with patch.object(core_database_service, "get_async_db", autospec=True) as mock_get_async_db:
+        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
         mock_session.execute.side_effect = SQLAlchemyError("Vacuum Error")
         mock_get_async_db.return_value.__aenter__.return_value = mock_session
 

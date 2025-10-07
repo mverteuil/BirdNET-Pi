@@ -1,10 +1,11 @@
 """Tests for the AudioCaptureService class."""
 
 import os
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import create_autospec, patch
 
 import numpy as np
 import pytest
+import sounddevice
 
 from birdnetpi.audio.capture import AudioCaptureService
 from birdnetpi.audio.filters import FilterChain
@@ -19,17 +20,19 @@ def audio_service(test_config):
 @pytest.fixture
 def mock_device():
     """Create a mock audio device."""
-    device = MagicMock()
-    device.index = 1
-    device.default_samplerate = 44100.0
-    device.name = "Test Device"
+    # Device info is a dict, not an object
+    device = {
+        "index": 1,
+        "default_samplerate": 44100.0,
+        "name": "Test Device",
+    }
     return device
 
 
 # Basic AudioCaptureService tests
 
 
-@patch("sounddevice.InputStream")
+@patch("sounddevice.InputStream", autospec=True)
 def test_start_capture_initializes_stream(mock_input_stream, audio_service):
     """Should initialize the sounddevice stream correctly."""
     # No device discovery needed - we always use the target sample rate
@@ -45,7 +48,7 @@ def test_start_capture_initializes_stream(mock_input_stream, audio_service):
     mock_input_stream.return_value.start.assert_called_once()
 
 
-@patch("sounddevice.InputStream")
+@patch("sounddevice.InputStream", autospec=True)
 def test_stop_capture_stops_closes_stream(mock_input_stream, audio_service):
     """Should stop and close the sounddevice stream."""
     mock_input_stream.return_value.stopped = False  # Ensure it's not stopped initially
@@ -93,7 +96,7 @@ def audio_service_with_fds(test_config):
         pass
 
 
-@patch("os.write")
+@patch("os.write", autospec=True)
 def test_callback_processes_audio_data(mock_write, audio_service_with_fds):
     """Should process audio data and write to FIFOs."""
     # Create test audio data
@@ -113,16 +116,16 @@ def test_callback_processes_audio_data(mock_write, audio_service_with_fds):
         assert len(audio_bytes) == frames * 2
 
 
-@patch("os.write")
-@patch("birdnetpi.audio.capture.logger")
+@patch("os.write", autospec=True)
+@patch("birdnetpi.audio.capture.logger", autospec=True)
 def test_callback_handles_stream_status_warning(mock_logger, mock_write, audio_service_with_fds):
     """Should log warning when stream status is not None."""
     frames = 512
     indata = np.zeros((frames, 1), dtype=np.float32)
     # Create a mock status object that simulates sounddevice CallbackFlags
-    status = MagicMock()
-    status.__str__ = Mock(return_value="input_overflow")
-    status.__bool__ = Mock(return_value=True)
+    status = create_autospec(sounddevice.CallbackFlags, spec_set=True)
+    status.__str__.return_value = "input_overflow"
+    status.__bool__.return_value = True
 
     audio_service_with_fds._callback(indata, frames, None, status)
 
@@ -130,13 +133,15 @@ def test_callback_handles_stream_status_warning(mock_logger, mock_write, audio_s
     mock_logger.warning.assert_any_call("Audio stream status: %s", status)
 
 
-@patch("os.write")
+@patch("os.write", autospec=True)
 def test_callback_with_analysis_filter_chain(mock_write, audio_service_with_fds):
     """Should apply analysis filter chain to audio data."""
     # Create a mock filter chain
-    mock_filter_chain = MagicMock()
+    mock_filter_chain = create_autospec(FilterChain)
     mock_filtered_audio = np.zeros(1024, dtype=np.int16)
     mock_filter_chain.process.return_value = mock_filtered_audio
+    # FilterChain has __len__, make it return non-zero so it's truthy
+    mock_filter_chain.__len__.return_value = 1
 
     audio_service_with_fds.analysis_filter_chain = mock_filter_chain
 
@@ -153,13 +158,15 @@ def test_callback_with_analysis_filter_chain(mock_write, audio_service_with_fds)
     )
 
 
-@patch("os.write")
+@patch("os.write", autospec=True)
 def test_callback_with_livestream_filter_chain(mock_write, audio_service_with_fds):
     """Should apply livestream filter chain to audio data."""
     # Create a mock filter chain
-    mock_filter_chain = MagicMock()
+    mock_filter_chain = create_autospec(FilterChain)
     mock_filtered_audio = np.zeros(512, dtype=np.int16)
     mock_filter_chain.process.return_value = mock_filtered_audio
+    # FilterChain has __len__, make it return non-zero so it's truthy
+    mock_filter_chain.__len__.return_value = 1
 
     audio_service_with_fds.livestream_filter_chain = mock_filter_chain
 
@@ -177,7 +184,7 @@ def test_callback_with_livestream_filter_chain(mock_write, audio_service_with_fd
 
 
 @patch("os.write", side_effect=BlockingIOError())
-@patch("birdnetpi.audio.capture.logger")
+@patch("birdnetpi.audio.capture.logger", autospec=True)
 def test_callback_handles_blocking_io_error(mock_logger, mock_write, audio_service_with_fds):
     """Should handle BlockingIOError gracefully."""
     frames = 256
@@ -192,7 +199,7 @@ def test_callback_handles_blocking_io_error(mock_logger, mock_write, audio_servi
 
 
 @patch("os.write", side_effect=BrokenPipeError())
-@patch("birdnetpi.audio.capture.logger")
+@patch("birdnetpi.audio.capture.logger", autospec=True)
 def test_callback_handles_broken_pipe_error(mock_logger, mock_write, audio_service_with_fds):
     """Should handle BrokenPipeError and request shutdown."""
     frames = 256
@@ -207,7 +214,7 @@ def test_callback_handles_broken_pipe_error(mock_logger, mock_write, audio_servi
 
 
 @patch("os.write", side_effect=OSError(9, "Bad file descriptor"))
-@patch("birdnetpi.audio.capture.logger")
+@patch("birdnetpi.audio.capture.logger", autospec=True)
 def test_callback_handles_bad_file_descriptor(mock_logger, mock_write, audio_service_with_fds):
     """Should handle EBADF error during shutdown."""
     frames = 256
@@ -222,7 +229,7 @@ def test_callback_handles_bad_file_descriptor(mock_logger, mock_write, audio_ser
 
 
 @patch("os.write", side_effect=OSError(13, "Permission denied"))
-@patch("birdnetpi.audio.capture.logger")
+@patch("birdnetpi.audio.capture.logger", autospec=True)
 def test_callback_handles_other_os_errors(mock_logger, mock_write, audio_service_with_fds):
     """Should handle other OS errors."""
     frames = 256
@@ -246,7 +253,7 @@ def audio_service_default_device(test_config):
     return AudioCaptureService(test_config, analysis_fifo_fd=-1, livestream_fifo_fd=-1)
 
 
-@patch("sounddevice.InputStream")
+@patch("sounddevice.InputStream", autospec=True)
 def test_start_capture_with_default_device(mock_input_stream, audio_service_default_device):
     """Should use default device when device_index is -1."""
     audio_service_default_device.start_capture()
@@ -261,8 +268,8 @@ def test_start_capture_with_default_device(mock_input_stream, audio_service_defa
     mock_input_stream.return_value.start.assert_called_once()
 
 
-@patch("sounddevice.InputStream")
-@patch("birdnetpi.audio.capture.logger")
+@patch("sounddevice.InputStream", autospec=True)
+@patch("birdnetpi.audio.capture.logger", autospec=True)
 def test_default_device_logging(mock_logger, mock_input_stream, audio_service_default_device):
     """Should log default device information."""
     audio_service_default_device.start_capture()
@@ -277,13 +284,13 @@ def test_default_device_logging(mock_logger, mock_input_stream, audio_service_de
 @pytest.fixture
 def audio_service_with_filters(test_config):
     """Create an AudioCaptureService with filter chains."""
-    # Create mock filter chains
-    mock_analysis_chain = MagicMock(spec=FilterChain)
+    # Create mock filter chains (use spec without spec_set to allow attribute assignment)
+    mock_analysis_chain = create_autospec(FilterChain)
     mock_analysis_chain.filters = []
-    mock_analysis_chain.__len__ = Mock(return_value=1)
+    mock_analysis_chain.__len__.return_value = 1
 
-    mock_livestream_chain = MagicMock(spec=FilterChain)
-    mock_livestream_chain.__len__ = Mock(return_value=2)
+    mock_livestream_chain = create_autospec(FilterChain)
+    mock_livestream_chain.__len__.return_value = 2
 
     return AudioCaptureService(
         test_config,
@@ -294,8 +301,8 @@ def audio_service_with_filters(test_config):
     )
 
 
-@patch("sounddevice.InputStream")
-@patch("birdnetpi.audio.capture.logger")
+@patch("sounddevice.InputStream", autospec=True)
+@patch("birdnetpi.audio.capture.logger", autospec=True)
 def test_filter_chain_with_resampling(mock_logger, mock_input_stream, audio_service_with_filters):
     """Should use sounddevice automatic resampling, not manual filter."""
     audio_service_with_filters.start_capture()
@@ -313,7 +320,7 @@ def test_filter_chain_with_resampling(mock_logger, mock_input_stream, audio_serv
     )
 
 
-@patch("sounddevice.InputStream")
+@patch("sounddevice.InputStream", autospec=True)
 def test_filter_chain_without_resampling(mock_input_stream, audio_service_with_filters):
     """Should not add resampling filter regardless of rates."""
     audio_service_with_filters.start_capture()
@@ -326,8 +333,8 @@ def test_filter_chain_without_resampling(mock_input_stream, audio_service_with_f
     audio_service_with_filters.livestream_filter_chain.configure.assert_called_once_with(48000, 1)
 
 
-@patch("sounddevice.InputStream")
-@patch("birdnetpi.audio.capture.logger")
+@patch("sounddevice.InputStream", autospec=True)
+@patch("birdnetpi.audio.capture.logger", autospec=True)
 def test_livestream_filter_chain_configuration(
     mock_logger, mock_input_stream, audio_service_with_filters
 ):
@@ -344,11 +351,11 @@ def test_livestream_filter_chain_configuration(
 # Stop capture edge cases tests
 
 
-@patch("birdnetpi.audio.capture.logger")
+@patch("birdnetpi.audio.capture.logger", autospec=True)
 def test_stop_capture_when_stream_already_stopped(mock_logger, audio_service):
     """Should handle stopping an already stopped stream."""
     # Create a mock stream that's already stopped
-    mock_stream = MagicMock()
+    mock_stream = create_autospec(sounddevice.InputStream, spec_set=True)
     mock_stream.stopped = True
     audio_service.stream = mock_stream
 
@@ -362,7 +369,7 @@ def test_stop_capture_when_stream_already_stopped(mock_logger, audio_service):
     mock_logger.info.assert_called_with("Audio capture stream is not running.")
 
 
-@patch("birdnetpi.audio.capture.logger")
+@patch("birdnetpi.audio.capture.logger", autospec=True)
 def test_stop_capture_when_no_stream(mock_logger, audio_service):
     """Should handle stopping when no stream exists."""
     audio_service.stream = None
@@ -373,11 +380,11 @@ def test_stop_capture_when_no_stream(mock_logger, audio_service):
     mock_logger.info.assert_called_with("Audio capture stream is not running.")
 
 
-@patch("time.sleep")
-@patch("birdnetpi.audio.capture.logger")
+@patch("time.sleep", autospec=True)
+@patch("birdnetpi.audio.capture.logger", autospec=True)
 def test_stop_capture_handles_pthread_join_error(mock_logger, mock_sleep, audio_service):
     """Should handle pthread_join errors gracefully."""
-    mock_stream = MagicMock()
+    mock_stream = create_autospec(sounddevice.InputStream, spec_set=True)
     mock_stream.stopped = False
     mock_stream.close.side_effect = Exception("pthread_join failed")
     audio_service.stream = mock_stream
@@ -390,11 +397,11 @@ def test_stop_capture_handles_pthread_join_error(mock_logger, mock_sleep, audio_
     mock_logger.error.assert_not_called()
 
 
-@patch("time.sleep")
-@patch("birdnetpi.audio.capture.logger")
+@patch("time.sleep", autospec=True)
+@patch("birdnetpi.audio.capture.logger", autospec=True)
 def test_stop_capture_handles_pa_unix_thread_error(mock_logger, mock_sleep, audio_service):
     """Should handle PaUnixThread_Terminate errors gracefully."""
-    mock_stream = MagicMock()
+    mock_stream = create_autospec(sounddevice.InputStream, spec_set=True)
     mock_stream.stopped = False
     mock_stream.close.side_effect = Exception("PaUnixThread_Terminate error")
     audio_service.stream = mock_stream
@@ -407,11 +414,11 @@ def test_stop_capture_handles_pa_unix_thread_error(mock_logger, mock_sleep, audi
     mock_logger.error.assert_not_called()
 
 
-@patch("time.sleep")
-@patch("birdnetpi.audio.capture.logger")
+@patch("time.sleep", autospec=True)
+@patch("birdnetpi.audio.capture.logger", autospec=True)
 def test_stop_capture_handles_generic_exceptions(mock_logger, mock_sleep, audio_service):
     """Should log generic exceptions as errors."""
-    mock_stream = MagicMock()
+    mock_stream = create_autospec(sounddevice.InputStream, spec_set=True)
     mock_stream.stopped = False
     mock_stream.close.side_effect = Exception("Unexpected error")
     audio_service.stream = mock_stream
@@ -422,11 +429,11 @@ def test_stop_capture_handles_generic_exceptions(mock_logger, mock_sleep, audio_
     mock_logger.error.assert_called_with("Error stopping audio stream: Unexpected error")
 
 
-@patch("time.sleep")
-@patch("birdnetpi.audio.capture.logger")
+@patch("time.sleep", autospec=True)
+@patch("birdnetpi.audio.capture.logger", autospec=True)
 def test_stop_capture_normal_flow(mock_logger, mock_sleep, audio_service):
     """Should properly stop and close stream in normal flow."""
-    mock_stream = MagicMock()
+    mock_stream = create_autospec(sounddevice.InputStream, spec_set=True)
     mock_stream.stopped = False
     audio_service.stream = mock_stream
 
@@ -444,13 +451,12 @@ def test_stop_capture_normal_flow(mock_logger, mock_sleep, audio_service):
 # Integration tests
 
 
-@patch("sounddevice.InputStream")
+@patch("sounddevice.InputStream", autospec=True)
 def test_full_audio_pipeline(mock_input_stream, test_config):
     """Should test complete flow from start to stop."""
-    # Setup mocks
-    mock_stream = MagicMock()
+    # Setup mocks - mock_input_stream is already autospec'd by patch decorator
+    mock_stream = mock_input_stream.return_value
     mock_stream.stopped = False
-    mock_input_stream.return_value = mock_stream
 
     # Create service with filter chains
     analysis_chain = FilterChain()
@@ -479,12 +485,12 @@ def test_full_audio_pipeline(mock_input_stream, test_config):
     mock_stream.close.assert_called_once()
 
 
-@patch("sounddevice.InputStream")
+@patch("sounddevice.InputStream", autospec=True)
 def test_multiple_start_stop_cycles(mock_input_stream, test_config):
     """Should test repeated start/stop operations."""
-    mock_stream = MagicMock()
+    # mock_input_stream is already autospec'd by patch decorator
+    mock_stream = mock_input_stream.return_value
     mock_stream.stopped = False
-    mock_input_stream.return_value = mock_stream
 
     service = AudioCaptureService(test_config, analysis_fifo_fd=-1, livestream_fifo_fd=-1)
 

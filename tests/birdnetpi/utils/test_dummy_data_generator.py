@@ -17,7 +17,7 @@ from birdnetpi.web.models.detections import DetectionEvent
 def mock_data_manager():
     """Mock DataManager instance."""
     mock = MagicMock(spec=DataManager)
-    mock.create_detection = AsyncMock()
+    mock.create_detection = AsyncMock(spec=DataManager.create_detection)
     return mock
 
 
@@ -68,17 +68,20 @@ class TestDummyDataGenerator:
     async def test_get_random_ioc_species(self, path_resolver):
         """Should fetching random IOC species from the database."""
         # Mock the database query
-        with patch("aiosqlite.connect") as mock_connect:
-            mock_cursor = AsyncMock()
+        with patch("aiosqlite.connect", autospec=True) as mock_connect:
+            from aiosqlite import Connection, Cursor
+
+            mock_cursor = AsyncMock(spec=Cursor)
             mock_cursor.fetchall = AsyncMock(
+                spec=callable,
                 return_value=[
                     ("Cyanocitta cristata", "Blue Jay"),
                     ("Turdus migratorius", "American Robin"),
                     ("Cardinalis cardinalis", "Northern Cardinal"),
-                ]
+                ],
             )
-            mock_db = AsyncMock()
-            mock_db.execute = AsyncMock(return_value=mock_cursor)
+            mock_db = AsyncMock(spec=Connection)
+            mock_db.execute = AsyncMock(spec=callable, return_value=mock_cursor)
             mock_connect.return_value.__aenter__.return_value = mock_db
 
             # Test fetching species
@@ -107,7 +110,7 @@ class TestDummyDataGenerator:
 
         # Mock IOC species fetching
         with patch(
-            "birdnetpi.utils.dummy_data_generator.get_random_ioc_species"
+            "birdnetpi.utils.dummy_data_generator.get_random_ioc_species", autospec=True
         ) as mock_get_species:
             mock_get_species.return_value = [
                 ("Cyanocitta cristata", "Blue Jay"),

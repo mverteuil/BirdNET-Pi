@@ -1,0 +1,95 @@
+id: test-patch-object-must-have-spec
+language: python
+severity: error
+message: MANDATORY - patch.object() calls MUST use autospec, spec, spec_set, new, or new_callable parameter
+
+note: |
+  ⛔ THIS IS NOT OPTIONAL - SPEC/REPLACEMENT PARAMETERS ARE REQUIRED ⛔
+
+  patch.object() calls without proper specs or replacements create unrealistic
+  test doubles that can accept ANY attribute/method call, completely defeating
+  the purpose of testing. This hides bugs, breaks refactoring safety, and wastes
+  development time.
+
+  ✅ RECOMMENDED SOLUTIONS (use one of these):
+
+  1. Use autospec=True - BEST for most cases:
+     patch.object(obj, 'method', autospec=True)
+     patch.object(service, 'async_method', autospec=True)
+
+  2. Use spec parameter with the actual class/function:
+     patch.object(obj, 'method', spec=original_method)
+     patch.object(obj, 'attribute', spec=ExpectedType)
+
+  3. Use new_callable with spec-based mock:
+     patch.object(obj, 'method', new_callable=lambda: Mock(spec=SomeClass))
+     patch.object(obj, 'async_method', new_callable=AsyncMock)
+
+  4. Provide explicit replacement with new:
+     patch.object(obj, 'constant', new=42)
+     patch.object(obj, 'config', new={'key': 'value'})
+
+  5. Use spec_set for stricter attribute control:
+     patch.object(obj, 'method', spec_set=OriginalClass)
+
+  ❌ FORBIDDEN PATTERNS (will be caught and rejected):
+    patch.object(obj, 'method')              # No spec/replacement at all
+    patch.object(obj, 'attr', create=True)   # No spec/replacement
+    patch.object(obj, 'attr', spec=True)     # spec=True is meaningless
+    patch.object(obj, 'attr', spec=False)    # spec=False is meaningless
+    patch.object(obj, 'attr', spec=[])       # Empty list is useless
+    patch.object(obj, 'attr', spec=())       # Empty tuple is useless
+    patch.object(obj, 'attr', spec=["x"])    # List specs are wrong - use class
+    patch.object(obj, 'attr', spec=("x",))   # Tuple specs are wrong - use class
+    patch.object(obj, 'attr', spec=("a", "b")) # Tuple specs are wrong - use class
+
+  DO NOT attempt to circumvent this rule. The requirement exists to prevent
+  bugs, not to make your life difficult. Do the work properly.
+
+rule:
+  any:
+    # Catch patch.object calls with no spec/replacement parameters
+    - all:
+        - pattern: patch.object($OBJ, $ATTR)
+        - not:
+            any:
+              # Has new parameter
+              - pattern: patch.object($$, new=$N)
+              # Has new_callable parameter
+              - pattern: patch.object($$, new_callable=$NC)
+              # Has spec parameter
+              - pattern: patch.object($$, spec=$S)
+              # Has autospec parameter
+              - pattern: patch.object($$, autospec=$A)
+              # Has spec_set parameter
+              - pattern: patch.object($$, spec_set=$SS)
+
+    # Catch spec=True (meaningless)
+    - pattern: patch.object($$, spec=True)
+    - pattern: patch.object($$, spec=True, $$)
+
+    # Catch spec=False (meaningless)
+    - pattern: patch.object($$, spec=False)
+    - pattern: patch.object($$, spec=False, $$)
+
+    # Catch spec=[] (empty list - useless)
+    - pattern: patch.object($$, spec=[])
+    - pattern: patch.object($$, spec=[], $$)
+
+    # Catch spec=() (empty tuple - useless)
+    - pattern: patch.object($$, spec=())
+    - pattern: patch.object($$, spec=(), $$)
+
+    # Catch spec=[...] (list spec - should use class/object)
+    - pattern: patch.object($$, spec=[$$$])
+    - pattern: patch.object($$, spec=[$$$], $$)
+
+    # Catch spec=(...) (tuple spec - should use class/object)
+    # Single item with trailing comma: (item,)
+    - pattern: patch.object($$, spec=($ITEM,))
+    - pattern: patch.object($$, spec=($ITEM,), $$)
+    # Multiple items: (a, b) or (a, b, c, ...)
+    - pattern: patch.object($$, spec=($$$, $$$))
+    - pattern: patch.object($$, spec=($$$, $$$), $$)
+
+fix: patch.object($OBJ, $ATTR, autospec=True)

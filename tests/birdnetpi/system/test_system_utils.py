@@ -51,8 +51,12 @@ def test_file_scenarios():
 def test_subprocess_scenarios():
     """Should provide test scenarios for subprocess operations."""
     return {
-        "success": MagicMock(returncode=0, stdout="Success\n", stderr=""),
-        "failure": MagicMock(returncode=1, stdout="", stderr="Error\n"),
+        "success": MagicMock(
+            spec=subprocess.CompletedProcess, returncode=0, stdout="Success\n", stderr=""
+        ),
+        "failure": MagicMock(
+            spec=subprocess.CompletedProcess, returncode=1, stdout="", stderr="Error\n"
+        ),
         "timeout": subprocess.TimeoutExpired("command", 10),
         "not_found": FileNotFoundError("Command not found"),
         "subprocess_error": subprocess.SubprocessError("Subprocess failed"),
@@ -62,7 +66,7 @@ def test_subprocess_scenarios():
 # Test get_system_timezone method
 
 
-@patch("builtins.open")
+@patch("builtins.open", autospec=True)
 def test_get_system_timezone__from_etc_timezone(mock_open, system_utils, test_timezone_data):
     """Should return timezone from /etc/timezone when file exists and is readable."""
     mock_open.return_value.__enter__.return_value.read.return_value = test_timezone_data[
@@ -74,8 +78,8 @@ def test_get_system_timezone__from_etc_timezone(mock_open, system_utils, test_ti
     mock_open.assert_called_once_with("/etc/timezone")
 
 
-@patch("builtins.open")
-@patch("birdnetpi.system.system_utils.subprocess.run")
+@patch("builtins.open", autospec=True)
+@patch("birdnetpi.system.system_utils.subprocess.run", autospec=True)
 def test_get_system_timezone__from_timedatectl(
     mock_run, mock_open, system_utils, test_timezone_data
 ):
@@ -90,8 +94,8 @@ def test_get_system_timezone__from_timedatectl(
     )
 
 
-@patch("builtins.open")
-@patch("birdnetpi.system.system_utils.subprocess.run")
+@patch("builtins.open", autospec=True)
+@patch("birdnetpi.system.system_utils.subprocess.run", autospec=True)
 def test_get_system_timezone__complex_timedatectl_output(
     mock_run, mock_open, system_utils, test_timezone_data
 ):
@@ -103,8 +107,8 @@ def test_get_system_timezone__complex_timedatectl_output(
     assert timezone == test_timezone_data["valid_timezones"][2]  # Asia/Tokyo
 
 
-@patch("builtins.open")
-@patch("birdnetpi.system.system_utils.subprocess.run")
+@patch("builtins.open", autospec=True)
+@patch("birdnetpi.system.system_utils.subprocess.run", autospec=True)
 def test_get_system_timezone__fallback_to_utc(
     mock_run, mock_open, system_utils, test_timezone_data, test_file_scenarios
 ):
@@ -116,7 +120,7 @@ def test_get_system_timezone__fallback_to_utc(
     assert timezone == test_timezone_data["fallback_timezone"]
 
 
-@patch("builtins.open")
+@patch("builtins.open", autospec=True)
 def test_get_system_timezone__empty_etc_timezone(
     mock_open, system_utils, test_timezone_data, test_file_scenarios
 ):
@@ -129,7 +133,7 @@ def test_get_system_timezone__empty_etc_timezone(
     assert timezone == test_timezone_data["fallback_timezone"]
 
 
-@patch("builtins.open")
+@patch("builtins.open", autospec=True)
 def test_get_system_timezone__whitespace_only_etc_timezone(
     mock_open, system_utils, test_timezone_data, test_file_scenarios
 ):
@@ -142,7 +146,7 @@ def test_get_system_timezone__whitespace_only_etc_timezone(
     assert timezone == test_timezone_data["fallback_timezone"]
 
 
-@patch("builtins.open")
+@patch("builtins.open", autospec=True)
 def test_get_system_timezone__permission_denied_reading_file(
     mock_open, system_utils, test_timezone_data, test_file_scenarios
 ):
@@ -153,8 +157,8 @@ def test_get_system_timezone__permission_denied_reading_file(
     assert timezone == test_timezone_data["fallback_timezone"]
 
 
-@patch("builtins.open")
-@patch("birdnetpi.system.system_utils.subprocess.run")
+@patch("builtins.open", autospec=True)
+@patch("birdnetpi.system.system_utils.subprocess.run", autospec=True)
 def test_get_system_timezone__io_error_reading_file(
     mock_run, mock_open, system_utils, test_timezone_data, test_file_scenarios
 ):
@@ -172,21 +176,21 @@ def test_get_system_timezone__io_error_reading_file(
 class TestDockerEnvironment:
     """Test Docker environment detection."""
 
-    @patch("os.path.exists")
+    @patch("os.path.exists", autospec=True)
     def test_is_docker_environment__dockerenv(self, mock_exists):
         """Should return True when /.dockerenv exists."""
         mock_exists.return_value = True
         assert SystemUtils.is_docker_environment() is True
         mock_exists.assert_called_once_with("/.dockerenv")
 
-    @patch("os.path.exists")
+    @patch("os.path.exists", autospec=True)
     @patch.dict(os.environ, {"DOCKER_CONTAINER": "true"})
     def test_is_docker_environment__env_var(self, mock_exists):
         """Should return True when DOCKER_CONTAINER env var is set."""
         mock_exists.return_value = False
         assert SystemUtils.is_docker_environment() is True
 
-    @patch("os.path.exists")
+    @patch("os.path.exists", autospec=True)
     @patch.dict(os.environ, {}, clear=True)
     def test_is_docker_environment__false(self, mock_exists):
         """Should return False when no Docker indicators present."""
@@ -197,7 +201,7 @@ class TestDockerEnvironment:
 class TestSystemdAvailability:
     """Test systemd availability detection."""
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_is_systemd_available__true(self, mock_run):
         """Should return True when systemctl command succeeds."""
         mock_run.return_value.returncode = 0
@@ -208,19 +212,19 @@ class TestSystemdAvailability:
             timeout=2,
         )
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_is_systemd_available__false_command_failed(self, mock_run):
         """Should return False when systemctl command fails."""
         mock_run.return_value.returncode = 1
         assert SystemUtils.is_systemd_available() is False
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_is_systemd_available__false_exception(self, mock_run):
         """Should return False when subprocess raises exception."""
         mock_run.side_effect = FileNotFoundError()
         assert SystemUtils.is_systemd_available() is False
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_is_systemd_available__timeout(self, mock_run):
         """Should return False when subprocess times out."""
         mock_run.side_effect = subprocess.TimeoutExpired("systemctl", 2)
@@ -230,44 +234,44 @@ class TestSystemdAvailability:
 class TestGitVersion:
     """Test git version detection."""
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_get_git_version__success(self, mock_run):
         """Should return formatted version when git commands succeed."""
         mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="main\n"),
-            MagicMock(returncode=0, stdout="abc12345\n"),
+            MagicMock(spec=subprocess.CompletedProcess, returncode=0, stdout="main\n"),
+            MagicMock(spec=subprocess.CompletedProcess, returncode=0, stdout="abc12345\n"),
         ]
         result = SystemUtils.get_git_version()
         assert result == "main@abc12345"
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_get_git_version__branch_failure(self, mock_run):
         """Should return 'unknown' branch name when branch command fails."""
         mock_run.side_effect = [
-            MagicMock(returncode=1, stdout=""),
-            MagicMock(returncode=0, stdout="abc12345\n"),
+            MagicMock(spec=subprocess.CompletedProcess, returncode=1, stdout=""),
+            MagicMock(spec=subprocess.CompletedProcess, returncode=0, stdout="abc12345\n"),
         ]
         result = SystemUtils.get_git_version()
         assert result == "unknown@abc12345"
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_get_git_version__commit_failure(self, mock_run):
         """Should return 'unknown' commit hash when commit command fails."""
         mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="main\n"),
-            MagicMock(returncode=1, stdout=""),
+            MagicMock(spec=subprocess.CompletedProcess, returncode=0, stdout="main\n"),
+            MagicMock(spec=subprocess.CompletedProcess, returncode=1, stdout=""),
         ]
         result = SystemUtils.get_git_version()
         assert result == "main@unknown"
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_get_git_version__timeout_exception(self, mock_run):
         """Should return 'unknown' when git commands time out."""
         mock_run.side_effect = subprocess.TimeoutExpired("git", 5)
         result = SystemUtils.get_git_version()
         assert result == "unknown"
 
-    @patch("subprocess.run")
+    @patch("subprocess.run", autospec=True)
     def test_get_git_version__file_not_found(self, mock_run):
         """Should return 'unknown' when git is not installed."""
         mock_run.side_effect = FileNotFoundError()
@@ -278,15 +282,15 @@ class TestGitVersion:
 class TestDeploymentEnvironment:
     """Test deployment environment detection."""
 
-    @patch("os.path.exists")
+    @patch("os.path.exists", autospec=True)
     @patch.dict(os.environ, {"DOCKER_CONTAINER": "true"})
     def test_get_deployment_environment__docker(self, mock_exists):
         """Should return 'docker' when in Docker environment."""
         mock_exists.return_value = False  # /.dockerenv doesn't exist
         assert SystemUtils.get_deployment_environment() == "docker"
 
-    @patch("os.path.exists")
-    @patch("subprocess.run")
+    @patch("os.path.exists", autospec=True)
+    @patch("subprocess.run", autospec=True)
     @patch.dict(os.environ, {}, clear=True)
     def test_get_deployment_environment__sbc(self, mock_run, mock_exists):
         """Should return 'sbc' when systemd available and not in Docker."""
@@ -294,8 +298,8 @@ class TestDeploymentEnvironment:
         mock_run.return_value.returncode = 0  # systemd available
         assert SystemUtils.get_deployment_environment() == "sbc"
 
-    @patch("os.path.exists")
-    @patch("subprocess.run")
+    @patch("os.path.exists", autospec=True)
+    @patch("subprocess.run", autospec=True)
     @patch.dict(os.environ, {"BIRDNETPI_ENV": "development"})
     def test_get_deployment_environment__development(self, mock_run, mock_exists):
         """Should return 'development' when BIRDNETPI_ENV is set."""
@@ -303,8 +307,8 @@ class TestDeploymentEnvironment:
         mock_run.return_value.returncode = 1  # No systemd
         assert SystemUtils.get_deployment_environment() == "development"
 
-    @patch("os.path.exists")
-    @patch("subprocess.run")
+    @patch("os.path.exists", autospec=True)
+    @patch("subprocess.run", autospec=True)
     @patch.dict(os.environ, {}, clear=True)
     def test_get_deployment_environment__unknown(self, mock_run, mock_exists):
         """Should return 'unknown' when no environment indicators present."""

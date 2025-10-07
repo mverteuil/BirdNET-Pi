@@ -1,11 +1,16 @@
+import asyncio
 import logging
 import signal
+from types import FrameType
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 import birdnetpi.daemons.audio_analysis_daemon as daemon
+from birdnetpi.audio.analysis import AudioAnalysisManager
 from birdnetpi.config import BirdNETConfig
+from birdnetpi.database.species import SpeciesDatabaseService
 
 
 @pytest.fixture(autouse=True)
@@ -29,7 +34,7 @@ class TestAudioAnalysisDaemon:
         """Should set the shutdown flag when a signal is received."""
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.logger")
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.shutdown_flag", False)
-        daemon._signal_handler(signal.SIGTERM, MagicMock())
+        daemon._signal_handler(signal.SIGTERM, MagicMock(spec=FrameType))
         assert daemon.DaemonState.shutdown_flag is True
 
     def test_signal_handler__different_signals(self, mocker):
@@ -38,22 +43,22 @@ class TestAudioAnalysisDaemon:
 
         # Test SIGTERM
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.shutdown_flag", False)
-        daemon._signal_handler(signal.SIGTERM, MagicMock())
+        daemon._signal_handler(signal.SIGTERM, MagicMock(spec=FrameType))
         assert daemon.DaemonState.shutdown_flag is True
 
         # Reset and test SIGINT
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.shutdown_flag", False)
-        daemon._signal_handler(signal.SIGINT, MagicMock())
+        daemon._signal_handler(signal.SIGINT, MagicMock(spec=FrameType))
         assert daemon.DaemonState.shutdown_flag is True
 
         # Reset and test other signal (should still work)
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.shutdown_flag", False)
-        daemon._signal_handler(signal.SIGUSR1, MagicMock())
+        daemon._signal_handler(signal.SIGUSR1, MagicMock(spec=FrameType))
         assert daemon.DaemonState.shutdown_flag is True
 
     def test_main_creates_event_loop(self, mocker):
         """Should create and run an event loop."""
-        mock_loop = MagicMock()
+        mock_loop = MagicMock(spec=asyncio.AbstractEventLoop)
         mock_asyncio = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.asyncio")
         mock_asyncio.new_event_loop.return_value = mock_loop
 
@@ -81,7 +86,7 @@ class TestAudioAnalysisDaemon:
         )
 
         # Mock event loop
-        mock_loop = MagicMock()
+        mock_loop = MagicMock(spec=asyncio.AbstractEventLoop)
         mock_loop.is_closed.return_value = False
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.event_loop", mock_loop)
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.session", None)
@@ -95,16 +100,18 @@ class TestAudioAnalysisDaemon:
     async def test_init_session_and_service(self, mocker, path_resolver):
         """Should initialize session and audio analysis service."""
         # Mock the imports and classes
-        mock_multilingual = MagicMock()
-        mock_multilingual.attach_all_to_session = AsyncMock()
+        mock_multilingual = MagicMock(spec=SpeciesDatabaseService)
+        mock_multilingual.attach_all_to_session = AsyncMock(spec=callable)
 
-        mock_session = MagicMock()
+        mock_session = MagicMock(spec=AsyncSession)
 
         # Mock inside the actual function where imports happen
-        with patch("birdnetpi.daemons.audio_analysis_daemon.init_session_and_service") as mock_init:
+        with patch(
+            "birdnetpi.daemons.audio_analysis_daemon.init_session_and_service", autospec=True
+        ) as mock_init:
             # Make it an async function that returns expected values
             async def mock_init_fn(pr, cfg):
-                return mock_session, MagicMock()
+                return mock_session, MagicMock(spec=AudioAnalysisManager)
 
             mock_init.side_effect = mock_init_fn
 

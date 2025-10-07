@@ -9,6 +9,7 @@ import pytest
 from click.testing import CliRunner
 
 from birdnetpi.cli.install_assets import cli, main
+from birdnetpi.releases.update_manager import UpdateManager
 
 
 @pytest.fixture
@@ -40,10 +41,10 @@ def runner():
 class TestInstallAssets:
     """Test the install command."""
 
-    @patch("birdnetpi.cli.install_assets.UpdateManager")
+    @patch("birdnetpi.cli.install_assets.UpdateManager", autospec=True)
     def test_install_assets(self, mock_update_manager_class, test_download_result, runner):
         """Should install complete asset release."""
-        mock_manager = MagicMock()
+        mock_manager = MagicMock(spec=UpdateManager)
         mock_manager.download_release_assets.return_value = test_download_result
         mock_update_manager_class.return_value = mock_manager
 
@@ -65,12 +66,12 @@ class TestInstallAssets:
             github_repo="mverteuil/BirdNET-Pi",
         )
 
-    @patch("birdnetpi.cli.install_assets.UpdateManager")
+    @patch("birdnetpi.cli.install_assets.UpdateManager", autospec=True)
     def test_install_assets_json_output(
         self, mock_update_manager_class, test_download_result, tmp_path, runner
     ):
         """Should save installation data to JSON when requested."""
-        mock_manager = MagicMock()
+        mock_manager = MagicMock(spec=UpdateManager)
         mock_manager.download_release_assets.return_value = test_download_result
         mock_update_manager_class.return_value = mock_manager
 
@@ -86,10 +87,10 @@ class TestInstallAssets:
         json_data = json.loads(output_file.read_text())
         assert json_data == test_download_result
 
-    @patch("birdnetpi.cli.install_assets.UpdateManager")
+    @patch("birdnetpi.cli.install_assets.UpdateManager", autospec=True)
     def test_install_assets_download_error(self, mock_update_manager_class, runner):
         """Should handle download errors gracefully."""
-        mock_manager = MagicMock()
+        mock_manager = MagicMock(spec=UpdateManager)
         mock_manager.download_release_assets.side_effect = Exception("Download failed")
         mock_update_manager_class.return_value = mock_manager
 
@@ -98,10 +99,10 @@ class TestInstallAssets:
         assert result.exit_code == 1
         assert "✗ Error installing assets: Download failed" in result.output
 
-    @patch("birdnetpi.cli.install_assets.UpdateManager")
+    @patch("birdnetpi.cli.install_assets.UpdateManager", autospec=True)
     def test_install_assets_permission_error_help(self, mock_update_manager_class, runner):
         """Should show helpful message for permission errors."""
-        mock_manager = MagicMock()
+        mock_manager = MagicMock(spec=UpdateManager)
         mock_manager.download_release_assets.side_effect = PermissionError(
             "Permission denied: /var/lib/birdnetpi/models"
         )
@@ -119,10 +120,10 @@ class TestInstallAssets:
 class TestListVersions:
     """Test the list-versions command."""
 
-    @patch("birdnetpi.cli.install_assets.UpdateManager")
+    @patch("birdnetpi.cli.install_assets.UpdateManager", autospec=True)
     def test_list_versions(self, mock_update_manager_class, test_version_data, runner):
         """Should list available asset versions."""
-        mock_manager = MagicMock()
+        mock_manager = MagicMock(spec=UpdateManager)
         mock_manager.list_available_versions.return_value = test_version_data
         mock_update_manager_class.return_value = mock_manager
 
@@ -135,10 +136,10 @@ class TestListVersions:
         assert "• v2.1.0" in result.output
         assert "• v2.0.0" in result.output
 
-    @patch("birdnetpi.cli.install_assets.UpdateManager")
+    @patch("birdnetpi.cli.install_assets.UpdateManager", autospec=True)
     def test_list_versions_empty(self, mock_update_manager_class, runner):
         """Should handle empty version list."""
-        mock_manager = MagicMock()
+        mock_manager = MagicMock(spec=UpdateManager)
         mock_manager.list_available_versions.return_value = []
         mock_update_manager_class.return_value = mock_manager
 
@@ -147,10 +148,10 @@ class TestListVersions:
         assert result.exit_code == 0
         assert "No asset versions found." in result.output
 
-    @patch("birdnetpi.cli.install_assets.UpdateManager")
+    @patch("birdnetpi.cli.install_assets.UpdateManager", autospec=True)
     def test_list_versions_error(self, mock_update_manager_class, runner):
         """Should handle listing errors gracefully."""
-        mock_manager = MagicMock()
+        mock_manager = MagicMock(spec=UpdateManager)
         mock_manager.list_available_versions.side_effect = Exception("API error")
         mock_update_manager_class.return_value = mock_manager
 
@@ -235,7 +236,7 @@ class TestCheckLocal:
 class TestMainFunction:
     """Test the main entry point."""
 
-    @patch("birdnetpi.cli.install_assets.cli")
+    @patch("birdnetpi.cli.install_assets.cli", autospec=True)
     def test_main_function(self, mock_cli):
         """Should call CLI with proper arguments."""
         main()

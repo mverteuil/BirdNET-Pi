@@ -1,12 +1,13 @@
 """Unit tests for LogReaderService."""
 
+import asyncio
 import json
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from birdnetpi.system.log_reader import LogLevel, LogReaderService
+from birdnetpi.system.log_reader import LogLevel, LogReaderService, MmapLogReader
 
 
 class TestLogLevel:
@@ -35,7 +36,7 @@ class TestLogReaderService:
     @pytest.fixture
     def log_reader(self):
         """Create a LogReaderService instance."""
-        with patch("birdnetpi.system.log_reader.SystemUtils") as mock_utils:
+        with patch("birdnetpi.system.log_reader.SystemUtils", autospec=True) as mock_utils:
             mock_utils.is_docker_environment.return_value = True
             mock_utils.is_systemd_available.return_value = False
             return LogReaderService()
@@ -130,7 +131,7 @@ Third line with WARNING text"""
     async def test_get_logs_docker(self, log_reader):
         """Should get logs from mmap reader in Docker environment."""
         # Mock the mmap reader
-        mock_mmap_reader = MagicMock()
+        mock_mmap_reader = MagicMock(spec=MmapLogReader)
         mock_mmap_reader.get_logs.return_value = [
             {
                 "timestamp": "2024-01-15T10:00:00Z",
@@ -156,7 +157,7 @@ Third line with WARNING text"""
     @pytest.mark.asyncio
     async def test_get_logs_systemd(self):
         """Should get logs from journalctl in systemd environment."""
-        with patch("birdnetpi.system.log_reader.SystemUtils") as mock_utils:
+        with patch("birdnetpi.system.log_reader.SystemUtils", autospec=True) as mock_utils:
             mock_utils.is_docker_environment.return_value = False
             mock_utils.is_systemd_available.return_value = True
             log_reader = LogReaderService()
@@ -169,7 +170,7 @@ Third line with WARNING text"""
                 }
             )
 
-            mock_subprocess = AsyncMock()
+            mock_subprocess = AsyncMock(spec=asyncio.subprocess.Process)
             mock_subprocess.communicate.return_value = (journal_output.encode(), b"")
 
             with patch("asyncio.create_subprocess_exec", return_value=mock_subprocess):
@@ -285,8 +286,8 @@ Third line with WARNING text"""
     async def test_mmap_reader_cleanup(self, log_reader):
         """Should properly close mmap reader during cleanup."""
         # Mock the mmap reader
-        mock_mmap_reader = MagicMock()
-        mock_mmap_reader.close = MagicMock()
+        mock_mmap_reader = MagicMock(spec=MmapLogReader)
+        mock_mmap_reader.close = MagicMock(spec=lambda: None)
         log_reader.mmap_reader = mock_mmap_reader
 
         # Test cleanup if mmap reader exists
@@ -298,7 +299,7 @@ Third line with WARNING text"""
     async def test_filter_logs_from_mmap(self, log_reader):
         """Should filter logs from mmap with limit support."""
         # Mock mmap reader with various log levels
-        mock_mmap_reader = MagicMock()
+        mock_mmap_reader = MagicMock(spec=MmapLogReader)
         test_logs = [
             {
                 "timestamp": "2024-01-15T10:00:00Z",

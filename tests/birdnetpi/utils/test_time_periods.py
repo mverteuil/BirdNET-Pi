@@ -186,7 +186,7 @@ class TestCalculatePeriodBoundaries:
         assert start.tzinfo == UTC
         assert end.tzinfo == UTC
 
-    @patch("birdnetpi.utils.time_periods.datetime")
+    @patch("birdnetpi.utils.time_periods.datetime", autospec=True)
     def test_default_now_uses_current_time(self, mock_datetime: object) -> None:
         """Should use current time when now parameter is None."""
         mock_now = datetime(2024, 3, 15, 14, 30, 0, tzinfo=UTC)
@@ -274,7 +274,7 @@ class TestGetCurrentSeason:
         assert get_current_season(datetime(2024, 1, 15)) == "Winter"
         assert get_current_season(datetime(2024, 2, 28)) == "Winter"
 
-    @patch("birdnetpi.utils.time_periods.datetime")
+    @patch("birdnetpi.utils.time_periods.datetime", autospec=True)
     def test_current_season_default_now(self, mock_datetime: object) -> None:
         """Should use current time when None is passed."""
         mock_now = datetime(2024, 7, 15, tzinfo=UTC)

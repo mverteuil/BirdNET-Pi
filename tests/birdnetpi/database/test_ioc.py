@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 
@@ -199,7 +200,7 @@ class TestIOCDatabaseService:
             assert species.scientific_name == scientific_name
             assert species.english_name == expected_english
 
-    @patch("birdnetpi.database.ioc.create_engine")
+    @patch("birdnetpi.database.ioc.create_engine", autospec=True)
     def test_database_connection_error(self, mock_create_engine):
         """Should handle database connection errors gracefully."""
         # Create a temporary file to pass the exists check
@@ -207,7 +208,7 @@ class TestIOCDatabaseService:
             db_path = Path(tmp_file.name)
 
             # Mock engine to raise error on connection
-            mock_engine = MagicMock()
+            mock_engine = MagicMock(spec=Engine)
             mock_create_engine.return_value = mock_engine
 
             # Should initialize without error

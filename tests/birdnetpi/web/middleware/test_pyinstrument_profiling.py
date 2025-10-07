@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from pyinstrument import Profiler
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response
 
@@ -78,11 +79,11 @@ class TestProfilingMiddleware:
         assert response.status_code == 200
         assert response.json() == {"message": "Hello World"}
 
-    @patch("birdnetpi.web.middleware.pyinstrument_profiling.Profiler")
+    @patch("birdnetpi.web.middleware.pyinstrument_profiling.Profiler", autospec=True)
     def test_html_profiling_enabled(self, mock_profiler_class, app_with_html_profiling):
         """Should return HTML profiling output when profile=1."""
         # Setup mock profiler
-        mock_profiler = MagicMock()
+        mock_profiler = MagicMock(spec=Profiler)
         mock_profiler.is_running = False
         mock_profiler.output_html.return_value = "<html><body>Profiling Results</body></html>"
         mock_profiler_class.return_value = mock_profiler
@@ -100,11 +101,11 @@ class TestProfilingMiddleware:
         mock_profiler.stop.assert_called_once()
         mock_profiler.output_html.assert_called_once()
 
-    @patch("birdnetpi.web.middleware.pyinstrument_profiling.Profiler")
+    @patch("birdnetpi.web.middleware.pyinstrument_profiling.Profiler", autospec=True)
     def test_text_profiling_enabled(self, mock_profiler_class, app_with_text_profiling):
         """Should add profiling to headers when html_output=False."""
         # Setup mock profiler
-        mock_profiler = MagicMock()
+        mock_profiler = MagicMock(spec=Profiler)
         mock_profiler.is_running = False
         mock_profiler.output_text.return_value = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6"
         mock_profiler_class.return_value = mock_profiler
@@ -123,14 +124,14 @@ class TestProfilingMiddleware:
         mock_profiler.stop.assert_called_once()
         mock_profiler.output_text.assert_called_once_with(unicode=True)
 
-    @patch("birdnetpi.web.middleware.pyinstrument_profiling.Profiler")
-    @patch("birdnetpi.web.middleware.pyinstrument_profiling.logger")
+    @patch("birdnetpi.web.middleware.pyinstrument_profiling.Profiler", autospec=True)
+    @patch("birdnetpi.web.middleware.pyinstrument_profiling.logger", autospec=True)
     def test_text_profiling_logs_output(
         self, mock_logger, mock_profiler_class, app_with_text_profiling
     ):
         """Should log full profiling output when html_output=False."""
         # Setup mock profiler
-        mock_profiler = MagicMock()
+        mock_profiler = MagicMock(spec=Profiler)
         mock_profiler.is_running = False
         mock_profiler.output_text.return_value = "Full profiling output"
         mock_profiler_class.return_value = mock_profiler
@@ -147,14 +148,14 @@ class TestProfilingMiddleware:
         assert "/" in args[2]
         assert "Full profiling output" in args[3]
 
-    @patch("birdnetpi.web.middleware.pyinstrument_profiling.Profiler")
-    @patch("birdnetpi.web.middleware.pyinstrument_profiling.logger")
+    @patch("birdnetpi.web.middleware.pyinstrument_profiling.Profiler", autospec=True)
+    @patch("birdnetpi.web.middleware.pyinstrument_profiling.logger", autospec=True)
     def test_profiling_error_handling(
         self, mock_logger, mock_profiler_class, app_with_html_profiling
     ):
         """Should handle errors during profiling gracefully."""
         # Setup mock profiler that raises an error after starting
-        mock_profiler = MagicMock()
+        mock_profiler = MagicMock(spec=Profiler)
         # Configure is_running as a property that returns True initially
         type(mock_profiler).is_running = PropertyMock(side_effect=[False, True, True])
         # First call to start succeeds, then stop raises an error
@@ -173,11 +174,11 @@ class TestProfilingMiddleware:
         mock_logger.error.assert_called_once()
         assert "Profiling error" in mock_logger.error.call_args[0][0]
 
-    @patch("birdnetpi.web.middleware.pyinstrument_profiling.Profiler")
+    @patch("birdnetpi.web.middleware.pyinstrument_profiling.Profiler", autospec=True)
     def test_profiling_with_slow_endpoint(self, mock_profiler_class, app_with_html_profiling):
         """Should profile slow endpoints correctly."""
         # Setup mock profiler
-        mock_profiler = MagicMock()
+        mock_profiler = MagicMock(spec=Profiler)
         mock_profiler.is_running = False
         mock_profiler.output_html.return_value = "<html>Slow endpoint profile</html>"
         mock_profiler_class.return_value = mock_profiler
@@ -203,14 +204,14 @@ class TestProfilingMiddleware:
         # The exact error message depends on FastAPI's error handling configuration
         assert "Internal Server Error" in response.text
 
-    @patch("birdnetpi.web.middleware.pyinstrument_profiling.Profiler")
-    @patch("birdnetpi.web.middleware.pyinstrument_profiling.logger")
+    @patch("birdnetpi.web.middleware.pyinstrument_profiling.Profiler", autospec=True)
+    @patch("birdnetpi.web.middleware.pyinstrument_profiling.logger", autospec=True)
     def test_profiler_not_running_on_error(
         self, mock_logger, mock_profiler_class, app_with_html_profiling
     ):
         """Should handle case where profiler is not running during error."""
         # Setup mock profiler that fails and is_running returns False
-        mock_profiler = MagicMock()
+        mock_profiler = MagicMock(spec=Profiler)
         mock_profiler.is_running = False
         # Simulate error during processing after profiler has stopped
         mock_profiler.output_html.side_effect = Exception("Output failed")
@@ -233,7 +234,7 @@ class TestMiddlewareDispatch:
     @pytest.mark.asyncio
     async def test_dispatch_without_profiling(self):
         """Should pass through when profile parameter is not set."""
-        middleware = PyInstrumentProfilerMiddleware(app=MagicMock())
+        middleware = PyInstrumentProfilerMiddleware(app=MagicMock(spec=FastAPI))
 
         # Create mock request without profile parameter
         mock_request = MagicMock(spec=Request)
@@ -254,7 +255,7 @@ class TestMiddlewareDispatch:
     @pytest.mark.asyncio
     async def test_dispatch_with_html_profiling(self):
         """Should return HTML profiling output."""
-        middleware = PyInstrumentProfilerMiddleware(app=MagicMock(), html_output=True)
+        middleware = PyInstrumentProfilerMiddleware(app=MagicMock(spec=FastAPI), html_output=True)
 
         # Create mock request with profile=1
         mock_request = MagicMock(spec=Request)
@@ -270,9 +271,9 @@ class TestMiddlewareDispatch:
             return mock_response
 
         with patch(
-            "birdnetpi.web.middleware.pyinstrument_profiling.Profiler"
+            "birdnetpi.web.middleware.pyinstrument_profiling.Profiler", autospec=True
         ) as mock_profiler_class:
-            mock_profiler = MagicMock()
+            mock_profiler = MagicMock(spec=Profiler)
             mock_profiler.is_running = False
             mock_profiler.output_html.return_value = "<html>Profile</html>"
             mock_profiler_class.return_value = mock_profiler
@@ -285,7 +286,7 @@ class TestMiddlewareDispatch:
     @pytest.mark.asyncio
     async def test_dispatch_with_text_profiling(self):
         """Should add profiling to headers with text output."""
-        middleware = PyInstrumentProfilerMiddleware(app=MagicMock(), html_output=False)
+        middleware = PyInstrumentProfilerMiddleware(app=MagicMock(spec=FastAPI), html_output=False)
 
         # Create mock request with profile=1
         mock_request = MagicMock(spec=Request)
@@ -299,9 +300,9 @@ class TestMiddlewareDispatch:
             return Response(content="Normal response")
 
         with patch(
-            "birdnetpi.web.middleware.pyinstrument_profiling.Profiler"
+            "birdnetpi.web.middleware.pyinstrument_profiling.Profiler", autospec=True
         ) as mock_profiler_class:
-            mock_profiler = MagicMock()
+            mock_profiler = MagicMock(spec=Profiler)
             mock_profiler.is_running = False
             mock_profiler.output_text.return_value = "Profile line 1\nProfile line 2"
             mock_profiler_class.return_value = mock_profiler
@@ -314,7 +315,7 @@ class TestMiddlewareDispatch:
     @pytest.mark.asyncio
     async def test_dispatch_with_profiling_and_other_params(self):
         """Should detect profile=1 even when other query parameters are present."""
-        middleware = PyInstrumentProfilerMiddleware(app=MagicMock(), html_output=True)
+        middleware = PyInstrumentProfilerMiddleware(app=MagicMock(spec=FastAPI), html_output=True)
 
         # Create mock request with profile=1 and other parameters
         mock_request = MagicMock(spec=Request)
@@ -330,9 +331,9 @@ class TestMiddlewareDispatch:
             return mock_response
 
         with patch(
-            "birdnetpi.web.middleware.pyinstrument_profiling.Profiler"
+            "birdnetpi.web.middleware.pyinstrument_profiling.Profiler", autospec=True
         ) as mock_profiler_class:
-            mock_profiler = MagicMock()
+            mock_profiler = MagicMock(spec=Profiler)
             mock_profiler.is_running = False
             mock_profiler.output_html.return_value = "<html>Profile with params</html>"
             mock_profiler_class.return_value = mock_profiler
@@ -348,7 +349,7 @@ class TestMiddlewareDispatch:
     @pytest.mark.asyncio
     async def test_dispatch_without_profiling_with_other_params(self):
         """Should not profile when profile=1 is not present, even with other params."""
-        middleware = PyInstrumentProfilerMiddleware(app=MagicMock())
+        middleware = PyInstrumentProfilerMiddleware(app=MagicMock(spec=FastAPI))
 
         # Create mock request with other parameters but no profile
         mock_request = MagicMock(spec=Request)

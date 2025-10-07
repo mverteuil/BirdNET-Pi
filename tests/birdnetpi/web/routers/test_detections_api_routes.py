@@ -12,7 +12,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from birdnetpi.detections.manager import DataManager
+from birdnetpi.detections.models import AudioFile
 from birdnetpi.detections.queries import DetectionQueryService
+from birdnetpi.utils.cache import Cache
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.routers.detections_api_routes import (
     _create_detection_handler,
@@ -44,7 +46,7 @@ def client(path_resolver, test_config):
     container.config.override(test_config)
 
     # Mock the cache service to avoid Redis connection issues
-    mock_cache = MagicMock()
+    mock_cache = MagicMock(spec=Cache)
     mock_cache.get.return_value = None
     mock_cache.set.return_value = True
     mock_cache.delete.return_value = True
@@ -89,7 +91,9 @@ class TestDetectionsAPIRoutes:
         test_uuid = UUID("12345678-1234-5678-1234-567812345678")
         mock_detection = model_factory.create_detection()
         mock_detection.id = test_uuid
-        client.mock_data_manager.create_detection = AsyncMock(return_value=mock_detection)
+        client.mock_data_manager.create_detection = AsyncMock(
+            spec=DataManager.create_detection, return_value=mock_detection
+        )
 
         test_audio = base64.b64encode(b"test audio data").decode("utf-8")
 
@@ -166,7 +170,9 @@ class TestDetectionsAPIRoutes:
             ),
         ]
         # Mock query_detections on DetectionQueryService (not DataManager)
-        client.mock_query_service.query_detections = AsyncMock(return_value=mock_detections)
+        client.mock_query_service.query_detections = AsyncMock(
+            spec=DetectionQueryService.query_detections, return_value=mock_detections
+        )
 
         response = client.get("/api/detections/recent?limit=10")
 
@@ -179,7 +185,7 @@ class TestDetectionsAPIRoutes:
     def test_get_recent_detections_error(self, client):
         """Should handle errors when getting recent detections."""
         client.mock_query_service.query_detections = AsyncMock(
-            side_effect=Exception("Database error")
+            spec=DetectionQueryService.query_detections, side_effect=Exception("Database error")
         )
 
         response = client.get("/api/detections/recent?limit=10")
@@ -190,7 +196,9 @@ class TestDetectionsAPIRoutes:
     def test_get_detection_count(self, client):
         """Should return detection count for date."""
         today = datetime.now(UTC).date()
-        client.mock_query_service.count_by_date = AsyncMock(return_value={today: 5})
+        client.mock_query_service.count_by_date = AsyncMock(
+            spec=DetectionQueryService.count_by_date, return_value={today: 5}
+        )
 
         response = client.get("/api/detections/count")
 
@@ -201,7 +209,9 @@ class TestDetectionsAPIRoutes:
     def test_get_detection_count_with_specific_date(self, client):
         """Should return detection count for specific date."""
         target_date = date(2025, 1, 15)
-        client.mock_query_service.count_by_date = AsyncMock(return_value={target_date: 42})
+        client.mock_query_service.count_by_date = AsyncMock(
+            spec=DetectionQueryService.count_by_date, return_value={target_date: 42}
+        )
 
         response = client.get(f"/api/detections/count?target_date={target_date.isoformat()}")
 
@@ -213,7 +223,9 @@ class TestDetectionsAPIRoutes:
     def test_get_detection_count_zero_detections(self, client):
         """Should return zero when no detections exist for date."""
         empty_date = date(2020, 1, 1)
-        client.mock_query_service.count_by_date = AsyncMock(return_value={})
+        client.mock_query_service.count_by_date = AsyncMock(
+            spec=DetectionQueryService.count_by_date, return_value={}
+        )
 
         response = client.get(f"/api/detections/count?target_date={empty_date.isoformat()}")
 
@@ -236,7 +248,9 @@ class TestDetectionsAPIRoutes:
             overlap=0.0,
         )
         # Mock the correct method on the correct service
-        client.mock_query_service.get_detection_with_taxa = AsyncMock(return_value=mock_detection)
+        client.mock_query_service.get_detection_with_taxa = AsyncMock(
+            spec=DetectionQueryService.get_detection_with_taxa, return_value=mock_detection
+        )
 
         # Use the detection's actual UUID
         response = client.get(f"/api/detections/{mock_detection.id}")
@@ -249,7 +263,9 @@ class TestDetectionsAPIRoutes:
     def test_get_detection_by_id_not_found(self, client):
         """Should return 404 for non-existent detection."""
         # Mock the correct method on the correct service
-        client.mock_query_service.get_detection_with_taxa = AsyncMock(return_value=None)
+        client.mock_query_service.get_detection_with_taxa = AsyncMock(
+            spec=DetectionQueryService.get_detection_with_taxa, return_value=None
+        )
 
         # Use a valid UUID that doesn't exist
         response = client.get(f"/api/detections/{uuid4()}")
@@ -259,11 +275,15 @@ class TestDetectionsAPIRoutes:
     def test_update_detection_location(self, client, model_factory):
         """Should update detection location."""
         mock_detection = model_factory.create_detection()
-        client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=mock_detection)
+        client.mock_data_manager.get_detection_by_id = AsyncMock(
+            spec=DataManager.get_detection_by_id, return_value=mock_detection
+        )
         updated_detection = model_factory.create_detection(
             id=mock_detection.id, latitude=40.1, longitude=-74.1
         )
-        client.mock_data_manager.update_detection = AsyncMock(return_value=updated_detection)
+        client.mock_data_manager.update_detection = AsyncMock(
+            spec=DataManager.update_detection, return_value=updated_detection
+        )
 
         location_data = {"latitude": 41.0, "longitude": -75.0}
 
@@ -276,7 +296,9 @@ class TestDetectionsAPIRoutes:
 
     def test_update_detection_location_not_found(self, client):
         """Should return 404 when updating location of non-existent detection."""
-        client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=None)
+        client.mock_data_manager.get_detection_by_id = AsyncMock(
+            spec=DataManager.get_detection_by_id, return_value=None
+        )
 
         location_data = {"latitude": 41.0, "longitude": -75.0}
 
@@ -288,8 +310,12 @@ class TestDetectionsAPIRoutes:
     def test_update_detection_location_failed(self, client, model_factory):
         """Should handle update failure."""
         mock_detection = model_factory.create_detection()
-        client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=mock_detection)
-        client.mock_data_manager.update_detection = AsyncMock(return_value=None)
+        client.mock_data_manager.get_detection_by_id = AsyncMock(
+            spec=DataManager.get_detection_by_id, return_value=mock_detection
+        )
+        client.mock_data_manager.update_detection = AsyncMock(
+            spec=DataManager.update_detection, return_value=None
+        )
 
         location_data = {"latitude": 41.0, "longitude": -75.0}
 
@@ -301,7 +327,7 @@ class TestDetectionsAPIRoutes:
     def test_update_detection_location_error(self, client):
         """Should handle unexpected errors in location update."""
         client.mock_data_manager.get_detection_by_id = AsyncMock(
-            side_effect=Exception("Database error")
+            spec=DataManager.get_detection_by_id, side_effect=Exception("Database error")
         )
 
         location_data = {"latitude": 41.0, "longitude": -75.0}
@@ -337,7 +363,9 @@ class TestPaginatedDetections:
         ]
 
         # Mock query_detections on DetectionQueryService
-        client.mock_query_service.query_detections = AsyncMock(return_value=mock_detections)
+        client.mock_query_service.query_detections = AsyncMock(
+            spec=DetectionQueryService.query_detections, return_value=mock_detections
+        )
 
         response = client.get("/api/detections/?page=1&per_page=10&period=week")
 
@@ -378,7 +406,9 @@ class TestPaginatedDetections:
             ),
         ]
 
-        client.mock_query_service.query_detections = AsyncMock(return_value=mock_detections)
+        client.mock_query_service.query_detections = AsyncMock(
+            spec=DetectionQueryService.query_detections, return_value=mock_detections
+        )
 
         # Search for "Robin"
         response = client.get("/api/detections/?search=Robin")
@@ -390,7 +420,9 @@ class TestPaginatedDetections:
 
     def test_get_paginated_detections_empty_result(self, client):
         """Should handle empty results gracefully."""
-        client.mock_query_service.query_detections = AsyncMock(return_value=[])
+        client.mock_query_service.query_detections = AsyncMock(
+            spec=DetectionQueryService.query_detections, return_value=[]
+        )
 
         response = client.get("/api/detections/?page=1")
 
@@ -403,7 +435,7 @@ class TestPaginatedDetections:
     def test_get_paginated_detections_error(self, client):
         """Should handle errors in paginated detections."""
         client.mock_query_service.query_detections = AsyncMock(
-            side_effect=Exception("Database error")
+            spec=DetectionQueryService.query_detections, side_effect=Exception("Database error")
         )
 
         response = client.get("/api/detections/?page=1&per_page=10")
@@ -423,7 +455,9 @@ class TestPaginatedDetections:
             )
         ]
 
-        client.mock_query_service.query_detections = AsyncMock(return_value=mock_detections)
+        client.mock_query_service.query_detections = AsyncMock(
+            spec=DetectionQueryService.query_detections, return_value=mock_detections
+        )
 
         # Don't provide dates - should default to today
         response = client.get("/api/detections/?page=1&per_page=20")
@@ -465,7 +499,8 @@ class TestBestRecordings:
 
         # Mock the query_best_recordings_per_species method to return (detections, total_count)
         client.mock_query_service.query_best_recordings_per_species = AsyncMock(
-            return_value=(mock_detections, len(mock_detections))
+            spec=DetectionQueryService.query_best_recordings_per_species,
+            return_value=(mock_detections, len(mock_detections)),
         )
 
         response = client.get(
@@ -506,7 +541,8 @@ class TestBestRecordings:
 
         # Mock the query_best_recordings_per_species method to return (detections, total_count)
         client.mock_query_service.query_best_recordings_per_species = AsyncMock(
-            return_value=(mock_detections, 1)
+            spec=DetectionQueryService.query_best_recordings_per_species,
+            return_value=(mock_detections, 1),
         )
 
         response = client.get("/api/detections/best-recordings?family=Corvidae")
@@ -521,7 +557,7 @@ class TestBestRecordings:
         """Should handle empty results for best recordings."""
         # Mock the query_best_recordings_per_species method to return empty results
         client.mock_query_service.query_best_recordings_per_species = AsyncMock(
-            return_value=([], 0)
+            spec=DetectionQueryService.query_best_recordings_per_species, return_value=([], 0)
         )
 
         response = client.get("/api/detections/best-recordings?min_confidence=0.99")
@@ -537,7 +573,8 @@ class TestBestRecordings:
         """Should handle errors in best recordings."""
         # Mock the query_best_recordings_per_species method to raise an error
         client.mock_query_service.query_best_recordings_per_species = AsyncMock(
-            side_effect=Exception("Query failed")
+            spec=DetectionQueryService.query_best_recordings_per_species,
+            side_effect=Exception("Query failed"),
         )
 
         response = client.get("/api/detections/best-recordings")
@@ -555,7 +592,8 @@ class TestBestRecordings:
 
         # Mock the query_best_recordings_per_species method
         client.mock_query_service.query_best_recordings_per_species = AsyncMock(
-            return_value=([mock_detection], 1)
+            spec=DetectionQueryService.query_best_recordings_per_species,
+            return_value=([mock_detection], 1),
         )
 
         # Request with species filter
@@ -579,7 +617,8 @@ class TestBestRecordings:
 
         # Mock the query_best_recordings_per_species method
         client.mock_query_service.query_best_recordings_per_species = AsyncMock(
-            return_value=([mock_detection], 1)
+            spec=DetectionQueryService.query_best_recordings_per_species,
+            return_value=([mock_detection], 1),
         )
 
         # Request without species filter
@@ -617,7 +656,9 @@ class TestDetectionAudio:
             order_name="Passeriformes",
         )
 
-        client.mock_query_service.get_detection_with_taxa = AsyncMock(return_value=mock_detection)
+        client.mock_query_service.get_detection_with_taxa = AsyncMock(
+            spec=DetectionQueryService.get_detection_with_taxa, return_value=mock_detection
+        )
 
         response = client.get(f"/api/detections/{mock_detection.id}?language_code=en")
 
@@ -630,8 +671,12 @@ class TestDetectionAudio:
 
     def test_get_detection_uuid_not_found(self, client):
         """Should return 404 for non-existent UUID detection."""
-        client.mock_query_service.get_detection_with_taxa = AsyncMock(return_value=None)
-        client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=None)
+        client.mock_query_service.get_detection_with_taxa = AsyncMock(
+            spec=DetectionQueryService.get_detection_with_taxa, return_value=None
+        )
+        client.mock_data_manager.get_detection_by_id = AsyncMock(
+            spec=DataManager.get_detection_by_id, return_value=None
+        )
 
         response = client.get(f"/api/detections/{uuid4()}")
 
@@ -648,10 +693,12 @@ class TestDetectionAudio:
 
         # Create a detection with audio file
         mock_detection = model_factory.create_detection()
-        mock_detection.audio_file = MagicMock()
+        mock_detection.audio_file = MagicMock(spec=AudioFile)
         mock_detection.audio_file.file_path = audio_file_path
 
-        client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=mock_detection)
+        client.mock_data_manager.get_detection_by_id = AsyncMock(
+            spec=DataManager.get_detection_by_id, return_value=mock_detection
+        )
 
         response = client.get(f"/api/detections/{mock_detection.id}/audio")
 
@@ -664,7 +711,9 @@ class TestDetectionAudio:
     def test_get_detection_audio_not_found(self, client):
         """Should return 404 when detection doesn't exist."""
         detection_id = uuid4()
-        client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=None)
+        client.mock_data_manager.get_detection_by_id = AsyncMock(
+            spec=DataManager.get_detection_by_id, return_value=None
+        )
 
         response = client.get(f"/api/detections/{detection_id}/audio")
 
@@ -676,7 +725,9 @@ class TestDetectionAudio:
         mock_detection = model_factory.create_detection()
         mock_detection.audio_file = None
 
-        client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=mock_detection)
+        client.mock_data_manager.get_detection_by_id = AsyncMock(
+            spec=DataManager.get_detection_by_id, return_value=mock_detection
+        )
 
         response = client.get(f"/api/detections/{mock_detection.id}/audio")
 
@@ -687,10 +738,12 @@ class TestDetectionAudio:
         """Should return 404 when audio file doesn't exist on disk."""
         # Create a detection with non-existent audio file path
         mock_detection = model_factory.create_detection()
-        mock_detection.audio_file = MagicMock()
+        mock_detection.audio_file = MagicMock(spec=AudioFile)
         mock_detection.audio_file.file_path = Path("/non/existent/audio.wav")
 
-        client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=mock_detection)
+        client.mock_data_manager.get_detection_by_id = AsyncMock(
+            spec=DataManager.get_detection_by_id, return_value=mock_detection
+        )
 
         response = client.get(f"/api/detections/{mock_detection.id}/audio")
 
@@ -705,10 +758,12 @@ class TestDetectionAudio:
 
         # Create detection with absolute path
         mock_detection = model_factory.create_detection()
-        mock_detection.audio_file = MagicMock()
+        mock_detection.audio_file = MagicMock(spec=AudioFile)
         mock_detection.audio_file.file_path = audio_file_path  # Absolute path
 
-        client.mock_data_manager.get_detection_by_id = AsyncMock(return_value=mock_detection)
+        client.mock_data_manager.get_detection_by_id = AsyncMock(
+            spec=DataManager.get_detection_by_id, return_value=mock_detection
+        )
 
         response = client.get(f"/api/detections/{mock_detection.id}/audio")
 
@@ -722,7 +777,7 @@ class TestDetectionAudio:
 
         # Simulate unexpected exception
         client.mock_data_manager.get_detection_by_id = AsyncMock(
-            side_effect=Exception("Unexpected error")
+            spec=DataManager.get_detection_by_id, side_effect=Exception("Unexpected error")
         )
 
         response = client.get(f"/api/detections/{mock_detection.id}/audio")
@@ -753,7 +808,9 @@ class TestSpeciesSummary:
             },
         ]
 
-        client.mock_query_service.get_species_summary = AsyncMock(return_value=mock_summary)
+        client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary, return_value=mock_summary
+        )
 
         response = client.get("/api/detections/species/summary?language_code=en")
 
@@ -786,7 +843,9 @@ class TestSpeciesSummary:
             },
         ]
 
-        client.mock_query_service.get_species_summary = AsyncMock(return_value=mock_summary)
+        client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary, return_value=mock_summary
+        )
 
         response = client.get("/api/detections/species/summary?family_filter=Corvidae")
 
@@ -798,7 +857,7 @@ class TestSpeciesSummary:
     def test_get_species_summary_error(self, client):
         """Should handle errors in species summary."""
         client.mock_query_service.get_species_summary = AsyncMock(
-            side_effect=Exception("Database error")
+            spec=DetectionQueryService.get_species_summary, side_effect=Exception("Database error")
         )
 
         response = client.get("/api/detections/species/summary")
@@ -820,7 +879,9 @@ class TestSpeciesSummary:
             }
         ]
 
-        client.mock_query_service.get_species_summary = AsyncMock(return_value=mock_summary)
+        client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary, return_value=mock_summary
+        )
 
         response = client.get("/api/detections/species/summary?period=day")
 
@@ -832,7 +893,9 @@ class TestSpeciesSummary:
 
     def test_get_species_summary_with_period_week(self, client):
         """Should return species summary for week period."""
-        client.mock_query_service.get_species_summary = AsyncMock(return_value=[])
+        client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary, return_value=[]
+        )
 
         response = client.get("/api/detections/species/summary?period=week")
 
@@ -852,7 +915,9 @@ class TestSpeciesSummary:
             }
         ]
 
-        client.mock_query_service.get_species_summary = AsyncMock(return_value=mock_summary)
+        client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary, return_value=mock_summary
+        )
 
         response = client.get("/api/detections/species/summary?period=historical")
 
@@ -875,7 +940,9 @@ class TestSpeciesSummary:
             }
         ]
 
-        client.mock_query_service.get_species_summary = AsyncMock(return_value=mock_summary)
+        client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary, return_value=mock_summary
+        )
 
         response = client.get("/api/detections/species/summary")
 
@@ -953,8 +1020,12 @@ class TestDetectionsSummary:
             },
         ]
 
-        client.mock_query_service.get_species_summary = AsyncMock(return_value=mock_summary)
-        client.mock_query_service.get_detection_count = AsyncMock(return_value=57)
+        client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary, return_value=mock_summary
+        )
+        client.mock_query_service.get_detection_count = AsyncMock(
+            spec=DetectionQueryService.get_detection_count, return_value=57
+        )
 
         response = client.get("/api/detections/summary?period=day")
 
@@ -979,8 +1050,12 @@ class TestDetectionsSummary:
             }
         ]
 
-        client.mock_query_service.get_species_summary = AsyncMock(return_value=mock_summary)
-        client.mock_query_service.get_detection_count = AsyncMock(return_value=128)
+        client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary, return_value=mock_summary
+        )
+        client.mock_query_service.get_detection_count = AsyncMock(
+            spec=DetectionQueryService.get_detection_count, return_value=128
+        )
 
         response = client.get("/api/detections/summary?period=week")
 
@@ -991,8 +1066,12 @@ class TestDetectionsSummary:
 
     def test_get_summary_month_period(self, client):
         """Should return summary for current month."""
-        client.mock_query_service.get_species_summary = AsyncMock(return_value=[])
-        client.mock_query_service.get_detection_count = AsyncMock(return_value=0)
+        client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary, return_value=[]
+        )
+        client.mock_query_service.get_detection_count = AsyncMock(
+            spec=DetectionQueryService.get_detection_count, return_value=0
+        )
 
         response = client.get("/api/detections/summary?period=month")
 
@@ -1012,8 +1091,12 @@ class TestDetectionsSummary:
             },
         ]
 
-        client.mock_query_service.get_species_summary = AsyncMock(return_value=mock_summary)
-        client.mock_query_service.get_detection_count = AsyncMock(return_value=500)
+        client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary, return_value=mock_summary
+        )
+        client.mock_query_service.get_detection_count = AsyncMock(
+            spec=DetectionQueryService.get_detection_count, return_value=500
+        )
 
         response = client.get("/api/detections/summary?period=historical")
 
@@ -1028,7 +1111,7 @@ class TestDetectionsSummary:
     def test_get_summary_error_handling(self, client):
         """Should handle errors gracefully."""
         client.mock_query_service.get_species_summary = AsyncMock(
-            side_effect=Exception("Database error")
+            spec=DetectionQueryService.get_species_summary, side_effect=Exception("Database error")
         )
 
         response = client.get("/api/detections/summary?period=day")
@@ -1044,6 +1127,7 @@ class TestHierarchicalFiltering:
         """Should getting list of families."""
         # Mock the query service response
         client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary,
             return_value=[
                 {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
                 {
@@ -1052,7 +1136,7 @@ class TestHierarchicalFiltering:
                     "scientific_name": "Cyanocitta cristata",
                 },
                 {"family": "Turdidae", "genus": "Turdus", "scientific_name": "Turdus migratorius"},
-            ]
+            ],
         )
 
         response = client.get("/api/detections/taxonomy/families")
@@ -1069,6 +1153,7 @@ class TestHierarchicalFiltering:
         """Should getting genera for a specific family."""
         # Mock the query service response
         client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary,
             return_value=[
                 {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
                 {
@@ -1077,7 +1162,7 @@ class TestHierarchicalFiltering:
                     "scientific_name": "Cyanocitta cristata",
                 },
                 {"family": "Turdidae", "genus": "Turdus", "scientific_name": "Turdus migratorius"},
-            ]
+            ],
         )
 
         response = client.get("/api/detections/taxonomy/genera?family=Corvidae")
@@ -1095,6 +1180,7 @@ class TestHierarchicalFiltering:
         """Should getting species for a specific genus."""
         # Mock the query service response
         client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary,
             return_value=[
                 {
                     "family": "Corvidae",
@@ -1112,7 +1198,7 @@ class TestHierarchicalFiltering:
                     "ioc_english_name": "Common Raven",
                     "detection_count": 15,
                 },
-            ]
+            ],
         )
 
         response = client.get("/api/detections/taxonomy/species?genus=Cyanocitta")
@@ -1131,6 +1217,7 @@ class TestHierarchicalFiltering:
         """Should getting species for a genus filtered by family."""
         # Mock the query service response
         client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary,
             return_value=[
                 {
                     "family": "Corvidae",
@@ -1148,7 +1235,7 @@ class TestHierarchicalFiltering:
                     "ioc_english_name": "American Crow",
                     "detection_count": 28,
                 },
-            ]
+            ],
         )
 
         response = client.get("/api/detections/taxonomy/species?genus=Corvus&family=Corvidae")
@@ -1163,7 +1250,9 @@ class TestHierarchicalFiltering:
 
     def test_get_families_empty_result(self, client):
         """Should getting families when no detections exist."""
-        client.mock_query_service.get_species_summary = AsyncMock(return_value=[])
+        client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary, return_value=[]
+        )
 
         response = client.get("/api/detections/taxonomy/families")
 
@@ -1175,9 +1264,10 @@ class TestHierarchicalFiltering:
     def test_get_genera_unknown_family(self, client):
         """Should getting genera for a family with no detections."""
         client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary,
             return_value=[
                 {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
-            ]
+            ],
         )
 
         response = client.get("/api/detections/taxonomy/genera?family=UnknownFamily")
@@ -1191,9 +1281,10 @@ class TestHierarchicalFiltering:
     def test_get_species_unknown_genus(self, client):
         """Should getting species for a genus with no detections."""
         client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary,
             return_value=[
                 {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
-            ]
+            ],
         )
 
         response = client.get("/api/detections/taxonomy/species?genus=UnknownGenus")
@@ -1207,7 +1298,7 @@ class TestHierarchicalFiltering:
     def test_get_families_error(self, client):
         """Should handle errors when getting families."""
         client.mock_query_service.get_species_summary = AsyncMock(
-            side_effect=Exception("Database error")
+            spec=DetectionQueryService.get_species_summary, side_effect=Exception("Database error")
         )
 
         response = client.get("/api/detections/taxonomy/families")
@@ -1218,7 +1309,7 @@ class TestHierarchicalFiltering:
     def test_get_genera_error(self, client):
         """Should handle errors when getting genera."""
         client.mock_query_service.get_species_summary = AsyncMock(
-            side_effect=Exception("Database error")
+            spec=DetectionQueryService.get_species_summary, side_effect=Exception("Database error")
         )
 
         response = client.get("/api/detections/taxonomy/genera?family=Corvidae")
@@ -1229,7 +1320,7 @@ class TestHierarchicalFiltering:
     def test_get_species_error(self, client):
         """Should handle errors when getting species."""
         client.mock_query_service.get_species_summary = AsyncMock(
-            side_effect=Exception("Database error")
+            spec=DetectionQueryService.get_species_summary, side_effect=Exception("Database error")
         )
 
         response = client.get("/api/detections/taxonomy/species?genus=Corvus")
@@ -1240,9 +1331,10 @@ class TestHierarchicalFiltering:
     def test_get_families_without_detection_filter(self, client):
         """Should handle has_detections=false parameter."""
         client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary,
             return_value=[
                 {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
-            ]
+            ],
         )
 
         response = client.get("/api/detections/taxonomy/families?has_detections=false")
@@ -1255,9 +1347,10 @@ class TestHierarchicalFiltering:
     def test_get_genera_without_detection_filter(self, client):
         """Should handle has_detections=false parameter for genera."""
         client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary,
             return_value=[
                 {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
-            ]
+            ],
         )
 
         response = client.get(

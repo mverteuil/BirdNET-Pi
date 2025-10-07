@@ -1,14 +1,16 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
+from birdnetpi.config import BirdNETConfig
 from birdnetpi.notifications.birdweather import BirdWeatherService
 
 
 @pytest.fixture
 def birdweather_service():
     """Return a BirdWeatherService instance."""
-    mock_config = MagicMock()
+    mock_config = MagicMock(spec=BirdNETConfig)
     mock_config.birdweather_id = "mock_api_key"
     service = BirdWeatherService(config=mock_config)
     return service
@@ -17,8 +19,8 @@ def birdweather_service():
 def test_send_detection_to_birdweather(birdweather_service):
     """Should successfully send detection data to BirdWeather API."""
     detection_data = {"species": "Test Bird", "confidence": 0.9}
-    with patch("requests.post") as mock_post:
-        mock_response = MagicMock()
+    with patch("requests.post", autospec=True) as mock_post:
+        mock_response = MagicMock(spec=requests.Response)
         mock_response.status_code = 200
         mock_response.raise_for_status.return_value = None
         mock_post.return_value = mock_response
@@ -35,7 +37,7 @@ def test_send_detection_to_birdweather(birdweather_service):
 def test_send_detection_to_birdweather_failure(birdweather_service):
     """Should handle failure when sending detection data to BirdWeather API."""
     detection_data = {"species": "Test Bird", "confidence": 0.9}
-    with patch("requests.post") as mock_post:
+    with patch("requests.post", autospec=True) as mock_post:
         # Create a real RequestException to test the exception handling
         import requests.exceptions
 
@@ -54,8 +56,8 @@ def test_get_birdweather_data(birdweather_service):
     """Should successfully retrieve BirdWeather data."""
     location_data = {"lat": 12.34, "lon": 56.78}
     expected_data = {"weather": "sunny"}
-    with patch("requests.get") as mock_get:
-        mock_response = MagicMock()
+    with patch("requests.get", autospec=True) as mock_get:
+        mock_response = MagicMock(spec=requests.Response)
         mock_response.status_code = 200
         mock_response.json.return_value = expected_data
         mock_response.raise_for_status.return_value = None
@@ -74,7 +76,7 @@ def test_get_birdweather_data(birdweather_service):
 def test_get_birdweather_data_failure(birdweather_service):
     """Should handle failure when retrieving BirdWeather data."""
     location_data = {"lat": 12.34, "lon": 56.78}
-    with patch("requests.get") as mock_get:
+    with patch("requests.get", autospec=True) as mock_get:
         # Create a real RequestException to test the exception handling
         import requests.exceptions
 

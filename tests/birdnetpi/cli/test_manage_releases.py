@@ -1,5 +1,6 @@
 """Tests for release CLI."""
 
+import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -7,7 +8,7 @@ import pytest
 from click.testing import CliRunner
 
 from birdnetpi.cli.manage_releases import cli
-from birdnetpi.releases.release_manager import ReleaseAsset
+from birdnetpi.releases.release_manager import ReleaseAsset, ReleaseManager
 
 
 @pytest.fixture
@@ -19,7 +20,7 @@ def runner():
 @pytest.fixture
 def mock_release_manager():
     """Create a mock ReleaseManager."""
-    mock_manager = MagicMock()
+    mock_manager = MagicMock(spec=ReleaseManager)
     mock_manager.get_default_assets.return_value = [
         ReleaseAsset(Path("/test/models"), Path("data/models"), "BirdNET models"),
         ReleaseAsset(Path("/test/ioc.db"), Path("data/database/ioc_reference.db"), "IOC database"),
@@ -40,8 +41,8 @@ def mock_release_manager():
 class TestReleaseManager:
     """Test release manager CLI commands."""
 
-    @patch("birdnetpi.cli.manage_releases.ReleaseManager")
-    @patch("pathlib.Path.exists")
+    @patch("birdnetpi.cli.manage_releases.ReleaseManager", autospec=True)
+    @patch("pathlib.Path.exists", autospec=True)
     def test_create_command_with_models(
         self, mock_exists, mock_manager_class, mock_release_manager, runner, path_resolver
     ):
@@ -57,8 +58,8 @@ class TestReleaseManager:
             assert "✓ Asset release created successfully!" in result.output
             assert "Version: v2.0.0" in result.output
 
-    @patch("birdnetpi.cli.manage_releases.ReleaseManager")
-    @patch("pathlib.Path.exists")
+    @patch("birdnetpi.cli.manage_releases.ReleaseManager", autospec=True)
+    @patch("pathlib.Path.exists", autospec=True)
     def test_create_command_with_github_release(
         self, mock_exists, mock_manager_class, mock_release_manager, runner, path_resolver
     ):
@@ -76,7 +77,7 @@ class TestReleaseManager:
             assert "GitHub release created: v2.0.0" in result.output
             assert "Release URL: https://github.com/user/repo/releases/tag/v2.0.0" in result.output
 
-    @patch("birdnetpi.cli.manage_releases.ReleaseManager")
+    @patch("birdnetpi.cli.manage_releases.ReleaseManager", autospec=True)
     def test_create_command_no_assets(
         self, mock_manager_class, mock_release_manager, runner, path_resolver
     ):
@@ -89,8 +90,8 @@ class TestReleaseManager:
             assert result.exit_code == 1
             assert "Error: No assets specified for release" in result.output
 
-    @patch("birdnetpi.cli.manage_releases.ReleaseManager")
-    @patch("pathlib.Path.exists")
+    @patch("birdnetpi.cli.manage_releases.ReleaseManager", autospec=True)
+    @patch("pathlib.Path.exists", autospec=True)
     def test_create_command_with_output_json(
         self, mock_exists, mock_manager_class, mock_release_manager, runner, tmp_path, path_resolver
     ):
@@ -110,11 +111,11 @@ class TestReleaseManager:
             assert f"Release data written to: {output_file}" in result.output
             assert output_file.exists()
 
-    @patch("birdnetpi.cli.manage_releases.ReleaseManager")
-    @patch("pathlib.Path.exists")
-    @patch("pathlib.Path.is_file")
-    @patch("pathlib.Path.is_dir")
-    @patch("pathlib.Path.stat")
+    @patch("birdnetpi.cli.manage_releases.ReleaseManager", autospec=True)
+    @patch("pathlib.Path.exists", autospec=True)
+    @patch("pathlib.Path.is_file", autospec=True)
+    @patch("pathlib.Path.is_dir", autospec=True)
+    @patch("pathlib.Path.stat", autospec=True)
     def test_list_assets_command(
         self,
         mock_stat,
@@ -130,7 +131,7 @@ class TestReleaseManager:
         mock_exists.return_value = True
         mock_is_file.return_value = True
         mock_is_dir.return_value = False
-        mock_stat.return_value = MagicMock(st_size=1024 * 1024 * 10)  # 10 MB
+        mock_stat.return_value = MagicMock(spec=os.stat_result, st_size=1024 * 1024 * 10)  # 10 MB
         mock_manager_class.return_value = mock_release_manager
 
         with patch("birdnetpi.cli.manage_releases.PathResolver", return_value=path_resolver):
@@ -142,7 +143,7 @@ class TestReleaseManager:
             assert "BirdNET models" in result.output
             assert "IOC database" in result.output
 
-    @patch("birdnetpi.cli.manage_releases.ReleaseManager")
+    @patch("birdnetpi.cli.manage_releases.ReleaseManager", autospec=True)
     def test_custom_assets(
         self, mock_manager_class, mock_release_manager, runner, tmp_path, path_resolver
     ):

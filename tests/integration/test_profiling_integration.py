@@ -6,6 +6,11 @@ from unittest.mock import MagicMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+try:
+    from pyinstrument import Profiler
+except ImportError:
+    Profiler = None  # type: ignore[assignment,misc]
+
 from birdnetpi.config.manager import ConfigManager
 from birdnetpi.web.middleware.pyinstrument_profiling import PyInstrumentProfilerMiddleware
 
@@ -41,9 +46,9 @@ class TestProfilingIntegration:
             with patch.object(ConfigManager, "should_enable_profiling", return_value=True):
                 # We need to mock Profiler at import time
                 with patch(
-                    "birdnetpi.web.middleware.pyinstrument_profiling.Profiler"
+                    "birdnetpi.web.middleware.pyinstrument_profiling.Profiler", autospec=True
                 ) as mock_profiler_class:
-                    mock_profiler = MagicMock()
+                    mock_profiler = MagicMock(spec=Profiler)
                     mock_profiler.is_running = False
                     mock_profiler.output_html.return_value = "<html>Profiling output</html>"
                     mock_profiler_class.return_value = mock_profiler
@@ -177,9 +182,9 @@ class TestProfilingMiddlewareEndToEnd:
 
         # Test POST with profiling
         with patch(
-            "birdnetpi.web.middleware.pyinstrument_profiling.Profiler"
+            "birdnetpi.web.middleware.pyinstrument_profiling.Profiler", autospec=True
         ) as mock_profiler_class:
-            mock_profiler = MagicMock()
+            mock_profiler = MagicMock(spec=Profiler)
             mock_profiler.is_running = False
             mock_profiler.output_text.return_value = "POST profile"
             mock_profiler_class.return_value = mock_profiler
@@ -192,9 +197,9 @@ class TestProfilingMiddlewareEndToEnd:
 
         # Test PUT with profiling
         with patch(
-            "birdnetpi.web.middleware.pyinstrument_profiling.Profiler"
+            "birdnetpi.web.middleware.pyinstrument_profiling.Profiler", autospec=True
         ) as mock_profiler_class:
-            mock_profiler = MagicMock()
+            mock_profiler = MagicMock(spec=Profiler)
             mock_profiler.is_running = False
             mock_profiler.output_text.return_value = "PUT profile"
             mock_profiler_class.return_value = mock_profiler
@@ -205,9 +210,9 @@ class TestProfilingMiddlewareEndToEnd:
 
         # Test DELETE with profiling
         with patch(
-            "birdnetpi.web.middleware.pyinstrument_profiling.Profiler"
+            "birdnetpi.web.middleware.pyinstrument_profiling.Profiler", autospec=True
         ) as mock_profiler_class:
-            mock_profiler = MagicMock()
+            mock_profiler = MagicMock(spec=Profiler)
             mock_profiler.is_running = False
             mock_profiler.output_text.return_value = "DELETE profile"
             mock_profiler_class.return_value = mock_profiler
@@ -237,9 +242,9 @@ class TestProfilingMiddlewareEndToEnd:
 
         # Test with profiling and other parameters
         with patch(
-            "birdnetpi.web.middleware.pyinstrument_profiling.Profiler"
+            "birdnetpi.web.middleware.pyinstrument_profiling.Profiler", autospec=True
         ) as mock_profiler_class:
-            mock_profiler = MagicMock()
+            mock_profiler = MagicMock(spec=Profiler)
             mock_profiler.is_running = False
             mock_profiler.output_html.return_value = "<html>Search profile</html>"
             mock_profiler_class.return_value = mock_profiler

@@ -9,8 +9,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import numpy as np
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from birdnetpi.audio.analysis import AudioAnalysisManager
+from birdnetpi.database.species import SpeciesDatabaseService
+from birdnetpi.detections.birdnet import BirdDetectionService
+from birdnetpi.detections.models import AudioFile
 from birdnetpi.species.parser import SpeciesComponents, SpeciesParser
 from birdnetpi.system.file_manager import FileManager
 
@@ -62,6 +66,7 @@ def mock_file_manager(test_detection_result):
     """Return a mock FileManager instance with test data."""
     mock = MagicMock(spec=FileManager)
     mock.save_detection_audio.return_value = MagicMock(
+        spec=AudioFile,
         file_path=test_detection_result["file_path"],
         duration=test_detection_result["duration"],
         size_bytes=test_detection_result["size_bytes"],
@@ -76,30 +81,29 @@ def mock_path_resolver(path_resolver, test_detection_result):
 
     Uses the global path_resolver fixture as a base to prevent MagicMock file creation.
     """
-    # Create a Mock that returns the test path but doesn't create files
-
-    mock_method = MagicMock(return_value=test_detection_result["audio_path"])
+    # Override the method on the existing path_resolver
+    mock_method = MagicMock(spec=object, return_value=test_detection_result["audio_path"])
     path_resolver.get_detection_audio_path = mock_method
     return path_resolver
 
 
 @pytest.fixture
-@patch("birdnetpi.audio.analysis.BirdDetectionService")
+@patch("birdnetpi.audio.analysis.BirdDetectionService", autospec=True)
 def audio_analysis_service(
     mock_analysis_client_class, mock_file_manager, mock_path_resolver, test_config
 ):
     """Return an AudioAnalysisManager instance with mocked dependencies."""
     # Mock the BirdDetectionService constructor to avoid model loading
-    mock_analysis_client = MagicMock()
+    mock_analysis_client = MagicMock(spec=BirdDetectionService)
     mock_analysis_client_class.return_value = mock_analysis_client
 
     # Mock SpeciesDatabaseService and AsyncSession
-    mock_species_database = MagicMock()
+    mock_species_database = MagicMock(spec=SpeciesDatabaseService)
     # Make get_best_common_name async and return a dict with common_name
     mock_species_database.get_best_common_name = AsyncMock(
-        return_value={"common_name": "Test Bird"}
+        spec=object, return_value={"common_name": "Test Bird"}
     )
-    mock_session = MagicMock()
+    mock_session = MagicMock(spec=AsyncSession)
 
     # Initialize SpeciesParser with the mock service
 
@@ -251,7 +255,7 @@ class TestAudioAnalysisManager:
         assert calls[1][0][1] == expected_species[1][1]  # 0.72 (confidence)
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient")
+    @patch("httpx.AsyncClient", autospec=True)
     async def test_send_detection_event(
         self,
         mock_async_client,
@@ -262,8 +266,9 @@ class TestAudioAnalysisManager:
         caplog,
     ):
         """Should successfully send a detection event and log info."""
-        mock_post = AsyncMock(return_value=MagicMock(status_code=201))
-        mock_async_client.return_value.__aenter__.return_value.post = mock_post
+        mock_async_client.return_value.__aenter__.return_value.post.return_value = MagicMock(
+            spec=httpx.Response, status_code=201
+        )
 
         # Use test data for species information - import SpeciesParser here
 
@@ -278,6 +283,7 @@ class TestAudioAnalysisManager:
         )
 
         # Verify the HTTP POST was made with correct endpoint
+        mock_post = mock_async_client.return_value.__aenter__.return_value.post
         mock_post.assert_called_once()
         call_args = mock_post.call_args
         assert call_args[0][0] == "http://127.0.0.1:8888/api/detections/"
@@ -295,7 +301,7 @@ class TestAudioAnalysisManager:
     # _send_detection_event no longer saves audio files - it sends raw bytes directly
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient")
+    @patch("httpx.AsyncClient", autospec=True)
     async def test_send_detection_event_httpx_request_error(
         self, mock_async_client, audio_analysis_service, test_species_data, caplog
     ):
@@ -324,14 +330,16 @@ class TestAudioAnalysisManager:
         assert f"Buffered detection event for {scientific_name}" in caplog.text
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient")
+    @patch("httpx.AsyncClient", autospec=True)
     async def test_send_detection_event_httpx_status_error(
         self, mock_async_client, audio_analysis_service, test_species_data, caplog
     ):
         """Should buffer detection when httpx.HTTPStatusError occurs."""
-        mock_response = MagicMock(status_code=404, text="Not Found")
+        mock_response = MagicMock(spec=httpx.Response, status_code=404, text="Not Found")
         mock_async_client.return_value.__aenter__.return_value.post.side_effect = (
-            httpx.HTTPStatusError("Not Found", request=MagicMock(), response=mock_response)
+            httpx.HTTPStatusError(
+                "Not Found", request=MagicMock(spec=httpx.Request), response=mock_response
+            )
         )
 
         # Use test data for consistent species information
@@ -351,7 +359,7 @@ class TestAudioAnalysisManager:
         assert f"Buffered detection event for {scientific_name}" in caplog.text
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient")
+    @patch("httpx.AsyncClient", autospec=True)
     async def test_send_detection_event_generic_exception(
         self, mock_async_client, audio_analysis_service, test_species_data, caplog
     ):
@@ -499,7 +507,7 @@ class TestDetectionBuffering:
         self, audio_analysis_service, mock_detection_data, caplog
     ):
         """Should buffer detection when FastAPI is unavailable."""
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
             # Mock HTTP failure
             mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
                 "Connection failed", request=httpx.Request("POST", "http://test.com")
@@ -535,11 +543,13 @@ class TestDetectionBuffering:
         self, audio_analysis_service, caplog
     ):
         """Should buffer detection when FastAPI returns HTTP error."""
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
             # Mock HTTP status error
-            mock_response = MagicMock(status_code=500)
+            mock_response = MagicMock(spec=httpx.Response, status_code=500)
             mock_client.return_value.__aenter__.return_value.post.side_effect = (
-                httpx.HTTPStatusError("Server Error", request=MagicMock(), response=mock_response)
+                httpx.HTTPStatusError(
+                    "Server Error", request=MagicMock(spec=httpx.Request), response=mock_response
+                )
             )
 
             # Clear buffer first
@@ -568,7 +578,7 @@ class TestDetectionBuffering:
         self, audio_analysis_service, caplog
     ):
         """Should buffer detection when unexpected exception occurs during HTTP request."""
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
             # Mock generic exception
             mock_client.return_value.__aenter__.return_value.post.side_effect = Exception(
                 "Unexpected error"
@@ -621,10 +631,11 @@ class TestDetectionBuffering:
         with audio_analysis_service.buffer_lock:
             audio_analysis_service.detection_buffer.append(test_detection)
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
             # Mock successful HTTP response
-            mock_response = MagicMock()
-            mock_response.raise_for_status = MagicMock()
+            mock_response = MagicMock(
+                spec=httpx.Response,
+            )
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
             await audio_analysis_service._flush_detection_buffer()
@@ -671,26 +682,26 @@ class TestDetectionBuffering:
             for detection in test_detections:
                 audio_analysis_service.detection_buffer.append(detection)
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
             # Mock mixed success/failure responses
             post_mock = mock_client.return_value.__aenter__.return_value.post
 
             responses = []
             # First call succeeds
-            success_response = MagicMock()
-            success_response.raise_for_status = MagicMock()
+            success_response = MagicMock(spec=httpx.Response)
             responses.append(success_response)
 
             # Second call fails with HTTPStatusError
-            failed_response = MagicMock()
+            failed_response = MagicMock(spec=httpx.Response)
             failed_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-                "Server error", request=MagicMock(), response=MagicMock(status_code=500)
+                "Server error",
+                request=MagicMock(spec=httpx.Request),
+                response=MagicMock(spec=httpx.Response, status_code=500),
             )
             responses.append(failed_response)
 
             # Third call succeeds
-            success_response2 = MagicMock()
-            success_response2.raise_for_status = MagicMock()
+            success_response2 = MagicMock(spec=httpx.Response)
             responses.append(success_response2)
 
             post_mock.side_effect = responses
@@ -724,10 +735,10 @@ class TestDetectionBuffering:
             audio_analysis_service.detection_buffer.clear()
             audio_analysis_service.detection_buffer.append(test_detection)
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
             # Mock HTTP failure
             mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
-                "Connection failed", request=MagicMock()
+                "Connection failed", request=MagicMock(spec=httpx.Request)
             )
 
             await audio_analysis_service._flush_detection_buffer()
@@ -759,7 +770,7 @@ class TestDetectionBuffering:
             audio_analysis_service.detection_buffer.clear()
             audio_analysis_service.detection_buffer.append(test_detection)
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
             # Mock unexpected exception
             mock_client.return_value.__aenter__.return_value.post.side_effect = Exception(
                 "Unexpected error"
@@ -775,22 +786,22 @@ class TestDetectionBuffering:
             assert "Unexpected error flushing detection" in caplog.text
             assert "Re-buffered failed detections" in caplog.text
 
-    @patch("birdnetpi.audio.analysis.BirdDetectionService")
+    @patch("birdnetpi.audio.analysis.BirdDetectionService", autospec=True)
     async def test_detection_buffer_max_size_enforcement(
         self, mock_analysis_client_class, audio_analysis_service
     ):
         """Should enforce maximum buffer size by evicting oldest detections."""
         # Mock the BirdDetectionService constructor
-        mock_analysis_client = MagicMock()
+        mock_analysis_client = MagicMock(spec=BirdDetectionService)
         mock_analysis_client_class.return_value = mock_analysis_client
 
         # Mock SpeciesDatabaseService and AsyncSession
-        mock_species_database = MagicMock()
+        mock_species_database = MagicMock(spec=SpeciesDatabaseService)
         # Make get_best_common_name async and return a dict with common_name
         mock_species_database.get_best_common_name = AsyncMock(
-            return_value={"common_name": "Test Bird"}
+            spec=object, return_value={"common_name": "Test Bird"}
         )
-        mock_session = MagicMock()
+        mock_session = MagicMock(spec=AsyncSession)
 
         # Initialize SpeciesParser with the mock service
 
@@ -888,10 +899,11 @@ class TestDetectionBuffering:
         # Start the background flush task
         audio_analysis_service.start_buffer_flush_task()
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
             # Mock successful HTTP response
-            mock_response = MagicMock()
-            mock_response.raise_for_status = MagicMock()
+            mock_response = MagicMock(
+                spec=httpx.Response,
+            )
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
             # Add detection to buffer
@@ -923,10 +935,10 @@ class TestDetectionBuffering:
         # Start the background flush task
         audio_analysis_service.start_buffer_flush_task()
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
             # Mock HTTP failure initially
             mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
-                "Connection failed", request=MagicMock()
+                "Connection failed", request=MagicMock(spec=httpx.Request)
             )
 
             # Add detection to buffer
@@ -951,8 +963,9 @@ class TestDetectionBuffering:
             assert "Re-buffered failed detections" in caplog.text
 
             # Now mock successful response
-            mock_response = MagicMock()
-            mock_response.raise_for_status = MagicMock()
+            mock_response = MagicMock(
+                spec=httpx.Response,
+            )
             mock_client.return_value.__aenter__.return_value.post.side_effect = None
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
@@ -985,15 +998,16 @@ class TestDetectionBufferingIntegration:
 
         # Mock file manager
         audio_analysis_service.file_manager.save_detection_audio.return_value = MagicMock(
+            spec=AudioFile,
             file_path="/mock/audio.wav",
             duration=3.0,
             size_bytes=1000,
         )
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
             # First, simulate FastAPI unavailable
             mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
-                "Connection failed", request=MagicMock()
+                "Connection failed", request=MagicMock(spec=httpx.Request)
             )
 
             # Clear buffer
@@ -1014,8 +1028,9 @@ class TestDetectionBufferingIntegration:
             assert "Buffered detection event for Turdus migratorius" in caplog.text
 
             # Now simulate FastAPI becomes available
-            mock_response = MagicMock()
-            mock_response.raise_for_status = MagicMock()
+            mock_response = MagicMock(
+                spec=httpx.Response,
+            )
             mock_client.return_value.__aenter__.return_value.post.side_effect = None
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
@@ -1041,28 +1056,29 @@ class TestDetectionBufferingIntegration:
 
         # Mock file manager
         audio_analysis_service.file_manager.save_detection_audio.return_value = MagicMock(
+            spec=AudioFile,
             file_path="/mock/audio.wav",
             duration=3.0,
             size_bytes=1000,
         )
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx.AsyncClient", autospec=True) as mock_client:
             post_mock = mock_client.return_value.__aenter__.return_value.post
 
             # Mock responses: success, failure, success
             responses = []
 
             # First detection succeeds
-            success_response = MagicMock()
-            success_response.raise_for_status = MagicMock()
+            success_response = MagicMock(spec=httpx.Response)
             responses.append(success_response)
 
             # Second detection fails
-            responses.append(httpx.RequestError("Connection failed", request=MagicMock()))
+            responses.append(
+                httpx.RequestError("Connection failed", request=MagicMock(spec=httpx.Request))
+            )
 
             # Third detection succeeds
-            success_response2 = MagicMock()
-            success_response2.raise_for_status = MagicMock()
+            success_response2 = MagicMock(spec=httpx.Response)
             responses.append(success_response2)
 
             post_mock.side_effect = responses

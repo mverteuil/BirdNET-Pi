@@ -166,7 +166,7 @@ class TestSettingsConfigIntegration:
 class TestAudioDeviceIntegration:
     """Integration tests for audio device discovery."""
 
-    @patch("sounddevice.query_devices")
+    @patch("sounddevice.query_devices", autospec=True)
     def test_audio_device_discovery_with_mock_devices(self, mock_query_devices):
         """Should discover and return audio devices correctly."""
         # Mock sounddevice response
@@ -228,7 +228,7 @@ class TestAudioDeviceIntegration:
         assert devices[1].max_input_channels == 1
         assert devices[1].default_samplerate == 44100.0
 
-    @patch("sounddevice.query_devices")
+    @patch("sounddevice.query_devices", autospec=True)
     def test_audio_device_handles_no_devices(self, mock_query_devices):
         """Should handle case when no audio devices are available."""
         mock_query_devices.return_value = []
@@ -238,7 +238,7 @@ class TestAudioDeviceIntegration:
 
         assert devices == []
 
-    @patch("sounddevice.query_devices")
+    @patch("sounddevice.query_devices", autospec=True)
     def test_audio_device_handles_query_exception(self, mock_query_devices):
         """Should handle exceptions during device query gracefully."""
         mock_query_devices.side_effect = Exception("Audio system not available")
@@ -333,7 +333,7 @@ class TestSettingsEndToEndFlow:
         assert "site_name" in parsed
         assert "webhook_urls" in parsed
 
-    @patch("sounddevice.query_devices")
+    @patch("sounddevice.query_devices", autospec=True)
     def test_settings_with_audio_device_selection(self, mock_query_devices, full_test_env):
         """Should integrate audio device selection with configuration."""
         # Mock audio devices

@@ -51,6 +51,14 @@ class PathResolver:
         # The repository root is the app_dir
         return self.app_dir
 
+    def get_data_dir(self) -> Path:
+        """Get the data directory path.
+
+        Returns:
+            Path to the data directory where all runtime data is stored.
+        """
+        return self.data_dir
+
     def get_models_dir(self) -> Path:
         """Get the directory containing BirdNET tensor models."""
         models_dir = self.data_dir / "models"

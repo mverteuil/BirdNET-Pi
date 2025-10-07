@@ -8,6 +8,8 @@ from birdnetpi.utils.cache import (
     clear_all_cache,
     invalidate_cache,
 )
+from birdnetpi.utils.cache.backends import CacheBackend
+from birdnetpi.utils.cache.cache import Cache
 from birdnetpi.utils.cache.decorator import _generate_cache_key
 
 
@@ -26,8 +28,8 @@ class TestCacheDecorator:
                 self.call_count += 1
                 return x + y
 
-        with patch("birdnetpi.utils.cache.decorator.Cache") as mock_cache:
-            mock_backend = MagicMock()
+        with patch("birdnetpi.utils.cache.decorator.Cache", autospec=True) as mock_cache:
+            mock_backend = MagicMock(spec=CacheBackend)
             mock_cache.return_value._backend = mock_backend
 
             # First call - cache miss
@@ -57,8 +59,8 @@ class TestCacheDecorator:
             def method(self, x):
                 return x * 2
 
-        with patch("birdnetpi.utils.cache.decorator.Cache") as mock_cache:
-            mock_backend = MagicMock()
+        with patch("birdnetpi.utils.cache.decorator.Cache", autospec=True) as mock_cache:
+            mock_backend = MagicMock(spec=CacheBackend)
             mock_cache.return_value._backend = mock_backend
             mock_backend.get.return_value = None
 
@@ -89,8 +91,8 @@ class TestCachedFunction:
             call_count += 1
             return x * y
 
-        with patch("birdnetpi.utils.cache.decorator.Cache") as mock_cache:
-            mock_backend = MagicMock()
+        with patch("birdnetpi.utils.cache.decorator.Cache", autospec=True) as mock_cache:
+            mock_backend = MagicMock(spec=CacheBackend)
             mock_cache.return_value._backend = mock_backend
 
             # First call - cache miss
@@ -163,8 +165,8 @@ class TestCacheInvalidation:
 
     def test_invalidate_cache(self):
         """Should invalidate specific cache entries."""
-        with patch("birdnetpi.utils.cache.decorator.Cache") as mock_cache:
-            mock_instance = MagicMock()
+        with patch("birdnetpi.utils.cache.decorator.Cache", autospec=True) as mock_cache:
+            mock_instance = MagicMock(spec=Cache)
             mock_cache.return_value = mock_instance
             mock_instance.delete.return_value = True
 
@@ -175,8 +177,8 @@ class TestCacheInvalidation:
 
     def test_clear_all_cache(self):
         """Should clear all cached data."""
-        with patch("birdnetpi.utils.cache.decorator.Cache") as mock_cache:
-            mock_instance = MagicMock()
+        with patch("birdnetpi.utils.cache.decorator.Cache", autospec=True) as mock_cache:
+            mock_instance = MagicMock(spec=Cache)
             mock_cache.return_value = mock_instance
             mock_instance.clear.return_value = True
 

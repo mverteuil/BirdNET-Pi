@@ -1,11 +1,13 @@
 """Tests for the optimize_database CLI command."""
 
 import json
+import logging
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from click.testing import CliRunner
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from birdnetpi.cli.optimize_database import (
     analyze_performance,
@@ -16,6 +18,7 @@ from birdnetpi.cli.optimize_database import (
     print_section,
     setup_database_service,
 )
+from birdnetpi.utils.database_optimizer import DatabaseOptimizer
 
 
 class TestSetupDatabaseService:
@@ -269,19 +272,21 @@ class TestCLI:
         assert result.exit_code == 1
         assert "Usage:" in result.output
 
-    @patch("birdnetpi.cli.optimize_database.setup_database_service")
-    @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer")
+    @patch("birdnetpi.cli.optimize_database.setup_database_service", autospec=True)
+    @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer", autospec=True)
     def test_cli_analyze_option(self, mock_optimizer_class, mock_setup_db):
         """Should CLI with analyze option."""
-        mock_db_service = MagicMock()
+        mock_db_service = MagicMock(spec=AsyncSession)
         mock_setup_db.return_value = mock_db_service
 
-        mock_optimizer = MagicMock()
-        # Make async methods return coroutines
-        mock_optimizer.get_current_indexes = AsyncMock(return_value={})
-        mock_optimizer.analyze_table_statistics = AsyncMock(return_value={})
-        mock_optimizer.create_optimized_indexes = AsyncMock(return_value=[])
-        mock_optimizer.optimize_database = AsyncMock(return_value={})
+        mock_optimizer = MagicMock(spec=DatabaseOptimizer)
+        # Configure async methods to return AsyncMock objects
+        mock_optimizer.get_current_indexes = AsyncMock(
+            spec=DatabaseOptimizer.get_current_indexes, return_value={}
+        )
+        mock_optimizer.analyze_table_statistics = AsyncMock(
+            spec=DatabaseOptimizer.analyze_table_statistics, return_value={}
+        )
         mock_optimizer_class.return_value = mock_optimizer
 
         runner = CliRunner()
@@ -292,19 +297,15 @@ class TestCLI:
         mock_optimizer.get_current_indexes.assert_called_once()
         mock_optimizer.analyze_table_statistics.assert_called_once()
 
-    @patch("birdnetpi.cli.optimize_database.setup_database_service")
-    @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer")
+    @patch("birdnetpi.cli.optimize_database.setup_database_service", autospec=True)
+    @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer", autospec=True)
     def test_cli_optimize_option(self, mock_optimizer_class, mock_setup_db):
         """Should CLI with optimize option."""
-        mock_db_service = MagicMock()
+        mock_db_service = MagicMock(spec=AsyncSession)
         mock_setup_db.return_value = mock_db_service
 
-        mock_optimizer = MagicMock()
+        mock_optimizer = MagicMock(spec=DatabaseOptimizer)
         # Make async methods return coroutines
-        mock_optimizer.get_current_indexes = AsyncMock(return_value={})
-        mock_optimizer.analyze_table_statistics = AsyncMock(return_value={})
-        mock_optimizer.create_optimized_indexes = AsyncMock(return_value=[])
-        mock_optimizer.optimize_database = AsyncMock(return_value={})
         mock_optimizer_class.return_value = mock_optimizer
 
         runner = CliRunner()
@@ -315,19 +316,15 @@ class TestCLI:
         mock_optimizer.create_optimized_indexes.assert_called_once()
         mock_optimizer.optimize_database.assert_called_once()
 
-    @patch("birdnetpi.cli.optimize_database.setup_database_service")
-    @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer")
+    @patch("birdnetpi.cli.optimize_database.setup_database_service", autospec=True)
+    @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer", autospec=True)
     def test_cli_dry_run_option(self, mock_optimizer_class, mock_setup_db):
         """Should CLI with dry-run option."""
-        mock_db_service = MagicMock()
+        mock_db_service = MagicMock(spec=AsyncSession)
         mock_setup_db.return_value = mock_db_service
 
-        mock_optimizer = MagicMock()
+        mock_optimizer = MagicMock(spec=DatabaseOptimizer)
         # Make async methods return coroutines
-        mock_optimizer.get_current_indexes = AsyncMock(return_value={})
-        mock_optimizer.analyze_table_statistics = AsyncMock(return_value={})
-        mock_optimizer.create_optimized_indexes = AsyncMock(return_value=[])
-        mock_optimizer.optimize_database = AsyncMock(return_value={})
         mock_optimizer_class.return_value = mock_optimizer
 
         runner = CliRunner()
@@ -338,19 +335,15 @@ class TestCLI:
         mock_optimizer.create_optimized_indexes.assert_called_once_with(dry_run=True)
         mock_optimizer.optimize_database.assert_not_called()
 
-    @patch("birdnetpi.cli.optimize_database.setup_database_service")
-    @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer")
+    @patch("birdnetpi.cli.optimize_database.setup_database_service", autospec=True)
+    @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer", autospec=True)
     def test_cli_export_option(self, mock_optimizer_class, mock_setup_db, tmp_path):
         """Should CLI with export option."""
-        mock_db_service = MagicMock()
+        mock_db_service = MagicMock(spec=AsyncSession)
         mock_setup_db.return_value = mock_db_service
 
-        mock_optimizer = MagicMock()
+        mock_optimizer = MagicMock(spec=DatabaseOptimizer)
         # Make async methods return coroutines
-        mock_optimizer.get_current_indexes = AsyncMock(return_value={})
-        mock_optimizer.analyze_table_statistics = AsyncMock(return_value={})
-        mock_optimizer.create_optimized_indexes = AsyncMock(return_value=[])
-        mock_optimizer.optimize_database = AsyncMock(return_value={})
         mock_optimizer_class.return_value = mock_optimizer
 
         export_path = tmp_path / "test_report.json"
@@ -361,24 +354,20 @@ class TestCLI:
         assert "Report exported to" in result.output
         assert export_path.exists()
 
-    @patch("birdnetpi.cli.optimize_database.setup_database_service")
-    @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer")
+    @patch("birdnetpi.cli.optimize_database.setup_database_service", autospec=True)
+    @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer", autospec=True)
     def test_cli_verbose_option(self, mock_optimizer_class, mock_setup_db):
         """Should CLI with verbose option."""
-        mock_db_service = MagicMock()
+        mock_db_service = MagicMock(spec=AsyncSession)
         mock_setup_db.return_value = mock_db_service
 
-        mock_optimizer = MagicMock()
+        mock_optimizer = MagicMock(spec=DatabaseOptimizer)
         # Make async methods return coroutines
-        mock_optimizer.get_current_indexes = AsyncMock(return_value={})
-        mock_optimizer.analyze_table_statistics = AsyncMock(return_value={})
-        mock_optimizer.create_optimized_indexes = AsyncMock(return_value=[])
-        mock_optimizer.optimize_database = AsyncMock(return_value={})
         mock_optimizer_class.return_value = mock_optimizer
 
         runner = CliRunner()
-        with patch("logging.getLogger") as mock_get_logger:
-            mock_logger = MagicMock()
+        with patch("logging.getLogger", autospec=True) as mock_get_logger:
+            mock_logger = MagicMock(spec=logging.Logger)
             mock_get_logger.return_value = mock_logger
 
             result = runner.invoke(cli, ["--analyze", "--verbose"])
@@ -386,19 +375,27 @@ class TestCLI:
             assert result.exit_code == 0
             mock_logger.setLevel.assert_called_with(10)  # DEBUG level
 
-    @patch("birdnetpi.cli.optimize_database.setup_database_service")
-    @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer")
+    @patch("birdnetpi.cli.optimize_database.setup_database_service", autospec=True)
+    @patch("birdnetpi.cli.optimize_database.DatabaseOptimizer", autospec=True)
     def test_cli_multiple_options(self, mock_optimizer_class, mock_setup_db):
         """Should CLI with multiple options."""
-        mock_db_service = MagicMock()
+        mock_db_service = MagicMock(spec=AsyncSession)
         mock_setup_db.return_value = mock_db_service
 
-        mock_optimizer = MagicMock()
-        # Make async methods return coroutines
-        mock_optimizer.get_current_indexes = AsyncMock(return_value={})
-        mock_optimizer.analyze_table_statistics = AsyncMock(return_value={})
-        mock_optimizer.create_optimized_indexes = AsyncMock(return_value=[])
-        mock_optimizer.optimize_database = AsyncMock(return_value={})
+        mock_optimizer = MagicMock(spec=DatabaseOptimizer)
+        # Configure async methods to return AsyncMock objects
+        mock_optimizer.get_current_indexes = AsyncMock(
+            spec=DatabaseOptimizer.get_current_indexes, return_value={}
+        )
+        mock_optimizer.analyze_table_statistics = AsyncMock(
+            spec=DatabaseOptimizer.analyze_table_statistics, return_value={}
+        )
+        mock_optimizer.create_optimized_indexes = AsyncMock(
+            spec=DatabaseOptimizer.create_optimized_indexes, return_value=[]
+        )
+        mock_optimizer.optimize_database = AsyncMock(
+            spec=DatabaseOptimizer.optimize_database, return_value={}
+        )
         mock_optimizer_class.return_value = mock_optimizer
 
         runner = CliRunner()
@@ -412,7 +409,7 @@ class TestCLI:
         mock_optimizer.create_optimized_indexes.assert_called_once()
         mock_optimizer.optimize_database.assert_called_once()
 
-    @patch("birdnetpi.cli.optimize_database.setup_database_service")
+    @patch("birdnetpi.cli.optimize_database.setup_database_service", autospec=True)
     def test_cli_exception_handling(self, mock_setup_db):
         """Should CLI exception handling."""
         mock_setup_db.side_effect = Exception("Database connection failed")
@@ -429,7 +426,7 @@ class TestCLI:
 class TestMain:
     """Test main entry point."""
 
-    @patch("birdnetpi.cli.optimize_database.cli")
+    @patch("birdnetpi.cli.optimize_database.cli", autospec=True)
     def test_main_function(self, mock_cli):
         """Should main function calls CLI."""
         mock_cli.return_value = 0

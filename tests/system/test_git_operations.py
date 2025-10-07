@@ -7,6 +7,9 @@ import pytest
 
 from birdnetpi.system.git_operations import GitOperationsService, GitRemote
 
+# Type for subprocess.CompletedProcess mock spec
+CompletedProcess = subprocess.CompletedProcess
+
 
 class TestGitRemote:
     """Tests for GitRemote class."""
@@ -50,8 +53,10 @@ class TestGitOperationsService:
             "upstream\thttps://github.com/original/repo.git (push)\n"
         )
 
-        with patch.object(git_service, "_run_git_command") as mock_run:
-            mock_run.return_value = MagicMock(stdout=mock_output, returncode=0)
+        with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
+            mock_run.return_value = MagicMock(
+                spec=CompletedProcess, stdout=mock_output, returncode=0
+            )
 
             remotes = git_service.list_remotes()
 
@@ -65,8 +70,8 @@ class TestGitOperationsService:
 
     def test_list_remotes_empty(self, git_service):
         """Should return empty list when no remotes configured."""
-        with patch.object(git_service, "_run_git_command") as mock_run:
-            mock_run.return_value = MagicMock(stdout="", returncode=0)
+        with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
+            mock_run.return_value = MagicMock(spec=CompletedProcess, stdout="", returncode=0)
 
             remotes = git_service.list_remotes()
 
@@ -74,9 +79,9 @@ class TestGitOperationsService:
 
     def test_get_remote_url_exists(self, git_service):
         """Should get URL for existing remote."""
-        with patch.object(git_service, "_run_git_command") as mock_run:
+        with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
             mock_run.return_value = MagicMock(
-                stdout="https://github.com/user/repo.git\n", returncode=0
+                spec=CompletedProcess, stdout="https://github.com/user/repo.git\n", returncode=0
             )
 
             url = git_service.get_remote_url("origin")
@@ -86,8 +91,8 @@ class TestGitOperationsService:
 
     def test_get_remote_url_not_exists(self, git_service):
         """Should return None for non-existent remote."""
-        with patch.object(git_service, "_run_git_command") as mock_run:
-            mock_run.return_value = MagicMock(stdout="", returncode=128)
+        with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
+            mock_run.return_value = MagicMock(spec=CompletedProcess, stdout="", returncode=128)
 
             url = git_service.get_remote_url("nonexistent")
 
@@ -95,10 +100,10 @@ class TestGitOperationsService:
 
     def test_add_remote_success(self, git_service):
         """Should add a new git remote."""
-        with patch.object(git_service, "get_remote_url") as mock_get:
-            with patch.object(git_service, "_run_git_command") as mock_run:
+        with patch.object(git_service, "get_remote_url", autospec=True) as mock_get:
+            with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
                 mock_get.return_value = None  # Remote doesn't exist
-                mock_run.return_value = MagicMock(returncode=0)
+                mock_run.return_value = MagicMock(spec=CompletedProcess, returncode=0)
 
                 git_service.add_remote("upstream", "https://github.com/original/repo.git")
 
@@ -108,7 +113,7 @@ class TestGitOperationsService:
 
     def test_add_remote_already_exists(self, git_service):
         """Should raise ValueError when adding duplicate remote."""
-        with patch.object(git_service, "get_remote_url") as mock_get:
+        with patch.object(git_service, "get_remote_url", autospec=True) as mock_get:
             mock_get.return_value = "https://github.com/existing/repo.git"
 
             with pytest.raises(ValueError, match="Remote 'upstream' already exists"):
@@ -116,10 +121,10 @@ class TestGitOperationsService:
 
     def test_update_remote_success(self, git_service):
         """Should update an existing remote."""
-        with patch.object(git_service, "get_remote_url") as mock_get:
-            with patch.object(git_service, "_run_git_command") as mock_run:
+        with patch.object(git_service, "get_remote_url", autospec=True) as mock_get:
+            with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
                 mock_get.return_value = "https://github.com/old/repo.git"
-                mock_run.return_value = MagicMock(returncode=0)
+                mock_run.return_value = MagicMock(spec=CompletedProcess, returncode=0)
 
                 git_service.update_remote("origin", "https://github.com/new/repo.git")
 
@@ -129,7 +134,7 @@ class TestGitOperationsService:
 
     def test_update_remote_not_exists(self, git_service):
         """Should raise ValueError when updating non-existent remote."""
-        with patch.object(git_service, "get_remote_url") as mock_get:
+        with patch.object(git_service, "get_remote_url", autospec=True) as mock_get:
             mock_get.return_value = None
 
             with pytest.raises(ValueError, match="Remote 'nonexistent' does not exist"):
@@ -137,10 +142,10 @@ class TestGitOperationsService:
 
     def test_delete_remote_success(self, git_service):
         """Should delete a git remote."""
-        with patch.object(git_service, "get_remote_url") as mock_get:
-            with patch.object(git_service, "_run_git_command") as mock_run:
+        with patch.object(git_service, "get_remote_url", autospec=True) as mock_get:
+            with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
                 mock_get.return_value = "https://github.com/upstream/repo.git"
-                mock_run.return_value = MagicMock(returncode=0)
+                mock_run.return_value = MagicMock(spec=CompletedProcess, returncode=0)
 
                 git_service.delete_remote("upstream")
 
@@ -153,7 +158,7 @@ class TestGitOperationsService:
 
     def test_delete_remote_not_exists(self, git_service):
         """Should raise ValueError when deleting non-existent remote."""
-        with patch.object(git_service, "get_remote_url") as mock_get:
+        with patch.object(git_service, "get_remote_url", autospec=True) as mock_get:
             mock_get.return_value = None
 
             with pytest.raises(ValueError, match="Remote 'nonexistent' does not exist"):
@@ -161,8 +166,8 @@ class TestGitOperationsService:
 
     def test_fetch_remote(self, git_service):
         """Should fetch from a remote."""
-        with patch.object(git_service, "_run_git_command") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0)
+        with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
+            mock_run.return_value = MagicMock(spec=CompletedProcess, returncode=0)
 
             git_service.fetch_remote("origin")
 
@@ -174,9 +179,11 @@ class TestGitOperationsService:
             "  origin/main\n  origin/develop\n  origin/feature/test\n  origin/HEAD -> origin/main\n"
         )
 
-        with patch.object(git_service, "fetch_remote"):
-            with patch.object(git_service, "_run_git_command") as mock_run:
-                mock_run.return_value = MagicMock(stdout=mock_output, returncode=0)
+        with patch.object(git_service, "fetch_remote", autospec=True):
+            with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
+                mock_run.return_value = MagicMock(
+                    spec=CompletedProcess, stdout=mock_output, returncode=0
+                )
 
                 branches = git_service.list_branches("origin")
 
@@ -191,10 +198,12 @@ class TestGitOperationsService:
         """Should list branches even when fetch fails."""
         mock_branches_output = "  origin/main\n  origin/develop\n"
 
-        with patch.object(git_service, "fetch_remote") as mock_fetch:
-            with patch.object(git_service, "_run_git_command") as mock_run:
+        with patch.object(git_service, "fetch_remote", autospec=True) as mock_fetch:
+            with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
                 mock_fetch.side_effect = subprocess.CalledProcessError(1, "git fetch")
-                mock_run.return_value = MagicMock(stdout=mock_branches_output, returncode=0)
+                mock_run.return_value = MagicMock(
+                    spec=CompletedProcess, stdout=mock_branches_output, returncode=0
+                )
 
                 # Should continue with cached refs even if fetch fails
                 branches = git_service.list_branches("origin")
@@ -207,8 +216,10 @@ class TestGitOperationsService:
         """Should list tags."""
         mock_output = "v2.1.0\nv2.0.0\nv1.9.0\n"
 
-        with patch.object(git_service, "_run_git_command") as mock_run:
-            mock_run.return_value = MagicMock(stdout=mock_output, returncode=0)
+        with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
+            mock_run.return_value = MagicMock(
+                spec=CompletedProcess, stdout=mock_output, returncode=0
+            )
 
             tags = git_service.list_tags()
 
@@ -219,9 +230,11 @@ class TestGitOperationsService:
         """Should list tags from remote."""
         mock_output = "v2.1.0\nv2.0.0\n"
 
-        with patch.object(git_service, "fetch_remote"):
-            with patch.object(git_service, "_run_git_command") as mock_run:
-                mock_run.return_value = MagicMock(stdout=mock_output, returncode=0)
+        with patch.object(git_service, "fetch_remote", autospec=True):
+            with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
+                mock_run.return_value = MagicMock(
+                    spec=CompletedProcess, stdout=mock_output, returncode=0
+                )
 
                 tags = git_service.list_tags("origin")
 
@@ -229,8 +242,8 @@ class TestGitOperationsService:
 
     def test_list_tags_empty(self, git_service):
         """Should return empty list when no tags exist."""
-        with patch.object(git_service, "_run_git_command") as mock_run:
-            mock_run.return_value = MagicMock(stdout="", returncode=0)
+        with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
+            mock_run.return_value = MagicMock(spec=CompletedProcess, stdout="", returncode=0)
 
             tags = git_service.list_tags()
 
@@ -238,8 +251,8 @@ class TestGitOperationsService:
 
     def test_get_current_branch(self, git_service):
         """Should get current branch name."""
-        with patch.object(git_service, "_run_git_command") as mock_run:
-            mock_run.return_value = MagicMock(stdout="main\n", returncode=0)
+        with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
+            mock_run.return_value = MagicMock(spec=CompletedProcess, stdout="main\n", returncode=0)
 
             branch = git_service.get_current_branch()
 
@@ -248,7 +261,7 @@ class TestGitOperationsService:
 
     def test_run_git_command_timeout(self, git_service):
         """Should timeout git command after 30 seconds."""
-        with patch("subprocess.run") as mock_run:
+        with patch("subprocess.run", autospec=True) as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired("git", 30)
 
             with pytest.raises(subprocess.TimeoutExpired):
@@ -256,7 +269,7 @@ class TestGitOperationsService:
 
     def test_run_git_command_failure(self, git_service):
         """Should raise CalledProcessError on command failure."""
-        with patch("subprocess.run") as mock_run:
+        with patch("subprocess.run", autospec=True) as mock_run:
             # When check=True, subprocess.run raises CalledProcessError on non-zero return
             mock_run.side_effect = subprocess.CalledProcessError(
                 returncode=128,
@@ -270,8 +283,9 @@ class TestGitOperationsService:
 
     def test_run_git_command_no_check(self, git_service):
         """Should not raise error when check=False."""
-        with patch("subprocess.run") as mock_run:
+        with patch("subprocess.run", autospec=True) as mock_run:
             mock_run.return_value = MagicMock(
+                spec=CompletedProcess,
                 returncode=128,
                 stdout="",
                 stderr="fatal: not a git repository",

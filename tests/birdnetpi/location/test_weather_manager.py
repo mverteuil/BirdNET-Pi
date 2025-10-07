@@ -3,6 +3,7 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -73,11 +74,11 @@ def test_weather_manager_initialization(weather_manager):
 @pytest.mark.asyncio
 async def test_fetch_weather_range(weather_manager, mock_weather_response):
     """Should fetching weather data from API."""
-    with patch("birdnetpi.location.weather.httpx.AsyncClient") as mock_client_class:
-        mock_client = AsyncMock()
-        mock_response = MagicMock()
+    with patch("birdnetpi.location.weather.httpx.AsyncClient", autospec=True) as mock_client_class:
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = mock_weather_response
-        mock_response.raise_for_status = MagicMock()
+        mock_response.raise_for_status = MagicMock(spec=httpx.Response.raise_for_status)
         mock_client.get.return_value = mock_response
         mock_client_class.return_value.__aenter__.return_value = mock_client
 
@@ -96,11 +97,11 @@ async def test_fetch_weather_range(weather_manager, mock_weather_response):
 @pytest.mark.asyncio
 async def test_fetch_weather_range_historical_api(weather_manager, mock_weather_response):
     """Should historical API is used for old dates."""
-    with patch("birdnetpi.location.weather.httpx.AsyncClient") as mock_client_class:
-        mock_client = AsyncMock()
-        mock_response = MagicMock()
+    with patch("birdnetpi.location.weather.httpx.AsyncClient", autospec=True) as mock_client_class:
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = mock_weather_response
-        mock_response.raise_for_status = MagicMock()
+        mock_response.raise_for_status = MagicMock(spec=httpx.Response.raise_for_status)
         mock_client.get.return_value = mock_response
         mock_client_class.return_value.__aenter__.return_value = mock_client
 
@@ -119,11 +120,11 @@ async def test_fetch_weather_range_historical_api(weather_manager, mock_weather_
 @pytest.mark.asyncio
 async def test_fetch_weather_range_forecast_api(weather_manager, mock_weather_response):
     """Should forecast API is used for recent dates."""
-    with patch("birdnetpi.location.weather.httpx.AsyncClient") as mock_client_class:
-        mock_client = AsyncMock()
-        mock_response = MagicMock()
+    with patch("birdnetpi.location.weather.httpx.AsyncClient", autospec=True) as mock_client_class:
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = mock_weather_response
-        mock_response.raise_for_status = MagicMock()
+        mock_response.raise_for_status = MagicMock(spec=httpx.Response.raise_for_status)
         mock_client.get.return_value = mock_response
         mock_client_class.return_value.__aenter__.return_value = mock_client
 
@@ -143,7 +144,7 @@ async def test_fetch_weather_range_forecast_api(weather_manager, mock_weather_re
 @pytest.mark.asyncio
 async def test_fetch_and_store_weather(weather_manager, session, mock_weather_response):
     """Should fetching and storing weather for a specific timestamp."""
-    with patch.object(weather_manager, "fetch_weather_range") as mock_fetch:
+    with patch.object(weather_manager, "fetch_weather_range", autospec=True) as mock_fetch:
         mock_fetch.return_value = [
             {
                 "timestamp": datetime(2024, 1, 1, 0, tzinfo=UTC),
@@ -170,7 +171,7 @@ async def test_fetch_and_store_weather(weather_manager, session, mock_weather_re
 @pytest.mark.asyncio
 async def test_fetch_and_store_weather_no_data(weather_manager):
     """Should error handling when no weather data is available."""
-    with patch.object(weather_manager, "fetch_weather_range") as mock_fetch:
+    with patch.object(weather_manager, "fetch_weather_range", autospec=True) as mock_fetch:
         mock_fetch.return_value = []
 
         timestamp = datetime(2024, 1, 1, 0, tzinfo=UTC)
@@ -289,7 +290,7 @@ async def test_link_detections_skips_already_linked(weather_manager, session, mo
 @pytest.mark.asyncio
 async def test_backfill_weather(weather_manager, session, model_factory):
     """Should backfilling weather for a time range."""
-    with patch.object(weather_manager, "fetch_and_store_weather") as mock_fetch:
+    with patch.object(weather_manager, "fetch_and_store_weather", autospec=True) as mock_fetch:
         # Mock weather creation
         async def create_weather(timestamp):
             weather = model_factory.create_weather(
@@ -343,8 +344,10 @@ async def test_backfill_weather_skip_existing(weather_manager, session, model_fa
     session.add(existing_weather)
     await session.commit()
 
-    with patch.object(weather_manager, "fetch_and_store_weather") as mock_fetch:
-        mock_fetch.return_value = MagicMock(id=999)
+    with patch.object(weather_manager, "fetch_and_store_weather", autospec=True) as mock_fetch:
+        from birdnetpi.location.models import Weather
+
+        mock_fetch.return_value = MagicMock(spec=Weather, id=999)
 
         start_date = datetime(2024, 1, 1, 12, tzinfo=UTC)
         end_date = datetime(2024, 1, 1, 14, tzinfo=UTC)
@@ -358,7 +361,7 @@ async def test_backfill_weather_skip_existing(weather_manager, session, model_fa
 @pytest.mark.asyncio
 async def test_backfill_weather_error_handling(weather_manager):
     """Should error handling in backfill_weather."""
-    with patch.object(weather_manager, "fetch_and_store_weather") as mock_fetch:
+    with patch.object(weather_manager, "fetch_and_store_weather", autospec=True) as mock_fetch:
         mock_fetch.side_effect = Exception("API Error")
 
         start_date = datetime(2024, 1, 1, 12, tzinfo=UTC)
@@ -375,7 +378,7 @@ async def test_backfill_weather_error_handling(weather_manager):
 @pytest.mark.asyncio
 async def test_backfill_weather_bulk(weather_manager, session):
     """Should bulk weather backfilling."""
-    with patch.object(weather_manager, "fetch_weather_range") as mock_fetch:
+    with patch.object(weather_manager, "fetch_weather_range", autospec=True) as mock_fetch:
         mock_fetch.return_value = [
             {
                 "timestamp": datetime(2024, 1, 1, i, tzinfo=UTC),
@@ -420,7 +423,7 @@ async def test_backfill_weather_bulk_skip_existing(weather_manager, session, mod
         session.add(weather)
     await session.commit()
 
-    with patch.object(weather_manager, "fetch_weather_range") as mock_fetch:
+    with patch.object(weather_manager, "fetch_weather_range", autospec=True) as mock_fetch:
         # Return data for all hours
         mock_fetch.return_value = [
             {
@@ -471,7 +474,7 @@ async def test_smart_backfill(weather_manager, session, model_factory):
         session.add(detection)
     await session.commit()
 
-    with patch.object(weather_manager, "backfill_weather_bulk") as mock_backfill:
+    with patch.object(weather_manager, "backfill_weather_bulk", autospec=True) as mock_backfill:
         mock_backfill.return_value = {
             "total_days": 2,
             "api_calls": 1,
@@ -522,7 +525,7 @@ async def test_smart_backfill_no_detections(weather_manager, session, model_fact
 @pytest.mark.asyncio
 async def test_backfill_weather_bulk_multi_day(weather_manager, session):
     """Should bulk backfill correctly calculates total_days for various date ranges."""
-    with patch.object(weather_manager, "fetch_weather_range") as mock_fetch:
+    with patch.object(weather_manager, "fetch_weather_range", autospec=True) as mock_fetch:
         # Test 3 days
         mock_fetch.return_value = [
             {
@@ -553,7 +556,7 @@ async def test_backfill_weather_bulk_multi_day(weather_manager, session):
     await session.commit()
 
     # Test partial day (less than 24 hours)
-    with patch.object(weather_manager, "fetch_weather_range") as mock_fetch:
+    with patch.object(weather_manager, "fetch_weather_range", autospec=True) as mock_fetch:
         mock_fetch.return_value = [
             {
                 "timestamp": datetime(2024, 1, 1, h, tzinfo=UTC),
@@ -579,10 +582,12 @@ async def test_backfill_weather_bulk_multi_day(weather_manager, session):
 @pytest.mark.asyncio
 async def test_rate_limiting_in_backfill(weather_manager):
     """Should rate limiting is applied during backfill."""
-    with patch.object(weather_manager, "fetch_and_store_weather") as mock_fetch:
-        mock_fetch.return_value = MagicMock(id=1)
+    with patch.object(weather_manager, "fetch_and_store_weather", autospec=True) as mock_fetch:
+        from birdnetpi.location.models import Weather
 
-        with patch("asyncio.sleep") as mock_sleep:
+        mock_fetch.return_value = MagicMock(spec=Weather, id=1)
+
+        with patch("asyncio.sleep", autospec=True) as mock_sleep:
             # Backfill exactly 100 hours to trigger rate limit
             start_date = datetime(2024, 1, 1, tzinfo=UTC)
             end_date = start_date + timedelta(hours=100)

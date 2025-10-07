@@ -48,7 +48,7 @@ class TestAddStaticContext:
         # Event dict with existing service field
         event_dict = {"event": "test", "service": "original"}
 
-        result = processor(Mock(), "info", event_dict)
+        result = processor(Mock(spec=structlog.BoundLogger), "info", event_dict)
 
         # Static field should override
         assert result["service"] == "override"
@@ -58,7 +58,7 @@ class TestAddStaticContext:
         processor = _add_static_context({})
         event_dict = {"event": "test"}
 
-        result = processor(Mock(), "info", event_dict)
+        result = processor(Mock(spec=structlog.BoundLogger), "info", event_dict)
 
         # Original dict unchanged
         assert result == {"event": "test"}
@@ -67,7 +67,7 @@ class TestAddStaticContext:
 class TestGetEnvironmentConfig:
     """Test environment detection."""
 
-    @patch("birdnetpi.system.structlog_configurator.SystemUtils")
+    @patch("birdnetpi.system.structlog_configurator.SystemUtils", autospec=True)
     @patch.dict(os.environ, {}, clear=True)
     def test_detects_docker_environment(self, mock_utils):
         """Should correctly identify Docker environment."""
@@ -80,7 +80,7 @@ class TestGetEnvironmentConfig:
         assert has_systemd is False
         assert is_development is False
 
-    @patch("birdnetpi.system.structlog_configurator.SystemUtils")
+    @patch("birdnetpi.system.structlog_configurator.SystemUtils", autospec=True)
     @patch.dict(os.environ, {"BIRDNETPI_ENV": "development"})
     def test_detects_development_environment(self, mock_utils):
         """Should correctly identify development environment."""
@@ -93,7 +93,7 @@ class TestGetEnvironmentConfig:
         assert has_systemd is False
         assert is_development is True
 
-    @patch("birdnetpi.system.structlog_configurator.SystemUtils")
+    @patch("birdnetpi.system.structlog_configurator.SystemUtils", autospec=True)
     @patch.dict(os.environ, {}, clear=True)
     def test_detects_systemd_environment(self, mock_utils):
         """Should correctly identify systemd availability."""
@@ -124,7 +124,7 @@ class TestConfigureProcessors:
         test_config.longitude = -73.6
         return test_config
 
-    @patch("birdnetpi.system.structlog_configurator.SystemUtils")
+    @patch("birdnetpi.system.structlog_configurator.SystemUtils", autospec=True)
     @patch.dict(os.environ, {}, clear=True)
     def test_basic_processor_configuration(self, mock_utils, test_config):
         """Should configure basic processors."""
@@ -142,7 +142,7 @@ class TestConfigureProcessors:
         # JSON should be False for non-Docker, non-systemd
         assert use_json is False
 
-    @patch("birdnetpi.system.structlog_configurator.SystemUtils")
+    @patch("birdnetpi.system.structlog_configurator.SystemUtils", autospec=True)
     def test_includes_caller_when_configured(self, mock_utils, test_config):
         """Should include caller info when configured."""
         mock_utils.get_git_version.return_value = "v1.0.0"
@@ -157,7 +157,7 @@ class TestConfigureProcessors:
         processor_types = [type(p).__name__ for p in processors if hasattr(type(p), "__name__")]
         assert "CallsiteParameterAdder" in processor_types
 
-    @patch("birdnetpi.system.structlog_configurator.SystemUtils")
+    @patch("birdnetpi.system.structlog_configurator.SystemUtils", autospec=True)
     @patch.dict(os.environ, {"SERVICE_NAME": "custom-service"})
     def test_uses_service_name_from_environment(self, mock_utils, test_config):
         """Should use SERVICE_NAME from environment if available."""
@@ -172,12 +172,12 @@ class TestConfigureProcessors:
             if hasattr(processor, "__name__") and "processor" in processor.__name__:
                 # This is our wrapped processor function
                 test_dict = {}
-                result = processor(Mock(), "info", test_dict)
+                result = processor(Mock(spec=structlog.BoundLogger), "info", test_dict)
                 if "service" in result:
                     assert result["service"] == "custom-service"
                     break
 
-    @patch("birdnetpi.system.structlog_configurator.SystemUtils")
+    @patch("birdnetpi.system.structlog_configurator.SystemUtils", autospec=True)
     def test_json_output_for_docker(self, mock_utils, test_config):
         """Should use JSON output for Docker environment."""
         mock_utils.get_git_version.return_value = "v1.0.0"
@@ -189,7 +189,7 @@ class TestConfigureProcessors:
 
         assert use_json is True
 
-    @patch("birdnetpi.system.structlog_configurator.SystemUtils")
+    @patch("birdnetpi.system.structlog_configurator.SystemUtils", autospec=True)
     @patch.dict(os.environ, {"BIRDNETPI_JSON_LOGS": "true"})
     def test_development_json_override(self, mock_utils, test_config):
         """Should allow JSON override in development."""
@@ -202,7 +202,7 @@ class TestConfigureProcessors:
 
         assert use_json is True
 
-    @patch("birdnetpi.system.structlog_configurator.SystemUtils")
+    @patch("birdnetpi.system.structlog_configurator.SystemUtils", autospec=True)
     def test_adds_location_when_available(self, mock_utils, test_config):
         """Should add location field when coordinates are non-zero."""
         mock_utils.get_git_version.return_value = "v1.0.0"
@@ -216,12 +216,12 @@ class TestConfigureProcessors:
         for processor in processors:
             if hasattr(processor, "__name__") and "processor" in processor.__name__:
                 test_dict = {}
-                result = processor(Mock(), "info", test_dict)
+                result = processor(Mock(spec=structlog.BoundLogger), "info", test_dict)
                 if "location" in result:
                     assert result["location"] == "45.5,-73.6"
                     break
 
-    @patch("birdnetpi.system.structlog_configurator.SystemUtils")
+    @patch("birdnetpi.system.structlog_configurator.SystemUtils", autospec=True)
     def test_no_location_when_zero(self, mock_utils, test_config):
         """Should not add location field when coordinates are 0,0."""
         mock_utils.get_git_version.return_value = "v1.0.0"
@@ -237,11 +237,11 @@ class TestConfigureProcessors:
         for processor in processors:
             if hasattr(processor, "__name__") and "processor" in processor.__name__:
                 test_dict = {}
-                result = processor(Mock(), "info", test_dict)
+                result = processor(Mock(spec=structlog.BoundLogger), "info", test_dict)
                 assert "location" not in result
                 break
 
-    @patch("birdnetpi.system.structlog_configurator.SystemUtils")
+    @patch("birdnetpi.system.structlog_configurator.SystemUtils", autospec=True)
     def test_handles_missing_site_name(self, mock_utils, test_config):
         """Should handle missing site_name attribute gracefully."""
         mock_utils.get_git_version.return_value = "v1.0.0"
@@ -257,12 +257,12 @@ class TestConfigureProcessors:
         for processor in processors:
             if hasattr(processor, "__name__") and "processor" in processor.__name__:
                 test_dict = {}
-                result = processor(Mock(), "info", test_dict)
+                result = processor(Mock(spec=structlog.BoundLogger), "info", test_dict)
                 # Should not have site_name field
                 assert "site_name" not in result
                 break
 
-    @patch("birdnetpi.system.structlog_configurator.SystemUtils")
+    @patch("birdnetpi.system.structlog_configurator.SystemUtils", autospec=True)
     def test_handles_empty_site_name(self, mock_utils, test_config):
         """Should not include site_name field when it's empty."""
         mock_utils.get_git_version.return_value = "v1.0.0"
@@ -277,7 +277,7 @@ class TestConfigureProcessors:
         for processor in processors:
             if hasattr(processor, "__name__") and "processor" in processor.__name__:
                 test_dict = {}
-                result = processor(Mock(), "info", test_dict)
+                result = processor(Mock(spec=structlog.BoundLogger), "info", test_dict)
                 # Should not have site_name field when empty
                 assert "site_name" not in result
                 break
@@ -298,12 +298,12 @@ class TestConfigureHandlers:
         )
         return config
 
-    @patch("birdnetpi.system.structlog_configurator.logging.getLogger")
+    @patch("birdnetpi.system.structlog_configurator.logging.getLogger", autospec=True)
     def test_clears_existing_handlers(self, mock_get_logger, test_config):
         """Should clear existing handlers before adding new ones."""
-        mock_logger = Mock()
-        mock_handler1 = Mock()
-        mock_handler2 = Mock()
+        mock_logger = Mock(spec=logging.Logger)
+        mock_handler1 = Mock(spec=logging.Handler)
+        mock_handler2 = Mock(spec=logging.Handler)
         mock_logger.handlers = [mock_handler1, mock_handler2]
         mock_get_logger.return_value = mock_logger
 
@@ -314,16 +314,16 @@ class TestConfigureHandlers:
         mock_logger.removeHandler.assert_any_call(mock_handler1)
         mock_logger.removeHandler.assert_any_call(mock_handler2)
 
-    @patch("birdnetpi.system.structlog_configurator.logging.getLogger")
-    @patch("birdnetpi.system.structlog_configurator.logging.StreamHandler")
+    @patch("birdnetpi.system.structlog_configurator.logging.getLogger", autospec=True)
+    @patch("birdnetpi.system.structlog_configurator.logging.StreamHandler", autospec=True)
     def test_adds_console_handler_for_non_systemd(
         self, mock_stream_handler, mock_get_logger, test_config
     ):
         """Should add console handler when systemd is not available."""
-        mock_logger = Mock()
+        mock_logger = Mock(spec=logging.Logger)
         mock_logger.handlers = []
         mock_get_logger.return_value = mock_logger
-        mock_handler = Mock()
+        mock_handler = Mock(spec=logging.Handler)
         mock_stream_handler.return_value = mock_handler
 
         _configure_handlers(test_config, use_json=False, has_systemd=False, is_development=False)
@@ -335,11 +335,11 @@ class TestConfigureHandlers:
         # Should set formatter
         assert mock_handler.setFormatter.called
 
-    @patch("birdnetpi.system.structlog_configurator._add_journald_handler")
-    @patch("birdnetpi.system.structlog_configurator.logging.getLogger")
+    @patch("birdnetpi.system.structlog_configurator._add_journald_handler", autospec=True)
+    @patch("birdnetpi.system.structlog_configurator.logging.getLogger", autospec=True)
     def test_uses_journald_for_systemd(self, mock_get_logger, mock_add_journald, test_config):
         """Should use journald handler when systemd is available."""
-        mock_logger = Mock()
+        mock_logger = Mock(spec=logging.Logger)
         mock_logger.handlers = []
         mock_get_logger.return_value = mock_logger
 
@@ -349,14 +349,14 @@ class TestConfigureHandlers:
         mock_add_journald.assert_called_once()
         assert test_config in mock_add_journald.call_args[0]
 
-    @patch("birdnetpi.system.structlog_configurator.logging.getLogger")
-    @patch("birdnetpi.system.structlog_configurator.logging.StreamHandler")
+    @patch("birdnetpi.system.structlog_configurator.logging.getLogger", autospec=True)
+    @patch("birdnetpi.system.structlog_configurator.logging.StreamHandler", autospec=True)
     def test_development_uses_console(self, mock_stream_handler, mock_get_logger, test_config):
         """Should use console handler in development even with systemd."""
-        mock_logger = Mock()
+        mock_logger = Mock(spec=logging.Logger)
         mock_logger.handlers = []
         mock_get_logger.return_value = mock_logger
-        mock_handler = Mock()
+        mock_handler = Mock(spec=logging.Handler)
         mock_stream_handler.return_value = mock_handler
 
         _configure_handlers(test_config, use_json=False, has_systemd=True, is_development=True)
@@ -369,14 +369,14 @@ class TestConfigureHandlers:
 class TestJournaldHandler:
     """Test journald handler configuration."""
 
-    @patch("birdnetpi.system.structlog_configurator.sys.stderr")
-    @patch("birdnetpi.system.structlog_configurator.logging.StreamHandler")
+    @patch("birdnetpi.system.structlog_configurator.sys.stderr", autospec=True)
+    @patch("birdnetpi.system.structlog_configurator.logging.StreamHandler", autospec=True)
     def test_fallback_when_systemd_not_available(self, mock_stream_handler, mock_stderr):
         """Should fallback to stderr when systemd module is not available."""
-        test_config = Mock()
-        mock_logger = Mock()
-        mock_formatter = Mock()
-        mock_handler = Mock()
+        test_config = Mock(spec=LoggingConfig)
+        mock_logger = Mock(spec=logging.Logger)
+        mock_formatter = Mock(spec=logging.Formatter)
+        mock_handler = Mock(spec=logging.Handler)
         mock_stream_handler.return_value = mock_handler
 
         # Simulate ImportError for systemd module
@@ -405,11 +405,11 @@ class TestConfigureStructlog:
         config.site_name = "Test Site"
         return config
 
-    @patch("birdnetpi.system.structlog_configurator.logging.getLogger")
-    @patch("birdnetpi.system.structlog_configurator._configure_handlers")
-    @patch("birdnetpi.system.structlog_configurator._configure_processors")
-    @patch("birdnetpi.system.structlog_configurator._get_environment_config")
-    @patch("birdnetpi.system.structlog_configurator.structlog.configure")
+    @patch("birdnetpi.system.structlog_configurator.logging.getLogger", autospec=True)
+    @patch("birdnetpi.system.structlog_configurator._configure_handlers", autospec=True)
+    @patch("birdnetpi.system.structlog_configurator._configure_processors", autospec=True)
+    @patch("birdnetpi.system.structlog_configurator._get_environment_config", autospec=True)
+    @patch("birdnetpi.system.structlog_configurator.structlog.configure", autospec=True)
     def test_full_configuration(
         self,
         mock_structlog_configure,
@@ -422,9 +422,9 @@ class TestConfigureStructlog:
         """Should perform full structlog configuration."""
         # Setup mocks
         mock_get_env.return_value = (False, False, False)  # Not Docker, no systemd, not dev
-        mock_processors = [Mock(), Mock()]
+        mock_processors = [Mock(spec=callable), Mock(spec=callable)]
         test_configure_processors.return_value = (mock_processors, False)
-        mock_logger = Mock()
+        mock_logger = Mock(spec=logging.Logger)
         mock_get_logger.return_value = mock_logger
 
         # Run configuration
@@ -442,9 +442,9 @@ class TestConfigureStructlog:
         assert "Structured logging configured" in call_args[0]
         assert "extra" in call_args[1]
 
-    @patch("birdnetpi.system.structlog_configurator.SystemUtils")
-    @patch("birdnetpi.system.structlog_configurator.logging.getLogger")
-    @patch("birdnetpi.system.structlog_configurator.structlog.configure")
+    @patch("birdnetpi.system.structlog_configurator.SystemUtils", autospec=True)
+    @patch("birdnetpi.system.structlog_configurator.logging.getLogger", autospec=True)
+    @patch("birdnetpi.system.structlog_configurator.structlog.configure", autospec=True)
     def test_logging_success_message(
         self, mock_structlog_configure, mock_get_logger, mock_utils, test_config
     ):
@@ -454,7 +454,7 @@ class TestConfigureStructlog:
         mock_utils.get_git_version.return_value = "v1.2.3"
         mock_utils.get_deployment_environment.return_value = "production"
 
-        mock_logger = Mock()
+        mock_logger = Mock(spec=logging.Logger)
         mock_logger.handlers = []  # Add empty handlers list
         mock_get_logger.return_value = mock_logger
 
@@ -470,13 +470,13 @@ class TestConfigureStructlog:
         assert extra["journald"] is True
         assert extra["json_output"] is None  # From test_config
 
-    @patch("birdnetpi.system.structlog_configurator.logging.getLogger")
-    @patch("birdnetpi.system.structlog_configurator.structlog.configure")
+    @patch("birdnetpi.system.structlog_configurator.logging.getLogger", autospec=True)
+    @patch("birdnetpi.system.structlog_configurator.structlog.configure", autospec=True)
     def test_configures_filtering_bound_logger(
         self, mock_structlog_configure, mock_get_logger, test_config
     ):
         """Should configure filtering bound logger with correct log level."""
-        mock_logger = Mock()
+        mock_logger = Mock(spec=logging.Logger)
         mock_logger.handlers = []  # Add empty handlers list
         mock_get_logger.return_value = mock_logger
 

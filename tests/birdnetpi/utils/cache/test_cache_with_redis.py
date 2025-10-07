@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import redis
+from redis import ConnectionPool, Redis
 
 from birdnetpi.utils.cache.backends import RedisBackend
 from birdnetpi.utils.cache.cache import Cache
@@ -20,12 +21,14 @@ class TestCacheWithRedis:
     @pytest.fixture
     def mock_redis_client(self):
         """Create a mock Redis client."""
-        mock_client = MagicMock()
-        mock_pool = MagicMock()
+        mock_client = MagicMock(spec=Redis)
+        mock_pool = MagicMock(spec=ConnectionPool)
 
-        with patch("birdnetpi.utils.cache.backends.redis.ConnectionPool") as mock_conn_pool:
+        with patch(
+            "birdnetpi.utils.cache.backends.redis.ConnectionPool", autospec=True
+        ) as mock_conn_pool:
             mock_conn_pool.return_value = mock_pool
-            with patch("birdnetpi.utils.cache.backends.redis.Redis") as mock_redis:
+            with patch("birdnetpi.utils.cache.backends.redis.Redis", autospec=True) as mock_redis:
                 mock_redis.return_value = mock_client
                 # Setup default return values
                 mock_client.ping.return_value = True
@@ -41,36 +44,30 @@ class TestCacheWithRedis:
     @pytest.fixture
     def cache_with_redis(self, mock_redis_client):
         """Create Cache instance with mocked Redis backend."""
-        with patch("birdnetpi.utils.cache.backends.redis.ConnectionPool"):
-            with patch(
-                "birdnetpi.utils.cache.backends.redis.Redis", return_value=mock_redis_client
-            ):
-                cache = Cache(
-                    redis_host="localhost",
-                    redis_port=6379,
-                    redis_db=0,
-                    default_ttl=300,
-                    enable_cache_warming=True,
-                )
-                return cache
+        # mock_redis_client fixture already patches ConnectionPool and Redis
+        cache = Cache(
+            redis_host="localhost",
+            redis_port=6379,
+            redis_db=0,
+            default_ttl=300,
+            enable_cache_warming=True,
+        )
+        return cache
 
     def test_redis_backend_initialization(self, mock_redis_client):
         """Should initialize Redis backend correctly."""
-        with patch("birdnetpi.utils.cache.backends.redis.ConnectionPool"):
-            with patch(
-                "birdnetpi.utils.cache.backends.redis.Redis", return_value=mock_redis_client
-            ):
-                cache = Cache(
-                    redis_host="localhost",
-                    redis_port=6379,
-                    redis_db=0,
-                    default_ttl=300,
-                )
+        # mock_redis_client fixture already patches ConnectionPool and Redis
+        cache = Cache(
+            redis_host="localhost",
+            redis_port=6379,
+            redis_db=0,
+            default_ttl=300,
+        )
 
-                assert cache.backend_type == "redis"
-                assert cache.default_ttl == 300
-                assert cache.enable_cache_warming is True
-                mock_redis_client.ping.assert_called()
+        assert cache.backend_type == "redis"
+        assert cache.default_ttl == 300
+        assert cache.enable_cache_warming is True
+        mock_redis_client.ping.assert_called()
 
     def test_cache_get_miss(self, cache_with_redis, mock_redis_client):
         """Should return None for cache miss."""
@@ -227,27 +224,27 @@ class TestCacheWithRedis:
 
     def test_redis_backend_connection_retry(self):
         """Should retry connection on initial failures."""
-        mock_client = MagicMock()
+        mock_client = MagicMock(spec=Redis)
         mock_client.ping.side_effect = [
             redis.ConnectionError("Failed"),
             redis.ConnectionError("Failed"),
             True,  # Success on third attempt
         ]
 
-        with patch("birdnetpi.utils.cache.backends.redis.ConnectionPool"):
+        with patch("birdnetpi.utils.cache.backends.redis.ConnectionPool", autospec=True):
             with patch("birdnetpi.utils.cache.backends.redis.Redis", return_value=mock_client):
-                with patch("time.sleep"):  # Patch time.sleep globally
+                with patch("time.sleep", autospec=True):  # Patch time.sleep globally
                     RedisBackend(host="localhost", port=6379)
                     assert mock_client.ping.call_count == 3
 
     def test_redis_backend_connection_failure(self):
         """Should raise RuntimeError after max connection retries."""
-        mock_client = MagicMock()
+        mock_client = MagicMock(spec=Redis)
         mock_client.ping.side_effect = redis.ConnectionError("Failed")
 
-        with patch("birdnetpi.utils.cache.backends.redis.ConnectionPool"):
+        with patch("birdnetpi.utils.cache.backends.redis.ConnectionPool", autospec=True):
             with patch("birdnetpi.utils.cache.backends.redis.Redis", return_value=mock_client):
-                with patch("time.sleep"):  # Patch time.sleep globally
+                with patch("time.sleep", autospec=True):  # Patch time.sleep globally
                     with pytest.raises(RuntimeError) as exc_info:
                         RedisBackend(host="localhost", port=6379)
 

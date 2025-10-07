@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+import sqladmin
 from dependency_injector import providers
 from fastapi.templating import Jinja2Templates
 from fastapi.testclient import TestClient
@@ -108,14 +109,18 @@ def app_with_settings_routes(path_resolver, repo_root, test_config, mock_audio_d
 
     # Patch ConfigManager and AudioDeviceService - keep patches active during tests
     with (
-        patch("birdnetpi.web.routers.settings_view_routes.ConfigManager") as mock_config_mgr_class,
+        patch(
+            "birdnetpi.web.routers.settings_view_routes.ConfigManager", autospec=True
+        ) as mock_config_mgr_class,
         patch(
             "birdnetpi.web.routers.settings_view_routes.AudioDeviceService",
+            autospec=True,
             return_value=mock_audio_service,
         ),
         patch(
             "birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin",
-            side_effect=lambda app: Mock(),
+            autospec=True,
+            side_effect=lambda app: Mock(spec=sqladmin.Admin),
         ),
     ):
         # Make ConfigManager constructor return our configured mock instance
