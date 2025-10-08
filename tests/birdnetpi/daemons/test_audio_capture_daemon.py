@@ -3,6 +3,7 @@ import os
 import signal
 import subprocess
 import sys
+from types import FrameType
 from unittest.mock import DEFAULT, MagicMock, patch
 
 import pytest
@@ -233,7 +234,7 @@ class TestAudioCaptureDaemon:
         mocker.patch("birdnetpi.daemons.audio_capture_daemon.logger")
         mocker.patch("birdnetpi.daemons.audio_capture_daemon.DaemonState.shutdown_flag", False)
 
-        daemon._signal_handler(signal.SIGTERM, MagicMock())
+        daemon._signal_handler(signal.SIGTERM, MagicMock(spec=FrameType))
 
         assert daemon.DaemonState.shutdown_flag is True
 
@@ -242,7 +243,7 @@ class TestAudioCaptureDaemon:
         mocker.patch("birdnetpi.daemons.audio_capture_daemon.logger")
         mocker.patch("birdnetpi.daemons.audio_capture_daemon.DaemonState.shutdown_flag", False)
 
-        daemon._signal_handler(signal.SIGINT, MagicMock())
+        daemon._signal_handler(signal.SIGINT, MagicMock(spec=FrameType))
 
         assert daemon.DaemonState.shutdown_flag is True
 

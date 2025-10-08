@@ -3,14 +3,17 @@
 import subprocess
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import MagicMock
 
 import pytest
 from jinja2 import DictLoader, Environment
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from starlette.datastructures import QueryParams
+from starlette.requests import Request
 
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.database.species import SpeciesDatabaseService
+from birdnetpi.detections.models import DetectionWithTaxa
 from birdnetpi.i18n.translation_manager import TranslationManager, setup_jinja2_i18n
 from birdnetpi.species.display import SpeciesDisplayService
 
@@ -53,7 +56,7 @@ class TestLanguageSwitching:
         translation_manager = TranslationManager(mock_path_resolver)
 
         # Mock request without Accept-Language header
-        request = Mock()
+        request = MagicMock(spec=Request)
         request.headers = {}
 
         # Should use config language (Spanish)
@@ -67,10 +70,10 @@ class TestLanguageSwitching:
         translation_manager = TranslationManager(mock_path_resolver)
 
         # Request with French Accept-Language
-        request = Mock()
+        request = MagicMock(spec=Request)
         request.headers = {"Accept-Language": "fr-FR,fr;q=0.9"}
-        request.query_params = Mock()
-        request.query_params.get = Mock(return_value=None)
+        request.query_params = MagicMock(spec=QueryParams)
+        request.query_params.get = MagicMock(spec=QueryParams.get, return_value=None)
 
         # Should extract and use French
         trans = translation_manager.install_for_request(request)
@@ -93,10 +96,10 @@ class TestLanguageSwitching:
         """Should properly extract various languages from headers."""
         translation_manager = TranslationManager(mock_path_resolver)
 
-        request = Mock()
+        request = MagicMock(spec=Request)
         request.headers = {"Accept-Language": accept_header}
-        request.query_params = Mock()
-        request.query_params.get = Mock(return_value=None)
+        request.query_params = MagicMock(spec=QueryParams)
+        request.query_params.get = MagicMock(spec=QueryParams.get, return_value=None)
 
         # Parse the header manually to verify
         lang = accept_header.split(",")[0].split("-")[0]
@@ -110,10 +113,10 @@ class TestLanguageSwitching:
         """Should fallback to English for unsupported languages."""
         translation_manager = TranslationManager(path_resolver)
 
-        request = Mock()
+        request = MagicMock(spec=Request)
         request.headers = {"Accept-Language": "xyz-XY"}  # Non-existent language
-        request.query_params = Mock()
-        request.query_params.get = Mock(return_value=None)
+        request.query_params = MagicMock(spec=QueryParams)
+        request.query_params.get = MagicMock(spec=QueryParams.get, return_value=None)
 
         # Should fall back gracefully
         trans = translation_manager.install_for_request(request)
@@ -237,7 +240,7 @@ class TestSpeciesTranslation:
 
             # Test formatting with mock detection
 
-            detection = Mock()
+            detection = MagicMock(spec=DetectionWithTaxa)
             detection.scientific_name = "Turdus migratorius"
             detection.common_name = "American Robin"
             detection.translated_name = None

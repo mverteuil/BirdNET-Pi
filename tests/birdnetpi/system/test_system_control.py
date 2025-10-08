@@ -2,7 +2,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from birdnetpi.system.service_strategies import ServiceStrategySelector
+from birdnetpi.system.service_strategies import (
+    ServiceManagementStrategy,
+    ServiceStrategySelector,
+)
 from birdnetpi.system.system_control import SystemControlService
 
 
@@ -12,7 +15,7 @@ class TestSystemControlService:
     @pytest.fixture
     def mock_strategy(self):
         """Fixture to provide a mock service strategy."""
-        return MagicMock()
+        return MagicMock(spec=ServiceManagementStrategy)
 
     @pytest.fixture(autouse=True)
     def setup_system_control_service(self, mock_strategy):

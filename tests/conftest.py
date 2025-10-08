@@ -20,6 +20,7 @@ from birdnetpi.detections.models import AudioFile, Detection, DetectionWithTaxa
 from birdnetpi.location.models import Weather
 from birdnetpi.releases.asset_manifest import AssetManifest
 from birdnetpi.system.path_resolver import PathResolver
+from birdnetpi.utils.cache import Cache
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
 
@@ -144,7 +145,7 @@ async def app_with_temp_data(path_resolver):
     Container.core_database.override(providers.Singleton(lambda: temp_db_service))
 
     # Mock the cache service to avoid Redis connection issues in tests
-    mock_cache = MagicMock()
+    mock_cache = MagicMock(spec=Cache)
     mock_cache.get.return_value = None
     mock_cache.set.return_value = True
     mock_cache.delete.return_value = True

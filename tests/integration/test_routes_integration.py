@@ -36,7 +36,8 @@ def integration_app(app_with_temp_data, tmp_path):
         # Mock only hardware-specific services
         # Note: SystemInspector uses static methods, no need to mock at container level
         # The routes will call SystemInspector.get_health_summary() directly
-        mock_hardware_monitor = MagicMock()
+        # Generic spec for unused mock (legacy code, should be removed)
+        mock_hardware_monitor = MagicMock(spec=object)
         mock_hardware_monitor.get_all_status.return_value = {
             "audio": {"status": "healthy"},
             "gps": {"status": "not_configured"},

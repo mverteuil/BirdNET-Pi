@@ -8,6 +8,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from starlette.routing import WebSocketRoute
 
 import birdnetpi.web.routers.websocket_routes as websocket_routes
+from birdnetpi.notifications.manager import NotificationManager
 from birdnetpi.web.routers.websocket_routes import router, websocket_endpoint
 
 
@@ -107,13 +108,11 @@ class TestWebSocketRouter:
         """Should properly clean up resources when WebSocket disconnects."""
         # Create mock WebSocket that simulates disconnect
         mock_websocket = AsyncMock(spec=WebSocket)
-        mock_websocket.accept = AsyncMock()
-        mock_websocket.receive_text = AsyncMock(side_effect=WebSocketDisconnect())
+        # Don't re-spec methods on an already-spec'd mock - just configure behavior
+        mock_websocket.receive_text.side_effect = WebSocketDisconnect()
 
-        # Create mock notification manager
-        mock_notification_manager = MagicMock()
-        mock_notification_manager.add_websocket = MagicMock()
-        mock_notification_manager.remove_websocket = MagicMock()
+        # Create mock notification manager - using spec to avoid undefined attributes
+        mock_notification_manager = MagicMock(spec=NotificationManager)
 
         # Test the actual endpoint function
         try:

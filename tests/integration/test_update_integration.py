@@ -42,6 +42,7 @@ def mock_update_manager(path_resolver):
 
     # Mock async methods
     mock.check_for_updates = AsyncMock(
+        spec=UpdateManager.check_for_updates,
         return_value={
             "update_available": True,
             "current_version": "v1.0.0",
@@ -50,15 +51,16 @@ def mock_update_manager(path_resolver):
             "release_url": "https://github.com/owner/repo/releases/tag/v1.1.0",
             "can_auto_update": True,
             "checked_at": datetime.now().isoformat(),
-        }
+        },
     )
 
     mock.apply_update = AsyncMock(
+        spec=UpdateManager.apply_update,
         return_value={
             "success": True,
             "version": "v1.1.0",
             "updated_at": datetime.now().isoformat(),
-        }
+        },
     )
 
     return mock

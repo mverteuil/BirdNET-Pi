@@ -58,7 +58,8 @@ class TestAnalysisAPIRoutes:
             "generated_at": "2025-01-15T10:00:00Z",
         }
 
-        client.mock_presentation_manager.get_analysis_page_data = AsyncMock(return_value=mock_data)
+        # Don't re-spec methods on an already spec'd mock - just configure return values
+        client.mock_presentation_manager.get_analysis_page_data.return_value = mock_data
 
         # Make request
         response = client.get(
@@ -87,7 +88,8 @@ class TestAnalysisAPIRoutes:
             "generated_at": datetime.now().isoformat(),
         }
 
-        client.mock_presentation_manager.get_analysis_page_data = AsyncMock(return_value=mock_data)
+        # Don't re-spec methods on an already spec'd mock - just configure return values
+        client.mock_presentation_manager.get_analysis_page_data.return_value = mock_data
 
         # Make request without dates
         response = client.get("/api/analysis")
@@ -111,7 +113,8 @@ class TestAnalysisAPIRoutes:
             "generated_at": datetime.now().isoformat(),
         }
 
-        client.mock_presentation_manager.get_analysis_page_data = AsyncMock(return_value=mock_data)
+        # Don't re-spec methods on an already spec'd mock - just configure return values
+        client.mock_presentation_manager.get_analysis_page_data.return_value = mock_data
 
         # Make request with comparison
         response = client.get(
@@ -129,8 +132,8 @@ class TestAnalysisAPIRoutes:
     def test_get_analysis_data_error_handling(self, client):
         """Should return 500 status on errors."""
         # Configure mock to raise exception
-        client.mock_presentation_manager.get_analysis_page_data = AsyncMock(
-            side_effect=Exception("Database error")
+        client.mock_presentation_manager.get_analysis_page_data.side_effect = Exception(
+            "Database error"
         )
 
         # Make request

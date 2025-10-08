@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 import birdnetpi.daemons.audio_websocket_daemon as daemon
+from birdnetpi.audio.websocket import AudioWebSocketService
 
 
 @pytest.fixture(autouse=True)
@@ -21,7 +22,7 @@ class TestAudioWebsocketDaemon:
     @pytest.mark.asyncio
     async def test_main_async_successful_run(self):
         """Should create service, start it, wait for shutdown, and stop it."""
-        mock_service = AsyncMock()
+        mock_service = AsyncMock(spec=AudioWebSocketService)
 
         with patch(
             "birdnetpi.daemons.audio_websocket_daemon.AudioWebSocketService",
@@ -40,7 +41,7 @@ class TestAudioWebsocketDaemon:
     @pytest.mark.asyncio
     async def test_main_async_service_start_failure(self):
         """Should handle service start failure and still call stop."""
-        mock_service = AsyncMock()
+        mock_service = AsyncMock(spec=AudioWebSocketService)
         mock_service.start.side_effect = Exception("Start failed")
 
         with patch(
@@ -58,7 +59,7 @@ class TestAudioWebsocketDaemon:
     @pytest.mark.asyncio
     async def test_main_async_wait_for_shutdown_failure(self):
         """Should handle wait for shutdown failure and still call stop."""
-        mock_service = AsyncMock()
+        mock_service = AsyncMock(spec=AudioWebSocketService)
         mock_service.wait_for_shutdown.side_effect = Exception("Wait failed")
 
         with patch(

@@ -30,15 +30,19 @@ class TestDashboardAnalytics:
     ):
         """Should calculate dashboard summary with correct metrics."""
         # Mock DetectionQueryService methods
-        mock_detection_query_service.get_detection_count = AsyncMock(return_value=150)
+        # Use the class methods for spec, not the mock instance methods
+        mock_detection_query_service.get_detection_count = AsyncMock(
+            spec=DetectionQueryService.get_detection_count, return_value=150
+        )
         mock_detection_query_service.get_unique_species_count = AsyncMock(
-            side_effect=[50, 25]
+            spec=DetectionQueryService.get_unique_species_count, side_effect=[50, 25]
         )  # total, week
         mock_detection_query_service.get_storage_metrics = AsyncMock(
+            spec=DetectionQueryService.get_storage_metrics,
             return_value={
                 "total_bytes": 1024 * 1024 * 1024 * 5,  # 5GB
                 "total_duration": 3600 * 24,  # 24 hours
-            }
+            },
         )
 
         summary = await analytics_manager.get_dashboard_summary()
@@ -61,6 +65,7 @@ class TestDashboardAnalytics:
         """Should analyze species frequency and categorize by count."""
         # Mock species counts from DataManager
         mock_detection_query_service.get_species_counts = AsyncMock(
+            spec=DetectionQueryService.get_species_counts,
             return_value=[
                 {
                     "scientific_name": "Turdus migratorius",
@@ -73,7 +78,7 @@ class TestDashboardAnalytics:
                     "count": 10,
                 },
                 {"scientific_name": "Cyanocitta cristata", "common_name": "Blue Jay", "count": 3},
-            ]
+            ],
         )
 
         analysis = await analytics_manager.get_species_frequency_analysis(hours=24)
@@ -103,7 +108,9 @@ class TestDashboardAnalytics:
         self, analytics_manager, mock_detection_query_service
     ):
         """Should return empty list when no species data exists."""
-        mock_detection_query_service.get_species_counts = AsyncMock(return_value=[])
+        mock_detection_query_service.get_species_counts = AsyncMock(
+            spec=DetectionQueryService.get_species_counts, return_value=[]
+        )
 
         analysis = await analytics_manager.get_species_frequency_analysis(hours=24)
 
@@ -115,9 +122,10 @@ class TestDashboardAnalytics:
     ):
         """Should use scientific name when common name is missing."""
         mock_detection_query_service.get_species_counts = AsyncMock(
+            spec=DetectionQueryService.get_species_counts,
             return_value=[
                 {"scientific_name": "Rare species", "common_name": None, "count": 5},
-            ]
+            ],
         )
 
         analysis = await analytics_manager.get_species_frequency_analysis(hours=24)
@@ -133,13 +141,14 @@ class TestTemporalPatterns:
     async def test_get_temporal_patterns(self, analytics_manager, mock_detection_query_service):
         """Should analyze temporal patterns with hourly detection data."""
         mock_detection_query_service.get_hourly_counts = AsyncMock(
+            spec=DetectionQueryService.get_hourly_counts,
             return_value=[
                 {"hour": 6, "count": 15},
                 {"hour": 7, "count": 25},
                 {"hour": 8, "count": 30},
                 {"hour": 12, "count": 10},
                 {"hour": 18, "count": 20},
-            ]
+            ],
         )
 
         patterns = await analytics_manager.get_temporal_patterns(date.today())
@@ -163,13 +172,14 @@ class TestTemporalPatterns:
         """Should calculate aggregate hourly patterns across multiple days."""
         # Mock hourly counts for each day queried
         mock_detection_query_service.get_hourly_counts = AsyncMock(
+            spec=DetectionQueryService.get_hourly_counts,
             return_value=[
                 {"hour": 6, "count": 50},
                 {"hour": 7, "count": 75},
                 {"hour": 8, "count": 60},
                 {"hour": 12, "count": 30},
                 {"hour": 18, "count": 45},
-            ]
+            ],
         )
 
         pattern = await analytics_manager.get_aggregate_hourly_pattern(days=30)
@@ -192,7 +202,8 @@ class TestTemporalPatterns:
             [{"hour": 18, "count": 25}],  # Day 3
         ]
         mock_detection_query_service.get_hourly_counts = AsyncMock(
-            side_effect=day_patterns + [[] for _ in range(4)]  # Fill rest with empty
+            spec=DetectionQueryService.get_hourly_counts,
+            side_effect=day_patterns + [[] for _ in range(4)],  # Fill rest with empty
         )
 
         heatmap = await analytics_manager.get_weekly_heatmap_data(days=7)
@@ -231,15 +242,17 @@ class TestTemporalPatterns:
         )
 
         mock_detection_query_service.query_detections = AsyncMock(
-            return_value=[detection1, detection2]
+            spec=DetectionQueryService.query_detections,
+            return_value=[detection1, detection2],
         )
 
         # Mock species counts for frequency categorization
         mock_detection_query_service.get_species_counts = AsyncMock(
+            spec=DetectionQueryService.get_species_counts,
             return_value=[
                 {"common_name": "American Robin", "count": 8},
                 {"common_name": "Northern Cardinal", "count": 3},
-            ]
+            ],
         )
 
         scatter_data = await analytics_manager.get_detection_scatter_data(hours=24)
@@ -264,6 +277,7 @@ class TestDiversityMetrics:
         """Should calculate diversity metrics over time periods."""
         # Mock the method that calculate_diversity_timeline actually calls
         mock_detection_query_service.get_species_counts_by_period = AsyncMock(
+            spec=DetectionQueryService.get_species_counts_by_period,
             return_value=[
                 {
                     "period": datetime(2024, 1, 1, 6, 0),
@@ -285,7 +299,7 @@ class TestDiversityMetrics:
                         "Species C": 1,
                     },
                 },
-            ]
+            ],
         )
 
         timeline = await analytics_manager.calculate_diversity_timeline(
@@ -311,13 +325,14 @@ class TestDiversityMetrics:
         # Mock the actual method called by calculate_species_accumulation
         # Returns list of tuples (timestamp, species_name)
         mock_detection_query_service.get_detections_for_accumulation = AsyncMock(
+            spec=DetectionQueryService.get_detections_for_accumulation,
             return_value=[
                 (datetime(2024, 1, 1, 6, 0), "Species A"),
                 (datetime(2024, 1, 1, 7, 0), "Species B"),
                 (datetime(2024, 1, 1, 8, 0), "Species A"),  # Repeat
                 (datetime(2024, 1, 1, 9, 0), "Species C"),
                 (datetime(2024, 1, 1, 10, 0), "Species D"),
-            ]
+            ],
         )
 
         accumulation = await analytics_manager.calculate_species_accumulation(
@@ -340,10 +355,11 @@ class TestDiversityMetrics:
         # Mock the method that calculate_community_similarity actually calls
         # Returns species counts for each period
         mock_detection_query_service.get_species_counts_for_periods = AsyncMock(
+            spec=DetectionQueryService.get_species_counts_for_periods,
             return_value=[
                 {"Species A": 2, "Species B": 1, "Species C": 1},  # Period 1
                 {"Species A": 1, "Species B": 1, "Species D": 1},  # Period 2
-            ]
+            ],
         )
 
         similarity = await analytics_manager.calculate_community_similarity(
@@ -412,6 +428,7 @@ class TestTemporalAnalytics:
         """Should analyze temporal patterns and identify peak hours."""
         # Mock hourly counts from DataManager
         mock_detection_query_service.get_hourly_counts = AsyncMock(
+            spec=DetectionQueryService.get_hourly_counts,
             return_value=[
                 {"hour": 6, "count": 15},
                 {"hour": 7, "count": 25},
@@ -420,7 +437,7 @@ class TestTemporalAnalytics:
                 {"hour": 17, "count": 8},
                 {"hour": 18, "count": 12},
                 {"hour": 20, "count": 5},
-            ]
+            ],
         )
 
         patterns = await analytics_manager.get_temporal_patterns(date(2024, 1, 1))
@@ -450,7 +467,9 @@ class TestTemporalAnalytics:
         self, analytics_manager, mock_detection_query_service
     ):
         """Should use today's date when no date is provided."""
-        mock_detection_query_service.get_hourly_counts = AsyncMock(return_value=[])
+        mock_detection_query_service.get_hourly_counts = AsyncMock(
+            spec=DetectionQueryService.get_hourly_counts, return_value=[]
+        )
 
         await analytics_manager.get_temporal_patterns()
 
@@ -463,7 +482,9 @@ class TestTemporalAnalytics:
         self, analytics_manager, mock_detection_query_service
     ):
         """Should return zero counts and default peak hour when no data exists."""
-        mock_detection_query_service.get_hourly_counts = AsyncMock(return_value=[])
+        mock_detection_query_service.get_hourly_counts = AsyncMock(
+            spec=DetectionQueryService.get_hourly_counts, return_value=[]
+        )
 
         patterns = await analytics_manager.get_temporal_patterns(date(2024, 1, 1))
 
@@ -531,7 +552,9 @@ class TestScatterVisualization:
             ),
         ]
 
-        mock_detection_query_service.query_detections = AsyncMock(return_value=detections)
+        mock_detection_query_service.query_detections = AsyncMock(
+            spec=DetectionQueryService.query_detections, return_value=detections
+        )
 
         scatter_data = await analytics_manager.get_detection_scatter_data(hours=24)
 
@@ -558,7 +581,9 @@ class TestScatterVisualization:
         self, analytics_manager, mock_detection_query_service
     ):
         """Should return empty list when no detections exist."""
-        mock_detection_query_service.get_detections_in_range = AsyncMock(return_value=[])
+        mock_detection_query_service.query_detections = AsyncMock(
+            spec=DetectionQueryService.query_detections, return_value=[]
+        )
 
         scatter_data = await analytics_manager.get_detection_scatter_data(hours=24)
 

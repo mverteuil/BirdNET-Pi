@@ -18,6 +18,7 @@ class TestReportsViewRoutes:
         # Mock the presentation manager to avoid database queries
         mock_presentation_manager = MagicMock(spec=PresentationManager)
         mock_presentation_manager.get_detection_display_data = AsyncMock(
+            spec=PresentationManager.get_detection_display_data,
             return_value={
                 "location": "0.0, 0.0",
                 "current_date": "2024-01-01",
@@ -28,7 +29,7 @@ class TestReportsViewRoutes:
                 "weekly_patterns": [],
                 "sparkline_data": {},
                 "week_patterns_data": {},
-            }
+            },
         )
 
         Container.presentation_manager.override(
@@ -47,7 +48,8 @@ class TestReportsViewRoutes:
         """Should analysis page renders with mocked presentation manager."""
         mock_presentation_manager = MagicMock(spec=PresentationManager)
         mock_presentation_manager.get_analysis_page_data = AsyncMock(
-            return_value={"analyses": {}, "summary": {}}
+            spec=PresentationManager.get_analysis_page_data,
+            return_value={"analyses": {}, "summary": {}},
         )
 
         Container.presentation_manager.override(
@@ -65,7 +67,9 @@ class TestReportsViewRoutes:
     def test_best_recordings_page(self, app_with_temp_data):
         """Should best recordings page renders with mocked query service."""
         mock_detection_query_service = MagicMock(spec=DetectionQueryService)
-        mock_detection_query_service.query_detections = AsyncMock(return_value=[])
+        mock_detection_query_service.query_detections = AsyncMock(
+            spec=DetectionQueryService.query_detections, return_value=[]
+        )
 
         Container.detection_query_service.override(
             providers.Singleton(lambda: mock_detection_query_service)

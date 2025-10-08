@@ -294,7 +294,7 @@ class TestDaemonCommunicationFailures:
 
         # Request sits in cache without being processed
         request_data = {"action": "check", "force": False, "created_at": "2024-01-01T00:00:00"}
-        mock_cache.get = Mock(return_value=request_data)
+        mock_cache.get = Mock(spec=Cache.get, return_value=request_data)
 
         # Simulate timeout waiting for daemon
         await asyncio.sleep(0.1)  # Small delay
@@ -311,6 +311,7 @@ class TestDaemonCommunicationFailures:
 
         # Update started but never completed
         mock_cache.get = Mock(
+            spec=Cache.get,
             side_effect=lambda key: {
                 "update:status": {
                     "available": True,
@@ -323,7 +324,7 @@ class TestDaemonCommunicationFailures:
                     "started_at": "2024-01-01T00:00:00",
                 },
                 "update:result": None,  # Never set due to crash
-            }.get(key)
+            }.get(key),
         )
 
         # Check if update is stuck
