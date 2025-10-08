@@ -36,7 +36,7 @@ def app_with_notification_rules(path_resolver, repo_root, mock_config_with_rules
         # Mock ConfigManager
         mock_config_manager = MagicMock(spec=ConfigManager)
         mock_config_manager.load.return_value = mock_config_with_rules
-        mock_config_manager.save = MagicMock(spec=callable)
+        mock_config_manager.save.return_value = None
         mock_config_manager.config_path = config_file
 
         # Mock AudioDeviceService

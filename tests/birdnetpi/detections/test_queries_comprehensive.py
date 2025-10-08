@@ -2,7 +2,7 @@
 
 from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -156,7 +156,7 @@ class TestMainQueryMethods:
         mock_session = AsyncMock(spec=AsyncSession)
         mock_result = MagicMock(spec=Result)
         mock_result.fetchall.return_value = []
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         with patch.object(
             detection_query_service, "_execute_join_query", new_callable=AsyncMock
@@ -189,7 +189,7 @@ class TestMainQueryMethods:
         mock_session = AsyncMock(spec=AsyncSession)
         mock_result = MagicMock(spec=Result)
         mock_result.mappings.return_value.all.return_value = []
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         since_date = datetime(2024, 1, 1)
         result = await detection_query_service.get_detections_with_taxa(since=since_date)
@@ -204,7 +204,7 @@ class TestMainQueryMethods:
         mock_session = AsyncMock(spec=AsyncSession)
         mock_result = MagicMock(spec=Result)
         mock_result.mappings.return_value.all.return_value = []
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         await detection_query_service.get_detections_with_taxa(
             limit=50,
@@ -251,8 +251,8 @@ class TestMainQueryMethods:
             order_name="Passeriformes",
         )
         mock_result = MagicMock(spec=Result)
-        mock_result.fetchone = Mock(spec=callable, return_value=mock_row)
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_result.fetchone.return_value = mock_row
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         result = await detection_query_service.get_detection_with_taxa(detection_id)
         assert result is not None
@@ -269,7 +269,7 @@ class TestMainQueryMethods:
         mock_session = AsyncMock(spec=AsyncSession)
         mock_result = MagicMock(spec=Result)
         mock_result.fetchone.return_value = None
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         result = await detection_query_service.get_detection_with_taxa(uuid4())
         assert result is None
@@ -312,7 +312,7 @@ class TestSummaryMethods:
         ]
         mock_result = MagicMock(spec=Result)
         mock_result.fetchall.return_value = mock_rows
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         result = await detection_query_service.get_species_summary(
             since=datetime(2024, 1, 1), family_filter="Turdidae"
@@ -350,7 +350,7 @@ class TestSummaryMethods:
         ]
         mock_result = MagicMock(spec=Result)
         mock_result.fetchall.return_value = mock_rows
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         result = await detection_query_service.get_family_summary(since=datetime(2024, 1, 1))
         assert len(result) == 2
@@ -372,7 +372,7 @@ class TestCountingMethods:
         ]
         mock_result = MagicMock(spec=Result)
         mock_result.__iter__ = lambda self: iter(mock_rows)
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         start = datetime.now(UTC) - timedelta(days=7)
         end = datetime.now(UTC)
@@ -392,7 +392,7 @@ class TestCountingMethods:
         ]
         mock_result = MagicMock(spec=Result)
         mock_result.__iter__ = lambda self: iter(mock_rows)
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         target_date = date(2024, 1, 15)
         result = await detection_query_service.get_hourly_counts(target_date)
@@ -411,7 +411,7 @@ class TestCountingMethods:
         ]
         mock_result = MagicMock(spec=Result)
         mock_result.__iter__ = lambda self: iter(mock_rows)
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         result = await detection_query_service.count_by_species(
             start_date=datetime(2024, 1, 1), end_date=datetime(2024, 1, 31)
@@ -434,7 +434,7 @@ class TestCountingMethods:
         ]
         mock_result = MagicMock(spec=Result)
         mock_result.__iter__ = lambda self: iter(mock_rows)
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         result = await detection_query_service.count_by_date(species="Turdus migratorius")
         assert len(result) == 3
@@ -468,7 +468,7 @@ class TestAdvancedQueries:
         ]
         mock_result = MagicMock(spec=Result)
         mock_result.all.return_value = mock_rows
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         result = await detection_query_service.get_species_counts_by_period(
             start_date=datetime(2024, 1, 1),
@@ -499,7 +499,7 @@ class TestAdvancedQueries:
         ]
         mock_result = MagicMock(spec=Result)
         mock_result.all.return_value = mock_rows
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         result = await detection_query_service.get_detections_for_accumulation(
             start_date=datetime(2024, 1, 1), end_date=datetime(2024, 1, 31)
@@ -530,7 +530,7 @@ class TestAdvancedQueries:
         ]
         mock_result = MagicMock(spec=Result)
         mock_result.all.return_value = mock_rows
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         periods = [
             (datetime(2024, 1, 1, 6, 0), datetime(2024, 1, 1, 12, 0)),
@@ -550,7 +550,7 @@ class TestAdvancedQueries:
         ]
         mock_result = MagicMock(spec=Result)
         mock_result.all.return_value = mock_rows
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         result = await detection_query_service.get_species_sets_by_window(
             start_date=datetime(2024, 1, 15),
@@ -587,7 +587,7 @@ class TestAdvancedQueries:
         ]
         mock_result = MagicMock(spec=Result)
         mock_result.all.return_value = mock_rows
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         result = await detection_query_service.get_weather_correlations(
             start_date=datetime(2024, 1, 1), end_date=datetime(2024, 1, 31)
@@ -678,7 +678,7 @@ class TestFilterBuilding:
     ):
         """Should handle complex filter combinations in count_detections."""
         mock_session = AsyncMock(spec=AsyncSession)
-        mock_session.scalar = AsyncMock(spec=callable, return_value=250)
+        mock_session.scalar.return_value = 250
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         filters = {
             "species": ["Species1", "Species2"],
@@ -714,7 +714,7 @@ class TestEdgeCases:
         mock_session = AsyncMock(spec=AsyncSession)
         mock_result = MagicMock(spec=Result)
         mock_result.mappings.return_value.all.return_value = []
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         result = await detection_query_service.get_detections_with_taxa()
         assert result == []
@@ -728,7 +728,7 @@ class TestEdgeCases:
         mock_session = AsyncMock(spec=AsyncSession)
         mock_result = MagicMock(spec=Result)
         mock_result.mappings.return_value.all.return_value = []
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
+        mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         result = await detection_query_service.get_detections_with_taxa(limit=1000000, offset=0)
         assert result == []

@@ -147,7 +147,7 @@ class TestGetBestCommonName:
         # Mock the Result object from execute()
         # Note: .first() is synchronous, not async
         mock_execute_result = MagicMock(spec=Result)
-        mock_execute_result.first = MagicMock(spec=callable, return_value=mock_row)
+        mock_execute_result.first.return_value = mock_row
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_execute_result)
 
         result = await species_database.get_best_common_name(
@@ -174,7 +174,7 @@ class TestGetBestCommonName:
         # Mock the Result object from execute()
         # Note: .first() is synchronous, not async
         mock_execute_result = MagicMock(spec=Result)
-        mock_execute_result.first = MagicMock(spec=callable, return_value=mock_row)
+        mock_execute_result.first.return_value = mock_row
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_execute_result)
 
         result = await species_database.get_best_common_name(
@@ -231,7 +231,7 @@ class TestGetBestCommonName:
 
         # Note: .first() is synchronous, not async
         mock_execute_result = MagicMock(spec=Result)
-        mock_execute_result.first = MagicMock(spec=callable, return_value=mock_row_english)
+        mock_execute_result.first.return_value = mock_row_english
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_execute_result)
 
         result = await species_database.get_best_common_name(
@@ -246,18 +246,12 @@ class TestGetBestCommonName:
         mock_row_patlevin = MockRow(english_name=None, common_name="American Robin")
         # For Spanish, it goes: IOC translations, PatLevin, Avibase
         # Note: .first() is synchronous, not async
-        mock_execute_result1 = MagicMock(spec=object)
-        mock_execute_result1.first = MagicMock(
-            spec=callable, return_value=None
-        )  # IOC translation not found
-        mock_execute_result2 = MagicMock(spec=object)
-        mock_execute_result2.first = MagicMock(
-            spec=callable, return_value=mock_row_patlevin
-        )  # PatLevin found
-        mock_execute_result3 = MagicMock(spec=object)
-        mock_execute_result3.first = MagicMock(
-            spec=callable, return_value=None
-        )  # Won't reach Avibase
+        mock_execute_result1 = MagicMock(spec=Result)
+        mock_execute_result1.first.return_value = None  # IOC translation not found
+        mock_execute_result2 = MagicMock(spec=Result)
+        mock_execute_result2.first.return_value = mock_row_patlevin  # PatLevin found
+        mock_execute_result3 = MagicMock(spec=Result)
+        mock_execute_result3.first.return_value = None  # Won't reach Avibase
 
         mock_session.execute = AsyncMock(
             spec=callable,
@@ -299,8 +293,8 @@ class TestGetAllTranslations:
 
         # Mock execute to return different results for each query
         # First call: IOC species (uses .first() which is synchronous)
-        first_result = MagicMock(spec=object)
-        first_result.first = MagicMock(spec=callable, return_value=ioc_species_row)
+        first_result = MagicMock(spec=Result)
+        first_result.first.return_value = ioc_species_row
 
         # Subsequent calls: translations (use iteration) - these must be iterable
         ioc_trans_result = [ioc_trans_row1, ioc_trans_row2]
@@ -354,8 +348,8 @@ class TestGetAllTranslations:
         ioc_species_row = EnglishRow(english_name="American Robin")
 
         # Mock result for IOC species query (.first() is synchronous)
-        first_result = MagicMock(spec=object)
-        first_result.first = MagicMock(spec=callable, return_value=ioc_species_row)
+        first_result = MagicMock(spec=Result)
+        first_result.first.return_value = ioc_species_row
 
         # Translation rows - duplicates will be filtered
         ioc_trans_row = TransRow(language_code="en", common_name="American Robin")  # Duplicate
@@ -401,8 +395,8 @@ class TestGetAllTranslations:
     ):
         """Should prevent SQL injection in all query parameters."""
         # Mock results for empty queries (.first() is synchronous)
-        empty_first_result = MagicMock(spec=object)
-        empty_first_result.first = MagicMock(spec=callable, return_value=None)
+        empty_first_result = MagicMock(spec=Result)
+        empty_first_result.first.return_value = None
 
         # Empty iteration results
         empty_list = []
@@ -470,8 +464,8 @@ class TestErrorHandling:
 
         # First query succeeds (.first() is synchronous)
         ioc_species_row = EnglishRow(english_name="American Robin")
-        first_result = MagicMock(spec=object)
-        first_result.first = MagicMock(spec=callable, return_value=ioc_species_row)
+        first_result = MagicMock(spec=Result)
+        first_result.first.return_value = ioc_species_row
 
         # PatLevin and Avibase rows for when they succeed
         patlevin_row = TransRow(language_code="de", common_name="Wanderdrossel")

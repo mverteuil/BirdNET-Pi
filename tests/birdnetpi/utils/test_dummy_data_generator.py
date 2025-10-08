@@ -54,16 +54,18 @@ class TestDummyDataGenerator:
             from aiosqlite import Connection, Cursor
 
             mock_cursor = AsyncMock(spec=Cursor)
-            mock_cursor.fetchall = AsyncMock(
-                spec=callable,
-                return_value=[
-                    ("Cyanocitta cristata", "Blue Jay"),
-                    ("Turdus migratorius", "American Robin"),
-                    ("Cardinalis cardinalis", "Northern Cardinal"),
-                ],
-            )
+            mock_cursor.fetchall.return_value = [
+                ("Cyanocitta cristata", "Blue Jay"),
+                ("Turdus migratorius", "American Robin"),
+                ("Cardinalis cardinalis", "Northern Cardinal"),
+            ]
             mock_db = AsyncMock(spec=Connection)
-            mock_db.execute = AsyncMock(spec=callable, return_value=mock_cursor)
+
+            # execute is an async method, configure its return value
+            async def mock_execute(*args, **kwargs):
+                return mock_cursor
+
+            mock_db.execute.side_effect = mock_execute
             mock_connect.return_value.__aenter__.return_value = mock_db
             species = await get_random_ioc_species(path_resolver, num_species=3)
             assert len(species) == 3

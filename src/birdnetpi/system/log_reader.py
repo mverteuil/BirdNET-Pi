@@ -54,6 +54,14 @@ class MmapLogReader:
         self.header_size = 16
         self.entry_size = 4096
 
+    def close(self) -> None:
+        """Close the mmap reader and cleanup resources.
+
+        This is a no-op since we use context managers in get_logs(),
+        but provided for API consistency.
+        """
+        pass
+
     def get_logs(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get recent logs from memory-mapped file.
 

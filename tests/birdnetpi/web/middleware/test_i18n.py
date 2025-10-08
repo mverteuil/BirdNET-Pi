@@ -7,7 +7,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 from fastapi import FastAPI, Request
-from fastapi.datastructures import QueryParams
 from fastapi.testclient import TestClient
 from jinja2 import Environment
 
@@ -149,8 +148,7 @@ class TestTranslationManager:
         """Should installing translation for a request."""
         request = Mock(spec=Request)
         request.headers = {"Accept-Language": "es-ES,es;q=0.9"}
-        request.query_params = Mock(spec=QueryParams)
-        request.query_params.get = Mock(spec=callable, return_value=None)
+        request.query_params.get.return_value = None
 
         trans = translation_manager.install_for_request(request)
         assert isinstance(trans, GNUTranslations | NullTranslations)
@@ -159,8 +157,7 @@ class TestTranslationManager:
         """Should installing translation when no Accept-Language header."""
         request = Mock(spec=Request)
         request.headers = {}
-        request.query_params = Mock(spec=QueryParams)
-        request.query_params.get = Mock(spec=callable, return_value=None)
+        request.query_params.get.return_value = None
 
         trans = translation_manager.install_for_request(request)
         assert isinstance(trans, GNUTranslations | NullTranslations)
@@ -180,8 +177,7 @@ class TestTranslationManager:
         """Should parsing various Accept-Language header formats."""
         request = Mock(spec=Request)
         request.headers = {"Accept-Language": header}
-        request.query_params = Mock(spec=QueryParams)
-        request.query_params.get = Mock(spec=callable, return_value=None)
+        request.query_params.get.return_value = None
 
         # Mock the method to capture the language argument
         with patch.object(translation_manager, "get_translation", autospec=True) as mock_get:

@@ -130,8 +130,8 @@ class TestHealthEndpointsDatabaseFailure:
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.execute.side_effect = Exception("Database is locked")
         # __aenter__ and __aexit__ must be AsyncMocks to be awaitable in async context managers
-        mock_session.__aenter__ = AsyncMock(spec=callable, return_value=mock_session)
-        mock_session.__aexit__ = AsyncMock(spec=callable, return_value=None)
+        mock_session.__aenter__.return_value = mock_session
+        mock_session.__aexit__.return_value = None
 
         mock_db_service.get_async_db.return_value = mock_session
 

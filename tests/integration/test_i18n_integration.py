@@ -8,7 +8,6 @@ from unittest.mock import MagicMock
 import pytest
 from jinja2 import DictLoader, Environment
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from starlette.datastructures import QueryParams
 from starlette.requests import Request
 
 from birdnetpi.config import BirdNETConfig
@@ -72,8 +71,7 @@ class TestLanguageSwitching:
         # Request with French Accept-Language
         request = MagicMock(spec=Request)
         request.headers = {"Accept-Language": "fr-FR,fr;q=0.9"}
-        request.query_params = MagicMock(spec=QueryParams)
-        request.query_params.get = MagicMock(spec=QueryParams.get, return_value=None)
+        request.query_params.get.return_value = None
 
         # Should extract and use French
         trans = translation_manager.install_for_request(request)
@@ -98,8 +96,7 @@ class TestLanguageSwitching:
 
         request = MagicMock(spec=Request)
         request.headers = {"Accept-Language": accept_header}
-        request.query_params = MagicMock(spec=QueryParams)
-        request.query_params.get = MagicMock(spec=QueryParams.get, return_value=None)
+        request.query_params.get.return_value = None
 
         # Parse the header manually to verify
         lang = accept_header.split(",")[0].split("-")[0]
@@ -115,8 +112,7 @@ class TestLanguageSwitching:
 
         request = MagicMock(spec=Request)
         request.headers = {"Accept-Language": "xyz-XY"}  # Non-existent language
-        request.query_params = MagicMock(spec=QueryParams)
-        request.query_params.get = MagicMock(spec=QueryParams.get, return_value=None)
+        request.query_params.get.return_value = None
 
         # Should fall back gracefully
         trans = translation_manager.install_for_request(request)

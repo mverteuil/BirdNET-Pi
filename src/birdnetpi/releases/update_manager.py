@@ -100,6 +100,12 @@ class StateFileManager:
 class UpdateManager:
     """Manages updates and Git operations for the BirdNET-Pi repository."""
 
+    path_resolver: PathResolver
+    app_dir: Path
+    file_manager: FileManager
+    system_control: SystemControlService
+    state_manager: StateFileManager
+
     def __init__(
         self,
         path_resolver: PathResolver,

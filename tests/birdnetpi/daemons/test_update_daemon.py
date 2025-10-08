@@ -11,6 +11,7 @@ import birdnetpi.daemons.update_daemon as daemon
 from birdnetpi.config.manager import ConfigManager
 from birdnetpi.daemons.update_daemon import DaemonState
 from birdnetpi.releases.update_manager import StateFileManager, UpdateManager
+from birdnetpi.system.file_manager import FileManager
 from birdnetpi.utils.cache import Cache
 
 
@@ -52,8 +53,8 @@ def mock_update_manager(path_resolver):
         "checked_at": "2024-01-01T12:00:00",
     }
     manager.apply_update.return_value = {"success": True, "version": "v1.1.0"}
-    manager.file_manager = MagicMock(spec=object)
-    manager.path_resolver = path_resolver
+    # Configure instance attributes that spec doesn't recognize
+    manager.configure_mock(path_resolver=path_resolver, file_manager=MagicMock(spec=FileManager))
     return manager
 
 

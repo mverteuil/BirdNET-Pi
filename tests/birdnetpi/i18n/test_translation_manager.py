@@ -4,7 +4,7 @@ import gettext
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi import Request
+from fastapi import FastAPI, Request
 from starlette.templating import Jinja2Templates
 
 from birdnetpi.i18n.translation_manager import (
@@ -36,17 +36,18 @@ def translation_manager(mock_path_resolver):
 def mock_request():
     """Create a mock FastAPI Request."""
     request = MagicMock(spec=Request, headers={"Accept-Language": "en-US,en;q=0.9,es;q=0.8"})
-    request.query_params = MagicMock(spec=object)
-    request.query_params.get = MagicMock(spec=callable, return_value=None)
+    request.query_params.get.return_value = None
     return request
 
 
 @pytest.fixture
 def mock_app_with_translation_manager(translation_manager):
     """Create a mock app with translation manager."""
-    app = MagicMock(spec=object)
-    app.state = MagicMock(spec=object)
-    app.state.translation_manager = translation_manager
+    app = MagicMock(spec=FastAPI)
+    # Use configure_mock to bypass spec checking for state attribute
+    state_mock = MagicMock(spec=object)
+    state_mock.translation_manager = translation_manager
+    app.configure_mock(state=state_mock)
     return app
 
 
@@ -219,8 +220,7 @@ class TestTranslationIntegration:
         mock_request = MagicMock(
             spec=Request, headers={"Accept-Language": "es-MX,es;q=0.9,en;q=0.8"}
         )
-        mock_request.query_params = MagicMock(spec=object)
-        mock_request.query_params.get = MagicMock(spec=callable, return_value=None)
+        mock_request.query_params.get.return_value = None
         result = manager.install_for_request(mock_request)
         assert result == mock_trans
         mock_translation_func.assert_called_once()
@@ -244,8 +244,7 @@ class TestTranslationIntegration:
         for accept_language, expected_lang in test_cases:
             mock_request = MagicMock(spec=Request)
             mock_request.headers = {"Accept-Language": accept_language} if accept_language else {}
-            mock_request.query_params = MagicMock(spec=object)
-            mock_request.query_params.get = MagicMock(spec=callable, return_value=None)
+            mock_request.query_params.get.return_value = None
             mock_trans = MagicMock(spec=gettext.GNUTranslations)
             with patch.object(
                 translation_manager, "get_translation", return_value=mock_trans

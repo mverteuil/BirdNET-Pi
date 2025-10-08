@@ -4,7 +4,7 @@ import asyncio
 import os
 import tempfile
 from datetime import datetime
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.staticfiles import StaticFiles
@@ -294,7 +294,7 @@ class TestDaemonCommunicationFailures:
 
         # Request sits in cache without being processed
         request_data = {"action": "check", "force": False, "created_at": "2024-01-01T00:00:00"}
-        mock_cache.get = Mock(spec=Cache.get, return_value=request_data)
+        mock_cache.get.return_value = request_data
 
         # Simulate timeout waiting for daemon
         await asyncio.sleep(0.1)  # Small delay
@@ -310,22 +310,19 @@ class TestDaemonCommunicationFailures:
         mock_cache = MagicMock(spec=Cache)
 
         # Update started but never completed
-        mock_cache.get = Mock(
-            spec=Cache.get,
-            side_effect=lambda key: {
-                "update:status": {
-                    "available": True,
-                    "current_version": "v1.0.0",
-                    "latest_version": "v1.1.0",
-                },
-                "update:request": {
-                    "action": "apply",
-                    "version": "v1.1.0",
-                    "started_at": "2024-01-01T00:00:00",
-                },
-                "update:result": None,  # Never set due to crash
-            }.get(key),
-        )
+        mock_cache.get.side_effect = lambda key: {
+            "update:status": {
+                "available": True,
+                "current_version": "v1.0.0",
+                "latest_version": "v1.1.0",
+            },
+            "update:request": {
+                "action": "apply",
+                "version": "v1.1.0",
+                "started_at": "2024-01-01T00:00:00",
+            },
+            "update:result": None,  # Never set due to crash
+        }.get(key)
 
         # Check if update is stuck
         request = mock_cache.get("update:request")

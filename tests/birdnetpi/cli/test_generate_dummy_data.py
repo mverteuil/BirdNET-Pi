@@ -37,10 +37,8 @@ def mock_dependencies(mocker, tmp_path):
 
         mock_db_path = MagicMock(spec=Path)
         mock_db_path.__str__ = lambda: str(tmp_path / "database" / "birdnetpi.db")
-        mock_db_path.exists = MagicMock(
-            spec=callable, return_value=False
-        )  # Default to not existing
-        mock_db_path.stat = MagicMock(spec=callable)
+        mock_db_path.exists.return_value = False  # Default to not existing
+        mock_db_path.stat.return_value = MagicMock(spec=object)
 
         # Create actual config path (not MagicMock) to prevent file creation with MagicMock names
         config_dir = tmp_path / "config"

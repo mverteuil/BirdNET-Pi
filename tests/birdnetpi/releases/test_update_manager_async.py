@@ -69,7 +69,7 @@ class TestUpdateManagerAsync:
             "body": "## New Features\n- Added update system",
             "html_url": "https://github.com/owner/repo/releases/tag/v1.1.0",
         }
-        mock_response.raise_for_status = MagicMock(spec=callable)
+        mock_response.raise_for_status.return_value = None
         with patch("httpx.get", autospec=True, return_value=mock_response):
             result = await update_manager_with_state.check_for_updates()
         assert result["update_available"] is True

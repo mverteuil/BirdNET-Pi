@@ -148,7 +148,7 @@ class TestDetectionBufferingEndToEnd:
         # Phase 2: FastAPI becomes available - buffered detections should flush
         with patch("httpx.AsyncClient", autospec=True) as mock_client:
             mock_response = MagicMock(spec=httpx.Response)
-            mock_response.raise_for_status = MagicMock(spec=callable)
+            mock_response.raise_for_status.return_value = None
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
             # Wait for background flush to occur
@@ -320,7 +320,7 @@ class TestDetectionBufferingEndToEnd:
         with patch("httpx.AsyncClient", autospec=True) as mock_client:
             # Mock successful responses
             mock_response = MagicMock(spec=httpx.Response)
-            mock_response.raise_for_status = MagicMock(spec=callable)
+            mock_response.raise_for_status.return_value = None
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
             # Wait for background flush to process buffered detections
@@ -355,7 +355,7 @@ class TestDetectionBufferingEndToEnd:
             for i in range(4):
                 if i % 2 == 0:  # Even indices succeed
                     success_response = MagicMock(spec=httpx.Response)
-                    success_response.raise_for_status = MagicMock(spec=callable)
+                    success_response.raise_for_status.return_value = None
                     responses.append(success_response)
                 else:  # Odd indices fail
                     responses.append(
@@ -417,7 +417,7 @@ class TestDetectionBufferingWithAdminOperations:
             # Start with working FastAPI
             with patch("httpx.AsyncClient", autospec=True) as mock_client:
                 mock_response = MagicMock(spec=httpx.Response)
-                mock_response.raise_for_status = MagicMock(spec=callable)
+                mock_response.raise_for_status.return_value = None
                 mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
                 # Clear buffer
@@ -504,7 +504,7 @@ class TestDetectionBufferingWithAdminOperations:
             # After admin operation, FastAPI should be available again
             with patch("httpx.AsyncClient", autospec=True) as mock_client:
                 mock_response = MagicMock(spec=httpx.Response)
-                mock_response.raise_for_status = MagicMock(spec=callable)
+                mock_response.raise_for_status.return_value = None
                 mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
                 # Wait for background flush to process buffered detection
@@ -564,7 +564,7 @@ class TestDetectionBufferingWithAdminOperations:
                 ]
                 for response in responses:
                     if hasattr(response, "raise_for_status"):
-                        response.raise_for_status = MagicMock(spec=callable)
+                        response.raise_for_status.return_value = None
 
                 post_mock.side_effect = responses
 
@@ -592,7 +592,7 @@ class TestDetectionBufferingWithAdminOperations:
             # Cycle 3: Full recovery and complete flush
             with patch("httpx.AsyncClient", autospec=True) as mock_client:
                 mock_response = MagicMock(spec=httpx.Response)
-                mock_response.raise_for_status = MagicMock(spec=callable)
+                mock_response.raise_for_status.return_value = None
                 mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
                 # Wait for background flush

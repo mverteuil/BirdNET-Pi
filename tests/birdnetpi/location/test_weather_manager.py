@@ -79,7 +79,7 @@ async def test_fetch_weather_range(weather_manager, mock_weather_response):
         mock_client = mock_client_class.return_value.__aenter__.return_value
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = mock_weather_response
-        mock_response.raise_for_status = MagicMock(spec=httpx.Response.raise_for_status)
+        mock_response.raise_for_status.return_value = None
         mock_client.get.return_value = mock_response
 
         start_date = datetime(2024, 1, 1, tzinfo=UTC)
@@ -102,7 +102,7 @@ async def test_fetch_weather_range_historical_api(weather_manager, mock_weather_
         mock_client = mock_client_class.return_value.__aenter__.return_value
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = mock_weather_response
-        mock_response.raise_for_status = MagicMock(spec=httpx.Response.raise_for_status)
+        mock_response.raise_for_status.return_value = None
         mock_client.get.return_value = mock_response
 
         # Use a date more than 5 days ago
@@ -125,7 +125,7 @@ async def test_fetch_weather_range_forecast_api(weather_manager, mock_weather_re
         mock_client = mock_client_class.return_value.__aenter__.return_value
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = mock_weather_response
-        mock_response.raise_for_status = MagicMock(spec=httpx.Response.raise_for_status)
+        mock_response.raise_for_status.return_value = None
         mock_client.get.return_value = mock_response
 
         # Use a recent date
