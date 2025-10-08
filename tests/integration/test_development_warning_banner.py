@@ -38,16 +38,15 @@ class TestDevelopmentWarningBanner:
         """Should show development warning when on dev version and enabled."""
         # Create mock container with configured services
         container = Container()
-        mock_cache = MagicMock()
-        mock_config = MagicMock()
+        mock_cache = MagicMock(spec=Cache)
+        mock_config = MagicMock(spec=BirdNETConfig)
+        mock_config.updates = MagicMock(spec=UpdateConfig)
+        mock_config.updates.show_development_warning = True
+        mock_config.updates.show_banner = True
 
         # Override container providers
         with container.cache_service.override(mock_cache):
             with container.config.override(mock_config):
-                # Configure to show development warning
-                mock_config.updates.show_development_warning = True
-                mock_config.updates.show_banner = True
-
                 # Set cache to indicate development version
                 mock_cache.get.return_value = {
                     "current_version": "dev-abc1234",
@@ -71,16 +70,15 @@ class TestDevelopmentWarningBanner:
         """Should not show development warning when disabled in config."""
         # Create mock container with configured services
         container = Container()
-        mock_cache = MagicMock()
-        mock_config = MagicMock()
+        mock_cache = MagicMock(spec=Cache)
+        mock_config = MagicMock(spec=BirdNETConfig)
+        mock_config.updates = MagicMock(spec=UpdateConfig)
+        mock_config.updates.show_development_warning = False
+        mock_config.updates.show_banner = True
 
         # Override container providers
         with container.cache_service.override(mock_cache):
             with container.config.override(mock_config):
-                # Disable development warning
-                mock_config.updates.show_development_warning = False
-                mock_config.updates.show_banner = True
-
                 # Set cache to indicate development version
                 mock_cache.get.return_value = {
                     "current_version": "dev-abc1234",
@@ -103,16 +101,15 @@ class TestDevelopmentWarningBanner:
         """Should not show development warning when on a release version."""
         # Create mock container with configured services
         container = Container()
-        mock_cache = MagicMock()
-        mock_config = MagicMock()
+        mock_cache = MagicMock(spec=Cache)
+        mock_config = MagicMock(spec=BirdNETConfig)
+        mock_config.updates = MagicMock(spec=UpdateConfig)
+        mock_config.updates.show_development_warning = True
+        mock_config.updates.show_banner = True
 
         # Override container providers
         with container.cache_service.override(mock_cache):
             with container.config.override(mock_config):
-                # Enable development warning
-                mock_config.updates.show_development_warning = True
-                mock_config.updates.show_banner = True
-
                 # Set cache to indicate release version
                 mock_cache.get.return_value = {
                     "current_version": "v1.0.0",
@@ -292,7 +289,9 @@ class TestUpdateDaemonIntegration:
             "update_available": True,
             "checked_at": "2024-01-01T12:00:00",
         }
-        DaemonState.update_manager.check_for_updates = AsyncMock(return_value=mock_status)
+        DaemonState.update_manager.check_for_updates = AsyncMock(
+            spec=callable, return_value=mock_status
+        )
 
         # Process a check request
         await process_update_request({"action": "check"})

@@ -45,13 +45,17 @@ class TestScatterDataLimit:
             )
             detections.append(detection)
 
-        mock_detection_query_service.query_detections = AsyncMock(return_value=detections)
+        mock_detection_query_service.query_detections = AsyncMock(
+            spec=callable, return_value=detections
+        )
 
         # Mock species counts for frequency categorization
         species_counts = []
         for i in range(10):
             species_counts.append({"common_name": f"Bird_{i}", "count": 15})  # 15 each = 150 total
-        mock_detection_query_service.get_species_counts = AsyncMock(return_value=species_counts)
+        mock_detection_query_service.get_species_counts = AsyncMock(
+            spec=callable, return_value=species_counts
+        )
 
         # Call the method
         result = await analytics_manager.get_detection_scatter_data(hours=24)
@@ -84,8 +88,8 @@ class TestScatterDataLimit:
         self, analytics_manager, mock_detection_query_service
     ):
         """Should handle case with no detections gracefully."""
-        mock_detection_query_service.query_detections = AsyncMock(return_value=[])
-        mock_detection_query_service.get_species_counts = AsyncMock(return_value=[])
+        mock_detection_query_service.query_detections = AsyncMock(spec=callable, return_value=[])
+        mock_detection_query_service.get_species_counts = AsyncMock(spec=callable, return_value=[])
 
         result = await analytics_manager.get_detection_scatter_data(hours=24)
 
@@ -137,15 +141,18 @@ class TestScatterDataLimit:
         )
         detections.append(detection)
 
-        mock_detection_query_service.query_detections = AsyncMock(return_value=detections)
+        mock_detection_query_service.query_detections = AsyncMock(
+            spec=callable, return_value=detections
+        )
 
         # Mock species counts for frequency categorization
         mock_detection_query_service.get_species_counts = AsyncMock(
+            spec=callable,
             return_value=[
                 {"common_name": "Common Bird", "count": 25},
                 {"common_name": "Regular Bird", "count": 10},
                 {"common_name": "Rare Bird", "count": 1},
-            ]
+            ],
         )
 
         result = await analytics_manager.get_detection_scatter_data(hours=24)

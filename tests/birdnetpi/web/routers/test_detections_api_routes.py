@@ -26,26 +26,13 @@ from birdnetpi.web.routers.detections_api_routes import (
 @pytest.fixture
 def client(path_resolver, test_config):
     """Create test client with detections API routes and mocked dependencies."""
-    # Create the app
     app = FastAPI()
-
-    # Create the real container
     container = Container()
-
-    # Override services with mocks
-    mock_data_manager = MagicMock(spec=DataManager)
+    mock_data_manager = MagicMock(spec=DataManager, query_service=None)
     mock_query_service = MagicMock(spec=DetectionQueryService)
-
-    # Add query_service attribute to the mock data manager
-    mock_data_manager.query_service = None
-
     container.data_manager.override(mock_data_manager)
     container.detection_query_service.override(mock_query_service)
-
-    # Use the real test config from the fixture
     container.config.override(test_config)
-
-    # Mock the cache service to avoid Redis connection issues
     mock_cache = MagicMock(spec=Cache)
     mock_cache.get.return_value = None
     mock_cache.set.return_value = True
@@ -64,22 +51,12 @@ def client(path_resolver, test_config):
         "backend": "mock",
     }
     container.cache_service.override(mock_cache)
-
-    # Wire the container
     container.wire(modules=["birdnetpi.web.routers.detections_api_routes"])
-
-    # Include the router
-    # Router already has prefix="/detections", so we only add "/api"
     app.include_router(router, prefix="/api")
-
-    # Create and return test client
     client = TestClient(app)
-
-    # Store the mocks for access in tests
     client.mock_data_manager = mock_data_manager  # type: ignore[attr-defined]
     client.mock_query_service = mock_query_service  # type: ignore[attr-defined]
     client.test_config = test_config  # type: ignore[attr-defined]
-
     return client
 
 
@@ -94,16 +71,14 @@ class TestDetectionsAPIRoutes:
         client.mock_data_manager.create_detection = AsyncMock(
             spec=DataManager.create_detection, return_value=mock_detection
         )
-
         test_audio = base64.b64encode(b"test audio data").decode("utf-8")
-
         detection_data = {
             "species_tensor": "Testus species_Test Bird",
             "scientific_name": "Testus species",
             "common_name": "Test Bird",
             "confidence": 0.95,
             "timestamp": "2025-01-15T10:30:00",
-            "audio_data": test_audio,  # Base64-encoded audio
+            "audio_data": test_audio,
             "sample_rate": 48000,
             "channels": 1,
             "latitude": 63.4591,
@@ -113,9 +88,7 @@ class TestDetectionsAPIRoutes:
             "sensitivity_setting": 1.0,
             "overlap": 0.0,
         }
-
         response = client.post("/api/detections/", json=detection_data)
-
         assert response.status_code == 201
         data = response.json()
         assert data["message"] == "Detection received and dispatched"
@@ -123,22 +96,16 @@ class TestDetectionsAPIRoutes:
 
     def test_create_detection_validation_error(self, client):
         """Should handle validation errors when creating detection."""
-        # Test with missing required fields
         detection_data = {
             "species_tensor": "Testus species_Test Bird",
             "scientific_name": "Testus species",
-            # Missing many required fields
         }
-
         response = client.post("/api/detections/", json=detection_data)
-
-        # Should get validation error
         assert response.status_code == 422
         assert "detail" in response.json()
 
     def test_get_recent_detections(self, client, model_factory):
         """Should return recent detections."""
-        # Create actual DetectionWithTaxa objects using model_factory
         mock_detections = [
             model_factory.create_detection_with_taxa(
                 species_tensor="Turdus migratorius_American Robin",
@@ -169,13 +136,10 @@ class TestDetectionsAPIRoutes:
                 order_name="Passeriformes",
             ),
         ]
-        # Mock query_detections on DetectionQueryService (not DataManager)
         client.mock_query_service.query_detections = AsyncMock(
             spec=DetectionQueryService.query_detections, return_value=mock_detections
         )
-
         response = client.get("/api/detections/recent?limit=10")
-
         assert response.status_code == 200
         data = response.json()
         assert data["count"] == 2
@@ -187,9 +151,7 @@ class TestDetectionsAPIRoutes:
         client.mock_query_service.query_detections = AsyncMock(
             spec=DetectionQueryService.query_detections, side_effect=Exception("Database error")
         )
-
         response = client.get("/api/detections/recent?limit=10")
-
         assert response.status_code == 500
         assert "Error retrieving recent detections" in response.json()["detail"]
 
@@ -199,9 +161,7 @@ class TestDetectionsAPIRoutes:
         client.mock_query_service.count_by_date = AsyncMock(
             spec=DetectionQueryService.count_by_date, return_value={today: 5}
         )
-
         response = client.get("/api/detections/count")
-
         assert response.status_code == 200
         data = response.json()
         assert data["count"] == 5
@@ -212,9 +172,7 @@ class TestDetectionsAPIRoutes:
         client.mock_query_service.count_by_date = AsyncMock(
             spec=DetectionQueryService.count_by_date, return_value={target_date: 42}
         )
-
         response = client.get(f"/api/detections/count?target_date={target_date.isoformat()}")
-
         assert response.status_code == 200
         data = response.json()
         assert data["date"] == "2025-01-15"
@@ -226,9 +184,7 @@ class TestDetectionsAPIRoutes:
         client.mock_query_service.count_by_date = AsyncMock(
             spec=DetectionQueryService.count_by_date, return_value={}
         )
-
         response = client.get(f"/api/detections/count?target_date={empty_date.isoformat()}")
-
         assert response.status_code == 200
         data = response.json()
         assert data["count"] == 0
@@ -247,29 +203,21 @@ class TestDetectionsAPIRoutes:
             sensitivity_setting=1.0,
             overlap=0.0,
         )
-        # Mock the correct method on the correct service
         client.mock_query_service.get_detection_with_taxa = AsyncMock(
             spec=DetectionQueryService.get_detection_with_taxa, return_value=mock_detection
         )
-
-        # Use the detection's actual UUID
         response = client.get(f"/api/detections/{mock_detection.id}")
-
         assert response.status_code == 200
         data = response.json()
-        assert data["id"]  # ID should be present as a UUID string
+        assert data["id"]
         assert data["common_name"] == "Test Bird"
 
     def test_get_detection_by_id_not_found(self, client):
         """Should return 404 for non-existent detection."""
-        # Mock the correct method on the correct service
         client.mock_query_service.get_detection_with_taxa = AsyncMock(
             spec=DetectionQueryService.get_detection_with_taxa, return_value=None
         )
-
-        # Use a valid UUID that doesn't exist
         response = client.get(f"/api/detections/{uuid4()}")
-
         assert response.status_code == 404
 
     def test_update_detection_location(self, client, model_factory):
@@ -284,11 +232,8 @@ class TestDetectionsAPIRoutes:
         client.mock_data_manager.update_detection = AsyncMock(
             spec=DataManager.update_detection, return_value=updated_detection
         )
-
         location_data = {"latitude": 41.0, "longitude": -75.0}
-
         response = client.post(f"/api/detections/{mock_detection.id}/location", json=location_data)
-
         assert response.status_code == 200
         data = response.json()
         assert data["message"] == "Location updated successfully"
@@ -299,11 +244,8 @@ class TestDetectionsAPIRoutes:
         client.mock_data_manager.get_detection_by_id = AsyncMock(
             spec=DataManager.get_detection_by_id, return_value=None
         )
-
         location_data = {"latitude": 41.0, "longitude": -75.0}
-
         response = client.post(f"/api/detections/{uuid4()}/location", json=location_data)
-
         assert response.status_code == 404
         assert "Detection not found" in response.json()["detail"]
 
@@ -316,11 +258,8 @@ class TestDetectionsAPIRoutes:
         client.mock_data_manager.update_detection = AsyncMock(
             spec=DataManager.update_detection, return_value=None
         )
-
         location_data = {"latitude": 41.0, "longitude": -75.0}
-
         response = client.post(f"/api/detections/{mock_detection.id}/location", json=location_data)
-
         assert response.status_code == 500
         assert "Failed to update detection location" in response.json()["detail"]
 
@@ -329,11 +268,8 @@ class TestDetectionsAPIRoutes:
         client.mock_data_manager.get_detection_by_id = AsyncMock(
             spec=DataManager.get_detection_by_id, side_effect=Exception("Database error")
         )
-
         location_data = {"latitude": 41.0, "longitude": -75.0}
-
         response = client.post(f"/api/detections/{uuid4()}/location", json=location_data)
-
         assert response.status_code == 500
         assert "Error updating detection location" in response.json()["detail"]
 
@@ -343,7 +279,6 @@ class TestPaginatedDetections:
 
     def test_get_paginated_detections(self, client, model_factory):
         """Should return paginated detections."""
-        # Mock DetectionWithTaxa objects
         mock_detections = [
             model_factory.create_detection_with_taxa(
                 species_tensor=f"Species {i}_Common {i}",
@@ -359,16 +294,12 @@ class TestPaginatedDetections:
                 genus=f"Genus {i % 2}",
                 order_name="Passeriformes",
             )
-            for i in range(25)  # Create 25 detections for pagination testing
+            for i in range(25)
         ]
-
-        # Mock query_detections on DetectionQueryService
         client.mock_query_service.query_detections = AsyncMock(
             spec=DetectionQueryService.query_detections, return_value=mock_detections
         )
-
         response = client.get("/api/detections/?page=1&per_page=10&period=week")
-
         assert response.status_code == 200
         data = response.json()
         assert len(data["detections"]) == 10
@@ -381,7 +312,6 @@ class TestPaginatedDetections:
 
     def test_get_paginated_detections_with_search(self, client, model_factory):
         """Should filter paginated detections by search term."""
-        # Mock detections with different names
         mock_detections = [
             model_factory.create_detection_with_taxa(
                 species_tensor="Turdus migratorius_American Robin",
@@ -405,14 +335,10 @@ class TestPaginatedDetections:
                 timestamp=datetime(2025, 1, 15, 11, 30, tzinfo=UTC),
             ),
         ]
-
         client.mock_query_service.query_detections = AsyncMock(
             spec=DetectionQueryService.query_detections, return_value=mock_detections
         )
-
-        # Search for "Robin"
         response = client.get("/api/detections/?search=Robin")
-
         assert response.status_code == 200
         data = response.json()
         assert len(data["detections"]) == 1
@@ -423,9 +349,7 @@ class TestPaginatedDetections:
         client.mock_query_service.query_detections = AsyncMock(
             spec=DetectionQueryService.query_detections, return_value=[]
         )
-
         response = client.get("/api/detections/?page=1")
-
         assert response.status_code == 200
         data = response.json()
         assert data["detections"] == []
@@ -437,9 +361,7 @@ class TestPaginatedDetections:
         client.mock_query_service.query_detections = AsyncMock(
             spec=DetectionQueryService.query_detections, side_effect=Exception("Database error")
         )
-
         response = client.get("/api/detections/?page=1&per_page=10")
-
         assert response.status_code == 500
         assert "Error retrieving detections" in response.json()["detail"]
 
@@ -454,16 +376,11 @@ class TestPaginatedDetections:
                 timestamp=datetime.now(UTC),
             )
         ]
-
         client.mock_query_service.query_detections = AsyncMock(
             spec=DetectionQueryService.query_detections, return_value=mock_detections
         )
-
-        # Don't provide dates - should default to today
         response = client.get("/api/detections/?page=1&per_page=20")
-
         assert response.status_code == 200
-        # Should use default dates (tested by successful response)
         data = response.json()
         assert "detections" in data
         assert "pagination" in data
@@ -496,29 +413,23 @@ class TestBestRecordings:
                 genus="Corvus",
             ),
         ]
-
-        # Mock the query_best_recordings_per_species method to return (detections, total_count)
         client.mock_query_service.query_best_recordings_per_species = AsyncMock(
             spec=DetectionQueryService.query_best_recordings_per_species,
             return_value=(mock_detections, len(mock_detections)),
         )
-
         response = client.get(
             "/api/detections/best-recordings?min_confidence=0.9&page=1&per_page=50"
         )
-
         assert response.status_code == 200
         data = response.json()
         assert len(data["recordings"]) == 2
-        assert data["recordings"][0]["confidence"] == 0.98  # Confidence is 0-1, not percentage
+        assert data["recordings"][0]["confidence"] == 0.98
         assert data["count"] == 2
         assert data["unique_species"] == 2
         assert data["avg_confidence"] > 0
-        # Check pagination metadata
         assert "pagination" in data
         assert data["pagination"]["page"] == 1
         assert data["pagination"]["total"] == 2
-        # Check that taxonomy fields are present
         assert data["recordings"][0]["family"] == "Turdidae"
         assert data["recordings"][0]["genus"] == "Turdus"
         assert data["recordings"][1]["family"] == "Corvidae"
@@ -536,17 +447,13 @@ class TestBestRecordings:
                 timestamp=datetime(2025, 1, 15, 10, 30, tzinfo=UTC),
                 family="Corvidae",
                 genus="Corvus",
-            ),
+            )
         ]
-
-        # Mock the query_best_recordings_per_species method to return (detections, total_count)
         client.mock_query_service.query_best_recordings_per_species = AsyncMock(
             spec=DetectionQueryService.query_best_recordings_per_species,
             return_value=(mock_detections, 1),
         )
-
         response = client.get("/api/detections/best-recordings?family=Corvidae")
-
         assert response.status_code == 200
         data = response.json()
         assert len(data["recordings"]) == 1
@@ -555,13 +462,10 @@ class TestBestRecordings:
 
     def test_get_best_recordings_empty(self, client):
         """Should handle empty results for best recordings."""
-        # Mock the query_best_recordings_per_species method to return empty results
         client.mock_query_service.query_best_recordings_per_species = AsyncMock(
             spec=DetectionQueryService.query_best_recordings_per_species, return_value=([], 0)
         )
-
         response = client.get("/api/detections/best-recordings?min_confidence=0.99")
-
         assert response.status_code == 200
         data = response.json()
         assert data["recordings"] == []
@@ -571,37 +475,25 @@ class TestBestRecordings:
 
     def test_get_best_recordings_error(self, client):
         """Should handle errors in best recordings."""
-        # Mock the query_best_recordings_per_species method to raise an error
         client.mock_query_service.query_best_recordings_per_species = AsyncMock(
             spec=DetectionQueryService.query_best_recordings_per_species,
             side_effect=Exception("Query failed"),
         )
-
         response = client.get("/api/detections/best-recordings")
-
         assert response.status_code == 500
         assert "Error retrieving best recordings" in response.json()["detail"]
 
     def test_get_best_recordings_with_species_filter_no_limit(self, client, model_factory):
         """Should pass None per_species_limit when species filter is provided."""
         mock_detection = model_factory.create_detection_with_taxa(
-            scientific_name="Turdus migratorius",
-            common_name="American Robin",
-            confidence=0.95,
+            scientific_name="Turdus migratorius", common_name="American Robin", confidence=0.95
         )
-
-        # Mock the query_best_recordings_per_species method
         client.mock_query_service.query_best_recordings_per_species = AsyncMock(
             spec=DetectionQueryService.query_best_recordings_per_species,
             return_value=([mock_detection], 1),
         )
-
-        # Request with species filter
         response = client.get("/api/detections/best-recordings?species=Turdus%20migratorius")
-
         assert response.status_code == 200
-
-        # Verify that per_species_limit was set to None for species filter
         client.mock_query_service.query_best_recordings_per_species.assert_called_once()
         call_args = client.mock_query_service.query_best_recordings_per_species.call_args
         assert call_args.kwargs["per_species_limit"] is None
@@ -610,23 +502,14 @@ class TestBestRecordings:
     def test_get_best_recordings_without_species_uses_default_limit(self, client, model_factory):
         """Should use default per_species_limit when no species filter."""
         mock_detection = model_factory.create_detection_with_taxa(
-            scientific_name="Turdus migratorius",
-            common_name="American Robin",
-            confidence=0.95,
+            scientific_name="Turdus migratorius", common_name="American Robin", confidence=0.95
         )
-
-        # Mock the query_best_recordings_per_species method
         client.mock_query_service.query_best_recordings_per_species = AsyncMock(
             spec=DetectionQueryService.query_best_recordings_per_species,
             return_value=([mock_detection], 1),
         )
-
-        # Request without species filter
         response = client.get("/api/detections/best-recordings")
-
         assert response.status_code == 200
-
-        # Verify that per_species_limit was set to 5 (default)
         client.mock_query_service.query_best_recordings_per_species.assert_called_once()
         call_args = client.mock_query_service.query_best_recordings_per_species.call_args
         assert call_args.kwargs["per_species_limit"] == 5
@@ -655,13 +538,10 @@ class TestDetectionAudio:
             genus="Turdus",
             order_name="Passeriformes",
         )
-
         client.mock_query_service.get_detection_with_taxa = AsyncMock(
             spec=DetectionQueryService.get_detection_with_taxa, return_value=mock_detection
         )
-
         response = client.get(f"/api/detections/{mock_detection.id}?language_code=en")
-
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == str(mock_detection.id)
@@ -677,31 +557,21 @@ class TestDetectionAudio:
         client.mock_data_manager.get_detection_by_id = AsyncMock(
             spec=DataManager.get_detection_by_id, return_value=None
         )
-
         response = client.get(f"/api/detections/{uuid4()}")
-
         assert response.status_code == 404
         assert "Detection not found" in response.json()["detail"]
 
     def test_get_detection_audio_success(self, client, tmp_path, model_factory):
         """Should successfully serve audio file when detection and file exist."""
-        # Create a temporary WAV file
         audio_file_path = tmp_path / "test_audio.wav"
-        audio_file_path.write_bytes(
-            b"RIFF" + b"\x00" * 36 + b"data" + b"\x00" * 100
-        )  # Minimal WAV header
-
-        # Create a detection with audio file
+        audio_file_path.write_bytes(b"RIFF" + b"\x00" * 36 + b"data" + b"\x00" * 100)
         mock_detection = model_factory.create_detection()
         mock_detection.audio_file = MagicMock(spec=AudioFile)
         mock_detection.audio_file.file_path = audio_file_path
-
         client.mock_data_manager.get_detection_by_id = AsyncMock(
             spec=DataManager.get_detection_by_id, return_value=mock_detection
         )
-
         response = client.get(f"/api/detections/{mock_detection.id}/audio")
-
         assert response.status_code == 200
         assert response.headers["content-type"] == "audio/wav"
         assert response.headers["cache-control"] == "public, max-age=3600"
@@ -714,9 +584,7 @@ class TestDetectionAudio:
         client.mock_data_manager.get_detection_by_id = AsyncMock(
             spec=DataManager.get_detection_by_id, return_value=None
         )
-
         response = client.get(f"/api/detections/{detection_id}/audio")
-
         assert response.status_code == 404
         assert f"Detection {detection_id} not found" in response.json()["detail"]
 
@@ -724,49 +592,36 @@ class TestDetectionAudio:
         """Should return 404 when detection has no audio file record."""
         mock_detection = model_factory.create_detection()
         mock_detection.audio_file = None
-
         client.mock_data_manager.get_detection_by_id = AsyncMock(
             spec=DataManager.get_detection_by_id, return_value=mock_detection
         )
-
         response = client.get(f"/api/detections/{mock_detection.id}/audio")
-
         assert response.status_code == 404
         assert "Audio file not available" in response.json()["detail"]
 
     def test_get_detection_audio_file_missing(self, client, model_factory):
         """Should return 404 when audio file doesn't exist on disk."""
-        # Create a detection with non-existent audio file path
         mock_detection = model_factory.create_detection()
         mock_detection.audio_file = MagicMock(spec=AudioFile)
         mock_detection.audio_file.file_path = Path("/non/existent/audio.wav")
-
         client.mock_data_manager.get_detection_by_id = AsyncMock(
             spec=DataManager.get_detection_by_id, return_value=mock_detection
         )
-
         response = client.get(f"/api/detections/{mock_detection.id}/audio")
-
         assert response.status_code == 404
         assert "Audio file not found on disk" in response.json()["detail"]
 
     def test_get_detection_audio_absolute_path(self, client, tmp_path, model_factory):
         """Should serve audio file with absolute path."""
-        # Create a temporary WAV file with absolute path
         audio_file_path = tmp_path / "test_absolute.wav"
         audio_file_path.write_bytes(b"RIFF" + b"\x00" * 36 + b"data" + b"\x00" * 100)
-
-        # Create detection with absolute path
         mock_detection = model_factory.create_detection()
         mock_detection.audio_file = MagicMock(spec=AudioFile)
-        mock_detection.audio_file.file_path = audio_file_path  # Absolute path
-
+        mock_detection.audio_file.file_path = audio_file_path
         client.mock_data_manager.get_detection_by_id = AsyncMock(
             spec=DataManager.get_detection_by_id, return_value=mock_detection
         )
-
         response = client.get(f"/api/detections/{mock_detection.id}/audio")
-
         assert response.status_code == 200
         assert response.headers["content-type"] == "audio/wav"
         assert len(response.content) > 0
@@ -774,14 +629,10 @@ class TestDetectionAudio:
     def test_get_detection_audio_error_handling(self, client, model_factory):
         """Should handle unexpected errors when serving audio."""
         mock_detection = model_factory.create_detection()
-
-        # Simulate unexpected exception
         client.mock_data_manager.get_detection_by_id = AsyncMock(
             spec=DataManager.get_detection_by_id, side_effect=Exception("Unexpected error")
         )
-
         response = client.get(f"/api/detections/{mock_detection.id}/audio")
-
         assert response.status_code == 500
         assert "Error serving audio file" in response.json()["detail"]
 
@@ -807,13 +658,10 @@ class TestSpeciesSummary:
                 "count": 15,
             },
         ]
-
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary, return_value=mock_summary
         )
-
         response = client.get("/api/detections/species/summary?language_code=en")
-
         assert response.status_code == 200
         data = response.json()
         assert len(data["species"]) == 2
@@ -842,16 +690,12 @@ class TestSpeciesSummary:
                 "count": 42,
             },
         ]
-
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary, return_value=mock_summary
         )
-
         response = client.get("/api/detections/species/summary?family_filter=Corvidae")
-
         assert response.status_code == 200
         data = response.json()
-        # The mock returns all species regardless of filter, so we get all 3
         assert len(data["species"]) == 3
 
     def test_get_species_summary_error(self, client):
@@ -859,9 +703,7 @@ class TestSpeciesSummary:
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary, side_effect=Exception("Database error")
         )
-
         response = client.get("/api/detections/species/summary")
-
         assert response.status_code == 500
         assert "Error retrieving species summary" in response.json()["detail"]
 
@@ -878,13 +720,10 @@ class TestSpeciesSummary:
                 "first_ever_detection": None,
             }
         ]
-
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary, return_value=mock_summary
         )
-
         response = client.get("/api/detections/species/summary?period=day")
-
         assert response.status_code == 200
         data = response.json()
         assert data["period"] == "day"
@@ -896,9 +735,7 @@ class TestSpeciesSummary:
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary, return_value=[]
         )
-
         response = client.get("/api/detections/species/summary?period=week")
-
         assert response.status_code == 200
         data = response.json()
         assert data["period"] == "week"
@@ -914,18 +751,14 @@ class TestSpeciesSummary:
                 "first_ever_detection": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
             }
         ]
-
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary, return_value=mock_summary
         )
-
         response = client.get("/api/detections/species/summary?period=historical")
-
         assert response.status_code == 200
         data = response.json()
         assert data["period"] == "historical"
         assert data["period_label"] == "All Time"
-        # Should call with since=None for historical
         client.mock_query_service.get_species_summary.assert_called_once()
 
     def test_get_species_summary_first_ever_detection(self, client):
@@ -939,13 +772,10 @@ class TestSpeciesSummary:
                 "first_ever_detection": first_detection_time,
             }
         ]
-
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary, return_value=mock_summary
         )
-
         response = client.get("/api/detections/species/summary")
-
         assert response.status_code == 200
         data = response.json()
         assert data["species"][0]["is_first_ever"] is True
@@ -965,38 +795,23 @@ class TestDetectionStreaming:
             latitude=40.0,
             longitude=-74.0,
         )
-
         event_data = _format_detection_event(mock_detection)
-
         assert event_data["id"] == str(mock_detection.id)
         assert event_data["scientific_name"] == "Turdus migratorius"
         assert event_data["common_name"] == "American Robin"
         assert event_data["confidence"] == 0.95
         assert event_data["latitude"] == 40.0
         assert event_data["longitude"] == -74.0
-        # Timestamp should have Z suffix for UTC
         assert event_data["timestamp"].endswith("Z")
 
     def test_create_detection_handler(self, model_factory):
         """Should create detection handler for SSE."""
-        # Create an event loop and queue
         loop = asyncio.new_event_loop()
         queue = asyncio.Queue()
-
-        # Create handler
         handler = _create_detection_handler(loop, queue)
-
-        # Test that handler is callable
         assert callable(handler)
-
-        # Create a mock detection
         mock_detection = model_factory.create_detection(scientific_name="Test Bird")
-
-        # Call handler (simulating signal emission)
         handler(sender=None, detection=mock_detection)
-
-        # Queue should have the detection
-        # Note: can't easily test without running the event loop
         loop.close()
 
 
@@ -1019,16 +834,13 @@ class TestDetectionsSummary:
                 "detection_count": 15,
             },
         ]
-
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary, return_value=mock_summary
         )
         client.mock_query_service.get_detection_count = AsyncMock(
             spec=DetectionQueryService.get_detection_count, return_value=57
         )
-
         response = client.get("/api/detections/summary?period=day")
-
         assert response.status_code == 200
         data = response.json()
         assert data["species_count"] == 2
@@ -1036,7 +848,6 @@ class TestDetectionsSummary:
         assert len(data["species_frequency"]) == 2
         assert data["species_frequency"][0]["species"] == "American Robin"
         assert data["species_frequency"][0]["count"] == 42
-        # 42/57 * 100 = 73.7%
         assert 73.0 <= data["species_frequency"][0]["percentage"] <= 74.0
 
     def test_get_summary_week_period(self, client):
@@ -1049,16 +860,13 @@ class TestDetectionsSummary:
                 "detection_count": 128,
             }
         ]
-
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary, return_value=mock_summary
         )
         client.mock_query_service.get_detection_count = AsyncMock(
             spec=DetectionQueryService.get_detection_count, return_value=128
         )
-
         response = client.get("/api/detections/summary?period=week")
-
         assert response.status_code == 200
         data = response.json()
         assert data["species_count"] == 1
@@ -1072,9 +880,7 @@ class TestDetectionsSummary:
         client.mock_query_service.get_detection_count = AsyncMock(
             spec=DetectionQueryService.get_detection_count, return_value=0
         )
-
         response = client.get("/api/detections/summary?period=month")
-
         assert response.status_code == 200
         data = response.json()
         assert data["species_count"] == 0
@@ -1088,22 +894,18 @@ class TestDetectionsSummary:
                 "scientific_name": "Turdus migratorius",
                 "best_common_name": "American Robin",
                 "detection_count": 500,
-            },
+            }
         ]
-
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary, return_value=mock_summary
         )
         client.mock_query_service.get_detection_count = AsyncMock(
             spec=DetectionQueryService.get_detection_count, return_value=500
         )
-
         response = client.get("/api/detections/summary?period=historical")
-
         assert response.status_code == 200
         data = response.json()
         assert data["total_detections"] == 500
-        # Historical uses None for since parameter
         client.mock_query_service.get_species_summary.assert_called_once()
         call_kwargs = client.mock_query_service.get_species_summary.call_args.kwargs
         assert call_kwargs.get("since") is None
@@ -1113,9 +915,7 @@ class TestDetectionsSummary:
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary, side_effect=Exception("Database error")
         )
-
         response = client.get("/api/detections/summary?period=day")
-
         assert response.status_code == 500
         assert "Failed to get detection summary" in response.json()["detail"]
 
@@ -1125,7 +925,6 @@ class TestHierarchicalFiltering:
 
     def test_get_families(self, client):
         """Should getting list of families."""
-        # Mock the query service response
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary,
             return_value=[
@@ -1138,9 +937,7 @@ class TestHierarchicalFiltering:
                 {"family": "Turdidae", "genus": "Turdus", "scientific_name": "Turdus migratorius"},
             ],
         )
-
         response = client.get("/api/detections/taxonomy/families")
-
         assert response.status_code == 200
         data = response.json()
         families = data["families"]
@@ -1151,7 +948,6 @@ class TestHierarchicalFiltering:
 
     def test_get_genera_by_family(self, client):
         """Should getting genera for a specific family."""
-        # Mock the query service response
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary,
             return_value=[
@@ -1164,9 +960,7 @@ class TestHierarchicalFiltering:
                 {"family": "Turdidae", "genus": "Turdus", "scientific_name": "Turdus migratorius"},
             ],
         )
-
         response = client.get("/api/detections/taxonomy/genera?family=Corvidae")
-
         assert response.status_code == 200
         data = response.json()
         genera = data["genera"]
@@ -1178,7 +972,6 @@ class TestHierarchicalFiltering:
 
     def test_get_species_by_genus(self, client):
         """Should getting species for a specific genus."""
-        # Mock the query service response
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary,
             return_value=[
@@ -1200,9 +993,7 @@ class TestHierarchicalFiltering:
                 },
             ],
         )
-
         response = client.get("/api/detections/taxonomy/species?genus=Cyanocitta")
-
         assert response.status_code == 200
         data = response.json()
         species = data["species"]
@@ -1215,7 +1006,6 @@ class TestHierarchicalFiltering:
 
     def test_get_species_by_genus_with_family_filter(self, client):
         """Should getting species for a genus filtered by family."""
-        # Mock the query service response
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary,
             return_value=[
@@ -1237,9 +1027,7 @@ class TestHierarchicalFiltering:
                 },
             ],
         )
-
         response = client.get("/api/detections/taxonomy/species?genus=Corvus&family=Corvidae")
-
         assert response.status_code == 200
         data = response.json()
         species = data["species"]
@@ -1253,9 +1041,7 @@ class TestHierarchicalFiltering:
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary, return_value=[]
         )
-
         response = client.get("/api/detections/taxonomy/families")
-
         assert response.status_code == 200
         data = response.json()
         assert data["families"] == []
@@ -1266,12 +1052,10 @@ class TestHierarchicalFiltering:
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary,
             return_value=[
-                {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
+                {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"}
             ],
         )
-
         response = client.get("/api/detections/taxonomy/genera?family=UnknownFamily")
-
         assert response.status_code == 200
         data = response.json()
         assert data["genera"] == []
@@ -1283,12 +1067,10 @@ class TestHierarchicalFiltering:
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary,
             return_value=[
-                {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
+                {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"}
             ],
         )
-
         response = client.get("/api/detections/taxonomy/species?genus=UnknownGenus")
-
         assert response.status_code == 200
         data = response.json()
         assert data["species"] == []
@@ -1300,9 +1082,7 @@ class TestHierarchicalFiltering:
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary, side_effect=Exception("Database error")
         )
-
         response = client.get("/api/detections/taxonomy/families")
-
         assert response.status_code == 500
         assert "Error retrieving families" in response.json()["detail"]
 
@@ -1311,9 +1091,7 @@ class TestHierarchicalFiltering:
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary, side_effect=Exception("Database error")
         )
-
         response = client.get("/api/detections/taxonomy/genera?family=Corvidae")
-
         assert response.status_code == 500
         assert "Error retrieving genera" in response.json()["detail"]
 
@@ -1322,9 +1100,7 @@ class TestHierarchicalFiltering:
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary, side_effect=Exception("Database error")
         )
-
         response = client.get("/api/detections/taxonomy/species?genus=Corvus")
-
         assert response.status_code == 500
         assert "Error retrieving species" in response.json()["detail"]
 
@@ -1333,15 +1109,12 @@ class TestHierarchicalFiltering:
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary,
             return_value=[
-                {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
+                {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"}
             ],
         )
-
         response = client.get("/api/detections/taxonomy/families?has_detections=false")
-
         assert response.status_code == 200
         data = response.json()
-        # Currently returns same as has_detections=true (would need IOC database)
         assert "families" in data
 
     def test_get_genera_without_detection_filter(self, client):
@@ -1349,14 +1122,12 @@ class TestHierarchicalFiltering:
         client.mock_query_service.get_species_summary = AsyncMock(
             spec=DetectionQueryService.get_species_summary,
             return_value=[
-                {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"},
+                {"family": "Corvidae", "genus": "Corvus", "scientific_name": "Corvus corax"}
             ],
         )
-
         response = client.get(
             "/api/detections/taxonomy/genera?family=Corvidae&has_detections=false"
         )
-
         assert response.status_code == 200
         data = response.json()
         assert "genera" in data

@@ -12,8 +12,6 @@ from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
 
-# Note: HardwareMonitorManager has been replaced with SystemInspector static methods
-
 
 @pytest.fixture
 def mock_detection_query_service():
@@ -21,10 +19,10 @@ def mock_detection_query_service():
 
     This fixture creates the mock and handles cleanup.
     """
-    mock = MagicMock(spec=DetectionQueryService)
-    mock.count_detections = AsyncMock(spec=callable, return_value=1234)
+    mock = MagicMock(
+        spec=DetectionQueryService, count_detections=AsyncMock(spec=callable, return_value=1234)
+    )
     yield mock
-    # No cleanup needed - mock is garbage collected
 
 
 @pytest.fixture
@@ -34,35 +32,21 @@ async def app_with_system_router(path_resolver, mock_detection_query_service):
     This fixture overrides the detection query service BEFORE creating the app,
     ensuring the mock is properly wired.
     """
-    # Override Container providers BEFORE creating app
     Container.path_resolver.override(providers.Singleton(lambda: path_resolver))
     Container.database_path.override(providers.Factory(lambda: path_resolver.get_database_path()))
-
-    # Create config
     manager = ConfigManager(path_resolver)
     test_config = manager.load()
     Container.config.override(providers.Singleton(lambda: test_config))
-
-    # Create database service
     temp_db_service = CoreDatabaseService(path_resolver.get_database_path())
     await temp_db_service.initialize()
     Container.core_database.override(providers.Singleton(lambda: temp_db_service))
-
-    # Override detection query service with our mock
     Container.detection_query_service.override(providers.Object(mock_detection_query_service))
-
-    # NOW create the app with all overrides in place
     app = create_app()
     app._test_db_service = temp_db_service  # type: ignore[attr-defined]
     app._test_mock_query_service = mock_detection_query_service  # type: ignore[attr-defined]
-
     yield app
-
-    # Cleanup
     if hasattr(temp_db_service, "async_engine") and temp_db_service.async_engine:
         await temp_db_service.async_engine.dispose()
-
-    # Reset overrides
     Container.path_resolver.reset_override()
     Container.database_path.reset_override()
     Container.config.reset_override()
@@ -81,10 +65,7 @@ class TestHardwareEndpoints:
 
     def test_get_hardware_status(self, client, mocker, mock_detection_query_service):
         """Should return comprehensive system hardware status."""
-        mock_health = {
-            "components": {"cpu": {"status": "healthy"}},
-            "overall_status": "healthy",
-        }
+        mock_health = {"components": {"cpu": {"status": "healthy"}}, "overall_status": "healthy"}
         mock_info = {
             "device_name": "Test Device",
             "platform": "Linux",
@@ -105,10 +86,7 @@ class TestHardwareEndpoints:
                 "percent": 50.0,
             },
         }
-
-        mocker.patch(
-            "birdnetpi.web.routers.system_api_routes.time.time", return_value=1086400
-        )  # 10 days after boot
+        mocker.patch("birdnetpi.web.routers.system_api_routes.time.time", return_value=1086400)
         mocker.patch(
             "birdnetpi.web.routers.system_api_routes.SystemInspector.get_health_summary",
             return_value=mock_health,
@@ -117,16 +95,12 @@ class TestHardwareEndpoints:
             "birdnetpi.web.routers.system_api_routes.SystemInspector.get_system_info",
             return_value=mock_info,
         )
-
         response = client.get("/api/system/hardware/status")
-
         assert response.status_code == 200
         data = response.json()
         assert data["overall_status"] == "healthy"
         assert data["system_info"]["device_name"] == "Test Device"
-        assert data["system_info"]["uptime_days"] == 1  # (1086400 - 1000000) / 86400
+        assert data["system_info"]["uptime_days"] == 1
         assert data["resources"]["cpu"]["percent"] == 25.0
         assert data["total_detections"] == 1234
-
-        # Verify the mock was called
         mock_detection_query_service.count_detections.assert_called_once()

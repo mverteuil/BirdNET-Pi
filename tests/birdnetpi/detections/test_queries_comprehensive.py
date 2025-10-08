@@ -21,16 +21,17 @@ from birdnetpi.detections.queries import DetectionQueryService
 def mock_core_database():
     """Mock core database."""
     mock = MagicMock(spec=CoreDatabaseService)
-    mock.get_async_db = MagicMock(spec=callable)
     return mock
 
 
 @pytest.fixture
 def mock_species_database():
     """Mock species database."""
-    mock = MagicMock(spec=SpeciesDatabaseService)
-    mock.attach_all_to_session = AsyncMock(spec=callable)
-    mock.detach_all_from_session = AsyncMock(spec=callable)
+    mock = MagicMock(
+        spec=SpeciesDatabaseService,
+        attach_all_to_session=AsyncMock(spec=callable),
+        detach_all_from_session=AsyncMock(spec=callable),
+    )
     return mock
 
 
@@ -38,9 +39,7 @@ def mock_species_database():
 def detection_query_service(mock_core_database, mock_species_database, test_config):
     """Create DetectionQueryService with mocks."""
     return DetectionQueryService(
-        core_database=mock_core_database,
-        species_database=mock_species_database,
-        config=test_config,
+        core_database=mock_core_database, species_database=mock_species_database, config=test_config
     )
 
 
@@ -70,8 +69,6 @@ class TestDateAndTimeParsing:
 
     def test_parse_timestamp_numeric_as_string(self, detection_query_service):
         """Should parse numeric timestamps when provided as strings."""
-        # The implementation converts to string then parses as ISO format
-        # So we need to provide ISO format strings
         timestamp_str = "2024-01-01T00:00:00"
         result = detection_query_service._parse_timestamp(timestamp_str)
         assert isinstance(result, datetime)
@@ -92,9 +89,7 @@ class TestFilterMethods:
         stmt = select(Detection)
         start = datetime(2024, 1, 1)
         end = datetime(2024, 1, 31)
-
         filtered = detection_query_service._apply_date_filters(stmt, start, end)
-
         query_str = str(filtered)
         assert "timestamp >=" in query_str
         assert "timestamp <=" in query_str
@@ -103,9 +98,7 @@ class TestFilterMethods:
         """Should apply only start date filter."""
         stmt = select(Detection)
         start = datetime(2024, 1, 1)
-
         filtered = detection_query_service._apply_date_filters(stmt, start, None)
-
         assert "timestamp >=" in str(filtered)
         assert "timestamp <=" not in str(filtered)
 
@@ -113,9 +106,7 @@ class TestFilterMethods:
         """Should apply only end date filter."""
         stmt = select(Detection)
         end = datetime(2024, 1, 31)
-
         filtered = detection_query_service._apply_date_filters(stmt, None, end)
-
         assert "timestamp <=" in str(filtered)
         assert "timestamp >=" not in str(filtered)
 
@@ -123,7 +114,6 @@ class TestFilterMethods:
         """Should apply both min and max confidence filters."""
         stmt = select(Detection)
         filtered = detection_query_service._apply_confidence_filters(stmt, 0.5, 0.9)
-
         query_str = str(filtered)
         assert "confidence >=" in query_str
         assert "confidence <=" in query_str
@@ -132,29 +122,24 @@ class TestFilterMethods:
         """Should apply only min confidence filter."""
         stmt = select(Detection)
         filtered = detection_query_service._apply_confidence_filters(stmt, 0.5, None)
-
         assert "confidence >=" in str(filtered)
 
     def test_apply_confidence_filters_max_only(self, detection_query_service):
         """Should apply only max confidence filter."""
         stmt = select(Detection)
         filtered = detection_query_service._apply_confidence_filters(stmt, None, 0.9)
-
         assert "confidence <=" in str(filtered)
 
     def test_apply_ordering_default_column(self, detection_query_service):
         """Should use default column when invalid order_by specified."""
         stmt = select(Detection)
         ordered = detection_query_service._apply_ordering(stmt, "invalid_column", True)
-
-        # Should default to timestamp
         assert "ORDER BY" in str(ordered)
 
     def test_apply_ordering_ascending(self, detection_query_service):
         """Should apply ascending order."""
         stmt = select(Detection)
         ordered = detection_query_service._apply_ordering(stmt, "confidence", False)
-
         query_str = str(ordered)
         assert "ORDER BY" in query_str
         assert "DESC" not in query_str
@@ -168,31 +153,21 @@ class TestMainQueryMethods:
         self, detection_query_service, mock_core_database, mock_species_database
     ):
         """Should delegate to _execute_join_query."""
-        # Setup mock
         mock_session = AsyncMock(spec=AsyncSession)
         mock_result = MagicMock(spec=Result)
         mock_result.fetchall.return_value = []
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Mock the internal method
         with patch.object(
             detection_query_service, "_execute_join_query", new_callable=AsyncMock
         ) as mock_method:
             mock_method.return_value = []
-
-            # Call query_detections
             await detection_query_service.query_detections(
-                species="Turdus migratorius",
-                family="Turdidae",
-                genus="Turdus",
-                min_confidence=0.7,
+                species="Turdus migratorius", family="Turdidae", genus="Turdus", min_confidence=0.7
             )
-
-            # Verify delegation - when no limit is specified, it's passed as None
             mock_method.assert_called_once_with(
                 session=mock_session,
-                limit=None,  # No limit specified, so None is passed
+                limit=None,
                 offset=0,
                 start_date=None,
                 end_date=None,
@@ -203,7 +178,7 @@ class TestMainQueryMethods:
                 max_confidence=None,
                 order_by="timestamp",
                 order_desc=True,
-                include_first_detections=False,  # New parameter with default value
+                include_first_detections=False,
             )
 
     @pytest.mark.asyncio
@@ -211,18 +186,13 @@ class TestMainQueryMethods:
         self, detection_query_service, mock_core_database, mock_species_database
     ):
         """Should support legacy 'since' parameter."""
-        # Setup mock
         mock_session = AsyncMock(spec=AsyncSession)
         mock_result = MagicMock(spec=Result)
         mock_result.mappings.return_value.all.return_value = []
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Test with since parameter
         since_date = datetime(2024, 1, 1)
         result = await detection_query_service.get_detections_with_taxa(since=since_date)
-
-        # Should execute query
         mock_session.execute.assert_called()
         assert result == []
 
@@ -231,14 +201,11 @@ class TestMainQueryMethods:
         self, detection_query_service, mock_core_database, mock_species_database
     ):
         """Should apply all filters in get_detections_with_taxa."""
-        # Setup mock
         mock_session = AsyncMock(spec=AsyncSession)
         mock_result = MagicMock(spec=Result)
         mock_result.mappings.return_value.all.return_value = []
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Test with all filters
         await detection_query_service.get_detections_with_taxa(
             limit=50,
             offset=10,
@@ -252,10 +219,7 @@ class TestMainQueryMethods:
             order_by="confidence",
             order_desc=False,
         )
-
-        # Should execute query
         mock_session.execute.assert_called()
-        # Check that species databases were attached/detached
         mock_species_database.attach_all_to_session.assert_called()
         mock_species_database.detach_all_from_session.assert_called()
 
@@ -264,11 +228,8 @@ class TestMainQueryMethods:
         self, detection_query_service, mock_core_database, mock_species_database
     ):
         """Should return detection with taxa when found."""
-        # Setup mock
         mock_session = AsyncMock(spec=AsyncSession)
         detection_id = uuid4()
-
-        # Mock result row using SimpleNamespace to avoid mock spec issues
         mock_row = SimpleNamespace(
             id=str(detection_id),
             species_tensor="tensor",
@@ -289,16 +250,11 @@ class TestMainQueryMethods:
             genus="Turdus",
             order_name="Passeriformes",
         )
-
         mock_result = MagicMock(spec=Result)
         mock_result.fetchone = Mock(spec=callable, return_value=mock_row)
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Execute
         result = await detection_query_service.get_detection_with_taxa(detection_id)
-
-        # Verify
         assert result is not None
         assert isinstance(result, DetectionWithTaxa)
         assert result.family == "Turdidae"
@@ -310,17 +266,12 @@ class TestMainQueryMethods:
         self, detection_query_service, mock_core_database, mock_species_database
     ):
         """Should return None when detection not found."""
-        # Setup mock
         mock_session = AsyncMock(spec=AsyncSession)
         mock_result = MagicMock(spec=Result)
         mock_result.fetchone.return_value = None
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Execute
         result = await detection_query_service.get_detection_with_taxa(uuid4())
-
-        # Verify
         assert result is None
 
 
@@ -332,10 +283,7 @@ class TestSummaryMethods:
         self, detection_query_service, mock_core_database, mock_species_database
     ):
         """Should get species summary with counts."""
-        # Setup mock
         mock_session = AsyncMock(spec=AsyncSession)
-
-        # Mock species results - need to mock fetchall() not mappings()
         mock_rows = [
             MagicMock(
                 spec=Row,
@@ -362,18 +310,13 @@ class TestSummaryMethods:
                 order_name="Passeriformes",
             ),
         ]
-
         mock_result = MagicMock(spec=Result)
         mock_result.fetchall.return_value = mock_rows
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Execute
         result = await detection_query_service.get_species_summary(
             since=datetime(2024, 1, 1), family_filter="Turdidae"
         )
-
-        # Verify
         assert len(result) == 2
         assert result[0]["scientific_name"] == "Species1"
         assert result[0]["detection_count"] == 50
@@ -384,10 +327,7 @@ class TestSummaryMethods:
         self, detection_query_service, mock_core_database, mock_species_database
     ):
         """Should get family summary with counts."""
-        # Setup mock
         mock_session = AsyncMock(spec=AsyncSession)
-
-        # Mock family results - need to mock fetchall() not mappings()
         mock_rows = [
             MagicMock(
                 spec=Row,
@@ -408,16 +348,11 @@ class TestSummaryMethods:
                 latest_detection="2024-01-19T17:00:00",
             ),
         ]
-
         mock_result = MagicMock(spec=Result)
         mock_result.fetchall.return_value = mock_rows
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Execute
         result = await detection_query_service.get_family_summary(since=datetime(2024, 1, 1))
-
-        # Verify
         assert len(result) == 2
         assert result[0]["family"] == "Turdidae"
         assert result[0]["species_count"] == 5
@@ -431,25 +366,17 @@ class TestCountingMethods:
     async def test_get_species_counts(self, detection_query_service, mock_core_database):
         """Should get species counts for time range."""
         mock_session = AsyncMock(spec=AsyncSession)
-
-        # Mock rows with species counts - need to be directly iterable
         mock_rows = [
             MagicMock(spec=Row, scientific_name="Species1", common_name="Bird 1", count=25),
             MagicMock(spec=Row, scientific_name="Species2", common_name="Bird 2", count=15),
         ]
-
-        # Mock result to be directly iterable
         mock_result = MagicMock(spec=Result)
         mock_result.__iter__ = lambda self: iter(mock_rows)
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Execute
         start = datetime.now(UTC) - timedelta(days=7)
         end = datetime.now(UTC)
         result = await detection_query_service.get_species_counts(start, end)
-
-        # Verify
         assert len(result) == 2
         assert result[0]["scientific_name"] == "Species1"
         assert result[0]["count"] == 25
@@ -458,25 +385,17 @@ class TestCountingMethods:
     async def test_get_hourly_counts(self, detection_query_service, mock_core_database):
         """Should get hourly detection counts."""
         mock_session = AsyncMock(spec=AsyncSession)
-
-        # Mock hourly data - needs to be directly iterable
         mock_rows = [
             MagicMock(spec=Row, hour=6, count=10),
             MagicMock(spec=Row, hour=7, count=15),
             MagicMock(spec=Row, hour=8, count=20),
         ]
-
-        # Mock result to be directly iterable
         mock_result = MagicMock(spec=Result)
         mock_result.__iter__ = lambda self: iter(mock_rows)
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Execute
         target_date = date(2024, 1, 15)
         result = await detection_query_service.get_hourly_counts(target_date)
-
-        # Verify
         assert len(result) == 3
         assert result[0]["hour"] == 6
         assert result[0]["count"] == 10
@@ -485,26 +404,18 @@ class TestCountingMethods:
     async def test_count_by_species_with_filters(self, detection_query_service, mock_core_database):
         """Should count detections by species with date filters."""
         mock_session = AsyncMock(spec=AsyncSession)
-
-        # Mock species count results - needs to be dict-like iterable
         mock_rows = [
             {"scientific_name": "Species1", "count": 100},
             {"scientific_name": "Species2", "count": 75},
             {"scientific_name": "Species3", "count": 50},
         ]
-
         mock_result = MagicMock(spec=Result)
         mock_result.__iter__ = lambda self: iter(mock_rows)
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Execute - count_by_species doesn't accept min_confidence
         result = await detection_query_service.count_by_species(
-            start_date=datetime(2024, 1, 1),
-            end_date=datetime(2024, 1, 31),
+            start_date=datetime(2024, 1, 1), end_date=datetime(2024, 1, 31)
         )
-
-        # Verify - count_by_species returns a dict
         assert len(result) == 3
         assert result["Species1"] == 100
         assert result["Species2"] == 75
@@ -513,8 +424,6 @@ class TestCountingMethods:
     async def test_count_by_date(self, detection_query_service, mock_core_database):
         """Should count detections by date."""
         mock_session = AsyncMock(spec=AsyncSession)
-
-        # Mock date count results - needs to be dict-like iterable
         date1 = date(2024, 1, 15)
         date2 = date(2024, 1, 16)
         date3 = date(2024, 1, 17)
@@ -523,16 +432,11 @@ class TestCountingMethods:
             {"date": date2, "count": 60},
             {"date": date3, "count": 45},
         ]
-
         mock_result = MagicMock(spec=Result)
         mock_result.__iter__ = lambda self: iter(mock_rows)
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Execute
         result = await detection_query_service.count_by_date(species="Turdus migratorius")
-
-        # Verify
         assert len(result) == 3
         assert result[date1] == 50
         assert result[date2] == 60
@@ -546,8 +450,6 @@ class TestAdvancedQueries:
     async def test_get_species_counts_by_period(self, detection_query_service, mock_core_database):
         """Should get species counts grouped by time period."""
         mock_session = AsyncMock(spec=AsyncSession)
-
-        # Mock periodic counts
         mock_rows = [
             MagicMock(
                 spec=Row,
@@ -564,20 +466,15 @@ class TestAdvancedQueries:
                 count=100,
             ),
         ]
-
         mock_result = MagicMock(spec=Result)
         mock_result.all.return_value = mock_rows
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Execute - uses temporal_resolution not period, no min_confidence
         result = await detection_query_service.get_species_counts_by_period(
             start_date=datetime(2024, 1, 1),
             end_date=datetime(2024, 1, 31),
-            temporal_resolution="daily",  # "hourly", "daily", or "weekly"
+            temporal_resolution="daily",
         )
-
-        # Verify - returns list of dicts
         assert isinstance(result, list)
 
     @pytest.mark.asyncio
@@ -586,8 +483,6 @@ class TestAdvancedQueries:
     ):
         """Should get detections for species accumulation curve."""
         mock_session = AsyncMock(spec=AsyncSession)
-
-        # Mock detection results
         mock_rows = [
             MagicMock(
                 spec=Row,
@@ -602,19 +497,13 @@ class TestAdvancedQueries:
                 common_name="Bird 2",
             ),
         ]
-
         mock_result = MagicMock(spec=Result)
         mock_result.all.return_value = mock_rows
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Execute - only accepts start_date and end_date
         result = await detection_query_service.get_detections_for_accumulation(
-            start_date=datetime(2024, 1, 1),
-            end_date=datetime(2024, 1, 31),
+            start_date=datetime(2024, 1, 1), end_date=datetime(2024, 1, 31)
         )
-
-        # Verify - returns list of tuples (from result.all())
         assert len(result) == 2
 
     @pytest.mark.asyncio
@@ -623,8 +512,6 @@ class TestAdvancedQueries:
     ):
         """Should get species counts for multiple time periods."""
         mock_session = AsyncMock(spec=AsyncSession)
-
-        # Mock periodic species counts
         mock_rows = [
             MagicMock(
                 spec=Row,
@@ -641,58 +528,41 @@ class TestAdvancedQueries:
                 count=15,
             ),
         ]
-
         mock_result = MagicMock(spec=Result)
         mock_result.all.return_value = mock_rows
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Define time periods - should be list of (start, end) tuples only
         periods = [
             (datetime(2024, 1, 1, 6, 0), datetime(2024, 1, 1, 12, 0)),
             (datetime(2024, 1, 1, 18, 0), datetime(2024, 1, 1, 23, 59)),
         ]
-
-        # Execute - only accepts periods parameter
         result = await detection_query_service.get_species_counts_for_periods(periods)
-
-        # Verify - returns list of dicts mapping species to counts
-        assert len(result) == 2  # One dict per period
+        assert len(result) == 2
         assert isinstance(result[0], dict)
 
     @pytest.mark.asyncio
     async def test_get_species_sets_by_window(self, detection_query_service, mock_core_database):
         """Should get unique species sets by time window."""
         mock_session = AsyncMock(spec=AsyncSession)
-
-        # Mock window results
         mock_rows = [
             MagicMock(spec=Row, window="2024-01-15", species_list="Species1,Species2,Species3"),
             MagicMock(spec=Row, window="2024-01-16", species_list="Species1,Species2"),
         ]
-
         mock_result = MagicMock(spec=Result)
         mock_result.all.return_value = mock_rows
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Execute - takes window_size as timedelta, not window_type
-
         result = await detection_query_service.get_species_sets_by_window(
             start_date=datetime(2024, 1, 15),
             end_date=datetime(2024, 1, 16),
             window_size=timedelta(days=1),
         )
-
-        # Verify - returns list of dicts with period_start, period_end, species
         assert isinstance(result, list)
 
     @pytest.mark.asyncio
     async def test_get_weather_correlations(self, detection_query_service, mock_core_database):
         """Should get weather correlations with detections."""
         mock_session = AsyncMock(spec=AsyncSession)
-
-        # Mock correlation results using SimpleNamespace
         mock_rows = [
             SimpleNamespace(
                 hour=6,
@@ -715,19 +585,13 @@ class TestAdvancedQueries:
                 precipitation=0.5,
             ),
         ]
-
         mock_result = MagicMock(spec=Result)
         mock_result.all.return_value = mock_rows
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Execute - only accepts start_date and end_date
         result = await detection_query_service.get_weather_correlations(
-            start_date=datetime(2024, 1, 1),
-            end_date=datetime(2024, 1, 31),
+            start_date=datetime(2024, 1, 1), end_date=datetime(2024, 1, 31)
         )
-
-        # Verify - returns dict not list
         assert isinstance(result, dict)
 
 
@@ -739,16 +603,11 @@ class TestErrorHandling:
         self, detection_query_service, mock_core_database, mock_species_database
     ):
         """Should handle database errors gracefully."""
-        # Setup mock to raise error
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.execute.side_effect = SQLAlchemyError("Database connection failed")
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Should raise the error
         with pytest.raises(SQLAlchemyError):
             await detection_query_service.get_detections_with_taxa()
-
-        # Ensure cleanup happens
         mock_species_database.detach_all_from_session.assert_called_once()
 
     @pytest.mark.asyncio
@@ -756,19 +615,11 @@ class TestErrorHandling:
         self, detection_query_service, mock_core_database, mock_species_database
     ):
         """Should ensure cleanup happens even on error."""
-        # Setup mock to raise SQLAlchemyError during execution
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.execute.side_effect = SQLAlchemyError("Database error", "", "")
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Should raise the error
         with pytest.raises(SQLAlchemyError):
-            await detection_query_service.get_detections_with_taxa(
-                limit=10,
-                offset=0,
-            )
-
-        # Ensure cleanup happens - detach_all_from_session should be called
+            await detection_query_service.get_detections_with_taxa(limit=10, offset=0)
         assert mock_species_database.detach_all_from_session.called
 
 
@@ -777,10 +628,9 @@ class TestHelperMethods:
 
     def test_build_where_clause_and_params(self, detection_query_service):
         """Should build WHERE clause with parameters."""
-        # Required positional arguments first
         clause, params = detection_query_service._build_where_clause_and_params(
-            100,  # limit
-            0,  # offset
+            100,
+            0,
             start_date=datetime(2024, 1, 1),
             end_date=datetime(2024, 1, 31),
             scientific_name_filter="Turdus migratorius",
@@ -789,13 +639,9 @@ class TestHelperMethods:
             min_confidence=0.7,
             max_confidence=0.95,
         )
-
-        # Check that clause has placeholders
         assert ":start_date" in clause or "start_date" in str(params)
         assert ":end_date" in clause or "end_date" in str(params)
         assert "confidence" in clause
-
-        # Check params dict
         assert "start_date" in params
         assert "end_date" in params
         assert params["min_confidence"] == 0.7
@@ -804,28 +650,17 @@ class TestHelperMethods:
     def test_build_where_clause_and_params_with_list(self, detection_query_service):
         """Should handle list filters in WHERE clause."""
         species_list = ["Species1", "Species2", "Species3"]
-        # Required positional arguments first
         clause, params = detection_query_service._build_where_clause_and_params(
-            100,  # limit
-            0,  # offset
-            scientific_name_filter=species_list,
+            100, 0, scientific_name_filter=species_list
         )
-
-        # Should have IN clause
         assert "IN" in clause
-        # Check params for species
         assert any("species" in str(k) for k in params.keys())
 
     def test_build_where_clause_and_params_empty(self, detection_query_service):
         """Should return WHERE 1=1 for empty filters."""
-        # Required positional arguments
-        clause, params = detection_query_service._build_where_clause_and_params(
-            100,  # limit
-            0,  # offset
-        )
+        clause, params = detection_query_service._build_where_clause_and_params(100, 0)
         assert "WHERE 1=1" in clause
         assert "language_code" in params
-        # Language code comes from config.language, not from parameter
 
     def test_build_order_clause_default(self, detection_query_service):
         """Should build default order clause."""
@@ -845,8 +680,6 @@ class TestFilterBuilding:
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.scalar = AsyncMock(spec=callable, return_value=250)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Test with multiple filter types
         filters = {
             "species": ["Species1", "Species2"],
             "start_date": datetime(2024, 1, 1),
@@ -856,19 +689,12 @@ class TestFilterBuilding:
             "family": "Turdidae",
             "genus": "Turdus",
         }
-
         count = await detection_query_service.count_detections(filters)
-
-        # Verify
         assert count == 250
         mock_session.scalar.assert_called_once()
-
-        # Check that query was built with filters
         call_args = mock_session.scalar.call_args
         stmt = call_args[0][0]
         query_str = str(stmt)
-
-        # Should contain filter references
         assert "WHERE" in query_str
 
 
@@ -877,7 +703,6 @@ class TestEdgeCases:
 
     def test_parse_timestamp_with_invalid_string(self, detection_query_service):
         """Should handle invalid timestamp strings."""
-        # This should raise an error
         with pytest.raises(ValueError):
             detection_query_service._parse_timestamp("not-a-timestamp")
 
@@ -886,17 +711,12 @@ class TestEdgeCases:
         self, detection_query_service, mock_core_database, mock_species_database
     ):
         """Should handle empty result sets properly."""
-        # Setup mock with empty results
         mock_session = AsyncMock(spec=AsyncSession)
         mock_result = MagicMock(spec=Result)
         mock_result.mappings.return_value.all.return_value = []
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Execute
         result = await detection_query_service.get_detections_with_taxa()
-
-        # Should return empty list, not None
         assert result == []
         assert not result
 
@@ -910,24 +730,14 @@ class TestEdgeCases:
         mock_result.mappings.return_value.all.return_value = []
         mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Test with very large limit
-        result = await detection_query_service.get_detections_with_taxa(
-            limit=1000000,
-            offset=0,
-        )
-
-        # Should handle without error
+        result = await detection_query_service.get_detections_with_taxa(limit=1000000, offset=0)
         assert result == []
 
     def test_build_order_clause_variations(self, detection_query_service):
         """Should build different order clauses."""
-        # Test ascending order
         asc_clause = detection_query_service._build_order_clause("confidence", False)
         assert "confidence" in asc_clause
         assert "ASC" in asc_clause
-
-        # Test descending order
         desc_clause = detection_query_service._build_order_clause("timestamp", True)
         assert "timestamp" in desc_clause
         assert "DESC" in desc_clause

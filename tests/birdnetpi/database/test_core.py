@@ -149,12 +149,19 @@ async def test_get_database_stats(core_database_service, tmp_path):
         # Mock pragma results
         from sqlalchemy.engine import Result
 
-        mock_results = [
-            create_autospec(Result, spec_set=True, fetchone=lambda: [1000]),  # page_count
-            create_autospec(Result, spec_set=True, fetchone=lambda: [4096]),  # page_size
-            create_autospec(Result, spec_set=True, fetchone=lambda: [0, 50, 50]),  # wal_checkpoint
-            create_autospec(Result, spec_set=True, fetchone=lambda: ["wal"]),  # journal_mode
-        ]
+        mock_result_1 = create_autospec(Result, spec_set=True, instance=True)
+        mock_result_1.fetchone.return_value = [1000]  # page_count
+
+        mock_result_2 = create_autospec(Result, spec_set=True, instance=True)
+        mock_result_2.fetchone.return_value = [4096]  # page_size
+
+        mock_result_3 = create_autospec(Result, spec_set=True, instance=True)
+        mock_result_3.fetchone.return_value = [0, 50, 50]  # wal_checkpoint
+
+        mock_result_4 = create_autospec(Result, spec_set=True, instance=True)
+        mock_result_4.fetchone.return_value = ["wal"]  # journal_mode
+
+        mock_results = [mock_result_1, mock_result_2, mock_result_3, mock_result_4]
         mock_session.execute.side_effect = mock_results
         mock_get_async_db.return_value.__aenter__.return_value = mock_session
 

@@ -5,8 +5,10 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import (
+    async_sessionmaker,  # type: ignore[attr-defined]
+    create_async_engine,
+)
 from sqlmodel import SQLModel
 
 from birdnetpi.config.models import BirdNETConfig
@@ -27,18 +29,15 @@ async def engine():
 @pytest.fixture
 async def session(engine):
     """Create an async database session."""
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    async with async_session() as session:  # type: ignore[attr-defined]
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
+    async with async_session() as session:
         yield session
 
 
 @pytest.fixture
 def config():
     """Create a test config with location."""
-    return BirdNETConfig(
-        latitude=63.4591,
-        longitude=-19.3647,
-    )
+    return BirdNETConfig(latitude=63.4591, longitude=-19.3647)
 
 
 @pytest.fixture
@@ -65,25 +64,16 @@ def test_weather_handler_initialization(weather_handler, config):
 
 def test_weather_handler_register(weather_handler):
     """Should weather handler registers with the signal."""
-    # Initially no receivers
     receivers_before = len(detection_signal.receivers)
-
-    # Register the handler
     weather_handler.register()
-
-    # Should have one more receiver
     receivers_after = len(detection_signal.receivers)
     assert receivers_after == receivers_before + 1
-
-    # Clean up
     weather_handler.unregister()
 
 
 def test_weather_handler_requires_location():
     """Should handler requires location coordinates."""
     mock_db = MagicMock(spec=CoreDatabaseService)
-
-    # Should be able to create with valid coordinates
     handler = WeatherSignalHandler(mock_db, 63.4591, -19.3647)
     assert handler.latitude == 63.4591
     assert handler.longitude == -19.3647
@@ -92,11 +82,8 @@ def test_weather_handler_requires_location():
 @pytest.mark.asyncio
 async def test_weather_handler_handles_detection_event(weather_handler, session, model_factory):
     """Should weather handler responds to detection events."""
-    # Register the handler
     weather_handler.register()
-
     try:
-        # Create a detection
         detection = model_factory.create_detection(
             species_tensor="Test_Bird",
             scientific_name="Testus birdus",
@@ -105,23 +92,13 @@ async def test_weather_handler_handles_detection_event(weather_handler, session,
         )
         session.add(detection)
         await session.commit()
-
-        # Mock the weather fetching
         with patch.object(weather_handler, "_fetch_and_link_weather", autospec=True) as mock_fetch:
             mock_fetch.return_value = asyncio.create_task(asyncio.sleep(0))
-
-            # Simulate the detection signal being sent
-            # This happens in an event loop context
             detection_signal.send(None, detection=detection)
-
-            # Give async task time to be scheduled
             await asyncio.sleep(0.1)
-
-            # Should have tried to fetch weather
             mock_fetch.assert_called_once()
             call_args = mock_fetch.call_args[0]
             assert call_args[0].id == detection.id
-
     finally:
         weather_handler.unregister()
 
@@ -132,9 +109,7 @@ async def test_weather_handler_skips_detection_with_weather(
 ):
     """Should handler skips detections that already have weather."""
     weather_handler.register()
-
     try:
-        # Create a weather record
         weather = model_factory.create_weather(
             timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
             latitude=63.4591,
@@ -143,8 +118,6 @@ async def test_weather_handler_skips_detection_with_weather(
         )
         session.add(weather)
         await session.commit()
-
-        # Create a detection already linked to weather
         detection = model_factory.create_detection(
             species_tensor="Test_Bird",
             scientific_name="Testus birdus",
@@ -156,17 +129,10 @@ async def test_weather_handler_skips_detection_with_weather(
         )
         session.add(detection)
         await session.commit()
-
         with patch.object(weather_handler, "_fetch_and_link_weather", autospec=True) as mock_fetch:
-            # Send the signal
             detection_signal.send(None, detection=detection)
-
-            # Give it time
             await asyncio.sleep(0.1)
-
-            # Should NOT have tried to fetch weather
             mock_fetch.assert_not_called()
-
     finally:
         weather_handler.unregister()
 
@@ -174,7 +140,6 @@ async def test_weather_handler_skips_detection_with_weather(
 @pytest.mark.asyncio
 async def test_fetch_and_link_weather_uses_existing(weather_handler, session, model_factory):
     """Should _fetch_and_link_weather uses existing weather when available."""
-    # Create existing weather
     weather = model_factory.create_weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
         latitude=63.4591,
@@ -183,8 +148,6 @@ async def test_fetch_and_link_weather_uses_existing(weather_handler, session, mo
         humidity=60.0,
     )
     session.add(weather)
-
-    # Create detection without weather
     detection = model_factory.create_detection(
         species_tensor="Test_Bird",
         scientific_name="Testus birdus",
@@ -193,18 +156,11 @@ async def test_fetch_and_link_weather_uses_existing(weather_handler, session, mo
     )
     session.add(detection)
     await session.commit()
-
-    # Mock the WeatherManager's get_or_create_and_link_weather method
     with patch(
         "birdnetpi.location.weather.WeatherManager.get_or_create_and_link_weather", autospec=True
     ) as mock_fetch:
         mock_fetch.return_value = weather
-
-        # Call the method
         await weather_handler._fetch_and_link_weather(detection)
-
-        # Should have called the manager's method with the detection ID
-        # With autospec=True, call_args[0] is self, call_args[1] is detection_id
         mock_fetch.assert_called_once()
         call_args = mock_fetch.call_args[0]
         assert call_args[1] == str(detection.id)
@@ -213,7 +169,6 @@ async def test_fetch_and_link_weather_uses_existing(weather_handler, session, mo
 @pytest.mark.asyncio
 async def test_fetch_and_link_weather_fetches_new(weather_handler, session, model_factory):
     """Should _fetch_and_link_weather fetches new weather when needed."""
-    # Create detection without weather
     detection = model_factory.create_detection(
         species_tensor="Test_Bird",
         scientific_name="Testus birdus",
@@ -222,8 +177,6 @@ async def test_fetch_and_link_weather_fetches_new(weather_handler, session, mode
     )
     session.add(detection)
     await session.commit()
-
-    # Mock the weather to be returned
     mock_weather = model_factory.create_weather(
         timestamp=datetime(2024, 1, 1, 12, tzinfo=UTC),
         latitude=63.4591,
@@ -231,18 +184,11 @@ async def test_fetch_and_link_weather_fetches_new(weather_handler, session, mode
         temperature=22.0,
         humidity=70.0,
     )
-
-    # Mock the WeatherManager's get_or_create_and_link_weather method
     with patch(
         "birdnetpi.location.weather.WeatherManager.get_or_create_and_link_weather", autospec=True
     ) as mock_fetch:
         mock_fetch.return_value = mock_weather
-
-        # Call the method
         await weather_handler._fetch_and_link_weather(detection)
-
-        # Should have called the manager's method with the detection ID
-        # With autospec=True, call_args[0] is self, call_args[1] is detection_id
         mock_fetch.assert_called_once()
         call_args = mock_fetch.call_args[0]
         assert call_args[1] == str(detection.id)
@@ -251,7 +197,6 @@ async def test_fetch_and_link_weather_fetches_new(weather_handler, session, mode
 @pytest.mark.asyncio
 async def test_weather_handler_handles_fetch_error(weather_handler, session, model_factory):
     """Should handler gracefully handles weather fetch errors."""
-    # Create detection
     detection = model_factory.create_detection(
         species_tensor="Test_Bird",
         scientific_name="Testus birdus",
@@ -260,18 +205,11 @@ async def test_weather_handler_handles_fetch_error(weather_handler, session, mod
     )
     session.add(detection)
     await session.commit()
-
-    # Mock the WeatherManager to raise error
     with patch(
         "birdnetpi.location.weather.WeatherManager.get_or_create_and_link_weather", autospec=True
     ) as mock_fetch:
         mock_fetch.side_effect = Exception("API Error")
-
-        # Should not raise, just log error
         await weather_handler._fetch_and_link_weather(detection)
-
-        # Should have tried to fetch
-        # With autospec=True, call_args[0] is self, call_args[1] is detection_id
         mock_fetch.assert_called_once()
         call_args = mock_fetch.call_args[0]
         assert call_args[1] == str(detection.id)
@@ -279,18 +217,13 @@ async def test_weather_handler_handles_fetch_error(weather_handler, session, mod
 
 def test_weather_handler_handles_no_event_loop(weather_handler, model_factory):
     """Should handler gracefully handles when no event loop is running."""
-    # Create a detection
     detection = model_factory.create_detection(
         species_tensor="Test_Bird",
         scientific_name="Testus birdus",
         confidence=0.95,
         timestamp=datetime(2024, 1, 1, 12, 30, tzinfo=UTC),
     )
-
     with patch("asyncio.get_running_loop", side_effect=RuntimeError("No event loop")):
         with patch.object(weather_handler, "_fetch_and_link_weather", autospec=True) as mock_fetch:
-            # Should not raise, just skip
             weather_handler._handle_detection_event(None, detection=detection)
-
-            # Should not have tried to fetch
             mock_fetch.assert_not_called()

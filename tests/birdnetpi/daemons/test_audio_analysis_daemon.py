@@ -40,18 +40,12 @@ class TestAudioAnalysisDaemon:
     def test_signal_handler__different_signals(self, mocker):
         """Should handle different signal types correctly."""
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.logger")
-
-        # Test SIGTERM
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.shutdown_flag", False)
         daemon._signal_handler(signal.SIGTERM, MagicMock(spec=FrameType))
         assert daemon.DaemonState.shutdown_flag is True
-
-        # Reset and test SIGINT
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.shutdown_flag", False)
         daemon._signal_handler(signal.SIGINT, MagicMock(spec=FrameType))
         assert daemon.DaemonState.shutdown_flag is True
-
-        # Reset and test other signal (should still work)
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.shutdown_flag", False)
         daemon._signal_handler(signal.SIGUSR1, MagicMock(spec=FrameType))
         assert daemon.DaemonState.shutdown_flag is True
@@ -61,17 +55,9 @@ class TestAudioAnalysisDaemon:
         mock_loop = MagicMock(spec=asyncio.AbstractEventLoop)
         mock_asyncio = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.asyncio")
         mock_asyncio.new_event_loop.return_value = mock_loop
-
-        # Make run_until_complete raise KeyboardInterrupt to exit quickly
         mock_loop.run_until_complete.side_effect = KeyboardInterrupt()
-
-        # Mock cleanup
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon._cleanup_fifo")
-
-        # Run main
         daemon.main()
-
-        # Verify event loop was created and set
         mock_asyncio.new_event_loop.assert_called_once()
         mock_asyncio.set_event_loop.assert_called_once_with(mock_loop)
         mock_loop.run_until_complete.assert_called_once()
@@ -84,13 +70,10 @@ class TestAudioAnalysisDaemon:
             "birdnetpi.daemons.audio_analysis_daemon.DaemonState.fifo_analysis_path",
             "/tmp/test_fifo.fifo",
         )
-
-        # Mock event loop
         mock_loop = MagicMock(spec=asyncio.AbstractEventLoop)
         mock_loop.is_closed.return_value = False
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.event_loop", mock_loop)
         mocker.patch("birdnetpi.daemons.audio_analysis_daemon.DaemonState.session", None)
-
         daemon._cleanup_fifo()
         mock_os.close.assert_called_once_with(456)
         mock_loop.close.assert_called_once()
@@ -99,38 +82,27 @@ class TestAudioAnalysisDaemon:
     @pytest.mark.asyncio
     async def test_init_session_and_service(self, mocker, path_resolver):
         """Should initialize session and audio analysis service."""
-        # Mock the imports and classes
         mock_multilingual = MagicMock(spec=SpeciesDatabaseService)
         mock_multilingual.attach_all_to_session = AsyncMock(spec=callable)
-
         mock_session = MagicMock(spec=AsyncSession)
-
-        # Mock inside the actual function where imports happen
         with patch(
             "birdnetpi.daemons.audio_analysis_daemon.init_session_and_service", autospec=True
         ) as mock_init:
-            # Make it an async function that returns expected values
+
             async def mock_init_fn(pr, cfg):
-                return mock_session, MagicMock(spec=AudioAnalysisManager)
+                return (mock_session, MagicMock(spec=AudioAnalysisManager))
 
             mock_init.side_effect = mock_init_fn
-
             config = BirdNETConfig()
             session, service = await mock_init(path_resolver, config)
-
             assert session == mock_session
             assert service is not None
             mock_init.assert_called_once_with(path_resolver, config)
 
     def test_main_entry_point_condition(self, mocker):
         """Should execute main entry point code when module name is __main__."""
-        # Mock the main function to verify it gets called
         mock_main = mocker.patch("birdnetpi.daemons.audio_analysis_daemon.main")
-
-        # Simulate the condition by directly evaluating it
         module_name = "__main__"
         if module_name == "__main__":
             daemon.main()
-
-        # Verify main() was called
         mock_main.assert_called_once()

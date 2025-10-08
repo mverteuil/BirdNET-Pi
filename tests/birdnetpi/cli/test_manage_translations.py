@@ -25,9 +25,7 @@ class TestRunCommand:
 
     def test_run_command_success(self, capsys):
         """Should run command successfully and return True."""
-        # Use a real command that works
         result = run_command(["echo", "test"], "Test command")
-
         assert result is True
         captured = capsys.readouterr()
         assert "Running: Test command" in captured.out
@@ -36,7 +34,6 @@ class TestRunCommand:
 
     def test_run_command_failure(self):
         """Should handle command failure and return False."""
-        # Use a command that will fail
         result = run_command(["false"], "Test command")
         assert result is False
 
@@ -44,7 +41,6 @@ class TestRunCommand:
     def test_run_command_with_exception(self, mock_run):
         """Should handle subprocess exceptions."""
         mock_run.side_effect = subprocess.CalledProcessError(1, ["test"], stderr="Error message")
-
         result = run_command(["test"], "Test command")
         assert result is False
 
@@ -60,58 +56,38 @@ class TestExtractCommand:
     @pytest.fixture
     def temp_locales(self, tmp_path, path_resolver):
         """Set up temporary locales directory with real babel config."""
-        # Create temp locales directory
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
-
-        # Only override the paths that need to be in temp directory
-        # Keep using real src_dir and babel_config_path from global fixture
         path_resolver.get_messages_pot_path = lambda: locales_dir / "messages.pot"
         path_resolver.get_locales_dir = lambda: locales_dir
-
-        return path_resolver, locales_dir
+        return (path_resolver, locales_dir)
 
     @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
     def test_extract_success(self, mock_resolver_class, runner, tmp_path):
         """Should extract translatable strings successfully."""
-        # Create all paths under tmp_path to avoid relative path issues
         src_dir = tmp_path / "src"
         src_dir.mkdir()
-        # Create a Python file to extract from
         (src_dir / "test.py").write_text(
             'from flask_babel import lazy_gettext\nmsg = lazy_gettext("Hello World")'
         )
-
         babel_cfg = tmp_path / "babel.cfg"
-        babel_cfg.write_text("""[python: **/*.py]""")
-
+        babel_cfg.write_text("[python: **/*.py]")
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
         pot_file = locales_dir / "messages.pot"
-
-        # Create a mock path resolver with all paths under tmp_path
         path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_babel_config_path.return_value = babel_cfg
         path_resolver.get_messages_pot_path.return_value = pot_file
         path_resolver.get_locales_dir.return_value = locales_dir
-
         mock_resolver_class.return_value = path_resolver
-
-        # Run from isolated filesystem and create symlinks
         with runner.isolated_filesystem() as isolated_dir:
-            # Create symlinks to the actual directories
             Path(isolated_dir, "src").symlink_to(src_dir)
             Path(isolated_dir, "babel.cfg").symlink_to(babel_cfg)
             Path(isolated_dir, "locales").symlink_to(locales_dir)
-
             result = runner.invoke(cli, ["extract"])
-
-        # Check the command completed successfully
         assert result.exit_code == 0
         assert "✓ String extraction completed successfully" in result.output
-
-        # Verify the POT file was actually created
         assert pot_file.exists()
         pot_content = pot_file.read_text()
         assert "Hello World" in pot_content
@@ -120,24 +96,18 @@ class TestExtractCommand:
     @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
     def test_extract_failure(self, mock_resolver_class, mock_run_command, runner, tmp_path):
         """Should handle extraction failure."""
-        # Create paths under tmp_path
         src_dir = tmp_path / "src"
         babel_cfg = tmp_path / "babel.cfg"
         locales_dir = tmp_path / "locales"
         pot_file = locales_dir / "messages.pot"
-
-        # Create a mock path resolver
         path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_babel_config_path.return_value = babel_cfg
         path_resolver.get_messages_pot_path.return_value = pot_file
         path_resolver.get_locales_dir.return_value = locales_dir
-
         mock_resolver_class.return_value = path_resolver
-        mock_run_command.return_value = False  # Simulate command failure
-
+        mock_run_command.return_value = False
         result = runner.invoke(cli, ["extract"])
-
         assert result.exit_code == 1
         assert "✗ String extraction failed" in result.output
 
@@ -155,55 +125,36 @@ class TestUpdateCommand:
         """Set up temporary locales with POT and PO files."""
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
-
-        # Create a minimal POT file
         pot_file = locales_dir / "messages.pot"
-        pot_file.write_text("""# BirdNET-Pi
-msgid ""
-msgstr ""
-"Project-Id-Version: BirdNET-Pi\\n"
-
-msgid "Hello"
-msgstr ""
-""")
-
-        # Create a language directory with PO file
+        pot_file.write_text(
+            '# BirdNET-Pi\nmsgid ""\nmsgstr ""\n'
+            '"Project-Id-Version: BirdNET-Pi\\n"\n\n'
+            'msgid "Hello"\nmsgstr ""\n'
+        )
         lang_dir = locales_dir / "es" / "LC_MESSAGES"
         lang_dir.mkdir(parents=True)
         po_file = lang_dir / "messages.po"
-        po_file.write_text("""# Spanish translations
-msgid ""
-msgstr ""
-
-msgid "Hello"
-msgstr "Hola"
-""")
-
-        # Only override paths that need temp directory
+        po_file.write_text(
+            '# Spanish translations\nmsgid ""\nmsgstr ""\n\nmsgid "Hello"\nmsgstr "Hola"\n'
+        )
         path_resolver.get_messages_pot_path = lambda: pot_file
         path_resolver.get_locales_dir = lambda: locales_dir
-
-        return path_resolver, locales_dir
+        return (path_resolver, locales_dir)
 
     @patch("birdnetpi.cli.manage_translations.run_command", autospec=True)
     @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
     def test_update_success(self, mock_resolver_class, mock_run_command, runner, tmp_path):
         """Should update translation files successfully."""
-        # Set up paths
         src_dir = tmp_path / "src"
         pot_file = tmp_path / "locales" / "messages.pot"
         locales_dir = tmp_path / "locales"
-
         path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_messages_pot_path.return_value = pot_file
         path_resolver.get_locales_dir.return_value = locales_dir
-
         mock_resolver_class.return_value = path_resolver
         mock_run_command.return_value = True
-
         result = runner.invoke(cli, ["update"])
-
         assert result.exit_code == 0
         assert "✓ Translation update completed successfully" in result.output
         mock_run_command.assert_called_once()
@@ -212,21 +163,16 @@ msgstr "Hola"
     @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
     def test_update_failure(self, mock_resolver_class, mock_run_command, runner, tmp_path):
         """Should handle update failure."""
-        # Set up paths
         src_dir = tmp_path / "src"
         pot_file = tmp_path / "locales" / "messages.pot"
         locales_dir = tmp_path / "locales"
-
         path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_messages_pot_path.return_value = pot_file
         path_resolver.get_locales_dir.return_value = locales_dir
-
         mock_resolver_class.return_value = path_resolver
         mock_run_command.return_value = False
-
         result = runner.invoke(cli, ["update"])
-
         assert result.exit_code == 1
         assert "✗ Translation update failed" in result.output
 
@@ -244,69 +190,43 @@ class TestCompileCommand:
         """Set up temporary locales with PO files for compilation."""
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
-
-        # Create a language directory with PO file
         lang_dir = locales_dir / "es" / "LC_MESSAGES"
         lang_dir.mkdir(parents=True)
         po_file = lang_dir / "messages.po"
-        po_file.write_text("""# Spanish translations
-msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\\n"
-
-msgid "Hello"
-msgstr "Hola"
-
-msgid "Goodbye"
-msgstr "Adiós"
-""")
-
-        # Only override locales directory path
+        po_file.write_text(
+            '# Spanish translations\nmsgid ""\nmsgstr ""\n'
+            '"Content-Type: text/plain; charset=UTF-8\\n"\n\n'
+            'msgid "Hello"\nmsgstr "Hola"\n\n'
+            'msgid "Goodbye"\nmsgstr "Adiós"\n'
+        )
         path_resolver.get_locales_dir = lambda: locales_dir
-
-        return path_resolver, locales_dir
+        return (path_resolver, locales_dir)
 
     @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
     def test_compile_success(self, mock_resolver_class, runner, tmp_path):
         """Should compile translation files successfully."""
-        # Set up paths
         src_dir = tmp_path / "src"
         src_dir.mkdir()
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
-
-        # Create a language directory with PO file
         lang_dir = locales_dir / "es" / "LC_MESSAGES"
         lang_dir.mkdir(parents=True)
         po_file = lang_dir / "messages.po"
-        po_file.write_text("""# Spanish translations
-msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\\n"
-
-msgid "Hello"
-msgstr "Hola"
-
-msgid "Goodbye"
-msgstr "Adiós"
-""")
-
-        # Create mock path resolver
+        po_file.write_text(
+            '# Spanish translations\nmsgid ""\nmsgstr ""\n'
+            '"Content-Type: text/plain; charset=UTF-8\\n"\n\n'
+            'msgid "Hello"\nmsgstr "Hola"\n\n'
+            'msgid "Goodbye"\nmsgstr "Adiós"\n'
+        )
         path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_locales_dir.return_value = locales_dir
-
         mock_resolver_class.return_value = path_resolver
-
-        # Run with symlinks
         with runner.isolated_filesystem() as isolated_dir:
             Path(isolated_dir, "locales").symlink_to(locales_dir)
             result = runner.invoke(cli, ["compile"])
-
         assert result.exit_code == 0
         assert "✓ Translation compilation completed successfully" in result.output
-
-        # Verify MO file was created
         mo_file = locales_dir / "es" / "LC_MESSAGES" / "messages.mo"
         assert mo_file.exists()
         assert mo_file.stat().st_size > 0
@@ -315,22 +235,16 @@ msgstr "Adiós"
     @patch("birdnetpi.cli.manage_translations.run_command", autospec=True)
     def test_compile_failure(self, mock_run_command, mock_resolver_class, runner, tmp_path):
         """Should handle compilation failure."""
-        # Set up paths under tmp_path
         src_dir = tmp_path / "src"
         src_dir.mkdir()
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
-
-        # Create mock path resolver
         path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_locales_dir.return_value = locales_dir
-
         mock_resolver_class.return_value = path_resolver
         mock_run_command.return_value = False
-
         result = runner.invoke(cli, ["compile"])
-
         assert result.exit_code == 1
         assert "✗ Translation compilation failed" in result.output
 
@@ -348,69 +262,43 @@ class TestInitCommand:
         """Set up temporary locales with POT file for language initialization."""
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
-
-        # Create a minimal POT file
         pot_file = locales_dir / "messages.pot"
-        pot_file.write_text("""# BirdNET-Pi
-msgid ""
-msgstr ""
-"Project-Id-Version: BirdNET-Pi\\n"
-"Content-Type: text/plain; charset=UTF-8\\n"
-
-msgid "Hello"
-msgstr ""
-
-msgid "Welcome"
-msgstr ""
-""")
-
-        # Only override necessary paths
+        pot_file.write_text(
+            '# BirdNET-Pi\nmsgid ""\nmsgstr ""\n'
+            '"Project-Id-Version: BirdNET-Pi\\n"\n'
+            '"Content-Type: text/plain; charset=UTF-8\\n"\n\n'
+            'msgid "Hello"\nmsgstr ""\n\n'
+            'msgid "Welcome"\nmsgstr ""\n'
+        )
         path_resolver.get_messages_pot_path = lambda: pot_file
         path_resolver.get_locales_dir = lambda: locales_dir
-
-        return path_resolver, locales_dir
+        return (path_resolver, locales_dir)
 
     @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
     def test_init_language_success(self, mock_resolver_class, runner, tmp_path):
         """Should initialize a new language successfully."""
-        # Set up paths
         src_dir = tmp_path / "src"
         src_dir.mkdir()
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
-
-        # Create a minimal POT file
         pot_file = locales_dir / "messages.pot"
-        pot_file.write_text("""# BirdNET-Pi
-msgid ""
-msgstr ""
-"Project-Id-Version: BirdNET-Pi\\n"
-"Content-Type: text/plain; charset=UTF-8\\n"
-
-msgid "Hello"
-msgstr ""
-
-msgid "Welcome"
-msgstr ""
-""")
-
-        # Create mock path resolver
+        pot_file.write_text(
+            '# BirdNET-Pi\nmsgid ""\nmsgstr ""\n'
+            '"Project-Id-Version: BirdNET-Pi\\n"\n'
+            '"Content-Type: text/plain; charset=UTF-8\\n"\n\n'
+            'msgid "Hello"\nmsgstr ""\n\n'
+            'msgid "Welcome"\nmsgstr ""\n'
+        )
         path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_messages_pot_path.return_value = pot_file
         path_resolver.get_locales_dir.return_value = locales_dir
-
         mock_resolver_class.return_value = path_resolver
-
-        # Run with symlinks
         with runner.isolated_filesystem() as isolated_dir:
             Path(isolated_dir, "locales").symlink_to(locales_dir)
             result = runner.invoke(cli, ["init", "it"])
-
         assert result.exit_code == 0
         assert "✓ Language 'it' initialized successfully" in result.output
-
-        # Verify Italian PO file was created
         it_po_file = locales_dir / "it" / "LC_MESSAGES" / "messages.po"
         assert it_po_file.exists()
         po_content = it_po_file.read_text()
@@ -420,32 +308,23 @@ msgstr ""
     @patch("birdnetpi.cli.manage_translations.run_command", autospec=True)
     def test_init_language_failure(self, mock_run_command, mock_resolver_class, runner, tmp_path):
         """Should handle language initialization failure."""
-        # Set up paths under tmp_path
         src_dir = tmp_path / "src"
         src_dir.mkdir()
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
         pot_file = locales_dir / "messages.pot"
-        pot_file.write_text("""# BirdNET-Pi
-msgid ""
-msgstr ""
-"Project-Id-Version: BirdNET-Pi\\n"
-
-msgid "Hello"
-msgstr ""
-""")
-
-        # Create mock path resolver
+        pot_file.write_text(
+            '# BirdNET-Pi\nmsgid ""\nmsgstr ""\n'
+            '"Project-Id-Version: BirdNET-Pi\\n"\n\n'
+            'msgid "Hello"\nmsgstr ""\n'
+        )
         path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_messages_pot_path.return_value = pot_file
         path_resolver.get_locales_dir.return_value = locales_dir
-
         mock_resolver_class.return_value = path_resolver
         mock_run_command.return_value = False
-
         result = runner.invoke(cli, ["init", "it"])
-
         assert result.exit_code == 1
         assert "✗ Language initialization failed" in result.output
 
@@ -463,85 +342,57 @@ class TestAllCommand:
         """Set up temporary locales for full workflow."""
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
-
-        # Create a language directory with PO file for update/compile steps
         lang_dir = locales_dir / "es" / "LC_MESSAGES"
         lang_dir.mkdir(parents=True)
         po_file = lang_dir / "messages.po"
-        po_file.write_text("""# Spanish translations
-msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\\n"
-
-msgid "Test"
-msgstr "Prueba"
-""")
-
-        # Only override necessary paths
+        po_file.write_text(
+            '# Spanish translations\nmsgid ""\nmsgstr ""\n'
+            '"Content-Type: text/plain; charset=UTF-8\\n"\n\n'
+            'msgid "Test"\nmsgstr "Prueba"\n'
+        )
         path_resolver.get_messages_pot_path = lambda: locales_dir / "messages.pot"
         path_resolver.get_locales_dir = lambda: locales_dir
-
-        return path_resolver, locales_dir
+        return (path_resolver, locales_dir)
 
     @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
     def test_all_workflow_success(self, mock_resolver_class, runner, tmp_path):
         """Should run complete translation workflow successfully."""
-        # Set up paths
         src_dir = tmp_path / "src"
         src_dir.mkdir()
-        # Create Python file to extract from
         (src_dir / "test.py").write_text(
             'from flask_babel import lazy_gettext\nmsg = lazy_gettext("Test")'
         )
-
         babel_cfg = tmp_path / "babel.cfg"
-        babel_cfg.write_text("""[python: **/*.py]""")
-
+        babel_cfg.write_text("[python: **/*.py]")
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
-
-        # Create a language directory with PO file for update/compile steps
         lang_dir = locales_dir / "es" / "LC_MESSAGES"
         lang_dir.mkdir(parents=True)
         po_file = lang_dir / "messages.po"
-        po_file.write_text("""# Spanish translations
-msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\\n"
-
-msgid "Test"
-msgstr "Prueba"
-""")
-
-        # Create mock path resolver
+        po_file.write_text(
+            '# Spanish translations\nmsgid ""\nmsgstr ""\n'
+            '"Content-Type: text/plain; charset=UTF-8\\n"\n\n'
+            'msgid "Test"\nmsgstr "Prueba"\n'
+        )
         path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_babel_config_path.return_value = babel_cfg
         path_resolver.get_messages_pot_path.return_value = locales_dir / "messages.pot"
         path_resolver.get_locales_dir.return_value = locales_dir
-
         mock_resolver_class.return_value = path_resolver
-
-        # Run with symlinks
         with runner.isolated_filesystem() as isolated_dir:
             Path(isolated_dir, "src").symlink_to(src_dir)
             Path(isolated_dir, "babel.cfg").symlink_to(babel_cfg)
             Path(isolated_dir, "locales").symlink_to(locales_dir)
-
             result = runner.invoke(cli, ["all"])
-
         assert result.exit_code == 0
         assert "Running complete translation workflow..." in result.output
         assert "Step 1/3: Extracting strings" in result.output
         assert "Step 2/3: Updating translations" in result.output
         assert "Step 3/3: Compiling translations" in result.output
         assert "✓ Complete translation workflow finished successfully" in result.output
-
-        # Verify POT file was created (extract step)
         pot_file = locales_dir / "messages.pot"
         assert pot_file.exists()
-
-        # Verify MO file was created (compile step)
         mo_file = locales_dir / "es" / "LC_MESSAGES" / "messages.mo"
         assert mo_file.exists()
 
@@ -551,31 +402,24 @@ msgstr "Prueba"
         self, mock_run_command, mock_resolver_class, runner, tmp_path
     ):
         """Should stop workflow if extract fails."""
-        # Set up paths under tmp_path
         src_dir = tmp_path / "src"
         src_dir.mkdir()
         babel_cfg = tmp_path / "babel.cfg"
-        babel_cfg.write_text("""[python: **/*.py]""")
+        babel_cfg.write_text("[python: **/*.py]")
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
         pot_file = locales_dir / "messages.pot"
-
-        # Create mock path resolver
         path_resolver = MagicMock(spec=PathResolver)
         path_resolver.get_src_dir.return_value = src_dir
         path_resolver.get_babel_config_path.return_value = babel_cfg
         path_resolver.get_messages_pot_path.return_value = pot_file
         path_resolver.get_locales_dir.return_value = locales_dir
-
         mock_resolver_class.return_value = path_resolver
-        mock_run_command.return_value = False  # Fail on first call
-
+        mock_run_command.return_value = False
         result = runner.invoke(cli, ["all"])
-
         assert result.exit_code == 1
         assert "Step 1/3: Extracting strings" in result.output
         assert "✗ String extraction failed" in result.output
-        # Should only call run_command once (failed at extract)
         assert mock_run_command.call_count == 1
 
 
@@ -586,7 +430,6 @@ class TestMainFunction:
     def test_main_function(self, mock_cli):
         """Should call CLI with proper arguments."""
         main()
-
         mock_cli.assert_called_once_with(obj={})
 
 
@@ -600,21 +443,12 @@ class TestEnvironmentSetup:
 
     def test_sets_birdnetpi_app_env_var(self, runner):
         """Should set BIRDNETPI_APP environment variable."""
-        # Clear the environment variable first
         original_value = os.environ.pop("BIRDNETPI_APP", None)
-
         try:
-            # Invoke the CLI which should set the environment variable
             result = runner.invoke(cli, ["--help"])
-
-            # Check that environment variable was set during execution
-            # The CLI sets it to Path.cwd() when invoked
             assert result.exit_code == 0
-            # The environment variable is set within the CLI context
-            # We can verify it was called by checking the help output worked
             assert "Manage BirdNET-Pi translations" in result.output
         finally:
-            # Restore original value if it existed
             if original_value is not None:
                 os.environ["BIRDNETPI_APP"] = original_value
 
@@ -647,7 +481,6 @@ class TestTransformString:
         text = "Hello %(name)s"
         assert _transform_string(text, reverse=True, brackets=False) == " olleH%(name)s"
         assert _transform_string(text, reverse=True, brackets=True) == "[[ olleH%(name)s]]"
-
         text = "%(count)d items"
         assert _transform_string(text, reverse=True, brackets=False) == "%(count)dsmeti "
         assert _transform_string(text, reverse=True, brackets=True) == "[[%(count)dsmeti ]]"
@@ -655,7 +488,6 @@ class TestTransformString:
     def test_preserve_multiple_placeholders(self):
         """Should preserve multiple placeholders in correct positions."""
         text = "User %(user)s has %(count)d messages"
-        # When reversed, the text segments between placeholders are reversed
         expected_reversed = " resU%(user)s sah %(count)dsegassem "
         assert _transform_string(text, reverse=True, brackets=False) == expected_reversed
         assert _transform_string(text, reverse=True, brackets=True) == f"[[{expected_reversed}]]"
@@ -664,28 +496,24 @@ class TestTransformString:
         """Should preserve HTML entities."""
         text = "Items &times; Price"
         assert _transform_string(text, reverse=True, brackets=False) == " smetI&times;ecirP "
-
         text = "Line&nbsp;break"
         assert _transform_string(text, reverse=True, brackets=False) == "eniL&nbsp;kaerb"
 
     def test_preserve_numeric_html_entities(self):
         """Should preserve numeric HTML entities."""
-        text = "Price &#8364; 100"  # Euro symbol
+        text = "Price &#8364; 100"
         assert _transform_string(text, reverse=True, brackets=False) == " ecirP&#8364;001 "
-
-        text = "Copyright &#169; 2024"  # Copyright symbol
+        text = "Copyright &#169; 2024"
         assert _transform_string(text, reverse=True, brackets=False) == " thgirypoC&#169;4202 "
 
     def test_complex_mixed_content(self):
         """Should handle complex strings with multiple special elements."""
         text = "%(user)s posted &ldquo;Hello&rdquo; at %(time)s"
         result = _transform_string(text, reverse=True, brackets=False)
-        # The actual implementation preserves placeholders and entities
         assert "%(user)s" in result
         assert "%(time)s" in result
         assert "&ldquo;" in result
         assert "&rdquo;" in result
-        # Check that some reversal happened
         assert "olleH" in result or "detsop" in result
 
 
@@ -699,7 +527,6 @@ class TestReverseTextWithPlaceholders:
     def test_text_with_single_placeholder(self):
         """Should reverse text around placeholder markers."""
         text = "Hello __PLACEHOLDER_0__ World"
-        # Text before placeholder gets reversed, placeholder stays, text after gets reversed
         assert _reverse_text_with_placeholders(text) == " olleH__PLACEHOLDER_0__dlroW "
 
     def test_text_with_multiple_placeholders(self):
@@ -733,19 +560,13 @@ class TestProcessPotFile:
 
     def test_simple_pot_file(self):
         """Should process a simple POT file."""
-        pot_content = """# Translation file
-msgid ""
-msgstr ""
-
-msgid "Hello"
-msgstr ""
-
-msgid "World"
-msgstr ""
-"""
+        pot_content = (
+            '# Translation file\nmsgid ""\nmsgstr ""\n\n'
+            'msgid "Hello"\nmsgstr ""\n\n'
+            'msgid "World"\nmsgstr ""\n'
+        )
         result = _process_pot_file(pot_content, reverse=True, brackets=True)
         result_text = "\n".join(result)
-
         assert 'msgid "Hello"' in result_text
         assert 'msgstr "[[olleH]]"' in result_text
         assert 'msgid "World"' in result_text
@@ -753,18 +574,16 @@ msgstr ""
 
     def test_multiline_msgid(self):
         """Should handle multi-line msgid entries."""
-        pot_content = """msgid ""
-"This is a very long message that spans "
-"multiple lines in the POT file"
-msgstr ""
-"""
+        pot_content = (
+            'msgid ""\n'
+            '"This is a very long message that spans "\n'
+            '"multiple lines in the POT file"\n'
+            'msgstr ""\n'
+        )
         result = _process_pot_file(pot_content, reverse=True, brackets=False)
         result_text = "\n".join(result)
-
-        # The msgid lines should be preserved as-is
         assert '"This is a very long message that spans "' in result_text
         assert '"multiple lines in the POT file"' in result_text
-        # The msgstr should have the reversed combined text
         assert (
             'msgstr "elif TOP eht ni senil elpitlum snaps taht egassem gnol yrev a si sihT"'
             in result_text
@@ -772,15 +591,11 @@ msgstr ""
 
     def test_preserve_comments(self):
         """Should preserve comments and metadata."""
-        pot_content = """# Translator comment
-#. Developer comment
-#: source.py:42
-msgid "Test"
-msgstr ""
-"""
+        pot_content = (
+            '# Translator comment\n#. Developer comment\n#: source.py:42\nmsgid "Test"\nmsgstr ""\n'
+        )
         result = _process_pot_file(pot_content, reverse=True, brackets=False)
         result_text = "\n".join(result)
-
         assert "# Translator comment" in result_text
         assert "#. Developer comment" in result_text
         assert "#: source.py:42" in result_text
@@ -788,40 +603,29 @@ msgstr ""
 
     def test_empty_msgid(self):
         """Should not transform empty msgid (header)."""
-        pot_content = """msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\\n"
-"""
+        pot_content = 'msgid ""\nmsgstr ""\n"Content-Type: text/plain; charset=UTF-8\\n"\n'
         result = _process_pot_file(pot_content, reverse=True, brackets=True)
         result_text = "\n".join(result)
-
-        # Empty msgid should not be transformed
         assert 'msgid ""' in result_text
-        assert result[1] == 'msgstr ""'  # Empty msgstr preserved
+        assert result[1] == 'msgstr ""'
 
     def test_msgid_with_placeholders(self):
         """Should handle msgid with placeholders."""
-        pot_content = """msgid "Hello %(name)s"
-msgstr ""
-
-msgid "%(count)d items in %(location)s"
-msgstr ""
-"""
+        pot_content = (
+            'msgid "Hello %(name)s"\nmsgstr ""\n\n'
+            'msgid "%(count)d items in %(location)s"\nmsgstr ""\n'
+        )
         result = _process_pot_file(pot_content, reverse=True, brackets=True)
         result_text = "\n".join(result)
-
         assert 'msgstr "[[ olleH%(name)s]]"' in result_text
         assert "%(count)d" in result_text
         assert "%(location)s" in result_text
 
     def test_no_transformation_options(self):
         """Should pass through unchanged when no transformations requested."""
-        pot_content = """msgid "Hello World"
-msgstr ""
-"""
+        pot_content = 'msgid "Hello World"\nmsgstr ""\n'
         result = _process_pot_file(pot_content, reverse=False, brackets=False)
         result_text = "\n".join(result)
-
         assert 'msgstr "Hello World"' in result_text
 
 
@@ -841,56 +645,30 @@ class TestFakeLocaleCommand:
             resolver = MagicMock(spec=PathResolver)
             resolver.get_messages_pot_path.return_value = str(tmp_path / "messages.pot")
             resolver.get_locales_dir.return_value = str(tmp_path / "locales")
-            yield resolver, tmp_path
+            yield (resolver, tmp_path)
 
     def test_fake_locale_creates_files(self, runner, mock_resolver):
         """Should create PO file from POT file - integration test."""
         resolver, tmp_path = mock_resolver
-
-        # Create a POT file
         pot_file = tmp_path / "messages.pot"
-        pot_file.write_text("""msgid ""
-msgstr ""
-
-msgid "Hello"
-msgstr ""
-
-msgid "Settings"
-msgstr ""
-""")
-
+        pot_file.write_text(
+            'msgid ""\nmsgstr ""\n\nmsgid "Hello"\nmsgstr ""\n\nmsgid "Settings"\nmsgstr ""\n'
+        )
         with patch("subprocess.run", autospec=True) as mock_run:
-            # Mock successful msgfmt execution
             mock_run.return_value.returncode = 0
-
             result = runner.invoke(
-                cli,
-                ["fake-locale", "--locale", "xx"],
-                obj={"resolver": resolver},
+                cli, ["fake-locale", "--locale", "xx"], obj={"resolver": resolver}
             )
-
         assert result.exit_code == 0
         assert "Creating fake locale 'xx'" in result.output
-
-        # The command should have been executed successfully
-        # We can't easily check the actual file creation due to path mocking complexities
 
     def test_fake_locale_no_pot_file(self, runner, mock_resolver):
         """Should error when POT file doesn't exist."""
         resolver, tmp_path = mock_resolver
-
-        # Make sure the POT file doesn't exist
         pot_file = tmp_path / "messages.pot"
         if pot_file.exists():
             pot_file.unlink()
-
-        result = runner.invoke(
-            cli,
-            ["fake-locale", "--locale", "xx"],
-            obj={"resolver": resolver},
-        )
-
-        # Either it fails or creates an empty one - both are acceptable
+        result = runner.invoke(cli, ["fake-locale", "--locale", "xx"], obj={"resolver": resolver})
         assert result.exit_code in [0, 1]
         if result.exit_code == 1:
             assert "messages.pot not found" in result.output
@@ -898,59 +676,33 @@ msgstr ""
     def test_fake_locale_options(self, runner, mock_resolver):
         """Should respect --no-reverse and --no-brackets options."""
         resolver, tmp_path = mock_resolver
-
-        # Create a POT file
         pot_file = tmp_path / "messages.pot"
-        pot_file.write_text("""msgid "Test"
-msgstr ""
-""")
-
-        # Test with --no-reverse
+        pot_file.write_text('msgid "Test"\nmsgstr ""\n')
         with patch("subprocess.run", autospec=True) as mock_run:
             mock_run.return_value.returncode = 0
             result = runner.invoke(
-                cli,
-                ["fake-locale", "--locale", "xx", "--no-reverse"],
-                obj={"resolver": resolver},
+                cli, ["fake-locale", "--locale", "xx", "--no-reverse"], obj={"resolver": resolver}
             )
-
         assert result.exit_code == 0
         assert "--no-reverse" in str(result) or "Creating fake locale" in result.output
-
-        # Test with --no-brackets
         with patch("subprocess.run", autospec=True) as mock_run:
             mock_run.return_value.returncode = 0
             result = runner.invoke(
-                cli,
-                ["fake-locale", "--locale", "yy", "--no-brackets"],
-                obj={"resolver": resolver},
+                cli, ["fake-locale", "--locale", "yy", "--no-brackets"], obj={"resolver": resolver}
             )
-
         assert result.exit_code == 0
-        # The options are being processed, even if we can't verify file contents
 
     def test_fake_locale_compile_failure(self, runner, mock_resolver):
         """Should handle msgfmt compilation failure."""
         resolver, tmp_path = mock_resolver
-
-        # Create a POT file
         pot_file = tmp_path / "messages.pot"
-        pot_file.write_text("""msgid "Test"
-msgstr ""
-""")
-
+        pot_file.write_text('msgid "Test"\nmsgstr ""\n')
         with patch("subprocess.run", autospec=True) as mock_run:
-            # Mock failed msgfmt execution
             mock_run.return_value.returncode = 1
             mock_run.return_value.stderr = "msgfmt: error"
-
             result = runner.invoke(
-                cli,
-                ["fake-locale", "--locale", "xx"],
-                obj={"resolver": resolver},
+                cli, ["fake-locale", "--locale", "xx"], obj={"resolver": resolver}
             )
-
-        # The command might succeed anyway if real msgfmt is available
         assert result.exit_code in [0, 1]
         if result.exit_code == 1:
             assert "Failed to compile" in result.output or "error" in result.output.lower()

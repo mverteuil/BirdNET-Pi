@@ -239,6 +239,7 @@ dependencies = [
     { name = "colorama" },
     { name = "dependency-injector" },
     { name = "fastapi" },
+    { name = "gpsdclient" },
     { name = "greenlet" },
     { name = "httpx" },
     { name = "librosa" },
@@ -314,6 +315,7 @@ requires-dist = [
     { name = "colorama", specifier = "==0.4.4" },
     { name = "dependency-injector", specifier = "==4.48.1" },
     { name = "fastapi" },
+    { name = "gpsdclient" },
     { name = "greenlet", specifier = ">=3.2.3" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "librosa" },
@@ -637,6 +639,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/69/68/03efbf545e217d5db8446acfd4c447c15b7c8cf4dbd4a58403111df9322d/frozenlist-1.7.0-cp311-cp311-win32.whl", hash = "sha256:284d233a8953d7b24f9159b8a3496fc1ddc00f4db99c324bd5fb5f22d8698ea7", size = 39565, upload-time = "2025-06-09T23:00:39.753Z" },
     { url = "https://files.pythonhosted.org/packages/58/17/fe61124c5c333ae87f09bb67186d65038834a47d974fc10a5fadb4cc5ae1/frozenlist-1.7.0-cp311-cp311-win_amd64.whl", hash = "sha256:387cbfdcde2f2353f19c2f66bbb52406d06ed77519ac7ee21be0232147c2592d", size = 44019, upload-time = "2025-06-09T23:00:40.988Z" },
     { url = "https://files.pythonhosted.org/packages/ee/45/b82e3c16be2182bff01179db177fe144d58b5dc787a7d4492c6ed8b9317f/frozenlist-1.7.0-py3-none-any.whl", hash = "sha256:9a5af342e34f7e97caf8c995864c7a396418ae2859cc6fdf1b1073020d516a7e", size = 13106, upload-time = "2025-06-09T23:02:34.204Z" },
+]
+
+[[package]]
+name = "gpsdclient"
+version = "1.3.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0a/85/9bfbc7ea5dd5c61f43ad048efe10d0a5a2d8ffd82143329fa380771221b8/gpsdclient-1.3.2.tar.gz", hash = "sha256:70a496550a9747dff5e0e50b3c95a6e1dcab9d842860997e95120767e2060a7a", size = 7619, upload-time = "2023-01-09T11:29:17.995Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/76/e9/f8a624fbbe177da2274e8d37d08fabde8269e8fead25b22deda94c3caf88/gpsdclient-1.3.2-py3-none-any.whl", hash = "sha256:35a7f781ae69a04f2d80278a6ae94564e524efaf061646c0a9bbb6ba4ffbcac8", size = 7934, upload-time = "2023-01-09T11:29:16.461Z" },
 ]
 
 [[package]]

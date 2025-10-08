@@ -47,16 +47,12 @@ class TestInstallAssets:
         mock_manager = MagicMock(spec=UpdateManager)
         mock_manager.download_release_assets.return_value = test_download_result
         mock_update_manager_class.return_value = mock_manager
-
         result = runner.invoke(cli, ["install", "v2.1.1"])
-
         assert result.exit_code == 0
         assert "Installing complete asset release: v2.1.1" in result.output
         assert "✓ Asset installation completed successfully!" in result.output
         assert "Version: v2.1.1" in result.output
         assert "Downloaded assets: 4" in result.output
-
-        # Verify all assets are always downloaded
         mock_manager.download_release_assets.assert_called_once_with(
             version="v2.1.1",
             include_models=True,
@@ -74,15 +70,10 @@ class TestInstallAssets:
         mock_manager = MagicMock(spec=UpdateManager)
         mock_manager.download_release_assets.return_value = test_download_result
         mock_update_manager_class.return_value = mock_manager
-
         output_file = tmp_path / "install.json"
-
         result = runner.invoke(cli, ["install", "v2.1.1", "--output-json", str(output_file)])
-
         assert result.exit_code == 0
         assert f"Installation data written to: {output_file}" in result.output
-
-        # Check JSON file contents
         assert output_file.exists()
         json_data = json.loads(output_file.read_text())
         assert json_data == test_download_result
@@ -93,9 +84,7 @@ class TestInstallAssets:
         mock_manager = MagicMock(spec=UpdateManager)
         mock_manager.download_release_assets.side_effect = Exception("Download failed")
         mock_update_manager_class.return_value = mock_manager
-
         result = runner.invoke(cli, ["install", "v2.1.1"])
-
         assert result.exit_code == 1
         assert "✗ Error installing assets: Download failed" in result.output
 
@@ -107,9 +96,7 @@ class TestInstallAssets:
             "Permission denied: /var/lib/birdnetpi/models"
         )
         mock_update_manager_class.return_value = mock_manager
-
         result = runner.invoke(cli, ["install", "v2.1.1"])
-
         assert result.exit_code == 1
         assert "✗ Error installing assets:" in result.output
         assert "LOCAL DEVELOPMENT SETUP REQUIRED" in result.output
@@ -126,9 +113,7 @@ class TestListVersions:
         mock_manager = MagicMock(spec=UpdateManager)
         mock_manager.list_available_versions.return_value = test_version_data
         mock_update_manager_class.return_value = mock_manager
-
         result = runner.invoke(cli, ["list-versions"])
-
         assert result.exit_code == 0
         assert "Available asset versions:" in result.output
         assert "Latest version: v2.1.1" in result.output
@@ -142,9 +127,7 @@ class TestListVersions:
         mock_manager = MagicMock(spec=UpdateManager)
         mock_manager.list_available_versions.return_value = []
         mock_update_manager_class.return_value = mock_manager
-
         result = runner.invoke(cli, ["list-versions"])
-
         assert result.exit_code == 0
         assert "No asset versions found." in result.output
 
@@ -154,9 +137,7 @@ class TestListVersions:
         mock_manager = MagicMock(spec=UpdateManager)
         mock_manager.list_available_versions.side_effect = Exception("API error")
         mock_update_manager_class.return_value = mock_manager
-
         result = runner.invoke(cli, ["list-versions"])
-
         assert result.exit_code == 1
         assert "✗ Error listing available assets: API error" in result.output
 
@@ -166,26 +147,20 @@ class TestCheckLocal:
 
     def test_check_local_assets_exist(self, tmp_path, runner, path_resolver):
         """Should report existing assets."""
-        # Use the global path_resolver fixture and customize it
         path_resolver.get_models_dir = lambda: tmp_path / "models"
         path_resolver.get_ioc_database_path = lambda: tmp_path / "data" / "ioc_db.sqlite"
         path_resolver.get_database_dir = lambda: tmp_path / "data"
-
         with patch("birdnetpi.cli.install_assets.PathResolver", return_value=path_resolver):
-            # Create test files
             models_dir = tmp_path / "models"
             models_dir.mkdir(parents=True)
             (models_dir / "model1.tflite").write_bytes(b"model" * 1000)
             (models_dir / "model2.tflite").write_bytes(b"model" * 2000)
-
             data_dir = tmp_path / "data"
             data_dir.mkdir(parents=True)
             (data_dir / "ioc_db.sqlite").write_bytes(b"database" * 1000)
             (data_dir / "avibase_database.db").write_bytes(b"avibase" * 500)
             (data_dir / "patlevin_database.db").write_bytes(b"patlevin" * 750)
-
             result = runner.invoke(cli, ["check-local"])
-
             assert result.exit_code == 0
             assert "✓ BirdNET Models: 2 models" in result.output
             assert "✓ IOC Reference Database:" in result.output
@@ -194,37 +169,28 @@ class TestCheckLocal:
 
     def test_check_local_verbose_mode(self, tmp_path, runner, path_resolver):
         """Should show detailed info in verbose mode."""
-        # Use the global path_resolver fixture and customize it
         path_resolver.get_models_dir = lambda: tmp_path / "models"
         path_resolver.get_ioc_database_path = lambda: tmp_path / "data" / "ioc_db.sqlite"
         path_resolver.get_database_dir = lambda: tmp_path / "data"
-
         with patch("birdnetpi.cli.install_assets.PathResolver", return_value=path_resolver):
-            # Create test files
             models_dir = tmp_path / "models"
             models_dir.mkdir(parents=True)
             (models_dir / "model1.tflite").write_bytes(b"model" * 1000)
-
             result = runner.invoke(cli, ["check-local", "--verbose"])
-
             assert result.exit_code == 0
             assert "- model1.tflite" in result.output
 
     def test_check_local_missing_files(self, tmp_path, runner, path_resolver):
         """Should report missing assets."""
-        # Use the global path_resolver fixture and customize it
         path_resolver.get_models_dir = lambda: tmp_path / "models"
         path_resolver.get_ioc_database_path = lambda: tmp_path / "data" / "ioc_db.sqlite"
         path_resolver.get_database_dir = lambda: tmp_path / "data"
-        # Mock Avibase and PatLevin paths to point to tmp location where they don't exist
         path_resolver.get_avibase_database_path = lambda: tmp_path / "data" / "avibase_database.db"
         path_resolver.get_patlevin_database_path = (
             lambda: tmp_path / "data" / "patlevin_database.db"
         )
-
         with patch("birdnetpi.cli.install_assets.PathResolver", return_value=path_resolver):
             result = runner.invoke(cli, ["check-local"])
-
             assert result.exit_code == 0
             assert "✗ BirdNET Models: Not installed" in result.output
             assert "✗ IOC Reference Database: Not installed" in result.output
@@ -240,21 +206,13 @@ class TestMainFunction:
     def test_main_function(self, mock_cli):
         """Should call CLI with proper arguments."""
         main()
-
         mock_cli.assert_called_once_with(obj={})
 
     def test_script_entry_point(self, repo_root):
         """Should run module as script."""
         module_path = repo_root / "src" / "birdnetpi" / "cli" / "install_assets.py"
-
-        # Try to run with --help to avoid actual execution
         result = subprocess.run(
-            [sys.executable, str(module_path), "--help"],
-            capture_output=True,
-            text=True,
-            timeout=5,
+            [sys.executable, str(module_path), "--help"], capture_output=True, text=True, timeout=5
         )
-
-        # Should show help text
         assert result.returncode == 0
         assert "BirdNET-Pi Asset Installer" in result.stdout

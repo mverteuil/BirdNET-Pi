@@ -290,11 +290,8 @@ class TestConfigureHandlers:
     def test_config(self):
         """Should create a mock BirdNET config."""
         config = MagicMock(spec=BirdNETConfig)
-        config.logging = LoggingConfig(
-            level="info",
-            json_logs=True,
-            include_caller=False,
-            extra_fields={},
+        config.logging = MagicMock(
+            spec=LoggingConfig, level="info", json_logs=True, include_caller=False, extra_fields={}
         )
         return config
 
@@ -395,14 +392,14 @@ class TestConfigureStructlog:
     @pytest.fixture
     def test_config(self):
         """Should create a mock BirdNET config."""
-        config = MagicMock(spec=BirdNETConfig)
-        config.logging = LoggingConfig(
+        config = MagicMock(spec=BirdNETConfig, site_name="Test Site")
+        config.logging = MagicMock(
+            spec=LoggingConfig,
             level="info",
             json_logs=None,
             include_caller=False,
             extra_fields={"custom": "field"},
         )
-        config.site_name = "Test Site"
         return config
 
     @patch("birdnetpi.system.structlog_configurator.logging.getLogger", autospec=True)

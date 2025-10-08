@@ -3,6 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from birdnetpi.audio.devices import AudioDevice, AudioDeviceService
+from birdnetpi.utils.cache import clear_all_cache
 
 
 class TestAudioDeviceService:
@@ -11,6 +12,8 @@ class TestAudioDeviceService:
     @pytest.fixture(autouse=True)
     def audio_device_service(self):
         """Set up test fixtures."""
+        # Clear cache before each test to prevent flakiness
+        clear_all_cache()
         self.service = AudioDeviceService()
 
     @patch("sounddevice._initialize", autospec=True)
@@ -60,10 +63,8 @@ class TestAudioDeviceService:
 
         devices = self.service.discover_input_devices()
 
-        # Assert that query_devices was called (may not be called if cached from another test)
-        # Due to proper caching with Redis, this might use cached data
-        # So we'll just check that we got the expected result
-        # mock_query_devices.assert_called_once()  # Removed - caching may prevent this
+        # Assert that query_devices was called (cache is cleared in fixture)
+        mock_query_devices.assert_called_once()
 
         # Assert that only input devices are returned
         assert len(devices) == 2

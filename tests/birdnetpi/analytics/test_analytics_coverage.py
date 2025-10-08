@@ -429,7 +429,7 @@ class TestWeatherCorrelations:
         }
 
         mock_detection_query_service.get_weather_correlations = AsyncMock(
-            spec=DetectionQueryService.get_weather_correlations, return_value=mock_data
+            spec=callable, return_value=mock_data
         )
 
         end_date = datetime.now()

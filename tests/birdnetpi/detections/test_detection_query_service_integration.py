@@ -17,7 +17,6 @@ from birdnetpi.detections.queries import DetectionQueryService
 def mock_species_database():
     """Create a mock SpeciesDatabaseService."""
     mock_service = MagicMock(spec=SpeciesDatabaseService)
-    # Configure any needed mock behaviors
     return mock_service
 
 
@@ -26,40 +25,26 @@ async def test_database(tmp_path):
     """Should create a test database with DatabaseService."""
     db_path = tmp_path / "test.db"
     db_service = CoreDatabaseService(db_path)
-
-    # Initialize the database
     await db_service.initialize()
-
     try:
         yield db_service
     finally:
-        # Properly dispose all database resources
         await db_service.dispose()
 
 
 @pytest.fixture
 async def populated_database(test_database):
     """Create a test database with sample data."""
-    # Create test audio files
     async with test_database.get_async_db() as session:
-        # Create audio files - one for each detection
         audio_files = []
-        for i in range(9):  # 9 detections total
+        for i in range(9):
             audio = AudioFile(
-                file_path=Path(f"/recordings/detection_{i + 1}.wav"),
-                duration=3.0,  # 3 second clips
-                size_bytes=48000,  # ~48KB per 3-second clip
+                file_path=Path(f"/recordings/detection_{i + 1}.wav"), duration=3.0, size_bytes=48000
             )
             audio_files.append(audio)
-
         session.add_all(audio_files)
-        await session.flush()  # Flush to get IDs
-
-        # Get the IDs while in the async context
+        await session.flush()
         audio_file_ids = [af.id for af in audio_files]
-
-        # Create detections at different times for different species
-        # Morning detections (6 AM)
         detection1 = Detection(
             audio_file_id=audio_file_ids[0],
             timestamp=datetime.datetime(2024, 1, 1, 6, 15, 0),
@@ -96,8 +81,6 @@ async def populated_database(test_database):
             sensitivity_setting=1.0,
             overlap=0.0,
         )
-
-        # 7 AM detections
         detection4 = Detection(
             audio_file_id=audio_file_ids[3],
             timestamp=datetime.datetime(2024, 1, 1, 7, 10, 0),
@@ -116,7 +99,7 @@ async def populated_database(test_database):
             species_tensor="Cyanocitta cristata_Blue Jay",
             scientific_name="Cyanocitta cristata",
             common_name="Blue Jay",
-            confidence=0.90,
+            confidence=0.9,
             species_confidence_threshold=0.5,
             week=1,
             sensitivity_setting=1.0,
@@ -134,8 +117,6 @@ async def populated_database(test_database):
             sensitivity_setting=1.0,
             overlap=0.0,
         )
-
-        # 8 AM detections
         detection7 = Detection(
             audio_file_id=audio_file_ids[6],
             timestamp=datetime.datetime(2024, 1, 1, 8, 5, 0),
@@ -160,8 +141,6 @@ async def populated_database(test_database):
             sensitivity_setting=1.0,
             overlap=0.0,
         )
-
-        # Add a detection from previous day for testing date filtering
         detection9 = Detection(
             audio_file_id=audio_file_ids[8],
             timestamp=datetime.datetime(2023, 12, 31, 10, 0, 0),
@@ -174,7 +153,6 @@ async def populated_database(test_database):
             sensitivity_setting=1.0,
             overlap=0.0,
         )
-
         session.add_all(
             [
                 detection1,
@@ -189,21 +167,15 @@ async def populated_database(test_database):
             ]
         )
         await session.commit()
-
     return test_database
 
 
 @pytest.fixture
 async def query_service_with_db(populated_database, path_resolver, test_config):
     """Create DetectionQueryService with real populated database."""
-    # Use real SpeciesDatabaseService to get actual database attachments
     species_database = SpeciesDatabaseService(path_resolver)
-
-    # Create a DetectionQueryService with the real database
     return DetectionQueryService(
-        core_database=populated_database,
-        species_database=species_database,
-        config=test_config,
+        core_database=populated_database, species_database=species_database, config=test_config
     )
 
 
@@ -213,56 +185,39 @@ class TestAnalyticsIntegration:
     @pytest.mark.asyncio
     async def test_get_detection_count(self, query_service_with_db):
         """Should counting detections in time range."""
-        # Count all detections on Jan 1, 2024
         start_time = datetime.datetime(2024, 1, 1, 0, 0, 0)
         end_time = datetime.datetime(2024, 1, 1, 23, 59, 59)
-
         count = await query_service_with_db.get_detection_count(start_time, end_time)
-        assert count == 8  # 8 detections on Jan 1
-
-        # Count detections in morning only (6-7 AM)
+        assert count == 8
         morning_start = datetime.datetime(2024, 1, 1, 6, 0, 0)
         morning_end = datetime.datetime(2024, 1, 1, 6, 59, 59)
-
         morning_count = await query_service_with_db.get_detection_count(morning_start, morning_end)
-        assert morning_count == 3  # 3 detections in 6 AM hour
-
-        # Count detections on Dec 31, 2023
+        assert morning_count == 3
         prev_day_start = datetime.datetime(2023, 12, 31, 0, 0, 0)
         prev_day_end = datetime.datetime(2023, 12, 31, 23, 59, 59)
-
         prev_count = await query_service_with_db.get_detection_count(prev_day_start, prev_day_end)
-        assert prev_count == 1  # 1 detection on Dec 31
+        assert prev_count == 1
 
     @pytest.mark.asyncio
     async def test_get_unique_species_count(self, query_service_with_db):
         """Should counting unique species in time range."""
-        # Count unique species on Jan 1, 2024
         start_time = datetime.datetime(2024, 1, 1, 0, 0, 0)
         end_time = datetime.datetime(2024, 1, 1, 23, 59, 59)
-
         species_count = await query_service_with_db.get_unique_species_count(start_time, end_time)
-        assert species_count == 4  # American Robin, Northern Cardinal, Blue Jay, Carolina Chickadee
-
-        # Count unique species in morning only
+        assert species_count == 4
         morning_start = datetime.datetime(2024, 1, 1, 6, 0, 0)
         morning_end = datetime.datetime(2024, 1, 1, 6, 59, 59)
-
         morning_species = await query_service_with_db.get_unique_species_count(
             morning_start, morning_end
         )
-        assert morning_species == 2  # American Robin, Northern Cardinal
+        assert morning_species == 2
 
     @pytest.mark.asyncio
     async def test_get_storage_metrics(self, query_service_with_db):
         """Should getting storage metrics for audio files."""
         metrics = await query_service_with_db.get_storage_metrics()
-
-        # Total size: 9 files * 48000 bytes = 432000 bytes
         expected_bytes = 9 * 48000
         assert metrics["total_bytes"] == expected_bytes
-
-        # Total duration: 9 files * 3 seconds = 27 seconds
         expected_duration = 9 * 3.0
         assert metrics["total_duration"] == expected_duration
 
@@ -271,21 +226,13 @@ class TestAnalyticsIntegration:
         """Should getting species with their detection counts."""
         start_time = datetime.datetime(2024, 1, 1, 0, 0, 0)
         end_time = datetime.datetime(2024, 1, 1, 23, 59, 59)
-
         species_counts = await query_service_with_db.get_species_counts(start_time, end_time)
-
-        # Should be sorted by count descending
         assert len(species_counts) == 4
-
-        # Find each species in the results
         species_dict = {s["scientific_name"]: s for s in species_counts}
-
-        assert species_dict["Turdus migratorius"]["count"] == 3  # American Robin
-        assert species_dict["Cardinalis cardinalis"]["count"] == 2  # Northern Cardinal
-        assert species_dict["Cyanocitta cristata"]["count"] == 2  # Blue Jay
-        assert species_dict["Poecile carolinensis"]["count"] == 1  # Carolina Chickadee
-
-        # Verify the common names are included
+        assert species_dict["Turdus migratorius"]["count"] == 3
+        assert species_dict["Cardinalis cardinalis"]["count"] == 2
+        assert species_dict["Cyanocitta cristata"]["count"] == 2
+        assert species_dict["Poecile carolinensis"]["count"] == 1
         assert species_dict["Turdus migratorius"]["common_name"] == "American Robin"
         assert species_dict["Cardinalis cardinalis"]["common_name"] == "Northern Cardinal"
 
@@ -293,173 +240,99 @@ class TestAnalyticsIntegration:
     async def test_get_hourly_counts(self, query_service_with_db):
         """Should getting hourly detection counts for a date."""
         target_date = date(2024, 1, 1)
-
         hourly_counts = await query_service_with_db.get_hourly_counts(target_date)
-
-        # Convert to dict for easier testing
         hourly_dict = {h["hour"]: h["count"] for h in hourly_counts}
-
-        # Verify counts for hours with detections
-        assert hourly_dict.get(6, 0) == 3  # 3 detections at 6 AM
-        assert hourly_dict.get(7, 0) == 3  # 3 detections at 7 AM
-        assert hourly_dict.get(8, 0) == 2  # 2 detections at 8 AM
-
-        # Verify other hours have no detections (may not be in result)
+        assert hourly_dict.get(6, 0) == 3
+        assert hourly_dict.get(7, 0) == 3
+        assert hourly_dict.get(8, 0) == 2
         assert hourly_dict.get(9, 0) == 0
         assert hourly_dict.get(12, 0) == 0
         assert hourly_dict.get(18, 0) == 0
 
     @pytest.mark.asyncio
-    async def test_empty_database_queries(
-        self,
-        test_database,
-        mock_species_database,
-        test_config,
-    ):
+    async def test_empty_database_queries(self, test_database, mock_species_database, test_config):
         """Should handle analytics methods correctly with empty database."""
-        # Create DetectionQueryService with empty database
         query_service = DetectionQueryService(
-            core_database=test_database,
-            species_database=mock_species_database,
-            config=test_config,
+            core_database=test_database, species_database=mock_species_database, config=test_config
         )
-
         start_time = datetime.datetime(2024, 1, 1, 0, 0, 0)
         end_time = datetime.datetime(2024, 1, 1, 23, 59, 59)
-
-        # All methods should return appropriate empty values
         assert await query_service.get_detection_count(start_time, end_time) == 0
         assert await query_service.get_unique_species_count(start_time, end_time) == 0
-
         metrics = await query_service.get_storage_metrics()
         assert metrics["total_bytes"] == 0
         assert metrics["total_duration"] == 0
-
         assert await query_service.get_species_counts(start_time, end_time) == []
         assert await query_service.get_hourly_counts(date(2024, 1, 1)) == []
 
     @pytest.mark.asyncio
     async def test_query_best_recordings_with_species_filter(self, query_service_with_db):
         """Should return all recordings for a specific species without per-species limit."""
-        # Query for American Robin only (has 4 detections in test data)
         detections, total = await query_service_with_db.query_best_recordings_per_species(
-            per_species_limit=None,  # No limit when filtering by species
+            per_species_limit=None,
             min_confidence=0.5,
             page=1,
             per_page=10,
             species="Turdus migratorius",
         )
-
-        # Should get all 4 American Robin detections
         assert total == 4
         assert len(detections) == 4
-
-        # All should be American Robin
         for detection in detections:
             assert detection.detection.scientific_name == "Turdus migratorius"
-
-        # Should be ordered by confidence descending
         confidences = [d.detection.confidence for d in detections]
         assert confidences == sorted(confidences, reverse=True)
 
     @pytest.mark.asyncio
     async def test_query_best_recordings_without_species_filter(self, query_service_with_db):
         """Should return limited recordings per species when no species filter."""
-        # Query without species filter - should get max 2 per species
         detections, _ = await query_service_with_db.query_best_recordings_per_species(
-            per_species_limit=2,  # Limit per species for diversity
-            min_confidence=0.5,
-            page=1,
-            per_page=10,
+            per_species_limit=2, min_confidence=0.5, page=1, per_page=10
         )
-
-        # Count detections per species
         species_counts = {}
         for detection in detections:
             species = detection.detection.scientific_name
             species_counts[species] = species_counts.get(species, 0) + 1
-
-        # No species should have more than 2 recordings
         for species, count in species_counts.items():
             assert count <= 2, f"{species} has {count} recordings, expected <= 2"
-
-        # American Robin has 4 detections but should only return 2 with per_species_limit
         assert species_counts.get("Turdus migratorius", 0) <= 2
 
     @pytest.mark.asyncio
     async def test_query_best_recordings_with_family_filter(self, query_service_with_db):
         """Should filter recordings by family correctly."""
-        # Query with family filter (would need proper test data with families)
         detections, total = await query_service_with_db.query_best_recordings_per_species(
-            per_species_limit=5,
-            min_confidence=0.5,
-            page=1,
-            per_page=10,
-            family="Turdidae",  # Thrush family
+            per_species_limit=5, min_confidence=0.5, page=1, per_page=10, family="Turdidae"
         )
-
-        # This test would need proper IOC database setup to work
-        # For now just verify the method doesn't crash
         assert isinstance(detections, list)
         assert isinstance(total, int)
 
     @pytest.mark.asyncio
     async def test_query_best_recordings_with_confidence_filter(self, query_service_with_db):
         """Should filter recordings by minimum confidence threshold."""
-        # Query with high confidence threshold
         detections, _ = await query_service_with_db.query_best_recordings_per_species(
-            per_species_limit=5,
-            min_confidence=0.8,  # High threshold
-            page=1,
-            per_page=10,
+            per_species_limit=5, min_confidence=0.8, page=1, per_page=10
         )
-
-        # All returned detections should meet confidence threshold
         for detection in detections:
             assert detection.detection.confidence >= 0.8
 
     @pytest.mark.asyncio
     async def test_query_best_recordings_pagination(self, query_service_with_db):
         """Should paginate best recordings correctly."""
-        # Get first page
         page1, total1 = await query_service_with_db.query_best_recordings_per_species(
-            per_species_limit=2,
-            min_confidence=0.5,
-            page=1,
-            per_page=3,
+            per_species_limit=2, min_confidence=0.5, page=1, per_page=3
         )
-
-        # Get second page
         page2, total2 = await query_service_with_db.query_best_recordings_per_species(
-            per_species_limit=2,
-            min_confidence=0.5,
-            page=2,
-            per_page=3,
+            per_species_limit=2, min_confidence=0.5, page=2, per_page=3
         )
-
-        # Total should be the same
         assert total1 == total2
-
-        # Should get 3 items on first page (or less if total < 3)
         assert len(page1) <= 3
-
-        # Pages should not overlap (different detection IDs)
         page1_ids = {d.detection.id for d in page1}
         page2_ids = {d.detection.id for d in page2}
-        assert len(page1_ids & page2_ids) == 0  # No overlap
+        assert len(page1_ids & page2_ids) == 0
 
     @pytest.mark.asyncio
     async def test_query_best_recordings_none_limit_without_species(self, query_service_with_db):
         """Should handle None per_species_limit without species filter."""
-        # When per_species_limit is None and no species filter,
-        # should return all recordings (no ranking)
         detections, _ = await query_service_with_db.query_best_recordings_per_species(
-            per_species_limit=None,  # No limit
-            min_confidence=0.5,
-            page=1,
-            per_page=20,
+            per_species_limit=None, min_confidence=0.5, page=1, per_page=20
         )
-
-        # Should get all detections above threshold
-        # With our test data, all 9 detections have confidence >= 0.5
-        assert len(detections) <= 9  # Could be less due to confidence filter
+        assert len(detections) <= 9

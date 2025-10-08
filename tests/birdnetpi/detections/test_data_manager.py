@@ -29,7 +29,6 @@ def mock_services():
     mock_query_service = MagicMock(spec=DetectionQueryService)
     mock_file_manager = MagicMock(spec=FileManager)
     mock_path_resolver = MagicMock(spec=PathResolver)
-
     return {
         "database_service": mock_db_service,
         "species_database": mock_multilingual,
@@ -63,14 +62,11 @@ class TestCoreOperations:
         mock_services[
             "database_service"
         ].get_async_db.return_value.__aenter__.return_value = mock_session
-
         mock_detection = MagicMock(spec=Detection)
         mock_result = create_autospec(Result, spec_set=True)
         mock_result.scalar_one_or_none.return_value = mock_detection
         mock_session.execute.return_value = mock_result
-
         result = await data_manager.get_detection_by_id(1)
-
         assert result == mock_detection
         mock_session.execute.assert_called_once()
 
@@ -81,16 +77,13 @@ class TestCoreOperations:
         mock_services[
             "database_service"
         ].get_async_db.return_value.__aenter__.return_value = mock_session
-
         mock_detections = [MagicMock(spec=Detection), MagicMock(spec=Detection)]
         mock_scalars = create_autospec(ScalarResult, spec_set=True)
         mock_scalars.__iter__ = lambda x: iter(mock_detections)
         mock_result = create_autospec(Result, spec_set=True)
         mock_result.scalars.return_value = mock_scalars
         mock_session.execute.return_value = mock_result
-
         result = await data_manager.get_all_detections(limit=10, offset=20)
-
         assert list(result) == mock_detections
         mock_session.execute.assert_called_once()
 
@@ -98,142 +91,11 @@ class TestCoreOperations:
     async def test_create_detection(self, data_manager, mock_services):
         """Should create a new detection with audio file."""
         mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
-        # add() is synchronous even in AsyncSession, already spec'd by create_autospec
         mock_services[
             "database_service"
         ].get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Create valid base64-encoded audio data (just a few bytes for testing)
-
         test_audio_bytes = b"test audio data"
         encoded_audio = base64.b64encode(test_audio_bytes).decode("utf-8")
-
-        detection_event = DetectionEvent(
-            species_tensor="Turdus migratorius_American Robin",
-            scientific_name="Turdus migratorius",
-            common_name="American Robin",
-            confidence=0.95,
-            timestamp=datetime(2023, 1, 1, 12, 0, 0),
-            audio_data=encoded_audio,  # Valid base64-encoded audio
-            sample_rate=48000,
-            channels=1,
-            latitude=45.5017,
-            longitude=-73.5673,
-            species_confidence_threshold=0.8,
-            week=1,
-            sensitivity_setting=1.5,
-            overlap=2.5,
-        )
-
-        await data_manager.create_detection(detection_event)
-
-        # Verify AudioFile creation
-        audio_file_call = mock_session.add.call_args_list[0]
-        assert isinstance(audio_file_call[0][0], AudioFile)
-
-        # Verify Detection creation
-        detection_call = mock_session.add.call_args_list[1]
-        assert isinstance(detection_call[0][0], Detection)
-
-        mock_session.commit.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_update_detection(self, data_manager, mock_services):
-        """Should update a detection record."""
-        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
-        mock_services[
-            "database_service"
-        ].get_async_db.return_value.__aenter__.return_value = mock_session
-
-        mock_detection = MagicMock(spec=Detection)
-        mock_detection.confidence = 0.8
-        mock_result = create_autospec(Result, spec_set=True)
-        mock_result.scalar_one_or_none.return_value = mock_detection
-        mock_session.execute.return_value = mock_result
-
-        updates = {"confidence": 0.95, "common_name": "Updated Robin"}
-        result = await data_manager.update_detection(1, updates)
-
-        assert result == mock_detection
-        assert mock_detection.confidence == 0.95
-        assert mock_detection.common_name == "Updated Robin"
-        mock_session.commit.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_delete_detection(self, data_manager, mock_services):
-        """Should delete a detection record."""
-        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
-        mock_services[
-            "database_service"
-        ].get_async_db.return_value.__aenter__.return_value = mock_session
-
-        mock_detection = MagicMock(spec=Detection)
-        mock_result = create_autospec(Result, spec_set=True)
-        mock_result.scalar_one_or_none.return_value = mock_detection
-        mock_session.execute.return_value = mock_result
-
-        result = await data_manager.delete_detection(1)
-
-        assert result is True
-        mock_session.delete.assert_called_once_with(mock_detection)
-        mock_session.commit.assert_called_once()
-
-
-# TestQueryMethods removed - query_detections now belongs to DetectionQueryService
-# See test_detection_query_service.py for tests of these methods
-
-
-# TestTranslationHelpers removed - get_species_display_name now belongs to DetectionQueryService
-# See test_detection_query_service.py for tests of these methods
-
-
-class TestErrorHandling:
-    """Test error handling."""
-
-    @pytest.mark.asyncio
-    async def test_database_error_handling(self, data_manager, mock_services):
-        """Should handle database errors gracefully."""
-        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
-        mock_services[
-            "database_service"
-        ].get_async_db.return_value.__aenter__.return_value = mock_session
-
-        mock_session.execute.side_effect = SQLAlchemyError("Database error")
-
-        with pytest.raises(SQLAlchemyError):
-            await data_manager.get_detection_by_id(1)
-
-        mock_session.rollback.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_get_all_detections_error_handling(self, data_manager, mock_services):
-        """Should handle errors when getting all detections."""
-        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
-        mock_services[
-            "database_service"
-        ].get_async_db.return_value.__aenter__.return_value = mock_session
-
-        mock_session.execute.side_effect = SQLAlchemyError("Database error")
-
-        with pytest.raises(SQLAlchemyError):
-            await data_manager.get_all_detections()
-
-        mock_session.rollback.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_create_detection_error_handling(self, data_manager, mock_services):
-        """Should handle errors during detection creation."""
-        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
-        mock_services[
-            "database_service"
-        ].get_async_db.return_value.__aenter__.return_value = mock_session
-
-        # Make commit fail
-        mock_session.commit.side_effect = SQLAlchemyError("Commit failed")
-
-        test_audio_bytes = b"test audio data"
-        encoded_audio = base64.b64encode(test_audio_bytes).decode("utf-8")
-
         detection_event = DetectionEvent(
             species_tensor="Turdus migratorius_American Robin",
             scientific_name="Turdus migratorius",
@@ -250,10 +112,104 @@ class TestErrorHandling:
             sensitivity_setting=1.5,
             overlap=2.5,
         )
+        await data_manager.create_detection(detection_event)
+        audio_file_call = mock_session.add.call_args_list[0]
+        assert isinstance(audio_file_call[0][0], AudioFile)
+        detection_call = mock_session.add.call_args_list[1]
+        assert isinstance(detection_call[0][0], Detection)
+        mock_session.commit.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_update_detection(self, data_manager, mock_services):
+        """Should update a detection record."""
+        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
+        mock_detection = MagicMock(spec=Detection)
+        mock_detection.confidence = 0.8
+        mock_result = create_autospec(Result, spec_set=True)
+        mock_result.scalar_one_or_none.return_value = mock_detection
+        mock_session.execute.return_value = mock_result
+        updates = {"confidence": 0.95, "common_name": "Updated Robin"}
+        result = await data_manager.update_detection(1, updates)
+        assert result == mock_detection
+        assert mock_detection.confidence == 0.95
+        assert mock_detection.common_name == "Updated Robin"
+        mock_session.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_delete_detection(self, data_manager, mock_services):
+        """Should delete a detection record."""
+        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
+        mock_detection = MagicMock(spec=Detection)
+        mock_result = create_autospec(Result, spec_set=True)
+        mock_result.scalar_one_or_none.return_value = mock_detection
+        mock_session.execute.return_value = mock_result
+        result = await data_manager.delete_detection(1)
+        assert result is True
+        mock_session.delete.assert_called_once_with(mock_detection)
+        mock_session.commit.assert_called_once()
+
+
+class TestErrorHandling:
+    """Test error handling."""
+
+    @pytest.mark.asyncio
+    async def test_database_error_handling(self, data_manager, mock_services):
+        """Should handle database errors gracefully."""
+        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
+        mock_session.execute.side_effect = SQLAlchemyError("Database error")
+        with pytest.raises(SQLAlchemyError):
+            await data_manager.get_detection_by_id(1)
+        mock_session.rollback.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_all_detections_error_handling(self, data_manager, mock_services):
+        """Should handle errors when getting all detections."""
+        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
+        mock_session.execute.side_effect = SQLAlchemyError("Database error")
+        with pytest.raises(SQLAlchemyError):
+            await data_manager.get_all_detections()
+        mock_session.rollback.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_create_detection_error_handling(self, data_manager, mock_services):
+        """Should handle errors during detection creation."""
+        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
+        mock_services[
+            "database_service"
+        ].get_async_db.return_value.__aenter__.return_value = mock_session
+        mock_session.commit.side_effect = SQLAlchemyError("Commit failed")
+        test_audio_bytes = b"test audio data"
+        encoded_audio = base64.b64encode(test_audio_bytes).decode("utf-8")
+        detection_event = DetectionEvent(
+            species_tensor="Turdus migratorius_American Robin",
+            scientific_name="Turdus migratorius",
+            common_name="American Robin",
+            confidence=0.95,
+            timestamp=datetime(2023, 1, 1, 12, 0, 0),
+            audio_data=encoded_audio,
+            sample_rate=48000,
+            channels=1,
+            latitude=45.5017,
+            longitude=-73.5673,
+            species_confidence_threshold=0.8,
+            week=1,
+            sensitivity_setting=1.5,
+            overlap=2.5,
+        )
         with pytest.raises(SQLAlchemyError):
             await data_manager.create_detection(detection_event)
-
         mock_session.rollback.assert_called_once()
 
     @pytest.mark.asyncio
@@ -263,12 +219,9 @@ class TestErrorHandling:
         mock_services[
             "database_service"
         ].get_async_db.return_value.__aenter__.return_value = mock_session
-
         mock_session.execute.side_effect = SQLAlchemyError("Update failed")
-
         with pytest.raises(SQLAlchemyError):
             await data_manager.update_detection(1, {"confidence": 0.99})
-
         mock_session.rollback.assert_called_once()
 
     @pytest.mark.asyncio
@@ -278,12 +231,9 @@ class TestErrorHandling:
         mock_services[
             "database_service"
         ].get_async_db.return_value.__aenter__.return_value = mock_session
-
         mock_session.execute.side_effect = SQLAlchemyError("Delete failed")
-
         with pytest.raises(SQLAlchemyError):
             await data_manager.delete_detection(1)
-
         mock_session.rollback.assert_called_once()
 
     @pytest.mark.asyncio
@@ -293,12 +243,9 @@ class TestErrorHandling:
         mock_services[
             "database_service"
         ].get_async_db.return_value.__aenter__.return_value = mock_session
-
         mock_session.scalar.side_effect = SQLAlchemyError("Query failed")
-
         with pytest.raises(SQLAlchemyError):
             await data_manager.get_audio_file_by_path("/path/to/audio.wav")
-
         mock_session.rollback.assert_called_once()
 
 
@@ -312,13 +259,10 @@ class TestEdgeCases:
         mock_services[
             "database_service"
         ].get_async_db.return_value.__aenter__.return_value = mock_session
-
         mock_result = create_autospec(Result, spec_set=True)
-        mock_result.scalar_one_or_none.return_value = None  # Detection not found
+        mock_result.scalar_one_or_none.return_value = None
         mock_session.execute.return_value = mock_result
-
         result = await data_manager.update_detection(999, {"confidence": 0.99})
-
         assert result is None
         mock_session.commit.assert_not_called()
 
@@ -329,13 +273,10 @@ class TestEdgeCases:
         mock_services[
             "database_service"
         ].get_async_db.return_value.__aenter__.return_value = mock_session
-
         mock_result = create_autospec(Result, spec_set=True)
-        mock_result.scalar_one_or_none.return_value = None  # Detection not found
+        mock_result.scalar_one_or_none.return_value = None
         mock_session.execute.return_value = mock_result
-
         result = await data_manager.delete_detection(999)
-
         assert result is False
         mock_session.delete.assert_not_called()
         mock_session.commit.assert_not_called()
@@ -347,16 +288,13 @@ class TestEdgeCases:
         mock_services[
             "database_service"
         ].get_async_db.return_value.__aenter__.return_value = mock_session
-
         mock_detections = [MagicMock(spec=Detection)]
         mock_scalars = create_autospec(ScalarResult, spec_set=True)
         mock_scalars.__iter__ = lambda x: iter(mock_detections)
         mock_result = create_autospec(Result, spec_set=True)
         mock_result.scalars.return_value = mock_scalars
         mock_session.execute.return_value = mock_result
-
         result = await data_manager.get_all_detections(offset=50)
-
         assert list(result) == mock_detections
         mock_session.execute.assert_called_once()
 
@@ -367,14 +305,13 @@ class TestEdgeCases:
         mock_services[
             "database_service"
         ].get_async_db.return_value.__aenter__.return_value = mock_session
-
         detection_event = DetectionEvent(
             species_tensor="Turdus migratorius_American Robin",
             scientific_name="Turdus migratorius",
             common_name="American Robin",
             confidence=0.95,
             timestamp=datetime(2023, 1, 1, 12, 0, 0),
-            audio_data="",  # Empty string instead of None
+            audio_data="",
             sample_rate=48000,
             channels=1,
             latitude=45.5017,
@@ -384,10 +321,7 @@ class TestEdgeCases:
             sensitivity_setting=1.5,
             overlap=2.5,
         )
-
         await data_manager.create_detection(detection_event)
-
-        # Should only add Detection, not AudioFile
         assert mock_session.add.call_count == 1
         detection_call = mock_session.add.call_args_list[0]
         assert isinstance(detection_call[0][0], Detection)
@@ -405,12 +339,9 @@ class TestAudioFileOperations:
         mock_services[
             "database_service"
         ].get_async_db.return_value.__aenter__.return_value = mock_session
-
         mock_audio_file = MagicMock(spec=AudioFile)
         mock_session.scalar.return_value = mock_audio_file
-
         result = await data_manager.get_audio_file_by_path("/path/to/audio.wav")
-
         assert result == mock_audio_file
         mock_session.scalar.assert_called_once()
 
@@ -421,14 +352,7 @@ class TestAudioFileOperations:
         mock_services[
             "database_service"
         ].get_async_db.return_value.__aenter__.return_value = mock_session
-
         mock_session.scalar.return_value = None
-
         result = await data_manager.get_audio_file_by_path("/nonexistent/audio.wav")
-
         assert result is None
         mock_session.scalar.assert_called_once()
-
-
-# TestAnalyticsMethods removed - these methods now belong to DetectionQueryService
-# See test_detection_query_service.py for tests of these methods

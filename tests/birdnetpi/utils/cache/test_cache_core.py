@@ -22,7 +22,6 @@ class TestCacheInitialization:
         mock_client = MagicMock(spec=Redis)
         mock_redis.return_value = mock_client
         mock_client.ping.return_value = True
-
         cache = Cache(
             redis_host="localhost",
             redis_port=6379,
@@ -30,7 +29,6 @@ class TestCacheInitialization:
             default_ttl=600,
             enable_cache_warming=True,
         )
-
         assert cache.default_ttl == 600
         assert cache.enable_cache_warming is True
         assert cache.backend_type == "redis"
@@ -42,17 +40,9 @@ class TestCacheInitialization:
         """Should raise RuntimeError when Redis is unavailable."""
         mock_client = MagicMock(spec=Redis)
         mock_redis.return_value = mock_client
-        # Simulate connection failure on all retries
         mock_client.ping.side_effect = Exception("Connection refused")
-
         with pytest.raises(RuntimeError) as exc_info:
-            Cache(
-                redis_host="localhost",
-                redis_port=6379,
-                redis_db=0,
-            )
-
-        # The error message could be either format depending on the exception
+            Cache(redis_host="localhost", redis_port=6379, redis_db=0)
         error_msg = str(exc_info.value)
         assert "Failed to" in error_msg and ("Redis" in error_msg or "backend" in error_msg)
 
@@ -63,9 +53,7 @@ class TestCacheInitialization:
         mock_client = MagicMock(spec=Redis)
         mock_redis.return_value = mock_client
         mock_client.ping.return_value = True
-
         cache = Cache()
-
         assert cache.default_ttl == 300
         assert cache.enable_cache_warming is True
         assert cache.backend_type == "redis"
@@ -77,9 +65,7 @@ class TestCacheInitialization:
         mock_client = MagicMock(spec=Redis)
         mock_redis.return_value = mock_client
         mock_client.ping.return_value = True
-
         cache = Cache()
-
         assert cache._stats == {
             "hits": 0,
             "misses": 0,
@@ -96,9 +82,7 @@ class TestCacheInitialization:
         mock_client = MagicMock(spec=Redis)
         mock_redis.return_value = mock_client
         mock_client.ping.return_value = True
-
         cache = Cache(default_ttl=1800)
-
         assert cache.default_ttl == 1800
 
     @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool", autospec=True)
@@ -108,9 +92,7 @@ class TestCacheInitialization:
         mock_client = MagicMock(spec=Redis)
         mock_redis.return_value = mock_client
         mock_client.ping.return_value = True
-
         cache = Cache(enable_cache_warming=False)
-
         assert cache.enable_cache_warming is False
 
     @patch("birdnetpi.utils.cache.backends.redis.ConnectionPool", autospec=True)
@@ -120,12 +102,9 @@ class TestCacheInitialization:
         mock_client = MagicMock(spec=Redis)
         mock_redis.return_value = mock_client
         mock_client.ping.return_value = True
-
         cache = Cache()
         cache._stats = {"hits": 50, "misses": 10}
-
         repr_str = repr(cache)
-
         assert "<Cache backend=redis" in repr_str
         assert "hit_rate=83.33%" in repr_str
         assert "requests=60>" in repr_str

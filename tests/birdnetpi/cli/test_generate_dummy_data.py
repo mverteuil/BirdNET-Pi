@@ -19,7 +19,7 @@ def mock_dependencies(mocker, tmp_path):
     # Patch generate_dummy_detections separately since it's imported directly
     mock_generate = mocker.patch(
         "birdnetpi.cli.generate_dummy_data.generate_dummy_detections",
-        new=AsyncMock(return_value=None),
+        new=AsyncMock(spec=callable, return_value=None),
     )
 
     with patch.multiple(
@@ -37,8 +37,10 @@ def mock_dependencies(mocker, tmp_path):
 
         mock_db_path = MagicMock(spec=Path)
         mock_db_path.__str__ = lambda: str(tmp_path / "database" / "birdnetpi.db")
-        mock_db_path.exists = MagicMock(return_value=False)  # Default to not existing
-        mock_db_path.stat = MagicMock()
+        mock_db_path.exists = MagicMock(
+            spec=callable, return_value=False
+        )  # Default to not existing
+        mock_db_path.stat = MagicMock(spec=callable)
 
         # Create actual config path (not MagicMock) to prevent file creation with MagicMock names
         config_dir = tmp_path / "config"
@@ -49,16 +51,16 @@ def mock_dependencies(mocker, tmp_path):
 
         mocks["PathResolver"].return_value.get_database_path.return_value = mock_db_path
         mocks["PathResolver"].return_value.get_birdnetpi_config_path.return_value = config_path
-        mocks["ConfigManager"].return_value.load_config.return_value = MagicMock()
+        mocks["ConfigManager"].return_value.load_config.return_value = MagicMock(spec=object)
         mocks["CoreDatabaseService"].return_value = MagicMock(spec=CoreDatabaseService)
         mock_data_manager = MagicMock(spec=DataManager)
-        mock_data_manager.get_all_detections = AsyncMock(return_value=[])
-        mock_data_manager.create_detection = AsyncMock(return_value=None)
+        mock_data_manager.get_all_detections = AsyncMock(spec=callable, return_value=[])
+        mock_data_manager.create_detection = AsyncMock(spec=callable, return_value=None)
         mocks["DataManager"].return_value = mock_data_manager
         mocks["SpeciesDatabaseService"].return_value = MagicMock(spec=SpeciesDatabaseService)
         mocks["SpeciesDisplayService"].return_value = MagicMock(spec=SpeciesDisplayService)
         mocks["SystemControlService"].return_value = MagicMock(spec=SystemControlService)
-        mocks["time"].sleep = MagicMock()
+        mocks["time"].sleep = MagicMock(spec=callable)
 
         # Add the generate_dummy_detections mock to the mocks dict
         mocks["generate_dummy_detections"] = mock_generate
@@ -78,7 +80,7 @@ class TestGenerateDummyData:
         mock_db_path.exists.return_value = True
 
         # Mock the stat object
-        mock_stat = MagicMock()
+        mock_stat = MagicMock(spec=object)
         mock_stat.st_size = 100  # Simulate non-empty file
         mock_db_path.stat.return_value = mock_stat
 
@@ -106,7 +108,7 @@ class TestGenerateDummyData:
         # Configure Path object to simulate existing but empty file
         mock_db_path = mock_dependencies["PathResolver"].return_value.get_database_path.return_value
         mock_db_path.exists.return_value = True
-        mock_stat = MagicMock()
+        mock_stat = MagicMock(spec=object)
         mock_stat.st_size = 0  # Empty file
         mock_db_path.stat.return_value = mock_stat
 
@@ -136,7 +138,7 @@ class TestGenerateDummyData:
         # Configure Path object to simulate existing but empty file
         mock_db_path = mock_dependencies["PathResolver"].return_value.get_database_path.return_value
         mock_db_path.exists.return_value = True
-        mock_stat = MagicMock()
+        mock_stat = MagicMock(spec=object)
         mock_stat.st_size = 0  # Empty file
         mock_db_path.stat.return_value = mock_stat
 

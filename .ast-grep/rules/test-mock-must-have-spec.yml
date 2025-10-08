@@ -36,6 +36,7 @@ note: |
     mock_obj = Mock(spec=["attr"])       # List specs are wrong - use class
     mock_obj = Mock(spec=("attr",))      # Tuple specs are wrong - use class
     mock_obj = Mock(spec=("a", "b"))     # Tuple specs are wrong - use class
+    mock_obj = Mock(spec=lambda: None)   # Lambda is not a valid spec - use actual class
 
   DO NOT attempt to circumvent this rule. The requirement exists to prevent
   bugs, not to make your life difficult. Do the work properly.
@@ -108,6 +109,11 @@ rule:
     - pattern: $MOCK($$$, autospec=False, $$$)
     - pattern: $MOCK(autospec=False)
     - pattern: $MOCK(autospec=False, $$$)
+
+    # Catch spec=lambda: None (lambda is not a valid spec)
+    - pattern: "$MOCK($$$, spec=lambda: None, $$$)"
+    - pattern: "$MOCK(spec=lambda: None)"
+    - pattern: "$MOCK(spec=lambda: None, $$$)"
 
 constraints:
   MOCK:

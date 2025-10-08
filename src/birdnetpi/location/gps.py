@@ -9,6 +9,8 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any, NamedTuple
 
+from gpsdclient.client import GPSDClient
+
 logger = logging.getLogger(__name__)
 
 
@@ -41,18 +43,14 @@ class GPSService:
         self.location_history: list[GPSCoordinates] = []
         self._update_task: asyncio.Task[None] | None = None
 
-        # Try to import GPS library
-        self.gpsd_client = None
+        # Initialize GPS client
+        self.gpsd_client: GPSDClient | None = None
         if enable_gps:
             try:
-                import gpsd  # type: ignore[import-untyped]
-
-                self.gpsd_client = gpsd
-                logger.info("GPS support enabled with gpsd")
-            except ImportError:
-                logger.warning(
-                    "GPS enabled but gpsd-py3 not installed. Install with: pip install gpsd-py3"
-                )
+                self.gpsd_client = GPSDClient()
+                logger.info("GPS support enabled with gpsdclient")
+            except Exception as e:
+                logger.warning("Failed to initialize GPS client: %s", e)
                 self.enable_gps = False
 
     async def start(self) -> None:
@@ -63,15 +61,8 @@ class GPSService:
         logger.info("Starting GPS service...")
         self.is_running = True
 
-        # Connect to GPS daemon
-        if self.gpsd_client:
-            try:
-                self.gpsd_client.connect()
-                logger.info("Connected to GPS daemon")
-            except Exception as e:
-                logger.error("Failed to connect to GPS daemon: %s", e)
-                self.enable_gps = False
-                return
+        # gpsdclient connects automatically when streaming data
+        # No explicit connect() call needed
 
         # Start background update task
         self._update_task = asyncio.create_task(self._update_location_loop())
@@ -109,40 +100,45 @@ class GPSService:
             return
 
         try:
-            # Get GPS fix from gpsd
-            packet = self.gpsd_client.get_current()
+            # Get GPS fix from gpsdclient - get one packet from the stream
+            for packet in self.gpsd_client.dict_stream(filter={"TPV"}):
+                # TPV (Time-Position-Velocity) packets contain position data
+                mode = packet.get("mode", 0)
 
-            # Check if we have a valid fix
-            if packet.mode < 2:  # No fix or invalid fix
-                logger.debug("No GPS fix available (mode: %d)", packet.mode)
-                return
+                # Check if we have a valid fix
+                if mode < 2:  # No fix or invalid fix
+                    logger.debug("No GPS fix available (mode: %d)", mode)
+                    return
 
-            # Extract coordinates
-            coordinates = GPSCoordinates(
-                latitude=packet.lat,
-                longitude=packet.lon,
-                altitude=getattr(packet, "alt", None),
-                accuracy=getattr(packet, "eps", None),
-                timestamp=datetime.now(UTC),
-                satellite_count=getattr(packet, "sats", None),
-            )
+                # Extract coordinates
+                coordinates = GPSCoordinates(
+                    latitude=packet.get("lat", 0.0),
+                    longitude=packet.get("lon", 0.0),
+                    altitude=packet.get("alt"),
+                    accuracy=packet.get("eps"),
+                    timestamp=datetime.now(UTC),
+                    satellite_count=packet.get("nSat"),
+                )
 
-            # Update current location
-            self.current_location = coordinates
-            self.last_known_location = coordinates
+                # Update current location
+                self.current_location = coordinates
+                self.last_known_location = coordinates
 
-            # Add to history (keep last 100 locations)
-            self.location_history.append(coordinates)
-            if len(self.location_history) > 100:
-                self.location_history.pop(0)
+                # Add to history (keep last 100 locations)
+                self.location_history.append(coordinates)
+                if len(self.location_history) > 100:
+                    self.location_history.pop(0)
 
-            logger.debug(
-                "GPS updated: %.6f, %.6f (accuracy: %.1fm, satellites: %d)",
-                coordinates.latitude,
-                coordinates.longitude,
-                coordinates.accuracy or 0,
-                coordinates.satellite_count or 0,
-            )
+                logger.debug(
+                    "GPS updated: %.6f, %.6f (accuracy: %.1fm, satellites: %d)",
+                    coordinates.latitude,
+                    coordinates.longitude,
+                    coordinates.accuracy or 0,
+                    coordinates.satellite_count or 0,
+                )
+
+                # Only process one packet per update
+                break
 
         except Exception as e:
             logger.error("Error updating GPS location: %s", e)

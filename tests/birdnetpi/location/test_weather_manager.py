@@ -1,7 +1,7 @@
 """Test the WeatherManager class."""
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -75,12 +75,12 @@ def test_weather_manager_initialization(weather_manager):
 async def test_fetch_weather_range(weather_manager, mock_weather_response):
     """Should fetching weather data from API."""
     with patch("birdnetpi.location.weather.httpx.AsyncClient", autospec=True) as mock_client_class:
-        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        # Use the autospec'd class instance
+        mock_client = mock_client_class.return_value.__aenter__.return_value
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = mock_weather_response
         mock_response.raise_for_status = MagicMock(spec=httpx.Response.raise_for_status)
         mock_client.get.return_value = mock_response
-        mock_client_class.return_value.__aenter__.return_value = mock_client
 
         start_date = datetime(2024, 1, 1, tzinfo=UTC)
         end_date = datetime(2024, 1, 2, tzinfo=UTC)
@@ -98,12 +98,12 @@ async def test_fetch_weather_range(weather_manager, mock_weather_response):
 async def test_fetch_weather_range_historical_api(weather_manager, mock_weather_response):
     """Should historical API is used for old dates."""
     with patch("birdnetpi.location.weather.httpx.AsyncClient", autospec=True) as mock_client_class:
-        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        # Use the autospec'd class instance
+        mock_client = mock_client_class.return_value.__aenter__.return_value
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = mock_weather_response
         mock_response.raise_for_status = MagicMock(spec=httpx.Response.raise_for_status)
         mock_client.get.return_value = mock_response
-        mock_client_class.return_value.__aenter__.return_value = mock_client
 
         # Use a date more than 5 days ago
         old_date = datetime.now(UTC) - timedelta(days=10)
@@ -121,12 +121,12 @@ async def test_fetch_weather_range_historical_api(weather_manager, mock_weather_
 async def test_fetch_weather_range_forecast_api(weather_manager, mock_weather_response):
     """Should forecast API is used for recent dates."""
     with patch("birdnetpi.location.weather.httpx.AsyncClient", autospec=True) as mock_client_class:
-        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        # Use the autospec'd class instance
+        mock_client = mock_client_class.return_value.__aenter__.return_value
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = mock_weather_response
         mock_response.raise_for_status = MagicMock(spec=httpx.Response.raise_for_status)
         mock_client.get.return_value = mock_response
-        mock_client_class.return_value.__aenter__.return_value = mock_client
 
         # Use a recent date
         recent_date = datetime.now(UTC) - timedelta(days=2)

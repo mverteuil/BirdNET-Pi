@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from jinja2 import Environment, FileSystemLoader, TemplateSyntaxError
 from jinja2.exceptions import UndefinedError
+from starlette.requests import Request
 
 from birdnetpi.audio.devices import AudioDevice
 from birdnetpi.config import BirdNETConfig
@@ -18,29 +19,19 @@ class TestSettingsViewRendering:
         """Create Jinja2 environment for template testing."""
         template_dir = repo_root / "src" / "birdnetpi" / "web" / "templates"
         env = Environment(loader=FileSystemLoader(str(template_dir)), autoescape=True)
-
-        # Add template globals that are expected by base template
         env.globals["get_update_status"] = lambda: None
         env.globals["update_available"] = lambda: False
         env.globals["show_development_warning"] = lambda: False
-
-        # Add url_for function for navigation links
         env.globals["url_for"] = lambda name, **kwargs: f"/{name}"
-
-        # Add translation function (just return the string unchanged for testing)
         env.globals["_"] = lambda x, **kwargs: x % kwargs if kwargs else x
         env.globals["gettext"] = env.globals["_"]
         env.globals["ngettext"] = lambda singular, plural, n: plural if n != 1 else singular
-
         return env
 
     @pytest.fixture
     def mock_request(self):
         """Create a mock request object."""
-        request = MagicMock()
-        request.url_for = MagicMock(
-            side_effect=lambda name, **kwargs: f"/static/{kwargs.get('path', '')}"
-        )
+        request = MagicMock(spec=Request)
         return request
 
     @pytest.fixture
@@ -94,7 +85,6 @@ class TestSettingsViewRendering:
         """Should settings template has valid Jinja2 syntax."""
         try:
             template = template_env.get_template("admin/settings.html.j2")
-            # Getting the template will raise TemplateSyntaxError if syntax is invalid
             assert template is not None
         except TemplateSyntaxError as e:
             pytest.fail(f"Template syntax error in settings.html.j2: {e}")
@@ -104,8 +94,6 @@ class TestSettingsViewRendering:
     ):
         """Should render settings template with actual data correctly."""
         template = template_env.get_template("admin/settings.html.j2")
-
-        # Render with test data including required base template context
         html = template.render(
             request=mock_request,
             config=sample_config,
@@ -117,11 +105,9 @@ class TestSettingsViewRendering:
             page_name="Settings",
             active_page="settings",
         )
-
-        # Verify key elements are present
         assert "Test Site" in html
-        assert "45.5" in html  # latitude
-        assert "-73.6" in html  # longitude
+        assert "45.5" in html
+        assert "-73.6" in html
         assert "USB Audio Device" in html
         assert "Built-in Microphone" in html
         assert "<form" in html
@@ -132,8 +118,6 @@ class TestSettingsViewRendering:
     ):
         """Should handle case with no audio devices in settings template."""
         template = template_env.get_template("admin/settings.html.j2")
-
-        # Render with empty audio devices but complete context
         html = template.render(
             request=mock_request,
             config=sample_config,
@@ -143,8 +127,6 @@ class TestSettingsViewRendering:
             system_status={"device_name": "Test Device"},
             language="en",
         )
-
-        # Should show "no devices" message
         assert "No audio devices detected" in html
         assert "Check your audio system configuration" in html
 
@@ -152,10 +134,7 @@ class TestSettingsViewRendering:
         self, template_env, mock_request, sample_audio_devices
     ):
         """Should handle missing or None config fields gracefully in template."""
-        # Create config with default values (0.0 for lat/lon)
         config = BirdNETConfig()
-        # latitude and longitude will default to 0.0, not None
-
         try:
             template = template_env.get_template("admin/settings.html.j2")
             html = template.render(
@@ -167,7 +146,6 @@ class TestSettingsViewRendering:
                 system_status={"device_name": "Test Device"},
                 language="en",
             )
-            # Should render without errors even with None values
             assert html is not None
         except UndefinedError as e:
             pytest.fail(f"Template failed to handle missing/None config fields: {e}")
@@ -186,8 +164,6 @@ class TestSettingsViewRendering:
             system_status={"device_name": "Test Device"},
             language="en",
         )
-
-        # Check for required hidden inputs
         assert 'name="site_name"' in html
         assert 'name="model"' in html
         assert 'name="metadata_model"' in html
@@ -213,8 +189,6 @@ class TestSettingsViewRendering:
             system_status={"device_name": "Test Device"},
             language="en",
         )
-
-        # Check for JavaScript functions
         assert "function selectOption" in html
         assert "function selectAudioDevice" in html
         assert "function updateSliderValue" in html
@@ -222,18 +196,14 @@ class TestSettingsViewRendering:
     def test_all_template_blocks_properly_closed(self, template_env):
         """Should all Jinja2 blocks are properly closed."""
         template_path = template_env.loader.searchpath[0] + "/admin/settings.html.j2"
-
         with open(template_path) as f:
             content = f.read()
-
-        # Count opening and closing tags
         if_count = content.count("{% if")
         endif_count = content.count("{% endif")
         for_count = content.count("{% for")
         endfor_count = content.count("{% endfor")
         block_count = content.count("{% block")
         endblock_count = content.count("{% endblock")
-
         assert if_count == endif_count, f"Mismatched if/endif: {if_count} vs {endif_count}"
         assert for_count == endfor_count, f"Mismatched for/endfor: {for_count} vs {endfor_count}"
         assert block_count == endblock_count, (
@@ -242,13 +212,9 @@ class TestSettingsViewRendering:
 
     def test_template_escapes_user_input(self, template_env, mock_request, sample_audio_devices):
         """Should template properly escapes user input to prevent XSS."""
-        # Create config with potentially dangerous values
         config = BirdNETConfig(
-            site_name="<script>alert('XSS')</script>",
-            latitude=45.5,
-            longitude=-73.6,
+            site_name="<script>alert('XSS')</script>", latitude=45.5, longitude=-73.6
         )
-
         template = template_env.get_template("admin/settings.html.j2")
         html = template.render(
             request=mock_request,
@@ -259,7 +225,5 @@ class TestSettingsViewRendering:
             system_status={"device_name": "Test Device"},
             language="en",
         )
-
-        # Script tags should be escaped
         assert "&lt;script&gt;" in html or "&amp;lt;script&amp;gt;" in html
-        assert "<script>alert" not in html  # Raw script should not appear
+        assert "<script>alert" not in html

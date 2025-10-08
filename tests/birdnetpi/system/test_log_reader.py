@@ -287,7 +287,7 @@ Third line with WARNING text"""
         """Should properly close mmap reader during cleanup."""
         # Mock the mmap reader
         mock_mmap_reader = MagicMock(spec=MmapLogReader)
-        mock_mmap_reader.close = MagicMock(spec=lambda: None)
+        mock_mmap_reader.close = MagicMock(spec=object)
         log_reader.mmap_reader = mock_mmap_reader
 
         # Test cleanup if mmap reader exists

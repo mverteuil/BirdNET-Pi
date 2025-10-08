@@ -4,7 +4,7 @@ import asyncio
 import subprocess
 import time
 from datetime import datetime
-from unittest.mock import create_autospec, patch
+from unittest.mock import MagicMock, create_autospec, patch
 
 import psutil
 import pytest
@@ -208,9 +208,7 @@ class TestTemperatureMethods:
         """Should fallback to vcgencmd when psutil fails."""
         with patch.object(psutil, "sensors_temperatures", create=True) as mock_sensors:
             mock_sensors.side_effect = AttributeError()
-            mock_run.return_value = create_autospec(
-                subprocess.CompletedProcess, spec_set=True, args=[]
-            )
+            mock_run.return_value = MagicMock(spec=subprocess.CompletedProcess)
             mock_run.return_value.returncode = 0
             mock_run.return_value.stdout = "temp=42.8'C\n"
 
@@ -270,9 +268,6 @@ class TestAudioDeviceMethods:
     def test_check_audio_device_sync_success(self):
         """Should return success when audio device works."""
         with patch("birdnetpi.system.status.subprocess.run", autospec=True) as mock_run:
-            mock_run.return_value = create_autospec(
-                subprocess.CompletedProcess, spec_set=True, args=[]
-            )
             mock_run.return_value.returncode = 0
 
             is_working, message = SystemInspector.check_audio_device_sync()
@@ -283,9 +278,6 @@ class TestAudioDeviceMethods:
     def test_check_audio_device_sync_failure(self):
         """Should return failure when audio device fails."""
         with patch("birdnetpi.system.status.subprocess.run", autospec=True) as mock_run:
-            mock_run.return_value = create_autospec(
-                subprocess.CompletedProcess, spec_set=True, args=[]
-            )
             mock_run.return_value.returncode = 1
             mock_run.return_value.stderr = b"No such device"
 

@@ -52,6 +52,7 @@ dependencies = [
   "colorama==0.4.4",
   "dependency-injector==4.48.1",
   "fastapi",
+  "gpsdclient",
   "httpx>=0.28.1",
   "librosa",
   "numpy<2",

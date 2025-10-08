@@ -49,10 +49,8 @@ class TestReleaseManager:
         """Should create release with models."""
         mock_exists.return_value = True
         mock_manager_class.return_value = mock_release_manager
-
         with patch("birdnetpi.cli.manage_releases.PathResolver", return_value=path_resolver):
             result = runner.invoke(cli, ["create", "v2.0.0", "--include-models"])
-
             assert result.exit_code == 0
             assert "Creating orphaned commit with release assets" in result.output
             assert "✓ Asset release created successfully!" in result.output
@@ -66,12 +64,10 @@ class TestReleaseManager:
         """Should create GitHub release when requested."""
         mock_exists.return_value = True
         mock_manager_class.return_value = mock_release_manager
-
         with patch("birdnetpi.cli.manage_releases.PathResolver", return_value=path_resolver):
             result = runner.invoke(
                 cli, ["create", "v2.0.0", "--include-models", "--create-github-release"]
             )
-
             assert result.exit_code == 0
             assert "Creating GitHub release" in result.output
             assert "GitHub release created: v2.0.0" in result.output
@@ -83,10 +79,8 @@ class TestReleaseManager:
     ):
         """Should fail when no assets specified."""
         mock_manager_class.return_value = mock_release_manager
-
         with patch("birdnetpi.cli.manage_releases.PathResolver", return_value=path_resolver):
             result = runner.invoke(cli, ["create", "v2.0.0"])
-
             assert result.exit_code == 1
             assert "Error: No assets specified for release" in result.output
 
@@ -98,15 +92,11 @@ class TestReleaseManager:
         """Should save release data to JSON when requested."""
         mock_exists.return_value = True
         mock_manager_class.return_value = mock_release_manager
-
         output_file = tmp_path / "release.json"
-
         with patch("birdnetpi.cli.manage_releases.PathResolver", return_value=path_resolver):
             result = runner.invoke(
-                cli,
-                ["create", "v2.0.0", "--include-models", "--output-json", str(output_file)],
+                cli, ["create", "v2.0.0", "--include-models", "--output-json", str(output_file)]
             )
-
             assert result.exit_code == 0
             assert f"Release data written to: {output_file}" in result.output
             assert output_file.exists()
@@ -131,15 +121,13 @@ class TestReleaseManager:
         mock_exists.return_value = True
         mock_is_file.return_value = True
         mock_is_dir.return_value = False
-        mock_stat.return_value = MagicMock(spec=os.stat_result, st_size=1024 * 1024 * 10)  # 10 MB
+        mock_stat.return_value = MagicMock(spec=os.stat_result, st_size=1024 * 1024 * 10)
         mock_manager_class.return_value = mock_release_manager
-
         with patch("birdnetpi.cli.manage_releases.PathResolver", return_value=path_resolver):
             result = runner.invoke(cli, ["list-assets"])
-
             assert result.exit_code == 0
             assert "Available assets for release:" in result.output
-            assert "✓" in result.output  # Asset exists
+            assert "✓" in result.output
             assert "BirdNET models" in result.output
             assert "IOC database" in result.output
 
@@ -148,30 +136,20 @@ class TestReleaseManager:
         self, mock_manager_class, mock_release_manager, runner, tmp_path, path_resolver
     ):
         """Should handle custom assets."""
-        # Create test asset file
         asset_file = tmp_path / "custom.txt"
         asset_file.write_text("test")
-
         mock_manager_class.return_value = mock_release_manager
-
         with patch("birdnetpi.cli.manage_releases.PathResolver", return_value=path_resolver):
             result = runner.invoke(
                 cli,
-                [
-                    "create",
-                    "v2.0.0",
-                    "--custom-assets",
-                    f"{asset_file}:custom.txt:Custom asset",
-                ],
+                ["create", "v2.0.0", "--custom-assets", f"{asset_file}:custom.txt:Custom asset"],
             )
-
             assert result.exit_code == 0
             assert "✓ Asset release created successfully!" in result.output
 
     def test_main_help(self, runner):
         """Should show help text."""
         result = runner.invoke(cli, ["--help"])
-
         assert result.exit_code == 0
         assert "BirdNET-Pi Release Management" in result.output
         assert "create" in result.output

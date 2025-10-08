@@ -6,18 +6,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from birdnetpi.detections.manager import DataManager
-from birdnetpi.utils.dummy_data_generator import (
-    generate_dummy_detections,
-    get_random_ioc_species,
-)
+from birdnetpi.utils.dummy_data_generator import generate_dummy_detections, get_random_ioc_species
 from birdnetpi.web.models.detections import DetectionEvent
 
 
 @pytest.fixture
 def mock_data_manager():
     """Mock DataManager instance."""
-    mock = MagicMock(spec=DataManager)
-    mock.create_detection = AsyncMock(spec=DataManager.create_detection)
+    mock = MagicMock(
+        spec=DataManager, create_detection=AsyncMock(spec=DataManager.create_detection)
+    )
     return mock
 
 
@@ -29,45 +27,29 @@ class TestDummyDataGenerator:
         """Should generate specified number of dummy detections via DetectionManager."""
         num_detections = 5
         await generate_dummy_detections(mock_data_manager, num_detections)
-
-        # Assert that create_detection was called the correct number of times
         assert mock_data_manager.create_detection.call_count == num_detections
-
-        # Assert that the data passed to create_detection is a DetectionEvent object
         for call_args in mock_data_manager.create_detection.call_args_list:
             detection_event = call_args.args[0]
             assert isinstance(detection_event, DetectionEvent)
             assert isinstance(detection_event.timestamp, datetime.datetime)
-            assert isinstance(detection_event.audio_data, str)  # Base64 encoded
+            assert isinstance(detection_event.audio_data, str)
             assert isinstance(detection_event.sample_rate, int)
             assert isinstance(detection_event.channels, int)
 
     def test_main_entry_point_via_subprocess(self, repo_root):
         """Should execute __main__ block when running module as script."""
-        # Get the path to the module
         module_path = repo_root / "src" / "birdnetpi" / "utils" / "dummy_data_generator.py"
-
-        # Try to run the module as script, but expect it to fail quickly due to missing dependencies
-        # We just want to trigger the __main__ block for coverage
         try:
             result = subprocess.run(
-                [sys.executable, str(module_path)],
-                capture_output=True,
-                text=True,
-                timeout=5,  # Short timeout
+                [sys.executable, str(module_path)], capture_output=True, text=True, timeout=5
             )
-            # The script might succeed or fail depending on environment, both are fine
-            # The important thing is that the __main__ block was executed (lines 63-74)
-            assert result.returncode in [0, 1]  # Either success or expected failure
+            assert result.returncode in [0, 1]
         except subprocess.TimeoutExpired:
-            # If it times out, that also means the __main__ block was executed
-            # This covers lines 63-74 in the module
             pass
 
     @pytest.mark.asyncio
     async def test_get_random_ioc_species(self, path_resolver):
         """Should fetching random IOC species from the database."""
-        # Mock the database query
         with patch("aiosqlite.connect", autospec=True) as mock_connect:
             from aiosqlite import Connection, Cursor
 
@@ -83,16 +65,11 @@ class TestDummyDataGenerator:
             mock_db = AsyncMock(spec=Connection)
             mock_db.execute = AsyncMock(spec=callable, return_value=mock_cursor)
             mock_connect.return_value.__aenter__.return_value = mock_db
-
-            # Test fetching species
             species = await get_random_ioc_species(path_resolver, num_species=3)
-
             assert len(species) == 3
             assert species[0] == ("Cyanocitta cristata", "Blue Jay")
             assert species[1] == ("Turdus migratorius", "American Robin")
             assert species[2] == ("Cardinalis cardinalis", "Northern Cardinal")
-
-            # Verify the SQL query was correct
             mock_db.execute.assert_called_once()
             sql_query = mock_db.execute.call_args[0][0]
             assert "SELECT scientific_name, english_name" in sql_query
@@ -105,10 +82,7 @@ class TestDummyDataGenerator:
         self, mock_data_manager, path_resolver
     ):
         """Should generate detections with correct IOC species ratio."""
-        # Add path_resolver to the mock data manager
         mock_data_manager.path_resolver = path_resolver
-
-        # Mock IOC species fetching
         with patch(
             "birdnetpi.utils.dummy_data_generator.get_random_ioc_species", autospec=True
         ) as mock_get_species:
@@ -116,26 +90,14 @@ class TestDummyDataGenerator:
                 ("Cyanocitta cristata", "Blue Jay"),
                 ("Turdus migratorius", "American Robin"),
             ]
-
-            # Generate detections with IOC species ratio
             await generate_dummy_detections(
-                mock_data_manager,
-                num_detections=10,
-                ioc_species_ratio=0.5,
+                mock_data_manager, num_detections=10, ioc_species_ratio=0.5
             )
-
-            # Verify IOC species were fetched with correct number
             mock_get_species.assert_called_once_with(path_resolver, 20)
-
-            # Verify detections were created
             assert mock_data_manager.create_detection.call_count == 10
-
-            # Check that some detections use IOC species
             ioc_detections = 0
             for call_args in mock_data_manager.create_detection.call_args_list:
                 detection_event = call_args.args[0]
                 if detection_event.scientific_name in ["Cyanocitta cristata", "Turdus migratorius"]:
                     ioc_detections += 1
-
-            # With 50% ratio, we should have some IOC species (not deterministic due to random)
             assert ioc_detections > 0

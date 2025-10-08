@@ -1,5 +1,6 @@
 """Tests for multimedia API routes."""
 
+from contextlib import AbstractAsyncContextManager
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
@@ -7,6 +8,7 @@ from uuid import UUID
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from birdnetpi.database.core import CoreDatabaseService
@@ -49,15 +51,15 @@ def client(path_resolver, mock_audio_file, tmp_path):
     mock_session = MagicMock(spec=AsyncSession)
 
     # Setup async context manager
-    mock_session_context = AsyncMock()
+    # AsyncMock automatically provides __aenter__ and __aexit__
+    mock_session_context = AsyncMock(spec=AbstractAsyncContextManager)
     mock_session_context.__aenter__.return_value = mock_session
-    mock_session_context.__aexit__.return_value = None
     mock_core_database.get_async_db.return_value = mock_session_context
 
     # Mock the query result for success case
-    mock_result = MagicMock()
+    mock_result = MagicMock(spec=Result)
     mock_result.scalar_one_or_none.return_value = mock_audio_file
-    mock_session.execute = AsyncMock(return_value=mock_result)
+    mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
 
     # Override services
     container.core_database.override(mock_core_database)
@@ -101,9 +103,9 @@ class TestGetAudioFile:
     def test_get_audio_file_not_found_in_database(self, client):
         """Should return 404 when audio file ID not found in database."""
         # Change mock to return None
-        mock_result = MagicMock()
+        mock_result = MagicMock(spec=Result)
         mock_result.scalar_one_or_none.return_value = None
-        client.mock_session.execute = AsyncMock(return_value=mock_result)
+        client.mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
 
         response = client.get("/api/audio/550e8400-e29b-41d4-a716-446655440001")
 
@@ -130,7 +132,9 @@ class TestGetAudioFile:
     def test_get_audio_file_database_error(self, client):
         """Should return 500 error when database error occurs."""
         # Simulate database error
-        client.mock_session.execute = AsyncMock(side_effect=Exception("Database connection failed"))
+        client.mock_session.execute = AsyncMock(
+            spec=callable, side_effect=Exception("Database connection failed")
+        )
 
         response = client.get("/api/audio/550e8400-e29b-41d4-a716-446655440000")
 
