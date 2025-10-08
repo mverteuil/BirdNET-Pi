@@ -53,29 +53,22 @@ class TestPathResolver:
         # Spaces should be replaced with underscores
         assert path == Path("Corvus_corax/20241225_081530_000000.wav")
 
-    def test_get_recordings_dir(self, resolver):
-        """Should recordings directory path."""
-        recordings_dir = resolver.get_recordings_dir()
+    @pytest.mark.parametrize(
+        "method_name,expected_dir_name",
+        [
+            pytest.param("get_recordings_dir", "recordings", id="recordings"),
+            pytest.param("get_database_dir", "database", id="database"),
+            pytest.param("get_models_dir", "models", id="models"),
+        ],
+    )
+    def test_data_subdirectories(self, resolver, method_name, expected_dir_name):
+        """Should return correct data subdirectory paths."""
+        method = getattr(resolver, method_name)
+        directory = method()
 
-        assert recordings_dir.name == "recordings"
-        assert recordings_dir.parent == resolver.data_dir
-        assert recordings_dir.is_absolute()
-
-    def test_get_database_dir(self, resolver):
-        """Should database directory path."""
-        db_dir = resolver.get_database_dir()
-
-        assert db_dir.name == "database"
-        assert db_dir.parent == resolver.data_dir
-        assert db_dir.is_absolute()
-
-    def test_get_models_dir(self, resolver):
-        """Should models directory path."""
-        models_dir = resolver.get_models_dir()
-
-        assert models_dir.name == "models"
-        assert models_dir.parent == resolver.data_dir
-        assert models_dir.is_absolute()
+        assert directory.name == expected_dir_name
+        assert directory.parent == resolver.data_dir
+        assert directory.is_absolute()
 
     def test_detection_path_uses_recordings_dir(self, resolver):
         """Should detection path is correctly relative to recordings dir."""

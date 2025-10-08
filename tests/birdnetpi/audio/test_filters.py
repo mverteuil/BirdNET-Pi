@@ -100,9 +100,17 @@ class TestAudioFilter:
 
         np.testing.assert_array_equal(result, test_data)
 
-    def test_filter_not_configured_raises_error(self, sample_int16_data):
+    @pytest.mark.parametrize(
+        "filter_class,init_kwargs",
+        [
+            pytest.param(PassThroughFilter, {}, id="passthrough_filter"),
+            pytest.param(HighPassFilter, {"cutoff_frequency": 1000.0}, id="highpass_filter"),
+            pytest.param(LowPassFilter, {"cutoff_frequency": 2000.0}, id="lowpass_filter"),
+        ],
+    )
+    def test_filter_not_configured_raises_error(self, filter_class, init_kwargs, sample_int16_data):
         """Should raise RuntimeError when filter is not configured."""
-        filter_instance = PassThroughFilter()
+        filter_instance = filter_class(**init_kwargs)
         test_data = sample_int16_data["small"]
 
         with pytest.raises(RuntimeError, match="not configured"):
@@ -171,34 +179,74 @@ class TestAudioFilter:
         np.testing.assert_array_equal(result, test_data)
 
 
-class TestHighPassFilter:
-    """Test the HighPassFilter implementation."""
+class TestFrequencyFilters:
+    """Test shared behavior of HighPassFilter and LowPassFilter."""
 
-    def test_highpass_filter_initialization(self, test_filter_config):
-        """Should initialize HighPassFilter with correct parameters."""
-        filter_instance = HighPassFilter(
-            cutoff_frequency=test_filter_config["highpass_cutoff"], name="TrafficFilter"
-        )
+    @pytest.mark.parametrize(
+        "filter_class,cutoff_freq,filter_name,expected_order",
+        [
+            pytest.param(HighPassFilter, 1000.0, "TrafficFilter", 4, id="highpass_filter"),
+            pytest.param(LowPassFilter, 3000.0, "SchoolFilter", 4, id="lowpass_filter"),
+        ],
+    )
+    def test_frequency_filter_initialization(
+        self, filter_class, cutoff_freq, filter_name, expected_order
+    ):
+        """Should initialize frequency filters with correct parameters."""
+        filter_instance = filter_class(cutoff_frequency=cutoff_freq, name=filter_name)
 
-        assert filter_instance.name == "TrafficFilter"
-        assert filter_instance.cutoff_frequency == test_filter_config["highpass_cutoff"]
-        assert filter_instance.order == test_filter_config["filter_order"]
+        assert filter_instance.name == filter_name
+        assert filter_instance.cutoff_frequency == cutoff_freq
+        assert filter_instance.order == expected_order
         assert filter_instance._sos is None
 
-    def test_highpass_filter_configuration(self, test_audio_config, test_filter_config):
-        """Should configure HighPassFilter and create filter coefficients."""
-        filter_instance = HighPassFilter(cutoff_frequency=test_filter_config["highpass_cutoff"])
+    @pytest.mark.parametrize(
+        "filter_class,cutoff_freq",
+        [
+            pytest.param(HighPassFilter, 1000.0, id="highpass_filter"),
+            pytest.param(LowPassFilter, 3000.0, id="lowpass_filter"),
+        ],
+    )
+    def test_frequency_filter_configuration(self, filter_class, cutoff_freq, test_audio_config):
+        """Should configure frequency filters and create filter coefficients."""
+        filter_instance = filter_class(cutoff_frequency=cutoff_freq)
         filter_instance.configure(test_audio_config["sample_rate"], test_audio_config["channels"])
 
         assert filter_instance._sample_rate == test_audio_config["sample_rate"]
         assert filter_instance._channels == test_audio_config["channels"]
         assert filter_instance._sos is not None
 
-    def test_highpass_filter_processing(
-        self, test_audio_config, test_filter_config, test_audio_signals
+    @pytest.mark.parametrize(
+        "filter_class,cutoff_freq,sample_rate",
+        [
+            pytest.param(HighPassFilter, 30000.0, 48000, id="highpass_filter"),
+            pytest.param(LowPassFilter, 30000.0, 48000, id="lowpass_filter"),
+        ],
+    )
+    def test_frequency_filter_cutoff_too_high_warning(
+        self, filter_class, cutoff_freq, sample_rate, caplog
     ):
-        """Should filter out low frequencies and preserve high frequencies."""
-        filter_instance = HighPassFilter(cutoff_frequency=test_filter_config["highpass_cutoff"])
+        """Should warn when cutoff frequency exceeds Nyquist limit."""
+        filter_instance = filter_class(cutoff_frequency=cutoff_freq)
+
+        with caplog.at_level(logging.WARNING):
+            filter_instance.configure(sample_rate, 1)
+
+        assert "cutoff" in caplog.text.lower()
+        assert "nyquist" in caplog.text.lower()
+
+    @pytest.mark.parametrize(
+        "filter_class,cutoff_freq",
+        [
+            pytest.param(HighPassFilter, 1000.0, id="highpass_filter"),
+            pytest.param(LowPassFilter, 2000.0, id="lowpass_filter"),
+        ],
+    )
+    def test_frequency_filter_processing(
+        self, filter_class, cutoff_freq, test_audio_config, test_audio_signals
+    ):
+        """Should filter frequencies and preserve output shape/dtype."""
+        filter_instance = filter_class(cutoff_frequency=cutoff_freq)
         filter_instance.configure(test_audio_config["sample_rate"], test_audio_config["channels"])
 
         # Create test signal: low frequency (100Hz) + high frequency (5000Hz)
@@ -217,119 +265,26 @@ class TestHighPassFilter:
         assert result.shape == test_data.shape
         assert result.dtype == np.int16
 
-    def test_highpass_filter_cutoff_too_high_warning(
-        self, test_audio_config, test_filter_config, caplog
+    @pytest.mark.parametrize(
+        "filter_class,cutoff_freq,order,expected_type",
+        [
+            pytest.param(HighPassFilter, 800.0, 6, "HighPassFilter", id="highpass_filter"),
+            pytest.param(LowPassFilter, 2500.0, 8, "LowPassFilter", id="lowpass_filter"),
+        ],
+    )
+    def test_frequency_filter_parameters(
+        self, filter_class, cutoff_freq, order, expected_type, test_audio_config
     ):
-        """Should warn when cutoff frequency exceeds Nyquist limit."""
-        filter_instance = HighPassFilter(cutoff_frequency=test_filter_config["high_cutoff_warning"])
-
-        with caplog.at_level(logging.WARNING):
-            filter_instance.configure(
-                test_audio_config["sample_rate"], test_audio_config["channels"]
-            )
-
-        assert "cutoff" in caplog.text.lower()
-        assert "nyquist" in caplog.text.lower()
-
-    def test_highpass_filter_not_configured_error(self, test_filter_config, sample_int16_data):
-        """Should raise RuntimeError when processing without configuration."""
-        filter_instance = HighPassFilter(cutoff_frequency=test_filter_config["highpass_cutoff"])
-        test_data = sample_int16_data["small"]
-
-        with pytest.raises(RuntimeError, match="not configured"):
-            filter_instance.process(test_data)
-
-    def test_highpass_filter_parameters(self, test_audio_config):
         """Should return correct filter parameters after configuration."""
-        test_cutoff = 800.0
-        test_order = 6
-        filter_instance = HighPassFilter(cutoff_frequency=test_cutoff, order=test_order)
+        filter_instance = filter_class(cutoff_frequency=cutoff_freq, order=order)
         filter_instance.configure(test_audio_config["sample_rate"], test_audio_config["channels"])
 
         params = filter_instance.get_parameters()
 
-        assert params["cutoff_frequency"] == test_cutoff
-        assert params["order"] == test_order
-        assert params["type"] == "HighPassFilter"
+        assert params["cutoff_frequency"] == cutoff_freq
+        assert params["order"] == order
+        assert params["type"] == expected_type
         assert params["sample_rate"] == test_audio_config["sample_rate"]
-
-
-class TestLowPassFilter:
-    """Test the LowPassFilter implementation."""
-
-    def test_lowpass_filter_initialization(self):
-        """Should initialize LowPassFilter with correct parameters."""
-        filter_instance = LowPassFilter(cutoff_frequency=3000.0, name="SchoolFilter")
-
-        assert filter_instance.name == "SchoolFilter"
-        assert filter_instance.cutoff_frequency == 3000.0
-        assert filter_instance.order == 4
-        assert filter_instance._sos is None
-
-    def test_lowpass_filter_configuration(self):
-        """Should configure LowPassFilter and create filter coefficients."""
-        filter_instance = LowPassFilter(cutoff_frequency=3000.0)
-        filter_instance.configure(48000, 1)
-
-        assert filter_instance._sample_rate == 48000
-        assert filter_instance._channels == 1
-        assert filter_instance._sos is not None
-
-    def test_lowpass_filter_processing(self):
-        """Should filter out high frequencies and preserve low frequencies."""
-        filter_instance = LowPassFilter(cutoff_frequency=2000.0)
-        filter_instance.configure(48000, 1)
-
-        # Create test signal: low frequency (500Hz) + high frequency (8000Hz)
-        duration = 0.1  # 100ms
-        sample_rate = 48000
-        t = np.linspace(0, duration, int(sample_rate * duration), False)
-
-        # Low frequency component (should pass through)
-        low_freq = np.sin(2 * np.pi * 500 * t)
-        # High frequency component (should be attenuated)
-        high_freq = np.sin(2 * np.pi * 8000 * t)
-
-        # Combine signals and convert to int16
-        combined = (low_freq + high_freq) * 16384  # Scale to use half of int16 range
-        test_data = combined.astype(np.int16)
-
-        result = filter_instance.apply(test_data)
-
-        # Result should be different from input (filtered)
-        assert not np.array_equal(result, test_data)
-        # Result should have same shape and dtype
-        assert result.shape == test_data.shape
-        assert result.dtype == np.int16
-
-    def test_lowpass_filter_parameters(self):
-        """Should return correct filter parameters after configuration."""
-        filter_instance = LowPassFilter(cutoff_frequency=2500.0, order=8)
-        filter_instance.configure(48000, 1)
-
-        params = filter_instance.get_parameters()
-
-        assert params["cutoff_frequency"] == 2500.0
-        assert params["order"] == 8
-        assert params["type"] == "LowPassFilter"
-
-    def test_lowpass_filter_cutoff_too_high_warning(self, caplog):
-        """Should warn when cutoff frequency exceeds Nyquist limit."""
-        filter_instance = LowPassFilter(cutoff_frequency=30000.0)  # Higher than Nyquist for 48kHz
-
-        with caplog.at_level(logging.WARNING):
-            filter_instance.configure(48000, 1)
-
-        assert "cutoff" in caplog.text.lower()
-        assert "nyquist" in caplog.text.lower()
-
-    def test_lowpass_filter_not_configured_error(self):
-        """Should raise RuntimeError when processing without configuration."""
-        filter_instance = LowPassFilter(cutoff_frequency=2000.0)
-        test_data = np.array([1000, 2000, 3000], dtype=np.int16)
-
-        with pytest.raises(RuntimeError, match="not configured"):
-            filter_instance.process(test_data)
 
 
 class TestFilterChain:
