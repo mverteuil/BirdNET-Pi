@@ -33,306 +33,312 @@ def mock_deployment_sbc():
 class TestListGitRemotes:
     """Tests for GET /api/update/git/remotes."""
 
-    def test_list_remotes_sbc(self, app_with_temp_data, mock_deployment_sbc):
-        """Should list remotes for SBC deployment."""
-        client = TestClient(app_with_temp_data)
-
-        mock_remotes = [
-            GitRemote("origin", "https://github.com/user/repo.git"),
-            GitRemote("upstream", "https://github.com/original/repo.git"),
-        ]
-
-        with patch(
-            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
-        ) as mock_service:
-            mock_instance = MagicMock(spec=GitOperationsService)
-            mock_instance.list_remotes.return_value = mock_remotes
-            mock_service.return_value = mock_instance
-
-            response = client.get("/api/update/git/remotes")
-
-            assert response.status_code == 200
-            data = response.json()
-            assert len(data["remotes"]) == 2
-            assert data["remotes"][0]["name"] == "origin"
-            assert data["remotes"][0]["url"] == "https://github.com/user/repo.git"
-            assert data["remotes"][1]["name"] == "upstream"
-
-    def test_list_remotes_docker(self, app_with_temp_data, mock_deployment_docker):
-        """Should return empty list for Docker deployment."""
-        client = TestClient(app_with_temp_data)
-
-        response = client.get("/api/update/git/remotes")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["remotes"] == []
-
-    def test_list_remotes_error(self, app_with_temp_data, mock_deployment_sbc):
-        """Should handle errors when listing remotes fails."""
+    @pytest.mark.parametrize(
+        "deployment,service_error,expected_status,expected_remotes",
+        [
+            (
+                "sbc",
+                None,
+                200,
+                [
+                    {"name": "origin", "url": "https://github.com/user/repo.git"},
+                    {"name": "upstream", "url": "https://github.com/original/repo.git"},
+                ],
+            ),
+            ("docker", None, 200, []),
+            ("sbc", Exception("Git error"), 500, None),
+        ],
+        ids=["sbc_lists_remotes", "docker_returns_empty", "error_returns_500"],
+    )
+    def test_list_remotes(
+        self, app_with_temp_data, deployment, service_error, expected_status, expected_remotes
+    ):
+        """Should handle listing git remotes based on deployment environment."""
         client = TestClient(app_with_temp_data)
 
         with patch(
-            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
-        ) as mock_service:
-            mock_instance = MagicMock(spec=GitOperationsService)
-            mock_instance.list_remotes.side_effect = Exception("Git error")
-            mock_service.return_value = mock_instance
+            "birdnetpi.web.routers.update_api_routes.SystemUtils", autospec=True
+        ) as mock_utils:
+            mock_utils.get_deployment_environment.return_value = deployment
 
-            response = client.get("/api/update/git/remotes")
+            if deployment == "sbc":
+                mock_remotes = [
+                    GitRemote("origin", "https://github.com/user/repo.git"),
+                    GitRemote("upstream", "https://github.com/original/repo.git"),
+                ]
+                with patch(
+                    "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
+                ) as mock_service:
+                    mock_instance = MagicMock(spec=GitOperationsService)
+                    if service_error:
+                        mock_instance.list_remotes.side_effect = service_error
+                    else:
+                        mock_instance.list_remotes.return_value = mock_remotes
+                    mock_service.return_value = mock_instance
 
-            assert response.status_code == 500
+                    response = client.get("/api/update/git/remotes")
+            else:
+                response = client.get("/api/update/git/remotes")
+
+            assert response.status_code == expected_status
+            if expected_remotes is not None:
+                data = response.json()
+                assert data["remotes"] == expected_remotes
 
 
 class TestAddGitRemote:
     """Tests for POST /api/update/git/remotes."""
 
-    def test_add_remote_sbc(self, app_with_temp_data, mock_deployment_sbc):
-        """Should add new remote for SBC deployment."""
+    @pytest.mark.parametrize(
+        "deployment,service_error,expected_success,expected_message_contains",
+        [
+            ("sbc", None, True, "added successfully"),
+            ("docker", None, False, "not available for Docker"),
+            ("sbc", ValueError("Remote 'upstream' already exists"), False, "already exists"),
+        ],
+        ids=["sbc_adds_remote", "docker_rejects", "duplicate_remote_fails"],
+    )
+    def test_add_remote(
+        self,
+        app_with_temp_data,
+        deployment,
+        service_error,
+        expected_success,
+        expected_message_contains,
+    ):
+        """Should handle adding git remotes based on deployment environment."""
         client = TestClient(app_with_temp_data)
 
         with patch(
-            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
-        ) as mock_service:
-            mock_instance = MagicMock(spec=GitOperationsService)
-            mock_service.return_value = mock_instance
+            "birdnetpi.web.routers.update_api_routes.SystemUtils", autospec=True
+        ) as mock_utils:
+            mock_utils.get_deployment_environment.return_value = deployment
 
-            response = client.post(
-                "/api/update/git/remotes",
-                json={"name": "upstream", "url": "https://github.com/original/repo.git"},
-            )
+            if deployment == "sbc":
+                with patch(
+                    "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
+                ) as mock_service:
+                    mock_instance = MagicMock(spec=GitOperationsService)
+                    if service_error:
+                        mock_instance.add_remote.side_effect = service_error
+                    mock_service.return_value = mock_instance
 
-            assert response.status_code == 200
-            data = response.json()
-            assert data["success"] is True
-            assert "added successfully" in data["message"].lower()
+                    response = client.post(
+                        "/api/update/git/remotes",
+                        json={"name": "upstream", "url": "https://github.com/original/repo.git"},
+                    )
 
-            mock_instance.add_remote.assert_called_once_with(
-                "upstream", "https://github.com/original/repo.git"
-            )
-
-    def test_add_remote_docker(self, app_with_temp_data, mock_deployment_docker):
-        """Should reject adding remote for Docker deployment."""
-        client = TestClient(app_with_temp_data)
-
-        response = client.post(
-            "/api/update/git/remotes",
-            json={"name": "upstream", "url": "https://github.com/original/repo.git"},
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is False
-        assert "not available for Docker" in data["error"]
-
-    def test_add_remote_already_exists(self, app_with_temp_data, mock_deployment_sbc):
-        """Should handle adding duplicate remote."""
-        client = TestClient(app_with_temp_data)
-
-        with patch(
-            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
-        ) as mock_service:
-            mock_instance = MagicMock(spec=GitOperationsService)
-            mock_instance.add_remote.side_effect = ValueError("Remote 'upstream' already exists")
-            mock_service.return_value = mock_instance
-
-            response = client.post(
-                "/api/update/git/remotes",
-                json={"name": "upstream", "url": "https://github.com/original/repo.git"},
-            )
+                    if not service_error:
+                        mock_instance.add_remote.assert_called_once_with(
+                            "upstream", "https://github.com/original/repo.git"
+                        )
+            else:
+                response = client.post(
+                    "/api/update/git/remotes",
+                    json={"name": "upstream", "url": "https://github.com/original/repo.git"},
+                )
 
             assert response.status_code == 200
             data = response.json()
-            assert data["success"] is False
-            assert "already exists" in data["error"]
+            assert data["success"] is expected_success
+            if expected_success:
+                assert expected_message_contains in data["message"].lower()
+            else:
+                assert expected_message_contains in data["error"]
 
 
 class TestUpdateGitRemote:
     """Tests for PUT /api/update/git/remotes/{remote_name}."""
 
-    def test_update_remote_url_only(self, app_with_temp_data, mock_deployment_sbc):
-        """Should update only the URL of a remote."""
+    @pytest.mark.parametrize(
+        "deployment,old_name,new_name,url,expected_success,expected_error,expect_update_call,expect_delete_add_calls",
+        [
+            ("sbc", "origin", "origin", "https://github.com/new/repo.git", True, None, True, False),
+            ("sbc", "upstream", "fork", "https://github.com/new/repo.git", True, None, False, True),
+            (
+                "sbc",
+                "origin",
+                "new-origin",
+                "https://github.com/new/repo.git",
+                False,
+                "Cannot rename 'origin'",
+                False,
+                False,
+            ),
+            (
+                "docker",
+                "origin",
+                "origin",
+                "https://github.com/new/repo.git",
+                False,
+                "not available for Docker",
+                False,
+                False,
+            ),
+        ],
+        ids=[
+            "sbc_updates_url_only",
+            "sbc_renames_remote",
+            "origin_rename_blocked",
+            "docker_rejects",
+        ],
+    )
+    def test_update_remote(
+        self,
+        app_with_temp_data,
+        deployment,
+        old_name,
+        new_name,
+        url,
+        expected_success,
+        expected_error,
+        expect_update_call,
+        expect_delete_add_calls,
+    ):
+        """Should handle updating git remotes based on deployment and parameters."""
         client = TestClient(app_with_temp_data)
 
         with patch(
-            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
-        ) as mock_service:
-            mock_instance = MagicMock(spec=GitOperationsService)
-            mock_service.return_value = mock_instance
+            "birdnetpi.web.routers.update_api_routes.SystemUtils", autospec=True
+        ) as mock_utils:
+            mock_utils.get_deployment_environment.return_value = deployment
 
-            response = client.put(
-                "/api/update/git/remotes/origin",
-                json={"name": "origin", "url": "https://github.com/new/repo.git"},
-            )
+            if deployment == "sbc":
+                with patch(
+                    "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
+                ) as mock_service:
+                    mock_instance = MagicMock(spec=GitOperationsService)
+                    mock_service.return_value = mock_instance
 
-            assert response.status_code == 200
-            data = response.json()
-            assert data["success"] is True
+                    response = client.put(
+                        f"/api/update/git/remotes/{old_name}",
+                        json={"name": new_name, "url": url},
+                    )
 
-            mock_instance.update_remote.assert_called_once_with(
-                "origin", "https://github.com/new/repo.git"
-            )
-            mock_instance.delete_remote.assert_not_called()
-
-    def test_update_remote_rename(self, app_with_temp_data, mock_deployment_sbc):
-        """Should rename non-origin remote."""
-        client = TestClient(app_with_temp_data)
-
-        with patch(
-            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
-        ) as mock_service:
-            mock_instance = MagicMock(spec=GitOperationsService)
-            mock_service.return_value = mock_instance
-
-            response = client.put(
-                "/api/update/git/remotes/upstream",
-                json={"name": "fork", "url": "https://github.com/new/repo.git"},
-            )
+                    if expect_update_call:
+                        mock_instance.update_remote.assert_called_once_with(old_name, url)
+                        mock_instance.delete_remote.assert_not_called()
+                    elif expect_delete_add_calls:
+                        mock_instance.delete_remote.assert_called_once_with(old_name)
+                        mock_instance.add_remote.assert_called_once_with(new_name, url)
+            else:
+                response = client.put(
+                    f"/api/update/git/remotes/{old_name}",
+                    json={"name": new_name, "url": url},
+                )
 
             assert response.status_code == 200
             data = response.json()
-            assert data["success"] is True
-
-            # Should delete old and add new
-            mock_instance.delete_remote.assert_called_once_with("upstream")
-            mock_instance.add_remote.assert_called_once_with(
-                "fork", "https://github.com/new/repo.git"
-            )
-
-    def test_update_remote_rename_origin_blocked(self, app_with_temp_data, mock_deployment_sbc):
-        """Should block renaming origin remote."""
-        client = TestClient(app_with_temp_data)
-
-        with patch(
-            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
-        ) as mock_service:
-            mock_instance = MagicMock(spec=GitOperationsService)
-            mock_service.return_value = mock_instance
-
-            response = client.put(
-                "/api/update/git/remotes/origin",
-                json={"name": "new-origin", "url": "https://github.com/new/repo.git"},
-            )
-
-            assert response.status_code == 200
-            data = response.json()
-            assert data["success"] is False
-            assert "Cannot rename 'origin'" in data["error"]
-
-    def test_update_remote_docker(self, app_with_temp_data, mock_deployment_docker):
-        """Should reject updating remote for Docker deployment."""
-        client = TestClient(app_with_temp_data)
-
-        response = client.put(
-            "/api/update/git/remotes/origin",
-            json={"name": "origin", "url": "https://github.com/new/repo.git"},
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is False
-        assert "not available for Docker" in data["error"]
+            assert data["success"] is expected_success
+            if expected_error:
+                assert expected_error in data["error"]
 
 
 class TestDeleteGitRemote:
     """Tests for DELETE /api/update/git/remotes/{remote_name}."""
 
-    def test_delete_remote_success(self, app_with_temp_data, mock_deployment_sbc):
-        """Should delete non-origin remote."""
+    @pytest.mark.parametrize(
+        "deployment,remote_name,service_error,expected_success,expected_message_contains",
+        [
+            ("sbc", "upstream", None, True, "deleted successfully"),
+            ("sbc", "origin", ValueError("Cannot delete 'origin' remote"), False, "Cannot delete"),
+            ("docker", "upstream", None, False, "not available for Docker"),
+        ],
+        ids=["sbc_deletes_remote", "origin_delete_blocked", "docker_rejects"],
+    )
+    def test_delete_remote(
+        self,
+        app_with_temp_data,
+        deployment,
+        remote_name,
+        service_error,
+        expected_success,
+        expected_message_contains,
+    ):
+        """Should handle deleting git remotes based on deployment environment."""
         client = TestClient(app_with_temp_data)
 
         with patch(
-            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
-        ) as mock_service:
-            mock_instance = MagicMock(spec=GitOperationsService)
-            mock_service.return_value = mock_instance
+            "birdnetpi.web.routers.update_api_routes.SystemUtils", autospec=True
+        ) as mock_utils:
+            mock_utils.get_deployment_environment.return_value = deployment
 
-            response = client.delete("/api/update/git/remotes/upstream")
+            if deployment == "sbc":
+                with patch(
+                    "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
+                ) as mock_service:
+                    mock_instance = MagicMock(spec=GitOperationsService)
+                    if service_error:
+                        mock_instance.delete_remote.side_effect = service_error
+                    mock_service.return_value = mock_instance
 
-            assert response.status_code == 200
-            data = response.json()
-            assert data["success"] is True
-            assert "deleted successfully" in data["message"].lower()
+                    response = client.delete(f"/api/update/git/remotes/{remote_name}")
 
-            mock_instance.delete_remote.assert_called_once_with("upstream")
-
-    def test_delete_origin_blocked(self, app_with_temp_data, mock_deployment_sbc):
-        """Should block deleting origin remote."""
-        client = TestClient(app_with_temp_data)
-
-        with patch(
-            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
-        ) as mock_service:
-            mock_instance = MagicMock(spec=GitOperationsService)
-            mock_instance.delete_remote.side_effect = ValueError("Cannot delete 'origin' remote")
-            mock_service.return_value = mock_instance
-
-            response = client.delete("/api/update/git/remotes/origin")
+                    if not service_error:
+                        mock_instance.delete_remote.assert_called_once_with(remote_name)
+            else:
+                response = client.delete(f"/api/update/git/remotes/{remote_name}")
 
             assert response.status_code == 200
             data = response.json()
-            assert data["success"] is False
-            assert "Cannot delete" in data["error"]
-
-    def test_delete_remote_docker(self, app_with_temp_data, mock_deployment_docker):
-        """Should reject deleting remote for Docker deployment."""
-        client = TestClient(app_with_temp_data)
-
-        response = client.delete("/api/update/git/remotes/upstream")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] is False
-        assert "not available for Docker" in data["error"]
+            assert data["success"] is expected_success
+            if expected_success:
+                assert expected_message_contains in data["message"].lower()
+            else:
+                assert expected_message_contains in data["error"]
 
 
 class TestListGitBranches:
     """Tests for GET /api/update/git/branches/{remote_name}."""
 
-    def test_list_branches_sbc(self, app_with_temp_data, mock_deployment_sbc):
-        """Should list branches for SBC deployment."""
+    @pytest.mark.parametrize(
+        "deployment,service_error,expected_status,expected_tags,expected_branches",
+        [
+            ("sbc", None, 200, ["v2.1.0", "v2.0.0"], ["main", "develop"]),
+            ("docker", None, 200, [], []),
+            ("sbc", Exception("Git error"), 500, None, None),
+        ],
+        ids=["sbc_lists_branches", "docker_returns_empty", "error_returns_500"],
+    )
+    def test_list_branches(
+        self,
+        app_with_temp_data,
+        deployment,
+        service_error,
+        expected_status,
+        expected_tags,
+        expected_branches,
+    ):
+        """Should handle listing git branches based on deployment environment."""
         client = TestClient(app_with_temp_data)
 
         with patch(
-            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
-        ) as mock_service:
-            mock_instance = MagicMock(spec=GitOperationsService)
-            mock_instance.list_tags.return_value = ["v2.1.0", "v2.0.0"]
-            mock_instance.list_branches.return_value = ["main", "develop"]
-            mock_service.return_value = mock_instance
+            "birdnetpi.web.routers.update_api_routes.SystemUtils", autospec=True
+        ) as mock_utils:
+            mock_utils.get_deployment_environment.return_value = deployment
 
-            response = client.get("/api/update/git/branches/origin")
+            if deployment == "sbc":
+                with patch(
+                    "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
+                ) as mock_service:
+                    mock_instance = MagicMock(spec=GitOperationsService)
+                    if service_error:
+                        mock_instance.list_tags.side_effect = service_error
+                    else:
+                        mock_instance.list_tags.return_value = expected_tags
+                        mock_instance.list_branches.return_value = expected_branches
+                    mock_service.return_value = mock_instance
 
-            assert response.status_code == 200
-            data = response.json()
-            assert data["tags"] == ["v2.1.0", "v2.0.0"]
-            assert data["branches"] == ["main", "develop"]
+                    response = client.get("/api/update/git/branches/origin")
 
-            mock_instance.list_tags.assert_called_once_with("origin")
-            mock_instance.list_branches.assert_called_once_with("origin")
+                    if not service_error:
+                        mock_instance.list_tags.assert_called_once_with("origin")
+                        mock_instance.list_branches.assert_called_once_with("origin")
+            else:
+                response = client.get("/api/update/git/branches/origin")
 
-    def test_list_branches_docker(self, app_with_temp_data, mock_deployment_docker):
-        """Should return empty list for Docker deployment."""
-        client = TestClient(app_with_temp_data)
-
-        response = client.get("/api/update/git/branches/origin")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["tags"] == []
-        assert data["branches"] == []
-
-    def test_list_branches_error(self, app_with_temp_data, mock_deployment_sbc):
-        """Should handle errors when listing branches fails."""
-        client = TestClient(app_with_temp_data)
-
-        with patch(
-            "birdnetpi.web.routers.update_api_routes.GitOperationsService", autospec=True
-        ) as mock_service:
-            mock_instance = MagicMock(spec=GitOperationsService)
-            mock_instance.list_tags.side_effect = Exception("Git error")
-            mock_service.return_value = mock_instance
-
-            response = client.get("/api/update/git/branches/origin")
-
-            assert response.status_code == 500
+            assert response.status_code == expected_status
+            if expected_status == 200:
+                data = response.json()
+                assert data["tags"] == expected_tags
+                assert data["branches"] == expected_branches

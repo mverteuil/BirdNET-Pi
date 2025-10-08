@@ -176,142 +176,125 @@ def test_get_system_timezone__io_error_reading_file(
 class TestDockerEnvironment:
     """Test Docker environment detection."""
 
-    @patch("os.path.exists", autospec=True)
-    def test_is_docker_environment__dockerenv(self, mock_exists):
-        """Should return True when /.dockerenv exists."""
-        mock_exists.return_value = True
-        assert SystemUtils.is_docker_environment() is True
-        mock_exists.assert_called_once_with("/.dockerenv")
-
-    @patch("os.path.exists", autospec=True)
-    @patch.dict(os.environ, {"DOCKER_CONTAINER": "true"})
-    def test_is_docker_environment__env_var(self, mock_exists):
-        """Should return True when DOCKER_CONTAINER env var is set."""
-        mock_exists.return_value = False
-        assert SystemUtils.is_docker_environment() is True
-
-    @patch("os.path.exists", autospec=True)
-    @patch.dict(os.environ, {}, clear=True)
-    def test_is_docker_environment__false(self, mock_exists):
-        """Should return False when no Docker indicators present."""
-        mock_exists.return_value = False
-        assert SystemUtils.is_docker_environment() is False
+    @pytest.mark.parametrize(
+        "dockerenv_exists,env_var_set,expected",
+        [
+            (True, False, True),
+            (False, True, True),
+            (False, False, False),
+        ],
+        ids=["dockerenv_file_exists", "env_var_set", "no_indicators"],
+    )
+    def test_is_docker_environment(self, dockerenv_exists, env_var_set, expected):
+        """Should detect Docker environment from various indicators."""
+        with patch("os.path.exists", return_value=dockerenv_exists) as mock_exists:
+            env = {"DOCKER_CONTAINER": "true"} if env_var_set else {}
+            with patch.dict(os.environ, env, clear=True):
+                result = SystemUtils.is_docker_environment()
+                assert result is expected
+                if dockerenv_exists:
+                    mock_exists.assert_called_once_with("/.dockerenv")
 
 
 class TestSystemdAvailability:
     """Test systemd availability detection."""
 
-    @patch("subprocess.run", autospec=True)
-    def test_is_systemd_available__true(self, mock_run):
-        """Should return True when systemctl command succeeds."""
-        mock_run.return_value.returncode = 0
-        assert SystemUtils.is_systemd_available() is True
-        mock_run.assert_called_once_with(
-            ["systemctl", "--version"],
-            capture_output=True,
-            timeout=2,
-        )
+    @pytest.mark.parametrize(
+        "returncode,exception,expected",
+        [
+            (0, None, True),
+            (1, None, False),
+            (None, FileNotFoundError(), False),
+            (None, subprocess.TimeoutExpired("systemctl", 2), False),
+        ],
+        ids=["command_succeeds", "command_fails", "file_not_found", "timeout"],
+    )
+    def test_is_systemd_available(self, returncode, exception, expected):
+        """Should detect systemd availability based on systemctl command."""
+        with patch("subprocess.run", autospec=True) as mock_run:
+            if exception:
+                mock_run.side_effect = exception
+            else:
+                mock_run.return_value.returncode = returncode
 
-    @patch("subprocess.run", autospec=True)
-    def test_is_systemd_available__false_command_failed(self, mock_run):
-        """Should return False when systemctl command fails."""
-        mock_run.return_value.returncode = 1
-        assert SystemUtils.is_systemd_available() is False
+            result = SystemUtils.is_systemd_available()
+            assert result is expected
 
-    @patch("subprocess.run", autospec=True)
-    def test_is_systemd_available__false_exception(self, mock_run):
-        """Should return False when subprocess raises exception."""
-        mock_run.side_effect = FileNotFoundError()
-        assert SystemUtils.is_systemd_available() is False
-
-    @patch("subprocess.run", autospec=True)
-    def test_is_systemd_available__timeout(self, mock_run):
-        """Should return False when subprocess times out."""
-        mock_run.side_effect = subprocess.TimeoutExpired("systemctl", 2)
-        assert SystemUtils.is_systemd_available() is False
+            if not exception:
+                mock_run.assert_called_once_with(
+                    ["systemctl", "--version"],
+                    capture_output=True,
+                    timeout=2,
+                )
 
 
 class TestGitVersion:
     """Test git version detection."""
 
-    @patch("subprocess.run", autospec=True)
-    def test_get_git_version__success(self, mock_run):
-        """Should return formatted version when git commands succeed."""
-        mock_run.side_effect = [
-            MagicMock(spec=subprocess.CompletedProcess, returncode=0, stdout="main\n"),
-            MagicMock(spec=subprocess.CompletedProcess, returncode=0, stdout="abc12345\n"),
-        ]
-        result = SystemUtils.get_git_version()
-        assert result == "main@abc12345"
+    @pytest.mark.parametrize(
+        "branch_result,commit_result,exception,expected",
+        [
+            ((0, "main\n"), (0, "abc12345\n"), None, "main@abc12345"),
+            ((1, ""), (0, "abc12345\n"), None, "unknown@abc12345"),
+            ((0, "main\n"), (1, ""), None, "main@unknown"),
+            (None, None, subprocess.TimeoutExpired("git", 5), "unknown"),
+            (None, None, FileNotFoundError(), "unknown"),
+        ],
+        ids=["success", "branch_fails", "commit_fails", "timeout", "git_not_found"],
+    )
+    def test_get_git_version(self, branch_result, commit_result, exception, expected):
+        """Should handle various git command outcomes."""
+        with patch("subprocess.run", autospec=True) as mock_run:
+            if exception:
+                mock_run.side_effect = exception
+            else:
+                branch_returncode, branch_stdout = branch_result
+                commit_returncode, commit_stdout = commit_result
+                mock_run.side_effect = [
+                    MagicMock(
+                        spec=subprocess.CompletedProcess,
+                        returncode=branch_returncode,
+                        stdout=branch_stdout,
+                    ),
+                    MagicMock(
+                        spec=subprocess.CompletedProcess,
+                        returncode=commit_returncode,
+                        stdout=commit_stdout,
+                    ),
+                ]
 
-    @patch("subprocess.run", autospec=True)
-    def test_get_git_version__branch_failure(self, mock_run):
-        """Should return 'unknown' branch name when branch command fails."""
-        mock_run.side_effect = [
-            MagicMock(spec=subprocess.CompletedProcess, returncode=1, stdout=""),
-            MagicMock(spec=subprocess.CompletedProcess, returncode=0, stdout="abc12345\n"),
-        ]
-        result = SystemUtils.get_git_version()
-        assert result == "unknown@abc12345"
-
-    @patch("subprocess.run", autospec=True)
-    def test_get_git_version__commit_failure(self, mock_run):
-        """Should return 'unknown' commit hash when commit command fails."""
-        mock_run.side_effect = [
-            MagicMock(spec=subprocess.CompletedProcess, returncode=0, stdout="main\n"),
-            MagicMock(spec=subprocess.CompletedProcess, returncode=1, stdout=""),
-        ]
-        result = SystemUtils.get_git_version()
-        assert result == "main@unknown"
-
-    @patch("subprocess.run", autospec=True)
-    def test_get_git_version__timeout_exception(self, mock_run):
-        """Should return 'unknown' when git commands time out."""
-        mock_run.side_effect = subprocess.TimeoutExpired("git", 5)
-        result = SystemUtils.get_git_version()
-        assert result == "unknown"
-
-    @patch("subprocess.run", autospec=True)
-    def test_get_git_version__file_not_found(self, mock_run):
-        """Should return 'unknown' when git is not installed."""
-        mock_run.side_effect = FileNotFoundError()
-        result = SystemUtils.get_git_version()
-        assert result == "unknown"
+            result = SystemUtils.get_git_version()
+            assert result == expected
 
 
 class TestDeploymentEnvironment:
     """Test deployment environment detection."""
 
-    @patch("os.path.exists", autospec=True)
-    @patch.dict(os.environ, {"DOCKER_CONTAINER": "true"})
-    def test_get_deployment_environment__docker(self, mock_exists):
-        """Should return 'docker' when in Docker environment."""
-        mock_exists.return_value = False  # /.dockerenv doesn't exist
-        assert SystemUtils.get_deployment_environment() == "docker"
+    @pytest.mark.parametrize(
+        "is_docker,systemd_returncode,env_var,expected",
+        [
+            (True, None, None, "docker"),
+            (False, 0, None, "sbc"),
+            (False, 1, "development", "development"),
+            (False, 1, None, "unknown"),
+        ],
+        ids=["docker_env", "sbc_env", "development_env", "unknown_env"],
+    )
+    def test_get_deployment_environment(self, is_docker, systemd_returncode, env_var, expected):
+        """Should detect deployment environment based on various indicators."""
+        with patch("os.path.exists", return_value=False):
+            env = {}
+            if is_docker:
+                env["DOCKER_CONTAINER"] = "true"
+            if env_var:
+                env["BIRDNETPI_ENV"] = env_var
 
-    @patch("os.path.exists", autospec=True)
-    @patch("subprocess.run", autospec=True)
-    @patch.dict(os.environ, {}, clear=True)
-    def test_get_deployment_environment__sbc(self, mock_run, mock_exists):
-        """Should return 'sbc' when systemd available and not in Docker."""
-        mock_exists.return_value = False  # Not in Docker
-        mock_run.return_value.returncode = 0  # systemd available
-        assert SystemUtils.get_deployment_environment() == "sbc"
+            with patch.dict(os.environ, env, clear=True):
+                if not is_docker and systemd_returncode is not None:
+                    with patch("subprocess.run", autospec=True) as mock_run:
+                        mock_run.return_value.returncode = systemd_returncode
+                        result = SystemUtils.get_deployment_environment()
+                else:
+                    result = SystemUtils.get_deployment_environment()
 
-    @patch("os.path.exists", autospec=True)
-    @patch("subprocess.run", autospec=True)
-    @patch.dict(os.environ, {"BIRDNETPI_ENV": "development"})
-    def test_get_deployment_environment__development(self, mock_run, mock_exists):
-        """Should return 'development' when BIRDNETPI_ENV is set."""
-        mock_exists.return_value = False  # Not in Docker
-        mock_run.return_value.returncode = 1  # No systemd
-        assert SystemUtils.get_deployment_environment() == "development"
-
-    @patch("os.path.exists", autospec=True)
-    @patch("subprocess.run", autospec=True)
-    @patch.dict(os.environ, {}, clear=True)
-    def test_get_deployment_environment__unknown(self, mock_run, mock_exists):
-        """Should return 'unknown' when no environment indicators present."""
-        mock_exists.return_value = False  # Not in Docker
-        mock_run.return_value.returncode = 1  # No systemd
-        assert SystemUtils.get_deployment_environment() == "unknown"
+                assert result == expected

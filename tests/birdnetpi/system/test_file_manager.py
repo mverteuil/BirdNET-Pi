@@ -98,30 +98,32 @@ def test_list_directory_contents_non_existent(file_manager):
     assert contents == []
 
 
-def test_file_exists_true(file_manager):
-    """Should return True if the file exists"""
-    file_path = Path("existing_file.txt")
-    (file_manager.base_path / file_path).write_text("content")
-    assert file_manager.file_exists(file_path) is True
+@pytest.mark.parametrize(
+    "method,path,setup_action,expected",
+    [
+        ("file_exists", Path("existing_file.txt"), "create_file", True),
+        ("file_exists", Path("non_existing_file.txt"), None, False),
+        ("directory_exists", Path("existing_dir"), "create_dir", True),
+        ("directory_exists", Path("non_existing_dir"), None, False),
+    ],
+    ids=[
+        "file_exists_when_present",
+        "file_exists_when_missing",
+        "directory_exists_when_present",
+        "directory_exists_when_missing",
+    ],
+)
+def test_existence_checks(file_manager, method, path, setup_action, expected):
+    """Should correctly report file/directory existence for various scenarios."""
+    # Setup: create file or directory if needed
+    if setup_action == "create_file":
+        (file_manager.base_path / path).write_text("content")
+    elif setup_action == "create_dir":
+        (file_manager.base_path / path).mkdir()
 
-
-def test_file_exists_false(file_manager):
-    """Should return False if the file does not exist"""
-    file_path = Path("non_existing_file.txt")
-    assert file_manager.file_exists(file_path) is False
-
-
-def test_directory_exists_true(file_manager):
-    """Should return True if the directory exists"""
-    test_dir = Path("existing_dir")
-    (file_manager.base_path / test_dir).mkdir()
-    assert file_manager.directory_exists(test_dir) is True
-
-
-def test_directory_exists_false(file_manager):
-    """Should return False if the directory does not exist"""
-    test_dir = Path("non_existing_dir")
-    assert file_manager.directory_exists(test_dir) is False
+    # Execute and verify
+    result = getattr(file_manager, method)(path)
+    assert result is expected
 
 
 def test_save_detection_audio(file_manager):

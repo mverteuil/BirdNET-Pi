@@ -23,26 +23,36 @@ from birdnetpi.system.path_resolver import PathResolver
 class TestRunCommand:
     """Test the run_command helper function."""
 
-    def test_run_command_success(self, capsys):
-        """Should run command successfully and return True."""
-        result = run_command(["echo", "test"], "Test command")
-        assert result is True
-        captured = capsys.readouterr()
-        assert "Running: Test command" in captured.out
-        assert "Command: echo test" in captured.out
-        assert "test" in captured.out
+    @pytest.mark.parametrize(
+        "command,exception,expected_result,check_output",
+        [
+            (["echo", "test"], None, True, True),
+            (["false"], None, False, False),
+            (
+                ["test"],
+                subprocess.CalledProcessError(1, ["test"], stderr="Error message"),
+                False,
+                False,
+            ),
+        ],
+        ids=["success", "command_failure", "subprocess_exception"],
+    )
+    def test_run_command(self, command, exception, expected_result, check_output, capsys):
+        """Should handle various command execution outcomes."""
+        if exception:
+            with patch("subprocess.run", autospec=True) as mock_run:
+                mock_run.side_effect = exception
+                result = run_command(command, "Test command")
+        else:
+            result = run_command(command, "Test command")
 
-    def test_run_command_failure(self):
-        """Should handle command failure and return False."""
-        result = run_command(["false"], "Test command")
-        assert result is False
+        assert result is expected_result
 
-    @patch("subprocess.run", autospec=True)
-    def test_run_command_with_exception(self, mock_run):
-        """Should handle subprocess exceptions."""
-        mock_run.side_effect = subprocess.CalledProcessError(1, ["test"], stderr="Error message")
-        result = run_command(["test"], "Test command")
-        assert result is False
+        if check_output:
+            captured = capsys.readouterr()
+            assert "Running: Test command" in captured.out
+            assert f"Command: {' '.join(command)}" in captured.out
+            assert "test" in captured.out
 
 
 class TestExtractCommand:

@@ -183,64 +183,46 @@ def test_callback_with_livestream_filter_chain(mock_write, audio_service_with_fd
     )
 
 
-@patch("os.write", side_effect=BlockingIOError())
+@pytest.mark.parametrize(
+    "error,should_shutdown,log_level,log_message",
+    [
+        (BlockingIOError(), False, "warning", "FIFO write would block, skipping frame."),
+        (BrokenPipeError(), True, "debug", "FIFO closed, requesting shutdown."),
+        (
+            OSError(9, "Bad file descriptor"),
+            True,
+            "debug",
+            "FIFO file descriptor closed during shutdown.",
+        ),
+        (OSError(13, "Permission denied"), False, "error", None),
+    ],
+    ids=[
+        "blocking_io_error_logs_warning",
+        "broken_pipe_triggers_shutdown",
+        "bad_file_descriptor_triggers_shutdown",
+        "other_os_errors_log_error",
+    ],
+)
 @patch("birdnetpi.audio.capture.logger", autospec=True)
-def test_callback_handles_blocking_io_error(mock_logger, mock_write, audio_service_with_fds):
-    """Should handle BlockingIOError gracefully."""
+def test_callback_handles_os_errors(
+    mock_logger, error, should_shutdown, log_level, log_message, audio_service_with_fds
+):
+    """Should handle various OS errors appropriately during callback."""
     frames = 256
     indata = np.zeros((frames, 1), dtype=np.float32)
 
-    audio_service_with_fds._callback(indata, frames, None, None)
+    with patch("os.write", side_effect=error):
+        audio_service_with_fds._callback(indata, frames, None, None)
 
-    # Should log warning about blocking
-    mock_logger.warning.assert_called_with("FIFO write would block, skipping frame.")
-    # Should not set shutdown flag
-    assert not audio_service_with_fds._shutdown_requested
+    # Verify logging
+    logger_method = getattr(mock_logger, log_level)
+    if log_message:
+        logger_method.assert_called_with(log_message)
+    else:
+        logger_method.assert_called()
 
-
-@patch("os.write", side_effect=BrokenPipeError())
-@patch("birdnetpi.audio.capture.logger", autospec=True)
-def test_callback_handles_broken_pipe_error(mock_logger, mock_write, audio_service_with_fds):
-    """Should handle BrokenPipeError and request shutdown."""
-    frames = 256
-    indata = np.zeros((frames, 1), dtype=np.float32)
-
-    audio_service_with_fds._callback(indata, frames, None, None)
-
-    # Should log debug message
-    mock_logger.debug.assert_called_with("FIFO closed, requesting shutdown.")
-    # Should set shutdown flag
-    assert audio_service_with_fds._shutdown_requested
-
-
-@patch("os.write", side_effect=OSError(9, "Bad file descriptor"))
-@patch("birdnetpi.audio.capture.logger", autospec=True)
-def test_callback_handles_bad_file_descriptor(mock_logger, mock_write, audio_service_with_fds):
-    """Should handle EBADF error during shutdown."""
-    frames = 256
-    indata = np.zeros((frames, 1), dtype=np.float32)
-
-    audio_service_with_fds._callback(indata, frames, None, None)
-
-    # Should log debug message
-    mock_logger.debug.assert_called_with("FIFO file descriptor closed during shutdown.")
-    # Should set shutdown flag
-    assert audio_service_with_fds._shutdown_requested
-
-
-@patch("os.write", side_effect=OSError(13, "Permission denied"))
-@patch("birdnetpi.audio.capture.logger", autospec=True)
-def test_callback_handles_other_os_errors(mock_logger, mock_write, audio_service_with_fds):
-    """Should handle other OS errors."""
-    frames = 256
-    indata = np.zeros((frames, 1), dtype=np.float32)
-
-    audio_service_with_fds._callback(indata, frames, None, None)
-
-    # Should log error message
-    mock_logger.error.assert_called()
-    # Should not set shutdown flag for other errors
-    assert not audio_service_with_fds._shutdown_requested
+    # Verify shutdown flag
+    assert audio_service_with_fds._shutdown_requested is should_shutdown
 
 
 # Default device handling tests
@@ -380,53 +362,44 @@ def test_stop_capture_when_no_stream(mock_logger, audio_service):
     mock_logger.info.assert_called_with("Audio capture stream is not running.")
 
 
+@pytest.mark.parametrize(
+    "exception,expected_log_level,expected_message",
+    [
+        (Exception("pthread_join failed"), "debug", None),
+        (Exception("PaUnixThread_Terminate error"), "debug", None),
+        (Exception("Unexpected error"), "error", "Error stopping audio stream: Unexpected error"),
+    ],
+    ids=[
+        "pthread_join_error_logs_debug",
+        "pa_unix_thread_error_logs_debug",
+        "generic_exception_logs_error",
+    ],
+)
 @patch("time.sleep", autospec=True)
 @patch("birdnetpi.audio.capture.logger", autospec=True)
-def test_stop_capture_handles_pthread_join_error(mock_logger, mock_sleep, audio_service):
-    """Should handle pthread_join errors gracefully."""
+def test_stop_capture_handles_exceptions(
+    mock_logger, mock_sleep, audio_service, exception, expected_log_level, expected_message
+):
+    """Should handle various stream closure exceptions appropriately."""
     mock_stream = create_autospec(sounddevice.InputStream, spec_set=True)
     mock_stream.stopped = False
-    mock_stream.close.side_effect = Exception("pthread_join failed")
+    mock_stream.close.side_effect = exception
     audio_service.stream = mock_stream
 
     audio_service.stop_capture()
 
-    # Should log as debug (expected error)
-    mock_logger.debug.assert_called()
-    # Should not log as error
-    mock_logger.error.assert_not_called()
+    # Verify correct logging level
+    logger_method = getattr(mock_logger, expected_log_level)
+    if expected_message:
+        logger_method.assert_called_with(expected_message)
+    else:
+        logger_method.assert_called()
 
-
-@patch("time.sleep", autospec=True)
-@patch("birdnetpi.audio.capture.logger", autospec=True)
-def test_stop_capture_handles_pa_unix_thread_error(mock_logger, mock_sleep, audio_service):
-    """Should handle PaUnixThread_Terminate errors gracefully."""
-    mock_stream = create_autospec(sounddevice.InputStream, spec_set=True)
-    mock_stream.stopped = False
-    mock_stream.close.side_effect = Exception("PaUnixThread_Terminate error")
-    audio_service.stream = mock_stream
-
-    audio_service.stop_capture()
-
-    # Should log as debug (expected error)
-    mock_logger.debug.assert_called()
-    # Should not log as error
-    mock_logger.error.assert_not_called()
-
-
-@patch("time.sleep", autospec=True)
-@patch("birdnetpi.audio.capture.logger", autospec=True)
-def test_stop_capture_handles_generic_exceptions(mock_logger, mock_sleep, audio_service):
-    """Should log generic exceptions as errors."""
-    mock_stream = create_autospec(sounddevice.InputStream, spec_set=True)
-    mock_stream.stopped = False
-    mock_stream.close.side_effect = Exception("Unexpected error")
-    audio_service.stream = mock_stream
-
-    audio_service.stop_capture()
-
-    # Should log as error
-    mock_logger.error.assert_called_with("Error stopping audio stream: Unexpected error")
+    # Verify opposite log level was not used
+    opposite_level = "error" if expected_log_level == "debug" else "debug"
+    opposite_method = getattr(mock_logger, opposite_level)
+    if expected_log_level == "debug":
+        opposite_method.assert_not_called()
 
 
 @patch("time.sleep", autospec=True)
