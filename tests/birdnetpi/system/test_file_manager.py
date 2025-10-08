@@ -43,12 +43,56 @@ def test_read_file(file_manager):
     assert read_content == content
 
 
-def test_delete_file(file_manager):
-    """Should delete a file"""
-    file_path = Path("test_delete.txt")
-    (file_manager.base_path / file_path).write_text("Delete me.")
-    file_manager.delete_file(file_path)
-    assert not (file_manager.base_path / file_path).exists()
+@pytest.mark.parametrize(
+    "method,path,setup_action,expected_result",
+    [
+        pytest.param(
+            "delete_file",
+            Path("test_delete.txt"),
+            lambda fm, p: (fm.base_path / p).write_text("Delete me."),
+            lambda fm, p: not (fm.base_path / p).exists(),
+            id="delete_existing_file",
+        ),
+        pytest.param(
+            "delete_file",
+            Path("non_existent_file.txt"),
+            None,
+            lambda fm, p: not (fm.base_path / p).exists(),
+            id="delete_non_existent_file",
+        ),
+        pytest.param(
+            "delete_directory",
+            Path("dir_to_delete"),
+            lambda fm, p: [
+                (fm.base_path / p).mkdir(),
+                (fm.base_path / p / "file.txt").write_text("content"),
+            ],
+            lambda fm, p: not (fm.base_path / p).exists(),
+            id="delete_existing_directory",
+        ),
+        pytest.param(
+            "delete_directory",
+            Path("non_existent_dir"),
+            None,
+            lambda fm, p: not (fm.base_path / p).exists(),
+            id="delete_non_existent_directory",
+        ),
+    ],
+)
+def test_delete_operations(file_manager, method, path, setup_action, expected_result):
+    """Should handle file and directory deletion operations correctly."""
+    # Setup: create file or directory if needed
+    if setup_action:
+        result = setup_action(file_manager, path)
+        if isinstance(result, list):
+            for _action in result:
+                pass  # Actions already executed in list comprehension
+
+    # Execute deletion
+    getattr(file_manager, method)(path)
+
+    # Verify result
+    assert expected_result(file_manager, path)
 
 
 def test_list_directory_files(file_manager):
@@ -60,42 +104,32 @@ def test_list_directory_files(file_manager):
     assert "file2.txt" in files
 
 
-def test_delete_file_non_existent(file_manager):
-    """Should not raise an error when deleting a non-existent file"""
-    file_path = Path("non_existent_file.txt")
-    file_manager.delete_file(file_path)
-    assert not (file_manager.base_path / file_path).exists()
+@pytest.mark.parametrize(
+    "dir_path,setup_action,expected",
+    [
+        pytest.param(
+            Path("empty_dir"),
+            lambda fm, p: (fm.base_path / p).mkdir(),
+            [],
+            id="empty_directory",
+        ),
+        pytest.param(
+            Path("non_existent_dir"),
+            None,
+            [],
+            id="non_existent_directory",
+        ),
+    ],
+)
+def test_list_directory_contents_edge_cases(file_manager, dir_path, setup_action, expected):
+    """Should handle edge cases when listing directory contents."""
+    # Setup if needed
+    if setup_action:
+        setup_action(file_manager, dir_path)
 
-
-def test_delete_directory(file_manager):
-    """Should delete a directory and its contents"""
-    test_dir = Path("dir_to_delete")
-    (file_manager.base_path / test_dir).mkdir()
-    (file_manager.base_path / test_dir / "file.txt").write_text("content")
-    file_manager.delete_directory(test_dir)
-    assert not (file_manager.base_path / test_dir).exists()
-
-
-def test_delete_directory_non_existent(file_manager):
-    """Should not raise an error when deleting a non-existent directory"""
-    test_dir = Path("non_existent_dir")
-    file_manager.delete_directory(test_dir)
-    assert not (file_manager.base_path / test_dir).exists()
-
-
-def test_list_directory_contents_empty(file_manager):
-    """Should return an empty list for an empty directory"""
-    test_dir = Path("empty_dir")
-    (file_manager.base_path / test_dir).mkdir()
-    contents = file_manager.list_directory_contents(test_dir)
-    assert contents == []
-
-
-def test_list_directory_contents_non_existent(file_manager):
-    """Should return an empty list for a non-existent directory"""
-    test_dir = Path("non_existent_dir")
-    contents = file_manager.list_directory_contents(test_dir)
-    assert contents == []
+    # Execute and verify
+    contents = file_manager.list_directory_contents(dir_path)
+    assert contents == expected
 
 
 @pytest.mark.parametrize(

@@ -170,160 +170,148 @@ class TestAudioCaptureDaemon:
         mock_os_operations["mkfifo"].assert_not_called()
         assert "Created FIFO" not in caplog.text
 
-    def test_run_audio_capture_daemon__config_not_found(
-        self, mocker, mock_dependencies, mock_os_operations, caplog
+    @pytest.mark.parametrize(
+        "exception_type,exception_message,should_start_service",
+        [
+            pytest.param(
+                FileNotFoundError, "Config not found", False, id="config_not_found_prevents_service"
+            ),
+            pytest.param(Exception, "Test error", True, id="service_exception_stops_gracefully"),
+            pytest.param(
+                OSError, "Permission denied", False, id="fifo_creation_error_prevents_service"
+            ),
+            pytest.param(OSError, "FIFO not found", False, id="fifo_open_error_prevents_service"),
+        ],
+    )
+    def test_run_audio_capture_daemon__error_handling(
+        self,
+        mocker,
+        mock_dependencies,
+        mock_os_operations,
+        caplog,
+        exception_type,
+        exception_message,
+        should_start_service,
     ):
-        """Should raise FileNotFoundError if the configuration file is not found."""
+        """Should handle various exceptions appropriately."""
         mock_os_operations["path_exists"].side_effect = [False, False, True, True]
 
-        # Simulate config file not found
-        mock_dependencies["ConfigManager"].return_value.load.side_effect = FileNotFoundError
-
-        # The daemon should fail if config is not found
-        with pytest.raises(FileNotFoundError):
+        # Set up the appropriate exception
+        if exception_type is FileNotFoundError:
+            mock_dependencies["ConfigManager"].return_value.load.side_effect = exception_type(
+                exception_message
+            )
+            with pytest.raises(FileNotFoundError):
+                daemon.main()
+        elif exception_message == "Test error":
+            # Service start failure
+            mock_dependencies[
+                "AudioCaptureService"
+            ].return_value.start_capture.side_effect = exception_type(exception_message)
             daemon.main()
-        # Service should not be started if config is missing
-        mock_dependencies["AudioCaptureService"].return_value.start_capture.assert_not_called()
-        mock_dependencies["AudioCaptureService"].return_value.stop_capture.assert_not_called()
+            assert "An error occurred in the audio capture wrapper" in caplog.text
+        elif exception_message == "Permission denied":
+            # FIFO creation error
+            mock_os_operations["mkfifo"].side_effect = exception_type(exception_message)
+            daemon.main()
+            assert "An error occurred in the audio capture wrapper" in caplog.text
+        else:
+            # FIFO open error
+            mock_os_operations["open"].side_effect = exception_type(exception_message)
+            daemon.main()
+            assert "An error occurred in the audio capture wrapper" in caplog.text
 
-    def test_run_audio_capture_daemon__service_exception(
-        self, mocker, mock_dependencies, mock_os_operations, caplog
-    ):
-        """Should log a general error and stop the service if an exception occurs."""
-        mock_os_operations["path_exists"].side_effect = [False, False, True, True]
+        # Verify service start behavior
+        if should_start_service:
+            mock_dependencies["AudioCaptureService"].return_value.start_capture.assert_called_once()
+            mock_dependencies["AudioCaptureService"].return_value.stop_capture.assert_called_once()
+        else:
+            mock_dependencies["AudioCaptureService"].return_value.start_capture.assert_not_called()
 
-        # Simulate service start failure
-        mock_dependencies["AudioCaptureService"].return_value.start_capture.side_effect = Exception(
-            "Test error"
-        )
-
-        daemon.main()
-
-        assert "An error occurred in the audio capture wrapper" in caplog.text
-        assert "Test error" in caplog.text
-        mock_dependencies["AudioCaptureService"].return_value.stop_capture.assert_called_once()
-
-    def test_run_audio_capture_daemon__fifo_creation_error(
-        self, mocker, mock_dependencies, mock_os_operations, caplog
-    ):
-        """Should handle FIFO creation errors gracefully."""
-        mock_os_operations["path_exists"].side_effect = [False, False, True, True]
-        mock_os_operations["mkfifo"].side_effect = OSError("Permission denied")
-
-        daemon.main()
-
-        assert "An error occurred in the audio capture wrapper" in caplog.text
-        assert "Permission denied" in caplog.text
-        mock_dependencies["AudioCaptureService"].return_value.start_capture.assert_not_called()
-
-    def test_run_audio_capture_daemon__fifo_open_error(
-        self, mocker, mock_dependencies, mock_os_operations, caplog
-    ):
-        """Should handle FIFO open errors gracefully."""
-        mock_os_operations["path_exists"].side_effect = [False, False, True, True]
-        mock_os_operations["open"].side_effect = OSError("FIFO not found")
-
-        daemon.main()
-
-        assert "An error occurred in the audio capture wrapper" in caplog.text
-        assert "FIFO not found" in caplog.text
-        mock_dependencies["AudioCaptureService"].return_value.start_capture.assert_not_called()
-
-    def test_handle_signal_shutdown(self, mocker):
+    @pytest.mark.parametrize(
+        "signal_type",
+        [pytest.param(signal.SIGTERM, id="sigterm"), pytest.param(signal.SIGINT, id="sigint")],
+    )
+    def test_handle_signal_shutdown(self, mocker, signal_type):
         """Should set the shutdown flag when a signal is received."""
         mocker.patch("birdnetpi.daemons.audio_capture_daemon.logger")
         mocker.patch("birdnetpi.daemons.audio_capture_daemon.DaemonState.shutdown_flag", False)
 
-        daemon._signal_handler(signal.SIGTERM, MagicMock(spec=FrameType))
+        daemon._signal_handler(signal_type, MagicMock(spec=FrameType))
 
         assert daemon.DaemonState.shutdown_flag is True
 
-    def test_handle_signal_shutdown__sigint(self, mocker):
-        """Should set the shutdown flag when SIGINT is received."""
-        mocker.patch("birdnetpi.daemons.audio_capture_daemon.logger")
-        mocker.patch("birdnetpi.daemons.audio_capture_daemon.DaemonState.shutdown_flag", False)
-
-        daemon._signal_handler(signal.SIGINT, MagicMock(spec=FrameType))
-
-        assert daemon.DaemonState.shutdown_flag is True
-
-    def test_cleanup_fifos(self, mocker, fifo_paths, file_descriptors, caplog):
-        """Should close both FIFO file descriptors if they exist."""
+    @pytest.mark.parametrize(
+        "analysis_fd,livestream_fd,expected_close_calls,expected_logs",
+        [
+            pytest.param(
+                123,
+                456,
+                [123, 456],
+                [
+                    "Closed FIFO: /tmp/fifo/birdnet_audio_analysis.fifo",
+                    "Closed FIFO: /tmp/fifo/birdnet_audio_livestream.fifo",
+                ],
+                id="both_fifos_present",
+            ),
+            pytest.param(None, None, [], [], id="no_fifos_present"),
+            pytest.param(
+                123,
+                None,
+                [123],
+                ["Closed FIFO: /tmp/fifo/birdnet_audio_analysis.fifo"],
+                id="analysis_fifo_only",
+            ),
+            pytest.param(
+                None,
+                456,
+                [456],
+                ["Closed FIFO: /tmp/fifo/birdnet_audio_livestream.fifo"],
+                id="livestream_fifo_only",
+            ),
+        ],
+    )
+    def test_cleanup_fifos(
+        self,
+        mocker,
+        fifo_paths,
+        caplog,
+        analysis_fd,
+        livestream_fd,
+        expected_close_calls,
+        expected_logs,
+    ):
+        """Should close FIFOs based on which file descriptors exist."""
         mock_os = mocker.patch("birdnetpi.daemons.audio_capture_daemon.os")
         mocker.patch(
-            "birdnetpi.daemons.audio_capture_daemon.DaemonState.fifo_analysis_fd",
-            file_descriptors["analysis"],
+            "birdnetpi.daemons.audio_capture_daemon.DaemonState.fifo_analysis_fd", analysis_fd
         )
         mocker.patch(
-            "birdnetpi.daemons.audio_capture_daemon.DaemonState.fifo_livestream_fd",
-            file_descriptors["livestream"],
+            "birdnetpi.daemons.audio_capture_daemon.DaemonState.fifo_livestream_fd", livestream_fd
         )
         mocker.patch(
             "birdnetpi.daemons.audio_capture_daemon.DaemonState.fifo_analysis_path",
-            fifo_paths["analysis"],
+            fifo_paths["analysis"] if analysis_fd else None,
         )
         mocker.patch(
             "birdnetpi.daemons.audio_capture_daemon.DaemonState.fifo_livestream_path",
-            fifo_paths["livestream"],
+            fifo_paths["livestream"] if livestream_fd else None,
         )
 
         daemon._cleanup_fifos()
 
-        mock_os.close.assert_any_call(file_descriptors["analysis"])
-        mock_os.close.assert_any_call(file_descriptors["livestream"])
-        assert f"Closed FIFO: {fifo_paths['analysis']}" in caplog.text
-        assert f"Closed FIFO: {fifo_paths['livestream']}" in caplog.text
+        # Verify close calls
+        if expected_close_calls:
+            for fd in expected_close_calls:
+                mock_os.close.assert_any_call(fd)
+        else:
+            mock_os.close.assert_not_called()
 
-    def test_cleanup_fifos___no_fds(self, mocker, caplog):
-        """Should not attempt to close FIFOs if file descriptors are None."""
-        mock_os = mocker.patch("birdnetpi.daemons.audio_capture_daemon.os")
-        mocker.patch("birdnetpi.daemons.audio_capture_daemon.DaemonState.fifo_analysis_fd", None)
-        mocker.patch("birdnetpi.daemons.audio_capture_daemon.DaemonState.fifo_livestream_fd", None)
+        # Verify log messages
+        for log_msg in expected_logs:
+            assert log_msg in caplog.text
 
-        daemon._cleanup_fifos()
-
-        mock_os.close.assert_not_called()
-        assert "Closed FIFO" not in caplog.text
-
-    def test_cleanup_fifos__analysis_only(self, mocker, fifo_paths, file_descriptors, caplog):
-        """Should close only the analysis FIFO if livestream FD is None."""
-        mock_os = mocker.patch("birdnetpi.daemons.audio_capture_daemon.os")
-        mocker.patch(
-            "birdnetpi.daemons.audio_capture_daemon.DaemonState.fifo_analysis_fd",
-            file_descriptors["analysis"],
-        )
-        mocker.patch("birdnetpi.daemons.audio_capture_daemon.DaemonState.fifo_livestream_fd", None)
-        mocker.patch(
-            "birdnetpi.daemons.audio_capture_daemon.DaemonState.fifo_analysis_path",
-            fifo_paths["analysis"],
-        )
-
-        daemon._cleanup_fifos()
-
-        mock_os.close.assert_called_once_with(file_descriptors["analysis"])
-        assert f"Closed FIFO: {fifo_paths['analysis']}" in caplog.text
-        assert f"Closed FIFO: {fifo_paths['livestream']}" not in caplog.text
-
-    def test_cleanup_fifos__livestream_only(self, mocker, fifo_paths, file_descriptors, caplog):
-        """Should close only the livestream FIFO if analysis FD is None."""
-        mock_os = mocker.patch("birdnetpi.daemons.audio_capture_daemon.os")
-        mocker.patch("birdnetpi.daemons.audio_capture_daemon.DaemonState.fifo_analysis_fd", None)
-        mocker.patch(
-            "birdnetpi.daemons.audio_capture_daemon.DaemonState.fifo_livestream_fd",
-            file_descriptors["livestream"],
-        )
-        mocker.patch(
-            "birdnetpi.daemons.audio_capture_daemon.DaemonState.fifo_livestream_path",
-            fifo_paths["livestream"],
-        )
-
-        daemon._cleanup_fifos()
-
-        mock_os.close.assert_called_once_with(file_descriptors["livestream"])
-        assert f"Closed FIFO: {fifo_paths['livestream']}" in caplog.text
-        assert f"Closed FIFO: {fifo_paths['analysis']}" not in caplog.text
-
-    def test_cleanup_fifos__close_error(self, mocker, fifo_paths, file_descriptors, caplog):
+    def test_cleanup_fifos__close_error(self, mocker, fifo_paths, file_descriptors):
         """Should propagate OS errors when closing FIFOs."""
         mock_os = mocker.patch("birdnetpi.daemons.audio_capture_daemon.os")
         mock_os.close.side_effect = OSError("File descriptor not valid")
