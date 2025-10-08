@@ -402,22 +402,27 @@ class TestDiversityMetrics:
         correlation_zero = analytics_manager.calculate_correlation(x, y_zero)
         assert correlation_zero == pytest.approx(0.0, abs=1e-5)
 
-    def test_categorize_frequency(self, analytics_manager):
+    @pytest.mark.parametrize(
+        "count,expected_category",
+        [
+            # Uncommon (<=5)
+            pytest.param(0, "uncommon", id="zero_count"),
+            pytest.param(1, "uncommon", id="single_detection"),
+            pytest.param(3, "uncommon", id="few_detections"),
+            pytest.param(5, "uncommon", id="threshold_uncommon"),
+            # Regular (6-20)
+            pytest.param(6, "regular", id="threshold_regular_min"),
+            pytest.param(8, "regular", id="mid_regular"),
+            pytest.param(20, "regular", id="threshold_regular_max"),
+            # Common (>20)
+            pytest.param(21, "common", id="threshold_common"),
+            pytest.param(25, "common", id="many_detections"),
+            pytest.param(100, "common", id="very_many_detections"),
+        ],
+    )
+    def test_categorize_frequency(self, analytics_manager, count, expected_category):
         """Should categorize species counts into frequency categories correctly."""
-        # Based on actual implementation:
-        # <= 5: uncommon
-        # 6-20: regular
-        # > 20: common
-        assert analytics_manager._categorize_frequency(0) == "uncommon"
-        assert analytics_manager._categorize_frequency(1) == "uncommon"
-        assert analytics_manager._categorize_frequency(3) == "uncommon"
-        assert analytics_manager._categorize_frequency(5) == "uncommon"
-        assert analytics_manager._categorize_frequency(6) == "regular"
-        assert analytics_manager._categorize_frequency(8) == "regular"
-        assert analytics_manager._categorize_frequency(20) == "regular"
-        assert analytics_manager._categorize_frequency(21) == "common"
-        assert analytics_manager._categorize_frequency(25) == "common"
-        assert analytics_manager._categorize_frequency(100) == "common"
+        assert analytics_manager._categorize_frequency(count) == expected_category
 
 
 class TestTemporalAnalytics:
@@ -588,24 +593,3 @@ class TestScatterVisualization:
         scatter_data = await analytics_manager.get_detection_scatter_data(hours=24)
 
         assert scatter_data == []
-
-
-class TestFrequencyCategorization:
-    """Test frequency categorization logic."""
-
-    def test_categorize_frequency(self, analytics_manager):
-        """Should categorize species counts into common, regular, and uncommon."""
-        # Test common (>20)
-        assert analytics_manager._categorize_frequency(21) == "common"
-        assert analytics_manager._categorize_frequency(50) == "common"
-        assert analytics_manager._categorize_frequency(100) == "common"
-
-        # Test regular (>5 to 20)
-        assert analytics_manager._categorize_frequency(6) == "regular"
-        assert analytics_manager._categorize_frequency(10) == "regular"
-        assert analytics_manager._categorize_frequency(20) == "regular"
-
-        # Test uncommon (<=5)
-        assert analytics_manager._categorize_frequency(0) == "uncommon"
-        assert analytics_manager._categorize_frequency(1) == "uncommon"
-        assert analytics_manager._categorize_frequency(5) == "uncommon"

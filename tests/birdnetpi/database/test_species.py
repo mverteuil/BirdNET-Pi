@@ -610,21 +610,29 @@ class TestEdgeCases:
         params = mock_session.execute.call_args[0][1]
         assert params["sci_name"] == special_name
 
+    @pytest.mark.parametrize(
+        "language_code",
+        [
+            pytest.param("zh-CN", id="chinese_simplified"),
+            pytest.param("pt-BR", id="portuguese_brazil"),
+            pytest.param("en-US", id="english_us"),
+            pytest.param("fr-CA", id="french_canada"),
+            pytest.param("x-custom", id="custom_code"),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_unusual_language_codes(self, species_database, mock_session):
+    async def test_unusual_language_codes(self, species_database, mock_session, language_code):
         """Should handle unusual language codes."""
         mock_execute_result = AsyncMock(spec=Result)
         mock_execute_result.first.return_value = None
+        mock_session.execute.return_value = mock_execute_result
 
-        unusual_codes = ["zh-CN", "pt-BR", "en-US", "fr-CA", "x-custom"]
+        await species_database.get_best_common_name(
+            mock_session, "Turdus migratorius", language_code
+        )
 
-        for code in unusual_codes:
-            mock_session.reset_mock()
-            mock_session.execute.return_value = mock_execute_result
-            await species_database.get_best_common_name(mock_session, "Turdus migratorius", code)
-
-            params = mock_session.execute.call_args[0][1]
-            assert params["lang"] == code
+        params = mock_session.execute.call_args[0][1]
+        assert params["lang"] == language_code
 
     @pytest.mark.asyncio
     async def test_case_sensitivity_in_queries(self, species_database, mock_session):

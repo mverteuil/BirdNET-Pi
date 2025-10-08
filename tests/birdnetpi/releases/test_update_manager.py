@@ -177,19 +177,6 @@ class TestVersionResolution:
 class TestAssetValidation:
     """Test asset release validation."""
 
-    @patch("httpx.Client", autospec=True)
-    def test_validate_asset_release_exists(self, mock_client_class, update_manager):
-        """Should validate existing asset release."""
-        mock_client = mock_client_class.return_value.__enter__.return_value
-        mock_response = create_autospec(httpx.Response, instance=True)
-        mock_response.status_code = 200
-        mock_client.get.return_value = mock_response
-        result = update_manager._validate_asset_release("v1.0.0", "owner/repo")
-        assert result == "assets-v1.0.0"
-        mock_client.get.assert_called_once_with(
-            "https://api.github.com/repos/owner/repo/releases/tags/assets-v1.0.0"
-        )
-
     @pytest.mark.parametrize(
         "version_input,expected_tag",
         [
@@ -198,16 +185,19 @@ class TestAssetValidation:
         ],
     )
     @patch("httpx.Client", autospec=True)
-    def test_validate_asset_release_version_formats(
+    def test_validate_asset_release_exists(
         self, mock_client_class, update_manager, version_input, expected_tag
     ):
-        """Should handle version with and without 'v' prefix correctly."""
+        """Should validate existing asset release with various version formats."""
         mock_client = mock_client_class.return_value.__enter__.return_value
         mock_response = create_autospec(httpx.Response, instance=True)
         mock_response.status_code = 200
         mock_client.get.return_value = mock_response
         result = update_manager._validate_asset_release(version_input, "owner/repo")
         assert result == expected_tag
+        mock_client.get.assert_called_once_with(
+            f"https://api.github.com/repos/owner/repo/releases/tags/{expected_tag}"
+        )
 
     @patch("httpx.Client", autospec=True)
     @patch.object(UpdateManager, "list_available_asset_versions", autospec=True)
@@ -362,9 +352,20 @@ class TestDownloadReleaseAssets:
 class TestListVersions:
     """Test version listing functionality."""
 
+    @pytest.mark.parametrize(
+        "method_name,expected_result",
+        [
+            pytest.param("list_available_versions", ["v2.1.1", "v2.0.0"], id="code_versions"),
+            pytest.param(
+                "list_available_asset_versions", ["v2.1.1", "v2.0.0"], id="asset_versions"
+            ),
+        ],
+    )
     @patch("httpx.Client", autospec=True)
-    def test_list_available_versions(self, mock_client_class, update_manager):
-        """Should list available code release versions."""
+    def test_list_available_versions(
+        self, mock_client_class, update_manager, method_name, expected_result
+    ):
+        """Should list available release versions based on method type."""
         mock_client = mock_client_class.return_value.__enter__.return_value
         mock_response = create_autospec(httpx.Response, instance=True)
         mock_response.json.return_value = [
@@ -374,24 +375,9 @@ class TestListVersions:
             {"tag_name": "assets-v2.0.0"},
         ]
         mock_client.get.return_value = mock_response
-        result = update_manager.list_available_versions("owner/repo")
-        assert result == ["v2.1.1", "v2.0.0"]
-        mock_client.get.assert_called_once_with("https://api.github.com/repos/owner/repo/releases")
-
-    @patch("httpx.Client", autospec=True)
-    def test_list_available_asset_versions(self, mock_client_class, update_manager):
-        """Should list available asset release versions."""
-        mock_client = mock_client_class.return_value.__enter__.return_value
-        mock_response = create_autospec(httpx.Response, instance=True)
-        mock_response.json.return_value = [
-            {"tag_name": "v2.1.1"},
-            {"tag_name": "assets-v2.1.1"},
-            {"tag_name": "v2.0.0"},
-            {"tag_name": "assets-v2.0.0"},
-        ]
-        mock_client.get.return_value = mock_response
-        result = update_manager.list_available_asset_versions("owner/repo")
-        assert result == ["v2.1.1", "v2.0.0"]
+        method = getattr(update_manager, method_name)
+        result = method("owner/repo")
+        assert result == expected_result
         mock_client.get.assert_called_once_with("https://api.github.com/repos/owner/repo/releases")
 
     @pytest.mark.parametrize(
