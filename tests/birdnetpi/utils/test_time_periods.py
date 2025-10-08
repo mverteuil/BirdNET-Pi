@@ -1,4 +1,4 @@
-"""Tests for time period calculation utilities."""
+"""Tests for time period calculation utilities - Refactored with parameterization."""
 
 from datetime import UTC, datetime
 from unittest.mock import patch
@@ -18,25 +18,39 @@ from birdnetpi.utils.time_periods import (
 class TestPeriodType:
     """Test the PeriodType enum."""
 
-    def test_period_type_values(self) -> None:
+    @pytest.mark.parametrize(
+        "period_type, expected_value",
+        [
+            (PeriodType.DAY, "day"),
+            (PeriodType.WEEK, "week"),
+            (PeriodType.MONTH, "month"),
+            (PeriodType.SEASON, "season"),
+            (PeriodType.YEAR, "year"),
+            (PeriodType.HISTORICAL, "historical"),
+        ],
+        ids=["day", "week", "month", "season", "year", "historical"],
+    )
+    def test_period_type_values(self, period_type, expected_value) -> None:
         """Should have expected enum values for all period types."""
-        assert PeriodType.DAY.value == "day"
-        assert PeriodType.WEEK.value == "week"
-        assert PeriodType.MONTH.value == "month"
-        assert PeriodType.SEASON.value == "season"
-        assert PeriodType.YEAR.value == "year"
-        assert PeriodType.HISTORICAL.value == "historical"
+        assert period_type.value == expected_value
 
     def test_period_type_default_alias(self) -> None:
         """Should have DEFAULT as an alias for DAY."""
         assert PeriodType.DEFAULT == PeriodType.DAY
         assert PeriodType.DEFAULT.value == "day"
 
-    def test_period_type_from_string(self) -> None:
+    @pytest.mark.parametrize(
+        "string_value, expected_period",
+        [
+            ("day", PeriodType.DAY),
+            ("week", PeriodType.WEEK),
+            ("month", PeriodType.MONTH),
+        ],
+        ids=["day", "week", "month"],
+    )
+    def test_period_type_from_string(self, string_value, expected_period) -> None:
         """Should create PeriodType from string values."""
-        assert PeriodType("day") == PeriodType.DAY
-        assert PeriodType("week") == PeriodType.WEEK
-        assert PeriodType("month") == PeriodType.MONTH
+        assert PeriodType(string_value) == expected_period
 
     def test_period_type_invalid_string(self) -> None:
         """Should raise ValueError for invalid string values."""
@@ -87,59 +101,54 @@ class TestCalculatePeriodBoundaries:
         assert start == datetime(2024, 3, 1, 0, 0, 0, tzinfo=UTC)
         assert end == datetime(2024, 4, 1, 0, 0, 0, tzinfo=UTC)
 
-    def test_month_boundaries_february(self) -> None:
+    @pytest.mark.parametrize(
+        "year, month, expected_end_month",
+        [
+            (2023, 2, 3),  # Non-leap year February
+            (2024, 2, 3),  # Leap year February
+        ],
+        ids=["non-leap-year", "leap-year"],
+    )
+    def test_month_boundaries_february(self, year, month, expected_end_month) -> None:
         """Should handle February boundaries correctly for leap and non-leap years."""
-        # Non-leap year
-        now = datetime(2023, 2, 15, 14, 30, 0, tzinfo=UTC)
+        now = datetime(year, month, 15, 14, 30, 0, tzinfo=UTC)
         start, end = calculate_period_boundaries(PeriodType.MONTH, now, "UTC")
-        assert start == datetime(2023, 2, 1, 0, 0, 0, tzinfo=UTC)
-        assert end == datetime(2023, 3, 1, 0, 0, 0, tzinfo=UTC)
 
-        # Leap year
-        now = datetime(2024, 2, 15, 14, 30, 0, tzinfo=UTC)
-        start, end = calculate_period_boundaries(PeriodType.MONTH, now, "UTC")
-        assert start == datetime(2024, 2, 1, 0, 0, 0, tzinfo=UTC)
-        assert end == datetime(2024, 3, 1, 0, 0, 0, tzinfo=UTC)
+        assert start == datetime(year, month, 1, 0, 0, 0, tzinfo=UTC)
+        assert end == datetime(year, expected_end_month, 1, 0, 0, 0, tzinfo=UTC)
 
-    def test_season_boundaries_spring(self) -> None:
-        """Should calculate spring season boundaries (Mar-May)."""
-        now = datetime(2024, 4, 15, 14, 30, 0, tzinfo=UTC)
+    @pytest.mark.parametrize(
+        "test_month, season_name, expected_start_month, expected_end_month",
+        [
+            pytest.param(4, "spring", 3, 6, id="spring-april"),
+            pytest.param(7, "summer", 6, 9, id="summer-july"),
+            pytest.param(10, "fall", 9, 12, id="fall-october"),
+            pytest.param(12, "winter", 12, 3, id="winter-december"),
+            pytest.param(1, "winter", 12, 3, id="winter-january"),
+        ],
+    )
+    def test_season_boundaries(
+        self, test_month, season_name, expected_start_month, expected_end_month
+    ) -> None:
+        """Should calculate correct season boundaries for all seasons."""
+        # Determine the year for start/end based on the season
+        test_year = 2024
+        if test_month == 12 and expected_end_month == 3:
+            # Winter December case
+            start_year = test_year
+            end_year = test_year + 1
+        elif test_month == 1 and expected_start_month == 12:
+            # Winter January case
+            start_year = test_year - 1
+            end_year = test_year
+        else:
+            start_year = end_year = test_year
+
+        now = datetime(test_year, test_month, 15, 14, 30, 0, tzinfo=UTC)
         start, end = calculate_period_boundaries(PeriodType.SEASON, now, "UTC")
 
-        assert start == datetime(2024, 3, 1, 0, 0, 0, tzinfo=UTC)
-        assert end == datetime(2024, 6, 1, 0, 0, 0, tzinfo=UTC)
-
-    def test_season_boundaries_summer(self) -> None:
-        """Should calculate summer season boundaries (Jun-Aug)."""
-        now = datetime(2024, 7, 15, 14, 30, 0, tzinfo=UTC)
-        start, end = calculate_period_boundaries(PeriodType.SEASON, now, "UTC")
-
-        assert start == datetime(2024, 6, 1, 0, 0, 0, tzinfo=UTC)
-        assert end == datetime(2024, 9, 1, 0, 0, 0, tzinfo=UTC)
-
-    def test_season_boundaries_fall(self) -> None:
-        """Should calculate fall season boundaries (Sep-Nov)."""
-        now = datetime(2024, 10, 15, 14, 30, 0, tzinfo=UTC)
-        start, end = calculate_period_boundaries(PeriodType.SEASON, now, "UTC")
-
-        assert start == datetime(2024, 9, 1, 0, 0, 0, tzinfo=UTC)
-        assert end == datetime(2024, 12, 1, 0, 0, 0, tzinfo=UTC)
-
-    def test_season_boundaries_winter_december(self) -> None:
-        """Should calculate winter boundaries when starting in December."""
-        now = datetime(2024, 12, 15, 14, 30, 0, tzinfo=UTC)
-        start, end = calculate_period_boundaries(PeriodType.SEASON, now, "UTC")
-
-        assert start == datetime(2024, 12, 1, 0, 0, 0, tzinfo=UTC)
-        assert end == datetime(2025, 3, 1, 0, 0, 0, tzinfo=UTC)
-
-    def test_season_boundaries_winter_january(self) -> None:
-        """Should calculate winter boundaries when in January."""
-        now = datetime(2024, 1, 15, 14, 30, 0, tzinfo=UTC)
-        start, end = calculate_period_boundaries(PeriodType.SEASON, now, "UTC")
-
-        assert start == datetime(2023, 12, 1, 0, 0, 0, tzinfo=UTC)
-        assert end == datetime(2024, 3, 1, 0, 0, 0, tzinfo=UTC)
+        assert start == datetime(start_year, expected_start_month, 1, 0, 0, 0, tzinfo=UTC)
+        assert end == datetime(end_year, expected_end_month, 1, 0, 0, 0, tzinfo=UTC)
 
     def test_year_boundaries(self) -> None:
         """Should calculate correct year boundaries."""
@@ -204,20 +213,34 @@ class TestCalculatePeriodBoundaries:
 class TestPeriodToDays:
     """Test period_to_days function."""
 
-    def test_period_to_days_mapping(self) -> None:
+    @pytest.mark.parametrize(
+        "period, expected_days",
+        [
+            (PeriodType.DAY, 1),
+            (PeriodType.WEEK, 7),
+            (PeriodType.MONTH, 30),
+            (PeriodType.SEASON, 90),
+            (PeriodType.YEAR, 365),
+            (PeriodType.HISTORICAL, None),
+        ],
+        ids=["day-1", "week-7", "month-30", "season-90", "year-365", "historical-none"],
+    )
+    def test_period_to_days_mapping(self, period, expected_days) -> None:
         """Should map periods to correct number of days."""
-        assert period_to_days(PeriodType.DAY) == 1
-        assert period_to_days(PeriodType.WEEK) == 7
-        assert period_to_days(PeriodType.MONTH) == 30
-        assert period_to_days(PeriodType.SEASON) == 90
-        assert period_to_days(PeriodType.YEAR) == 365
-        assert period_to_days(PeriodType.HISTORICAL) is None
+        assert period_to_days(period) == expected_days
 
-    def test_period_to_days_with_string(self) -> None:
+    @pytest.mark.parametrize(
+        "string_period, expected_days",
+        [
+            ("day", 1),
+            ("week", 7),
+            ("month", 30),
+        ],
+        ids=["day", "week", "month"],
+    )
+    def test_period_to_days_with_string(self, string_period, expected_days) -> None:
         """Should convert string period to days."""
-        assert period_to_days("day") == 1
-        assert period_to_days("week") == 7
-        assert period_to_days("month") == 30
+        assert period_to_days(string_period) == expected_days
 
     def test_period_to_days_invalid_uses_default(self) -> None:
         """Should use DEFAULT (1 day) for invalid period."""
@@ -227,20 +250,34 @@ class TestPeriodToDays:
 class TestGetPeriodLabel:
     """Test get_period_label function."""
 
-    def test_period_labels(self) -> None:
+    @pytest.mark.parametrize(
+        "period, expected_label",
+        [
+            (PeriodType.DAY, "Today"),
+            (PeriodType.WEEK, "This Week"),
+            (PeriodType.MONTH, "This Month"),
+            (PeriodType.SEASON, "This Season"),
+            (PeriodType.YEAR, "This Year"),
+            (PeriodType.HISTORICAL, "All Time"),
+        ],
+        ids=["day", "week", "month", "season", "year", "historical"],
+    )
+    def test_period_labels(self, period, expected_label) -> None:
         """Should return correct human-readable labels for periods."""
-        assert get_period_label(PeriodType.DAY) == "Today"
-        assert get_period_label(PeriodType.WEEK) == "This Week"
-        assert get_period_label(PeriodType.MONTH) == "This Month"
-        assert get_period_label(PeriodType.SEASON) == "This Season"
-        assert get_period_label(PeriodType.YEAR) == "This Year"
-        assert get_period_label(PeriodType.HISTORICAL) == "All Time"
+        assert get_period_label(period) == expected_label
 
-    def test_period_label_with_string(self) -> None:
+    @pytest.mark.parametrize(
+        "string_period, expected_label",
+        [
+            ("day", "Today"),
+            ("week", "This Week"),
+            ("historical", "All Time"),
+        ],
+        ids=["day", "week", "historical"],
+    )
+    def test_period_label_with_string(self, string_period, expected_label) -> None:
         """Should handle string input for period labels."""
-        assert get_period_label("day") == "Today"
-        assert get_period_label("week") == "This Week"
-        assert get_period_label("historical") == "All Time"
+        assert get_period_label(string_period) == expected_label
 
     def test_period_label_invalid_uses_default(self) -> None:
         """Should use DEFAULT label for invalid period."""
@@ -250,29 +287,31 @@ class TestGetPeriodLabel:
 class TestGetCurrentSeason:
     """Test get_current_season function."""
 
-    def test_spring_months(self) -> None:
-        """Should detect spring season for March through May."""
-        assert get_current_season(datetime(2024, 3, 1)) == "Spring"
-        assert get_current_season(datetime(2024, 4, 15)) == "Spring"
-        assert get_current_season(datetime(2024, 5, 31)) == "Spring"
-
-    def test_summer_months(self) -> None:
-        """Should detect summer season for June through August."""
-        assert get_current_season(datetime(2024, 6, 1)) == "Summer"
-        assert get_current_season(datetime(2024, 7, 15)) == "Summer"
-        assert get_current_season(datetime(2024, 8, 31)) == "Summer"
-
-    def test_fall_months(self) -> None:
-        """Should detect fall season for September through November."""
-        assert get_current_season(datetime(2024, 9, 1)) == "Fall"
-        assert get_current_season(datetime(2024, 10, 15)) == "Fall"
-        assert get_current_season(datetime(2024, 11, 30)) == "Fall"
-
-    def test_winter_months(self) -> None:
-        """Should detect winter season for December through February."""
-        assert get_current_season(datetime(2024, 12, 1)) == "Winter"
-        assert get_current_season(datetime(2024, 1, 15)) == "Winter"
-        assert get_current_season(datetime(2024, 2, 28)) == "Winter"
+    @pytest.mark.parametrize(
+        "month, day, expected_season",
+        [
+            # Spring months (March-May)
+            pytest.param(3, 1, "Spring", id="march-start"),
+            pytest.param(4, 15, "Spring", id="april-mid"),
+            pytest.param(5, 31, "Spring", id="may-end"),
+            # Summer months (June-August)
+            pytest.param(6, 1, "Summer", id="june-start"),
+            pytest.param(7, 15, "Summer", id="july-mid"),
+            pytest.param(8, 31, "Summer", id="august-end"),
+            # Fall months (September-November)
+            pytest.param(9, 1, "Fall", id="september-start"),
+            pytest.param(10, 15, "Fall", id="october-mid"),
+            pytest.param(11, 30, "Fall", id="november-end"),
+            # Winter months (December-February)
+            pytest.param(12, 1, "Winter", id="december-start"),
+            pytest.param(1, 15, "Winter", id="january-mid"),
+            pytest.param(2, 28, "Winter", id="february-end"),
+        ],
+    )
+    def test_seasons_by_month(self, month, day, expected_season) -> None:
+        """Should detect correct season for each month."""
+        test_date = datetime(2024, month, day)
+        assert get_current_season(test_date) == expected_season
 
     @patch("birdnetpi.utils.time_periods.datetime", autospec=True)
     def test_current_season_default_now(self, mock_datetime: object) -> None:

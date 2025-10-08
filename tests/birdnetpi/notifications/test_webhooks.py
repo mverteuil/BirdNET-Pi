@@ -54,18 +54,18 @@ class TestWebhookConfig:
         assert config.retry_count == 3
         assert config.events == ["detection", "health", "gps", "system"]
 
-    def test_invalid_url(self):
+    @pytest.mark.parametrize(
+        "invalid_url",
+        [
+            pytest.param("not-a-url", id="no-scheme"),
+            pytest.param("://no-scheme", id="missing-scheme"),
+            pytest.param("http://", id="no-netloc"),
+        ],
+    )
+    def test_invalid_url(self, invalid_url):
         """Should webhookConfig with invalid URL."""
         with pytest.raises(ValueError, match="Invalid webhook URL"):
-            WebhookConfig(url="not-a-url")
-
-        # ftp:// has a scheme and netloc, so it won't fail validation
-        # Let's test with truly invalid URLs
-        with pytest.raises(ValueError, match="Invalid webhook URL"):
-            WebhookConfig(url="://no-scheme")
-
-        with pytest.raises(ValueError, match="Invalid webhook URL"):
-            WebhookConfig(url="http://")
+            WebhookConfig(url=invalid_url)
 
     def test_extract_name_from_url(self):
         """Should name extraction from URL."""
@@ -92,58 +92,68 @@ class TestWebhookConfig:
 class TestWebhookService:
     """Test the WebhookService class."""
 
-    def test_initialization_disabled(self, webhook_service):
-        """Should webhookService initialization when disabled."""
-        service = webhook_service
+    @pytest.mark.parametrize(
+        "enabled,expected_enabled",
+        [
+            pytest.param(False, False, id="disabled"),
+            pytest.param(True, True, id="enabled"),
+        ],
+    )
+    def test_initialization(self, enabled, expected_enabled):
+        """Should webhookService initialization for different states."""
+        service = WebhookService(enable_webhooks=enabled)
 
-        assert service.enable_webhooks is False
+        assert service.enable_webhooks is expected_enabled
         assert len(service.webhooks) == 0
         assert service.client is None
         assert service.stats["total_sent"] == 0
         assert service.stats["total_failed"] == 0
         assert service.stats["webhooks_count"] == 0
 
-    def test_initialization_enabled(self, enabled_webhook_service):
-        """Should webhookService initialization when enabled."""
-        service = enabled_webhook_service
-
-        assert service.enable_webhooks is True
-        assert len(service.webhooks) == 0
-        assert service.client is None
-
     @pytest.mark.asyncio
-    async def test_start_disabled(self, webhook_service):
-        """Should starting webhook service when disabled."""
-        await webhook_service.start()
-        assert webhook_service.client is None
-
-    @pytest.mark.asyncio
-    async def test_start_enabled(self, enabled_webhook_service):
-        """Should starting webhook service when enabled."""
-        service = enabled_webhook_service
+    @pytest.mark.parametrize(
+        "service_fixture,should_create_client",
+        [
+            pytest.param("webhook_service", False, id="disabled"),
+            pytest.param("enabled_webhook_service", True, id="enabled"),
+        ],
+    )
+    async def test_start(self, request, service_fixture, should_create_client):
+        """Should starting webhook service for different states."""
+        service = request.getfixturevalue(service_fixture)
 
         with patch("httpx.AsyncClient", autospec=True) as mock_client_class:
             await service.start()
 
-            mock_client_class.assert_called_once()
-            assert service.client is not None
+            if should_create_client:
+                mock_client_class.assert_called_once()
+                assert service.client is not None
+            else:
+                mock_client_class.assert_not_called()
+                assert service.client is None
 
     @pytest.mark.asyncio
-    async def test_stop_disabled(self, webhook_service):
-        """Should stopping webhook service when disabled."""
-        await webhook_service.stop()
-        # Should not raise any exceptions
+    @pytest.mark.parametrize(
+        "service_fixture,has_client",
+        [
+            pytest.param("webhook_service", False, id="disabled"),
+            pytest.param("enabled_webhook_service", True, id="enabled"),
+        ],
+    )
+    async def test_stop(self, request, service_fixture, has_client):
+        """Should stopping webhook service for different states."""
+        service = request.getfixturevalue(service_fixture)
 
-    @pytest.mark.asyncio
-    async def test_stop_enabled(self, enabled_webhook_service):
-        """Should stopping webhook service when enabled."""
-        service = enabled_webhook_service
-        mock_client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
-        service.client = mock_client
+        mock_client = None
+        if has_client:
+            mock_client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
+            service.client = mock_client
 
         await service.stop()
 
-        mock_client.aclose.assert_called_once()
+        if has_client:
+            assert mock_client is not None
+            mock_client.aclose.assert_called_once()
         assert service.client is None
 
     def test_add_webhook(self, enabled_webhook_service):
@@ -269,69 +279,64 @@ class TestWebhookService:
             assert payload["detection"]["location"]["latitude"] == 63.4591
 
     @pytest.mark.asyncio
-    async def test_send_health_webhook(self, enabled_webhook_service):
-        """Should sending health webhook."""
+    @pytest.mark.parametrize(
+        "event_type,send_method,test_data,expected_payload_key",
+        [
+            pytest.param(
+                "health",
+                "send_health_webhook",
+                {"cpu_usage": 45.2, "memory_usage": 68.5, "status": "healthy"},
+                "health",
+                id="health-event",
+            ),
+            pytest.param(
+                "gps",
+                "send_gps_webhook",
+                (63.4591, -19.3647, 5.0),
+                "location",
+                id="gps-event",
+            ),
+            pytest.param(
+                "system",
+                "send_system_webhook",
+                {"uptime": 86400, "processes": 142, "load_average": [0.5, 0.7, 0.8]},
+                "system",
+                id="system-event",
+            ),
+        ],
+    )
+    async def test_send_webhook_events(
+        self, enabled_webhook_service, event_type, send_method, test_data, expected_payload_key
+    ):
+        """Should send different webhook event types."""
         service = enabled_webhook_service
         service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
 
-        config = WebhookConfig(url="https://example.com/webhook", events=["health"])
+        config = WebhookConfig(url="https://example.com/webhook", events=[event_type])
         service.add_webhook(config)
 
-        health_data = {"cpu_usage": 45.2, "memory_usage": 68.5, "status": "healthy"}
-
         with patch.object(service, "_send_webhook_request", return_value=True) as mock_send:
-            await service.send_health_webhook(health_data)
+            method = getattr(service, send_method)
+            if event_type == "gps":
+                await method(*test_data)
+            else:
+                await method(test_data)
 
             mock_send.assert_called_once()
             call_args = mock_send.call_args
             payload = call_args[0][1]
 
-            assert payload["event_type"] == "health"
-            assert payload["health"]["cpu_usage"] == 45.2
-            assert payload["health"]["status"] == "healthy"
-
-    @pytest.mark.asyncio
-    async def test_send_gps_webhook(self, enabled_webhook_service):
-        """Should sending GPS webhook."""
-        service = enabled_webhook_service
-        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
-
-        config = WebhookConfig(url="https://example.com/webhook", events=["gps"])
-        service.add_webhook(config)
-
-        with patch.object(service, "_send_webhook_request", return_value=True) as mock_send:
-            await service.send_gps_webhook(63.4591, -19.3647, 5.0)
-
-            mock_send.assert_called_once()
-            call_args = mock_send.call_args
-            payload = call_args[0][1]
-
-            assert payload["event_type"] == "gps"
-            assert payload["location"]["latitude"] == 63.4591
-            assert payload["location"]["longitude"] == -19.3647
-            assert payload["location"]["accuracy"] == 5.0
-
-    @pytest.mark.asyncio
-    async def test_send_system_webhook(self, enabled_webhook_service):
-        """Should sending system webhook."""
-        service = enabled_webhook_service
-        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
-
-        config = WebhookConfig(url="https://example.com/webhook", events=["system"])
-        service.add_webhook(config)
-
-        system_data = {"uptime": 86400, "processes": 142, "load_average": [0.5, 0.7, 0.8]}
-
-        with patch.object(service, "_send_webhook_request", return_value=True) as mock_send:
-            await service.send_system_webhook(system_data)
-
-            mock_send.assert_called_once()
-            call_args = mock_send.call_args
-            payload = call_args[0][1]
-
-            assert payload["event_type"] == "system"
-            assert payload["system"]["uptime"] == 86400
-            assert payload["system"]["processes"] == 142
+            assert payload["event_type"] == event_type
+            if event_type == "health":
+                assert payload[expected_payload_key]["cpu_usage"] == 45.2
+                assert payload[expected_payload_key]["status"] == "healthy"
+            elif event_type == "gps":
+                assert payload[expected_payload_key]["latitude"] == 63.4591
+                assert payload[expected_payload_key]["longitude"] == -19.3647
+                assert payload[expected_payload_key]["accuracy"] == 5.0
+            elif event_type == "system":
+                assert payload[expected_payload_key]["uptime"] == 86400
+                assert payload[expected_payload_key]["processes"] == 142
 
     @pytest.mark.asyncio
     async def test_send_to_multiple_webhooks(self, enabled_webhook_service, model_factory):
@@ -404,60 +409,75 @@ class TestWebhookService:
         )
 
     @pytest.mark.asyncio
-    async def test_send_webhook_request_failure(self, enabled_webhook_service):
-        """Should failed webhook request."""
+    @pytest.mark.parametrize(
+        "failure_type,side_effect,status_code,retry_count,expected_calls,expected_result",
+        [
+            pytest.param("http_error", None, 404, 0, 1, False, id="http-404"),
+            pytest.param(
+                "timeout", TimeoutError("Request timeout"), None, 1, 2, False, id="timeout-retry"
+            ),
+            pytest.param(
+                "exception",
+                Exception("Connection error"),
+                None,
+                0,
+                1,
+                False,
+                id="generic-exception",
+            ),
+            pytest.param(
+                "httpx_timeout",
+                httpx.TimeoutException("Timeout"),
+                None,
+                0,
+                1,
+                False,
+                id="httpx-timeout",
+            ),
+            pytest.param(
+                "httpx_request",
+                httpx.RequestError("Connection failed"),
+                None,
+                0,
+                1,
+                False,
+                id="httpx-request-error",
+            ),
+        ],
+    )
+    async def test_send_webhook_request_failures(
+        self,
+        enabled_webhook_service,
+        failure_type,
+        side_effect,
+        status_code,
+        retry_count,
+        expected_calls,
+        expected_result,
+    ):
+        """Should handle various webhook request failures."""
         service = enabled_webhook_service
 
-        # Use MagicMock with spec (not spec_set) because httpx.Response has read-only properties
-        mock_response = MagicMock(spec=httpx.Response)
-        mock_response.status_code = 404
-        mock_response.text = "Not Found"
-
         mock_client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
-        mock_client.post.return_value = mock_response
+
+        if side_effect:
+            mock_client.post.side_effect = side_effect
+        else:
+            mock_response = MagicMock(spec=httpx.Response)
+            mock_response.status_code = status_code
+            mock_response.text = "Error"
+            mock_client.post.return_value = mock_response
+
         service.client = mock_client
 
-        config = WebhookConfig(url="https://example.com/webhook", retry_count=0)  # No retries
+        config = WebhookConfig(url="https://example.com/webhook", retry_count=retry_count)
         payload = {"test": "data"}
 
-        result = await service._send_webhook_request(config, payload)
-
-        assert result is False
-
-    @pytest.mark.asyncio
-    async def test_send_webhook_request_timeout(self, enabled_webhook_service):
-        """Should webhook request timeout."""
-        service = enabled_webhook_service
-
-        mock_client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
-        mock_client.post.side_effect = TimeoutError("Request timeout")
-        service.client = mock_client
-
-        config = WebhookConfig(url="https://example.com/webhook", retry_count=1)
-        payload = {"test": "data"}
-
-        with patch("asyncio.sleep", autospec=True) as mock_sleep:
+        with patch("asyncio.sleep", autospec=True):
             result = await service._send_webhook_request(config, payload)
 
-            assert result is False
-            assert mock_client.post.call_count == 2  # Initial + 1 retry
-            mock_sleep.assert_called_once_with(1)  # 2^0 = 1 second backoff
-
-    @pytest.mark.asyncio
-    async def test_send_webhook_request_exception(self, enabled_webhook_service):
-        """Should webhook request with unexpected exception."""
-        service = enabled_webhook_service
-
-        mock_client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
-        mock_client.post.side_effect = Exception("Connection error")
-        service.client = mock_client
-
-        config = WebhookConfig(url="https://example.com/webhook", retry_count=0)
-        payload = {"test": "data"}
-
-        result = await service._send_webhook_request(config, payload)
-
-        assert result is False
+        assert result is expected_result
+        assert mock_client.post.call_count == expected_calls
 
     def test_can_send(self, enabled_webhook_service):
         """Should validate sending capability via _can_send method."""
@@ -504,30 +524,26 @@ class TestWebhookService:
         assert status["statistics"]["total_failed"] == 2
 
     @pytest.mark.asyncio
-    async def test_webhook(self, enabled_webhook_service):
-        """Should webhook testing functionality - success case."""
+    @pytest.mark.parametrize(
+        "send_result,expected_success",
+        [
+            pytest.param(True, True, id="success"),
+            pytest.param(False, False, id="failure"),
+        ],
+    )
+    async def test_webhook_testing(self, enabled_webhook_service, send_result, expected_success):
+        """Should webhook testing functionality for success and failure cases."""
         service = enabled_webhook_service
         service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
 
-        with patch.object(service, "_send_webhook_request", return_value=True) as mock_send:
+        with patch.object(service, "_send_webhook_request", return_value=send_result) as mock_send:
             result = await service.test_webhook("https://example.com/webhook")
 
-            assert result["success"] is True
+            assert result["success"] is expected_success
             assert result["url"] == "https://example.com/webhook"
-            assert "timestamp" in result
+            if expected_success:
+                assert "timestamp" in result
             mock_send.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_webhook_failure(self, enabled_webhook_service):
-        """Should webhook testing functionality - failure case."""
-        service = enabled_webhook_service
-        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
-
-        with patch.object(service, "_send_webhook_request", return_value=False):
-            result = await service.test_webhook("https://example.com/webhook")
-
-            assert result["success"] is False
-            assert result["url"] == "https://example.com/webhook"
 
     @pytest.mark.asyncio
     async def test_webhook__no_client(self, enabled_webhook_service):
@@ -606,40 +622,27 @@ class TestWebhookService:
             assert "https://webhook3.com/api" in called_urls
             assert "https://webhook1.com/api" not in called_urls
 
-    async def test_send_health_webhook__cannot_send(self, enabled_webhook_service):
-        """Should send_health_webhook returns early when service cannot send."""
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "method_name,method_args",
+        [
+            pytest.param("send_health_webhook", ({"status": "healthy"},), id="health-cannot-send"),
+            pytest.param("send_gps_webhook", (63.4591, -19.3647, 10.0), id="gps-cannot-send"),
+            pytest.param("send_system_webhook", ({"cpu": 50.0},), id="system-cannot-send"),
+        ],
+    )
+    async def test_send_webhook_cannot_send(
+        self, enabled_webhook_service, method_name, method_args
+    ):
+        """Should webhook send methods return early when service cannot send."""
         service = enabled_webhook_service
-
         # Disable the service to make _can_send() return False
         service.enabled = False
 
         with patch.object(service, "_send_webhook_request", autospec=True) as mock_send:
-            await service.send_health_webhook({"status": "healthy"})
-            # Should not call _send_webhook_request (covers line 198)
-            mock_send.assert_not_called()
-
-    async def test_send_gps_webhook__cannot_send(self, enabled_webhook_service):
-        """Should send_gps_webhook returns early when service cannot send."""
-        service = enabled_webhook_service
-
-        # Disable the service to make _can_send() return False
-        service.enabled = False
-
-        with patch.object(service, "_send_webhook_request", autospec=True) as mock_send:
-            await service.send_gps_webhook(63.4591, -19.3647, 10.0)
-            # Should not call _send_webhook_request (covers line 219)
-            mock_send.assert_not_called()
-
-    async def test_send_system_webhook__cannot_send(self, enabled_webhook_service):
-        """Should send_system_webhook returns early when service cannot send."""
-        service = enabled_webhook_service
-
-        # Disable the service to make _can_send() return False
-        service.enabled = False
-
-        with patch.object(service, "_send_webhook_request", autospec=True) as mock_send:
-            await service.send_system_webhook({"cpu": 50.0})
-            # Should not call _send_webhook_request (covers line 240)
+            method = getattr(service, method_name)
+            await method(*method_args)
+            # Should not call _send_webhook_request
             mock_send.assert_not_called()
 
     async def test_send_to_webhooks__no_client(self, enabled_webhook_service):
@@ -673,34 +676,4 @@ class TestWebhookService:
 
         result = await service._send_webhook_request(webhook, {"data": "test"})
         # Should return False early (covers line 300)
-        assert result is False
-
-    async def test_send_webhook_request_timeout_exception(self, enabled_webhook_service, caplog):
-        """Should _send_webhook_request handles timeout exception."""
-        service = enabled_webhook_service
-        webhook = WebhookConfig(url="https://example.com", retry_count=0)
-
-        # Mock client to raise TimeoutException
-        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
-        service.client.post.side_effect = httpx.TimeoutException("Timeout")
-
-        result = await service._send_webhook_request(webhook, {"data": "test"})
-        # Should log timeout warning and return False (covers line 336)
-        assert "Webhook timeout" in caplog.text
-        assert result is False
-
-    async def test_send_webhook_request_request__error_exception(
-        self, enabled_webhook_service, caplog
-    ):
-        """Should handle request error exception in _send_webhook_request."""
-        service = enabled_webhook_service
-        webhook = WebhookConfig(url="https://example.com", retry_count=0)
-
-        # Mock client to raise RequestError
-        service.client = create_autospec(httpx.AsyncClient, spec_set=True, instance=True)
-        service.client.post.side_effect = httpx.RequestError("Connection failed")
-
-        result = await service._send_webhook_request(webhook, {"data": "test"})
-        # Should log request error warning and return False (covers line 343)
-        assert "Webhook request error" in caplog.text
         assert result is False

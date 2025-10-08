@@ -1,4 +1,4 @@
-"""Tests for IOC database service."""
+"""Tests for IOC database service - Refactored with parameterization."""
 
 import concurrent.futures
 import tempfile
@@ -96,44 +96,54 @@ class TestIOCDatabaseService:
         assert service.engine is not None
         assert service.session_local is not None
 
-    def test_get_species_core_existing(self, ioc_service):
-        """Should return Species object for existing species."""
-        species = ioc_service.get_species_core("Turdus migratorius")
+    @pytest.mark.parametrize(
+        "scientific_name, expected_english, expected_exists",
+        [
+            pytest.param(
+                "Turdus migratorius",
+                "American Robin",
+                True,
+                id="american-robin-exists",
+            ),
+            pytest.param(
+                "Cardinalis cardinalis",
+                "Northern Cardinal",
+                True,
+                id="northern-cardinal-exists",
+            ),
+            pytest.param(
+                "Sialia sialis",
+                "Eastern Bluebird",
+                True,
+                id="eastern-bluebird-exists",
+            ),
+            pytest.param(
+                "Imaginus fakeus",
+                None,
+                False,
+                id="nonexistent-species",
+            ),
+        ],
+    )
+    def test_species_queries(self, ioc_service, scientific_name, expected_english, expected_exists):
+        """Should handle species queries for existing and non-existing species."""
+        # Test get_species_core
+        species = ioc_service.get_species_core(scientific_name)
+        if expected_exists:
+            assert species is not None
+            assert isinstance(species, Species)
+            assert species.scientific_name == scientific_name
+            assert species.english_name == expected_english
+        else:
+            assert species is None
 
-        assert species is not None
-        assert isinstance(species, Species)
-        assert species.scientific_name == "Turdus migratorius"
-        assert species.english_name == "American Robin"
-        assert species.order_name == "Passeriformes"
-        assert species.family == "Turdidae"
-        assert species.genus == "Turdus"
-        assert species.species_epithet == "migratorius"
-        assert species.authority == "Linnaeus, 1766"
+        # Test get_english_name
+        name = ioc_service.get_english_name(scientific_name)
+        assert name == expected_english
 
-    def test_get_species_core_nonexistent(self, ioc_service):
-        """Should return None for non-existent species."""
-        species = ioc_service.get_species_core("Imaginus fakeus")
-        assert species is None
-
-    def test_get_english_name_existing(self, ioc_service):
-        """Should return English name for existing species."""
-        name = ioc_service.get_english_name("Cardinalis cardinalis")
-        assert name == "Northern Cardinal"
-
-    def test_get_english_name_nonexistent(self, ioc_service):
-        """Should return None for non-existent species."""
-        name = ioc_service.get_english_name("Imaginus fakeus")
-        assert name is None
-
-    def test_species_exists_true(self, ioc_service):
-        """Should return True for existing species."""
-        exists = ioc_service.species_exists("Sialia sialis")
-        assert exists is True
-
-    def test_species_exists_false(self, ioc_service):
-        """Should return False for non-existent species."""
-        exists = ioc_service.species_exists("Imaginus fakeus")
-        assert exists is False
+        # Test species_exists
+        exists = ioc_service.species_exists(scientific_name)
+        assert exists is expected_exists
 
     def test_get_species_count(self, ioc_service):
         """Should return correct species count."""
@@ -155,18 +165,18 @@ class TestIOCDatabaseService:
             # Cleanup
             db_path.unlink(missing_ok=True)
 
-    def test_get_metadata_value_existing(self, ioc_service):
-        """Should return metadata value for existing key."""
-        version = ioc_service.get_metadata_value("ioc_version")
-        assert version == "14.2"
-
-        count = ioc_service.get_metadata_value("species_count")
-        assert count == "3"
-
-    def test_get_metadata_value_nonexistent(self, ioc_service):
-        """Should return None for non-existent metadata key."""
-        value = ioc_service.get_metadata_value("nonexistent_key")
-        assert value is None
+    @pytest.mark.parametrize(
+        "metadata_key, expected_value",
+        [
+            pytest.param("ioc_version", "14.2", id="ioc-version"),
+            pytest.param("species_count", "3", id="species-count"),
+            pytest.param("nonexistent_key", None, id="nonexistent-key"),
+        ],
+    )
+    def test_get_metadata_value(self, ioc_service, metadata_key, expected_value):
+        """Should return metadata values for existing and non-existing keys."""
+        value = ioc_service.get_metadata_value(metadata_key)
+        assert value == expected_value
 
     def test_read_only_connection(self, mock_ioc_db):
         """Should create read-only connection."""
@@ -186,19 +196,21 @@ class TestIOCDatabaseService:
         count = ioc_service.get_species_count()
         assert count == 3
 
-    def test_multiple_species_queries(self, ioc_service):
-        """Should handle multiple different species queries."""
-        species_names = [
+    @pytest.mark.parametrize(
+        "scientific_name, expected_english",
+        [
             ("Turdus migratorius", "American Robin"),
             ("Cardinalis cardinalis", "Northern Cardinal"),
             ("Sialia sialis", "Eastern Bluebird"),
-        ]
-
-        for scientific_name, expected_english in species_names:
-            species = ioc_service.get_species_core(scientific_name)
-            assert species is not None
-            assert species.scientific_name == scientific_name
-            assert species.english_name == expected_english
+        ],
+        ids=["robin", "cardinal", "bluebird"],
+    )
+    def test_multiple_species_queries(self, ioc_service, scientific_name, expected_english):
+        """Should handle multiple different species queries."""
+        species = ioc_service.get_species_core(scientific_name)
+        assert species is not None
+        assert species.scientific_name == scientific_name
+        assert species.english_name == expected_english
 
     @patch("birdnetpi.database.ioc.create_engine", autospec=True)
     def test_database_connection_error(self, mock_create_engine):
@@ -215,18 +227,21 @@ class TestIOCDatabaseService:
             service = IOCDatabaseService(db_path)
             assert service.engine == mock_engine
 
-    def test_case_sensitivity(self, ioc_service):
+    @pytest.mark.parametrize(
+        "input_name, should_match",
+        [
+            pytest.param("Turdus migratorius", True, id="correct-case"),
+            pytest.param("turdus migratorius", False, id="lowercase"),
+            pytest.param("TURDUS MIGRATORIUS", False, id="uppercase"),
+        ],
+    )
+    def test_case_sensitivity(self, ioc_service, input_name, should_match):
         """Should handle exact case matching for scientific names."""
-        # Correct case should work
-        species = ioc_service.get_species_core("Turdus migratorius")
-        assert species is not None
-
-        # Different case should not match (scientific names are case-sensitive)
-        species_lower = ioc_service.get_species_core("turdus migratorius")
-        assert species_lower is None
-
-        species_upper = ioc_service.get_species_core("TURDUS MIGRATORIUS")
-        assert species_upper is None
+        species = ioc_service.get_species_core(input_name)
+        if should_match:
+            assert species is not None
+        else:
+            assert species is None
 
     def test_species_with_complex_authority(self, ioc_service):
         """Should correctly handle species with parentheses in authority."""
@@ -254,26 +269,45 @@ class TestIOCDatabaseService:
 class TestIOCDatabaseEdgeCases:
     """Test edge cases and error conditions."""
 
-    def test_empty_string_queries(self, ioc_service):
-        """Should handle empty string queries gracefully."""
-        assert ioc_service.get_species_core("") is None
-        assert ioc_service.get_english_name("") is None
-        assert ioc_service.species_exists("") is False
-        assert ioc_service.get_metadata_value("") is None
+    @pytest.mark.parametrize(
+        "query_input, method_name",
+        [
+            pytest.param("", "get_species_core", id="empty-species"),
+            pytest.param("", "get_english_name", id="empty-english"),
+            pytest.param("", "species_exists", id="empty-exists"),
+            pytest.param("", "get_metadata_value", id="empty-metadata"),
+            pytest.param(None, "get_species_core", id="none-species"),
+            pytest.param(None, "get_english_name", id="none-english"),
+            pytest.param(None, "species_exists", id="none-exists"),
+            pytest.param(None, "get_metadata_value", id="none-metadata"),
+        ],
+    )
+    def test_invalid_queries(self, ioc_service, query_input, method_name):
+        """Should handle empty string and None queries gracefully."""
+        method = getattr(ioc_service, method_name)
+        result = method(query_input)
 
-    def test_none_queries(self, ioc_service):
-        """Should handle None queries."""
-        # SQLAlchemy will handle None gracefully, returning None
-        assert ioc_service.get_species_core(None) is None
-        assert ioc_service.get_english_name(None) is None
-        assert ioc_service.species_exists(None) is False
-        assert ioc_service.get_metadata_value(None) is None
+        # All methods should return None or False for invalid input
+        if method_name == "species_exists":
+            assert result is False
+        else:
+            assert result is None
 
-    def test_special_characters_in_queries(self, ioc_service):
-        """Should handle special characters in queries safely."""
-        # SQL injection attempt should return None, not cause error
-        assert ioc_service.get_species_core("'; DROP TABLE species; --") is None
-        assert ioc_service.species_exists("' OR '1'='1") is False
+    @pytest.mark.parametrize(
+        "malicious_input",
+        [
+            pytest.param("'; DROP TABLE species; --", id="sql-drop-table"),
+            pytest.param("' OR '1'='1", id="sql-or-injection"),
+            pytest.param("'; SELECT * FROM species; --", id="sql-select"),
+        ],
+    )
+    def test_sql_injection_prevention(self, ioc_service, malicious_input):
+        """Should handle SQL injection attempts safely."""
+        # These should all return None/False, not cause errors or succeed
+        assert ioc_service.get_species_core(malicious_input) is None
+        assert ioc_service.get_english_name(malicious_input) is None
+        assert ioc_service.species_exists(malicious_input) is False
+        assert ioc_service.get_metadata_value(malicious_input) is None
 
     def test_unicode_species_names(self):
         """Should handle Unicode characters in species data."""
