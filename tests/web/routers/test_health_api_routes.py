@@ -13,29 +13,29 @@ def client(app_with_temp_data):
 class TestHealthEndpoint:
     """Test /health endpoint."""
 
-    def test_health_check_success(self, client):
-        """Should return healthy status when all checks pass."""
+    @pytest.mark.parametrize(
+        "expected_fields,additional_checks",
+        [
+            pytest.param(
+                ["status", "timestamp", "version", "service"],
+                lambda data: data["status"] == "healthy" and data["service"] == "birdnet-pi",
+                id="basic_health_check",
+            ),
+        ],
+    )
+    def test_health_endpoint(self, client, expected_fields, additional_checks):
+        """Should return proper health check format with all required fields."""
         response = client.get("/api/health/")
 
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "healthy"
-        assert "timestamp" in data
-        assert "version" in data
-        assert "service" in data
 
-    def test_health_check_format(self, client):
-        """Should return proper health check format."""
-        response = client.get("/api/health/")
+        # Check all expected fields present
+        for field in expected_fields:
+            assert field in data
 
-        data = response.json()
-
-        # Check response structure for basic health endpoint
-        assert "status" in data
-        assert "timestamp" in data
-        assert "version" in data
-        assert "service" in data
-        assert data["service"] == "birdnet-pi"
+        # Run additional checks
+        assert additional_checks(data)
 
     def test_health_check_database_included(self, client):
         """Should include database check in detailed health status."""
@@ -53,23 +53,15 @@ class TestHealthEndpoint:
 class TestLivenessEndpoint:
     """Test /liveness endpoint."""
 
-    def test_liveness_check(self, client):
-        """Should return alive status."""
+    def test_liveness_endpoint(self, client):
+        """Should return alive status with proper format."""
         response = client.get("/api/health/live")
 
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "alive"
-
-    def test_liveness_format(self, client):
-        """Should return proper liveness format."""
-        response = client.get("/api/health/live")
-
-        data = response.json()
 
         # Check required fields
         assert "status" in data
-
         # Status should be alive for liveness
         assert data["status"] == "alive"
 
@@ -77,51 +69,34 @@ class TestLivenessEndpoint:
 class TestReadinessEndpoint:
     """Test /readiness endpoint."""
 
-    def test_readiness_check_success(self, client):
-        """Should return ready when all services are available."""
+    def test_readiness_endpoint(self, client):
+        """Should return readiness status with all required checks."""
         response = client.get("/api/health/ready")
 
         assert response.status_code == 200
-        data = response.json()
-        assert data["status"] in ["ready", "not_ready"]
-        assert "checks" in data
-        assert data["checks"]["database"] in [True, False]
-
-    def test_readiness_check_format(self, client):
-        """Should return proper readiness format."""
-        response = client.get("/api/health/ready")
-
         data = response.json()
 
         # Check structure
         assert "status" in data
         assert "checks" in data
         assert "timestamp" in data
+        assert data["status"] in ["ready", "not_ready"]
 
-        # Checks should include database
-        assert "database" in data["checks"]
-        assert isinstance(data["checks"]["database"], bool)
-
-    def test_readiness_includes_all_services(self, client):
-        """Should check all required services."""
-        response = client.get("/api/health/ready")
-
-        data = response.json()
+        # Check all required services
         checks = data["checks"]
-
-        # Should check core services
         assert "database" in checks
         assert "version" in checks
 
-        # Database should be boolean
+        # Validate check types
         assert isinstance(checks["database"], bool)
+        assert data["checks"]["database"] in [True, False]
 
 
 class TestDetailedHealthEndpoint:
     """Test /health/detailed endpoint."""
 
-    def test_detailed_health_check(self, client):
-        """Should return detailed health information."""
+    def test_detailed_health_endpoint(self, client):
+        """Should return detailed health information with all components and metadata."""
         response = client.get("/api/health/detailed")
 
         # Should return 200 or 503 depending on health
@@ -144,32 +119,14 @@ class TestDetailedHealthEndpoint:
         assert "status" in db_component
         assert db_component["status"] in ["healthy", "unhealthy"]
 
-    def test_detailed_health_check_fields(self, client):
-        """Should include all required fields in components."""
-        response = client.get("/api/health/detailed")
-
-        data = response.json()
-
-        # Each component should have required fields
+        # Validate all component statuses
         for _component_name, component_data in data["components"].items():
             assert "status" in component_data
             assert component_data["status"] in ["healthy", "unhealthy", "unknown", "degraded"]
 
-        # Should have service name
+        # Validate service metadata
         assert data["service"] == "birdnet-pi"
-
-    def test_detailed_health_system_info(self, client):
-        """Should include version information."""
-        response = client.get("/api/health/detailed")
-
-        data = response.json()
-
-        # Should have version
-        assert "version" in data
         assert isinstance(data["version"], str)
-
-        # Should have timestamp
-        assert "timestamp" in data
         assert isinstance(data["timestamp"], str)
 
 

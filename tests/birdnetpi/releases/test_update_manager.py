@@ -49,31 +49,41 @@ def test_get_commits_behind(mock_run, update_manager, test_config):
     )
 
 
+@pytest.mark.parametrize(
+    "git_output,expected_commits,raises_exception",
+    [
+        pytest.param(
+            "Your branch and 'origin/main' have diverged, "
+            "and have 1 and 2 different commits each, respectively.",
+            3,
+            False,
+            id="diverged",
+        ),
+        pytest.param(
+            "Your branch is up to date with 'origin/main'.",
+            0,
+            False,
+            id="up_to_date",
+        ),
+        pytest.param(
+            None,
+            -1,
+            True,
+            id="error",
+        ),
+    ],
+)
 @patch("birdnetpi.releases.update_manager.subprocess.run", autospec=True)
-def test_get_commits_behind_diverged(mock_run, update_manager, test_config):
-    """Should return the number of commits behind when diverged."""
-    mock_run.return_value.stdout = (
-        "Your branch and 'origin/main' have diverged, "
-        "and have 1 and 2 different commits each, respectively."
-    )
+def test_get_commits_behind_scenarios(
+    mock_run, update_manager, test_config, git_output, expected_commits, raises_exception
+):
+    """Should return correct commit count based on git status."""
+    if raises_exception:
+        mock_run.side_effect = Exception
+    else:
+        mock_run.return_value.stdout = git_output
     commits_behind = update_manager.get_commits_behind(test_config)
-    assert commits_behind == 3
-
-
-@patch("birdnetpi.releases.update_manager.subprocess.run", autospec=True)
-def test_get_commits_behind_up_to_date(mock_run, update_manager, test_config):
-    """Should return 0 when the branch is up to date."""
-    mock_run.return_value.stdout = "Your branch is up to date with 'origin/main'."
-    commits_behind = update_manager.get_commits_behind(test_config)
-    assert commits_behind == 0
-
-
-@patch("birdnetpi.releases.update_manager.subprocess.run", autospec=True)
-def test_get_commits_behind_error(mock_run, update_manager, test_config):
-    """Should return -1 when there is an error."""
-    mock_run.side_effect = Exception
-    commits_behind = update_manager.get_commits_behind(test_config)
-    assert commits_behind == -1
+    assert commits_behind == expected_commits
 
 
 @patch("birdnetpi.releases.update_manager.subprocess.run", autospec=True)
@@ -180,25 +190,24 @@ class TestAssetValidation:
             "https://api.github.com/repos/owner/repo/releases/tags/assets-v1.0.0"
         )
 
+    @pytest.mark.parametrize(
+        "version_input,expected_tag",
+        [
+            pytest.param("v1.0.0", "assets-v1.0.0", id="with_v_prefix"),
+            pytest.param("1.0.0", "assets-v1.0.0", id="without_v_prefix"),
+        ],
+    )
     @patch("httpx.Client", autospec=True)
-    def test_validate_asset_release__v_prefix(self, mock_client_class, update_manager):
-        """Should handle version with 'v' prefix correctly."""
+    def test_validate_asset_release_version_formats(
+        self, mock_client_class, update_manager, version_input, expected_tag
+    ):
+        """Should handle version with and without 'v' prefix correctly."""
         mock_client = mock_client_class.return_value.__enter__.return_value
         mock_response = create_autospec(httpx.Response, instance=True)
         mock_response.status_code = 200
         mock_client.get.return_value = mock_response
-        result = update_manager._validate_asset_release("v1.0.0", "owner/repo")
-        assert result == "assets-v1.0.0"
-
-    @patch("httpx.Client", autospec=True)
-    def test_validate_asset_release_without_v_prefix(self, mock_client_class, update_manager):
-        """Should handle version without 'v' prefix correctly."""
-        mock_client = mock_client_class.return_value.__enter__.return_value
-        mock_response = create_autospec(httpx.Response, instance=True)
-        mock_response.status_code = 200
-        mock_client.get.return_value = mock_response
-        result = update_manager._validate_asset_release("1.0.0", "owner/repo")
-        assert result == "assets-v1.0.0"
+        result = update_manager._validate_asset_release(version_input, "owner/repo")
+        assert result == expected_tag
 
     @patch("httpx.Client", autospec=True)
     @patch.object(UpdateManager, "list_available_asset_versions", autospec=True)
@@ -385,18 +394,18 @@ class TestListVersions:
         assert result == ["v2.1.1", "v2.0.0"]
         mock_client.get.assert_called_once_with("https://api.github.com/repos/owner/repo/releases")
 
+    @pytest.mark.parametrize(
+        "method_name",
+        [
+            pytest.param("list_available_versions", id="code_versions"),
+            pytest.param("list_available_asset_versions", id="asset_versions"),
+        ],
+    )
     @patch("httpx.Client", autospec=True)
-    def test_list_available_versions_error(self, mock_client_class, update_manager):
+    def test_list_versions_error_handling(self, mock_client_class, update_manager, method_name):
         """Should handle errors gracefully and return empty list."""
         mock_client = mock_client_class.return_value.__enter__.return_value
         mock_client.get.side_effect = httpx.HTTPError("Network error")
-        result = update_manager.list_available_versions("owner/repo")
-        assert result == []
-
-    @patch("httpx.Client", autospec=True)
-    def test_list_available_asset_versions_error(self, mock_client_class, update_manager):
-        """Should handle errors gracefully and return empty list."""
-        mock_client = mock_client_class.return_value.__enter__.return_value
-        mock_client.get.side_effect = httpx.HTTPError("Network error")
-        result = update_manager.list_available_asset_versions("owner/repo")
+        method = getattr(update_manager, method_name)
+        result = method("owner/repo")
         assert result == []

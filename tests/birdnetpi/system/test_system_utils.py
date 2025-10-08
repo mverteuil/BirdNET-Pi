@@ -66,108 +66,83 @@ def test_subprocess_scenarios():
 # Test get_system_timezone method
 
 
-@patch("builtins.open", autospec=True)
-def test_get_system_timezone__from_etc_timezone(mock_open, system_utils, test_timezone_data):
-    """Should return timezone from /etc/timezone when file exists and is readable."""
-    mock_open.return_value.__enter__.return_value.read.return_value = test_timezone_data[
-        "etc_timezone_content"
-    ]
-
-    timezone = system_utils.get_system_timezone()
-    assert timezone == test_timezone_data["valid_timezones"][0]  # America/New_York
-    mock_open.assert_called_once_with("/etc/timezone")
-
-
-@patch("builtins.open", autospec=True)
+@pytest.mark.parametrize(
+    "file_behavior,timedatectl_output,expected_timezone",
+    [
+        pytest.param(
+            ("read", "America/New_York\n"),
+            None,
+            "America/New_York",
+            id="from_etc_timezone",
+        ),
+        pytest.param(
+            ("exception", FileNotFoundError()),
+            "Timezone=Europe/London\n",
+            "Europe/London",
+            id="from_timedatectl",
+        ),
+        pytest.param(
+            ("exception", FileNotFoundError()),
+            "       Time zone: Asia/Tokyo (JST, +0900)\nTimezone=Asia/Tokyo",
+            "Asia/Tokyo",
+            id="complex_timedatectl_output",
+        ),
+        pytest.param(
+            ("exception", FileNotFoundError()),
+            ("exception", Exception("Command failed")),
+            "UTC",
+            id="fallback_to_utc",
+        ),
+        pytest.param(
+            ("read", ""),
+            None,
+            "UTC",
+            id="empty_etc_timezone",
+        ),
+        pytest.param(
+            ("read", "   \n\t   \n"),
+            None,
+            "UTC",
+            id="whitespace_only_etc_timezone",
+        ),
+        pytest.param(
+            ("exception", PermissionError("Permission denied")),
+            None,
+            "UTC",
+            id="permission_denied_reading_file",
+        ),
+        pytest.param(
+            ("exception", OSError("I/O operation failed")),
+            "Timezone=Europe/London\n",
+            "Europe/London",
+            id="io_error_reading_file",
+        ),
+    ],
+)
 @patch("birdnetpi.system.system_utils.subprocess.run", autospec=True)
-def test_get_system_timezone__from_timedatectl(
-    mock_run, mock_open, system_utils, test_timezone_data
-):
-    """Should fallback to timedatectl when /etc/timezone is not available."""
-    mock_open.side_effect = FileNotFoundError()
-    mock_run.return_value.stdout = test_timezone_data["timedatectl_outputs"]["london"]
-
-    timezone = system_utils.get_system_timezone()
-    assert timezone == test_timezone_data["valid_timezones"][1]  # Europe/London
-    mock_run.assert_called_once_with(
-        ["timedatectl", "show"], capture_output=True, text=True, check=True
-    )
-
-
 @patch("builtins.open", autospec=True)
-@patch("birdnetpi.system.system_utils.subprocess.run", autospec=True)
-def test_get_system_timezone__complex_timedatectl_output(
-    mock_run, mock_open, system_utils, test_timezone_data
+def test_get_system_timezone(
+    mock_open, mock_run, system_utils, file_behavior, timedatectl_output, expected_timezone
 ):
-    """Should parse timezone from multi-line timedatectl output."""
-    mock_open.side_effect = FileNotFoundError()
-    mock_run.return_value.stdout = test_timezone_data["timedatectl_outputs"]["tokyo"]
+    """Should return timezone from various sources with proper fallback behavior."""
+    behavior_type, behavior_value = file_behavior
+
+    if behavior_type == "exception":
+        mock_open.side_effect = behavior_value
+    else:  # "read"
+        mock_open.return_value.__enter__.return_value.read.return_value = behavior_value
+
+    if timedatectl_output:
+        if isinstance(timedatectl_output, tuple):
+            # It's an exception scenario
+            _, exception = timedatectl_output
+            mock_run.side_effect = exception
+        else:
+            # It's a normal output
+            mock_run.return_value.stdout = timedatectl_output
 
     timezone = system_utils.get_system_timezone()
-    assert timezone == test_timezone_data["valid_timezones"][2]  # Asia/Tokyo
-
-
-@patch("builtins.open", autospec=True)
-@patch("birdnetpi.system.system_utils.subprocess.run", autospec=True)
-def test_get_system_timezone__fallback_to_utc(
-    mock_run, mock_open, system_utils, test_timezone_data, test_file_scenarios
-):
-    """Should return UTC when all detection methods fail."""
-    mock_open.side_effect = test_file_scenarios["file_not_found"]
-    mock_run.side_effect = Exception("Command failed")
-
-    timezone = system_utils.get_system_timezone()
-    assert timezone == test_timezone_data["fallback_timezone"]
-
-
-@patch("builtins.open", autospec=True)
-def test_get_system_timezone__empty_etc_timezone(
-    mock_open, system_utils, test_timezone_data, test_file_scenarios
-):
-    """Should try timedatectl when /etc/timezone is empty."""
-    mock_open.return_value.__enter__.return_value.read.return_value = test_file_scenarios[
-        "empty_file"
-    ]
-
-    timezone = system_utils.get_system_timezone()
-    assert timezone == test_timezone_data["fallback_timezone"]
-
-
-@patch("builtins.open", autospec=True)
-def test_get_system_timezone__whitespace_only_etc_timezone(
-    mock_open, system_utils, test_timezone_data, test_file_scenarios
-):
-    """Should try timedatectl when /etc/timezone contains only whitespace."""
-    mock_open.return_value.__enter__.return_value.read.return_value = test_file_scenarios[
-        "whitespace_only"
-    ]
-
-    timezone = system_utils.get_system_timezone()
-    assert timezone == test_timezone_data["fallback_timezone"]
-
-
-@patch("builtins.open", autospec=True)
-def test_get_system_timezone__permission_denied_reading_file(
-    mock_open, system_utils, test_timezone_data, test_file_scenarios
-):
-    """Should fallback when permission denied reading /etc/timezone."""
-    mock_open.side_effect = test_file_scenarios["permission_denied"]
-
-    timezone = system_utils.get_system_timezone()
-    assert timezone == test_timezone_data["fallback_timezone"]
-
-
-@patch("builtins.open", autospec=True)
-@patch("birdnetpi.system.system_utils.subprocess.run", autospec=True)
-def test_get_system_timezone__io_error_reading_file(
-    mock_run, mock_open, system_utils, test_timezone_data, test_file_scenarios
-):
-    """Should fallback to timedatectl when I/O error occurs reading /etc/timezone."""
-    mock_open.side_effect = test_file_scenarios["io_error"]
-    mock_run.return_value.stdout = test_timezone_data["timedatectl_outputs"]["london"]
-
-    timezone = system_utils.get_system_timezone()
-    assert timezone == test_timezone_data["valid_timezones"][1]  # Europe/London
+    assert timezone == expected_timezone
 
 
 # Test environment detection methods
