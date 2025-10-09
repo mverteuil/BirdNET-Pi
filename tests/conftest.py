@@ -10,9 +10,9 @@ from unittest.mock import MagicMock
 import matplotlib
 import pytest
 from dependency_injector import providers
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlmodel import SQLModel
 
 from birdnetpi.config import ConfigManager
 from birdnetpi.database.core import CoreDatabaseService
@@ -187,33 +187,150 @@ async def app_with_temp_data(path_resolver):
 
 @pytest.fixture
 async def async_in_memory_session():
-    """Create real in-memory async SQLite session for integration tests.
+    """Create real in-memory async SQLite session with full schema for integration tests.
 
-    This is a global fixture that can be used consistently across all tests
-    that need an async SQLAlchemy session for testing.
+    This fixture provides a complete test database environment:
+    - Creates all SQLModel tables (Detection, AudioFile, Weather, etc.)
+    - Provides async session for database operations
+    - Properly cleans up to prevent file descriptor leaks
+
+    Use this when you need to test actual database interactions without mocking.
+
+    Example:
+        async def test_detection_persistence(async_in_memory_session):
+            detection = Detection(
+                scientific_name="Turdus migratorius",
+                confidence=0.95,
+                species_tensor="Turdus migratorius_American Robin",
+            )
+            async_in_memory_session.add(detection)
+            await async_in_memory_session.commit()
+
+            # Verify it persisted
+            from sqlalchemy import select
+            result = await async_in_memory_session.execute(
+                select(Detection).where(Detection.scientific_name == "Turdus migratorius")
+            )
+            found = result.scalar_one()
+            assert found.confidence == 0.95
     """
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    # Use sessionmaker with class_=AsyncSession which is the standard pattern
-    session_local = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    # Create async engine for in-memory SQLite
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        echo=False,  # Set to True for SQL debugging
+    )
+
+    # Create all tables from SQLModel metadata
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
+
+    # Create session factory
+    session_local = sessionmaker(
+        engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
 
     # Create session explicitly to help pyright understand the type
     session = cast(AsyncSession, session_local())
     try:
-        # Create test tables if needed
-        await session.execute(
-            text("""
-            CREATE TABLE IF NOT EXISTS test_main (
-                id INTEGER PRIMARY KEY,
-                name TEXT
-            )
-        """)
-        )
-        await session.commit()
         yield session
     finally:
         await session.close()
         # IMPORTANT: Dispose the engine to prevent file descriptor leaks
         await engine.dispose()
+
+
+@pytest.fixture
+async def populated_test_db(async_in_memory_session: AsyncSession, model_factory):
+    """Database pre-populated with test data for integration tests.
+
+    This fixture extends async_in_memory_session by adding common test data:
+    - 3 detections (robin, crow, cardinal)
+    - 2 audio files
+    - 1 weather record
+
+    Use this when you need a realistic database state without manual setup.
+
+    Example:
+        async def test_detection_query(populated_test_db):
+            # Database already has 3 detections
+            from sqlalchemy import select
+            result = await populated_test_db.execute(select(Detection))
+            detections = result.scalars().all()
+            assert len(detections) == 3
+
+            # Known data available for assertions
+            robin = await populated_test_db.execute(
+                select(Detection).where(Detection.common_name == "American Robin")
+            )
+            assert robin.scalar_one().confidence == 0.95
+    """
+    # Create audio files first (referenced by detections)
+    audio_file_1 = model_factory.create_audio_file(
+        file_path=Path("/tmp/test_audio_1.wav"),
+        duration=3.0,
+    )
+    audio_file_2 = model_factory.create_audio_file(
+        file_path=Path("/tmp/test_audio_2.wav"),
+        duration=3.0,
+    )
+    async_in_memory_session.add(audio_file_1)
+    async_in_memory_session.add(audio_file_2)
+    await async_in_memory_session.commit()
+    await async_in_memory_session.refresh(audio_file_1)
+    await async_in_memory_session.refresh(audio_file_2)
+
+    # Create weather record (optional for detections)
+    weather = model_factory.create_weather(
+        timestamp=datetime(2025, 1, 1, 12, 0, 0, tzinfo=UTC),
+        latitude=40.7128,
+        longitude=-74.0060,
+        temperature=15.0,
+        humidity=60.0,
+    )
+    async_in_memory_session.add(weather)
+    await async_in_memory_session.commit()
+
+    # Create detections with known data
+    detection_robin = model_factory.create_detection(
+        scientific_name="Turdus migratorius",
+        common_name="American Robin",
+        species_tensor="Turdus migratorius_American Robin",
+        confidence=0.95,
+        timestamp=datetime(2025, 1, 1, 8, 30, 0, tzinfo=UTC),
+        audio_file_id=audio_file_1.id,
+        latitude=40.7128,
+        longitude=-74.0060,
+    )
+
+    detection_crow = model_factory.create_detection(
+        scientific_name="Corvus brachyrhynchos",
+        common_name="American Crow",
+        species_tensor="Corvus brachyrhynchos_American Crow",
+        confidence=0.88,
+        timestamp=datetime(2025, 1, 1, 9, 15, 0, tzinfo=UTC),
+        audio_file_id=audio_file_2.id,
+        latitude=40.7128,
+        longitude=-74.0060,
+    )
+
+    detection_cardinal = model_factory.create_detection(
+        scientific_name="Cardinalis cardinalis",
+        common_name="Northern Cardinal",
+        species_tensor="Cardinalis cardinalis_Northern Cardinal",
+        confidence=0.92,
+        timestamp=datetime(2025, 1, 1, 10, 0, 0, tzinfo=UTC),
+        latitude=40.7128,
+        longitude=-74.0060,
+    )
+
+    async_in_memory_session.add(detection_robin)
+    async_in_memory_session.add(detection_crow)
+    async_in_memory_session.add(detection_cardinal)
+    await async_in_memory_session.commit()
+
+    yield async_in_memory_session
 
 
 @pytest.fixture
@@ -415,15 +532,15 @@ def model_factory():
                 "latitude": 0.0,
                 "longitude": 0.0,
                 "source": "test",
-                "temperature_c": 20.0,
-                "humidity_percent": 50,
-                "pressure_hpa": 1013.0,
-                "wind_speed_kmh": 10.0,
-                "wind_direction_deg": 180,
-                "precipitation_mm": 0.0,
-                "cloud_cover_percent": 25,
+                "temperature": 20.0,  # Celsius
+                "humidity": 50.0,  # Percentage
+                "pressure": 1013.0,  # hPa
+                "wind_speed": 10.0,  # km/h
+                "wind_direction": 180,  # Degrees
+                "precipitation": 0.0,  # mm
+                "cloud_cover": 25,  # Percentage
                 "weather_code": 0,
-                "description": "Clear",
+                "conditions": "Clear",
             }
             defaults.update(kwargs)
             return Weather(**defaults)
