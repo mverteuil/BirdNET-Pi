@@ -22,6 +22,7 @@ Pattern:
 See: test_data_manager.py for the problematic mock-heavy version
 """
 
+import base64
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -31,9 +32,10 @@ import pytest
 from sqlalchemy import select
 
 from birdnetpi.detections.manager import DataManager
-from birdnetpi.detections.models import Detection
+from birdnetpi.detections.models import AudioFile, Detection
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.web.core.container import Container
+from birdnetpi.web.models.detections import DetectionEvent
 
 
 @pytest.fixture
@@ -265,13 +267,122 @@ class TestAudioFileOperations:
         assert result is None
 
 
-# Note: create_detection() test excluded because it requires file I/O infrastructure
-"""
-TESTS REQUIRING FILE I/O INFRASTRUCTURE:
+class TestCreateDetectionWithAudio:
+    """Integration tests for creating detections with audio data."""
 
-test_create_detection_with_audio():
-    - DataManager.create_detection() saves audio files to disk
-    - Requires FileManager to be fully functional or mocked properly
-    - Requires recordings directory structure
-    - Future work: Set up temp directory infrastructure or enhanced mocking
-"""
+    async def test_create_detection_with_audio(
+        self, data_manager_with_real_db, app_with_temp_data, model_factory
+    ):
+        """Should create detection with audio file and persist to database.
+
+        Verifies:
+        1. Detection is created in database with correct metadata
+        2. FileManager.save_detection_audio is called with correct params
+        3. AudioFile record is linked to Detection
+        4. Can retrieve detection with audio file relationship
+        """
+        # Get access to FileManager mock to verify calls
+        file_manager = data_manager_with_real_db.file_manager
+
+        # Create fake audio data (16-bit PCM)
+        fake_audio_bytes = b"\x00\x01" * 100  # 200 bytes of fake audio
+        audio_b64 = base64.b64encode(fake_audio_bytes).decode("utf-8")
+
+        # Create DetectionEvent with audio
+        detection_event = DetectionEvent(
+            species_tensor="Turdus migratorius_American Robin",
+            scientific_name="Turdus migratorius",
+            common_name="American Robin",
+            confidence=0.95,
+            timestamp=datetime(2025, 1, 1, 10, 30, 0, tzinfo=UTC),
+            audio_data=audio_b64,
+            sample_rate=48000,
+            channels=1,
+            latitude=41.0,
+            longitude=-73.0,
+            species_confidence_threshold=0.5,
+            week=1,
+            sensitivity_setting=1.0,
+            overlap=0.0,
+        )
+
+        # Mock FileManager to return a proper AudioFile object
+        mock_audio_file_instance = AudioFile(
+            file_path=Path("/fake/recordings/Turdus_migratorius_2025-01-01_10-30-00.wav"),
+            duration=4.166666666666667,  # 200 bytes / (48000 * 2 bytes/sample * 1 channel)
+            size_bytes=200,
+        )
+        file_manager.save_detection_audio.return_value = mock_audio_file_instance
+
+        # Create detection using DataManager
+        created = await data_manager_with_real_db.create_detection(detection_event)
+
+        # Verify detection was created
+        assert created is not None
+        assert created.scientific_name == "Turdus migratorius"
+        assert created.common_name == "American Robin"
+        assert created.confidence == 0.95
+        assert created.latitude == 41.0
+        assert created.longitude == -73.0
+
+        # Verify FileManager.save_detection_audio was called
+        file_manager.save_detection_audio.assert_called_once()
+        call_args = file_manager.save_detection_audio.call_args[0]
+        assert fake_audio_bytes == call_args[1]  # Audio bytes
+        assert call_args[2] == 48000  # Sample rate
+        assert call_args[3] == 1  # Channels
+
+        # Verify detection is in database
+        db_service = app_with_temp_data._test_db_service
+        async with db_service.get_async_db() as session:
+            result = await session.execute(select(Detection).where(Detection.id == created.id))
+            from_db = result.scalar_one()
+            assert from_db.scientific_name == "Turdus migratorius"
+
+    async def test_create_detection_without_audio(
+        self, data_manager_with_real_db, app_with_temp_data
+    ):
+        """Should create detection without audio file when audio_data is empty.
+
+        Verifies that detections can be created without associated audio files
+        (e.g., when importing historical data or from external sources).
+        """
+        # Get access to FileManager mock
+        file_manager = data_manager_with_real_db.file_manager
+
+        # Create DetectionEvent WITHOUT audio (empty string)
+        detection_event = DetectionEvent(
+            species_tensor="Cardinalis cardinalis_Northern Cardinal",
+            scientific_name="Cardinalis cardinalis",
+            common_name="Northern Cardinal",
+            confidence=0.88,
+            timestamp=datetime(2025, 1, 1, 11, 0, 0, tzinfo=UTC),
+            audio_data="",  # Empty audio data
+            sample_rate=48000,
+            channels=1,
+            latitude=41.0,
+            longitude=-73.0,
+            species_confidence_threshold=0.5,
+            week=1,
+            sensitivity_setting=1.0,
+            overlap=0.0,
+        )
+
+        # Create detection
+        created = await data_manager_with_real_db.create_detection(detection_event)
+
+        # Verify detection was created
+        assert created is not None
+        assert created.scientific_name == "Cardinalis cardinalis"
+        assert created.audio_file_id is None  # No audio file linked
+
+        # Verify FileManager was NOT called
+        file_manager.save_detection_audio.assert_not_called()
+
+        # Verify detection is in database
+        db_service = app_with_temp_data._test_db_service
+        async with db_service.get_async_db() as session:
+            result = await session.execute(select(Detection).where(Detection.id == created.id))
+            from_db = result.scalar_one()
+            assert from_db.scientific_name == "Cardinalis cardinalis"
+            assert from_db.audio_file_id is None
