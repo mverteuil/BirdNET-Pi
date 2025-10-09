@@ -16,26 +16,24 @@ from birdnetpi.detections.models import AudioFile, Detection
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager
-from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.web.models.detections import DetectionEvent
 
 
 @pytest.fixture
-def mock_services():
+def mock_services(path_resolver):
     """Create mock services for DataManager."""
     mock_db_service = MagicMock(spec=CoreDatabaseService)
     mock_multilingual = MagicMock(spec=SpeciesDatabaseService)
     mock_species_display = MagicMock(spec=SpeciesDisplayService)
     mock_query_service = MagicMock(spec=DetectionQueryService)
     mock_file_manager = MagicMock(spec=FileManager)
-    mock_path_resolver = MagicMock(spec=PathResolver)
     return {
         "database_service": mock_db_service,
         "species_database": mock_multilingual,
         "species_display_service": mock_species_display,
         "detection_query_service": mock_query_service,
         "file_manager": mock_file_manager,
-        "path_resolver": mock_path_resolver,
+        "path_resolver": path_resolver,
     }
 
 
