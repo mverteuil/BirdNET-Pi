@@ -9,7 +9,6 @@ import pytest
 
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
-from birdnetpi.detections.models import AudioFile, Detection
 from birdnetpi.detections.queries import DetectionQueryService
 
 
@@ -33,139 +32,84 @@ async def test_database(tmp_path):
 
 
 @pytest.fixture
-async def populated_database(test_database):
+async def populated_database(test_database, model_factory):
     """Create a test database with sample data."""
     async with test_database.get_async_db() as session:
-        audio_files = []
-        for i in range(9):
-            audio = AudioFile(
-                file_path=Path(f"/recordings/detection_{i + 1}.wav"), duration=3.0, size_bytes=48000
-            )
-            audio_files.append(audio)
+        # Create audio files using factory
+        audio_files = model_factory.create_audio_files(9, duration=3.0, size_bytes=48000)
+        for i, audio in enumerate(audio_files):
+            audio.file_path = Path(f"/recordings/detection_{i + 1}.wav")
+
         session.add_all(audio_files)
         await session.flush()
         audio_file_ids = [af.id for af in audio_files]
-        detection1 = Detection(
-            audio_file_id=audio_file_ids[0],
-            timestamp=datetime.datetime(2024, 1, 1, 6, 15, 0),
-            species_tensor="Turdus migratorius_American Robin",
-            scientific_name="Turdus migratorius",
-            common_name="American Robin",
-            confidence=0.95,
-            species_confidence_threshold=0.5,
-            week=1,
-            sensitivity_setting=1.0,
-            overlap=0.0,
-        )
-        detection2 = Detection(
-            audio_file_id=audio_file_ids[1],
-            timestamp=datetime.datetime(2024, 1, 1, 6, 30, 0),
-            species_tensor="Turdus migratorius_American Robin",
-            scientific_name="Turdus migratorius",
-            common_name="American Robin",
-            confidence=0.88,
-            species_confidence_threshold=0.5,
-            week=1,
-            sensitivity_setting=1.0,
-            overlap=0.0,
-        )
-        detection3 = Detection(
-            audio_file_id=audio_file_ids[2],
-            timestamp=datetime.datetime(2024, 1, 1, 6, 45, 0),
-            species_tensor="Cardinalis cardinalis_Northern Cardinal",
-            scientific_name="Cardinalis cardinalis",
-            common_name="Northern Cardinal",
-            confidence=0.92,
-            species_confidence_threshold=0.5,
-            week=1,
-            sensitivity_setting=1.0,
-            overlap=0.0,
-        )
-        detection4 = Detection(
-            audio_file_id=audio_file_ids[3],
-            timestamp=datetime.datetime(2024, 1, 1, 7, 10, 0),
-            species_tensor="Cardinalis cardinalis_Northern Cardinal",
-            scientific_name="Cardinalis cardinalis",
-            common_name="Northern Cardinal",
-            confidence=0.85,
-            species_confidence_threshold=0.5,
-            week=1,
-            sensitivity_setting=1.0,
-            overlap=0.0,
-        )
-        detection5 = Detection(
-            audio_file_id=audio_file_ids[4],
-            timestamp=datetime.datetime(2024, 1, 1, 7, 20, 0),
-            species_tensor="Cyanocitta cristata_Blue Jay",
-            scientific_name="Cyanocitta cristata",
-            common_name="Blue Jay",
-            confidence=0.9,
-            species_confidence_threshold=0.5,
-            week=1,
-            sensitivity_setting=1.0,
-            overlap=0.0,
-        )
-        detection6 = Detection(
-            audio_file_id=audio_file_ids[5],
-            timestamp=datetime.datetime(2024, 1, 1, 7, 40, 0),
-            species_tensor="Turdus migratorius_American Robin",
-            scientific_name="Turdus migratorius",
-            common_name="American Robin",
-            confidence=0.91,
-            species_confidence_threshold=0.5,
-            week=1,
-            sensitivity_setting=1.0,
-            overlap=0.0,
-        )
-        detection7 = Detection(
-            audio_file_id=audio_file_ids[6],
-            timestamp=datetime.datetime(2024, 1, 1, 8, 5, 0),
-            species_tensor="Cyanocitta cristata_Blue Jay",
-            scientific_name="Cyanocitta cristata",
-            common_name="Blue Jay",
-            confidence=0.87,
-            species_confidence_threshold=0.5,
-            week=1,
-            sensitivity_setting=1.0,
-            overlap=0.0,
-        )
-        detection8 = Detection(
-            audio_file_id=audio_file_ids[7],
-            timestamp=datetime.datetime(2024, 1, 1, 8, 25, 0),
-            species_tensor="Poecile carolinensis_Carolina Chickadee",
-            scientific_name="Poecile carolinensis",
-            common_name="Carolina Chickadee",
-            confidence=0.93,
-            species_confidence_threshold=0.5,
-            week=1,
-            sensitivity_setting=1.0,
-            overlap=0.0,
-        )
-        detection9 = Detection(
-            audio_file_id=audio_file_ids[8],
-            timestamp=datetime.datetime(2023, 12, 31, 10, 0, 0),
-            species_tensor="Turdus migratorius_American Robin",
-            scientific_name="Turdus migratorius",
-            common_name="American Robin",
-            confidence=0.89,
-            species_confidence_threshold=0.5,
-            week=52,
-            sensitivity_setting=1.0,
-            overlap=0.0,
-        )
-        session.add_all(
-            [
-                detection1,
-                detection2,
-                detection3,
-                detection4,
-                detection5,
-                detection6,
-                detection7,
-                detection8,
-                detection9,
-            ]
-        )
+
+        # Define detection data (timestamp, species_data, confidence, week)
+        detection_data = [
+            (
+                datetime.datetime(2024, 1, 1, 6, 15, 0),
+                ("Turdus migratorius", "American Robin"),
+                0.95,
+                1,
+            ),
+            (
+                datetime.datetime(2024, 1, 1, 6, 30, 0),
+                ("Turdus migratorius", "American Robin"),
+                0.88,
+                1,
+            ),
+            (
+                datetime.datetime(2024, 1, 1, 6, 45, 0),
+                ("Cardinalis cardinalis", "Northern Cardinal"),
+                0.92,
+                1,
+            ),
+            (
+                datetime.datetime(2024, 1, 1, 7, 10, 0),
+                ("Cardinalis cardinalis", "Northern Cardinal"),
+                0.85,
+                1,
+            ),
+            (datetime.datetime(2024, 1, 1, 7, 20, 0), ("Cyanocitta cristata", "Blue Jay"), 0.9, 1),
+            (
+                datetime.datetime(2024, 1, 1, 7, 40, 0),
+                ("Turdus migratorius", "American Robin"),
+                0.91,
+                1,
+            ),
+            (datetime.datetime(2024, 1, 1, 8, 5, 0), ("Cyanocitta cristata", "Blue Jay"), 0.87, 1),
+            (
+                datetime.datetime(2024, 1, 1, 8, 25, 0),
+                ("Poecile carolinensis", "Carolina Chickadee"),
+                0.93,
+                1,
+            ),
+            (
+                datetime.datetime(2023, 12, 31, 10, 0, 0),
+                ("Turdus migratorius", "American Robin"),
+                0.89,
+                52,
+            ),
+        ]
+
+        # Create detections using factory with common defaults
+        detections = []
+        for i, (timestamp, (scientific, common), confidence, week) in enumerate(detection_data):
+            detection = model_factory.create_detection(
+                audio_file_id=audio_file_ids[i],
+                timestamp=timestamp,
+                species_tensor=f"{scientific}_{common}",
+                scientific_name=scientific,
+                common_name=common,
+                confidence=confidence,
+                species_confidence_threshold=0.5,
+                week=week,
+                sensitivity_setting=1.0,
+                overlap=0.0,
+            )
+            detections.append(detection)
+
+        session.add_all(detections)
         await session.commit()
     return test_database
 

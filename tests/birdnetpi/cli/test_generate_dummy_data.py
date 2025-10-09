@@ -6,7 +6,6 @@ from unittest.mock import DEFAULT, AsyncMock, MagicMock, patch
 import pytest
 
 import birdnetpi.cli.generate_dummy_data as gdd
-from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.species.display import SpeciesDisplayService
@@ -14,7 +13,7 @@ from birdnetpi.system.system_control import SystemControlService
 
 
 @pytest.fixture(autouse=True)
-def mock_dependencies(mocker, tmp_path):
+def mock_dependencies(mocker, tmp_path, db_service_factory):
     """Mock external dependencies for generate_dummy_data.py."""
     # Patch generate_dummy_detections separately since it's imported directly
     mock_generate = mocker.patch(
@@ -50,7 +49,8 @@ def mock_dependencies(mocker, tmp_path):
         mocks["PathResolver"].return_value.get_database_path.return_value = mock_db_path
         mocks["PathResolver"].return_value.get_birdnetpi_config_path.return_value = config_path
         mocks["ConfigManager"].return_value.load_config.return_value = MagicMock(spec=object)
-        mocks["CoreDatabaseService"].return_value = MagicMock(spec=CoreDatabaseService)
+        mock_core_database, _session, _result = db_service_factory()
+        mocks["CoreDatabaseService"].return_value = mock_core_database
         mock_data_manager = MagicMock(spec=DataManager)
         mock_data_manager.get_all_detections = AsyncMock(spec=callable, return_value=[])
         mock_data_manager.create_detection = AsyncMock(spec=callable, return_value=None)

@@ -2,7 +2,7 @@
 
 import asyncio
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.ext.asyncio import (
@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import (
 from sqlmodel import SQLModel
 
 from birdnetpi.config.models import BirdNETConfig
-from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.location.weather import WeatherSignalHandler
 from birdnetpi.notifications.signals import detection_signal
 
@@ -41,9 +40,10 @@ def config():
 
 
 @pytest.fixture
-def database_service(session):
+def database_service(session, db_service_factory):
     """Create a mock database service."""
-    mock_service = MagicMock(spec=CoreDatabaseService)
+    mock_service, _session, _result = db_service_factory()
+    # Override to use the real session from the session fixture
     mock_service.get_async_db.return_value.__aenter__.return_value = session
     mock_service.get_async_db.return_value.__aexit__.return_value = None
     return mock_service
@@ -71,9 +71,9 @@ def test_weather_handler_register(weather_handler):
     weather_handler.unregister()
 
 
-def test_weather_handler_requires_location():
+def test_weather_handler_requires_location(db_service_factory):
     """Should handler requires location coordinates."""
-    mock_db = MagicMock(spec=CoreDatabaseService)
+    mock_db, _session, _result = db_service_factory()
     handler = WeatherSignalHandler(mock_db, 63.4591, -19.3647)
     assert handler.latitude == 63.4591
     assert handler.longitude == -19.3647

@@ -1,33 +1,54 @@
+import asyncio
+import inspect
 import subprocess
 import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import matplotlib
 import pytest
 from dependency_injector import providers
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.engine import Result, Row
+from sqlalchemy.engine.result import MappingResult
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 
 from birdnetpi.config import ConfigManager
 from birdnetpi.database.core import CoreDatabaseService
+from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.models import AudioFile, Detection, DetectionWithTaxa
+from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.location.models import Weather
 from birdnetpi.releases.asset_manifest import AssetManifest
+from birdnetpi.species.display import SpeciesDisplayService
+from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.utils.cache import Cache
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
+from birdnetpi.web.models.detections import DetectionEvent
 
 # Configure matplotlib to use non-GUI backend for testing
 matplotlib.use("Agg")
 
 # Pyleak is available for manual use in tests via @pytest.mark.no_leaks
 # The pytest plugin automatically handles this when tests are marked with @pytest.mark.no_leaks
+
+
+class _AsyncContextManagerProtocol:
+    """Protocol for async context manager - used as spec for mocking."""
+
+    async def __aenter__(self):
+        """Enter the async context."""
+        pass
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Exit the async context."""
+        pass
 
 
 @pytest.fixture(scope="session")
@@ -434,7 +455,7 @@ def check_required_assets(repo_root: Path):
 
 
 @pytest.fixture(scope="session")
-def model_factory():
+def model_factory():  # noqa: C901
     """Create a factory for test model instances.
 
     This fixture provides a centralized way to create test models with sensible defaults,
@@ -538,4 +559,476 @@ def model_factory():
             defaults.update(kwargs)
             return Weather(**defaults)
 
+        @staticmethod
+        def create_audio_files(count: int, **common_kwargs: Any) -> list[AudioFile]:
+            """Create multiple AudioFile instances with common defaults.
+
+            Args:
+                count: Number of audio files to create
+                **common_kwargs: Common attributes to apply to all audio files
+
+            Returns:
+                List of AudioFile instances
+            """
+            audio_files = []
+            for i in range(count):
+                kwargs = {
+                    "id": uuid.uuid4(),
+                    "file_path": Path(f"/tmp/test_audio_{i}.wav"),
+                    **common_kwargs,
+                }
+                audio_files.append(AudioFile(**kwargs))
+            return audio_files
+
+        @staticmethod
+        def create_detections(count: int, **common_kwargs: Any) -> list[Detection]:
+            """Create multiple Detection instances with common defaults.
+
+            Args:
+                count: Number of detections to create
+                **common_kwargs: Common attributes to apply to all detections
+
+            Returns:
+                List of Detection instances
+            """
+            from datetime import timedelta
+
+            detections = []
+            for i in range(count):
+                kwargs = {
+                    "id": uuid.uuid4(),
+                    "timestamp": datetime.now(UTC) - timedelta(hours=i),
+                    **common_kwargs,
+                }
+                detections.append(Detection(**kwargs))
+            return detections
+
+        @staticmethod
+        def create_detections_with_taxa(
+            count: int, **common_kwargs: Any
+        ) -> list[DetectionWithTaxa]:
+            """Create multiple DetectionWithTaxa instances with common defaults.
+
+            Args:
+                count: Number of detections to create
+                **common_kwargs: Common attributes to apply to all detections
+
+            Returns:
+                List of DetectionWithTaxa instances
+            """
+            from datetime import timedelta
+
+            detections = []
+            for i in range(count):
+                kwargs = {
+                    "id": uuid.uuid4(),
+                    "timestamp": datetime.now(UTC) - timedelta(hours=i),
+                    **common_kwargs,
+                }
+                detections.append(DetectionWithTaxa(**kwargs))
+            return detections
+
     return ModelFactory()
+
+
+@pytest.fixture
+def detection_event_factory():
+    """Create a factory for DetectionEvent instances with sensible defaults.
+
+    This fixture provides a centralized way to create DetectionEvent instances
+    for testing, reducing boilerplate in tests that need to create multiple events.
+    """
+
+    def _create_detection_event(**kwargs: Any) -> DetectionEvent:
+        """Create a DetectionEvent instance with defaults."""
+        defaults = {
+            "species_tensor": "Unknown species_Unknown",
+            "scientific_name": "Unknown species",
+            "common_name": "Unknown",
+            "confidence": 0.5,
+            "timestamp": datetime.now(UTC),
+            "audio_data": "",  # Base64 encoded audio
+            "sample_rate": 48000,
+            "channels": 1,
+            "latitude": 0.0,
+            "longitude": 0.0,
+            "species_confidence_threshold": 0.1,
+            "week": 1,
+            "sensitivity_setting": 1.5,
+            "overlap": 0.0,
+        }
+        defaults.update(kwargs)
+        return DetectionEvent(**defaults)
+
+    return _create_detection_event
+
+
+@pytest.fixture
+def mock_services_factory():
+    """Create a factory for common mock service configurations.
+
+    This fixture provides properly configured mock services to reduce
+    repetitive mock setup code across test files.
+    """
+
+    def _create_mock_services(**overrides: Any) -> dict[str, Any]:
+        """Create dictionary of common mock services.
+
+        Args:
+            **overrides: Service overrides (e.g., database_service=my_custom_mock)
+
+        Returns:
+            Dictionary mapping service names to mock instances
+        """
+        defaults = {
+            "database_service": MagicMock(spec=CoreDatabaseService),
+            "species_database": MagicMock(spec=SpeciesDatabaseService),
+            "species_display_service": MagicMock(spec=SpeciesDisplayService),
+            "detection_query_service": MagicMock(spec=DetectionQueryService),
+            "file_manager": MagicMock(spec=FileManager),
+        }
+        defaults.update(overrides)
+        return defaults
+
+    return _create_mock_services
+
+
+@pytest.fixture
+def async_mock_factory():
+    """Create a factory for properly configured async mocks.
+
+    This fixture helps avoid the common mistake of using MagicMock
+    for async methods, which doesn't work properly with await.
+    """
+
+    def _create_async_mock(spec: type, **return_values: Any) -> MagicMock:
+        """Create a mock with AsyncMock for async methods.
+
+        Args:
+            spec: The class to spec the mock against
+            **return_values: Mapping of method names to return values
+
+        Returns:
+            Properly configured mock instance
+        """
+        mock = MagicMock(spec=spec)
+
+        # Configure return values with appropriate mock type
+        for attr_name, return_value in return_values.items():
+            # Check if the attribute is a coroutine function
+            spec_attr = getattr(spec, attr_name, None)
+            if spec_attr and (
+                asyncio.iscoroutinefunction(spec_attr) or inspect.iscoroutinefunction(spec_attr)
+            ):
+                # AsyncMock for async method - no spec needed as it replaces a single method
+                setattr(mock, attr_name, AsyncMock(return_value=return_value))  # ast-grep-ignore
+            else:
+                # Regular method/property
+                if callable(return_value):
+                    setattr(mock, attr_name, return_value)
+                else:
+                    getattr(mock, attr_name).return_value = return_value
+
+        return mock
+
+    return _create_async_mock
+
+
+@pytest.fixture
+def db_session_factory():
+    """Create a factory for database session mocks with common configurations.
+
+    This fixture eliminates the repetitive pattern of creating AsyncSession,
+    Result, and context manager mocks that appears throughout the test suite.
+
+    Example:
+        def test_query(db_session_factory):
+            session, result = db_session_factory(
+                fetch_results=[{"scientific_name": "Species1", "count": 50}]
+            )
+
+            # Session is already configured with execute returning result
+            query_result = await session.execute(select(Detection))
+            rows = query_result.fetchall()
+            assert rows[0]["scientific_name"] == "Species1"
+    """
+
+    def _create_session(
+        fetch_results: list[Any] | None = None,
+        scalar_result: Any = None,
+        side_effect: Any = None,
+        mappings_result: list[dict[str, Any]] | None = None,
+    ) -> tuple[AsyncMock, MagicMock]:
+        """Create configured database session and result mocks.
+
+        Args:
+            fetch_results: List of results for fetchall()/fetchone()
+            scalar_result: Result for session.scalar() - configured on session directly
+            side_effect: Side effect for session.execute()
+            mappings_result: List of dicts for result.mappings().all()
+
+        Returns:
+            Tuple of (session_mock, result_mock)
+        """
+        session = AsyncMock(spec=AsyncSession)
+        result = MagicMock(spec=Result)
+
+        # Configure fetch methods on result
+        if fetch_results is not None:
+            result.fetchall.return_value = fetch_results
+            result.fetchone.return_value = fetch_results[0] if fetch_results else None
+            result.all.return_value = fetch_results
+
+        # Configure scalar methods - both on result and session
+        if scalar_result is not None:
+            result.scalar_one_or_none.return_value = scalar_result
+            result.scalar.return_value = scalar_result
+            # Also configure session.scalar() directly for queries that use it
+            session.scalar.return_value = scalar_result
+
+        # Configure mappings
+        if mappings_result is not None:
+            mappings_mock = MagicMock(spec=MappingResult)
+            mappings_mock.all.return_value = mappings_result
+            result.mappings.return_value = mappings_mock
+
+        # Configure session.execute behavior
+        if side_effect:
+            session.execute.side_effect = side_effect
+        else:
+            session.execute.return_value = result
+
+        return session, result
+
+    return _create_session
+
+
+@pytest.fixture
+def db_service_factory(db_session_factory):
+    """Create a factory for CoreDatabaseService mocks with context manager support.
+
+    This fixture builds on db_session_factory to provide a fully configured
+    CoreDatabaseService mock with proper async context manager support.
+
+    Example:
+        def test_database_operation(db_service_factory):
+            service, session, result = db_service_factory(
+                session_config={"fetch_results": [detection1, detection2]}
+            )
+
+            # Service is ready to use with get_async_db()
+            async with service.get_async_db() as db:
+                query_result = await db.execute(select(Detection))
+                detections = query_result.fetchall()
+                assert len(detections) == 2
+    """
+
+    def _create_service(
+        session_config: dict[str, Any] | None = None,
+    ) -> tuple[MagicMock, AsyncMock, MagicMock]:
+        """Create configured CoreDatabaseService mock.
+
+        Args:
+            session_config: Configuration dict for db_session_factory
+
+        Returns:
+            Tuple of (service_mock, session_mock, result_mock)
+        """
+        # Create session with provided configuration
+        session, result = db_session_factory(**(session_config or {}))
+
+        # Create service mock
+        service = MagicMock(spec=CoreDatabaseService)
+
+        # Configure context manager
+        context = AsyncMock(spec=_AsyncContextManagerProtocol)
+        context.__aenter__.return_value = session
+        context.__aexit__.return_value = None
+        service.get_async_db.return_value = context
+
+        # Add async_engine mock for completeness
+        service.async_engine = AsyncMock(spec=AsyncEngine)
+
+        return service, session, result
+
+    return _create_service
+
+
+@pytest.fixture
+def detection_query_service_factory():
+    """Create a factory for DetectionQueryService mocks with common query methods.
+
+    This fixture eliminates repetitive setup of DetectionQueryService async methods
+    that appears frequently in analytics and detection tests.
+
+    Example:
+        def test_analytics(detection_query_service_factory):
+            service = detection_query_service_factory(
+                species_counts=[{"scientific_name": "Species1", "count": 50}],
+                detection_count=100,
+                unique_species_count=25
+            )
+
+            counts = await service.get_species_counts()
+            assert counts[0]["count"] == 50
+    """
+
+    def _create_service(
+        species_counts: list[dict[str, Any]] | None = None,
+        hourly_counts: list[dict[str, Any]] | None = None,
+        detection_count: int | None = None,
+        unique_species_count: int | None = None,
+        **extra_methods: Any,
+    ) -> MagicMock:
+        """Create configured DetectionQueryService mock.
+
+        Args:
+            species_counts: Return value for get_species_counts()
+            hourly_counts: Return value for get_hourly_counts()
+            detection_count: Return value for get_detection_count()
+            unique_species_count: Return value for get_unique_species_count()
+            **extra_methods: Additional method configurations
+
+        Returns:
+            Configured DetectionQueryService mock
+        """
+        service = MagicMock(spec=DetectionQueryService)
+
+        # Configure common async query methods
+        if species_counts is not None:
+            service.get_species_counts = AsyncMock(
+                spec=DetectionQueryService.get_species_counts, return_value=species_counts
+            )
+
+        if hourly_counts is not None:
+            service.get_hourly_counts = AsyncMock(
+                spec=DetectionQueryService.get_hourly_counts, return_value=hourly_counts
+            )
+
+        if detection_count is not None:
+            service.get_detection_count = AsyncMock(
+                spec=DetectionQueryService.get_detection_count, return_value=detection_count
+            )
+
+        if unique_species_count is not None:
+            service.get_unique_species_count = AsyncMock(
+                spec=DetectionQueryService.get_unique_species_count,
+                return_value=unique_species_count,
+            )
+
+        # Configure any additional methods
+        for method_name, return_value in extra_methods.items():
+            # Get the method from DetectionQueryService for spec if it exists
+            method_spec = getattr(DetectionQueryService, method_name, None)
+            setattr(service, method_name, AsyncMock(spec=method_spec, return_value=return_value))
+
+        return service
+
+    return _create_service
+
+
+@pytest.fixture
+def row_factory():
+    """Create a factory for database Row mocks from dictionaries.
+
+    This fixture simplifies creating mock database query results by converting
+    dictionaries into Row-like objects with attribute access.
+
+    Example:
+        def test_query_results(row_factory):
+            rows = row_factory([
+                {"scientific_name": "Species1", "count": 50},
+                {"scientific_name": "Species2", "count": 30},
+            ])
+
+            assert rows[0].scientific_name == "Species1"
+            assert rows[1].count == 30
+    """
+
+    def _create_rows(data_dicts: list[dict[str, Any]]) -> list[MagicMock]:
+        """Create mock Row objects from dictionaries.
+
+        Args:
+            data_dicts: List of dictionaries with row data
+
+        Returns:
+            List of mock Row objects with attributes set from dict keys
+        """
+        rows = []
+        for data in data_dicts:
+            row = MagicMock(spec=Row)
+            for key, value in data.items():
+                setattr(row, key, value)
+            rows.append(row)
+        return rows
+
+    return _create_rows
+
+
+@pytest.fixture
+def httpx_client_factory():
+    """Create a factory for httpx.AsyncClient mocks with common configurations.
+
+    This fixture eliminates repetitive httpx.AsyncClient mock creation
+    that appears in webhook and HTTP client tests.
+
+    Example:
+        def test_webhook_request(httpx_client_factory):
+            client = httpx_client_factory(
+                post_response={"status_code": 200, "text": "OK"}
+            )
+
+            # Client is already configured
+            response = await client.post("https://example.com", json={})
+            assert response.status_code == 200
+    """
+
+    def _create_client(
+        post_response: dict[str, Any] | None = None,
+        get_response: dict[str, Any] | None = None,
+        post_side_effect: Any = None,
+        get_side_effect: Any = None,
+    ) -> MagicMock:
+        """Create configured httpx.AsyncClient mock.
+
+        Args:
+            post_response: Dict with status_code, text, json for POST responses
+            get_response: Dict with status_code, text, json for GET responses
+            post_side_effect: Side effect for post() method
+            get_side_effect: Side effect for get() method
+
+        Returns:
+            Configured httpx.AsyncClient mock
+        """
+        import httpx
+
+        client = MagicMock(spec=httpx.AsyncClient)
+
+        # Configure aclose for cleanup
+        client.aclose = AsyncMock(spec=httpx.AsyncClient.aclose)
+
+        # Configure POST method
+        if post_response is not None:
+            response = MagicMock(spec=httpx.Response)
+            response.status_code = post_response.get("status_code", 200)
+            response.text = post_response.get("text", "")
+            if "json" in post_response:
+                response.json.return_value = post_response["json"]
+            client.post.return_value = response
+        elif post_side_effect is not None:
+            client.post.side_effect = post_side_effect
+
+        # Configure GET method
+        if get_response is not None:
+            response = MagicMock(spec=httpx.Response)
+            response.status_code = get_response.get("status_code", 200)
+            response.text = get_response.get("text", "")
+            if "json" in get_response:
+                response.json.return_value = get_response["json"]
+            client.get.return_value = response
+        elif get_side_effect is not None:
+            client.get.side_effect = get_side_effect
+
+        return client
+
+    return _create_client

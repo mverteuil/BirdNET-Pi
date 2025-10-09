@@ -64,9 +64,9 @@ class TestReportsViewRoutes:
         finally:
             Container.presentation_manager.reset_override()
 
-    def test_best_recordings_page(self, app_with_temp_data):
+    def test_best_recordings_page(self, app_with_temp_data, detection_query_service_factory):
         """Should best recordings page renders with mocked query service."""
-        mock_detection_query_service = MagicMock(spec=DetectionQueryService)
+        mock_detection_query_service = detection_query_service_factory()
         mock_detection_query_service.query_detections = AsyncMock(
             spec=DetectionQueryService.query_detections, return_value=[]
         )

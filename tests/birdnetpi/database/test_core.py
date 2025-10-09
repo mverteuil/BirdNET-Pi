@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, PropertyMock, create_autospec, patch
 import pytest
 import pytest_asyncio
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from birdnetpi.database.core import CoreDatabaseService
 
@@ -42,10 +41,12 @@ async def core_database_service(tmp_path):
         pytest.param("vacuum", True, SQLAlchemyError("Vacuum Error"), id="vacuum_database_failure"),
     ],
 )
-async def test_database_operations(core_database_service, operation, should_fail, exception):
+async def test_database_operations(
+    core_database_service, operation, should_fail, exception, db_session_factory
+):
     """Should handle database clear/vacuum operations correctly."""
     with patch.object(core_database_service, "get_async_db", autospec=True) as mock_get_async_db:
-        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
+        mock_session, _result = db_session_factory()
         mock_get_async_db.return_value.__aenter__.return_value = mock_session
 
         if operation == "clear":
@@ -91,10 +92,12 @@ async def test_database_operations(core_database_service, operation, should_fail
         pytest.param("RESTART", True, id="checkpoint_wal_restart_failure"),
     ],
 )
-async def test_checkpoint_wal(core_database_service, checkpoint_type, should_fail):
+async def test_checkpoint_wal(
+    core_database_service, checkpoint_type, should_fail, db_session_factory
+):
     """Should handle WAL checkpoint operations correctly."""
     with patch.object(core_database_service, "get_async_db", autospec=True) as mock_get_async_db:
-        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
+        mock_session, _result = db_session_factory()
         mock_get_async_db.return_value.__aenter__.return_value = mock_session
 
         if should_fail:
@@ -119,7 +122,7 @@ async def test_checkpoint_wal(core_database_service, checkpoint_type, should_fai
 
 @pytest.mark.no_leaks
 @pytest.mark.asyncio
-async def test_get_database_stats(core_database_service, tmp_path):
+async def test_get_database_stats(core_database_service, tmp_path, db_session_factory):
     """Should return database statistics"""
     # Create fake database files
     db_path = tmp_path / "test.db"
@@ -135,7 +138,7 @@ async def test_get_database_stats(core_database_service, tmp_path):
     core_database_service.db_path = db_path
 
     with patch.object(core_database_service, "get_async_db", autospec=True) as mock_get_async_db:
-        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
+        mock_session, _result = db_session_factory()
 
         # Mock pragma results
         from sqlalchemy.engine import Result

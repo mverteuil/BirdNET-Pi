@@ -7,7 +7,6 @@ import pytest
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.config.models import BirdNETConfig
-from birdnetpi.detections.queries import DetectionQueryService
 
 
 class TestDetectionStatistics:
@@ -251,45 +250,7 @@ class TestDetectionStatistics:
         return mock
 
     @pytest.fixture
-    def mock_detection_query_service(self):
-        """Create mock detection query service."""
-        mock = MagicMock(
-            spec=DetectionQueryService,
-            get_species_summary=AsyncMock(
-                spec=DetectionQueryService.get_species_summary,
-                return_value=[
-                    {
-                        "scientific_name": "Turdus migratorius",
-                        "common_name": "American Robin",
-                        "detection_count": 250,
-                    },
-                    {
-                        "scientific_name": "Cardinalis cardinalis",
-                        "common_name": "Northern Cardinal",
-                        "detection_count": 200,
-                    },
-                    {
-                        "scientific_name": "Cyanocitta cristata",
-                        "common_name": "Blue Jay",
-                        "detection_count": 150,
-                    },
-                    {
-                        "scientific_name": "Rare species 1",
-                        "common_name": None,
-                        "detection_count": 2,
-                    },
-                    {
-                        "scientific_name": "Rare species 2",
-                        "common_name": None,
-                        "detection_count": 1,
-                    },
-                ],
-            ),
-        )
-        return mock
-
-    @pytest.fixture
-    def presentation_manager(self, mock_analytics_manager):
+    def presentation_manager(self, mock_analytics_manager, detection_query_service_factory):
         """Create presentation manager with mocked dependencies."""
         config = MagicMock(
             spec=BirdNETConfig,
@@ -303,13 +264,42 @@ class TestDetectionStatistics:
         manager = PresentationManager(
             config=config,
             analytics_manager=mock_analytics_manager,
-            detection_query_service=MagicMock(spec=DetectionQueryService),
+            detection_query_service=detection_query_service_factory(),
         )
         return manager
 
     @pytest.mark.asyncio
-    async def test_day_view_statistics(self, presentation_manager, mock_detection_query_service):
+    async def test_day_view_statistics(self, presentation_manager, detection_query_service_factory):
         """Should show correct peak and counts for day view statistics."""
+        mock_detection_query_service = detection_query_service_factory(
+            get_species_summary=[
+                {
+                    "scientific_name": "Turdus migratorius",
+                    "common_name": "American Robin",
+                    "detection_count": 250,
+                },
+                {
+                    "scientific_name": "Cardinalis cardinalis",
+                    "common_name": "Northern Cardinal",
+                    "detection_count": 200,
+                },
+                {
+                    "scientific_name": "Cyanocitta cristata",
+                    "common_name": "Blue Jay",
+                    "detection_count": 150,
+                },
+                {
+                    "scientific_name": "Rare species 1",
+                    "common_name": None,
+                    "detection_count": 2,
+                },
+                {
+                    "scientific_name": "Rare species 2",
+                    "common_name": None,
+                    "detection_count": 1,
+                },
+            ]
+        )
         result = await presentation_manager.get_detection_display_data(
             period="day", detection_query_service=mock_detection_query_service
         )
@@ -322,8 +312,39 @@ class TestDetectionStatistics:
         assert result["new_species_period"] == "week"
 
     @pytest.mark.asyncio
-    async def test_week_view_statistics(self, presentation_manager, mock_detection_query_service):
+    async def test_week_view_statistics(
+        self, presentation_manager, detection_query_service_factory
+    ):
         """Should show aggregated peak for week view statistics."""
+        mock_detection_query_service = detection_query_service_factory(
+            get_species_summary=[
+                {
+                    "scientific_name": "Turdus migratorius",
+                    "common_name": "American Robin",
+                    "detection_count": 250,
+                },
+                {
+                    "scientific_name": "Cardinalis cardinalis",
+                    "common_name": "Northern Cardinal",
+                    "detection_count": 200,
+                },
+                {
+                    "scientific_name": "Cyanocitta cristata",
+                    "common_name": "Blue Jay",
+                    "detection_count": 150,
+                },
+                {
+                    "scientific_name": "Rare species 1",
+                    "common_name": None,
+                    "detection_count": 2,
+                },
+                {
+                    "scientific_name": "Rare species 2",
+                    "common_name": None,
+                    "detection_count": 1,
+                },
+            ]
+        )
         result = await presentation_manager.get_detection_display_data(
             period="week", detection_query_service=mock_detection_query_service
         )
@@ -333,8 +354,39 @@ class TestDetectionStatistics:
         assert result["new_species_period"] == "period"
 
     @pytest.mark.asyncio
-    async def test_season_view_statistics(self, presentation_manager, mock_detection_query_service):
+    async def test_season_view_statistics(
+        self, presentation_manager, detection_query_service_factory
+    ):
         """Should show correct label for season view statistics."""
+        mock_detection_query_service = detection_query_service_factory(
+            get_species_summary=[
+                {
+                    "scientific_name": "Turdus migratorius",
+                    "common_name": "American Robin",
+                    "detection_count": 250,
+                },
+                {
+                    "scientific_name": "Cardinalis cardinalis",
+                    "common_name": "Northern Cardinal",
+                    "detection_count": 200,
+                },
+                {
+                    "scientific_name": "Cyanocitta cristata",
+                    "common_name": "Blue Jay",
+                    "detection_count": 150,
+                },
+                {
+                    "scientific_name": "Rare species 1",
+                    "common_name": None,
+                    "detection_count": 2,
+                },
+                {
+                    "scientific_name": "Rare species 2",
+                    "common_name": None,
+                    "detection_count": 1,
+                },
+            ]
+        )
         result = await presentation_manager.get_detection_display_data(
             period="season", detection_query_service=mock_detection_query_service
         )
@@ -343,9 +395,38 @@ class TestDetectionStatistics:
 
     @pytest.mark.asyncio
     async def test_historical_view_statistics(
-        self, presentation_manager, mock_detection_query_service
+        self, presentation_manager, detection_query_service_factory
     ):
         """Should show 'All Time' label for historical view statistics."""
+        mock_detection_query_service = detection_query_service_factory(
+            get_species_summary=[
+                {
+                    "scientific_name": "Turdus migratorius",
+                    "common_name": "American Robin",
+                    "detection_count": 250,
+                },
+                {
+                    "scientific_name": "Cardinalis cardinalis",
+                    "common_name": "Northern Cardinal",
+                    "detection_count": 200,
+                },
+                {
+                    "scientific_name": "Cyanocitta cristata",
+                    "common_name": "Blue Jay",
+                    "detection_count": 150,
+                },
+                {
+                    "scientific_name": "Rare species 1",
+                    "common_name": None,
+                    "detection_count": 2,
+                },
+                {
+                    "scientific_name": "Rare species 2",
+                    "common_name": None,
+                    "detection_count": 1,
+                },
+            ]
+        )
         result = await presentation_manager.get_detection_display_data(
             period="historical", detection_query_service=mock_detection_query_service
         )
@@ -354,9 +435,38 @@ class TestDetectionStatistics:
 
     @pytest.mark.asyncio
     async def test_rare_species_identification(
-        self, presentation_manager, mock_detection_query_service
+        self, presentation_manager, detection_query_service_factory
     ):
         """Should correctly identify rare species as 'new'."""
+        mock_detection_query_service = detection_query_service_factory(
+            get_species_summary=[
+                {
+                    "scientific_name": "Turdus migratorius",
+                    "common_name": "American Robin",
+                    "detection_count": 250,
+                },
+                {
+                    "scientific_name": "Cardinalis cardinalis",
+                    "common_name": "Northern Cardinal",
+                    "detection_count": 200,
+                },
+                {
+                    "scientific_name": "Cyanocitta cristata",
+                    "common_name": "Blue Jay",
+                    "detection_count": 150,
+                },
+                {
+                    "scientific_name": "Rare species 1",
+                    "common_name": None,
+                    "detection_count": 2,
+                },
+                {
+                    "scientific_name": "Rare species 2",
+                    "common_name": None,
+                    "detection_count": 1,
+                },
+            ]
+        )
         result = await presentation_manager.get_detection_display_data(
             period="week", detection_query_service=mock_detection_query_service
         )
@@ -367,12 +477,9 @@ class TestDetectionStatistics:
             assert "Rare species" in species_name
 
     @pytest.mark.asyncio
-    async def test_no_data_handling(self, presentation_manager):
+    async def test_no_data_handling(self, presentation_manager, detection_query_service_factory):
         """Should handle no detection data gracefully."""
-        empty_service = MagicMock(spec=DetectionQueryService)
-        empty_service.get_species_summary = AsyncMock(
-            spec=DetectionQueryService.get_species_summary, return_value=[]
-        )
+        empty_service = detection_query_service_factory(get_species_summary=[])
         presentation_manager.analytics_manager.get_temporal_patterns = AsyncMock(
             spec=AnalyticsManager.get_temporal_patterns,
             return_value={"hourly_distribution": [], "peak_hour": None, "periods": {}},

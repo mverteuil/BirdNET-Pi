@@ -1,24 +1,16 @@
 """Test that scatter data handles more than 100 detections correctly."""
 
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from birdnetpi.analytics.analytics import AnalyticsManager
-from birdnetpi.detections.queries import DetectionQueryService
 
 
 @pytest.fixture
-def mock_detection_query_service():
-    """Create a mock DetectionQueryService."""
-    return MagicMock(spec=DetectionQueryService)
-
-
-@pytest.fixture
-def analytics_manager(mock_detection_query_service, test_config):
+def analytics_manager(detection_query_service_factory, test_config):
     """Create an AnalyticsManager with mocked dependencies."""
-    return AnalyticsManager(mock_detection_query_service, test_config)
+    return AnalyticsManager(detection_query_service_factory(), test_config)
 
 
 class TestScatterDataLimit:
@@ -26,7 +18,7 @@ class TestScatterDataLimit:
 
     @pytest.mark.asyncio
     async def test_get_detection_scatter_data_uses_higher_limit(
-        self, analytics_manager, mock_detection_query_service, model_factory
+        self, analytics_manager, detection_query_service_factory, model_factory
     ):
         """Should use limit=1000 to avoid truncation at 100 detections."""
         # Create 150 real detections to simulate a busy day
@@ -45,17 +37,16 @@ class TestScatterDataLimit:
             )
             detections.append(detection)
 
-        mock_detection_query_service.query_detections = AsyncMock(
-            spec=callable, return_value=detections
-        )
-
         # Mock species counts for frequency categorization
         species_counts = []
         for i in range(10):
             species_counts.append({"common_name": f"Bird_{i}", "count": 15})  # 15 each = 150 total
-        mock_detection_query_service.get_species_counts = AsyncMock(
-            spec=callable, return_value=species_counts
+
+        mock_detection_query_service = detection_query_service_factory(
+            query_detections=detections,
+            species_counts=species_counts,
         )
+        analytics_manager.detection_query_service = mock_detection_query_service
 
         # Call the method
         result = await analytics_manager.get_detection_scatter_data(hours=24)
@@ -85,11 +76,14 @@ class TestScatterDataLimit:
 
     @pytest.mark.asyncio
     async def test_get_detection_scatter_data_handles_empty_response(
-        self, analytics_manager, mock_detection_query_service
+        self, analytics_manager, detection_query_service_factory
     ):
         """Should handle case with no detections gracefully."""
-        mock_detection_query_service.query_detections = AsyncMock(spec=callable, return_value=[])
-        mock_detection_query_service.get_species_counts = AsyncMock(spec=callable, return_value=[])
+        mock_detection_query_service = detection_query_service_factory(
+            query_detections=[],
+            species_counts=[],
+        )
+        analytics_manager.detection_query_service = mock_detection_query_service
 
         result = await analytics_manager.get_detection_scatter_data(hours=24)
 
@@ -102,7 +96,7 @@ class TestScatterDataLimit:
 
     @pytest.mark.asyncio
     async def test_get_detection_scatter_data_frequency_categorization(
-        self, analytics_manager, mock_detection_query_service, model_factory
+        self, analytics_manager, detection_query_service_factory, model_factory
     ):
         """Should correctly categorize species by frequency."""
         detections = []
@@ -141,19 +135,16 @@ class TestScatterDataLimit:
         )
         detections.append(detection)
 
-        mock_detection_query_service.query_detections = AsyncMock(
-            spec=callable, return_value=detections
-        )
-
         # Mock species counts for frequency categorization
-        mock_detection_query_service.get_species_counts = AsyncMock(
-            spec=callable,
-            return_value=[
+        mock_detection_query_service = detection_query_service_factory(
+            query_detections=detections,
+            species_counts=[
                 {"common_name": "Common Bird", "count": 25},
                 {"common_name": "Regular Bird", "count": 10},
                 {"common_name": "Rare Bird", "count": 1},
             ],
         )
+        analytics_manager.detection_query_service = mock_detection_query_service
 
         result = await analytics_manager.get_detection_scatter_data(hours=24)
 

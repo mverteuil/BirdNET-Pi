@@ -14,9 +14,8 @@ import pytest
 from dependency_injector import providers
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncEngine
 
-from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
 
@@ -81,21 +80,16 @@ class TestHealthEndpointsIntegration:
 class TestHealthEndpointsDatabaseFailure:
     """Test health endpoints when database is unavailable."""
 
-    def test_readiness_with_database_error(self, tmp_path, path_resolver):
+    def test_readiness_with_database_error(self, tmp_path, path_resolver, db_service_factory):
         """Should readiness probe when database connection fails."""
         # Create a mock database service that simulates connection failure
-        mock_db_service = MagicMock(spec=CoreDatabaseService)
+        mock_db_service, mock_session, _result = db_service_factory()
         mock_db_service.async_engine = AsyncMock(spec=AsyncEngine)  # Add async_engine for sqladmin
 
-        # Create a mock session context manager that raises an error
-        mock_session = AsyncMock(spec=AsyncSession)
+        # Configure the mock session to raise an error
         mock_session.execute.side_effect = OperationalError(
             "Cannot connect to database", None, None
         )
-        mock_session.__aenter__.return_value = mock_session
-        mock_session.__aexit__.return_value = None
-
-        mock_db_service.get_async_db.return_value = mock_session
 
         # Override the container's database service BEFORE creating app
         Container.core_database.override(providers.Singleton(lambda: mock_db_service))
@@ -120,20 +114,14 @@ class TestHealthEndpointsDatabaseFailure:
             Container.core_database.reset_override()
             Container.path_resolver.reset_override()
 
-    def test_detailed_health_with_database_error(self, tmp_path, path_resolver):
+    def test_detailed_health_with_database_error(self, tmp_path, path_resolver, db_service_factory):
         """Should detailed health check when database fails."""
         # Create a mock database service that simulates query failure
-        mock_db_service = MagicMock(spec=CoreDatabaseService)
+        mock_db_service, mock_session, _result = db_service_factory()
         mock_db_service.async_engine = AsyncMock(spec=AsyncEngine)  # Add async_engine for sqladmin
 
-        # Create a mock session that fails
-        mock_session = AsyncMock(spec=AsyncSession)
+        # Configure the mock session to raise an error
         mock_session.execute.side_effect = Exception("Database is locked")
-        # __aenter__ and __aexit__ must be AsyncMocks to be awaitable in async context managers
-        mock_session.__aenter__.return_value = mock_session
-        mock_session.__aexit__.return_value = None
-
-        mock_db_service.get_async_db.return_value = mock_session
 
         # Override the container's database service BEFORE creating app
         Container.core_database.override(providers.Singleton(lambda: mock_db_service))

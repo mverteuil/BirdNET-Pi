@@ -1,6 +1,5 @@
 """Tests for multimedia API routes."""
 
-from contextlib import AbstractAsyncContextManager
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
@@ -9,9 +8,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.engine import Result
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.detections.models import AudioFile
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.routers.multimedia_api_routes import router
@@ -29,7 +26,7 @@ def mock_audio_file():
 
 
 @pytest.fixture
-def client(path_resolver, mock_audio_file, tmp_path):
+def client(path_resolver, mock_audio_file, tmp_path, db_service_factory):
     """Create test client with multimedia API routes and mocked dependencies."""
     # Create the app
     app = FastAPI()
@@ -46,20 +43,11 @@ def client(path_resolver, mock_audio_file, tmp_path):
     test_audio_path = temp_recordings_dir / "test_audio.wav"
     test_audio_path.write_bytes(b"RIFF" + b"\x00" * 44)  # Minimal WAV header
 
-    # Mock the database service
-    mock_core_database = MagicMock(spec=CoreDatabaseService)
-    mock_session = MagicMock(spec=AsyncSession)
-
-    # Setup async context manager
-    # AsyncMock automatically provides __aenter__ and __aexit__
-    mock_session_context = AsyncMock(spec=AbstractAsyncContextManager)
-    mock_session_context.__aenter__.return_value = mock_session
-    mock_core_database.get_async_db.return_value = mock_session_context
+    # Create mock database service and session using factory
+    mock_core_database, mock_session, mock_result = db_service_factory()
 
     # Mock the query result for success case
-    mock_result = MagicMock(spec=Result)
     mock_result.scalar_one_or_none.return_value = mock_audio_file
-    mock_session.execute = AsyncMock(spec=callable, return_value=mock_result)
 
     # Override services
     container.core_database.override(mock_core_database)

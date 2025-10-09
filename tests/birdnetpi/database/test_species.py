@@ -7,7 +7,6 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Result
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from birdnetpi.database.species import SpeciesDatabaseService
 
@@ -44,9 +43,9 @@ def species_database(mock_path_resolver):
 
 
 @pytest.fixture
-def mock_session():
-    """Create mock SQLAlchemy async session."""
-    session = AsyncMock(spec=AsyncSession)
+def mock_session(db_session_factory):
+    """Create mock SQLAlchemy async session using factory."""
+    session, _result = db_session_factory()
     return session
 
 

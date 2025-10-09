@@ -7,20 +7,18 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.engine import Result, Row
+from sqlalchemy.engine import Row
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.models import Detection, DetectionWithTaxa
 from birdnetpi.detections.queries import DetectionQueryService
 
 
 @pytest.fixture
-def mock_core_database():
+def mock_core_database(db_service_factory):
     """Mock core database."""
-    mock = MagicMock(spec=CoreDatabaseService)
+    mock, _session, _result = db_service_factory()
     return mock
 
 
@@ -41,13 +39,6 @@ def detection_query_service(mock_core_database, mock_species_database, test_conf
     return DetectionQueryService(
         core_database=mock_core_database, species_database=mock_species_database, config=test_config
     )
-
-
-@pytest.fixture
-def mock_session():
-    """Create a mock async session."""
-    session = AsyncMock(spec=AsyncSession)
-    return session
 
 
 @pytest.fixture
@@ -150,14 +141,11 @@ class TestMainQueryMethods:
 
     @pytest.mark.asyncio
     async def test_query_detections_delegates(
-        self, detection_query_service, mock_core_database, mock_species_database
+        self, detection_query_service, mock_core_database, mock_species_database, db_service_factory
     ):
         """Should delegate to _execute_join_query."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_result = MagicMock(spec=Result)
-        mock_result.fetchall.return_value = []
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        service, session, _ = db_service_factory(session_config={"fetch_results": []})
+        mock_core_database.get_async_db = service.get_async_db
         with patch.object(
             detection_query_service, "_execute_join_query", new_callable=AsyncMock
         ) as mock_method:
@@ -166,7 +154,7 @@ class TestMainQueryMethods:
                 species="Turdus migratorius", family="Turdidae", genus="Turdus", min_confidence=0.7
             )
             mock_method.assert_called_once_with(
-                session=mock_session,
+                session=session,
                 limit=None,
                 offset=0,
                 start_date=None,
@@ -183,29 +171,23 @@ class TestMainQueryMethods:
 
     @pytest.mark.asyncio
     async def test_get_detections_with_taxa_legacy_since(
-        self, detection_query_service, mock_core_database, mock_species_database
+        self, detection_query_service, mock_core_database, mock_species_database, db_service_factory
     ):
         """Should support legacy 'since' parameter."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_result = MagicMock(spec=Result)
-        mock_result.mappings.return_value.all.return_value = []
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        service, session, _ = db_service_factory(session_config={"mappings_result": []})
+        mock_core_database.get_async_db = service.get_async_db
         since_date = datetime(2024, 1, 1)
         result = await detection_query_service.get_detections_with_taxa(since=since_date)
-        mock_session.execute.assert_called()
+        session.execute.assert_called()
         assert result == []
 
     @pytest.mark.asyncio
     async def test_get_detections_with_taxa_full_filters(
-        self, detection_query_service, mock_core_database, mock_species_database
+        self, detection_query_service, mock_core_database, mock_species_database, db_service_factory
     ):
         """Should apply all filters in get_detections_with_taxa."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_result = MagicMock(spec=Result)
-        mock_result.mappings.return_value.all.return_value = []
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        service, session, _ = db_service_factory(session_config={"mappings_result": []})
+        mock_core_database.get_async_db = service.get_async_db
         await detection_query_service.get_detections_with_taxa(
             limit=50,
             offset=10,
@@ -219,16 +201,15 @@ class TestMainQueryMethods:
             order_by="confidence",
             order_desc=False,
         )
-        mock_session.execute.assert_called()
+        session.execute.assert_called()
         mock_species_database.attach_all_to_session.assert_called()
         mock_species_database.detach_all_from_session.assert_called()
 
     @pytest.mark.asyncio
     async def test_get_detection_with_taxa_found(
-        self, detection_query_service, mock_core_database, mock_species_database
+        self, detection_query_service, mock_core_database, mock_species_database, db_service_factory
     ):
         """Should return detection with taxa when found."""
-        mock_session = AsyncMock(spec=AsyncSession)
         detection_id = uuid4()
         mock_row = SimpleNamespace(
             id=str(detection_id),
@@ -250,10 +231,9 @@ class TestMainQueryMethods:
             genus="Turdus",
             order_name="Passeriformes",
         )
-        mock_result = MagicMock(spec=Result)
+        service, _session, mock_result = db_service_factory()
         mock_result.fetchone.return_value = mock_row
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        mock_core_database.get_async_db = service.get_async_db
         result = await detection_query_service.get_detection_with_taxa(detection_id)
         assert result is not None
         assert isinstance(result, DetectionWithTaxa)
@@ -263,14 +243,12 @@ class TestMainQueryMethods:
 
     @pytest.mark.asyncio
     async def test_get_detection_with_taxa_not_found(
-        self, detection_query_service, mock_core_database, mock_species_database
+        self, detection_query_service, mock_core_database, mock_species_database, db_service_factory
     ):
         """Should return None when detection not found."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_result = MagicMock(spec=Result)
+        service, _session, mock_result = db_service_factory()
         mock_result.fetchone.return_value = None
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        mock_core_database.get_async_db = service.get_async_db
         result = await detection_query_service.get_detection_with_taxa(uuid4())
         assert result is None
 
@@ -280,40 +258,42 @@ class TestSummaryMethods:
 
     @pytest.mark.asyncio
     async def test_get_species_summary(
-        self, detection_query_service, mock_core_database, mock_species_database
+        self,
+        detection_query_service,
+        mock_core_database,
+        mock_species_database,
+        row_factory,
+        db_service_factory,
     ):
         """Should get species summary with counts."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_rows = [
-            MagicMock(
-                spec=Row,
-                scientific_name="Species1",
-                detection_count=50,
-                avg_confidence=0.75,
-                latest_detection="2024-01-15T16:00:00",
-                ioc_english_name="Bird 1",
-                translated_name="Oiseau 1",
-                family="Turdidae",
-                genus="Turdus",
-                order_name="Passeriformes",
-            ),
-            MagicMock(
-                spec=Row,
-                scientific_name="Species2",
-                detection_count=30,
-                avg_confidence=0.8,
-                latest_detection="2024-01-14T17:00:00",
-                ioc_english_name="Bird 2",
-                translated_name="Oiseau 2",
-                family="Turdidae",
-                genus="Turdus",
-                order_name="Passeriformes",
-            ),
-        ]
-        mock_result = MagicMock(spec=Result)
-        mock_result.fetchall.return_value = mock_rows
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        mock_rows = row_factory(
+            [
+                {
+                    "scientific_name": "Species1",
+                    "detection_count": 50,
+                    "avg_confidence": 0.75,
+                    "latest_detection": "2024-01-15T16:00:00",
+                    "ioc_english_name": "Bird 1",
+                    "translated_name": "Oiseau 1",
+                    "family": "Turdidae",
+                    "genus": "Turdus",
+                    "order_name": "Passeriformes",
+                },
+                {
+                    "scientific_name": "Species2",
+                    "detection_count": 30,
+                    "avg_confidence": 0.8,
+                    "latest_detection": "2024-01-14T17:00:00",
+                    "ioc_english_name": "Bird 2",
+                    "translated_name": "Oiseau 2",
+                    "family": "Turdidae",
+                    "genus": "Turdus",
+                    "order_name": "Passeriformes",
+                },
+            ]
+        )
+        service, _session, _ = db_service_factory(session_config={"fetch_results": mock_rows})
+        mock_core_database.get_async_db = service.get_async_db
         result = await detection_query_service.get_species_summary(
             since=datetime(2024, 1, 1), family_filter="Turdidae"
         )
@@ -324,34 +304,36 @@ class TestSummaryMethods:
 
     @pytest.mark.asyncio
     async def test_get_family_summary(
-        self, detection_query_service, mock_core_database, mock_species_database
+        self,
+        detection_query_service,
+        mock_core_database,
+        mock_species_database,
+        row_factory,
+        db_service_factory,
     ):
         """Should get family summary with counts."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_rows = [
-            MagicMock(
-                spec=Row,
-                family="Turdidae",
-                order_name="Passeriformes",
-                detection_count=100,
-                species_count=5,
-                avg_confidence=0.78,
-                latest_detection="2024-01-20T18:00:00",
-            ),
-            MagicMock(
-                spec=Row,
-                family="Corvidae",
-                order_name="Passeriformes",
-                detection_count=75,
-                species_count=3,
-                avg_confidence=0.82,
-                latest_detection="2024-01-19T17:00:00",
-            ),
-        ]
-        mock_result = MagicMock(spec=Result)
-        mock_result.fetchall.return_value = mock_rows
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        mock_rows = row_factory(
+            [
+                {
+                    "family": "Turdidae",
+                    "order_name": "Passeriformes",
+                    "detection_count": 100,
+                    "species_count": 5,
+                    "avg_confidence": 0.78,
+                    "latest_detection": "2024-01-20T18:00:00",
+                },
+                {
+                    "family": "Corvidae",
+                    "order_name": "Passeriformes",
+                    "detection_count": 75,
+                    "species_count": 3,
+                    "avg_confidence": 0.82,
+                    "latest_detection": "2024-01-19T17:00:00",
+                },
+            ]
+        )
+        service, _session, _ = db_service_factory(session_config={"fetch_results": mock_rows})
+        mock_core_database.get_async_db = service.get_async_db
         result = await detection_query_service.get_family_summary(since=datetime(2024, 1, 1))
         assert len(result) == 2
         assert result[0]["family"] == "Turdidae"
@@ -363,17 +345,19 @@ class TestCountingMethods:
     """Test counting and aggregation methods."""
 
     @pytest.mark.asyncio
-    async def test_get_species_counts(self, detection_query_service, mock_core_database):
+    async def test_get_species_counts(
+        self, detection_query_service, mock_core_database, row_factory, db_service_factory
+    ):
         """Should get species counts for time range."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_rows = [
-            MagicMock(spec=Row, scientific_name="Species1", common_name="Bird 1", count=25),
-            MagicMock(spec=Row, scientific_name="Species2", common_name="Bird 2", count=15),
-        ]
-        mock_result = MagicMock(spec=Result)
-        mock_result.__iter__ = lambda self: iter(mock_rows)
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        mock_rows = row_factory(
+            [
+                {"scientific_name": "Species1", "common_name": "Bird 1", "count": 25},
+                {"scientific_name": "Species2", "common_name": "Bird 2", "count": 15},
+            ]
+        )
+        service, _session, result = db_service_factory()
+        result.__iter__ = lambda self: iter(mock_rows)
+        mock_core_database.get_async_db = service.get_async_db
         start = datetime.now(UTC) - timedelta(days=7)
         end = datetime.now(UTC)
         result = await detection_query_service.get_species_counts(start, end)
@@ -382,18 +366,20 @@ class TestCountingMethods:
         assert result[0]["count"] == 25
 
     @pytest.mark.asyncio
-    async def test_get_hourly_counts(self, detection_query_service, mock_core_database):
+    async def test_get_hourly_counts(
+        self, detection_query_service, mock_core_database, row_factory, db_service_factory
+    ):
         """Should get hourly detection counts."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_rows = [
-            MagicMock(spec=Row, hour=6, count=10),
-            MagicMock(spec=Row, hour=7, count=15),
-            MagicMock(spec=Row, hour=8, count=20),
-        ]
-        mock_result = MagicMock(spec=Result)
-        mock_result.__iter__ = lambda self: iter(mock_rows)
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        mock_rows = row_factory(
+            [
+                {"hour": 6, "count": 10},
+                {"hour": 7, "count": 15},
+                {"hour": 8, "count": 20},
+            ]
+        )
+        service, _session, result = db_service_factory()
+        result.__iter__ = lambda self: iter(mock_rows)
+        mock_core_database.get_async_db = service.get_async_db
         target_date = date(2024, 1, 15)
         result = await detection_query_service.get_hourly_counts(target_date)
         assert len(result) == 3
@@ -401,18 +387,21 @@ class TestCountingMethods:
         assert result[0]["count"] == 10
 
     @pytest.mark.asyncio
-    async def test_count_by_species_with_filters(self, detection_query_service, mock_core_database):
+    async def test_count_by_species_with_filters(
+        self, detection_query_service, mock_core_database, db_service_factory
+    ):
         """Should count detections by species with date filters."""
-        mock_session = AsyncMock(spec=AsyncSession)
+        service, _session, result = db_service_factory()
+
         mock_rows = [
             {"scientific_name": "Species1", "count": 100},
             {"scientific_name": "Species2", "count": 75},
             {"scientific_name": "Species3", "count": 50},
         ]
-        mock_result = MagicMock(spec=Result)
-        mock_result.__iter__ = lambda self: iter(mock_rows)
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+
+        result.__iter__ = lambda self: iter(mock_rows)
+
+        mock_core_database.get_async_db = service.get_async_db
         result = await detection_query_service.count_by_species(
             start_date=datetime(2024, 1, 1), end_date=datetime(2024, 1, 31)
         )
@@ -421,19 +410,22 @@ class TestCountingMethods:
         assert result["Species2"] == 75
 
     @pytest.mark.asyncio
-    async def test_count_by_date(self, detection_query_service, mock_core_database):
+    async def test_count_by_date(
+        self, detection_query_service, mock_core_database, db_service_factory
+    ):
         """Should count detections by date."""
-        mock_session = AsyncMock(spec=AsyncSession)
         # SQLite's date() function returns ISO date strings, not date objects
-        mock_rows = [
-            ("2024-01-15", 50),
-            ("2024-01-16", 60),
-            ("2024-01-17", 45),
-        ]
-        mock_result = MagicMock(spec=Result)
-        mock_result.fetchall.return_value = mock_rows
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        service, _session, _ = db_service_factory(
+            session_config={
+                "fetch_results": [
+                    ("2024-01-15", 50),
+                    ("2024-01-16", 60),
+                    ("2024-01-17", 45),
+                ]
+            }
+        )
+
+        mock_core_database.get_async_db = service.get_async_db
         result = await detection_query_service.count_by_date(species="Turdus migratorius")
         # Function returns dict with string keys (ISO date format)
         assert len(result) == 3
@@ -446,9 +438,11 @@ class TestAdvancedQueries:
     """Test advanced query methods."""
 
     @pytest.mark.asyncio
-    async def test_get_species_counts_by_period(self, detection_query_service, mock_core_database):
+    async def test_get_species_counts_by_period(
+        self, detection_query_service, mock_core_database, db_service_factory
+    ):
         """Should get species counts grouped by time period."""
-        mock_session = AsyncMock(spec=AsyncSession)
+        service, _session, result = db_service_factory()
         mock_rows = [
             MagicMock(
                 spec=Row,
@@ -465,10 +459,10 @@ class TestAdvancedQueries:
                 count=100,
             ),
         ]
-        mock_result = MagicMock(spec=Result)
-        mock_result.all.return_value = mock_rows
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+
+        result.all.return_value = mock_rows
+
+        mock_core_database.get_async_db = service.get_async_db
         result = await detection_query_service.get_species_counts_by_period(
             start_date=datetime(2024, 1, 1),
             end_date=datetime(2024, 1, 31),
@@ -478,10 +472,10 @@ class TestAdvancedQueries:
 
     @pytest.mark.asyncio
     async def test_get_detections_for_accumulation(
-        self, detection_query_service, mock_core_database
+        self, detection_query_service, mock_core_database, db_service_factory
     ):
         """Should get detections for species accumulation curve."""
-        mock_session = AsyncMock(spec=AsyncSession)
+        service, _session, result = db_service_factory()
         mock_rows = [
             MagicMock(
                 spec=Row,
@@ -496,10 +490,10 @@ class TestAdvancedQueries:
                 common_name="Bird 2",
             ),
         ]
-        mock_result = MagicMock(spec=Result)
-        mock_result.all.return_value = mock_rows
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+
+        result.all.return_value = mock_rows
+
+        mock_core_database.get_async_db = service.get_async_db
         result = await detection_query_service.get_detections_for_accumulation(
             start_date=datetime(2024, 1, 1), end_date=datetime(2024, 1, 31)
         )
@@ -507,10 +501,10 @@ class TestAdvancedQueries:
 
     @pytest.mark.asyncio
     async def test_get_species_counts_for_periods(
-        self, detection_query_service, mock_core_database
+        self, detection_query_service, mock_core_database, db_service_factory
     ):
         """Should get species counts for multiple time periods."""
-        mock_session = AsyncMock(spec=AsyncSession)
+        service, _session, result = db_service_factory()
         mock_rows = [
             MagicMock(
                 spec=Row,
@@ -527,10 +521,10 @@ class TestAdvancedQueries:
                 count=15,
             ),
         ]
-        mock_result = MagicMock(spec=Result)
-        mock_result.all.return_value = mock_rows
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+
+        result.all.return_value = mock_rows
+
+        mock_core_database.get_async_db = service.get_async_db
         periods = [
             (datetime(2024, 1, 1, 6, 0), datetime(2024, 1, 1, 12, 0)),
             (datetime(2024, 1, 1, 18, 0), datetime(2024, 1, 1, 23, 59)),
@@ -540,17 +534,19 @@ class TestAdvancedQueries:
         assert isinstance(result[0], dict)
 
     @pytest.mark.asyncio
-    async def test_get_species_sets_by_window(self, detection_query_service, mock_core_database):
+    async def test_get_species_sets_by_window(
+        self, detection_query_service, mock_core_database, db_service_factory
+    ):
         """Should get unique species sets by time window."""
-        mock_session = AsyncMock(spec=AsyncSession)
+        service, _session, result = db_service_factory()
         mock_rows = [
             MagicMock(spec=Row, window="2024-01-15", species_list="Species1,Species2,Species3"),
             MagicMock(spec=Row, window="2024-01-16", species_list="Species1,Species2"),
         ]
-        mock_result = MagicMock(spec=Result)
-        mock_result.all.return_value = mock_rows
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+
+        result.all.return_value = mock_rows
+
+        mock_core_database.get_async_db = service.get_async_db
         result = await detection_query_service.get_species_sets_by_window(
             start_date=datetime(2024, 1, 15),
             end_date=datetime(2024, 1, 16),
@@ -559,9 +555,11 @@ class TestAdvancedQueries:
         assert isinstance(result, list)
 
     @pytest.mark.asyncio
-    async def test_get_weather_correlations(self, detection_query_service, mock_core_database):
+    async def test_get_weather_correlations(
+        self, detection_query_service, mock_core_database, db_service_factory
+    ):
         """Should get weather correlations with detections."""
-        mock_session = AsyncMock(spec=AsyncSession)
+        service, _session, result = db_service_factory()
         mock_rows = [
             SimpleNamespace(
                 hour=6,
@@ -584,10 +582,8 @@ class TestAdvancedQueries:
                 precipitation=0.5,
             ),
         ]
-        mock_result = MagicMock(spec=Result)
-        mock_result.all.return_value = mock_rows
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        result.all.return_value = mock_rows
+        mock_core_database.get_async_db = service.get_async_db
         result = await detection_query_service.get_weather_correlations(
             start_date=datetime(2024, 1, 1), end_date=datetime(2024, 1, 31)
         )
@@ -599,24 +595,28 @@ class TestErrorHandling:
 
     @pytest.mark.asyncio
     async def test_database_error_handling(
-        self, detection_query_service, mock_core_database, mock_species_database
+        self, detection_query_service, mock_core_database, mock_species_database, db_service_factory
     ):
         """Should handle database errors gracefully."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_session.execute.side_effect = SQLAlchemyError("Database connection failed")
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        service, _session, _ = db_service_factory(
+            session_config={"side_effect": SQLAlchemyError("Database connection failed")}
+        )
+
+        mock_core_database.get_async_db = service.get_async_db
         with pytest.raises(SQLAlchemyError):
             await detection_query_service.get_detections_with_taxa()
         mock_species_database.detach_all_from_session.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_database_cleanup_on_error(
-        self, detection_query_service, mock_core_database, mock_species_database
+        self, detection_query_service, mock_core_database, mock_species_database, db_service_factory
     ):
         """Should ensure cleanup happens even on error."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_session.execute.side_effect = SQLAlchemyError("Database error", "", "")
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        service, _session, _ = db_service_factory(
+            session_config={"side_effect": SQLAlchemyError("Database error", "", "")}
+        )
+
+        mock_core_database.get_async_db = service.get_async_db
         with pytest.raises(SQLAlchemyError):
             await detection_query_service.get_detections_with_taxa(limit=10, offset=0)
         assert mock_species_database.detach_all_from_session.called
@@ -673,12 +673,12 @@ class TestFilterBuilding:
 
     @pytest.mark.asyncio
     async def test_count_detections_with_complex_filters(
-        self, detection_query_service, mock_core_database
+        self, detection_query_service, mock_core_database, db_service_factory
     ):
         """Should handle complex filter combinations in count_detections."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_session.scalar.return_value = 250
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        service, session, _ = db_service_factory(session_config={"scalar_result": 250})
+
+        mock_core_database.get_async_db = service.get_async_db
         filters = {
             "species": ["Species1", "Species2"],
             "start_date": datetime(2024, 1, 1),
@@ -690,8 +690,8 @@ class TestFilterBuilding:
         }
         count = await detection_query_service.count_detections(filters)
         assert count == 250
-        mock_session.scalar.assert_called_once()
-        call_args = mock_session.scalar.call_args
+        session.scalar.assert_called_once()
+        call_args = session.scalar.call_args
         stmt = call_args[0][0]
         query_str = str(stmt)
         assert "WHERE" in query_str
@@ -707,28 +707,24 @@ class TestEdgeCases:
 
     @pytest.mark.asyncio
     async def test_empty_result_sets(
-        self, detection_query_service, mock_core_database, mock_species_database
+        self, detection_query_service, mock_core_database, mock_species_database, db_service_factory
     ):
         """Should handle empty result sets properly."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_result = MagicMock(spec=Result)
-        mock_result.mappings.return_value.all.return_value = []
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        service, _session, _ = db_service_factory(session_config={"mappings_result": []})
+
+        mock_core_database.get_async_db = service.get_async_db
         result = await detection_query_service.get_detections_with_taxa()
         assert result == []
         assert not result
 
     @pytest.mark.asyncio
     async def test_large_limit_values(
-        self, detection_query_service, mock_core_database, mock_species_database
+        self, detection_query_service, mock_core_database, mock_species_database, db_service_factory
     ):
         """Should handle large limit values."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_result = MagicMock(spec=Result)
-        mock_result.mappings.return_value.all.return_value = []
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        service, _session, _ = db_service_factory(session_config={"mappings_result": []})
+
+        mock_core_database.get_async_db = service.get_async_db
         result = await detection_query_service.get_detections_with_taxa(limit=1000000, offset=0)
         assert result == []
 

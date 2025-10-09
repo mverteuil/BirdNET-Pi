@@ -1,23 +1,20 @@
 """Simple tests for DetectionQueryService that actually work."""
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.engine import Result, Row
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.models import Detection
 from birdnetpi.detections.queries import DetectionQueryService
 
 
 @pytest.fixture
-def mock_core_database():
+def mock_core_database(db_service_factory):
     """Mock core database."""
-    mock = MagicMock(spec=CoreDatabaseService)
+    mock, _session, _result = db_service_factory()
     return mock
 
 
@@ -97,71 +94,72 @@ class TestDetectionQueryServiceBasics:
         assert "ASC" in clause
 
     @pytest.mark.asyncio
-    async def test_get_detection_count(self, detection_query_service, mock_core_database):
+    async def test_get_detection_count(
+        self, detection_query_service, mock_core_database, db_service_factory
+    ):
         """Should counting detections in time range."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_session.scalar.return_value = 42
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        service, session, _ = db_service_factory(session_config={"scalar_result": 42})
+        mock_core_database.get_async_db = service.get_async_db
         start = datetime.now(UTC) - timedelta(days=1)
         end = datetime.now(UTC)
         count = await detection_query_service.get_detection_count(start, end)
         assert count == 42
-        mock_session.scalar.assert_called_once()
+        session.scalar.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_unique_species_count(self, detection_query_service, mock_core_database):
+    async def test_get_unique_species_count(
+        self, detection_query_service, mock_core_database, db_service_factory
+    ):
         """Should counting unique species."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_session.scalar.return_value = 25
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        service, session, _ = db_service_factory(session_config={"scalar_result": 25})
+        mock_core_database.get_async_db = service.get_async_db
         start = datetime.now(UTC) - timedelta(days=7)
         end = datetime.now(UTC)
         count = await detection_query_service.get_unique_species_count(start, end)
         assert count == 25
-        mock_session.scalar.assert_called_once()
+        session.scalar.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_count_by_species(self, detection_query_service, mock_core_database):
+    async def test_count_by_species(
+        self, detection_query_service, mock_core_database, db_service_factory
+    ):
         """Should count detections by species."""
-        mock_session = AsyncMock(spec=AsyncSession)
         mock_result = [
             {"scientific_name": "Turdus migratorius", "count": 100},
             {"scientific_name": "Cyanocitta cristata", "count": 50},
         ]
-        mock_execute_result = MagicMock(spec=Result)
-        mock_execute_result.__iter__ = lambda self: iter(mock_result)
-        mock_session.execute.return_value = mock_execute_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        service, _session, result = db_service_factory()
+        result.__iter__ = lambda self: iter(mock_result)
+        mock_core_database.get_async_db = service.get_async_db
         start = datetime.now(UTC) - timedelta(days=1)
         end = datetime.now(UTC)
         counts = await detection_query_service.count_by_species(start, end)
         assert counts == {"Turdus migratorius": 100, "Cyanocitta cristata": 50}
 
     @pytest.mark.asyncio
-    async def test_count_by_date(self, detection_query_service, mock_core_database):
+    async def test_count_by_date(
+        self, detection_query_service, mock_core_database, db_service_factory
+    ):
         """Should count detections by date."""
-        mock_session = AsyncMock(spec=AsyncSession)
         # SQLite's date() function returns ISO date strings, not date objects
         mock_result = [("2024-01-15", 75), ("2024-01-16", 60)]
-        mock_execute_result = MagicMock(spec=Result)
-        mock_execute_result.fetchall.return_value = mock_result
-        mock_session.execute.return_value = mock_execute_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        service, _session, _ = db_service_factory(session_config={"fetch_results": mock_result})
+        mock_core_database.get_async_db = service.get_async_db
         counts = await detection_query_service.count_by_date("Turdus migratorius")
         # Function returns dict with string keys (ISO date format)
         assert counts == {"2024-01-15": 75, "2024-01-16": 60}
 
     @pytest.mark.asyncio
-    async def test_get_storage_metrics(self, detection_query_service, mock_core_database):
+    async def test_get_storage_metrics(
+        self, detection_query_service, mock_core_database, db_service_factory, row_factory
+    ):
         """Should getting storage metrics."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_row = MagicMock(spec=Row, total_bytes=1073741824, total_duration=7200.0)
+        mock_rows = row_factory([{"total_bytes": 1073741824, "total_duration": 7200.0}])
         # Override __bool__ to make row truthy (Row spec makes empty rows falsy)
-        type(mock_row).__bool__ = lambda self: True
-        mock_result = MagicMock(spec=Result)
-        mock_result.first.return_value = mock_row
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        type(mock_rows[0]).__bool__ = lambda self: True
+        service, _session, result = db_service_factory()
+        result.first.return_value = mock_rows[0]
+        mock_core_database.get_async_db = service.get_async_db
         metrics = await detection_query_service.get_storage_metrics()
         assert "total_bytes" in metrics
         assert "total_duration" in metrics
@@ -169,24 +167,25 @@ class TestDetectionQueryServiceBasics:
         assert metrics["total_duration"] == 7200.0
 
     @pytest.mark.asyncio
-    async def test_get_storage_metrics_no_data(self, detection_query_service, mock_core_database):
+    async def test_get_storage_metrics_no_data(
+        self, detection_query_service, mock_core_database, db_service_factory
+    ):
         """Should handle no storage data."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_result = MagicMock(spec=Result)
-        mock_result.first.return_value = None
-        mock_session.execute.return_value = mock_result
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        service, _session, result = db_service_factory()
+        result.first.return_value = None
+        mock_core_database.get_async_db = service.get_async_db
         metrics = await detection_query_service.get_storage_metrics()
         assert metrics == {"total_bytes": 0, "total_duration": 0}
 
     @pytest.mark.asyncio
-    async def test_count_detections(self, detection_query_service, mock_core_database):
+    async def test_count_detections(
+        self, detection_query_service, mock_core_database, db_service_factory
+    ):
         """Should counting detections with filters."""
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_session.scalar.return_value = 150
-        mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
+        service, session, _ = db_service_factory(session_config={"scalar_result": 150})
+        mock_core_database.get_async_db = service.get_async_db
         count = await detection_query_service.count_detections(
             {"species": "Turdus migratorius", "min_confidence": 0.7}
         )
         assert count == 150
-        mock_session.scalar.assert_called_once()
+        session.scalar.assert_called_once()

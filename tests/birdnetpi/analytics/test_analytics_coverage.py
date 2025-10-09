@@ -1,20 +1,23 @@
 """Additional tests to improve AnalyticsManager coverage."""
 
-import uuid
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from birdnetpi.analytics.analytics import AnalyticsManager
-from birdnetpi.detections.models import DetectionWithTaxa
 from birdnetpi.detections.queries import DetectionQueryService
 
 
 @pytest.fixture
-def mock_detection_query_service():
-    """Create a mock DetectionQueryService."""
-    return MagicMock(spec=DetectionQueryService)
+def mock_detection_query_service(detection_query_service_factory):
+    """Create a mock DetectionQueryService using the factory.
+
+    Note: This fixture returns a basic mock without configured methods.
+    Individual tests can configure methods as needed, or pass parameters
+    to the factory in test-specific fixtures.
+    """
+    return detection_query_service_factory()
 
 
 @pytest.fixture
@@ -146,48 +149,41 @@ class TestSpeciesHourlyPatterns:
 
     @pytest.mark.asyncio
     async def test_get_species_hourly_patterns_basic(
-        self, analytics_manager, mock_detection_query_service
+        self, analytics_manager, mock_detection_query_service, model_factory
     ):
         """Should aggregate hourly patterns for specific species."""
-        # Create mock detections
-        mock_detections = [
-            DetectionWithTaxa(
-                id=uuid.uuid4(),
+        # Create mock detections using factory
+        robin_detections = [
+            model_factory.create_detection_with_taxa(
                 timestamp=datetime.now().replace(hour=6),
                 species_tensor="Turdus_migratorius_American Robin",
                 scientific_name="Turdus migratorius",
                 common_name="American Robin",
                 confidence=0.9,
-                audio_file_id=uuid.uuid4(),
             ),
-            DetectionWithTaxa(
-                id=uuid.uuid4(),
+            model_factory.create_detection_with_taxa(
                 timestamp=datetime.now().replace(hour=6),
                 species_tensor="Turdus_migratorius_American Robin",
                 scientific_name="Turdus migratorius",
                 common_name="American Robin",
                 confidence=0.8,
-                audio_file_id=uuid.uuid4(),
             ),
-            DetectionWithTaxa(
-                id=uuid.uuid4(),
+            model_factory.create_detection_with_taxa(
                 timestamp=datetime.now().replace(hour=12),
                 species_tensor="Turdus_migratorius_American Robin",
                 scientific_name="Turdus migratorius",
                 common_name="American Robin",
                 confidence=0.85,
-                audio_file_id=uuid.uuid4(),
-            ),
-            DetectionWithTaxa(
-                id=uuid.uuid4(),
-                timestamp=datetime.now().replace(hour=18),
-                species_tensor="Other_species_Other bird",
-                scientific_name="Other species",
-                common_name="Other bird",
-                confidence=0.7,
-                audio_file_id=uuid.uuid4(),
             ),
         ]
+        other_bird = model_factory.create_detection_with_taxa(
+            timestamp=datetime.now().replace(hour=18),
+            species_tensor="Other_species_Other bird",
+            scientific_name="Other species",
+            common_name="Other bird",
+            confidence=0.7,
+        )
+        mock_detections = [*robin_detections, other_bird]
 
         mock_detection_query_service.query_detections = AsyncMock(
             spec=DetectionQueryService.query_detections, return_value=mock_detections
@@ -202,12 +198,11 @@ class TestSpeciesHourlyPatterns:
 
     @pytest.mark.asyncio
     async def test_get_species_hourly_patterns_multiple_name_variants(
-        self, analytics_manager, mock_detection_query_service
+        self, analytics_manager, mock_detection_query_service, model_factory
     ):
         """Should match species by any name variant."""
         mock_detections = [
-            DetectionWithTaxa(
-                id=uuid.uuid4(),
+            model_factory.create_detection_with_taxa(
                 timestamp=datetime.now().replace(hour=8),
                 species_tensor="Turdus_migratorius_American Robin",
                 scientific_name="Turdus migratorius",
@@ -215,7 +210,6 @@ class TestSpeciesHourlyPatterns:
                 ioc_english_name="American Robin",
                 translated_name="Rouge-gorge américain",
                 confidence=0.9,
-                audio_file_id=uuid.uuid4(),
             ),
         ]
 
@@ -239,19 +233,17 @@ class TestSpeciesAccumulationMethods:
 
     @pytest.mark.asyncio
     async def test_species_accumulation_random_method(
-        self, analytics_manager, mock_detection_query_service
+        self, analytics_manager, mock_detection_query_service, model_factory
     ):
         """Should calculate random accumulation curves with averaging."""
-        # Create detections with species pattern
+        # Create detections with species pattern using factory
         mock_detections = [
-            DetectionWithTaxa(
-                id=uuid.uuid4(),
+            model_factory.create_detection_with_taxa(
                 timestamp=datetime.now() - timedelta(hours=i),
                 species_tensor=f"Species_{i % 3}_Bird_{i % 3}",
                 scientific_name=f"Species_{i % 3}",  # 3 different species
                 common_name=f"Bird_{i % 3}",
                 confidence=0.8,
-                audio_file_id=uuid.uuid4(),
             )
             for i in range(10)
         ]
@@ -282,7 +274,7 @@ class TestSpeciesAccumulationMethods:
 
     @pytest.mark.asyncio
     async def test_species_accumulation_rarefaction_method(
-        self, analytics_manager, mock_detection_query_service
+        self, analytics_manager, mock_detection_query_service, model_factory
     ):
         """Should calculate rarefaction curves."""
         # Create detections with uneven species distribution
@@ -293,14 +285,12 @@ class TestSpeciesAccumulationMethods:
         for species, count in species_distribution.items():
             for _ in range(count):
                 detections.append(
-                    DetectionWithTaxa(
-                        id=uuid.uuid4(),
+                    model_factory.create_detection_with_taxa(
                         timestamp=datetime.now() - timedelta(hours=det_id),
                         species_tensor=f"{species}_{species}",
                         scientific_name=species,
                         common_name=species,
                         confidence=0.8,
-                        audio_file_id=uuid.uuid4(),
                     )
                 )
                 det_id += 1
