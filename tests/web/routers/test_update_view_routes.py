@@ -1,6 +1,5 @@
 """Tests for update view routes."""
 
-import inspect
 import os
 import tempfile
 from unittest.mock import patch
@@ -8,9 +7,6 @@ from unittest.mock import patch
 import pytest
 from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
-
-from birdnetpi.web.routers import update_view_routes
-from birdnetpi.web.routers.update_view_routes import update_page
 
 
 @pytest.fixture
@@ -172,33 +168,6 @@ class TestUpdateViewRoutes:
         call_args = [call.args[0] for call in cache.get.call_args_list if call.args]
         assert "update:status" in call_args
         assert "update:result" in call_args
-
-
-class TestUpdateViewCoverage:
-    """Additional tests to ensure coverage of update_view_routes.py."""
-
-    def test_update_view_route_imports(self):
-        """Should have all imports in update_view_routes be valid."""
-        # This just imports the module to ensure coverage
-
-        # Check that router is defined
-        assert hasattr(update_view_routes, "router")
-        assert update_view_routes.router is not None
-
-    def test_update_view_route_logger(self):
-        """Should have logger configured."""
-        # Check that logger is defined
-        assert hasattr(update_view_routes, "logger")
-        assert update_view_routes.logger is not None
-
-    @patch("birdnetpi.web.routers.update_view_routes.logger", autospec=True)
-    def test_update_page_function_signature(self, mock_logger):
-        """Should have correct update_page function signature."""
-        # Check function exists and has correct annotations
-        assert update_page.__name__ == "update_page"
-        # The function should be async
-
-        assert inspect.iscoroutinefunction(update_page)
 
 
 class TestUpdateViewIntegration:

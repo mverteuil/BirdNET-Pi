@@ -126,18 +126,21 @@ class TestAppStartupIntegration:
             assert "overall_status" in data
 
     def test_container_providers_are_instantiable(self, app_with_real_container: FastAPI):
-        """Should container providers can be instantiated."""
+        """Should container providers can be instantiated with valid values."""
         container = Container()
 
-        # Test critical providers
+        # Test config provider returns valid configuration
         config = container.config()
-        assert config is not None
+        assert config.site_name  # Verify required field exists
+        assert 0.0 < config.species_confidence_threshold <= 1.0  # Verify valid range
 
+        # Test path resolver returns valid paths
         path_resolver = container.path_resolver()
-        assert path_resolver is not None
+        assert path_resolver.get_database_path().parent.exists()  # Verify path validity
 
+        # Test database service is properly configured
         db_service = container.core_database()
-        assert db_service is not None
+        assert hasattr(db_service, "get_async_db")  # Verify it has required method
 
     def test_multiple_requests_work(self, app_with_real_container: FastAPI):
         """Should multiple requests work correctly (singleton behavior)."""

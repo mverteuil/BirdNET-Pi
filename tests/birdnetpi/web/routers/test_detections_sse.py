@@ -1,6 +1,5 @@
 """Tests for SSE (Server-Sent Events) endpoints in detections API routes."""
 
-import asyncio
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -12,7 +11,7 @@ from fastapi.testclient import TestClient
 from birdnetpi.detections.models import Detection
 from birdnetpi.notifications.signals import detection_signal
 from birdnetpi.web.core.container import Container
-from birdnetpi.web.routers.detections_api_routes import router, stream_detections
+from birdnetpi.web.routers.detections_api_routes import router
 
 
 @pytest.fixture
@@ -128,86 +127,33 @@ class TestSpeciesFrequency:
         assert len(data["species"]) == 2
         sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
 
-    def test_get_species_frequency_with_period_day(self, sse_client):
-        """Should accept period=day parameter and convert to 24 hours."""
+    @pytest.mark.parametrize(
+        ("period", "verify_period_in_response"),
+        [
+            pytest.param("day", False, id="day"),
+            pytest.param("week", True, id="week"),
+            pytest.param("month", False, id="month"),
+            pytest.param("season", True, id="season"),
+            pytest.param("year", True, id="year"),
+            pytest.param("historical", True, id="historical"),
+        ],
+    )
+    def test_get_species_frequency_with_period(
+        self, sse_client, period: str, verify_period_in_response: bool
+    ):
+        """Should accept various period parameters."""
         mock_frequency = [
-            {"name": "American Robin", "count": 42, "percentage": 35.0, "category": "frequent"}
+            {"name": "Test Bird", "count": 100, "percentage": 50.0, "category": "frequent"}
         ]
         sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
             spec=callable, return_value=mock_frequency
         )
-        response = sse_client.get("/api/detections/species/summary?period=day")
+        response = sse_client.get(f"/api/detections/species/summary?period={period}")
         assert response.status_code == 200
         data = response.json()
         assert len(data["species"]) == 1
-        sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
-
-    def test_get_species_frequency_with_period_week(self, sse_client):
-        """Should accept period=week parameter and convert to 168 hours."""
-        mock_frequency = [
-            {"name": "Blue Jay", "count": 150, "percentage": 45.0, "category": "frequent"}
-        ]
-        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            spec=callable, return_value=mock_frequency
-        )
-        response = sse_client.get("/api/detections/species/summary?period=week")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["period"] == "week"
-        assert len(data["species"]) == 1
-        sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
-
-    def test_get_species_frequency_with_period_month(self, sse_client):
-        """Should accept period=month parameter and convert to 720 hours."""
-        mock_frequency = [
-            {"name": "Cardinal", "count": 500, "percentage": 50.0, "category": "frequent"}
-        ]
-        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            spec=callable, return_value=mock_frequency
-        )
-        response = sse_client.get("/api/detections/species/summary?period=month")
-        assert response.status_code == 200
-        response.json()
-        sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
-
-    def test_get_species_frequency_with_period_season(self, sse_client):
-        """Should accept period=season parameter and convert to 2160 hours."""
-        mock_frequency = [
-            {"name": "Warbler", "count": 1200, "percentage": 40.0, "category": "frequent"}
-        ]
-        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            spec=callable, return_value=mock_frequency
-        )
-        response = sse_client.get("/api/detections/species/summary?period=season")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["period"] == "season"
-        sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
-
-    def test_get_species_frequency_with_period_year(self, sse_client):
-        """Should accept period=year parameter and convert to 8760 hours."""
-        mock_frequency = [{"name": "Owl", "count": 3650, "percentage": 25.0, "category": "common"}]
-        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            spec=callable, return_value=mock_frequency
-        )
-        response = sse_client.get("/api/detections/species/summary?period=year")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["period"] == "year"
-        sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
-
-    def test_get_species_frequency_with_period_historical(self, sse_client):
-        """Should accept period=historical parameter and convert to 999999 hours."""
-        mock_frequency = [
-            {"name": "Eagle", "count": 10000, "percentage": 30.0, "category": "frequent"}
-        ]
-        sse_client.mock_detection_query_service.get_species_summary = AsyncMock(
-            spec=callable, return_value=mock_frequency
-        )
-        response = sse_client.get("/api/detections/species/summary?period=historical")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["period"] == "historical"
+        if verify_period_in_response:
+            assert data["period"] == period
         sse_client.mock_detection_query_service.get_species_summary.assert_called_once()
 
     def test_get_species_frequency_period_case_insensitive(self, sse_client):
@@ -277,12 +223,6 @@ class TestSSEStreaming:
     """
 
     @pytest.mark.asyncio
-    async def test_stream_detections_initial_connection(self):
-        """Should send initial connection event."""
-        assert stream_detections is not None
-        assert asyncio.iscoroutinefunction(stream_detections)
-
-    @pytest.mark.asyncio
     async def test_event_generator_sends_detection(self, detection_query_service_factory):
         """Should generate detection events when signal fires."""
         mock_query_service = detection_query_service_factory()
@@ -301,24 +241,6 @@ class TestSSEStreaming:
             spec=callable, return_value=mock_detection
         )
 
-    @pytest.mark.asyncio
-    async def test_event_generator_heartbeat(self):
-        """Should send heartbeat events to keep connection alive."""
-        pass
-
-    def test_stream_endpoint_exists(self):
-        """Should have SSE endpoint available."""
-        assert stream_detections is not None
-
-    @pytest.mark.asyncio
-    async def test_detection_handler_type_annotations(self):
-        """Should have proper type annotations for detection_handler."""
-        assert stream_detections.__annotations__.get("return") is not None
-
-    def test_sse_response_headers(self):
-        """Should return correct SSE headers."""
-        assert stream_detections.__name__ == "stream_detections"
-
 
 class TestSSEIntegration:
     """Integration tests for SSE with detection signals."""
@@ -330,17 +252,9 @@ class TestSSEIntegration:
         assert hasattr(detection_signal, "connect")
         assert hasattr(detection_signal, "send")
 
-    def test_queue_operations_thread_safe(self):
-        """Should use thread-safe queue operations."""
-        pass
-
 
 class TestSSEErrorHandling:
     """Test error handling in SSE endpoints."""
-
-    def test_stream_handles_query_service_errors(self):
-        """Should handle errors from query service gracefully."""
-        assert stream_detections is not None
 
     def test_species_frequency_handles_analytics_errors(self, sse_client):
         """Should return 500 when analytics manager fails."""
@@ -351,23 +265,3 @@ class TestSSEErrorHandling:
         assert response.status_code == 500
         data = response.json()
         assert "Error retrieving species summary" in data["detail"]
-
-    def test_stream_handles_cancellation(self):
-        """Should handle client disconnection gracefully."""
-        assert stream_detections is not None
-
-
-class TestSSEPerformance:
-    """Test performance-related aspects of SSE."""
-
-    def test_heartbeat_timeout_configured(self):
-        """Should have appropriate heartbeat timeout."""
-        pass
-
-    def test_uses_put_nowait_for_performance(self):
-        """Should use put_nowait instead of async put for performance."""
-        pass
-
-    def test_no_buffering_headers(self):
-        """Should disable buffering for real-time updates."""
-        assert stream_detections is not None
