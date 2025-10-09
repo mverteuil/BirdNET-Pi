@@ -448,59 +448,62 @@ class TestWeatherCorrelations:
 class TestCorrelationCalculation:
     """Test Pearson correlation calculation method."""
 
-    def test_calculate_correlation_positive(self, analytics_manager):
-        """Should calculate positive correlation correctly."""
-        x = [1, 2, 3, 4, 5]
-        y = [2, 4, 6, 8, 10]  # Perfect positive correlation
-
+    @pytest.mark.parametrize(
+        "x,y,expected,description",
+        [
+            pytest.param(
+                [1, 2, 3, 4, 5],
+                [2, 4, 6, 8, 10],
+                1.0,
+                "Perfect positive correlation",
+                id="perfect-positive",
+            ),
+            pytest.param(
+                [1, 2, 3, 4, 5],
+                [10, 8, 6, 4, 2],
+                -1.0,
+                "Perfect negative correlation",
+                id="perfect-negative",
+            ),
+            pytest.param(
+                [1, 2, 3, 4, 5],
+                [5, 2, 8, 1, 7],
+                None,  # We'll check abs < 0.5
+                "Random, no correlation",
+                id="no-correlation",
+            ),
+            pytest.param(
+                [1, 2, None, 4, 5],
+                [2, None, 6, 8, 10],
+                "positive",  # We'll check > 0
+                "None values filtered out",
+                id="with-none-values",
+            ),
+            pytest.param(
+                [1],
+                [2],
+                0.0,
+                "Insufficient data points",
+                id="insufficient-data",
+            ),
+            pytest.param(
+                [None, None, None],
+                [None, None, None],
+                0.0,
+                "All None values",
+                id="all-none",
+            ),
+        ],
+    )
+    def test_calculate_correlation(self, analytics_manager, x, y, expected, description):
+        """Should calculate correlation for various data patterns."""
         result = analytics_manager.calculate_correlation(x, y)
 
-        assert result == pytest.approx(1.0, abs=0.01)
-
-    def test_calculate_correlation_negative(self, analytics_manager):
-        """Should calculate negative correlation correctly."""
-        x = [1, 2, 3, 4, 5]
-        y = [10, 8, 6, 4, 2]  # Perfect negative correlation
-
-        result = analytics_manager.calculate_correlation(x, y)
-
-        assert result == pytest.approx(-1.0, abs=0.01)
-
-    def test_calculate_correlation_no_correlation(self, analytics_manager):
-        """Should handle no correlation."""
-        x = [1, 2, 3, 4, 5]
-        y = [5, 2, 8, 1, 7]  # Random, no correlation
-
-        result = analytics_manager.calculate_correlation(x, y)
-
-        # Should be close to 0
-        assert abs(result) < 0.5
-
-    def test_calculate_correlation_with_none_values(self, analytics_manager):
-        """Should handle None values by filtering them out."""
-        x = [1, 2, None, 4, 5]
-        y = [2, None, 6, 8, 10]
-
-        # Should use pairs: (1,2), (4,8), (5,10)
-        result = analytics_manager.calculate_correlation(x, y)
-
-        # Still positive correlation with filtered data
-        assert result > 0
-
-    def test_calculate_correlation_insufficient_data(self, analytics_manager):
-        """Should return 0 for insufficient data points."""
-        x = [1]
-        y = [2]
-
-        result = analytics_manager.calculate_correlation(x, y)
-
-        assert result == 0.0
-
-    def test_calculate_correlation_all_none(self, analytics_manager):
-        """Should handle all None values."""
-        x = [None, None, None]
-        y = [None, None, None]
-
-        result = analytics_manager.calculate_correlation(x, y)
-
-        assert result == 0.0
+        if expected == "positive":
+            assert result > 0, f"{description}: Expected positive correlation"
+        elif expected is None:  # No correlation case
+            assert abs(result) < 0.5, f"{description}: Expected near-zero correlation"
+        else:
+            assert result == pytest.approx(expected, abs=0.01), (
+                f"{description}: Unexpected correlation value"
+            )

@@ -146,27 +146,14 @@ class TestDetectionsAPIRoutes:
         assert len(data["detections"]) == 2
         assert data["detections"][0]["common_name"] == "Robin"
 
-    @pytest.mark.parametrize(
-        "service_error,expected_status,expected_message",
-        [
-            pytest.param(
-                Exception("Database error"),
-                500,
-                "Error retrieving recent detections",
-                id="database-error",
-            ),
-        ],
-    )
-    def test_get_recent_detections_error(
-        self, client, service_error, expected_status, expected_message
-    ):
+    def test_get_recent_detections_error(self, client):
         """Should handle errors when getting recent detections."""
         client.mock_query_service.query_detections = AsyncMock(
-            spec=DetectionQueryService.query_detections, side_effect=service_error
+            spec=DetectionQueryService.query_detections, side_effect=Exception("Database error")
         )
         response = client.get("/api/detections/recent?limit=10")
-        assert response.status_code == expected_status
-        assert expected_message in response.json()["detail"]
+        assert response.status_code == 500
+        assert "Error retrieving recent detections" in response.json()["detail"]
 
     @pytest.mark.parametrize(
         "target_date,mock_return,expected_count,expected_date",
@@ -778,27 +765,14 @@ class TestSpeciesSummary:
         data = response.json()
         assert len(data["species"]) == 3
 
-    @pytest.mark.parametrize(
-        "service_error,expected_status,expected_message",
-        [
-            pytest.param(
-                Exception("Database error"),
-                500,
-                "Error retrieving species summary",
-                id="database-error",
-            ),
-        ],
-    )
-    def test_get_species_summary_error(
-        self, client, service_error, expected_status, expected_message
-    ):
+    def test_get_species_summary_error(self, client):
         """Should handle errors in species summary."""
         client.mock_query_service.get_species_summary = AsyncMock(
-            spec=DetectionQueryService.get_species_summary, side_effect=service_error
+            spec=DetectionQueryService.get_species_summary, side_effect=Exception("Database error")
         )
         response = client.get("/api/detections/species/summary")
-        assert response.status_code == expected_status
-        assert expected_message in response.json()["detail"]
+        assert response.status_code == 500
+        assert "Error retrieving species summary" in response.json()["detail"]
 
     @pytest.mark.parametrize(
         "period,expected_label,has_first_detection",
@@ -979,26 +953,54 @@ class TestDetectionsSummary:
             call_kwargs = client.mock_query_service.get_species_summary.call_args.kwargs
             assert call_kwargs.get("since") is None
 
+    def test_get_summary_error_handling(self, client):
+        """Should handle errors gracefully."""
+        client.mock_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary, side_effect=Exception("Database error")
+        )
+        response = client.get("/api/detections/summary?period=day")
+        assert response.status_code == 500
+        assert "Failed to get detection summary" in response.json()["detail"]
+
+
+class TestAPIErrorHandling:
+    """Test error handling across all API endpoints."""
+
     @pytest.mark.parametrize(
-        "service_error,expected_status,expected_message",
+        "endpoint,mock_method,expected_message",
         [
             pytest.param(
-                Exception("Database error"),
-                500,
-                "Failed to get detection summary",
-                id="database-error",
+                "/api/detections/taxonomy/families",
+                "get_species_summary",
+                "Error retrieving families",
+                id="families-error",
+            ),
+            pytest.param(
+                "/api/detections/taxonomy/genera?family=Corvidae",
+                "get_species_summary",
+                "Error retrieving genera",
+                id="genera-error",
+            ),
+            pytest.param(
+                "/api/detections/taxonomy/species?genus=Corvus",
+                "get_species_summary",
+                "Error retrieving species",
+                id="species-error",
             ),
         ],
     )
-    def test_get_summary_error_handling(
-        self, client, service_error, expected_status, expected_message
-    ):
-        """Should handle errors gracefully."""
-        client.mock_query_service.get_species_summary = AsyncMock(
-            spec=DetectionQueryService.get_species_summary, side_effect=service_error
+    def test_taxonomy_endpoint_errors(self, client, endpoint, mock_method, expected_message):
+        """Should handle errors in taxonomy endpoints consistently."""
+        setattr(
+            client.mock_query_service,
+            mock_method,
+            AsyncMock(
+                spec=getattr(DetectionQueryService, mock_method),
+                side_effect=Exception("Database error"),
+            ),
         )
-        response = client.get("/api/detections/summary?period=day")
-        assert response.status_code == expected_status
+        response = client.get(endpoint)
+        assert response.status_code == 500
         assert expected_message in response.json()["detail"]
 
 
@@ -1166,35 +1168,6 @@ class TestHierarchicalFiltering:
             assert data["family"] == params["family"]
         if "genus" in params:
             assert data["genus"] == params["genus"]
-
-    @pytest.mark.parametrize(
-        "endpoint,error_message",
-        [
-            pytest.param(
-                "/api/detections/taxonomy/families",
-                "Error retrieving families",
-                id="families-error",
-            ),
-            pytest.param(
-                "/api/detections/taxonomy/genera?family=Corvidae",
-                "Error retrieving genera",
-                id="genera-error",
-            ),
-            pytest.param(
-                "/api/detections/taxonomy/species?genus=Corvus",
-                "Error retrieving species",
-                id="species-error",
-            ),
-        ],
-    )
-    def test_get_taxonomy_errors(self, client, endpoint, error_message):
-        """Should handle errors in taxonomy endpoints."""
-        client.mock_query_service.get_species_summary = AsyncMock(
-            spec=DetectionQueryService.get_species_summary, side_effect=Exception("Database error")
-        )
-        response = client.get(endpoint)
-        assert response.status_code == 500
-        assert error_message in response.json()["detail"]
 
     def test_get_families_without_detection_filter(self, client):
         """Should handle has_detections=false parameter."""
