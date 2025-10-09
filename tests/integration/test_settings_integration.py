@@ -3,10 +3,6 @@
 Tests config persistence and audio device discovery.
 """
 
-import os
-import shutil
-import tempfile
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -14,7 +10,6 @@ import yaml
 
 from birdnetpi.audio.devices import AudioDevice, AudioDeviceService
 from birdnetpi.config import BirdNETConfig, ConfigManager
-from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.utils.cache import clear_all_cache
 
 
@@ -29,30 +24,12 @@ def clear_cache():
 class TestSettingsConfigIntegration:
     """Integration tests for settings configuration flow."""
 
-    @pytest.fixture
-    def temp_config_dir(self):
-        """Create a temporary directory for config files."""
-        temp_dir = tempfile.mkdtemp(prefix="test_settings_integration_")
-        config_dir = Path(temp_dir) / "config"
-        config_dir.mkdir(exist_ok=True)
-
-        # Set environment variable
-        old_env = os.environ.get("BIRDNETPI_DATA")
-        os.environ["BIRDNETPI_DATA"] = temp_dir
-
-        yield temp_dir
-
-        # Cleanup
-        if old_env:
-            os.environ["BIRDNETPI_DATA"] = old_env
-        else:
-            os.environ.pop("BIRDNETPI_DATA", None)
-
-        shutil.rmtree(temp_dir, ignore_errors=True)
-
-    def test_config_save_and_load_cycle(self, temp_config_dir):
+    def test_config_save_and_load_cycle(self, tmp_path, path_resolver):
         """Should save configuration to file and load it back correctly."""
-        path_resolver = PathResolver()
+        # Configure path_resolver to use temp directory
+        config_path = tmp_path / "config" / "birdnetpi.yaml"
+        path_resolver.get_birdnetpi_config_path = lambda: config_path
+
         config_manager = ConfigManager(path_resolver)
 
         # Create test configuration
@@ -87,9 +64,11 @@ class TestSettingsConfigIntegration:
         assert loaded_config.sample_rate == 44100
         assert loaded_config.audio_channels == 2
 
-    def test_config_yaml_format(self, temp_config_dir):
+    def test_config_yaml_format(self, tmp_path, path_resolver):
         """Should save configuration in valid YAML format."""
-        path_resolver = PathResolver()
+        config_path = tmp_path / "config" / "birdnetpi.yaml"
+        path_resolver.get_birdnetpi_config_path = lambda: config_path
+
         config_manager = ConfigManager(path_resolver)
 
         test_config = BirdNETConfig(
@@ -113,9 +92,11 @@ class TestSettingsConfigIntegration:
         assert yaml_data["enable_gps"] is True
         assert yaml_data["webhook_urls"] == ["http://example.com/hook1", "http://example.com/hook2"]
 
-    def test_config_preserves_defaults(self, temp_config_dir):
+    def test_config_preserves_defaults(self, tmp_path, path_resolver):
         """Should preserve default values when not explicitly set."""
-        path_resolver = PathResolver()
+        config_path = tmp_path / "config" / "birdnetpi.yaml"
+        path_resolver.get_birdnetpi_config_path = lambda: config_path
+
         config_manager = ConfigManager(path_resolver)
 
         # Create minimal config
@@ -132,9 +113,11 @@ class TestSettingsConfigIntegration:
         assert loaded_config.audio_device_index == -1
         assert loaded_config.sample_rate == 48000
 
-    def test_config_update_preserves_unchanged_fields(self, temp_config_dir):
+    def test_config_update_preserves_unchanged_fields(self, tmp_path, path_resolver):
         """Should preserve unchanged fields when updating configuration."""
-        path_resolver = PathResolver()
+        config_path = tmp_path / "config" / "birdnetpi.yaml"
+        path_resolver.get_birdnetpi_config_path = lambda: config_path
+
         config_manager = ConfigManager(path_resolver)
 
         # Initial config
@@ -258,30 +241,11 @@ class TestAudioDeviceIntegration:
 class TestSettingsEndToEndFlow:
     """End-to-end integration tests for complete settings flow."""
 
-    @pytest.fixture
-    def full_test_env(self):
-        """Set up complete test environment with temp directories."""
-        temp_dir = tempfile.mkdtemp(prefix="test_e2e_settings_")
-        config_dir = Path(temp_dir) / "config"
-        config_dir.mkdir(exist_ok=True)
-
-        # Save original env
-        old_env = os.environ.get("BIRDNETPI_DATA")
-        os.environ["BIRDNETPI_DATA"] = temp_dir
-
-        yield temp_dir
-
-        # Cleanup
-        if old_env:
-            os.environ["BIRDNETPI_DATA"] = old_env
-        else:
-            os.environ.pop("BIRDNETPI_DATA", None)
-
-        shutil.rmtree(temp_dir, ignore_errors=True)
-
-    def test_complete_settings_workflow(self, full_test_env):
+    def test_complete_settings_workflow(self, tmp_path, path_resolver):
         """Should handle complete workflow: load, modify, save, reload."""
-        path_resolver = PathResolver()
+        config_path = tmp_path / "config" / "birdnetpi.yaml"
+        path_resolver.get_birdnetpi_config_path = lambda: config_path
+
         config_manager = ConfigManager(path_resolver)
 
         # Step 1: Create initial configuration
@@ -334,7 +298,9 @@ class TestSettingsEndToEndFlow:
         assert "webhook_urls" in parsed
 
     @patch("sounddevice.query_devices", autospec=True)
-    def test_settings_with_audio_device_selection(self, mock_query_devices, full_test_env):
+    def test_settings_with_audio_device_selection(
+        self, mock_query_devices, tmp_path, path_resolver
+    ):
         """Should integrate audio device selection with configuration."""
         # Mock audio devices
         mock_query_devices.return_value = [
@@ -369,7 +335,9 @@ class TestSettingsEndToEndFlow:
         devices = audio_service.discover_input_devices()
 
         # Create config with selected device
-        path_resolver = PathResolver()
+        config_path = tmp_path / "config" / "birdnetpi.yaml"
+        path_resolver.get_birdnetpi_config_path = lambda: config_path
+
         config_manager = ConfigManager(path_resolver)
 
         # Select Device B (index 1)

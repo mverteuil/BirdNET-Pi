@@ -1,4 +1,3 @@
-import os
 import subprocess
 import time
 import uuid
@@ -384,60 +383,54 @@ def check_required_assets(repo_root: Path):
     """Check that required assets are available for testing."""
     real_data_dir = repo_root / "data"
 
-    stashed_data_dir = os.environ.get("BIRDNETPI_DATA")
-    os.environ["BIRDNETPI_DATA"] = str(real_data_dir)
+    # Map path methods to actual paths for asset checking
+    path_map = {
+        "get_data_path": real_data_dir,
+        "get_models_dir": real_data_dir / "models",
+        "get_ioc_database_path": real_data_dir / "database" / "ioc_reference.db",
+        "get_avibase_database_path": real_data_dir / "database" / "avibase_database.db",
+        "get_patlevin_database_path": real_data_dir / "database" / "patlevin_database.db",
+    }
 
-    try:
-        path_resolver = PathResolver()
-        missing_assets = []
+    missing_assets = []
 
-        # Check all required assets using AssetManifest
-        for asset in AssetManifest.get_required_assets():
-            method = getattr(path_resolver, asset.path_method)
-            asset_path = method()
+    # Check all required assets using AssetManifest
+    for asset in AssetManifest.get_required_assets():
+        asset_path = path_map.get(asset.path_method)
+        if asset_path is None:
+            # Skip assets we don't have paths for
+            continue
 
-            # For directories, check if they exist and have content
-            if asset.is_directory:
-                if not asset_path.exists() or not any(asset_path.glob("*.tflite")):
-                    missing_assets.append(asset.name)
-            else:
-                if not asset_path.exists():
-                    missing_assets.append(asset.name)
-
-        if missing_assets:
-            print()
-            print("┌" + "─" * 78 + "┐")
-            print("│" + " " * 78 + "│")
-            print("│  ⚠️  MISSING ASSETS FOR TESTING" + " " * 45 + "│")
-            print("│" + " " * 78 + "│")
-            print("│  The following required assets are missing for testing:" + " " * 22 + "│")
-            for asset in missing_assets:
-                spaces_needed = 76 - len(f"│    • {asset}")
-                print(f"│    • {asset}" + " " * spaces_needed + "│")
-            print("│" + " " * 78 + "│")
-            print("│  To run tests with assets, install them first:" + " " * 29 + "│")
-            print("│    export BIRDNETPI_DATA=./data" + " " * 43 + "│")
-            print("│    uv run install-assets install v2.1.1" + " " * 36 + "│")
-            print("│" + " " * 78 + "│")
-            print(
-                "│  Most tests will still pass without assets (mocked dependencies)."
-                + " " * 9
-                + "│"
-            )
-            print(
-                "│  Only integration tests and some service tests require real assets."
-                + " " * 10
-                + "│"
-            )
-            print("│" + " " * 78 + "│")
-            print("└" + "─" * 78 + "┘")
-            print()
-    finally:
-        # Restore environment
-        if stashed_data_dir is not None:
-            os.environ["BIRDNETPI_DATA"] = stashed_data_dir
+        # For directories, check if they exist and have content
+        if asset.is_directory:
+            if not asset_path.exists() or not any(asset_path.glob("*.tflite")):
+                missing_assets.append(asset.name)
         else:
-            os.environ.pop("BIRDNETPI_DATA", None)
+            if not asset_path.exists():
+                missing_assets.append(asset.name)
+
+    if missing_assets:
+        print()
+        print("┌" + "─" * 78 + "┐")
+        print("│" + " " * 78 + "│")
+        print("│  ⚠️  MISSING ASSETS FOR TESTING" + " " * 45 + "│")
+        print("│" + " " * 78 + "│")
+        print("│  The following required assets are missing for testing:" + " " * 22 + "│")
+        for asset in missing_assets:
+            spaces_needed = 76 - len(f"│    • {asset}")
+            print(f"│    • {asset}" + " " * spaces_needed + "│")
+        print("│" + " " * 78 + "│")
+        print("│  To run tests with assets, install them first:" + " " * 29 + "│")
+        print("│    export BIRDNETPI_DATA=./data" + " " * 43 + "│")
+        print("│    uv run install-assets install v2.1.1" + " " * 36 + "│")
+        print("│" + " " * 78 + "│")
+        print("│  Most tests will still pass without assets (mocked dependencies)." + " " * 9 + "│")
+        print(
+            "│  Only integration tests and some service tests require real assets." + " " * 10 + "│"
+        )
+        print("│" + " " * 78 + "│")
+        print("└" + "─" * 78 + "┘")
+        print()
 
 
 @pytest.fixture(scope="session")
