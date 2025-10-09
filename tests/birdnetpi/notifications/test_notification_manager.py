@@ -1,3 +1,5 @@
+"""Tests for notification manager."""
+
 import asyncio
 import json
 import logging
@@ -80,28 +82,25 @@ def test_handle_detection_event__notification_rules_enabled(
 class TestWebSocketManagement:
     """Test WebSocket connection management."""
 
-    def test_add_websocket(self, notification_manager, caplog):
-        """Should add websocket to active connections."""
-        mock_ws = Mock(spec=WebSocket)
+    @pytest.mark.parametrize(
+        "websocket_count,expected_count",
+        [
+            pytest.param(1, 1, id="single-websocket"),
+            pytest.param(3, 3, id="multiple-websockets"),
+        ],
+    )
+    def test_add_websockets(self, notification_manager, caplog, websocket_count, expected_count):
+        """Should add websocket(s) to active connections."""
+        websockets = [Mock(spec=WebSocket) for _ in range(websocket_count)]
 
         with caplog.at_level(logging.INFO):
-            notification_manager.add_websocket(mock_ws)
+            for ws in websockets:
+                notification_manager.add_websocket(ws)
 
-        assert mock_ws in notification_manager.active_websockets
-        assert "WebSocket added to active connections. Total: 1" in caplog.text
-
-    def test_add_multiple_websockets(self, notification_manager):
-        """Should handle multiple websocket connections."""
-        ws1 = Mock(spec=WebSocket)
-        ws2 = Mock(spec=WebSocket)
-        ws3 = Mock(spec=WebSocket)
-
-        notification_manager.add_websocket(ws1)
-        notification_manager.add_websocket(ws2)
-        notification_manager.add_websocket(ws3)
-
-        assert len(notification_manager.active_websockets) == 3
-        assert all(ws in notification_manager.active_websockets for ws in [ws1, ws2, ws3])
+        assert len(notification_manager.active_websockets) == expected_count
+        assert all(ws in notification_manager.active_websockets for ws in websockets)
+        if websocket_count == 1:
+            assert f"WebSocket added to active connections. Total: {expected_count}" in caplog.text
 
     def test_remove_websocket(self, notification_manager, caplog):
         """Should remove websocket from active connections."""
@@ -195,141 +194,124 @@ class TestAsyncNotifications:
         ws_active.send_text.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_send_iot_notifications_mqtt(self, notification_manager, model_factory):
-        """Should send MQTT notifications when service is available."""
-        mock_mqtt = Mock(spec=MQTTService)
-        mock_mqtt.publish_detection = AsyncMock(spec=callable)
-        notification_manager.mqtt_service = mock_mqtt
+    @pytest.mark.parametrize(
+        "mqtt_available,webhook_available,detection_species",
+        [
+            pytest.param(True, False, "Strix aluco_Tawny Owl", id="mqtt-only"),
+            pytest.param(False, True, "Falco peregrinus_Peregrine Falcon", id="webhook-only"),
+            pytest.param(True, True, "Aquila chrysaetos_Golden Eagle", id="both-services"),
+        ],
+    )
+    async def test_send_iot_notifications(
+        self,
+        notification_manager,
+        model_factory,
+        mqtt_available,
+        webhook_available,
+        detection_species,
+    ):
+        """Should send IoT notifications to configured services."""
+        # Initialize mock variables
+        mock_mqtt = None
+        mock_webhook = None
+
+        if mqtt_available:
+            mock_mqtt = Mock(spec=MQTTService)
+            mock_mqtt.publish_detection = AsyncMock(spec=callable)
+            notification_manager.mqtt_service = mock_mqtt
+        else:
+            notification_manager.mqtt_service = None
+
+        if webhook_available:
+            mock_webhook = Mock(spec=WebhookService)
+            mock_webhook.send_detection_webhook = AsyncMock(spec=callable)
+            notification_manager.webhook_service = mock_webhook
+        else:
+            notification_manager.webhook_service = None
 
         detection = model_factory.create_detection(
-            species_tensor="Strix aluco_Tawny Owl",
-            scientific_name="Strix aluco",
-            common_name="Tawny Owl",
-            confidence=0.78,
-        )
-
-        await notification_manager._send_iot_notifications(detection)
-
-        mock_mqtt.publish_detection.assert_called_once_with(detection)
-
-    @pytest.mark.asyncio
-    async def test_send_iot_notifications_webhook(self, notification_manager, model_factory):
-        """Should send webhook notifications when service is available."""
-        mock_webhook = Mock(spec=WebhookService)
-        mock_webhook.send_detection_webhook = AsyncMock(spec=callable)
-        notification_manager.webhook_service = mock_webhook
-
-        detection = model_factory.create_detection(
-            species_tensor="Falco peregrinus_Peregrine Falcon",
-            scientific_name="Falco peregrinus",
-            common_name="Peregrine Falcon",
+            species_tensor=detection_species,
+            scientific_name=detection_species.split("_")[0],
+            common_name=detection_species.split("_")[1],
             confidence=0.89,
         )
 
         await notification_manager._send_iot_notifications(detection)
 
-        mock_webhook.send_detection_webhook.assert_called_once_with(detection)
-
-    @pytest.mark.asyncio
-    async def test_send_iot_notifications_both_services(self, notification_manager, model_factory):
-        """Should send both MQTT and webhook notifications when both services available."""
-        mock_mqtt = Mock(spec=MQTTService)
-        mock_mqtt.publish_detection = AsyncMock(spec=callable)
-        notification_manager.mqtt_service = mock_mqtt
-
-        mock_webhook = Mock(spec=WebhookService)
-        mock_webhook.send_detection_webhook = AsyncMock(spec=callable)
-        notification_manager.webhook_service = mock_webhook
-
-        detection = model_factory.create_detection(
-            species_tensor="Aquila chrysaetos_Golden Eagle",
-            scientific_name="Aquila chrysaetos",
-            common_name="Golden Eagle",
-            confidence=0.95,
-        )
-
-        await notification_manager._send_iot_notifications(detection)
-
-        mock_mqtt.publish_detection.assert_called_once_with(detection)
-        mock_webhook.send_detection_webhook.assert_called_once_with(detection)
+        if mqtt_available and mock_mqtt is not None:
+            mock_mqtt.publish_detection.assert_called_once_with(detection)
+        if webhook_available and mock_webhook is not None:
+            mock_webhook.send_detection_webhook.assert_called_once_with(detection)
 
 
 class TestNotificationRules:
     """Test notification rule processing."""
 
-    def test_immediate_notification_rule(
-        self, test_config, notification_manager, caplog, model_factory
+    @pytest.mark.parametrize(
+        "rule_config,detection_confidence,should_notify",
+        [
+            pytest.param(
+                {
+                    "name": "High Confidence",
+                    "enabled": True,
+                    "frequency": {"when": "immediate"},
+                    "filters": {"confidence_min": 0.9},
+                },
+                0.93,
+                True,
+                id="immediate-high-confidence",
+            ),
+            pytest.param(
+                {
+                    "name": "Disabled Rule",
+                    "enabled": False,
+                    "frequency": {"when": "immediate"},
+                },
+                0.87,
+                False,
+                id="disabled-rule",
+            ),
+            pytest.param(
+                {
+                    "name": "Daily Summary",
+                    "enabled": True,
+                    "frequency": {"when": "scheduled", "times": ["08:00", "20:00"]},
+                },
+                0.82,
+                False,
+                id="scheduled-not-immediate",
+            ),
+        ],
+    )
+    def test_notification_rules(
+        self,
+        test_config,
+        notification_manager,
+        caplog,
+        model_factory,
+        rule_config,
+        detection_confidence,
+        should_notify,
     ):
-        """Should process immediate notification rules."""
-        test_config.notification_rules = [
-            {
-                "name": "High Confidence",
-                "enabled": True,
-                "frequency": {"when": "immediate"},
-                "filters": {"confidence_min": 0.9},
-            }
-        ]
+        """Should process notification rules correctly."""
+        test_config.notification_rules = [rule_config]
 
         detection = model_factory.create_detection(
-            species_tensor="Buteo buteo_Common Buzzard",
-            scientific_name="Buteo buteo",
-            common_name="Common Buzzard",
-            confidence=0.93,
+            species_tensor="Test species_Test Bird",
+            scientific_name="Test species",
+            common_name="Test Bird",
+            confidence=detection_confidence,
         )
 
         with caplog.at_level(logging.INFO):
             notification_manager._handle_detection_event(None, detection)
 
-        assert "Simulating sending notification for rule 'High Confidence'" in caplog.text
-
-    def test_disabled_notification_rule(
-        self, test_config, notification_manager, caplog, model_factory
-    ):
-        """Should skip disabled notification rules."""
-        test_config.notification_rules = [
-            {
-                "name": "Disabled Rule",
-                "enabled": False,
-                "frequency": {"when": "immediate"},
-            }
-        ]
-
-        detection = model_factory.create_detection(
-            species_tensor="Pica pica_Eurasian Magpie",
-            scientific_name="Pica pica",
-            common_name="Eurasian Magpie",
-            confidence=0.87,
-        )
-
-        with caplog.at_level(logging.INFO):
-            notification_manager._handle_detection_event(None, detection)
-
-        assert "Simulating sending notification" not in caplog.text
-
-    def test_scheduled_notification_rule(
-        self, test_config, notification_manager, caplog, model_factory
-    ):
-        """Should skip non-immediate notification rules."""
-        test_config.notification_rules = [
-            {
-                "name": "Daily Summary",
-                "enabled": True,
-                "frequency": {"when": "scheduled", "times": ["08:00", "20:00"]},
-            }
-        ]
-
-        detection = model_factory.create_detection(
-            species_tensor="Columba palumbus_Common Wood Pigeon",
-            scientific_name="Columba palumbus",
-            common_name="Common Wood Pigeon",
-            confidence=0.82,
-        )
-
-        with caplog.at_level(logging.INFO):
-            notification_manager._handle_detection_event(None, detection)
-
-        # Should not send scheduled notifications on detection event
-        assert "Simulating sending notification" not in caplog.text
+        if should_notify:
+            assert (
+                f"Simulating sending notification for rule '{rule_config['name']}'" in caplog.text
+            )
+        else:
+            assert "Simulating sending notification" not in caplog.text
 
     def test_multiple_notification_rules(
         self, test_config, notification_manager, caplog, model_factory
@@ -434,29 +416,58 @@ class TestSystemNotifications:
     """Test system-level notification methods."""
 
     @pytest.mark.asyncio
-    async def test_send_system_health_notification(self, notification_manager):
-        """Should send system health notifications to all configured services."""
+    @pytest.mark.parametrize(
+        "notification_type,health_data,method_name,mqtt_method,webhook_method",
+        [
+            pytest.param(
+                "health",
+                {"cpu_usage": 45.2, "memory_usage": 67.8, "disk_usage": 34.5, "temperature": 52.3},
+                "send_system_health_notification",
+                "publish_system_health",
+                "send_health_webhook",
+                id="system-health",
+            ),
+            pytest.param(
+                "stats",
+                {
+                    "detection_count": 150,
+                    "species_count": 25,
+                    "uptime": 86400,
+                    "last_detection": "2024-01-01T12:00:00",
+                },
+                "send_system_stats_notification",
+                "publish_system_stats",
+                "send_system_webhook",
+                id="system-stats",
+            ),
+        ],
+    )
+    async def test_send_system_notifications(
+        self,
+        notification_manager,
+        notification_type,
+        health_data,
+        method_name,
+        mqtt_method,
+        webhook_method,
+    ):
+        """Should send system notifications to all configured services."""
         # Setup mock services
         mock_mqtt = Mock(spec=MQTTService)
-        mock_mqtt.publish_system_health = AsyncMock(spec=callable)
+        setattr(mock_mqtt, mqtt_method, AsyncMock(spec=callable))
         notification_manager.mqtt_service = mock_mqtt
 
         mock_webhook = Mock(spec=WebhookService)
-        mock_webhook.send_health_webhook = AsyncMock(spec=callable)
+        setattr(mock_webhook, webhook_method, AsyncMock(spec=callable))
         notification_manager.webhook_service = mock_webhook
 
-        health_data = {
-            "cpu_usage": 45.2,
-            "memory_usage": 67.8,
-            "disk_usage": 34.5,
-            "temperature": 52.3,
-        }
-
-        await notification_manager.send_system_health_notification(health_data)
+        # Call the appropriate method
+        method = getattr(notification_manager, method_name)
+        await method(health_data)
 
         # Verify both services were called
-        mock_mqtt.publish_system_health.assert_called_once_with(health_data)
-        mock_webhook.send_health_webhook.assert_called_once_with(health_data)
+        getattr(mock_mqtt, mqtt_method).assert_called_once_with(health_data)
+        getattr(mock_webhook, webhook_method).assert_called_once_with(health_data)
 
     @pytest.mark.asyncio
     async def test_send_system_health_notification_no_services(self, notification_manager):
@@ -471,26 +482,55 @@ class TestSystemNotifications:
         await notification_manager.send_system_health_notification(health_data)
 
     @pytest.mark.asyncio
-    async def test_send_system_health_notification_with_error(self, notification_manager, caplog):
-        """Should log error when system health notification fails."""
+    @pytest.mark.parametrize(
+        "method_name,data,error_message",
+        [
+            pytest.param(
+                "send_system_health_notification",
+                {"cpu_usage": 45.2},
+                "Error sending system health IoT notifications",
+                id="health-error",
+            ),
+            pytest.param(
+                "send_system_stats_notification",
+                {"uptime": 3600},
+                "Error sending system stats IoT notifications",
+                id="stats-error",
+            ),
+        ],
+    )
+    async def test_system_notification_errors(
+        self, notification_manager, caplog, method_name, data, error_message
+    ):
+        """Should log error when system notifications fail."""
         mock_mqtt = Mock(spec=MQTTService)
-        mock_mqtt.publish_system_health = AsyncMock(
-            spec=callable, side_effect=Exception("MQTT connection failed")
-        )
+        # Set up the mock method based on the notification type
+        if "health" in method_name:
+            mock_mqtt.publish_system_health = AsyncMock(
+                spec=callable, side_effect=Exception("Connection failed")
+            )
+        else:
+            mock_mqtt.publish_system_stats = AsyncMock(
+                spec=callable, side_effect=Exception("Connection refused")
+            )
         notification_manager.mqtt_service = mock_mqtt
 
-        health_data = {"cpu_usage": 45.2}
-
         with caplog.at_level(logging.ERROR):
-            await notification_manager.send_system_health_notification(health_data)
+            method = getattr(notification_manager, method_name)
+            await method(data)
 
-        assert "Error sending system health IoT notifications" in caplog.text
-        assert "MQTT connection failed" in caplog.text
+        assert error_message in caplog.text
 
     @pytest.mark.asyncio
-    async def test_send_gps_notification(self, notification_manager):
-        """Should send GPS notifications to all configured services."""
-        # Setup mock services
+    @pytest.mark.parametrize(
+        "latitude,longitude,accuracy",
+        [
+            pytest.param(51.5074, -0.1278, 10.5, id="with-accuracy"),
+            pytest.param(40.7128, -74.0060, None, id="without-accuracy"),
+        ],
+    )
+    async def test_send_gps_notification(self, notification_manager, latitude, longitude, accuracy):
+        """Should send GPS notifications with correct parameters."""
         mock_mqtt = Mock(spec=MQTTService)
         mock_mqtt.publish_gps_location = AsyncMock(spec=callable)
         notification_manager.mqtt_service = mock_mqtt
@@ -499,30 +539,14 @@ class TestSystemNotifications:
         mock_webhook.send_gps_webhook = AsyncMock(spec=callable)
         notification_manager.webhook_service = mock_webhook
 
-        latitude = 51.5074
-        longitude = -0.1278
-        accuracy = 10.5
-
-        await notification_manager.send_gps_notification(latitude, longitude, accuracy)
+        if accuracy is not None:
+            await notification_manager.send_gps_notification(latitude, longitude, accuracy)
+        else:
+            await notification_manager.send_gps_notification(latitude, longitude)
 
         # Verify both services were called with correct parameters
         mock_mqtt.publish_gps_location.assert_called_once_with(latitude, longitude, accuracy)
         mock_webhook.send_gps_webhook.assert_called_once_with(latitude, longitude, accuracy)
-
-    @pytest.mark.asyncio
-    async def test_send_gps_notification_without_accuracy(self, notification_manager):
-        """Should send GPS notifications without accuracy parameter."""
-        mock_mqtt = Mock(spec=MQTTService)
-        mock_mqtt.publish_gps_location = AsyncMock(spec=callable)
-        notification_manager.mqtt_service = mock_mqtt
-
-        latitude = 40.7128
-        longitude = -74.0060
-
-        await notification_manager.send_gps_notification(latitude, longitude)
-
-        # Should be called with None for accuracy
-        mock_mqtt.publish_gps_location.assert_called_once_with(latitude, longitude, None)
 
     @pytest.mark.asyncio
     async def test_send_gps_notification_with_error(self, notification_manager, caplog):
@@ -538,60 +562,6 @@ class TestSystemNotifications:
 
         assert "Error sending GPS IoT notifications" in caplog.text
         assert "Webhook timeout" in caplog.text
-
-    @pytest.mark.asyncio
-    async def test_send_system_stats_notification(self, notification_manager):
-        """Should send system stats notifications to all configured services."""
-        # Setup mock services
-        mock_mqtt = Mock(spec=MQTTService)
-        mock_mqtt.publish_system_stats = AsyncMock(spec=callable)
-        notification_manager.mqtt_service = mock_mqtt
-
-        mock_webhook = Mock(spec=WebhookService)
-        mock_webhook.send_system_webhook = AsyncMock(spec=callable)
-        notification_manager.webhook_service = mock_webhook
-
-        stats_data = {
-            "detection_count": 150,
-            "species_count": 25,
-            "uptime": 86400,
-            "last_detection": "2024-01-01T12:00:00",
-        }
-
-        await notification_manager.send_system_stats_notification(stats_data)
-
-        # Verify both services were called
-        mock_mqtt.publish_system_stats.assert_called_once_with(stats_data)
-        mock_webhook.send_system_webhook.assert_called_once_with(stats_data)
-
-    @pytest.mark.asyncio
-    async def test_send_system_stats_notification_mqtt_only(self, notification_manager):
-        """Should send system stats to MQTT only when webhook not configured."""
-        mock_mqtt = Mock(spec=MQTTService)
-        mock_mqtt.publish_system_stats = AsyncMock(spec=callable)
-        notification_manager.mqtt_service = mock_mqtt
-        notification_manager.webhook_service = None
-
-        stats_data = {"detection_count": 100}
-
-        await notification_manager.send_system_stats_notification(stats_data)
-
-        mock_mqtt.publish_system_stats.assert_called_once_with(stats_data)
-
-    @pytest.mark.asyncio
-    async def test_send_system_stats_notification_with_error(self, notification_manager, caplog):
-        """Should log error when system stats notification fails."""
-        mock_mqtt = Mock(spec=MQTTService)
-        mock_mqtt.publish_system_stats = AsyncMock(
-            spec=callable, side_effect=Exception("Connection refused")
-        )
-        notification_manager.mqtt_service = mock_mqtt
-
-        with caplog.at_level(logging.ERROR):
-            await notification_manager.send_system_stats_notification({"uptime": 3600})
-
-        assert "Error sending system stats IoT notifications" in caplog.text
-        assert "Connection refused" in caplog.text
 
 
 class TestEdgeCases:

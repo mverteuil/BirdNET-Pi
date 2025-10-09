@@ -146,14 +146,27 @@ class TestDetectionsAPIRoutes:
         assert len(data["detections"]) == 2
         assert data["detections"][0]["common_name"] == "Robin"
 
-    def test_get_recent_detections_error(self, client):
+    @pytest.mark.parametrize(
+        "service_error,expected_status,expected_message",
+        [
+            pytest.param(
+                Exception("Database error"),
+                500,
+                "Error retrieving recent detections",
+                id="database-error",
+            ),
+        ],
+    )
+    def test_get_recent_detections_error(
+        self, client, service_error, expected_status, expected_message
+    ):
         """Should handle errors when getting recent detections."""
         client.mock_query_service.query_detections = AsyncMock(
-            spec=DetectionQueryService.query_detections, side_effect=Exception("Database error")
+            spec=DetectionQueryService.query_detections, side_effect=service_error
         )
         response = client.get("/api/detections/recent?limit=10")
-        assert response.status_code == 500
-        assert "Error retrieving recent detections" in response.json()["detail"]
+        assert response.status_code == expected_status
+        assert expected_message in response.json()["detail"]
 
     @pytest.mark.parametrize(
         "target_date,mock_return,expected_count,expected_date",
@@ -374,26 +387,41 @@ class TestPaginatedDetections:
         assert len(data["detections"]) == 1
         assert data["detections"][0]["common_name"] == "American Robin"
 
-    def test_get_paginated_detections_empty_result(self, client):
-        """Should handle empty results gracefully."""
-        client.mock_query_service.query_detections = AsyncMock(
-            spec=DetectionQueryService.query_detections, return_value=[]
-        )
-        response = client.get("/api/detections/?page=1")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["detections"] == []
-        assert data["pagination"]["total"] == 0
-        assert data["pagination"]["total_pages"] == 0
+    @pytest.mark.parametrize(
+        "mock_return,expected_status,expected_error",
+        [
+            pytest.param([], 200, None, id="empty-result"),
+            pytest.param(
+                Exception("Database error"),
+                500,
+                "Error retrieving detections",
+                id="database-error",
+            ),
+        ],
+    )
+    def test_get_paginated_detections_scenarios(
+        self, client, mock_return, expected_status, expected_error
+    ):
+        """Should handle various scenarios for paginated detections."""
+        if isinstance(mock_return, Exception):
+            client.mock_query_service.query_detections = AsyncMock(
+                spec=DetectionQueryService.query_detections, side_effect=mock_return
+            )
+        else:
+            client.mock_query_service.query_detections = AsyncMock(
+                spec=DetectionQueryService.query_detections, return_value=mock_return
+            )
 
-    def test_get_paginated_detections_error(self, client):
-        """Should handle errors in paginated detections."""
-        client.mock_query_service.query_detections = AsyncMock(
-            spec=DetectionQueryService.query_detections, side_effect=Exception("Database error")
-        )
         response = client.get("/api/detections/?page=1&per_page=10")
-        assert response.status_code == 500
-        assert "Error retrieving detections" in response.json()["detail"]
+        assert response.status_code == expected_status
+
+        if expected_status == 200:
+            data = response.json()
+            assert data["detections"] == []
+            assert data["pagination"]["total"] == 0
+            assert data["pagination"]["total_pages"] == 0
+        else:
+            assert expected_error in response.json()["detail"]
 
     def test_get_paginated_detections_default_dates(self, client, model_factory):
         """Should use today's date when start_date and end_date not provided."""
@@ -490,28 +518,44 @@ class TestBestRecordings:
         assert data["recordings"][0]["family"] == "Corvidae"
         assert data["filters"]["family"] == "Corvidae"
 
-    def test_get_best_recordings_empty(self, client):
-        """Should handle empty results for best recordings."""
-        client.mock_query_service.query_best_recordings_per_species = AsyncMock(
-            spec=DetectionQueryService.query_best_recordings_per_species, return_value=([], 0)
-        )
-        response = client.get("/api/detections/best-recordings?min_confidence=0.99")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["recordings"] == []
-        assert data["count"] == 0
-        assert data["avg_confidence"] == 0
-        assert data["date_range"] == "No recordings"
+    @pytest.mark.parametrize(
+        "mock_return,expected_status,expected_error",
+        [
+            pytest.param(([], 0), 200, None, id="empty-results"),
+            pytest.param(
+                Exception("Query failed"),
+                500,
+                "Error retrieving best recordings",
+                id="database-error",
+            ),
+        ],
+    )
+    def test_get_best_recordings_scenarios(
+        self, client, mock_return, expected_status, expected_error
+    ):
+        """Should handle various scenarios for best recordings."""
+        if isinstance(mock_return, Exception):
+            client.mock_query_service.query_best_recordings_per_species = AsyncMock(
+                spec=DetectionQueryService.query_best_recordings_per_species,
+                side_effect=mock_return,
+            )
+        else:
+            client.mock_query_service.query_best_recordings_per_species = AsyncMock(
+                spec=DetectionQueryService.query_best_recordings_per_species,
+                return_value=mock_return,
+            )
 
-    def test_get_best_recordings_error(self, client):
-        """Should handle errors in best recordings."""
-        client.mock_query_service.query_best_recordings_per_species = AsyncMock(
-            spec=DetectionQueryService.query_best_recordings_per_species,
-            side_effect=Exception("Query failed"),
-        )
-        response = client.get("/api/detections/best-recordings")
-        assert response.status_code == 500
-        assert "Error retrieving best recordings" in response.json()["detail"]
+        response = client.get("/api/detections/best-recordings?min_confidence=0.99")
+        assert response.status_code == expected_status
+
+        if expected_status == 200:
+            data = response.json()
+            assert data["recordings"] == []
+            assert data["count"] == 0
+            assert data["avg_confidence"] == 0
+            assert data["date_range"] == "No recordings"
+        else:
+            assert expected_error in response.json()["detail"]
 
     def test_get_best_recordings_with_species_filter_no_limit(self, client, model_factory):
         """Should pass None per_species_limit when species filter is provided."""
@@ -734,14 +778,27 @@ class TestSpeciesSummary:
         data = response.json()
         assert len(data["species"]) == 3
 
-    def test_get_species_summary_error(self, client):
+    @pytest.mark.parametrize(
+        "service_error,expected_status,expected_message",
+        [
+            pytest.param(
+                Exception("Database error"),
+                500,
+                "Error retrieving species summary",
+                id="database-error",
+            ),
+        ],
+    )
+    def test_get_species_summary_error(
+        self, client, service_error, expected_status, expected_message
+    ):
         """Should handle errors in species summary."""
         client.mock_query_service.get_species_summary = AsyncMock(
-            spec=DetectionQueryService.get_species_summary, side_effect=Exception("Database error")
+            spec=DetectionQueryService.get_species_summary, side_effect=service_error
         )
         response = client.get("/api/detections/species/summary")
-        assert response.status_code == 500
-        assert "Error retrieving species summary" in response.json()["detail"]
+        assert response.status_code == expected_status
+        assert expected_message in response.json()["detail"]
 
     @pytest.mark.parametrize(
         "period,expected_label,has_first_detection",
@@ -922,14 +979,27 @@ class TestDetectionsSummary:
             call_kwargs = client.mock_query_service.get_species_summary.call_args.kwargs
             assert call_kwargs.get("since") is None
 
-    def test_get_summary_error_handling(self, client):
+    @pytest.mark.parametrize(
+        "service_error,expected_status,expected_message",
+        [
+            pytest.param(
+                Exception("Database error"),
+                500,
+                "Failed to get detection summary",
+                id="database-error",
+            ),
+        ],
+    )
+    def test_get_summary_error_handling(
+        self, client, service_error, expected_status, expected_message
+    ):
         """Should handle errors gracefully."""
         client.mock_query_service.get_species_summary = AsyncMock(
-            spec=DetectionQueryService.get_species_summary, side_effect=Exception("Database error")
+            spec=DetectionQueryService.get_species_summary, side_effect=service_error
         )
         response = client.get("/api/detections/summary?period=day")
-        assert response.status_code == 500
-        assert "Failed to get detection summary" in response.json()["detail"]
+        assert response.status_code == expected_status
+        assert expected_message in response.json()["detail"]
 
 
 class TestHierarchicalFiltering:

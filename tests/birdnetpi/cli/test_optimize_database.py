@@ -258,6 +258,8 @@ class TestCLI:
         mock_db_service = MagicMock(spec=AsyncSession)
         mock_setup_db.return_value = mock_db_service
         mock_optimizer = MagicMock(spec=DatabaseOptimizer)
+        mock_optimizer.create_optimized_indexes.return_value = []
+        mock_optimizer.optimize_database.return_value = {}
         mock_optimizer_class.return_value = mock_optimizer
         runner = CliRunner()
         result = runner.invoke(cli, ["--optimize"])
@@ -303,6 +305,8 @@ class TestCLI:
         mock_db_service = MagicMock(spec=AsyncSession)
         mock_setup_db.return_value = mock_db_service
         mock_optimizer = MagicMock(spec=DatabaseOptimizer)
+        mock_optimizer.get_current_indexes.return_value = {}
+        mock_optimizer.analyze_table_statistics.return_value = {}
         mock_optimizer_class.return_value = mock_optimizer
         runner = CliRunner()
         with patch("logging.getLogger", autospec=True) as mock_get_logger:

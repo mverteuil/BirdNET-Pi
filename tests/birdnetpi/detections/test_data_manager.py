@@ -2,7 +2,7 @@
 
 import base64
 from datetime import datetime
-from unittest.mock import MagicMock, create_autospec
+from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import pytest
 from sqlalchemy.engine import Result, ScalarResult
@@ -141,14 +141,17 @@ class TestCoreOperations:
     @pytest.mark.asyncio
     async def test_delete_detection(self, data_manager, mock_services):
         """Should delete a detection record."""
-        mock_session = create_autospec(AsyncSession, spec_set=True, instance=True)
+        mock_session = MagicMock(spec=AsyncSession)
         mock_services[
             "database_service"
         ].get_async_db.return_value.__aenter__.return_value = mock_session
         mock_detection = MagicMock(spec=Detection)
-        mock_result = create_autospec(Result, spec_set=True)
+        mock_result = MagicMock(spec=Result)
         mock_result.scalar_one_or_none.return_value = mock_detection
-        mock_session.execute.return_value = mock_result
+        # Configure async methods explicitly to avoid unawaited coroutine warnings
+        mock_session.execute = AsyncMock(return_value=mock_result, spec_set=False)
+        mock_session.delete = MagicMock(return_value=None, spec_set=False)
+        mock_session.commit = AsyncMock(spec_set=False)
         result = await data_manager.delete_detection(1)
         assert result is True
         mock_session.delete.assert_called_once_with(mock_detection)
