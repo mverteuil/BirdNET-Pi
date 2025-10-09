@@ -301,7 +301,10 @@ class DetectionQueryService:
 
                 result = await session.execute(
                     query_sql,
-                    {"detection_id": str(detection_id), "language_code": self.config.language},
+                    {
+                        "detection_id": detection_id.hex,  # SQLite stores UUIDs without hyphens
+                        "language_code": self.config.language,
+                    },
                 )
                 result = result.fetchone()
 
@@ -1228,14 +1231,14 @@ class DetectionQueryService:
                 logger.exception("Error counting by species")
                 raise
 
-    async def count_by_date(self, species: str | None = None) -> dict[datetime.date, int]:
+    async def count_by_date(self, species: str | None = None) -> dict[str, int]:
         """Count detections by date with optional species filter.
 
         Args:
             species: Optional scientific name to filter by
 
         Returns:
-            Dict mapping dates to detection counts
+            Dict mapping date strings (YYYY-MM-DD) to detection counts
         """
         async with self.core_database.get_async_db() as session:
             try:
@@ -1251,10 +1254,11 @@ class DetectionQueryService:
                 stmt = stmt.order_by(func.date(Detection.timestamp))
 
                 result = await session.execute(stmt)
-                results = list(result)
+                results = result.fetchall()
                 if not results:
                     return {}
-                return {row["date"]: int(row["count"]) for row in results}
+                # Convert tuple results to dict - row[0] is date, row[1] is count
+                return {row[0]: int(row[1]) for row in results}
             except SQLAlchemyError:
                 await session.rollback()
                 logger.exception("Error counting by date")

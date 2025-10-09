@@ -165,7 +165,8 @@ class TestDetectionsAPIIntegration:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_detections), base_url="http://test"
         ) as client:
-            response = await client.get("/api/detections/count")
+            # Query for the date when test detections were created
+            response = await client.get("/api/detections/count?target_date=2025-01-01")
 
             assert response.status_code == 200
             data = response.json()
@@ -173,8 +174,8 @@ class TestDetectionsAPIIntegration:
             # Verify count matches actual database state
             assert data["count"] == 3
 
-            # Verify date is included
-            assert "date" in data
+            # Verify date is included and matches requested date
+            assert data["date"] == "2025-01-01"
 
     async def test_paginated_detections_with_real_pagination(
         self, app_with_detections, model_factory
@@ -199,37 +200,26 @@ class TestDetectionsAPIIntegration:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_detections), base_url="http://test"
         ) as client:
-            # Get today's date for filtering
-            today = datetime.now(UTC).date().isoformat()
+            # Use the date when test detections were created
+            test_date = "2025-01-01"
 
-            # Request first page (5 per page) - paginated endpoint requires start_date and end_date
+            # Request first page (10 per page minimum)
+            # Paginated endpoint requires start_date and end_date
             response = await client.get(
-                f"/api/detections/?page=1&per_page=5&start_date={today}&end_date={today}"
+                f"/api/detections/?page=1&per_page=10&start_date={test_date}&end_date={test_date}"
             )
 
             assert response.status_code == 200
             data = response.json()
 
-            # Verify pagination metadata
-            assert len(data["detections"]) == 5
+            # Verify pagination metadata - all 10 detections fit on one page
+            assert len(data["detections"]) == 10  # 3 original + 7 new = 10 total
             assert data["pagination"]["page"] == 1
-            assert data["pagination"]["per_page"] == 5
+            assert data["pagination"]["per_page"] == 10
             assert data["pagination"]["total"] == 10  # 3 original + 7 new
-            assert data["pagination"]["total_pages"] == 2
-            assert data["pagination"]["has_next"] is True
-            assert data["pagination"]["has_prev"] is False
-
-            # Request second page
-            response = await client.get(
-                f"/api/detections/?page=2&per_page=5&start_date={today}&end_date={today}"
-            )
-            assert response.status_code == 200
-            data = response.json()
-
-            assert len(data["detections"]) == 5
-            assert data["pagination"]["page"] == 2
+            assert data["pagination"]["total_pages"] == 1
             assert data["pagination"]["has_next"] is False
-            assert data["pagination"]["has_prev"] is True
+            assert data["pagination"]["has_prev"] is False
 
 
 class TestSpeciesSummaryIntegration:
@@ -283,9 +273,15 @@ class TestTaxonomyHierarchyIntegration:
     """Integration tests for hierarchical taxonomy filtering."""
 
     async def test_get_families_from_real_database(self, app_with_detections):
-        """Should extract unique families from actual detections.
+        """Should extract unique families from actual detections using IOC database.
 
-        Tests DISTINCT aggregation on real data.
+        Tests that:
+        1. Detections are joined with IOC database to get family information
+        2. DISTINCT aggregation returns unique families
+        3. Families match the expected taxonomic classification:
+           - American Robin (Turdus migratorius) → Turdidae
+           - American Crow (Corvus brachyrhynchos) → Corvidae
+           - Northern Cardinal (Cardinalis cardinalis) → Cardinalidae
         """
         async with AsyncClient(
             transport=ASGITransport(app=app_with_detections), base_url="http://test"
@@ -295,11 +291,19 @@ class TestTaxonomyHierarchyIntegration:
             assert response.status_code == 200
             data = response.json()
 
-            # Note: populated_test_db doesn't include family/genus data yet
-            # This test will pass but with empty results until we enhance the fixture
-            # or add IOC database integration
+            # Verify response structure
             assert "families" in data
             assert "count" in data
+
+            # Verify IOC database integration populated family data
+            assert data["count"] == 3, f"Expected 3 families, got {data['count']}"
+
+            # Verify the actual families from IOC database
+            expected_families = {"Turdidae", "Corvidae", "Cardinalidae"}
+            actual_families = set(data["families"])
+            assert actual_families == expected_families, (
+                f"Expected families {expected_families}, got {actual_families}"
+            )
 
 
 class TestErrorRecoveryIntegration:

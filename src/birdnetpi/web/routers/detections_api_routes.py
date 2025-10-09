@@ -251,9 +251,11 @@ async def get_detection_count(
 
         # Use DetectionQueryService for counting
         counts = await detection_query_service.count_by_date()
-        count = counts.get(target_date, 0)
+        # SQLite's date() returns strings like "2025-01-01", so convert target_date to match
+        date_key = target_date.isoformat()
+        count = counts.get(date_key, 0)
 
-        return DetectionCountResponse(date=target_date.isoformat(), count=count)
+        return DetectionCountResponse(date=date_key, count=count)
     except Exception as e:
         logger.error("Error getting detection count: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving detection count") from e

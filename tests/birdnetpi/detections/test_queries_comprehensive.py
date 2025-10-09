@@ -424,23 +424,22 @@ class TestCountingMethods:
     async def test_count_by_date(self, detection_query_service, mock_core_database):
         """Should count detections by date."""
         mock_session = AsyncMock(spec=AsyncSession)
-        date1 = date(2024, 1, 15)
-        date2 = date(2024, 1, 16)
-        date3 = date(2024, 1, 17)
+        # SQLite's date() function returns ISO date strings, not date objects
         mock_rows = [
-            {"date": date1, "count": 50},
-            {"date": date2, "count": 60},
-            {"date": date3, "count": 45},
+            ("2024-01-15", 50),
+            ("2024-01-16", 60),
+            ("2024-01-17", 45),
         ]
         mock_result = MagicMock(spec=Result)
-        mock_result.__iter__ = lambda self: iter(mock_rows)
+        mock_result.fetchall.return_value = mock_rows
         mock_session.execute.return_value = mock_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         result = await detection_query_service.count_by_date(species="Turdus migratorius")
+        # Function returns dict with string keys (ISO date format)
         assert len(result) == 3
-        assert result[date1] == 50
-        assert result[date2] == 60
-        assert result[date3] == 45
+        assert result["2024-01-15"] == 50
+        assert result["2024-01-16"] == 60
+        assert result["2024-01-17"] == 45
 
 
 class TestAdvancedQueries:

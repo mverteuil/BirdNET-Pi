@@ -158,10 +158,13 @@ class TestDetectionsAPIRoutes:
     @pytest.mark.parametrize(
         "target_date,mock_return,expected_count,expected_date",
         [
-            pytest.param(None, lambda: {datetime.now(UTC).date(): 5}, 5, None, id="today-default"),
+            # SQLite's date() function returns ISO date strings, not date objects
+            pytest.param(
+                None, lambda: {datetime.now(UTC).date().isoformat(): 5}, 5, None, id="today-default"
+            ),
             pytest.param(
                 date(2025, 1, 15),
-                lambda: {date(2025, 1, 15): 42},
+                lambda: {"2025-01-15": 42},
                 42,
                 "2025-01-15",
                 id="specific-date",

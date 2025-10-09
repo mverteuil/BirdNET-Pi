@@ -141,15 +141,15 @@ class TestDetectionQueryServiceBasics:
     async def test_count_by_date(self, detection_query_service, mock_core_database):
         """Should count detections by date."""
         mock_session = AsyncMock(spec=AsyncSession)
-        mock_date1 = datetime(2024, 1, 15).date()
-        mock_date2 = datetime(2024, 1, 16).date()
-        mock_result = [{"date": mock_date1, "count": 75}, {"date": mock_date2, "count": 60}]
+        # SQLite's date() function returns ISO date strings, not date objects
+        mock_result = [("2024-01-15", 75), ("2024-01-16", 60)]
         mock_execute_result = MagicMock(spec=Result)
-        mock_execute_result.__iter__ = lambda self: iter(mock_result)
+        mock_execute_result.fetchall.return_value = mock_result
         mock_session.execute.return_value = mock_execute_result
         mock_core_database.get_async_db.return_value.__aenter__.return_value = mock_session
         counts = await detection_query_service.count_by_date("Turdus migratorius")
-        assert counts == {mock_date1: 75, mock_date2: 60}
+        # Function returns dict with string keys (ISO date format)
+        assert counts == {"2024-01-15": 75, "2024-01-16": 60}
 
     @pytest.mark.asyncio
     async def test_get_storage_metrics(self, detection_query_service, mock_core_database):
