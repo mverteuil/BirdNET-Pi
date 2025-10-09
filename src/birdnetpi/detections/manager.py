@@ -236,7 +236,7 @@ class DataManager:
                 logger.exception("Error updating detection")
                 raise
 
-    async def delete_detection(self, detection_id: int) -> bool:
+    async def delete_detection(self, detection_id: UUID) -> bool:
         """Delete a detection record."""
         async with self.database_service.get_async_db() as session:
             try:
@@ -244,7 +244,7 @@ class DataManager:
                 result = await session.execute(stmt)
                 detection = result.scalar_one_or_none()
                 if detection:
-                    _ = session.delete(detection)
+                    await session.delete(detection)
                     await session.commit()
                     return True
                 return False
