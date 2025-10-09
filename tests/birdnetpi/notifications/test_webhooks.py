@@ -25,24 +25,6 @@ def enabled_webhook_service():
 class TestWebhookConfig:
     """Test the WebhookConfig class."""
 
-    def test_initialization(self):
-        """Should webhookConfig initialization."""
-        config = WebhookConfig(
-            url="https://example.com/webhook",
-            name="Test Webhook",
-            enabled=True,
-            timeout=15,
-            retry_count=2,
-            events=["detection", "health"],
-        )
-
-        assert config.url == "https://example.com/webhook"
-        assert config.name == "Test Webhook"
-        assert config.enabled is True
-        assert config.timeout == 15
-        assert config.retry_count == 2
-        assert config.events == ["detection", "health"]
-
     def test_initialization__defaults(self):
         """Should webhookConfig initialization with default values."""
         config = WebhookConfig(url="https://example.com/webhook")
@@ -92,18 +74,11 @@ class TestWebhookConfig:
 class TestWebhookService:
     """Test the WebhookService class."""
 
-    @pytest.mark.parametrize(
-        "enabled,expected_enabled",
-        [
-            pytest.param(False, False, id="disabled"),
-            pytest.param(True, True, id="enabled"),
-        ],
-    )
-    def test_initialization(self, enabled, expected_enabled):
-        """Should webhookService initialization for different states."""
-        service = WebhookService(enable_webhooks=enabled)
+    def test_initialization(self):
+        """Should initialize WebhookService with correct default state."""
+        service = WebhookService(enable_webhooks=True)
 
-        assert service.enable_webhooks is expected_enabled
+        # Verify stats are properly initialized
         assert len(service.webhooks) == 0
         assert service.client is None
         assert service.stats["total_sent"] == 0

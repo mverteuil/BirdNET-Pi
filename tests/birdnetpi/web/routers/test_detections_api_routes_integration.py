@@ -306,37 +306,77 @@ class TestErrorRecoveryIntegration:
     """Integration tests for error handling with real database."""
 
     async def test_database_constraint_violation_handling(self, app_with_detections):
-        """Should handle database constraint violations gracefully.
+        """Should handle database errors gracefully and continue serving requests.
 
-        Tests real error recovery, not mock side_effect configuration.
+        Verifies:
+        1. Returns proper HTTP error code (404, not 500)
+        2. Provides helpful error message
+        3. System continues to work after error
         """
-        # This test demonstrates error handling with actual database constraints
-        # For example, trying to create duplicate primary keys would trigger
-        # real SQLAlchemy errors that need proper handling
-
         async with AsyncClient(
             transport=ASGITransport(app=app_with_detections), base_url="http://test"
         ) as client:
-            # Test with invalid data that would violate constraints
-            response = await client.get(f"/api/detections/{uuid4()}")
+            # Make request that triggers error (non-existent detection)
+            fake_id = uuid4()
+            error_response = await client.get(f"/api/detections/{fake_id}")
 
             # Should return 404, not 500
-            assert response.status_code == 404
-            assert "not found" in response.json()["detail"].lower()
+            assert error_response.status_code == 404
+            assert "not found" in error_response.json()["detail"].lower()
+
+            # RECOVERY: Verify system continues to work after error
+            # Make successful request to verify database connection still works
+            recovery_response = await client.get("/api/detections/recent?limit=10")
+            assert recovery_response.status_code == 200
+            data = recovery_response.json()
+            assert data["count"] == 3  # Original 3 detections still accessible
 
     async def test_recovers_from_query_errors(self, app_with_detections):
-        """Should handle malformed queries gracefully.
+        """Should handle malformed queries and continue serving valid requests.
 
-        Tests actual error handling, not mock exceptions.
+        Verifies:
+        1. Gracefully handles invalid parameters
+        2. System recovers and processes valid requests after error
         """
         async with AsyncClient(
             transport=ASGITransport(app=app_with_detections), base_url="http://test"
         ) as client:
             # Test with invalid query parameters
-            response = await client.get("/api/detections/?page=0&per_page=-1")
+            error_response = await client.get("/api/detections/?page=0&per_page=-1")
 
             # Should handle gracefully (may return 422 or use defaults)
-            assert response.status_code in [200, 422]
+            assert error_response.status_code in [200, 422]
+
+            # RECOVERY: Verify system continues to work after malformed request
+            recovery_response = await client.get("/api/detections/recent?limit=5")
+            assert recovery_response.status_code == 200
+            assert recovery_response.json()["count"] >= 0  # Valid response
+
+    async def test_error_boundary_multiple_errors(self, app_with_detections):
+        """Should handle multiple consecutive errors without degradation.
+
+        Verifies that error handling doesn't cause state corruption that
+        affects subsequent requests.
+        """
+        async with AsyncClient(
+            transport=ASGITransport(app=app_with_detections), base_url="http://test"
+        ) as client:
+            # Make multiple requests that trigger errors
+            fake_ids = [uuid4() for _ in range(3)]
+            error_responses = []
+
+            for fake_id in fake_ids:
+                response = await client.get(f"/api/detections/{fake_id}")
+                error_responses.append(response)
+
+            # All should return proper 404 errors
+            assert all(r.status_code == 404 for r in error_responses)
+
+            # RECOVERY: Verify system still works normally after multiple errors
+            recovery_response = await client.get("/api/detections/recent?limit=10")
+            assert recovery_response.status_code == 200
+            data = recovery_response.json()
+            assert data["count"] == 3  # Data integrity maintained
 
 
 class TestDataIntegrityIntegration:
