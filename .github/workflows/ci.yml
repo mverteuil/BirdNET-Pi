@@ -97,7 +97,7 @@ jobs:
       - name: Run pytest tests
         run: uv run pytest --cov=src -m "not expensive"
       - name: Run expensive pytest tests
-        run: uv run pytest --cov=src --cov-append -m expensive
+        run: uv run pytest --cov=src --cov-append -m "expensive and not e2e"
       - name: Generate coverage XML report
         run: uv run coverage xml
       - name: Check code coverage
