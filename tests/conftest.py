@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import matplotlib
 import pytest
+import redis
 from dependency_injector import providers
 from sqlalchemy.engine import Result, Row
 from sqlalchemy.engine.result import MappingResult
@@ -372,32 +373,29 @@ def cache():
 @pytest.fixture(scope="session", autouse=True)
 def ensure_redis_running():
     """Ensure Redis is running for tests that require it."""
-    # Check if Redis is already running
+    # Try to connect to Redis programmatically
     try:
-        result = subprocess.run(["redis-cli", "ping"], capture_output=True, text=True, timeout=2)
-        if result.stdout.strip() == "PONG":
-            # Redis is already running
-            yield
-            return
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
+        client = redis.Redis(host="localhost", port=6379, socket_connect_timeout=2)
+        client.ping()
+        # Redis is available and responding
+        yield
+        return
+    except (redis.ConnectionError, redis.TimeoutError):
         pass
 
-    # Try to start Redis
+    # If direct connection failed, try to start Redis locally (for local development)
     try:
-        # Start Redis in the background
         subprocess.run(
             ["redis-server", "--daemonize", "yes"], capture_output=True, text=True, check=False
         )
-
-        # Give Redis a moment to start
         time.sleep(0.5)
 
         # Verify Redis started
-        result = subprocess.run(["redis-cli", "ping"], capture_output=True, text=True, timeout=2)
-        if result.stdout.strip() == "PONG":
-            yield
-            return
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
+        client = redis.Redis(host="localhost", port=6379, socket_connect_timeout=2)
+        client.ping()
+        yield
+        return
+    except (redis.ConnectionError, redis.TimeoutError, FileNotFoundError):
         pass
 
     # Redis is required for tests
