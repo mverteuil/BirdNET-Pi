@@ -32,7 +32,22 @@ def docker_compose_up_down() -> Generator[None, None, None]:
     compose_cmd = ["docker", "compose"]
 
     # Bring up Docker Compose and wait for services to be healthy
-    subprocess.run([*compose_cmd, "up", "-d", "--build", "--wait"], check=True, env=env)
+    # Capture output to help debug CI failures
+    result = subprocess.run(
+        [*compose_cmd, "up", "-d", "--build", "--wait"],
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
+    )
+    if result.returncode != 0:
+        print(f"\nDocker compose up failed with exit code {result.returncode}")
+        print("STDOUT:", result.stdout)
+        print("STDERR:", result.stderr)
+        subprocess.run(["docker", "ps", "-a"], check=False)
+        subprocess.run(["docker", "compose", "logs"], check=False, env=env)
+        result.check_returncode()  # Re-raise the error with context
+
     subprocess.run(["docker", "ps"], check=True)
     subprocess.run(["docker", "logs", "birdnet-pi"], check=True)
     yield
