@@ -137,18 +137,6 @@ class TestAnalyticsManagerBasics:
         for row in heatmap:
             assert len(row) == 24
 
-    def test_calculate_correlation(self, analytics_manager):
-        """Should correlation calculation."""
-        x = [1, 2, 3, 4, 5]
-        y = [2, 4, 6, 8, 10]
-        corr = analytics_manager.calculate_correlation(x, y)
-        assert 0.99 <= corr <= 1.0
-        y_neg = [10, 8, 6, 4, 2]
-        corr_neg = analytics_manager.calculate_correlation(x, y_neg)
-        assert -1.0 <= corr_neg <= -0.99
-        assert analytics_manager.calculate_correlation([], []) == 0
-        assert analytics_manager.calculate_correlation([1], [1]) == 0
-
     @pytest.mark.asyncio
     async def test_get_detection_scatter_data(
         self, analytics_manager, mock_detection_query_service

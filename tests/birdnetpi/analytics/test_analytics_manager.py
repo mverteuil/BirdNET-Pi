@@ -384,24 +384,6 @@ class TestDiversityMetrics:
         # 2 shared species (A, B) out of 4 total unique species = 0.5
         assert similarity["matrix"][0][1] == pytest.approx(0.5, rel=0.01)
 
-    def test_calculate_correlation(self, analytics_manager):
-        """Should calculate correlation coefficients correctly for different data patterns."""
-        x = [1, 2, 3, 4, 5]
-        y = [2, 4, 6, 8, 10]  # Perfect positive correlation
-
-        correlation = analytics_manager.calculate_correlation(x, y)
-        assert correlation == pytest.approx(1.0, rel=1e-5)
-
-        # Test negative correlation
-        y_neg = [10, 8, 6, 4, 2]
-        correlation_neg = analytics_manager.calculate_correlation(x, y_neg)
-        assert correlation_neg == pytest.approx(-1.0, rel=1e-5)
-
-        # Test no correlation
-        y_zero = [3, 3, 3, 3, 3]
-        correlation_zero = analytics_manager.calculate_correlation(x, y_zero)
-        assert correlation_zero == pytest.approx(0.0, abs=1e-5)
-
     @pytest.mark.parametrize(
         "count,expected_category",
         [

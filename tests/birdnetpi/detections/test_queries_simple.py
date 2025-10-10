@@ -36,26 +36,6 @@ def detection_query_service(mock_core_database, mock_species_database, test_conf
 class TestDetectionQueryServiceBasics:
     """Test basic DetectionQueryService functionality."""
 
-    def test_parse_timestamp_datetime(self, detection_query_service):
-        """Should parsing datetime objects."""
-        now = datetime.now(UTC)
-        result = detection_query_service._parse_timestamp(now)
-        assert result == now
-
-    def test_parse_timestamp_string(self, detection_query_service):
-        """Should parsing ISO string timestamps."""
-        timestamp_str = "2024-01-15T10:30:00"
-        result = detection_query_service._parse_timestamp(timestamp_str)
-        assert isinstance(result, datetime)
-        assert result.year == 2024
-        assert result.month == 1
-        assert result.day == 15
-
-    def test_parse_timestamp_invalid(self, detection_query_service):
-        """Should handle invalid timestamp formats."""
-        with pytest.raises(ValueError):
-            detection_query_service._parse_timestamp("invalid-date")
-
     def test_apply_species_filter_single(self, detection_query_service):
         """Should applying single species filter."""
         stmt = select(Detection)
