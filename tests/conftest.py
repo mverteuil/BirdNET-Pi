@@ -703,6 +703,91 @@ def mock_services_factory():
 
 
 @pytest.fixture
+def service_bundle_factory(mock_services_factory):
+    """Create common service bundles with preset configurations.
+
+    This fixture reduces repetitive service mock setup by providing common
+    bundles of services used together in different parts of the application.
+
+    Example:
+        def test_analytics_feature(service_bundle_factory):
+            services = service_bundle_factory("analytics")
+            # Get configured services
+            db = services["database_service"]
+            query = services["detection_query_service"]
+            display = services["species_display_service"]
+    """
+
+    def _create_bundle(bundle_type: str = "standard", **overrides: Any) -> dict[str, Any]:
+        """Create a service bundle with common configurations.
+
+        Args:
+            bundle_type: Type of bundle ("standard", "analytics", "minimal")
+            **overrides: Individual service overrides
+
+        Returns:
+            Dictionary of configured mock services
+        """
+        bundles = {
+            "standard": {
+                "include_database": True,
+                "include_species_db": True,
+                "include_query_service": True,
+                "include_file_manager": False,
+                "include_display_service": False,
+            },
+            "analytics": {
+                "include_database": True,
+                "include_species_db": True,
+                "include_query_service": True,
+                "include_display_service": True,
+                "include_file_manager": False,
+            },
+            "minimal": {
+                "include_database": True,
+                "include_species_db": False,
+                "include_query_service": False,
+                "include_file_manager": False,
+                "include_display_service": False,
+            },
+            "file_ops": {
+                "include_database": True,
+                "include_species_db": False,
+                "include_query_service": False,
+                "include_file_manager": True,
+                "include_display_service": False,
+            },
+        }
+
+        config = bundles.get(bundle_type, bundles["standard"]).copy()
+
+        # Build service dictionary based on config
+        services = {}
+        if config["include_database"]:
+            services["database_service"] = overrides.get(
+                "database_service", MagicMock(spec=CoreDatabaseService)
+            )
+        if config["include_species_db"]:
+            services["species_database"] = overrides.get(
+                "species_database", MagicMock(spec=SpeciesDatabaseService)
+            )
+        if config["include_query_service"]:
+            services["detection_query_service"] = overrides.get(
+                "detection_query_service", MagicMock(spec=DetectionQueryService)
+            )
+        if config["include_display_service"]:
+            services["species_display_service"] = overrides.get(
+                "species_display_service", MagicMock(spec=SpeciesDisplayService)
+            )
+        if config["include_file_manager"]:
+            services["file_manager"] = overrides.get("file_manager", MagicMock(spec=FileManager))
+
+        return services
+
+    return _create_bundle
+
+
+@pytest.fixture
 def async_mock_factory():
     """Create a factory for properly configured async mocks.
 

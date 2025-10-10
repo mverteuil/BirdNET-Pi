@@ -101,7 +101,7 @@ class TestInstallAssets:
         assert "✗ Error installing assets:" in result.output
         assert "LOCAL DEVELOPMENT SETUP REQUIRED" in result.output
         assert "export BIRDNETPI_DATA=./data" in result.output
-        assert "uv run asset-installer install v2.1.1" in result.output
+        assert "uv run install-assets install v2.1.1" in result.output
 
 
 class TestListVersions:

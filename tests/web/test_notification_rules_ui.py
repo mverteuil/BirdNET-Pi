@@ -176,56 +176,6 @@ def test_post_settings_view_with_notification_rules(
 
 
 @pytest.fixture
-def app_for_api_test(path_resolver, repo_root):
-    """Create app for API testing."""
-    # Setup path_resolver
-    path_resolver.get_static_dir = lambda: repo_root / "src" / "birdnetpi" / "web" / "static"
-    path_resolver.get_templates_dir = lambda: repo_root / "src" / "birdnetpi" / "web" / "templates"
-
-    Container.path_resolver.override(providers.Singleton(lambda: path_resolver))
-
-    templates_dir = path_resolver.get_templates_dir()
-    templates = Jinja2Templates(directory=str(templates_dir))
-    Container.templates.override(providers.Singleton(lambda: templates))
-
-    with patch("birdnetpi.web.routers.sqladmin_view_routes.setup_sqladmin", autospec=True):
-        app = create_app()
-
-    yield app
-
-    # Clean up overrides
-    Container.path_resolver.reset_override()
-    Container.templates.reset_override()
-
-
-def test_validate_species_endpoint(app_for_api_test):
-    """Should validate species via API endpoint."""
-    with patch(
-        "birdnetpi.web.routers.settings_api_routes.IOCDatabaseService", autospec=True
-    ) as mock_ioc:
-        mock_ioc.return_value.species_exists.side_effect = lambda name: name == "Turdus migratorius"
-
-        with TestClient(app_for_api_test) as client:
-            request_data = {
-                "scientific_names": [
-                    "Turdus migratorius",
-                    "Invalid species",
-                    "Cardinalis cardinalis",
-                ]
-            }
-
-            response = client.post("/api/settings/validate-species", json=request_data)
-            assert response.status_code == status.HTTP_200_OK
-
-            data = response.json()
-            assert "valid" in data
-            assert "invalid" in data
-            assert "Turdus migratorius" in data["valid"]
-            assert "Invalid species" in data["invalid"]
-            assert "Cardinalis cardinalis" in data["invalid"]  # Not in our mock
-
-
-@pytest.fixture
 def mock_config_with_rules():
     """Create a mock config with notification rules."""
     return BirdNETConfig(

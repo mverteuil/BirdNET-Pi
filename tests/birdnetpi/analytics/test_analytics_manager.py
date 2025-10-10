@@ -1,7 +1,7 @@
 """Unit tests for AnalyticsManager."""
 
 from datetime import date, datetime
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -10,9 +10,9 @@ from birdnetpi.detections.queries import DetectionQueryService
 
 
 @pytest.fixture
-def mock_detection_query_service(detection_query_service_factory):
+def mock_detection_query_service():
     """Create a mock DetectionQueryService."""
-    return detection_query_service_factory()
+    return MagicMock(spec=DetectionQueryService)
 
 
 @pytest.fixture

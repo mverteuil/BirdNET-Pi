@@ -140,16 +140,16 @@ def install(
 
     Examples:
       # Install latest release
-      asset-installer install latest
+      install-assets install latest
 
       # Install specific version
-      asset-installer install v2.1.1
+      install-assets install v2.1.1
 
       # Skip if assets already exist (for init containers)
-      asset-installer install v2.1.1 --skip-existing
+      install-assets install v2.1.1 --skip-existing
 
       # Save installation info to JSON
-      asset-installer install latest --output-json install.json
+      install-assets install latest --output-json install.json
     """
     path_resolver = ctx.obj["path_resolver"]
 
@@ -209,7 +209,7 @@ def install(
             click.echo("│" + " " * 78 + "│")
             click.echo("│  Run the asset installer with:" + " " * 44 + "│")
             click.echo("│    export BIRDNETPI_DATA=./data" + " " * 43 + "│")
-            click.echo("│    uv run asset-installer install v2.1.1" + " " * 34 + "│")
+            click.echo("│    uv run install-assets install v2.1.1" + " " * 37 + "│")
             click.echo("│" + " " * 78 + "│")
             click.echo(
                 "│  Or set it permanently in your shell profile (e.g., ~/.bashrc):" + " " * 12 + "│"

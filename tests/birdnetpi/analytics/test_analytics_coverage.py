@@ -1,7 +1,7 @@
 """Additional tests to improve AnalyticsManager coverage."""
 
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -10,14 +10,13 @@ from birdnetpi.detections.queries import DetectionQueryService
 
 
 @pytest.fixture
-def mock_detection_query_service(detection_query_service_factory):
-    """Create a mock DetectionQueryService using the factory.
+def mock_detection_query_service():
+    """Create a mock DetectionQueryService.
 
     Note: This fixture returns a basic mock without configured methods.
-    Individual tests can configure methods as needed, or pass parameters
-    to the factory in test-specific fixtures.
+    Individual tests can configure methods as needed.
     """
-    return detection_query_service_factory()
+    return MagicMock(spec=DetectionQueryService)
 
 
 @pytest.fixture

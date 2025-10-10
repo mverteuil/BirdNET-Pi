@@ -21,31 +21,21 @@ async def app_with_detections(app_with_temp_data, model_factory):
     """FastAPI app with 3 pre-seeded detections in its database."""
     db_service = app_with_temp_data._test_db_service
     async with db_service.get_async_db() as session:
-        # Add 3 known detections
-        robin = model_factory.create_detection(
-            scientific_name="Turdus migratorius",
-            common_name="American Robin",
-            species_tensor="Turdus migratorius_American Robin",
-            confidence=0.95,
-            timestamp=datetime(2025, 1, 1, 8, 30, 0, tzinfo=UTC),
-        )
-        crow = model_factory.create_detection(
-            scientific_name="Corvus brachyrhynchos",
-            common_name="American Crow",
-            species_tensor="Corvus brachyrhynchos_American Crow",
-            confidence=0.88,
-            timestamp=datetime(2025, 1, 1, 9, 15, 0, tzinfo=UTC),
-        )
-        cardinal = model_factory.create_detection(
-            scientific_name="Cardinalis cardinalis",
-            common_name="Northern Cardinal",
-            species_tensor="Cardinalis cardinalis_Northern Cardinal",
-            confidence=0.92,
-            timestamp=datetime(2025, 1, 1, 10, 0, 0, tzinfo=UTC),
-        )
-        session.add(robin)
-        session.add(crow)
-        session.add(cardinal)
+        # Create 3 detections with varied species
+        for i, (scientific, common) in enumerate(
+            [
+                ("Turdus migratorius", "American Robin"),
+                ("Corvus brachyrhynchos", "American Crow"),
+                ("Cardinalis cardinalis", "Northern Cardinal"),
+            ]
+        ):
+            detection = model_factory.create_detection(
+                scientific_name=scientific,
+                common_name=common,
+                species_tensor=f"{scientific}_{common}",
+                timestamp=datetime(2025, 1, 1, 8 + i, 0, 0, tzinfo=UTC),
+            )
+            session.add(detection)
         await session.commit()
 
     yield app_with_temp_data

@@ -8,30 +8,27 @@ import pytest
 from sqlalchemy.engine import ScalarResult
 from sqlalchemy.exc import SQLAlchemyError
 
-from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import AudioFile, Detection
-from birdnetpi.detections.queries import DetectionQueryService
-from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager
 
 
 @pytest.fixture
-def mock_services(path_resolver, db_service_factory):
+def mock_services(path_resolver, db_service_factory, service_bundle_factory):
     """Create mock services for DataManager."""
     mock_db_service, _session, _result = db_service_factory()
-    mock_multilingual = MagicMock(spec=SpeciesDatabaseService)
-    mock_species_display = MagicMock(spec=SpeciesDisplayService)
-    mock_query_service = MagicMock(spec=DetectionQueryService)
-    mock_file_manager = MagicMock(spec=FileManager)
-    return {
-        "database_service": mock_db_service,
-        "species_database": mock_multilingual,
-        "species_display_service": mock_species_display,
-        "detection_query_service": mock_query_service,
-        "file_manager": mock_file_manager,
-        "path_resolver": path_resolver,
-    }
+
+    # Use service_bundle_factory "analytics" bundle (includes species_display_service)
+    services = service_bundle_factory(
+        "analytics",
+        database_service=mock_db_service,  # Override with our custom db service
+    )
+
+    # Add services not in analytics bundle
+    services["path_resolver"] = path_resolver
+    services["file_manager"] = MagicMock(spec=FileManager)
+
+    return services
 
 
 @pytest.fixture

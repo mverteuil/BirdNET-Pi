@@ -7,6 +7,7 @@ import pytest
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.config.models import BirdNETConfig
+from birdnetpi.detections.queries import DetectionQueryService
 
 
 class TestDetectionStatistics:
@@ -250,7 +251,7 @@ class TestDetectionStatistics:
         return mock
 
     @pytest.fixture
-    def presentation_manager(self, mock_analytics_manager, detection_query_service_factory):
+    def presentation_manager(self, mock_analytics_manager):
         """Create presentation manager with mocked dependencies."""
         config = MagicMock(
             spec=BirdNETConfig,
@@ -264,15 +265,63 @@ class TestDetectionStatistics:
         manager = PresentationManager(
             config=config,
             analytics_manager=mock_analytics_manager,
-            detection_query_service=detection_query_service_factory(),
+            detection_query_service=MagicMock(spec=DetectionQueryService),
         )
         return manager
 
     @pytest.mark.asyncio
-    async def test_day_view_statistics(self, presentation_manager, detection_query_service_factory):
-        """Should show correct peak and counts for day view statistics."""
-        mock_detection_query_service = detection_query_service_factory(
-            get_species_summary=[
+    @pytest.mark.parametrize(
+        "period,expected_label,expected_new_species_period,extra_checks",
+        [
+            pytest.param(
+                "day",
+                "Today",
+                "week",
+                {
+                    "today_species": 5,
+                    "today_detections": 603,
+                    "peak_activity_time": "08:00-09:00",
+                    "peak_detections": 40,
+                    "new_species_max_len": 2,
+                },
+                id="day-view-with-detailed-counts",
+            ),
+            pytest.param(
+                "week",
+                "This Week",
+                "period",
+                {"peak_activity_time_options": ["06:00-07:00", "08:00-09:00"]},
+                id="week-view-with-aggregated-peak",
+            ),
+            pytest.param(
+                "season",
+                "This Season",
+                "period",
+                None,
+                id="season-view",
+            ),
+            pytest.param(
+                "historical",
+                "All Time",
+                "period",
+                None,
+                id="historical-view",
+            ),
+        ],
+    )
+    async def test_period_view_statistics(
+        self,
+        presentation_manager,
+        period,
+        expected_label,
+        expected_new_species_period,
+        extra_checks,
+    ):
+        """Should show correct statistics for different period views."""
+        mock_detection_query_service = MagicMock(spec=DetectionQueryService)
+        mock_detection_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary,
+            return_value=[
                 {
                     "scientific_name": "Turdus migratorius",
                     "common_name": "American Robin",
@@ -298,148 +347,39 @@ class TestDetectionStatistics:
                     "common_name": None,
                     "detection_count": 1,
                 },
-            ]
+            ],
         )
         result = await presentation_manager.get_detection_display_data(
-            period="day", detection_query_service=mock_detection_query_service
+            period=period, detection_query_service=mock_detection_query_service
         )
-        assert result["period_label"] == "Today"
-        assert result["today_species"] == 5
-        assert result["today_detections"] == 603
-        assert result["peak_activity_time"] == "08:00-09:00"
-        assert result["peak_detections"] == 40
-        assert len(result["new_species"]) <= 2
-        assert result["new_species_period"] == "week"
+
+        # Common assertions for all periods
+        assert result["period_label"] == expected_label
+        assert result["new_species_period"] == expected_new_species_period
+
+        # Period-specific assertions
+        if extra_checks:
+            if "today_species" in extra_checks:
+                assert result["today_species"] == extra_checks["today_species"]
+            if "today_detections" in extra_checks:
+                assert result["today_detections"] == extra_checks["today_detections"]
+            if "peak_activity_time" in extra_checks:
+                assert result["peak_activity_time"] == extra_checks["peak_activity_time"]
+            if "peak_detections" in extra_checks:
+                assert result["peak_detections"] == extra_checks["peak_detections"]
+            if "new_species_max_len" in extra_checks:
+                assert len(result["new_species"]) <= extra_checks["new_species_max_len"]
+            if "peak_activity_time_options" in extra_checks:
+                assert result["peak_activity_time"] in extra_checks["peak_activity_time_options"]
+                assert isinstance(result["peak_detections"], int)
 
     @pytest.mark.asyncio
-    async def test_week_view_statistics(
-        self, presentation_manager, detection_query_service_factory
-    ):
-        """Should show aggregated peak for week view statistics."""
-        mock_detection_query_service = detection_query_service_factory(
-            get_species_summary=[
-                {
-                    "scientific_name": "Turdus migratorius",
-                    "common_name": "American Robin",
-                    "detection_count": 250,
-                },
-                {
-                    "scientific_name": "Cardinalis cardinalis",
-                    "common_name": "Northern Cardinal",
-                    "detection_count": 200,
-                },
-                {
-                    "scientific_name": "Cyanocitta cristata",
-                    "common_name": "Blue Jay",
-                    "detection_count": 150,
-                },
-                {
-                    "scientific_name": "Rare species 1",
-                    "common_name": None,
-                    "detection_count": 2,
-                },
-                {
-                    "scientific_name": "Rare species 2",
-                    "common_name": None,
-                    "detection_count": 1,
-                },
-            ]
-        )
-        result = await presentation_manager.get_detection_display_data(
-            period="week", detection_query_service=mock_detection_query_service
-        )
-        assert result["period_label"] == "This Week"
-        assert result["peak_activity_time"] in ["06:00-07:00", "08:00-09:00"]
-        assert isinstance(result["peak_detections"], int)
-        assert result["new_species_period"] == "period"
-
-    @pytest.mark.asyncio
-    async def test_season_view_statistics(
-        self, presentation_manager, detection_query_service_factory
-    ):
-        """Should show correct label for season view statistics."""
-        mock_detection_query_service = detection_query_service_factory(
-            get_species_summary=[
-                {
-                    "scientific_name": "Turdus migratorius",
-                    "common_name": "American Robin",
-                    "detection_count": 250,
-                },
-                {
-                    "scientific_name": "Cardinalis cardinalis",
-                    "common_name": "Northern Cardinal",
-                    "detection_count": 200,
-                },
-                {
-                    "scientific_name": "Cyanocitta cristata",
-                    "common_name": "Blue Jay",
-                    "detection_count": 150,
-                },
-                {
-                    "scientific_name": "Rare species 1",
-                    "common_name": None,
-                    "detection_count": 2,
-                },
-                {
-                    "scientific_name": "Rare species 2",
-                    "common_name": None,
-                    "detection_count": 1,
-                },
-            ]
-        )
-        result = await presentation_manager.get_detection_display_data(
-            period="season", detection_query_service=mock_detection_query_service
-        )
-        assert result["period_label"] == "This Season"
-        assert result["new_species_period"] == "period"
-
-    @pytest.mark.asyncio
-    async def test_historical_view_statistics(
-        self, presentation_manager, detection_query_service_factory
-    ):
-        """Should show 'All Time' label for historical view statistics."""
-        mock_detection_query_service = detection_query_service_factory(
-            get_species_summary=[
-                {
-                    "scientific_name": "Turdus migratorius",
-                    "common_name": "American Robin",
-                    "detection_count": 250,
-                },
-                {
-                    "scientific_name": "Cardinalis cardinalis",
-                    "common_name": "Northern Cardinal",
-                    "detection_count": 200,
-                },
-                {
-                    "scientific_name": "Cyanocitta cristata",
-                    "common_name": "Blue Jay",
-                    "detection_count": 150,
-                },
-                {
-                    "scientific_name": "Rare species 1",
-                    "common_name": None,
-                    "detection_count": 2,
-                },
-                {
-                    "scientific_name": "Rare species 2",
-                    "common_name": None,
-                    "detection_count": 1,
-                },
-            ]
-        )
-        result = await presentation_manager.get_detection_display_data(
-            period="historical", detection_query_service=mock_detection_query_service
-        )
-        assert result["period_label"] == "All Time"
-        assert result["new_species_period"] == "period"
-
-    @pytest.mark.asyncio
-    async def test_rare_species_identification(
-        self, presentation_manager, detection_query_service_factory
-    ):
+    async def test_rare_species_identification(self, presentation_manager):
         """Should correctly identify rare species as 'new'."""
-        mock_detection_query_service = detection_query_service_factory(
-            get_species_summary=[
+        mock_detection_query_service = MagicMock(spec=DetectionQueryService)
+        mock_detection_query_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary,
+            return_value=[
                 {
                     "scientific_name": "Turdus migratorius",
                     "common_name": "American Robin",
@@ -465,7 +405,7 @@ class TestDetectionStatistics:
                     "common_name": None,
                     "detection_count": 1,
                 },
-            ]
+            ],
         )
         result = await presentation_manager.get_detection_display_data(
             period="week", detection_query_service=mock_detection_query_service
@@ -477,9 +417,13 @@ class TestDetectionStatistics:
             assert "Rare species" in species_name
 
     @pytest.mark.asyncio
-    async def test_no_data_handling(self, presentation_manager, detection_query_service_factory):
+    async def test_no_data_handling(self, presentation_manager):
         """Should handle no detection data gracefully."""
-        empty_service = detection_query_service_factory(get_species_summary=[])
+        empty_service = MagicMock(spec=DetectionQueryService)
+        empty_service.get_species_summary = AsyncMock(
+            spec=DetectionQueryService.get_species_summary,
+            return_value=[],
+        )
         presentation_manager.analytics_manager.get_temporal_patterns = AsyncMock(
             spec=AnalyticsManager.get_temporal_patterns,
             return_value={"hourly_distribution": [], "peak_hour": None, "periods": {}},
@@ -492,12 +436,18 @@ class TestDetectionStatistics:
         assert result["new_species"] == []
         assert "06:00" in result["peak_activity_time"]
 
-    def test_period_label_helper(self, presentation_manager):
+    @pytest.mark.parametrize(
+        "period,expected_label",
+        [
+            ("day", "Today"),
+            ("week", "This Week"),
+            ("month", "This Month"),
+            ("season", "This Season"),
+            ("year", "This Year"),
+            ("historical", "All Time"),
+            ("unknown", "This Period"),
+        ],
+    )
+    def test_period_label_helper(self, presentation_manager, period, expected_label):
         """Should return correct labels from period label helper."""
-        assert presentation_manager._get_period_label("day") == "Today"
-        assert presentation_manager._get_period_label("week") == "This Week"
-        assert presentation_manager._get_period_label("month") == "This Month"
-        assert presentation_manager._get_period_label("season") == "This Season"
-        assert presentation_manager._get_period_label("year") == "This Year"
-        assert presentation_manager._get_period_label("historical") == "All Time"
-        assert presentation_manager._get_period_label("unknown") == "This Period"
+        assert presentation_manager._get_period_label(period) == expected_label

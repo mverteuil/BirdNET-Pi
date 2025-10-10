@@ -8,6 +8,7 @@ import pytest
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.config.models import BirdNETConfig
+from birdnetpi.detections.queries import DetectionQueryService
 
 
 @pytest.fixture
@@ -26,10 +27,10 @@ def mock_config():
 
 
 @pytest.fixture
-def presentation_manager(mock_analytics_manager, detection_query_service_factory, mock_config):
+def presentation_manager(mock_analytics_manager, mock_config):
     """Create a PresentationManager with mocked dependencies."""
     return PresentationManager(
-        mock_analytics_manager, detection_query_service_factory(), mock_config
+        mock_analytics_manager, MagicMock(spec=DetectionQueryService), mock_config
     )
 
 
@@ -69,7 +70,6 @@ class TestLandingPageData:
         self,
         presentation_manager,
         mock_analytics_manager,
-        detection_query_service_factory,
         sample_detections,
     ):
         """Should assemble complete landing page data correctly."""
@@ -142,8 +142,10 @@ class TestLandingPageData:
         )
 
         # Mock detection query service method
-        mock_detection_query_service = detection_query_service_factory(
-            query_detections=sample_detections
+        mock_detection_query_service = MagicMock(spec=DetectionQueryService)
+        mock_detection_query_service.query_detections = AsyncMock(
+            spec=DetectionQueryService.query_detections,
+            return_value=sample_detections,
         )
         presentation_manager.detection_query_service = mock_detection_query_service
 
