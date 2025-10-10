@@ -280,3 +280,228 @@ class TestAnalyticsIntegration:
             per_species_limit=None, min_confidence=0.5, page=1, per_page=20
         )
         assert len(detections) <= 9
+
+
+class TestFirstDetectionFlags:
+    """Tests for first detection identification with window functions."""
+
+    @pytest.mark.asyncio
+    async def test_first_ever_detection_across_all_time(self, query_service_with_db):
+        """Should correctly identify the first ever detection of each species."""
+        # Query all detections with first detection flags
+        detections = await query_service_with_db.query_detections(
+            include_first_detections=True, order_by="timestamp", order_desc=False
+        )
+
+        # Group detections by species
+        species_detections = {}
+        for detection in detections:
+            species = detection.scientific_name
+            if species not in species_detections:
+                species_detections[species] = []
+            species_detections[species].append(detection)
+
+        # Verify each species has exactly one detection marked as first_ever
+        for species, species_dets in species_detections.items():
+            first_ever_count = sum(1 for d in species_dets if d.is_first_ever)
+            assert first_ever_count == 1, (
+                f"{species} should have exactly 1 first_ever detection, found {first_ever_count}"
+            )
+
+            # The first_ever flag should be on the earliest detection
+            sorted_dets = sorted(species_dets, key=lambda d: d.timestamp)
+            assert sorted_dets[0].is_first_ever, (
+                f"Earliest detection of {species} should be marked as first_ever"
+            )
+
+    @pytest.mark.asyncio
+    async def test_first_in_period_with_date_filter(self, query_service_with_db):
+        """Should correctly identify first detection within a filtered time period."""
+        # Filter to Jan 1, 2024 only
+        start_date = datetime.datetime(2024, 1, 1, 0, 0, 0)
+        end_date = datetime.datetime(2024, 1, 1, 23, 59, 59)
+
+        detections = await query_service_with_db.query_detections(
+            start_date=start_date,
+            end_date=end_date,
+            include_first_detections=True,
+            order_by="timestamp",
+            order_desc=False,
+        )
+
+        # Group by species
+        species_detections = {}
+        for detection in detections:
+            species = detection.scientific_name
+            if species not in species_detections:
+                species_detections[species] = []
+            species_detections[species].append(detection)
+
+        # Each species should have exactly one detection marked as first_in_period
+        for species, species_dets in species_detections.items():
+            first_in_period_count = sum(1 for d in species_dets if d.is_first_in_period)
+            assert first_in_period_count == 1, (
+                f"{species} should have exactly 1 first_in_period detection on Jan 1, "
+                f"found {first_in_period_count}"
+            )
+
+            # The first_in_period flag should be on the earliest detection in the period
+            sorted_dets = sorted(species_dets, key=lambda d: d.timestamp)
+            assert sorted_dets[0].is_first_in_period, (
+                f"Earliest detection of {species} on Jan 1 should be marked as first_in_period"
+            )
+
+    @pytest.mark.asyncio
+    async def test_first_ever_vs_first_in_period(self, query_service_with_db):
+        """Should distinguish between first_ever and first_in_period correctly."""
+        # American Robin has a detection on Dec 31, 2023 and multiple on Jan 1, 2024
+        # Filter to Jan 1, 2024 only
+        start_date = datetime.datetime(2024, 1, 1, 0, 0, 0)
+        end_date = datetime.datetime(2024, 1, 1, 23, 59, 59)
+
+        detections = await query_service_with_db.query_detections(
+            species="Turdus migratorius",
+            start_date=start_date,
+            end_date=end_date,
+            include_first_detections=True,
+            order_by="timestamp",
+            order_desc=False,
+        )
+
+        # Should have 3 detections of American Robin on Jan 1
+        assert len(detections) == 3
+
+        # NONE of them should be first_ever (because Dec 31 detection is earlier)
+        first_ever_count = sum(1 for d in detections if d.is_first_ever)
+        assert first_ever_count == 0, "No Jan 1 detections should be first_ever (Dec 31 is earlier)"
+
+        # Exactly ONE should be first_in_period (the earliest on Jan 1)
+        first_in_period_count = sum(1 for d in detections if d.is_first_in_period)
+        assert first_in_period_count == 1, "Exactly one should be first_in_period for Jan 1"
+
+        # The 06:15 detection should be first_in_period
+        earliest_detection = min(detections, key=lambda d: d.timestamp)
+        assert earliest_detection.is_first_in_period, (
+            "Earliest Jan 1 detection should be first_in_period"
+        )
+        assert not earliest_detection.is_first_ever, (
+            "Jan 1 detection should NOT be first_ever (Dec 31 is earlier)"
+        )
+
+    @pytest.mark.asyncio
+    async def test_first_detection_with_confidence_filter(self, query_service_with_db):
+        """Should calculate first detections correctly even with confidence filters."""
+        # Query with high confidence filter
+        detections = await query_service_with_db.query_detections(
+            min_confidence=0.9,
+            include_first_detections=True,
+            order_by="timestamp",
+            order_desc=False,
+        )
+
+        # Even with confidence filter, is_first_ever should reflect the global first
+        # detection across ALL detections (not just high-confidence ones)
+        for detection in detections:
+            if detection.is_first_ever:
+                # Verify this is actually the first detection of this species globally
+                all_species_detections = await query_service_with_db.query_detections(
+                    species=detection.scientific_name, order_by="timestamp", order_desc=False
+                )
+                first_global = all_species_detections[0]
+                assert detection.timestamp == first_global.timestamp, (
+                    "is_first_ever should match global first, not just filtered first"
+                )
+
+    @pytest.mark.asyncio
+    async def test_first_detection_timestamps_populated(self, query_service_with_db):
+        """Should populate first_ever_detection and first_period_detection timestamps."""
+        start_date = datetime.datetime(2024, 1, 1, 0, 0, 0)
+        end_date = datetime.datetime(2024, 1, 1, 23, 59, 59)
+
+        detections = await query_service_with_db.query_detections(
+            start_date=start_date,
+            end_date=end_date,
+            include_first_detections=True,
+        )
+
+        for detection in detections:
+            # All detections should have first_ever_detection timestamp
+            assert detection.first_ever_detection is not None, (
+                f"Detection {detection.id} should have first_ever_detection timestamp"
+            )
+
+            # All detections should have first_period_detection timestamp
+            assert detection.first_period_detection is not None, (
+                f"Detection {detection.id} should have first_period_detection timestamp"
+            )
+
+            # first_period_detection should be >= start_date (within the filtered period)
+            assert detection.first_period_detection >= start_date, (
+                "first_period_detection should be within the filtered period"
+            )
+
+            # first_ever_detection should be <= first_period_detection
+            # (global timestamp can't be after period-specific timestamp)
+            assert detection.first_ever_detection <= detection.first_period_detection, (
+                "first_ever_detection should be before or equal to first_period_detection"
+            )
+
+    @pytest.mark.asyncio
+    async def test_species_with_single_detection(self, query_service_with_db):
+        """Should handle species with only one detection correctly."""
+        # Poecile carolinensis (Carolina Chickadee) only has one detection in the test data
+        detections = await query_service_with_db.query_detections(
+            species="Poecile carolinensis", include_first_detections=True
+        )
+
+        assert len(detections) == 1
+        detection = detections[0]
+
+        # For a species with only one detection, both flags should be True
+        assert detection.is_first_ever, "Single detection should be first_ever"
+        assert detection.is_first_in_period, "Single detection should be first_in_period"
+
+        # Timestamps should all match
+        assert detection.first_ever_detection == detection.timestamp
+        assert detection.first_period_detection == detection.timestamp
+
+    @pytest.mark.asyncio
+    async def test_first_detection_with_family_filter(self, query_service_with_db):
+        """Should calculate first detections correctly even with taxonomy filters."""
+        # Filter by a family (this is a data filter, not a time filter)
+        # The global ranking should still be across ALL detections
+        detections = await query_service_with_db.query_detections(
+            family="Turdidae",  # This is a data filter
+            include_first_detections=True,
+            order_by="timestamp",
+            order_desc=False,
+        )
+
+        # Each species in the family should have is_first_ever flag on earliest detection
+        species_detections = {}
+        for detection in detections:
+            species = detection.scientific_name
+            if species not in species_detections:
+                species_detections[species] = []
+            species_detections[species].append(detection)
+
+        for species, species_dets in species_detections.items():
+            first_ever_count = sum(1 for d in species_dets if d.is_first_ever)
+            assert first_ever_count <= 1, (
+                f"{species} should have at most 1 first_ever detection in family filter"
+            )
+
+    @pytest.mark.asyncio
+    async def test_first_detection_without_flag_returns_no_metadata(self, query_service_with_db):
+        """Should not include first detection metadata when include_first_detections=False."""
+        detections = await query_service_with_db.query_detections(include_first_detections=False)
+
+        # These fields should be None when not requested
+        for detection in detections:
+            # The flags should be None/False (not populated)
+            assert detection.is_first_ever is None or not detection.is_first_ever
+            assert detection.is_first_in_period is None or not detection.is_first_in_period
+
+            # The timestamp fields should also be None
+            assert detection.first_ever_detection is None
+            assert detection.first_period_detection is None

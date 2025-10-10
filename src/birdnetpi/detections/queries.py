@@ -763,7 +763,7 @@ class DetectionQueryService:
         order_column = order_map.get(order_by, "d.timestamp")
         return f"ORDER BY {order_column} {'DESC' if order_desc else 'ASC'}"
 
-    async def _execute_join_query(
+    async def _execute_join_query(  # noqa: C901
         self,
         session: AsyncSession,
         limit: int | None,
@@ -780,7 +780,13 @@ class DetectionQueryService:
         order_desc: bool = True,
         include_first_detections: bool = False,
     ) -> list[DetectionWithTaxa]:
-        """Execute the main JOIN query with filters."""
+        """Execute the main JOIN query with filters.
+
+        Complexity is inherent to SQL query construction with multiple variations:
+        - With/without first detection window functions
+        - With/without species database availability
+        - Different filter combinations
+        """
         # Build WHERE clause and parameters
         where_clause, params = self._build_where_clause_and_params(
             limit=limit,
@@ -814,10 +820,37 @@ class DetectionQueryService:
             # Build query with or without window functions based on flag
             if include_first_detections:
                 # Enhanced query with window functions for first detection info
+                # IMPORTANT: We rank ALL detections globally first, then filter,
+                # to ensure is_first_ever is accurate across all time periods
+
+                # Build time-only WHERE clause for period_first CTE
+                # This should only include date filters, not confidence/family/etc
+                time_where_parts = []
+                if start_date:
+                    time_where_parts.append("timestamp >= :start_date")
+                if end_date:
+                    time_where_parts.append("timestamp <= :end_date")
+                time_where_clause = (
+                    "WHERE " + " AND ".join(time_where_parts) if time_where_parts else "WHERE 1=1"
+                )
+
                 # Safe: WHERE/ORDER clauses use pre-defined fragments, user data is parameterized
                 query_sql = text(  # nosemgrep
                     f"""
-                    WITH detection_ranks AS (
+                    WITH all_detections_ranked AS (
+                        SELECT
+                            id,
+                            scientific_name,
+                            timestamp,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY scientific_name ORDER BY timestamp
+                            ) as overall_rank,
+                            MIN(timestamp) OVER (
+                                PARTITION BY scientific_name
+                            ) as first_ever_detection
+                        FROM detections
+                    ),
+                    filtered_detections AS (
                         SELECT
                             d.*,
                             COALESCE(s.english_name, d.common_name) as ioc_english_name,
@@ -831,13 +864,13 @@ class DetectionQueryService:
                             s.family,
                             s.genus,
                             s.order_name,
-                            ROW_NUMBER() OVER (
-                                PARTITION BY d.scientific_name ORDER BY d.timestamp
-                            ) as overall_rank,
-                            MIN(d.timestamp) OVER (
-                                PARTITION BY d.scientific_name
-                            ) as first_ever_detection
+                            adr.overall_rank,
+                            adr.first_ever_detection
                         FROM detections d
+                        JOIN all_detections_ranked adr
+                            ON d.id = adr.id
+                            AND d.scientific_name = adr.scientific_name
+                            AND d.timestamp = adr.timestamp
                         LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
                         LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
                             AND t.language_code = :language_code
@@ -854,38 +887,38 @@ class DetectionQueryService:
                             scientific_name,
                             MIN(timestamp) as first_period_detection
                         FROM detections
-                        {where_clause.replace("d.", "") if start_date else "WHERE 1=1"}
+                        {time_where_clause}
                         GROUP BY scientific_name
                     )
                     SELECT
-                        dr.id,
-                        dr.species_tensor,
-                        dr.scientific_name,
-                        dr.common_name,
-                        dr.confidence,
-                        dr.timestamp,
-                        dr.audio_file_id,
-                        dr.latitude,
-                        dr.longitude,
-                        dr.species_confidence_threshold,
-                        dr.week,
-                        dr.sensitivity_setting,
-                        dr.overlap,
-                        dr.ioc_english_name,
-                        dr.translated_name,
-                        dr.family,
-                        dr.genus,
-                        dr.order_name,
-                        CASE WHEN dr.overall_rank = 1 THEN 1 ELSE 0 END as is_first_ever,
+                        fd.id,
+                        fd.species_tensor,
+                        fd.scientific_name,
+                        fd.common_name,
+                        fd.confidence,
+                        fd.timestamp,
+                        fd.audio_file_id,
+                        fd.latitude,
+                        fd.longitude,
+                        fd.species_confidence_threshold,
+                        fd.week,
+                        fd.sensitivity_setting,
+                        fd.overlap,
+                        fd.ioc_english_name,
+                        fd.translated_name,
+                        fd.family,
+                        fd.genus,
+                        fd.order_name,
+                        CASE WHEN fd.overall_rank = 1 THEN 1 ELSE 0 END as is_first_ever,
                         CASE
-                            WHEN dr.timestamp = pf.first_period_detection THEN 1
+                            WHEN fd.timestamp = pf.first_period_detection THEN 1
                             ELSE 0
                         END as is_first_in_period,
-                        dr.first_ever_detection,
+                        fd.first_ever_detection,
                         pf.first_period_detection
-                    FROM detection_ranks dr
-                    LEFT JOIN period_first pf ON dr.scientific_name = pf.scientific_name
-                    ORDER BY dr.{"timestamp" if "timestamp" in order_by else order_by}
+                    FROM filtered_detections fd
+                    LEFT JOIN period_first pf ON fd.scientific_name = pf.scientific_name
+                    ORDER BY fd.{"timestamp" if "timestamp" in order_by else order_by}
                         {"DESC" if order_desc else "ASC"}
                     {pagination_clause}
                 """
