@@ -75,7 +75,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libportaudio2 portaudio19-dev pulseaudio
+          sudo apt-get install -y libportaudio2 portaudio19-dev pulseaudio gettext
           uv sync --all-extras
       - name: Cache BirdNET assets
         id: cache-assets

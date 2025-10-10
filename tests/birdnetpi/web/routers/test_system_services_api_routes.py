@@ -1,6 +1,6 @@
 """Tests for services API routes."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from dependency_injector import providers
@@ -20,13 +20,23 @@ def mock_system_control():
 
 @pytest.fixture
 def client(mock_system_control):
-    """Create test client with services API routes."""
-    app = FastAPI()
-    container = Container()
-    container.system_control_service.override(providers.Object(mock_system_control))
-    container.wire(modules=["birdnetpi.web.routers.system_api_routes"])
-    app.include_router(router, prefix="/api")
-    return TestClient(app)
+    """Create test client with services API routes.
+
+    Mocks deployment environment to consistently return "docker" so tests
+    use the docker service configuration (where "fastapi" is a critical service).
+    This prevents test failures in CI where systemd detection would return "sbc".
+    """
+    # Mock deployment environment to return "docker" consistently
+    with patch(
+        "birdnetpi.web.routers.system_api_routes.SystemUtils.get_deployment_environment",
+        return_value="docker",
+    ):
+        app = FastAPI()
+        container = Container()
+        container.system_control_service.override(providers.Object(mock_system_control))
+        container.wire(modules=["birdnetpi.web.routers.system_api_routes"])
+        app.include_router(router, prefix="/api")
+        yield TestClient(app)
 
 
 class TestSystemServicesAPIRoutes:

@@ -546,6 +546,9 @@ class TestDetectionBufferingWithAdminOperations:
                     audio_chunk = np.ones(48000 * 3, dtype=np.float32) * 0.1
                     await service._analyze_audio_chunk(audio_chunk)
 
+                # Wait for all async operations to complete before checking buffer
+                await asyncio.sleep(0.05)
+
                 with service.buffer_lock:
                     cycle1_buffer_size = len(service.detection_buffer)
                 assert cycle1_buffer_size == 3
@@ -584,6 +587,9 @@ class TestDetectionBufferingWithAdminOperations:
                 for _ in range(2):
                     audio_chunk = np.ones(48000 * 3, dtype=np.float32) * 0.1
                     await service._analyze_audio_chunk(audio_chunk)
+
+                # Wait for all async operations to complete before checking buffer
+                await asyncio.sleep(0.05)
 
                 with service.buffer_lock:
                     cycle2_final_buffer_size = len(service.detection_buffer)
