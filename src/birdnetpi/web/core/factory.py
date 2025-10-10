@@ -11,7 +11,6 @@ from birdnetpi.utils.language import get_user_language
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.lifespan import lifespan
 from birdnetpi.web.middleware.i18n import LanguageMiddleware
-from birdnetpi.web.middleware.pyinstrument_profiling import PyInstrumentProfilerMiddleware
 from birdnetpi.web.middleware.request_logging import StructuredRequestLoggingMiddleware
 from birdnetpi.web.middleware.update_banner import add_update_status_to_templates
 from birdnetpi.web.routers import (
@@ -82,9 +81,13 @@ def create_app() -> FastAPI:
     # Add structured request logging middleware
     app.add_middleware(StructuredRequestLoggingMiddleware)
 
-    # Add pyinstrument profiling middleware (only in development)
+    # Add pyinstrument profiling middleware (only when enabled)
     # Access any endpoint with ?profile=1 to see profiling output
     if ConfigManager.should_enable_profiling():
+        # Import only when needed to avoid dependency on pyinstrument in production
+        # ast-grep-ignore: no-local-import
+        from birdnetpi.web.middleware.pyinstrument_profiling import PyInstrumentProfilerMiddleware
+
         app.add_middleware(PyInstrumentProfilerMiddleware, html_output=True)
 
     # Configure Jinja2 templates with i18n support

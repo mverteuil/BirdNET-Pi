@@ -2,8 +2,10 @@
 
 import os
 import subprocess
+import time
 from collections.abc import Generator
 
+import httpx
 import pytest
 
 from birdnetpi.releases.asset_manifest import AssetManifest
@@ -31,25 +33,27 @@ def docker_compose_up_down() -> Generator[None, None, None]:
     # Use the main compose file with environment variable
     compose_cmd = ["docker", "compose"]
 
-    # Bring up Docker Compose and wait for services to be healthy
-    # Capture output to help debug CI failures
-    result = subprocess.run(
-        [*compose_cmd, "up", "-d", "--build", "--wait"],
-        capture_output=True,
-        text=True,
-        env=env,
-        check=False,
-    )
-    if result.returncode != 0:
-        print(f"\nDocker compose up failed with exit code {result.returncode}")
-        print("STDOUT:", result.stdout)
-        print("STDERR:", result.stderr)
+    # Bring up Docker Compose (without --wait to avoid health check timeout issues in CI)
+    subprocess.run([*compose_cmd, "up", "-d", "--build"], env=env, check=True)
+
+    # Wait for services to be ready by polling the health endpoint
+    # This is more forgiving than Docker health checks and provides better diagnostics
+    for _attempt in range(30):
+        try:
+            response = httpx.get("http://localhost:8000/api/health/ready", timeout=3)
+            if response.status_code == 200:
+                break
+        except Exception:
+            pass
+        time.sleep(2)
+    else:
+        # Clean up on failure
+        print("\nServices did not become ready in time. Container logs:")
         subprocess.run(["docker", "ps", "-a"], check=False)
         subprocess.run(["docker", "compose", "logs"], check=False, env=env)
-        result.check_returncode()  # Re-raise the error with context
+        subprocess.run([*compose_cmd, "down"], env=env, check=False)
+        pytest.fail("Services did not become ready in time")
 
-    subprocess.run(["docker", "ps"], check=True)
-    subprocess.run(["docker", "logs", "birdnet-pi"], check=True)
     yield
 
     # Bring down Docker Compose but keep the volume to preserve models
