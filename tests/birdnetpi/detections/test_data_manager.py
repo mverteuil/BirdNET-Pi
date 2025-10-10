@@ -11,17 +11,18 @@ from sqlalchemy.exc import SQLAlchemyError
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import AudioFile, Detection
+from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager
 
 
 @pytest.fixture
-def mock_services(path_resolver, db_service_factory, detection_query_service_factory):
+def mock_services(path_resolver, db_service_factory):
     """Create mock services for DataManager."""
     mock_db_service, _session, _result = db_service_factory()
     mock_multilingual = MagicMock(spec=SpeciesDatabaseService)
     mock_species_display = MagicMock(spec=SpeciesDisplayService)
-    mock_query_service = detection_query_service_factory()
+    mock_query_service = MagicMock(spec=DetectionQueryService)
     mock_file_manager = MagicMock(spec=FileManager)
     return {
         "database_service": mock_db_service,

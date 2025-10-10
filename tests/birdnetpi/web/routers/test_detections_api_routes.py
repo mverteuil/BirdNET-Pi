@@ -24,12 +24,12 @@ from birdnetpi.web.routers.detections_api_routes import (
 
 
 @pytest.fixture
-def client(path_resolver, test_config, detection_query_service_factory):
+def client(path_resolver, test_config):
     """Create test client with detections API routes and mocked dependencies."""
     app = FastAPI()
     container = Container()
     mock_data_manager = MagicMock(spec=DataManager, query_service=None)
-    mock_query_service = detection_query_service_factory()
+    mock_query_service = MagicMock(spec=DetectionQueryService)
     container.data_manager.override(mock_data_manager)
     container.detection_query_service.override(mock_query_service)
     container.config.override(test_config)

@@ -9,17 +9,18 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from birdnetpi.detections.models import Detection
+from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.notifications.signals import detection_signal
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.routers.detections_api_routes import router
 
 
 @pytest.fixture
-def sse_client(test_config, detection_query_service_factory):
+def sse_client(test_config):
     """Create test client with SSE endpoints and mocked dependencies."""
     app = FastAPI()
     container = Container()
-    mock_detection_query_service = detection_query_service_factory()
+    mock_detection_query_service = MagicMock(spec=DetectionQueryService)
     container.detection_query_service.override(mock_detection_query_service)
     container.config.override(test_config)
     container.wire(modules=["birdnetpi.web.routers.detections_api_routes"])
@@ -223,9 +224,9 @@ class TestSSEStreaming:
     """
 
     @pytest.mark.asyncio
-    async def test_event_generator_sends_detection(self, detection_query_service_factory):
+    async def test_event_generator_sends_detection(self):
         """Should generate detection events when signal fires."""
-        mock_query_service = detection_query_service_factory()
+        mock_query_service = MagicMock(spec=DetectionQueryService)
         detection_id = uuid4()
         mock_detection = MagicMock(
             spec=Detection,

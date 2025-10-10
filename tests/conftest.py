@@ -166,22 +166,9 @@ async def app_with_temp_data(path_resolver):
 
     # Mock the cache service to avoid Redis connection issues in tests
     mock_cache = MagicMock(spec=Cache)
-    mock_cache.get.return_value = None
-    mock_cache.set.return_value = True
-    mock_cache.delete.return_value = True
-    mock_cache.clear.return_value = True
-    mock_cache.ping.return_value = True
-    mock_cache.get_stats.return_value = {
-        "hits": 0,
-        "misses": 0,
-        "sets": 0,
-        "deletes": 0,
-        "pattern_deletes": 0,
-        "errors": 0,
-        "hit_rate": 0.0,
-        "total_requests": 0,
-        "backend": "mock",
-    }
+    mock_cache.configure_mock(
+        **{"get.return_value": None, "set.return_value": True, "ping.return_value": True}
+    )
     Container.cache_service.override(providers.Singleton(lambda: mock_cache))
 
     # Now create the app with our overridden providers

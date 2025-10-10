@@ -8,7 +8,6 @@ import pytest
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.config.models import BirdNETConfig
-from birdnetpi.detections.models import Detection
 
 
 @pytest.fixture
@@ -35,24 +34,24 @@ def presentation_manager(mock_analytics_manager, detection_query_service_factory
 
 
 @pytest.fixture
-def sample_detections():
+def sample_detections(model_factory):
     """Create sample detection objects for testing."""
     return [
-        Detection(
+        model_factory.create_detection(
             species_tensor="Turdus migratorius_American Robin",
             scientific_name="Turdus migratorius",
             common_name="American Robin",
             confidence=0.95,
             timestamp=datetime(2024, 1, 1, 10, 30, 0),
         ),
-        Detection(
+        model_factory.create_detection(
             species_tensor="Cardinalis cardinalis_Northern Cardinal",
             scientific_name="Cardinalis cardinalis",
             common_name="Northern Cardinal",
             confidence=0.88,
             timestamp=datetime(2024, 1, 1, 11, 15, 0),
         ),
-        Detection(
+        model_factory.create_detection(
             species_tensor="Unknown species",
             scientific_name="Unknown species",
             common_name=None,  # No common name

@@ -42,16 +42,13 @@ def detection_query_service(mock_core_database, mock_species_database, test_conf
 
 
 @pytest.fixture
-def sample_detection():
+def sample_detection(model_factory):
     """Create a sample detection for testing."""
-    return Detection(
-        id=uuid4(),
+    return model_factory.create_detection(
         species_tensor="Test species",
         scientific_name="Testicus species",
         common_name="Test Bird",
         confidence=0.85,
-        timestamp=datetime.now(UTC),
-        audio_file_id=uuid4(),
     )
 
 
