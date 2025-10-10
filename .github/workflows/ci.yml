@@ -83,7 +83,7 @@ jobs:
           BIRDNETPI_DATA: ${{ github.workspace }}/data
           ASSETS_VERSION: v2.1.1
         run: |
-          uv run install-assets install ${ASSETS_VERSION} --include-models --include-ioc-db --include-avibase-db --include-patlevin-db
+          uv run install-assets install ${ASSETS_VERSION}
       - name: Run pytest tests
         run: uv run pytest --cov=src -m "not expensive"
       - name: Run expensive pytest tests
