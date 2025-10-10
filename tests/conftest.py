@@ -347,6 +347,28 @@ def test_config(path_resolver: PathResolver):
     return manager.load()
 
 
+@pytest.fixture
+def cache():
+    """Provide a mock Cache service for tests.
+
+    This fixture provides a properly configured Cache mock that avoids Redis
+    connection issues in tests. Individual tests can override specific behaviors
+    by setting return_value or side_effect on the mock methods.
+
+    Example:
+        def test_something(cache):
+            # Use cache with default configuration
+            cache.get.return_value = {"key": "value"}
+            result = cache.get("test_key")
+            assert result == {"key": "value"}
+    """
+    mock_cache = MagicMock(spec=Cache)
+    mock_cache.configure_mock(
+        **{"get.return_value": None, "set.return_value": True, "ping.return_value": True}
+    )
+    return mock_cache
+
+
 @pytest.fixture(scope="session", autouse=True)
 def ensure_redis_running():
     """Ensure Redis is running for tests that require it."""

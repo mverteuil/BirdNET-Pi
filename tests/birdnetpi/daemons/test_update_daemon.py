@@ -12,7 +12,6 @@ from birdnetpi.config.manager import ConfigManager
 from birdnetpi.daemons.update_daemon import DaemonState
 from birdnetpi.releases.update_manager import StateFileManager, UpdateManager
 from birdnetpi.system.file_manager import FileManager
-from birdnetpi.utils.cache import Cache
 
 
 @pytest.fixture(autouse=True)
@@ -30,16 +29,6 @@ def daemon_test_config(test_config):
     test_config.updates.check_enabled = True
     test_config.updates.auto_check_on_startup = False
     return test_config
-
-
-@pytest.fixture
-def mock_cache():
-    """Mock Cache service with Redis backend."""
-    cache = MagicMock(spec=Cache)
-    cache.get.return_value = None
-    cache.set.return_value = None
-    cache.delete.return_value = None
-    return cache
 
 
 @pytest.fixture
@@ -71,7 +60,7 @@ def mock_state_manager():
 
 
 @pytest.fixture(autouse=True)
-def mock_dependencies(mocker, daemon_test_config, mock_cache, mock_update_manager, path_resolver):
+def mock_dependencies(mocker, daemon_test_config, cache, mock_update_manager, path_resolver):
     """Mock external dependencies for update daemon."""
     mocker.patch("birdnetpi.daemons.update_daemon.configure_structlog", autospec=True)
     with patch.multiple(
@@ -86,7 +75,7 @@ def mock_dependencies(mocker, daemon_test_config, mock_cache, mock_update_manage
     ) as mocks:
         mocks["PathResolver"].return_value = path_resolver
         mocks["ConfigManager"].return_value.load.return_value = daemon_test_config
-        mocks["Cache"].return_value = mock_cache
+        mocks["Cache"].return_value = cache
         mocks["UpdateManager"].return_value = mock_update_manager
         yield mocks
 
@@ -186,16 +175,14 @@ class TestMonitorLoop:
     """Test monitor mode loop."""
 
     @pytest.mark.asyncio
-    async def test_monitor_loop_check_request(
-        self, mock_cache, mock_update_manager, daemon_test_config
-    ):
+    async def test_monitor_loop_check_request(self, cache, mock_update_manager, daemon_test_config):
         """Should process check request from Redis."""
-        DaemonState.cache_service = mock_cache
+        DaemonState.cache_service = cache
         DaemonState.update_manager = mock_update_manager
         DaemonState.config_manager = MagicMock(spec=ConfigManager)
         DaemonState.config_manager.load.return_value = daemon_test_config
         DaemonState.shutdown_flag = False
-        mock_cache.get.side_effect = [{"action": "check"}, None]
+        cache.get.side_effect = [{"action": "check"}, None]
         task = asyncio.create_task(daemon.run_monitor_loop())
         await asyncio.sleep(0.1)
         DaemonState.shutdown_flag = True
@@ -205,21 +192,21 @@ class TestMonitorLoop:
         except asyncio.CancelledError:
             pass
         mock_update_manager.check_for_updates.assert_called_once()
-        mock_cache.set.assert_called()
-        mock_cache.delete.assert_called_with("update:request")
+        cache.set.assert_called()
+        cache.delete.assert_called_with("update:request")
 
     @pytest.mark.asyncio
     async def test_monitor_loop_periodic_check(
-        self, mock_cache, mock_update_manager, daemon_test_config
+        self, cache, mock_update_manager, daemon_test_config
     ):
         """Should perform periodic update checks."""
-        DaemonState.cache_service = mock_cache
+        DaemonState.cache_service = cache
         DaemonState.update_manager = mock_update_manager
         DaemonState.config_manager = MagicMock(spec=ConfigManager)
         daemon_test_config.updates.auto_check_on_startup = True
         DaemonState.config_manager.load.return_value = daemon_test_config
         DaemonState.shutdown_flag = False
-        mock_cache.get.return_value = None
+        cache.get.return_value = None
         task = asyncio.create_task(daemon.run_monitor_loop())
         await asyncio.sleep(0.1)
         DaemonState.shutdown_flag = True
@@ -232,10 +219,10 @@ class TestMonitorLoop:
 
     @pytest.mark.asyncio
     async def test_monitor_loop_actual_periodic_check(
-        self, mock_cache, mock_update_manager, daemon_test_config
+        self, cache, mock_update_manager, daemon_test_config
     ):
         """Should perform periodic checks after interval expires."""
-        DaemonState.cache_service = mock_cache
+        DaemonState.cache_service = cache
         DaemonState.update_manager = mock_update_manager
         DaemonState.config_manager = MagicMock(spec=ConfigManager)
         daemon_test_config.updates.auto_check_on_startup = False
@@ -243,7 +230,7 @@ class TestMonitorLoop:
         daemon_test_config.updates.check_interval_hours = 0.0001
         DaemonState.config_manager.load.return_value = daemon_test_config
         DaemonState.shutdown_flag = False
-        mock_cache.get.return_value = None
+        cache.get.return_value = None
         original_sleep = asyncio.sleep
         sleep_count = 0
         mock_time_value = 0.0
@@ -272,14 +259,14 @@ class TestUpdateProcessing:
     """Test update request processing."""
 
     @pytest.mark.asyncio
-    async def test_process_check_request(self, mock_cache, mock_update_manager):
+    async def test_process_check_request(self, cache, mock_update_manager):
         """Should process check update request."""
-        DaemonState.cache_service = mock_cache
+        DaemonState.cache_service = cache
         DaemonState.update_manager = mock_update_manager
         request = {"action": "check"}
         await daemon.process_update_request(request)
         mock_update_manager.check_for_updates.assert_called_once()
-        mock_cache.set.assert_called_with(
+        cache.set.assert_called_with(
             "update:status",
             {
                 "current_version": "v1.0.0",
@@ -290,21 +277,21 @@ class TestUpdateProcessing:
         )
 
     @pytest.mark.asyncio
-    async def test_process_apply_request(self, mock_cache, mock_update_manager):
+    async def test_process_apply_request(self, cache, mock_update_manager):
         """Should process apply update request."""
-        DaemonState.cache_service = mock_cache
+        DaemonState.cache_service = cache
         DaemonState.update_manager = mock_update_manager
         DaemonState.update_in_progress = False
         request = {"action": "apply", "version": "v1.1.0"}
         await daemon.process_update_request(request)
         mock_update_manager.apply_update.assert_called_once_with("v1.1.0")
-        mock_cache.set.assert_called_with("update:result", {"success": True, "version": "v1.1.0"})
-        mock_cache.delete.assert_called_with("update:request")
+        cache.set.assert_called_with("update:result", {"success": True, "version": "v1.1.0"})
+        cache.delete.assert_called_with("update:request")
 
     @pytest.mark.asyncio
-    async def test_process_apply_with_pending_signals(self, mock_cache, mock_update_manager):
+    async def test_process_apply_with_pending_signals(self, cache, mock_update_manager):
         """Should process pending signals after update completes."""
-        DaemonState.cache_service = mock_cache
+        DaemonState.cache_service = cache
         DaemonState.update_manager = mock_update_manager
         DaemonState.pending_signals = [signal.SIGTERM]
         request = {"action": "apply", "version": "v1.1.0"}
@@ -318,9 +305,9 @@ class TestUpdateWithRedisMonitoring:
     """Test full update mode with Redis monitoring."""
 
     @pytest.mark.asyncio
-    async def test_redis_monitoring_loop(self, mock_cache, mock_update_manager, daemon_test_config):
+    async def test_redis_monitoring_loop(self, cache, mock_update_manager, daemon_test_config):
         """Should monitor Redis for update requests."""
-        DaemonState.cache_service = mock_cache
+        DaemonState.cache_service = cache
         DaemonState.update_manager = mock_update_manager
         DaemonState.config_manager = MagicMock(spec=ConfigManager)
         DaemonState.config_manager.load.return_value = daemon_test_config
@@ -353,9 +340,9 @@ class TestDaemonInitialization:
     """Test daemon initialization and mode selection."""
 
     @pytest.mark.asyncio
-    async def test_run_monitor_mode(self, mock_dependencies, mock_cache):
+    async def test_run_monitor_mode(self, mock_dependencies, cache):
         """Should run in monitor mode."""
-        mock_dependencies["Cache"].return_value = mock_cache
+        mock_dependencies["Cache"].return_value = cache
         with patch("birdnetpi.daemons.update_daemon.run_monitor_loop", autospec=True) as mock_loop:
             mock_loop.return_value = asyncio.Future()
             mock_loop.return_value.set_result(None)
@@ -370,9 +357,9 @@ class TestDaemonInitialization:
                 mock_http.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_run_both_mode(self, mock_dependencies, mock_cache):
+    async def test_run_both_mode(self, mock_dependencies, cache):
         """Should run in both mode (SBC)."""
-        mock_dependencies["Cache"].return_value = mock_cache
+        mock_dependencies["Cache"].return_value = cache
         with patch(
             "birdnetpi.daemons.update_daemon.run_update_with_redis_monitoring", autospec=True
         ) as mock_both:
@@ -445,13 +432,13 @@ class TestHTTPServer:
 class TestCheckForUpdateRequest:
     """Test Redis update request checking."""
 
-    def test_check_for_update_request_with_cache(self, mock_cache):
+    def test_check_for_update_request_with_cache(self, cache):
         """Should return update request from cache."""
-        DaemonState.cache_service = mock_cache
-        mock_cache.get.return_value = {"action": "check"}
+        DaemonState.cache_service = cache
+        cache.get.return_value = {"action": "check"}
         result = daemon.check_for_update_request()
         assert result == {"action": "check"}
-        mock_cache.get.assert_called_once_with("update:request")
+        cache.get.assert_called_once_with("update:request")
 
     def test_check_for_update_request_no_cache(self):
         """Should return None if cache not available."""
@@ -459,10 +446,10 @@ class TestCheckForUpdateRequest:
         result = daemon.check_for_update_request()
         assert result is None
 
-    def test_check_for_update_request_error(self, mock_cache):
+    def test_check_for_update_request_error(self, cache):
         """Should return None on cache error."""
-        DaemonState.cache_service = mock_cache
-        mock_cache.get.side_effect = Exception("Redis error")
+        DaemonState.cache_service = cache
+        cache.get.side_effect = Exception("Redis error")
         result = daemon.check_for_update_request()
         assert result is None
 

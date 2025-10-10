@@ -14,7 +14,6 @@ from fastapi.testclient import TestClient
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import AudioFile
 from birdnetpi.detections.queries import DetectionQueryService
-from birdnetpi.utils.cache import Cache
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.routers.detections_api_routes import (
     _create_detection_handler,
@@ -24,7 +23,7 @@ from birdnetpi.web.routers.detections_api_routes import (
 
 
 @pytest.fixture
-def client(path_resolver, test_config):
+def client(path_resolver, test_config, cache):
     """Create test client with detections API routes and mocked dependencies."""
     app = FastAPI()
     container = Container()
@@ -33,24 +32,7 @@ def client(path_resolver, test_config):
     container.data_manager.override(mock_data_manager)
     container.detection_query_service.override(mock_query_service)
     container.config.override(test_config)
-    mock_cache = MagicMock(spec=Cache)
-    mock_cache.get.return_value = None
-    mock_cache.set.return_value = True
-    mock_cache.delete.return_value = True
-    mock_cache.clear.return_value = True
-    mock_cache.ping.return_value = True
-    mock_cache.get_stats.return_value = {
-        "hits": 0,
-        "misses": 0,
-        "sets": 0,
-        "deletes": 0,
-        "pattern_deletes": 0,
-        "errors": 0,
-        "hit_rate": 0.0,
-        "total_requests": 0,
-        "backend": "mock",
-    }
-    container.cache_service.override(mock_cache)
+    container.cache_service.override(cache)
     container.wire(modules=["birdnetpi.web.routers.detections_api_routes"])
     app.include_router(router, prefix="/api")
     client = TestClient(app)

@@ -4,13 +4,11 @@ import asyncio
 import os
 import tempfile
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
-
-from birdnetpi.utils.cache import Cache
 
 
 @pytest.fixture
@@ -288,29 +286,25 @@ class TestDaemonCommunicationFailures:
     """Test failures in communication with update daemon."""
 
     @pytest.mark.asyncio
-    async def test_daemon_not_processing_requests(self, path_resolver):
+    async def test_daemon_not_processing_requests(self, path_resolver, cache):
         """Should handle daemon not processing requests."""
-        mock_cache = MagicMock(spec=Cache)
-
         # Request sits in cache without being processed
         request_data = {"action": "check", "force": False, "created_at": "2024-01-01T00:00:00"}
-        mock_cache.get.return_value = request_data
+        cache.get.return_value = request_data
 
         # Simulate timeout waiting for daemon
         await asyncio.sleep(0.1)  # Small delay
 
         # Request should still be in cache (not processed)
-        request = mock_cache.get("update:request")
+        request = cache.get("update:request")
         assert request is not None
         assert request["action"] == "check"
 
     @pytest.mark.asyncio
-    async def test_daemon_crash_during_update(self, path_resolver):
+    async def test_daemon_crash_during_update(self, path_resolver, cache):
         """Should handle daemon crash during update."""
-        mock_cache = MagicMock(spec=Cache)
-
         # Update started but never completed
-        mock_cache.get.side_effect = lambda key: {
+        cache.get.side_effect = lambda key: {
             "update:status": {
                 "available": True,
                 "current_version": "v1.0.0",
@@ -325,8 +319,8 @@ class TestDaemonCommunicationFailures:
         }.get(key)
 
         # Check if update is stuck
-        request = mock_cache.get("update:request")
-        result = mock_cache.get("update:result")
+        request = cache.get("update:request")
+        result = cache.get("update:result")
 
         assert request is not None
         assert result is None  # Indicates incomplete update

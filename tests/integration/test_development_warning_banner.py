@@ -8,7 +8,6 @@ from jinja2 import Environment, FileSystemLoader
 from birdnetpi.config.models import BirdNETConfig, UpdateConfig
 from birdnetpi.daemons.update_daemon import DaemonState, process_update_request
 from birdnetpi.releases.update_manager import UpdateManager
-from birdnetpi.utils.cache import Cache
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.middleware.update_banner import add_update_status_to_templates
 
@@ -34,21 +33,20 @@ class TestDevelopmentWarningBanner:
         config.updates.show_banner = True
         return config
 
-    def test_development_warning_shows_when_enabled(self):
+    def test_development_warning_shows_when_enabled(self, cache):
         """Should show development warning when on dev version and enabled."""
         # Create mock container with configured services
         container = Container()
-        mock_cache = MagicMock(spec=Cache)
         mock_config = MagicMock(spec=BirdNETConfig)
         mock_config.updates = MagicMock(spec=UpdateConfig)
         mock_config.updates.show_development_warning = True
         mock_config.updates.show_banner = True
 
         # Override container providers
-        with container.cache_service.override(mock_cache):
+        with container.cache_service.override(cache):
             with container.config.override(mock_config):
                 # Set cache to indicate development version
-                mock_cache.get.return_value = {
+                cache.get.return_value = {
                     "current_version": "dev-abc1234",
                     "latest_version": "v1.0.0",
                     "version_type": "development",
@@ -66,21 +64,20 @@ class TestDevelopmentWarningBanner:
                 assert callable(show_dev_warning)
                 assert show_dev_warning() is True
 
-    def test_development_warning_hidden_when_disabled(self):
+    def test_development_warning_hidden_when_disabled(self, cache):
         """Should not show development warning when disabled in config."""
         # Create mock container with configured services
         container = Container()
-        mock_cache = MagicMock(spec=Cache)
         mock_config = MagicMock(spec=BirdNETConfig)
         mock_config.updates = MagicMock(spec=UpdateConfig)
         mock_config.updates.show_development_warning = False
         mock_config.updates.show_banner = True
 
         # Override container providers
-        with container.cache_service.override(mock_cache):
+        with container.cache_service.override(cache):
             with container.config.override(mock_config):
                 # Set cache to indicate development version
-                mock_cache.get.return_value = {
+                cache.get.return_value = {
                     "current_version": "dev-abc1234",
                     "latest_version": "v1.0.0",
                     "version_type": "development",
@@ -97,21 +94,20 @@ class TestDevelopmentWarningBanner:
                 show_dev_warning = templates.globals["show_development_warning"]
                 assert show_dev_warning() is False
 
-    def test_development_warning_hidden_on_release(self):
+    def test_development_warning_hidden_on_release(self, cache):
         """Should not show development warning when on a release version."""
         # Create mock container with configured services
         container = Container()
-        mock_cache = MagicMock(spec=Cache)
         mock_config = MagicMock(spec=BirdNETConfig)
         mock_config.updates = MagicMock(spec=UpdateConfig)
         mock_config.updates.show_development_warning = True
         mock_config.updates.show_banner = True
 
         # Override container providers
-        with container.cache_service.override(mock_cache):
+        with container.cache_service.override(cache):
             with container.config.override(mock_config):
                 # Set cache to indicate release version
-                mock_cache.get.return_value = {
+                cache.get.return_value = {
                     "current_version": "v1.0.0",
                     "latest_version": "v1.1.0",
                     "version_type": "release",
@@ -275,10 +271,10 @@ class TestUpdateDaemonIntegration:
     """Update daemon properly sets version_type."""
 
     @pytest.mark.asyncio
-    async def test_daemon_sets_version_type_on_check(self, path_resolver):
+    async def test_daemon_sets_version_type_on_check(self, path_resolver, cache):
         """Should set version_type when daemon performs update check."""
         # Set up daemon state
-        DaemonState.cache_service = MagicMock(spec=Cache)
+        DaemonState.cache_service = cache
         DaemonState.update_manager = MagicMock(spec=UpdateManager)
 
         # Mock the check to return development version
@@ -297,8 +293,8 @@ class TestUpdateDaemonIntegration:
         await process_update_request({"action": "check"})
 
         # Verify cache was updated with version_type
-        DaemonState.cache_service.set.assert_called()
-        call_args = DaemonState.cache_service.set.call_args_list
+        cache.set.assert_called()
+        call_args = cache.set.call_args_list
 
         # Find the call that sets update:status
         status_call = None
