@@ -75,6 +75,11 @@ class DetectionResponse(BaseModel):
     genus: str | None = None
     order_name: str | None = None
     audio_file_id: UUID | None = None
+    # First detection metadata (optional, populated when requested)
+    is_first_ever: bool | None = None
+    is_first_in_period: bool | None = None
+    first_ever_detection: datetime | None = None
+    first_period_detection: datetime | None = None
 
 
 class SpeciesInfo(BaseModel):

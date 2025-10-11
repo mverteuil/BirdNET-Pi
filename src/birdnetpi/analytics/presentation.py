@@ -691,6 +691,8 @@ class PresentationManager:
             "end_date": end_date,
             "comparison_period": comparison_period,
             "analyses": {},
+            "summary": {},
+            "generated_at": datetime.now(UTC).isoformat(),
             "dates": {
                 "primary": {
                     "start": primary_dates[0].isoformat(),

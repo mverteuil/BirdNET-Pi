@@ -262,6 +262,7 @@ def create_app() -> FastAPI:
                 "language": language,
                 "page_name": _("API Documentation"),
                 "active_page": "api",
+                "model_update_date": None,
                 # Page-specific context
                 "openapi_url": app.openapi_url,
                 "title": app.title,

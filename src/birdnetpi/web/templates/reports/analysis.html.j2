@@ -43,7 +43,60 @@
     {{ _('Loading analysis data...') }}
 </div>
 <div id="analysis-content">
-    <!-- Content loaded by JavaScript -->
+    <!-- Diversity Timeline -->
+    <section class="analysis-section">
+        <h2>{{ _('Diversity Timeline') }}</h2>
+        <p class="section-subtitle">{{ _('Shannon diversity, Simpson index, and species richness over time') }}</p>
+        <canvas id="diversity-timeline" width="800" height="300"></canvas>
+    </section>
+
+    <!-- Species Accumulation -->
+    <section class="analysis-section">
+        <h2>{{ _('Species Accumulation') }}</h2>
+        <p class="section-subtitle">{{ _('Cumulative species discovery as detections increase') }}</p>
+        <canvas id="accumulation-curve" width="800" height="300"></canvas>
+    </section>
+
+    <!-- Community Similarity -->
+    <section class="analysis-section">
+        <h2>{{ _('Community Similarity Matrix') }}</h2>
+        <p class="section-subtitle" id="similarity-subtitle">{{ _('Jaccard similarity between time periods') }}</p>
+        <div id="similarity-matrix-container" class="similarity-matrix"></div>
+    </section>
+
+    <!-- Beta Diversity -->
+    <section class="analysis-section">
+        <h2>{{ _('Beta Diversity (Species Turnover)') }}</h2>
+        <p class="section-subtitle">{{ _('Community change between consecutive time windows') }}</p>
+        <canvas id="beta-diversity" width="800" height="300"></canvas>
+    </section>
+
+    <!-- Weather Correlations -->
+    <section class="analysis-section" id="weather-section">
+        <h2>{{ _('Weather Correlations') }}</h2>
+        <p class="section-subtitle">{{ _('Relationship between detections and weather variables') }}</p>
+        <div class="weather-grid">
+            <div>
+                <p class="correlation-value">r = --</p>
+                <canvas id="temp-correlation" width="250" height="200"></canvas>
+            </div>
+            <div>
+                <p class="correlation-value">r = --</p>
+                <canvas id="humidity-correlation" width="250" height="200"></canvas>
+            </div>
+            <div>
+                <p class="correlation-value">r = --</p>
+                <canvas id="wind-correlation" width="250" height="200"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- Activity Heatmap -->
+    <section class="analysis-section">
+        <h2>{{ _('Activity Heatmap') }}</h2>
+        <p class="section-subtitle">{{ _('Detection patterns by day of week and hour') }}</p>
+        <canvas id="activity-heatmap" width="800" height="280"></canvas>
+    </section>
 </div>
 
 <!-- Footer annotation -->

@@ -970,34 +970,122 @@ class DetectionQueryService:
                 )
         else:
             # Simplified query when species databases are not available (e.g., in tests)
-            # Safe: WHERE/ORDER clauses use pre-defined fragments, user data is parameterized
-            query_sql = text(  # nosemgrep
-                f"""
-                SELECT
-                    d.id,
-                    d.species_tensor,
-                    d.scientific_name,
-                    d.common_name,
-                    d.confidence,
-                    d.timestamp,
-                    d.audio_file_id,
-                    d.latitude,
-                    d.longitude,
-                    d.species_confidence_threshold,
-                    d.week,
-                    d.sensitivity_setting,
-                    d.overlap,
-                    d.common_name as ioc_english_name,
-                    d.common_name as translated_name,
-                    NULL as family,
-                    NULL as genus,
-                    NULL as order_name
-                FROM detections d
-                {where_clause}
-                {order_clause}
-                {pagination_clause}
-            """
-            )
+            # Check if first detections are needed even without species database
+            if include_first_detections:
+                # Build time-only WHERE clause for period_first CTE
+                time_where_parts = []
+                if start_date:
+                    time_where_parts.append("timestamp >= :start_date")
+                if end_date:
+                    time_where_parts.append("timestamp <= :end_date")
+                time_where_clause = (
+                    "WHERE " + " AND ".join(time_where_parts) if time_where_parts else "WHERE 1=1"
+                )
+
+                # Safe: WHERE/ORDER clauses use pre-defined fragments, user data is parameterized
+                query_sql = text(  # nosemgrep
+                    f"""
+                    WITH all_detections_ranked AS (
+                        SELECT
+                            id,
+                            scientific_name,
+                            timestamp,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY scientific_name ORDER BY timestamp
+                            ) as overall_rank,
+                            MIN(timestamp) OVER (
+                                PARTITION BY scientific_name
+                            ) as first_ever_detection
+                        FROM detections
+                    ),
+                    filtered_detections AS (
+                        SELECT
+                            d.*,
+                            d.common_name as ioc_english_name,
+                            d.common_name as translated_name,
+                            NULL as family,
+                            NULL as genus,
+                            NULL as order_name,
+                            adr.overall_rank,
+                            adr.first_ever_detection
+                        FROM detections d
+                        JOIN all_detections_ranked adr
+                            ON d.id = adr.id
+                            AND d.scientific_name = adr.scientific_name
+                            AND d.timestamp = adr.timestamp
+                        {where_clause}
+                    ),
+                    period_first AS (
+                        SELECT
+                            scientific_name,
+                            MIN(timestamp) as first_period_detection
+                        FROM detections
+                        {time_where_clause}
+                        GROUP BY scientific_name
+                    )
+                    SELECT
+                        fd.id,
+                        fd.species_tensor,
+                        fd.scientific_name,
+                        fd.common_name,
+                        fd.confidence,
+                        fd.timestamp,
+                        fd.audio_file_id,
+                        fd.latitude,
+                        fd.longitude,
+                        fd.species_confidence_threshold,
+                        fd.week,
+                        fd.sensitivity_setting,
+                        fd.overlap,
+                        fd.ioc_english_name,
+                        fd.translated_name,
+                        fd.family,
+                        fd.genus,
+                        fd.order_name,
+                        CASE WHEN fd.overall_rank = 1 THEN 1 ELSE 0 END as is_first_ever,
+                        CASE
+                            WHEN fd.timestamp = pf.first_period_detection THEN 1
+                            ELSE 0
+                        END as is_first_in_period,
+                        fd.first_ever_detection,
+                        pf.first_period_detection
+                    FROM filtered_detections fd
+                    LEFT JOIN period_first pf ON fd.scientific_name = pf.scientific_name
+                    ORDER BY fd.{"timestamp" if "timestamp" in order_by else order_by}
+                        {"DESC" if order_desc else "ASC"}
+                    {pagination_clause}
+                """
+                )
+            else:
+                # Standard simplified query without window functions
+                # Safe: WHERE/ORDER clauses use pre-defined fragments, user data is parameterized
+                query_sql = text(  # nosemgrep
+                    f"""
+                    SELECT
+                        d.id,
+                        d.species_tensor,
+                        d.scientific_name,
+                        d.common_name,
+                        d.confidence,
+                        d.timestamp,
+                        d.audio_file_id,
+                        d.latitude,
+                        d.longitude,
+                        d.species_confidence_threshold,
+                        d.week,
+                        d.sensitivity_setting,
+                        d.overlap,
+                        d.common_name as ioc_english_name,
+                        d.common_name as translated_name,
+                        NULL as family,
+                        NULL as genus,
+                        NULL as order_name
+                    FROM detections d
+                    {where_clause}
+                    {order_clause}
+                    {pagination_clause}
+                """
+                )
 
         result = await session.execute(query_sql, params)
         results = result.fetchall()

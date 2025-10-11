@@ -221,6 +221,98 @@ class TestDetectionsAPIIntegration:
             assert data["pagination"]["has_next"] is False
             assert data["pagination"]["has_prev"] is False
 
+    async def test_detection_response_includes_first_detection_fields(
+        self, app_with_detections, model_factory
+    ):
+        """Should include first detection metadata in DetectionResponse.
+
+        This test verifies that the API response model includes:
+        - is_first_ever: bool flag for first detection of species ever
+        - is_first_in_period: bool flag for first detection in filtered time period
+        - first_ever_detection: timestamp of first detection globally
+        - first_period_detection: timestamp of first detection in period
+
+        These fields are critical for UI features that show first detection markers.
+        """
+        # Add multiple detections of same species on different dates
+        db_service = app_with_detections._test_db_service
+        async with db_service.get_async_db() as session:
+            # Add earlier robin detection (becomes first_ever)
+            earlier_robin = model_factory.create_detection(
+                scientific_name="Turdus migratorius",
+                common_name="American Robin",
+                species_tensor="Turdus migratorius_American Robin",
+                confidence=0.89,
+                timestamp=datetime(2024, 12, 31, 10, 0, 0, tzinfo=UTC),  # Dec 31, 2024
+            )
+            # Add later robin detection (first in Jan 2025)
+            later_robin = model_factory.create_detection(
+                scientific_name="Turdus migratorius",
+                common_name="American Robin",
+                species_tensor="Turdus migratorius_American Robin",
+                confidence=0.91,
+                timestamp=datetime(2025, 1, 2, 9, 0, 0, tzinfo=UTC),  # Jan 2, 2025
+            )
+            session.add(earlier_robin)
+            session.add(later_robin)
+            await session.commit()
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app_with_detections), base_url="http://test"
+        ) as client:
+            # Query for January 2025 only (period filter)
+            response = await client.get(
+                "/api/detections/?page=1&per_page=20&start_date=2025-01-01&end_date=2025-01-31"
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+
+            # Find robin detections in response
+            robin_detections = [
+                d
+                for d in data["detections"]
+                if d["scientific_name"] == "Turdus migratorius"
+                and d["timestamp"].startswith("2025-01")  # Only January detections
+            ]
+
+            # Should have 2 robin detections in January (original + new)
+            assert len(robin_detections) >= 2
+
+            # Find the earliest robin in January (should be Jan 1 at 8:30)
+            jan_earliest = min(robin_detections, key=lambda d: d["timestamp"])
+
+            # Verify first detection fields are present in response
+            assert "is_first_ever" in jan_earliest, "Missing is_first_ever field"
+            assert "is_first_in_period" in jan_earliest, "Missing is_first_in_period field"
+            assert "first_ever_detection" in jan_earliest, "Missing first_ever_detection timestamp"
+            assert "first_period_detection" in jan_earliest, (
+                "Missing first_period_detection timestamp"
+            )
+
+            # Verify first in period logic
+            # Jan 1 robin should be first_in_period (first in January)
+            assert jan_earliest["is_first_in_period"] is True, (
+                "Earliest January detection should be first_in_period"
+            )
+
+            # Jan 1 robin should NOT be first_ever (Dec 31 is earlier)
+            assert jan_earliest["is_first_ever"] is False, (
+                "Jan 1 detection should not be first_ever when Dec 31 exists"
+            )
+
+            # first_ever_detection should point to Dec 31
+            first_ever_ts = jan_earliest["first_ever_detection"]
+            assert "2024-12-31" in first_ever_ts, (
+                f"first_ever_detection should be Dec 31, got {first_ever_ts}"
+            )
+
+            # first_period_detection should point to Jan 1 (first in filtered period)
+            first_period_ts = jan_earliest["first_period_detection"]
+            assert "2025-01-01" in first_period_ts, (
+                f"first_period_detection should be Jan 1, got {first_period_ts}"
+            )
+
 
 class TestSpeciesSummaryIntegration:
     """Integration tests for species summary endpoints."""
