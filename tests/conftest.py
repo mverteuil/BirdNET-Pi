@@ -70,8 +70,7 @@ def path_resolver(tmp_path: Path, repo_root: Path) -> PathResolver:
     1. Using REAL repo paths for READ-ONLY assets that tests need to access:
        - Models (*.tflite files)
        - IOC reference database
-       - Avibase multilingual database
-       - PatLevin labels database
+       - Wikidata reference database
        - Static files (CSS, JS, images)
        - Templates (HTML templates)
        - Config template (birdnetpi.yaml.template)
@@ -83,7 +82,7 @@ def path_resolver(tmp_path: Path, repo_root: Path) -> PathResolver:
        - Export files - prevents tests from writing to data/exports/
 
     This separation is critical because:
-    - Tests need real assets (models, IOC db) to function properly
+    - Tests need real assets (models, IOC db, Wikidata db) to function properly
     - Tests must NOT write to the real data/ directory (would pollute the repo)
     - PathResolver has individual methods for each path type specifically
       to enable this kind of mocking/overriding
@@ -109,9 +108,8 @@ def path_resolver(tmp_path: Path, repo_root: Path) -> PathResolver:
     # Keep READ-ONLY paths pointing to real repo locations
     # These are already correct from the base PathResolver, but let's be explicit:
     resolver.get_ioc_database_path = lambda: real_data_dir / "database" / "ioc_reference.db"
-    resolver.get_avibase_database_path = lambda: real_data_dir / "database" / "avibase_database.db"
-    resolver.get_patlevin_database_path = (
-        lambda: real_data_dir / "database" / "patlevin_database.db"
+    resolver.get_wikidata_database_path = (
+        lambda: real_data_dir / "database" / "wikidata_reference.db"
     )
     resolver.get_models_dir = lambda: real_data_dir / "models"
     resolver.get_model_path = lambda model_filename: (
@@ -416,8 +414,7 @@ def check_required_assets(repo_root: Path):
         "get_data_path": real_data_dir,
         "get_models_dir": real_data_dir / "models",
         "get_ioc_database_path": real_data_dir / "database" / "ioc_reference.db",
-        "get_avibase_database_path": real_data_dir / "database" / "avibase_database.db",
-        "get_patlevin_database_path": real_data_dir / "database" / "patlevin_database.db",
+        "get_wikidata_database_path": real_data_dir / "database" / "wikidata_reference.db",
     }
 
     missing_assets = []

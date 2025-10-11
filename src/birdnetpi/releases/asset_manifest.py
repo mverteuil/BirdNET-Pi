@@ -61,23 +61,15 @@ class AssetManifest:
         Asset(
             name="IOC Reference Database",
             path_method="get_ioc_database_path",
-            description="IOC World Bird Names reference database",
+            description="IOC World Bird Names with translations (24 languages, CC-BY-4.0)",
             asset_type=AssetType.DATABASE,
             is_directory=False,
             required=True,
         ),
         Asset(
-            name="Avibase Database",
-            path_method="get_avibase_database_path",
-            description="Avibase multilingual bird names database (Lepage 2018, CC-BY-4.0)",
-            asset_type=AssetType.DATABASE,
-            is_directory=False,
-            required=True,
-        ),
-        Asset(
-            name="PatLevin Database",
-            path_method="get_patlevin_database_path",
-            description="BirdNET label translations compiled by Patrick Levin",
+            name="Wikidata Reference Database",
+            path_method="get_wikidata_database_path",
+            description="Wikidata bird names (57 languages, CC0), images, conservation status",
             asset_type=AssetType.DATABASE,
             is_directory=False,
             required=True,
@@ -234,10 +226,8 @@ class AssetManifest:
                     target_path = Path("data/models")
                 elif "ioc" in asset.name.lower():
                     target_path = Path("data/database/ioc_reference.db")
-                elif "avibase" in asset.name.lower():
-                    target_path = Path("data/database/avibase_database.db")
-                elif "patlevin" in asset.name.lower():
-                    target_path = Path("data/database/patlevin_database.db")
+                elif "wikidata" in asset.name.lower():
+                    target_path = Path("data/database/wikidata_reference.db")
                 else:
                     # Fallback - use the source path's name
                     target_path = Path("data") / source_path.name

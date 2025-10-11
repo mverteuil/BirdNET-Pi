@@ -35,8 +35,7 @@ def test_settings_view_routes_endpoints(path_resolver, tmp_path):
     app.state.templates = MagicMock(spec=Jinja2Templates)
     path_resolver.get_ioc_database_path = lambda: tmp_path / "ioc_reference.db"
     path_resolver.get_models_dir = lambda: tmp_path / "models"
-    path_resolver.get_avibase_database_path = lambda: tmp_path / "avibase.db"
-    path_resolver.get_patlevin_database_path = lambda: tmp_path / "patlevin.db"
+    path_resolver.get_wikidata_database_path = lambda: tmp_path / "wikidata_reference.db"
     app.state.path_resolver = path_resolver
 
     # Mock config

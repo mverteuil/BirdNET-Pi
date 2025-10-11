@@ -83,12 +83,13 @@ async def test_query_without_lower_functions(app_with_temp_data):
                 d.scientific_name,
                 COUNT(*) as detection_count
             FROM detections d
-            LEFT JOIN patlevin.patlevin_labels p
-                ON p.scientific_name = d.scientific_name
-                AND p.language_code = :language_code
-            LEFT JOIN avibase.avibase_names a
-                ON a.scientific_name = d.scientific_name
-                AND a.language_code = :language_code
+            LEFT JOIN wikidata.translations w
+                ON w.avibase_id = (
+                    SELECT i.avibase_id
+                    FROM ioc.species i
+                    WHERE i.scientific_name = d.scientific_name
+                )
+                AND w.language_code = :language_code
             GROUP BY d.scientific_name
         """)
 

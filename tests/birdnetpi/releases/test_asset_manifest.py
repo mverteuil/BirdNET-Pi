@@ -14,27 +14,25 @@ class TestAssetManifest:
         """Should return all defined assets."""
         assets = AssetManifest.get_all_assets()
 
-        assert len(assets) == 4
+        assert len(assets) == 3
         assert all(isinstance(asset, Asset) for asset in assets)
 
         # Check that we have the expected assets
         asset_names = {asset.name for asset in assets}
         assert "BirdNET Models" in asset_names
         assert "IOC Reference Database" in asset_names
-        assert "Avibase Database" in asset_names
-        assert "PatLevin Database" in asset_names
+        assert "Wikidata Reference Database" in asset_names
 
     def test_get_required_assets(self):
         """Should return all assets since they are all required."""
         required = AssetManifest.get_required_assets()
 
-        # All 4 assets are required
-        assert len(required) == 4
+        # All 3 assets are required
+        assert len(required) == 3
         asset_names = {asset.name for asset in required}
         assert "BirdNET Models" in asset_names
         assert "IOC Reference Database" in asset_names
-        assert "Avibase Database" in asset_names
-        assert "PatLevin Database" in asset_names
+        assert "Wikidata Reference Database" in asset_names
 
     def test_get_optional_assets(self):
         """Should return empty list since no assets are optional."""
@@ -48,11 +46,10 @@ class TestAssetManifest:
         # Use the global path_resolver fixture
         paths = AssetManifest.get_asset_paths(path_resolver)
 
-        assert len(paths) == 4
+        assert len(paths) == 3
         assert paths["BirdNET Models"] == path_resolver.get_models_dir()
         assert paths["IOC Reference Database"] == path_resolver.get_ioc_database_path()
-        assert paths["Avibase Database"] == path_resolver.get_avibase_database_path()
-        assert paths["PatLevin Database"] == path_resolver.get_patlevin_database_path()
+        assert paths["Wikidata Reference Database"] == path_resolver.get_wikidata_database_path()
 
     def test_get_protected_paths(self, path_resolver):
         """Should return list of protected paths."""
@@ -62,8 +59,7 @@ class TestAssetManifest:
         # Should include all asset paths
         assert path_resolver.get_models_dir() in protected
         assert path_resolver.get_ioc_database_path() in protected
-        assert path_resolver.get_avibase_database_path() in protected
-        assert path_resolver.get_patlevin_database_path() in protected
+        assert path_resolver.get_wikidata_database_path() in protected
 
         # Should also protect parent directories
         assert path_resolver.get_database_dir() in protected
@@ -105,11 +101,10 @@ class TestAssetManifest:
         assert len(models) == 1
         assert models[0].name == "BirdNET Models"
 
-        assert len(databases) == 3
+        assert len(databases) == 2
         db_names = {db.name for db in databases}
         assert "IOC Reference Database" in db_names
-        assert "Avibase Database" in db_names
-        assert "PatLevin Database" in db_names
+        assert "Wikidata Reference Database" in db_names
 
     def test_get_asset_by_name(self):
         """Should retrieve specific asset by name."""
@@ -127,7 +122,7 @@ class TestAssetManifest:
         # Use the global path_resolver fixture
         release_assets = AssetManifest.get_release_assets(path_resolver)
 
-        assert len(release_assets) == 4
+        assert len(release_assets) == 3
 
         # Check format of returned tuples
         for source_path, target_path, description in release_assets:

@@ -111,15 +111,13 @@ class PathResolver:
         ioc_db_path = self.data_dir / "database" / "ioc_reference.db"
         return ioc_db_path
 
-    def get_avibase_database_path(self) -> Path:
-        """Get the path to the Avibase multilingual names database."""
-        avibase_db_path = self.data_dir / "database" / "avibase_database.db"
-        return avibase_db_path
+    def get_wikidata_database_path(self) -> Path:
+        """Get the path to the Wikidata reference database.
 
-    def get_patlevin_database_path(self) -> Path:
-        """Get the path to the PatLevin BirdNET labels database."""
-        patlevin_db_path = self.data_dir / "database" / "patlevin_database.db"
-        return patlevin_db_path
+        Contains multilingual names, image URLs, and conservation status data.
+        """
+        wikidata_db_path = self.data_dir / "database" / "wikidata_reference.db"
+        return wikidata_db_path
 
     def get_temp_dir(self) -> Path:
         """Get the temporary directory for cache files."""

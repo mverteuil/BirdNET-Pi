@@ -1,7 +1,7 @@
 """Service for detection queries with translation support.
 
 This service handles all queries that need to join Detection records with species
-and translation data from multiple databases (IOC, Avibase, PatLevin). It uses SQLite's
+and translation data from multiple databases (IOC, Wikidata). It uses SQLite's
 ATTACH DATABASE functionality to efficiently join across databases while minimizing
 write operations to protect SD card longevity.
 """
@@ -49,9 +49,9 @@ class DetectionQueryService:
 
     This service provides enriched detection data by joining BirdNET-Pi detection records
     with IOC (International Ornithological Committee) taxonomic data and multilingual
-    translations from Avibase and PatLevin databases. It supports dynamic language switching
-    and provides comprehensive species information including family, genus, order, and
-    localized common names.
+    translations from Wikidata. It supports dynamic language switching and provides
+    comprehensive species information including family, genus, order, and localized
+    common names.
     """
 
     def __init__(
@@ -64,7 +64,7 @@ class DetectionQueryService:
 
         Args:
             core_database: Main database service for detections
-            species_database: Species database service (IOC/Avibase/PatLevin)
+            species_database: Species database service (IOC/Wikidata)
             config: BirdNET configuration with language settings
         """
         self.core_database = core_database
@@ -258,8 +258,8 @@ class DetectionQueryService:
         async with self.core_database.get_async_db() as session:
             await self.species_database.attach_all_to_session(session)
             try:
-                # Updated query to use COALESCE across all three databases
-                # Priority: IOC → PatLevin → Avibase
+                # Updated query for 2-database architecture (IOC + Wikidata)
+                # Priority: IOC → Wikidata
                 query_sql = text("""
                     SELECT
                         d.id,
@@ -278,8 +278,7 @@ class DetectionQueryService:
                         COALESCE(s.english_name, d.common_name) as ioc_english_name,
                         COALESCE(
                             t.common_name,
-                            p.common_name,
-                            a.common_name,
+                            w.common_name,
                             s.english_name,
                             d.common_name
                         ) as translated_name,
@@ -288,14 +287,15 @@ class DetectionQueryService:
                         s.order_name
                     FROM detections d
                     LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
-                    LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                    LEFT JOIN ioc.translations t ON s.avibase_id = t.avibase_id
                         AND t.language_code = :language_code
-                    LEFT JOIN patlevin.patlevin_labels p
-                        ON LOWER(p.scientific_name) = LOWER(d.scientific_name)
-                        AND p.language_code = :language_code
-                    LEFT JOIN avibase.avibase_names a
-                        ON LOWER(a.scientific_name) = LOWER(d.scientific_name)
-                        AND a.language_code = :language_code
+                    LEFT JOIN wikidata.translations w
+                        ON w.avibase_id = (
+                            SELECT i.avibase_id
+                            FROM ioc.species i
+                            WHERE i.scientific_name = d.scientific_name
+                        )
+                        AND w.language_code = :language_code
                     WHERE d.id = :detection_id
                 """)
 
@@ -451,8 +451,7 @@ class DetectionQueryService:
                 MAX(s.english_name) as ioc_english_name,
                 MAX(COALESCE(
                     t.common_name,
-                    p.common_name,
-                    a.common_name,
+                    w.common_name,
                     s.english_name,
                     d.common_name
                 )) as translated_name,
@@ -461,14 +460,15 @@ class DetectionQueryService:
                 MAX(s.order_name) as order_name
             FROM detections d
             LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
-            LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+            LEFT JOIN ioc.translations t ON s.avibase_id = t.avibase_id
                 AND t.language_code = :language_code
-            LEFT JOIN patlevin.patlevin_labels p
-                ON p.scientific_name = d.scientific_name
-                AND p.language_code = :language_code
-            LEFT JOIN avibase.avibase_names a
-                ON a.scientific_name = d.scientific_name
-                AND a.language_code = :language_code
+            LEFT JOIN wikidata.translations w
+                ON w.avibase_id = (
+                    SELECT i.avibase_id
+                    FROM ioc.species i
+                    WHERE i.scientific_name = d.scientific_name
+                )
+                AND w.language_code = :language_code
             {where_clause}
             GROUP BY d.scientific_name
             ORDER BY detection_count DESC
@@ -485,8 +485,7 @@ class DetectionQueryService:
                 s.english_name as ioc_english_name,
                 COALESCE(
                     t.common_name,
-                    p.common_name,
-                    a.common_name,
+                    w.common_name,
                     s.english_name,
                     d.common_name
                 ) as translated_name,
@@ -495,14 +494,15 @@ class DetectionQueryService:
                 s.order_name
             FROM detections d
             LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
-            LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+            LEFT JOIN ioc.translations t ON s.avibase_id = t.avibase_id
                 AND t.language_code = :language_code
-            LEFT JOIN patlevin.patlevin_labels p
-                ON p.scientific_name = d.scientific_name
-                AND p.language_code = :language_code
-            LEFT JOIN avibase.avibase_names a
-                ON a.scientific_name = d.scientific_name
-                AND a.language_code = :language_code
+            LEFT JOIN wikidata.translations w
+                ON w.avibase_id = (
+                    SELECT i.avibase_id
+                    FROM ioc.species i
+                    WHERE i.scientific_name = d.scientific_name
+                )
+                AND w.language_code = :language_code
             {where_clause}
             GROUP BY d.scientific_name, s.english_name, translated_name,
                      s.family, s.genus, s.order_name
@@ -856,8 +856,7 @@ class DetectionQueryService:
                             COALESCE(s.english_name, d.common_name) as ioc_english_name,
                             COALESCE(
                                 t.common_name,
-                                p.common_name,
-                                a.common_name,
+                                w.common_name,
                                 s.english_name,
                                 d.common_name
                             ) as translated_name,
@@ -872,14 +871,15 @@ class DetectionQueryService:
                             AND d.scientific_name = adr.scientific_name
                             AND d.timestamp = adr.timestamp
                         LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
-                        LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                        LEFT JOIN ioc.translations t ON s.avibase_id = t.avibase_id
                             AND t.language_code = :language_code
-                        LEFT JOIN patlevin.patlevin_labels p
-                            ON p.scientific_name = d.scientific_name
-                            AND p.language_code = :language_code
-                        LEFT JOIN avibase.avibase_names a
-                            ON a.scientific_name = d.scientific_name
-                            AND a.language_code = :language_code
+                        LEFT JOIN wikidata.translations w
+                            ON w.avibase_id = (
+                                SELECT i.avibase_id
+                                FROM ioc.species i
+                                WHERE i.scientific_name = d.scientific_name
+                            )
+                            AND w.language_code = :language_code
                         {where_clause}
                     ),
                     period_first AS (
@@ -945,8 +945,7 @@ class DetectionQueryService:
                         COALESCE(s.english_name, d.common_name) as ioc_english_name,
                         COALESCE(
                             t.common_name,
-                            p.common_name,
-                            a.common_name,
+                            w.common_name,
                             s.english_name,
                             d.common_name
                         ) as translated_name,
@@ -955,14 +954,15 @@ class DetectionQueryService:
                         s.order_name
                     FROM detections d
                     LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
-                    LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                    LEFT JOIN ioc.translations t ON s.avibase_id = t.avibase_id
                         AND t.language_code = :language_code
-                    LEFT JOIN patlevin.patlevin_labels p
-                        ON LOWER(p.scientific_name) = LOWER(d.scientific_name)
-                        AND p.language_code = :language_code
-                    LEFT JOIN avibase.avibase_names a
-                        ON LOWER(a.scientific_name) = LOWER(d.scientific_name)
-                        AND a.language_code = :language_code
+                    LEFT JOIN wikidata.translations w
+                        ON w.avibase_id = (
+                            SELECT i.avibase_id
+                            FROM ioc.species i
+                            WHERE i.scientific_name = d.scientific_name
+                        )
+                        AND w.language_code = :language_code
                     {where_clause}
                     {order_clause}
                     {pagination_clause}
@@ -1347,8 +1347,7 @@ class DetectionQueryService:
                             s.order_name,
                             COALESCE(
                                 t.common_name,
-                                p.common_name,
-                                a.common_name,
+                                w.common_name,
                                 s.english_name
                             ) as translated_name,
                             ROW_NUMBER() OVER (
@@ -1363,14 +1362,15 @@ class DetectionQueryService:
                             ) as period_rank
                         FROM detections d
                         LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
-                        LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                        LEFT JOIN ioc.translations t ON s.avibase_id = t.avibase_id
                             AND t.language_code = :language_code
-                        LEFT JOIN patlevin.patlevin_labels p
-                            ON LOWER(p.scientific_name) = LOWER(d.scientific_name)
-                            AND p.language_code = :language_code
-                        LEFT JOIN avibase.avibase_names a
-                            ON d.scientific_name = a.scientific_name
-                            AND a.language_code = :language_code
+                        LEFT JOIN wikidata.translations w
+                            ON w.avibase_id = (
+                                SELECT i.avibase_id
+                                FROM ioc.species i
+                                WHERE i.scientific_name = d.scientific_name
+                            )
+                            AND w.language_code = :language_code
                         {where_clause}
                     )
                     SELECT
@@ -1473,8 +1473,7 @@ class DetectionQueryService:
                             s.order_name,
                             COALESCE(
                                 t.common_name,
-                                p.common_name,
-                                a.common_name,
+                                w.common_name,
                                 s.english_name
                             ) as translated_name,
                             ROW_NUMBER() OVER (
@@ -1492,14 +1491,15 @@ class DetectionQueryService:
                             ) as latest_detection
                         FROM detections d
                         LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
-                        LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                        LEFT JOIN ioc.translations t ON s.avibase_id = t.avibase_id
                             AND t.language_code = :language_code
-                        LEFT JOIN patlevin.patlevin_labels p
-                            ON LOWER(p.scientific_name) = LOWER(d.scientific_name)
-                            AND p.language_code = :language_code
-                        LEFT JOIN avibase.avibase_names a
-                            ON d.scientific_name = a.scientific_name
-                            AND a.language_code = :language_code
+                        LEFT JOIN wikidata.translations w
+                            ON w.avibase_id = (
+                                SELECT i.avibase_id
+                                FROM ioc.species i
+                                WHERE i.scientific_name = d.scientific_name
+                            )
+                            AND w.language_code = :language_code
                         {where_clause}
                     ),
                     period_first_detections AS (
@@ -1966,21 +1966,21 @@ class DetectionQueryService:
                     s.order_name,
                     COALESCE(
                         t.common_name,
-                        p.common_name,
-                        a.common_name,
+                        w.common_name,
                         s.english_name,
                         d.common_name
                     ) AS translated_name
                 FROM detections d
                 LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
-                LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                LEFT JOIN ioc.translations t ON s.avibase_id = t.avibase_id
                     AND t.language_code = :language_code
-                LEFT JOIN patlevin.patlevin_labels p
-                    ON p.scientific_name = d.scientific_name
-                    AND p.language_code = :language_code
-                LEFT JOIN avibase.avibase_names a
-                    ON a.scientific_name = d.scientific_name
-                    AND a.language_code = :language_code
+                LEFT JOIN wikidata.translations w
+                    ON w.avibase_id = (
+                        SELECT i.avibase_id
+                        FROM ioc.species i
+                        WHERE i.scientific_name = d.scientific_name
+                    )
+                    AND w.language_code = :language_code
                 WHERE {where_clause}
                 ORDER BY d.confidence DESC, d.timestamp DESC
                 LIMIT :limit OFFSET :offset
@@ -2001,21 +2001,21 @@ class DetectionQueryService:
                     s.order_name,
                     COALESCE(
                         t.common_name,
-                        p.common_name,
-                        a.common_name,
+                        w.common_name,
                         s.english_name,
                         d.common_name
                     ) AS translated_name
                 FROM detections d
                 LEFT JOIN ioc.species s ON d.scientific_name = s.scientific_name
-                LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                LEFT JOIN ioc.translations t ON s.avibase_id = t.avibase_id
                     AND t.language_code = :language_code
-                LEFT JOIN patlevin.patlevin_labels p
-                    ON p.scientific_name = d.scientific_name
-                    AND p.language_code = :language_code
-                LEFT JOIN avibase.avibase_names a
-                    ON a.scientific_name = d.scientific_name
-                    AND a.language_code = :language_code
+                LEFT JOIN wikidata.translations w
+                    ON w.avibase_id = (
+                        SELECT i.avibase_id
+                        FROM ioc.species i
+                        WHERE i.scientific_name = d.scientific_name
+                    )
+                    AND w.language_code = :language_code
                 WHERE {where_clause}
                 ORDER BY d.confidence DESC, d.timestamp DESC
                 LIMIT :limit OFFSET :offset
@@ -2057,21 +2057,21 @@ class DetectionQueryService:
                     s.order_name,
                     COALESCE(
                         t.common_name,
-                        p.common_name,
-                        a.common_name,
+                        w.common_name,
                         s.english_name,
                         rd.common_name
                     ) AS translated_name
                 FROM ranked_detections rd
                 LEFT JOIN ioc.species s ON rd.scientific_name = s.scientific_name
-                LEFT JOIN ioc.translations t ON s.scientific_name = t.scientific_name
+                LEFT JOIN ioc.translations t ON s.avibase_id = t.avibase_id
                     AND t.language_code = :language_code
-                LEFT JOIN patlevin.patlevin_labels p
-                    ON p.scientific_name = rd.scientific_name
-                    AND p.language_code = :language_code
-                LEFT JOIN avibase.avibase_names a
-                    ON a.scientific_name = rd.scientific_name
-                    AND a.language_code = :language_code
+                LEFT JOIN wikidata.translations w
+                    ON w.avibase_id = (
+                        SELECT i.avibase_id
+                        FROM ioc.species i
+                        WHERE i.scientific_name = rd.scientific_name
+                    )
+                    AND w.language_code = :language_code
                 WHERE rd.rank_within_species <= :per_species_limit
                 ORDER BY rd.confidence DESC, rd.timestamp DESC
                 LIMIT :limit OFFSET :offset

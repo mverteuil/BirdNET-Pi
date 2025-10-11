@@ -29,12 +29,11 @@ class TestContainerIntegration:
             temp_ioc_db = tmp_path / "database" / "ioc_reference.db"
             shutil.copy(real_ioc_db, temp_ioc_db)
 
-        # Copy real multilingual databases
-        for db_name in ["avibase_database.db", "patlevin_database.db"]:
-            real_db = repo_root / "data" / "database" / db_name
-            if real_db.exists():
-                temp_db = tmp_path / "database" / db_name
-                shutil.copy(real_db, temp_db)
+        # Copy real Wikidata database
+        real_wikidata_db = repo_root / "data" / "database" / "wikidata_reference.db"
+        if real_wikidata_db.exists():
+            temp_wikidata_db = tmp_path / "database" / "wikidata_reference.db"
+            shutil.copy(real_wikidata_db, temp_wikidata_db)
 
         # Copy config template
         real_config = repo_root / "config_templates" / "birdnetpi.yaml"
@@ -55,9 +54,8 @@ class TestContainerIntegration:
 
         # Override read-only database paths to use temp copies
         resolver.get_ioc_database_path = lambda: test_paths / "database" / "ioc_reference.db"
-        resolver.get_avibase_database_path = lambda: test_paths / "database" / "avibase_database.db"
-        resolver.get_patlevin_database_path = (
-            lambda: test_paths / "database" / "patlevin_database.db"
+        resolver.get_wikidata_database_path = (
+            lambda: test_paths / "database" / "wikidata_reference.db"
         )
 
         # Keep real paths for models, static files, templates

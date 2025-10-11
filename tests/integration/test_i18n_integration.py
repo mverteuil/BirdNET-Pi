@@ -276,7 +276,7 @@ class TestSpeciesTranslation:
 
                 # Should get a real Spanish name
                 assert result["common_name"] is not None
-                assert result["source"] in ["IOC", "PatLevin", "Avibase"]
+                assert result["source"] in ["IOC", "Wikidata"]
                 # The actual Spanish name might vary but should contain "Zorzal" or "Petirrojo"
 
                 # Test English name

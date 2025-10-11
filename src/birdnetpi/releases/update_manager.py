@@ -395,8 +395,7 @@ class UpdateManager:
         version: str = "latest",
         include_models: bool = True,
         include_ioc_db: bool = True,
-        include_avibase_db: bool = False,
-        include_patlevin_db: bool = False,
+        include_wikidata_db: bool = False,
         github_repo: str = "mverteuil/BirdNET-Pi",
     ) -> dict[str, Any]:
         """Download models and databases from orphaned commit asset release.
@@ -408,8 +407,7 @@ class UpdateManager:
             version: Asset release version (e.g., "v1.0.0" or "latest")
             include_models: Whether to download BirdNET models
             include_ioc_db: Whether to download IOC database
-            include_avibase_db: Whether to download Avibase multilingual database
-            include_patlevin_db: Whether to download PatLevin translations database
+            include_wikidata_db: Whether to download Wikidata reference database
             github_repo: GitHub repository in format "owner/repo"
 
         Returns:
@@ -429,8 +427,7 @@ class UpdateManager:
             asset_flags = {
                 "BirdNET Models": include_models,
                 "IOC Reference Database": include_ioc_db,
-                "Avibase Database": include_avibase_db,
-                "PatLevin Database": include_patlevin_db,
+                "Wikidata Reference Database": include_wikidata_db,
             }
 
             # Get all assets from manifest
@@ -446,10 +443,8 @@ class UpdateManager:
                         # For databases, determine the source filename
                         if "ioc" in asset.name.lower():
                             db_filename = "ioc_reference.db"
-                        elif "avibase" in asset.name.lower():
-                            db_filename = "avibase_database.db"
-                        elif "patlevin" in asset.name.lower():
-                            db_filename = "patlevin_database.db"
+                        elif "wikidata" in asset.name.lower():
+                            db_filename = "wikidata_reference.db"
                         else:
                             continue
 

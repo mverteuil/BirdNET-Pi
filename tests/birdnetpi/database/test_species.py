@@ -19,18 +19,15 @@ def mock_path_resolver(path_resolver, tmp_path):
     """
     # Create test database files in temp directory
     test_ioc_db = tmp_path / "database" / "ioc_reference.db"
-    test_avibase_db = tmp_path / "database" / "avibase_database.db"
-    test_patlevin_db = tmp_path / "database" / "patlevin_database.db"
+    test_wikidata_db = tmp_path / "database" / "wikidata_reference.db"
 
     test_ioc_db.parent.mkdir(parents=True, exist_ok=True)
     test_ioc_db.touch()
-    test_avibase_db.touch()
-    test_patlevin_db.touch()
+    test_wikidata_db.touch()
 
     # Override the database path methods
     path_resolver.get_ioc_database_path = lambda: test_ioc_db
-    path_resolver.get_avibase_database_path = lambda: test_avibase_db
-    path_resolver.get_patlevin_database_path = lambda: test_patlevin_db
+    path_resolver.get_wikidata_database_path = lambda: test_wikidata_db
 
     return path_resolver
 
@@ -71,8 +68,7 @@ class TestSpeciesDatabaseServiceInitialization:
         assert service.path_resolver == path_resolver
         # Check that paths match what the fixture provides
         assert service.ioc_db_path == path_resolver.get_ioc_database_path()
-        assert service.avibase_db_path == path_resolver.get_avibase_database_path()
-        assert service.patlevin_db_path == path_resolver.get_patlevin_database_path()
+        assert service.wikidata_db_path == path_resolver.get_wikidata_database_path()
 
 
 class TestAttachDetachDatabases:
@@ -83,8 +79,8 @@ class TestAttachDetachDatabases:
         """Should attach all available databases to session."""
         await species_database.attach_all_to_session(mock_session)
 
-        # Verify all three ATTACH DATABASE commands were executed
-        assert mock_session.execute.call_count == 3
+        # Verify both ATTACH DATABASE commands were executed
+        assert mock_session.execute.call_count == 2
 
         calls = mock_session.execute.call_args_list
         attach_commands = [str(call[0][0]) for call in calls]
@@ -94,23 +90,21 @@ class TestAttachDetachDatabases:
 
         # Check that all database types are attached (paths will be dynamic from tmp_path)
         assert any("AS ioc" in cmd for cmd in attach_commands)
-        assert any("AS avibase" in cmd for cmd in attach_commands)
-        assert any("AS patlevin" in cmd for cmd in attach_commands)
+        assert any("AS wikidata" in cmd for cmd in attach_commands)
 
     @pytest.mark.asyncio
     async def test_detach_all_from_session(self, species_database, mock_session):
         """Should detach all available databases from session."""
         await species_database.detach_all_from_session(mock_session)
 
-        # Verify all three DETACH DATABASE commands were executed
-        assert mock_session.execute.call_count == 3
+        # Verify both DETACH DATABASE commands were executed
+        assert mock_session.execute.call_count == 2
 
         calls = mock_session.execute.call_args_list
         detach_commands = [str(call[0][0]) for call in calls]
 
         assert any("DETACH DATABASE ioc" in cmd for cmd in detach_commands)
-        assert any("DETACH DATABASE avibase" in cmd for cmd in detach_commands)
-        assert any("DETACH DATABASE patlevin" in cmd for cmd in detach_commands)
+        assert any("DETACH DATABASE wikidata" in cmd for cmd in detach_commands)
 
     @pytest.mark.asyncio
     async def test_detach_all_from_session__exception_handling(
@@ -120,71 +114,115 @@ class TestAttachDetachDatabases:
         mock_session.execute.side_effect = [
             None,  # First detach succeeds
             OperationalError("statement", "params", "orig"),  # Second fails
-            None,  # Third succeeds
         ]
 
         # Should not raise exception despite error in middle
         await species_database.detach_all_from_session(mock_session)
 
-        # All three detach commands should still be attempted
-        assert mock_session.execute.call_count == 3
+        # Both detach commands should still be attempted
+        assert mock_session.execute.call_count == 2
 
 
 class TestGetBestCommonName:
     """Test priority-based common name resolution."""
 
     @pytest.mark.asyncio
-    async def test_get_best_common_name_all_databases_ioc_english(
-        self, species_database, mock_session
-    ):
-        """Should build query with all databases for IOC English lookup."""
-        # Create a simple object with the required attributes (like a SQLAlchemy Row)
+    async def test_get_best_common_name_ioc_english(self, species_database, mock_session):
+        """Should get avibase_id and then query IOC English name."""
+        # Create mock rows for the two-step lookup
+        MockAvibaseIdRow = namedtuple("MockAvibaseIdRow", ["avibase_id"])
+        MockEnglishRow = namedtuple("MockEnglishRow", ["english_name"])
 
-        MockRow = namedtuple("MockRow", ["english_name"])
-        mock_row = MockRow(english_name="American Robin")
+        avibase_id_row = MockAvibaseIdRow(avibase_id="ABC123")
+        english_row = MockEnglishRow(english_name="American Robin")
 
-        # Mock the Result object from execute()
-        # Note: .first() is synchronous, not async
-        mock_execute_result = MagicMock(spec=Result)
-        mock_execute_result.first.return_value = mock_row
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_execute_result)
+        # Mock the Result objects from execute()
+        mock_avibase_id_result = MagicMock(spec=Result)
+        mock_avibase_id_result.first.return_value = avibase_id_row
+
+        mock_english_result = MagicMock(spec=Result)
+        mock_english_result.first.return_value = english_row
+
+        mock_session.execute = AsyncMock(
+            spec=callable,
+            side_effect=[mock_avibase_id_result, mock_english_result],
+        )
 
         result = await species_database.get_best_common_name(
             mock_session, "Turdus migratorius", "en"
         )
 
-        # Should execute query for IOC species first (for English)
-        mock_session.execute.assert_called()
+        # Should execute two queries (avibase_id lookup, then IOC English)
+        assert mock_session.execute.call_count == 2
 
         # Check result
         assert result["common_name"] == "American Robin"
         assert result["source"] == "IOC"
 
     @pytest.mark.asyncio
-    async def test_get_best_common_name_all_databases_non_english(
-        self, species_database, mock_session
-    ):
-        """Should build query without IOC species table for non-English languages."""
-        # Create a simple object with the required attributes (like a SQLAlchemy Row)
+    async def test_get_best_common_name_ioc_translation(self, species_database, mock_session):
+        """Should fall back to IOC translations for non-English languages."""
+        MockAvibaseIdRow = namedtuple("MockAvibaseIdRow", ["avibase_id"])
+        MockTranslationRow = namedtuple("MockTranslationRow", ["common_name"])
 
-        MockRow = namedtuple("MockRow", ["common_name"])
-        mock_row = MockRow(common_name="Petirrojo Americano")
+        avibase_id_row = MockAvibaseIdRow(avibase_id="ABC123")
+        translation_row = MockTranslationRow(common_name="Petirrojo Americano")
 
-        # Mock the Result object from execute()
-        # Note: .first() is synchronous, not async
-        mock_execute_result = MagicMock(spec=Result)
-        mock_execute_result.first.return_value = mock_row
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_execute_result)
+        mock_avibase_id_result = MagicMock(spec=Result)
+        mock_avibase_id_result.first.return_value = avibase_id_row
+
+        mock_translation_result = MagicMock(spec=Result)
+        mock_translation_result.first.return_value = translation_row
+
+        mock_session.execute = AsyncMock(
+            spec=callable,
+            side_effect=[mock_avibase_id_result, mock_translation_result],
+        )
 
         result = await species_database.get_best_common_name(
             mock_session, "Turdus migratorius", "es"
         )
 
-        # Should execute query for IOC translations (not English species table)
-        mock_session.execute.assert_called()
-
+        assert mock_session.execute.call_count == 2
         assert result["common_name"] == "Petirrojo Americano"
         assert result["source"] == "IOC"
+
+    @pytest.mark.asyncio
+    async def test_get_best_common_name_wikidata_fallback(self, species_database, mock_session):
+        """Should fall back to Wikidata when IOC has no translation."""
+        MockAvibaseIdRow = namedtuple("MockAvibaseIdRow", ["avibase_id"])
+        MockTranslationRow = namedtuple("MockTranslationRow", ["common_name"])
+
+        avibase_id_row = MockAvibaseIdRow(avibase_id="ABC123")
+        wikidata_row = MockTranslationRow(common_name="ロビン")
+
+        mock_avibase_id_result = MagicMock(spec=Result)
+        mock_avibase_id_result.first.return_value = avibase_id_row
+
+        # IOC translation not found
+        mock_ioc_result = MagicMock(spec=Result)
+        mock_ioc_result.first.return_value = None
+
+        # Wikidata translation found
+        mock_wikidata_result = MagicMock(spec=Result)
+        mock_wikidata_result.first.return_value = wikidata_row
+
+        mock_session.execute = AsyncMock(
+            spec=callable,
+            side_effect=[
+                mock_avibase_id_result,  # avibase_id lookup
+                mock_ioc_result,  # IOC translation not found
+                mock_wikidata_result,  # Wikidata found
+            ],
+        )
+
+        result = await species_database.get_best_common_name(
+            mock_session, "Turdus migratorius", "ja"
+        )
+
+        assert mock_session.execute.call_count == 3
+        assert result["common_name"] == "ロビン"
+        assert result["source"] == "Wikidata"
 
     @pytest.mark.asyncio
     async def test_get_best_common_name__no_result(self, species_database, mock_session):
@@ -222,16 +260,24 @@ class TestGetBestCommonName:
     async def test_get_best_common_name__priority_source_detection(
         self, species_database, mock_session
     ):
-        """Should correctly detect source based on priority order."""
+        """Should correctly detect source based on priority order: IOC → Wikidata."""
+        MockAvibaseIdRow = namedtuple("MockAvibaseIdRow", ["avibase_id"])
+        MockEnglishRow = namedtuple("MockEnglishRow", ["english_name"])
+
+        avibase_id_row = MockAvibaseIdRow(avibase_id="ABC123")
+        english_row = MockEnglishRow(english_name="American Robin")
+
         # Test when IOC English name is found (highest priority for English)
+        mock_avibase_id_result = MagicMock(spec=Result)
+        mock_avibase_id_result.first.return_value = avibase_id_row
 
-        MockRow = namedtuple("MockRow", ["english_name", "common_name"])
-        mock_row_english = MockRow(english_name="American Robin", common_name=None)
+        mock_english_result = MagicMock(spec=Result)
+        mock_english_result.first.return_value = english_row
 
-        # Note: .first() is synchronous, not async
-        mock_execute_result = MagicMock(spec=Result)
-        mock_execute_result.first.return_value = mock_row_english
-        mock_session.execute = AsyncMock(spec=callable, return_value=mock_execute_result)
+        mock_session.execute = AsyncMock(
+            spec=callable,
+            side_effect=[mock_avibase_id_result, mock_english_result],
+        )
 
         result = await species_database.get_best_common_name(
             mock_session, "Turdus migratorius", "en"
@@ -240,31 +286,33 @@ class TestGetBestCommonName:
         # First priority should return IOC
         assert result["source"] == "IOC"
 
-        # Test when PatLevin is found (lower priority) - For non-English, no IOC english check
+        # Test when Wikidata is found (lower priority) - For language not in IOC
         mock_session.reset_mock()
-        mock_row_patlevin = MockRow(english_name=None, common_name="American Robin")
-        # For Spanish, it goes: IOC translations, PatLevin, Avibase
-        # Note: .first() is synchronous, not async
-        mock_execute_result1 = MagicMock(spec=Result)
-        mock_execute_result1.first.return_value = None  # IOC translation not found
-        mock_execute_result2 = MagicMock(spec=Result)
-        mock_execute_result2.first.return_value = mock_row_patlevin  # PatLevin found
-        mock_execute_result3 = MagicMock(spec=Result)
-        mock_execute_result3.first.return_value = None  # Won't reach Avibase
+        MockTranslationRow = namedtuple("MockTranslationRow", ["common_name"])
+        wikidata_row = MockTranslationRow(common_name="ロビン")
+
+        mock_avibase_id_result2 = MagicMock(spec=Result)
+        mock_avibase_id_result2.first.return_value = avibase_id_row
+
+        mock_ioc_result = MagicMock(spec=Result)
+        mock_ioc_result.first.return_value = None  # IOC translation not found
+
+        mock_wikidata_result = MagicMock(spec=Result)
+        mock_wikidata_result.first.return_value = wikidata_row  # Wikidata found
 
         mock_session.execute = AsyncMock(
             spec=callable,
             side_effect=[
-                mock_execute_result1,
-                mock_execute_result2,
-                mock_execute_result3,
+                mock_avibase_id_result2,
+                mock_ioc_result,
+                mock_wikidata_result,
             ],
         )
 
         result = await species_database.get_best_common_name(
-            mock_session, "Turdus migratorius", "es"
+            mock_session, "Turdus migratorius", "ja"
         )
-        assert result["source"] == "PatLevin"
+        assert result["source"] == "Wikidata"
 
 
 class TestGetAllTranslations:
@@ -274,47 +322,42 @@ class TestGetAllTranslations:
     async def test_get_all_translations_all_databases(self, species_database, mock_session):
         """Should retrieve translations from all available databases."""
         # Create namedtuples for row results
-        EnglishRow = namedtuple("EnglishRow", ["english_name"])
+        AvibaseIdRow = namedtuple("AvibaseIdRow", ["avibase_id", "english_name"])
         TransRow = namedtuple("TransRow", ["language_code", "common_name"])
 
-        # IOC species (first() returns single row)
-        ioc_species_row = EnglishRow(english_name="American Robin")
+        # Step 1: avibase_id lookup
+        avibase_id_row = AvibaseIdRow(avibase_id="ABC123", english_name="American Robin")
 
         # Translation rows
         ioc_trans_row1 = TransRow(language_code="es", common_name="Petirrojo Americano")
         ioc_trans_row2 = TransRow(language_code="fr", common_name="Merle d'Amérique")
 
-        patlevin_row1 = TransRow(language_code="de", common_name="Wanderdrossel")
-        patlevin_row2 = TransRow(language_code="es", common_name="Petirrojo")
-
-        avibase_row1 = TransRow(language_code="it", common_name="Pettirosso americano")
-        avibase_row2 = TransRow(language_code="pt", common_name="Tordo-americano")
+        wikidata_row1 = TransRow(language_code="de", common_name="Wanderdrossel")
+        wikidata_row2 = TransRow(language_code="it", common_name="Pettirosso americano")
 
         # Mock execute to return different results for each query
-        # First call: IOC species (uses .first() which is synchronous)
+        # First call: avibase_id lookup (uses .first() which is synchronous)
         first_result = MagicMock(spec=Result)
-        first_result.first.return_value = ioc_species_row
+        first_result.first.return_value = avibase_id_row
 
         # Subsequent calls: translations (use iteration) - these must be iterable
         ioc_trans_result = [ioc_trans_row1, ioc_trans_row2]
-        patlevin_result = [patlevin_row1, patlevin_row2]
-        avibase_result = [avibase_row1, avibase_row2]
+        wikidata_result = [wikidata_row1, wikidata_row2]
 
         # Set up side_effect for execute to return different results for each call
         mock_session.execute = AsyncMock(
             spec=callable,
             side_effect=[
-                first_result,  # IOC species query
+                first_result,  # avibase_id + English name lookup
                 ioc_trans_result,  # IOC translations
-                patlevin_result,  # PatLevin
-                avibase_result,  # Avibase
+                wikidata_result,  # Wikidata
             ],
         )
 
         result = await species_database.get_all_translations(mock_session, "Turdus migratorius")
 
-        # Should execute 4 queries (IOC species, IOC translations, PatLevin, Avibase)
-        assert mock_session.execute.call_count == 4
+        # Should execute 3 queries (avibase_id lookup, IOC translations, Wikidata)
+        assert mock_session.execute.call_count == 3
 
         # Verify result structure and deduplication
         assert "en" in result
@@ -323,70 +366,65 @@ class TestGetAllTranslations:
         assert result["en"][0]["source"] == "IOC"
 
         assert "es" in result
-        assert len(result["es"]) == 2  # Both IOC and PatLevin versions
-        names = [t["name"] for t in result["es"]]
-        assert "Petirrojo Americano" in names
-        assert "Petirrojo" in names
+        assert len(result["es"]) == 1
+        assert result["es"][0]["name"] == "Petirrojo Americano"
+        assert result["es"][0]["source"] == "IOC"
 
         assert "fr" in result
         assert result["fr"][0]["source"] == "IOC"
 
         assert "de" in result
-        assert result["de"][0]["source"] == "PatLevin"
+        assert result["de"][0]["source"] == "Wikidata"
 
         assert "it" in result
-        assert result["it"][0]["source"] == "Avibase"
+        assert result["it"][0]["source"] == "Wikidata"
 
     @pytest.mark.asyncio
     async def test_get_all_translations__deduplication(self, species_database, mock_session):
         """Should deduplicate identical names from different sources."""
-        EnglishRow = namedtuple("EnglishRow", ["english_name"])
+        AvibaseIdRow = namedtuple("AvibaseIdRow", ["avibase_id", "english_name"])
         TransRow = namedtuple("TransRow", ["language_code", "common_name"])
 
-        # IOC species row with English name
-        ioc_species_row = EnglishRow(english_name="American Robin")
+        # avibase_id lookup with English name
+        avibase_id_row = AvibaseIdRow(avibase_id="ABC123", english_name="American Robin")
 
-        # Mock result for IOC species query (.first() is synchronous)
+        # Mock result for avibase_id query (.first() is synchronous)
         first_result = MagicMock(spec=Result)
-        first_result.first.return_value = ioc_species_row
+        first_result.first.return_value = avibase_id_row
 
         # Translation rows - duplicates will be filtered
         ioc_trans_row = TransRow(language_code="en", common_name="American Robin")  # Duplicate
-        patlevin_row = TransRow(language_code="en", common_name="American Robin")  # Duplicate
-        avibase_row = TransRow(language_code="en", common_name="Robin")  # Different
+        wikidata_row = TransRow(language_code="en", common_name="Robin")  # Different
 
         # Mock results for iteration queries
         ioc_trans_result = [ioc_trans_row]
-        patlevin_result = [patlevin_row]
-        avibase_result = [avibase_row]
+        wikidata_result = [wikidata_row]
 
         mock_session.execute = AsyncMock(
             spec=callable,
             side_effect=[
                 first_result,
                 ioc_trans_result,
-                patlevin_result,
-                avibase_result,
+                wikidata_result,
             ],
         )
 
         result = await species_database.get_all_translations(mock_session, "Turdus migratorius")
 
         assert "en" in result
-        # Should have 3 entries:
-        # 1. "American Robin" from IOC species table
-        # 2. "American Robin" from IOC translations table (not deduplicated within IOC)
-        # 3. "Robin" from Avibase (different name)
-        # PatLevin's "American Robin" is filtered as duplicate
-        assert len(result["en"]) == 3
+        # Should have 2 entries:
+        # 1. "American Robin" from IOC species table (avibase_id lookup)
+        # 2. "Robin" from Wikidata (different name)
+        # IOC translation's "American Robin" is filtered as duplicate
+        assert len(result["en"]) == 2
         names = [t["name"] for t in result["en"]]
-        assert names.count("American Robin") == 2  # From IOC species and translations
+        assert names.count("American Robin") == 1  # Only from avibase_id lookup
         assert "Robin" in names
 
-        # Should have IOC (twice) and Avibase sources
+        # Should have IOC and Wikidata sources
         sources = [t["source"] for t in result["en"]]
-        assert sources.count("IOC") == 2
-        assert "Avibase" in sources
+        assert "IOC" in sources
+        assert "Wikidata" in sources
 
     @pytest.mark.asyncio
     async def test_get_all_translations__sql_injection_prevention(
@@ -403,20 +441,20 @@ class TestGetAllTranslations:
         mock_session.execute = AsyncMock(
             spec=callable,
             side_effect=[
-                empty_first_result,  # IOC species - empty
+                empty_first_result,  # avibase_id lookup - empty
                 empty_list,  # IOC translations - empty
-                empty_list,  # PatLevin - empty
-                empty_list,  # Avibase - empty
+                empty_list,  # Wikidata - empty
             ],
         )
 
         await species_database.get_all_translations(mock_session, "'; DROP TABLE species; --")
 
-        # Check all 4 queries use parameterized approach
+        # Check all 3 queries use parameterized approach
         calls = mock_session.execute.call_args_list
         for call in calls:
-            params = call[0][1]
-            assert params["sci_name"] == "'; DROP TABLE species; --"
+            if len(call[0]) > 1:  # Has parameters
+                params = call[0][1]
+                assert params["sci_name"] == "'; DROP TABLE species; --"
             assert "DROP TABLE" not in str(call[0][0])
 
 
@@ -427,10 +465,9 @@ class TestGetAttribution:
         """Should return attributions for all available databases."""
         attributions = species_database.get_attribution()
 
-        assert len(attributions) == 3
-        assert "IOC World Bird List (www.worldbirdnames.org)" in attributions
-        assert "Patrick Levin (patlevin) - BirdNET Label Translations" in attributions
-        assert "Avibase - Lepage, Denis (2018)" in attributions
+        assert len(attributions) == 2
+        assert "IOC World Bird List (www.worldbirdnames.org) - CC-BY-4.0" in attributions
+        assert "Wikidata - Public Domain (CC0)" in attributions
 
 
 class TestErrorHandling:
@@ -458,26 +495,24 @@ class TestErrorHandling:
         self, species_database, mock_session
     ):
         """Should handle errors from individual database queries gracefully."""
-        EnglishRow = namedtuple("EnglishRow", ["english_name"])
+        AvibaseIdRow = namedtuple("AvibaseIdRow", ["avibase_id", "english_name"])
         TransRow = namedtuple("TransRow", ["language_code", "common_name"])
 
         # First query succeeds (.first() is synchronous)
-        ioc_species_row = EnglishRow(english_name="American Robin")
+        avibase_id_row = AvibaseIdRow(avibase_id="ABC123", english_name="American Robin")
         first_result = MagicMock(spec=Result)
-        first_result.first.return_value = ioc_species_row
+        first_result.first.return_value = avibase_id_row
 
-        # PatLevin and Avibase rows for when they succeed
-        patlevin_row = TransRow(language_code="de", common_name="Wanderdrossel")
-        avibase_row = TransRow(language_code="it", common_name="Pettirosso americano")
+        # Wikidata row for when it succeeds
+        wikidata_row = TransRow(language_code="de", common_name="Wanderdrossel")
 
         # First query succeeds, second fails, subsequent queries won't be reached
         mock_session.execute = AsyncMock(
             spec=callable,
             side_effect=[
-                first_result,  # IOC species - success
+                first_result,  # avibase_id lookup - success
                 SQLAlchemyError("IOC translations failed"),  # IOC translations - fail
-                [patlevin_row],  # PatLevin - won't be reached
-                [avibase_row],  # Avibase - won't be reached
+                [wikidata_row],  # Wikidata - won't be reached
             ],
         )
 
@@ -504,12 +539,10 @@ class TestIntegrationWithRealSession:
         """Should successfully attach and detach real database files."""
         # Create temporary database files
         ioc_db = tmp_path / "ioc.db"
-        avibase_db = tmp_path / "avibase.db"
-        patlevin_db = tmp_path / "patlevin.db"
+        wikidata_db = tmp_path / "wikidata.db"
 
         # Create the database files with minimal schema
-
-        for db_path in [ioc_db, avibase_db, patlevin_db]:
+        for db_path in [ioc_db, wikidata_db]:
             engine = create_engine(f"sqlite:///{db_path}")
             with engine.begin() as conn:
                 conn.execute(text("CREATE TABLE test_table (id INTEGER PRIMARY KEY)"))
@@ -517,8 +550,7 @@ class TestIntegrationWithRealSession:
 
         # Override service paths with real files
         species_database.ioc_db_path = str(ioc_db)
-        species_database.avibase_db_path = str(avibase_db)
-        species_database.patlevin_db_path = str(patlevin_db)
+        species_database.wikidata_db_path = str(wikidata_db)
 
         try:
             # Test attach
@@ -559,8 +591,9 @@ class TestIntegrationWithRealSession:
                 in_memory_session, "Turdus migratorius", "en"
             )
 
-            # Verify valid queries were attempted (4 queries for different databases)
-            assert mock_execute.call_count == 4
+            # Verify valid queries were attempted (up to 3 queries for different databases)
+            # avibase_id lookup -> no result, so stops
+            assert mock_execute.call_count >= 1
 
             # Check the first call
             call_args = mock_execute.call_args_list[0]
@@ -571,7 +604,6 @@ class TestIntegrationWithRealSession:
             assert hasattr(query_obj, "text")
             assert isinstance(params, dict)
             assert "sci_name" in params
-            # For English, the first query to IOC species table doesn't need lang parameter
 
 
 class TestEdgeCases:
@@ -586,8 +618,8 @@ class TestEdgeCases:
 
         result = await species_database.get_best_common_name(mock_session, "", "en")
 
-        # Should execute multiple queries (IOC English, IOC translations, PatLevin, Avibase)
-        assert mock_session.execute.call_count == 4
+        # Should execute at least avibase_id lookup query
+        assert mock_session.execute.call_count >= 1
         # Check the first call has empty sci_name
         params = mock_session.execute.call_args_list[0][0][1]
         assert params["sci_name"] == ""
@@ -622,15 +654,29 @@ class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_unusual_language_codes(self, species_database, mock_session, language_code):
         """Should handle unusual language codes."""
-        mock_execute_result = AsyncMock(spec=Result)
-        mock_execute_result.first.return_value = None
-        mock_session.execute.return_value = mock_execute_result
+        MockAvibaseIdRow = namedtuple("MockAvibaseIdRow", ["avibase_id"])
+        avibase_id_row = MockAvibaseIdRow(avibase_id="ABC123")
+
+        mock_avibase_id_result = MagicMock(spec=Result)
+        mock_avibase_id_result.first.return_value = avibase_id_row
+
+        mock_ioc_translation_result = MagicMock(spec=Result)
+        mock_ioc_translation_result.first.return_value = None
+
+        mock_wikidata_result = MagicMock(spec=Result)
+        mock_wikidata_result.first.return_value = None
+
+        mock_session.execute = AsyncMock(
+            spec=callable,
+            side_effect=[mock_avibase_id_result, mock_ioc_translation_result, mock_wikidata_result],
+        )
 
         await species_database.get_best_common_name(
             mock_session, "Turdus migratorius", language_code
         )
 
-        params = mock_session.execute.call_args[0][1]
+        # Check second call has the language parameter (IOC translations)
+        params = mock_session.execute.call_args_list[1][0][1]
         assert params["lang"] == language_code
 
     @pytest.mark.asyncio
@@ -651,15 +697,12 @@ class TestEdgeCases:
     def test_database_paths_immutable(self, species_database):
         """Should not allow external modification of database paths."""
         original_ioc = species_database.ioc_db_path
-        original_avibase = species_database.avibase_db_path
-        original_patlevin = species_database.patlevin_db_path
+        original_wikidata = species_database.wikidata_db_path
 
         # Database paths should be set at initialization
         assert species_database.ioc_db_path is not None
-        assert species_database.avibase_db_path is not None
-        assert species_database.patlevin_db_path is not None
+        assert species_database.wikidata_db_path is not None
 
         # Paths should remain unchanged
         assert species_database.ioc_db_path == original_ioc
-        assert species_database.avibase_db_path == original_avibase
-        assert species_database.patlevin_db_path == original_patlevin
+        assert species_database.wikidata_db_path == original_wikidata

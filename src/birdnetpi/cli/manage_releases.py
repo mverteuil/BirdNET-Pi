@@ -36,8 +36,7 @@ def _add_asset_if_requested(
 def _build_asset_list(
     include_models: bool,
     include_ioc_db: bool,
-    include_avibase_db: bool,
-    include_patlevin_db: bool,
+    include_wikidata_db: bool,
     custom_assets: tuple[str, ...],
     release_manager: ReleaseManager,
 ) -> list[ReleaseAsset]:
@@ -50,14 +49,9 @@ def _build_asset_list(
         (include_models, "models", "Models not found at expected locations"),
         (include_ioc_db, "ioc_reference.db", "IOC database not found at expected locations"),
         (
-            include_avibase_db,
-            "avibase_database.db",
-            "Avibase database not found at expected locations",
-        ),
-        (
-            include_patlevin_db,
-            "patlevin_database.db",
-            "PatLevin database not found at expected locations",
+            include_wikidata_db,
+            "wikidata_reference.db",
+            "Wikidata database not found at expected locations",
         ),
     ]
 
@@ -145,10 +139,7 @@ def cli(ctx: click.Context) -> None:
 @click.argument("version")
 @click.option("--include-models", is_flag=True, help="Include BirdNET models")
 @click.option("--include-ioc-db", is_flag=True, help="Include IOC reference database")
-@click.option("--include-avibase-db", is_flag=True, help="Include Avibase species database")
-@click.option(
-    "--include-patlevin-db", is_flag=True, help="Include PatLevin BirdNET labels database"
-)
+@click.option("--include-wikidata-db", is_flag=True, help="Include Wikidata reference database")
 @click.option(
     "--custom-assets",
     multiple=True,
@@ -165,8 +156,7 @@ def create(
     version: str,
     include_models: bool,
     include_ioc_db: bool,
-    include_avibase_db: bool,
-    include_patlevin_db: bool,
+    include_wikidata_db: bool,
     custom_assets: tuple[str, ...],
     asset_branch: str | None,
     commit_message: str | None,
@@ -184,8 +174,7 @@ def create(
     assets = _build_asset_list(
         include_models,
         include_ioc_db,
-        include_avibase_db,
-        include_patlevin_db,
+        include_wikidata_db,
         custom_assets,
         release_manager,
     )

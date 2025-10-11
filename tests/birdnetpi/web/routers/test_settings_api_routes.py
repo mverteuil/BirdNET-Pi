@@ -20,8 +20,7 @@ def client(tmp_path, path_resolver):
     # Use the global path_resolver fixture and customize it
     path_resolver.get_ioc_database_path = lambda: tmp_path / "ioc_reference.db"
     path_resolver.get_models_dir = lambda: tmp_path / "models"
-    path_resolver.get_avibase_database_path = lambda: tmp_path / "avibase.db"
-    path_resolver.get_patlevin_database_path = lambda: tmp_path / "patlevin.db"
+    path_resolver.get_wikidata_database_path = lambda: tmp_path / "wikidata_reference.db"
     container.path_resolver.override(path_resolver)
 
     # Wire the container

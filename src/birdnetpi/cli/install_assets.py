@@ -98,8 +98,7 @@ def _perform_installation(update_manager: "UpdateManager", version: str) -> dict
         version=version,
         include_models=True,
         include_ioc_db=True,
-        include_avibase_db=True,
-        include_patlevin_db=True,
+        include_wikidata_db=True,
         github_repo="mverteuil/BirdNET-Pi",
     )
 

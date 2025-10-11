@@ -24,7 +24,7 @@ class TestAppStartupIntegration:
         (tmp_path / "config").mkdir(parents=True)
 
         # Copy real databases to temp location
-        for db_name in ["ioc_reference.db", "avibase_database.db", "patlevin_database.db"]:
+        for db_name in ["ioc_reference.db", "wikidata_reference.db"]:
             real_db = repo_root / "data" / "database" / db_name
             if real_db.exists():
                 temp_db = tmp_path / "database" / db_name
@@ -49,9 +49,8 @@ class TestAppStartupIntegration:
 
         # Override read-only database paths to use temp copies
         resolver.get_ioc_database_path = lambda: test_paths / "database" / "ioc_reference.db"
-        resolver.get_avibase_database_path = lambda: test_paths / "database" / "avibase_database.db"
-        resolver.get_patlevin_database_path = (
-            lambda: test_paths / "database" / "patlevin_database.db"
+        resolver.get_wikidata_database_path = (
+            lambda: test_paths / "database" / "wikidata_reference.db"
         )
 
         # Keep real paths for models, static files, templates

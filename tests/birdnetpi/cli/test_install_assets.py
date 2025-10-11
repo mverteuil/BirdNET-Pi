@@ -26,8 +26,7 @@ def test_download_result():
         "downloaded_assets": [
             "models/BirdNET_GLOBAL_3K_V2.4_Model_FP32.tflite",
             "data/ioc_db.sqlite",
-            "data/avibase.db",
-            "data/patlevin.db",
+            "data/wikidata_reference.db",
         ],
     }
 
@@ -52,13 +51,12 @@ class TestInstallAssets:
         assert "Installing complete asset release: v2.1.1" in result.output
         assert "✓ Asset installation completed successfully!" in result.output
         assert "Version: v2.1.1" in result.output
-        assert "Downloaded assets: 4" in result.output
+        assert "Downloaded assets: 3" in result.output
         mock_manager.download_release_assets.assert_called_once_with(
             version="v2.1.1",
             include_models=True,
             include_ioc_db=True,
-            include_avibase_db=True,
-            include_patlevin_db=True,
+            include_wikidata_db=True,
             github_repo="mverteuil/BirdNET-Pi",
         )
 
@@ -158,14 +156,12 @@ class TestCheckLocal:
             data_dir = tmp_path / "data"
             data_dir.mkdir(parents=True)
             (data_dir / "ioc_db.sqlite").write_bytes(b"database" * 1000)
-            (data_dir / "avibase_database.db").write_bytes(b"avibase" * 500)
-            (data_dir / "patlevin_database.db").write_bytes(b"patlevin" * 750)
+            (data_dir / "wikidata_reference.db").write_bytes(b"wikidata" * 750)
             result = runner.invoke(cli, ["check-local"])
             assert result.exit_code == 0
             assert "✓ BirdNET Models: 2 models" in result.output
             assert "✓ IOC Reference Database:" in result.output
-            assert "✓ Avibase Database:" in result.output
-            assert "✓ PatLevin Database:" in result.output
+            assert "✓ Wikidata Reference Database:" in result.output
 
     def test_check_local_verbose_mode(self, tmp_path, runner, path_resolver):
         """Should show detailed info in verbose mode."""
@@ -185,17 +181,15 @@ class TestCheckLocal:
         path_resolver.get_models_dir = lambda: tmp_path / "models"
         path_resolver.get_ioc_database_path = lambda: tmp_path / "data" / "ioc_db.sqlite"
         path_resolver.get_database_dir = lambda: tmp_path / "data"
-        path_resolver.get_avibase_database_path = lambda: tmp_path / "data" / "avibase_database.db"
-        path_resolver.get_patlevin_database_path = (
-            lambda: tmp_path / "data" / "patlevin_database.db"
+        path_resolver.get_wikidata_database_path = (
+            lambda: tmp_path / "data" / "wikidata_reference.db"
         )
         with patch("birdnetpi.cli.install_assets.PathResolver", return_value=path_resolver):
             result = runner.invoke(cli, ["check-local"])
             assert result.exit_code == 0
             assert "✗ BirdNET Models: Not installed" in result.output
             assert "✗ IOC Reference Database: Not installed" in result.output
-            assert "✗ Avibase Database: Not installed" in result.output
-            assert "✗ PatLevin Database: Not installed" in result.output
+            assert "✗ Wikidata Reference Database: Not installed" in result.output
             assert "Expected location:" in result.output
 
 
