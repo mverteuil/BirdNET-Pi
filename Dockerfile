@@ -35,7 +35,7 @@ RUN cp -r /source/* . 2>/dev/null || true && \
 FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS runtime
 
 # Asset version for runtime downloads (can be overridden via environment variable)
-ARG BIRDNET_ASSETS_VERSION=v2.1.1
+ARG BIRDNET_ASSETS_VERSION=v2.2.0
 
 # Combine ENV declarations for better layer efficiency
 ENV DNS_SERVER=8.8.8.8 \
