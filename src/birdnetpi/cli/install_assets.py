@@ -229,7 +229,7 @@ def list_versions(ctx: click.Context, remote: str) -> None:
     update_manager = ctx.obj["update_manager"]
 
     try:
-        versions = update_manager.list_available_versions(github_repo="mverteuil/BirdNET-Pi")
+        versions = update_manager.list_available_asset_versions(github_repo="mverteuil/BirdNET-Pi")
 
         click.echo("Available asset versions:")
         click.echo()
