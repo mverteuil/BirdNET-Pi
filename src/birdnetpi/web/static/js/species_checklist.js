@@ -223,6 +223,7 @@ function createSpeciesRow(species) {
   if (species.conservation_status) {
     const conservationSpan = document.createElement("span");
     conservationSpan.className = "conservation-status";
+    conservationSpan.setAttribute("role", "img");
     conservationSpan.setAttribute(
       "aria-label",
       `Conservation status: ${species.conservation_status}`,
@@ -232,7 +233,8 @@ function createSpeciesRow(species) {
     );
     conservationCell.appendChild(conservationSpan);
   } else {
-    conservationCell.textContent = "-";
+    conservationCell.innerHTML =
+      '<span aria-label="Conservation status unknown">-</span>';
   }
   row.appendChild(conservationCell);
 
@@ -240,36 +242,37 @@ function createSpeciesRow(species) {
 }
 
 /**
- * Get icon for conservation status
+ * Get icon for conservation status (colorblind-safe symbols)
  */
 function getConservationIcon(status) {
   // Normalize status to uppercase for comparison
   const normalizedStatus = status.toUpperCase();
 
-  // Map both short codes and full names to icons
+  // Map both short codes and full names to colorblind-safe symbols
+  // Using distinct shapes that work without color perception
   const iconMap = {
     // Short codes
-    CR: "🔴",
-    EN: "🟠",
-    VU: "🟡",
-    NT: "🔵",
-    LC: "🟢",
-    DD: "⚪",
-    EX: "⚫",
-    EW: "⚫",
+    CR: "⬛", // Critically Endangered - filled square
+    EN: "◆", // Endangered - diamond
+    VU: "▲", // Vulnerable - triangle
+    NT: "●", // Near Threatened - filled circle
+    LC: "○", // Least Concern - empty circle
+    DD: "◯", // Data Deficient - large empty circle
+    EX: "✕", // Extinct - X mark
+    EW: "✕", // Extinct in the Wild - X mark
     // Full names from Wikidata
-    "CRITICALLY ENDANGERED": "🔴",
-    ENDANGERED: "🟠",
-    "ENDANGERED STATUS": "🟠", // Alternative Wikidata format
-    VULNERABLE: "🟡",
-    "NEAR THREATENED": "🔵",
-    "LEAST CONCERN": "🟢",
-    "DATA DEFICIENT": "⚪",
-    EXTINCT: "⚫",
-    "EXTINCT IN THE WILD": "⚫",
+    "CRITICALLY ENDANGERED": "⬛",
+    ENDANGERED: "◆",
+    "ENDANGERED STATUS": "◆", // Alternative Wikidata format
+    VULNERABLE: "▲",
+    "NEAR THREATENED": "●",
+    "LEAST CONCERN": "○",
+    "DATA DEFICIENT": "◯",
+    EXTINCT: "✕",
+    "EXTINCT IN THE WILD": "✕",
   };
 
-  return iconMap[normalizedStatus] || "❓";
+  return iconMap[normalizedStatus] || "?";
 }
 
 /**

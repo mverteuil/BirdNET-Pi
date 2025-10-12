@@ -84,8 +84,8 @@
                     <th scope="col" class="col-detections sortable" data-sort="count" onclick="sortTable('count')">{{ _('Detections') }}</th>
                     <th scope="col" class="col-latest sortable" data-sort="latest" onclick="sortTable('latest')">{{ _('Latest') }}</th>
                     <th scope="col" class="col-conservation" aria-label="{{ _('Conservation status') }}">
-                        <span aria-hidden="true">🦜</span>
-                        <span class="sr-only">{{ _('Conservation') }}</span>
+                        <span aria-hidden="true" title="{{ _('Conservation status') }}">⚠</span>
+                        <span class="sr-only">{{ _('Conservation status') }}</span>
                     </th>
                 </tr>
             </thead>

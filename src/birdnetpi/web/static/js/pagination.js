@@ -29,7 +29,7 @@ function renderPagination(elementId, data, loadFunction, itemName = "items") {
   if (data.total_pages > 1) {
     // Show page info
     paginationHTML = `
-            <span class="text-secondary">
+            <span class="text-secondary" aria-live="polite">
                 Page ${data.page} of ${data.total_pages}
                 (${data.total} total ${itemName})
             </span><br>
@@ -37,8 +37,8 @@ function renderPagination(elementId, data, loadFunction, itemName = "items") {
 
     // Previous page links
     if (data.has_prev) {
-      paginationHTML += `<a href="#" onclick="${loadFunction}(1); return false;">« First</a> `;
-      paginationHTML += `<a href="#" onclick="${loadFunction}(${data.page - 1}); return false;">‹ Prev</a> `;
+      paginationHTML += `<a href="#" onclick="${loadFunction}(1); return false;" aria-label="Go to first page">« First</a> `;
+      paginationHTML += `<a href="#" onclick="${loadFunction}(${data.page - 1}); return false;" aria-label="Go to previous page">‹ Prev</a> `;
     }
 
     // Page numbers
@@ -47,23 +47,23 @@ function renderPagination(elementId, data, loadFunction, itemName = "items") {
 
     for (let i = startPage; i <= endPage; i++) {
       if (i === data.page) {
-        paginationHTML += `<span class="current-page">${i}</span> `;
+        paginationHTML += `<span class="current-page" aria-current="page" aria-label="Current page, page ${i}">${i}</span> `;
       } else {
-        paginationHTML += `<a href="#" onclick="${loadFunction}(${i}); return false;">${i}</a> `;
+        paginationHTML += `<a href="#" onclick="${loadFunction}(${i}); return false;" aria-label="Go to page ${i}">${i}</a> `;
       }
     }
 
     // Next page links
     if (data.has_next) {
-      paginationHTML += `<a href="#" onclick="${loadFunction}(${data.page + 1}); return false;">Next ›</a> `;
-      paginationHTML += `<a href="#" onclick="${loadFunction}(${data.total_pages}); return false;">Last »</a>`;
+      paginationHTML += `<a href="#" onclick="${loadFunction}(${data.page + 1}); return false;" aria-label="Go to next page">Next ›</a> `;
+      paginationHTML += `<a href="#" onclick="${loadFunction}(${data.total_pages}); return false;" aria-label="Go to last page">Last »</a>`;
     }
   } else if (data.total > 0) {
     // Single page with items
-    paginationHTML = `<span class="text-secondary">${data.total} ${itemName}</span>`;
+    paginationHTML = `<span class="text-secondary" aria-live="polite">${data.total} ${itemName}</span>`;
   } else {
     // No items
-    paginationHTML = `<span class="text-secondary">No ${itemName} found</span>`;
+    paginationHTML = `<span class="text-secondary" aria-live="polite">No ${itemName} found</span>`;
   }
 
   pagination.innerHTML = paginationHTML;
