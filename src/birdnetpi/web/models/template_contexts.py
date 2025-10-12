@@ -141,3 +141,14 @@ class UpdatePageContext(BaseTemplateContext):
     git_remote: str = Field(..., description="Git remote name")
     git_branch: str = Field(..., description="Git branch name")
     deployment_type: str = Field(..., description="Deployment type (docker/sbc/unknown)")
+
+
+class SpeciesChecklistPageContext(BaseTemplateContext):
+    """Context for reports/species_checklist.html.j2 template.
+
+    Uses progressive loading - data is fetched client-side via JavaScript.
+    """
+
+    # No additional fields required beyond base template
+    # All data will be loaded progressively via API calls
+    pass

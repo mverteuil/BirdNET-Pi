@@ -245,3 +245,48 @@ class SpeciesSummaryResponse(BaseModel):
     total_detections: int = Field(..., description="Total detections across all species")
     period: str | None = Field(None, description="Time period filter")
     period_label: str | None = Field(None, description="Human-readable period label")
+
+
+class SpeciesChecklistItem(BaseModel):
+    """A single species in the checklist with detection status.
+
+    Represents a species from the IOC reference database with its detection metadata.
+    This is NOT a detection record, but a species record with detection status.
+    """
+
+    # Species identification
+    scientific_name: str = Field(..., description="Scientific name (IOC primary key)")
+    common_name: str = Field(..., description="IOC English name")
+    translated_name: str | None = Field(None, description="Localized common name")
+
+    # Taxonomy
+    family: str | None = Field(None, description="Taxonomic family")
+    genus: str | None = Field(None, description="Taxonomic genus")
+    order_name: str | None = Field(None, description="Taxonomic order")
+
+    # Detection status
+    is_detected: bool = Field(..., description="Whether this species has been detected")
+    detection_count: int = Field(default=0, description="Number of detections")
+    latest_detection: datetime | None = Field(
+        None, description="Timestamp of most recent detection"
+    )
+
+    # Reference database fields (may be NULL if not in schema yet)
+    image_url: str | None = Field(None, description="Wikidata image URL")
+    conservation_status: str | None = Field(
+        None, description="IUCN conservation status from Wikidata"
+    )
+    bow_url: str | None = Field(None, description="Birds of the World URL from IOC")
+
+
+class SpeciesChecklistResponse(BaseModel):
+    """Response for species checklist endpoint."""
+
+    species: list[SpeciesChecklistItem] = Field(
+        ..., description="List of species with detection status"
+    )
+    pagination: PaginationInfo = Field(..., description="Pagination metadata")
+    filters: dict[str, str | None] = Field(..., description="Applied filters")
+    total_species: int = Field(..., description="Total number of species in checklist")
+    detected_species: int = Field(..., description="Number of detected species")
+    undetected_species: int = Field(..., description="Number of undetected species")

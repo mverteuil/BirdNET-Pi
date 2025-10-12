@@ -9,6 +9,8 @@
        {% if active_page == 'detections' %}aria-current="page"{% endif %}>{{ _('Detections') }}</a>
     <a href="{{ url_for('best_recordings_view') }}" class="nav-item{% if active_page == 'best' %} active{% endif %}"
        {% if active_page == 'best' %}aria-current="page"{% endif %}>{{ _('Best Recordings') }}</a>
+    <a href="{{ url_for('species_checklist_view') }}" class="nav-item{% if active_page == 'species' %} active{% endif %}"
+       {% if active_page == 'species' %}aria-current="page"{% endif %}>{{ _('Species Checklist') }}</a>
     <a href="{{ url_for('get_livestream') }}" class="nav-item{% if active_page == 'livestream' %} active{% endif %}"
        {% if active_page == 'livestream' %}aria-current="page"{% endif %}>{{ _('Audio Stream') }}</a>
     <a href="{{ url_for('analysis_view') }}" class="nav-item{% if active_page == 'analysis' %} active{% endif %}"

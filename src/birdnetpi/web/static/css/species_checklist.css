@@ -1,0 +1,443 @@
+/**
+ * Species Checklist Styles
+ * Colorblind-friendly design with icons and high contrast
+ */
+
+/* Page Container */
+.species-checklist-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* Page Header */
+.page-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.page-header h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #1a202c;
+  margin-bottom: 0.5rem;
+}
+
+.page-description {
+  color: #4a5568;
+  font-size: 1.1rem;
+}
+
+/* Detection Filter (Custom for this page) */
+.detection-filter-section {
+  margin: 2rem 0;
+  padding: 1rem;
+  background: #f7fafc;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.filter-label {
+  font-weight: 500;
+  color: #2d3748;
+}
+
+.detection-filter-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.detection-filter-btn {
+  padding: 0.5rem 1.5rem;
+  border: 2px solid #cbd5e0;
+  background: white;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.detection-filter-btn:hover {
+  border-color: #4299e1;
+  background: #ebf8ff;
+}
+
+.detection-filter-btn:focus {
+  outline: 3px solid #4299e1;
+  outline-offset: 2px;
+}
+
+.detection-filter-btn.active {
+  background: #4299e1;
+  color: white;
+  border-color: #3182ce;
+}
+
+/* Checklist Statistics */
+.checklist-stats {
+  display: flex;
+  gap: 2rem;
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  background: #edf2f7;
+  border-radius: 8px;
+  justify-content: center;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stat-label {
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.stat-value {
+  color: #2d3748;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* Species Table */
+.species-table-container {
+  margin: 2rem 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.species-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.species-table thead {
+  background: #2d3748;
+  color: white;
+}
+
+.species-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.species-table tbody tr {
+  border-bottom: 1px solid #e2e8f0;
+  transition: background-color 0.15s;
+}
+
+.species-table tbody tr:hover {
+  background-color: #f7fafc;
+}
+
+/* Row styles based on detection status */
+.species-table tbody tr.detected {
+  background-color: #f0fff4; /* Very light green tint */
+}
+
+.species-table tbody tr.undetected {
+  background-color: #fafafa; /* Light gray */
+}
+
+.species-table td {
+  padding: 1rem;
+  vertical-align: middle;
+}
+
+/* Column-specific styles */
+.col-thumbnail {
+  width: 80px;
+  text-align: center;
+  padding: 0.5rem !important;
+}
+
+.species-thumbnail {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+  margin: 0 auto;
+}
+
+.col-status {
+  width: 60px;
+  text-align: center;
+}
+
+.status-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.status-icon.detected {
+  color: #38a169; /* Green checkmark */
+}
+
+.status-icon.undetected {
+  color: #a0aec0; /* Gray circle */
+}
+
+.col-species {
+  min-width: 300px;
+}
+
+/* BoW link styling within taxonomy display */
+.taxonomy-compact .common-name .bow-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.taxonomy-compact .common-name .bow-link:hover {
+  color: #4299e1;
+  text-decoration: underline;
+}
+
+.col-detections {
+  text-align: center;
+  font-weight: 500;
+  color: #2d3748;
+  width: 100px;
+}
+
+.col-latest {
+  color: #4a5568;
+  font-size: 0.95rem;
+  width: 120px;
+}
+
+.col-conservation {
+  text-align: center;
+  width: 80px;
+}
+
+.conservation-status {
+  font-size: 1.5rem;
+  cursor: help;
+}
+
+/* Sortable column headers */
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-right: 1.5rem !important;
+}
+
+.sortable:hover {
+  background-color: #3a4558;
+}
+
+.sortable::after {
+  content: "⇅";
+  position: absolute;
+  right: 0.5rem;
+  opacity: 0.5;
+  font-size: 0.9rem;
+}
+
+.sortable.sort-asc::after {
+  content: "↑";
+  opacity: 1;
+}
+
+.sortable.sort-desc::after {
+  content: "↓";
+  opacity: 1;
+}
+
+/* Loading States */
+.loading-cell,
+.error-cell {
+  text-align: center;
+  padding: 3rem !important;
+}
+
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e2e8f0;
+  border-top-color: #4299e1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error-cell p {
+  color: #e53e3e;
+  margin-bottom: 1rem;
+}
+
+.btn-retry {
+  padding: 0.5rem 1.5rem;
+  background: #4299e1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-retry:hover {
+  background: #3182ce;
+}
+
+.btn-retry:focus {
+  outline: 3px solid #4299e1;
+  outline-offset: 2px;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: #f7fafc;
+  border-radius: 8px;
+  margin: 2rem 0;
+}
+
+.empty-state p {
+  color: #4a5568;
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+}
+
+.btn-clear {
+  padding: 0.75rem 2rem;
+  background: #4299e1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-clear:hover {
+  background: #3182ce;
+}
+
+.btn-clear:focus {
+  outline: 3px solid #4299e1;
+  outline-offset: 2px;
+}
+
+/* Screen Reader Only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Accessibility - Focus States */
+button:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 3px solid #4299e1;
+  outline-offset: 2px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .species-checklist-container {
+    padding: 1rem;
+  }
+
+  .checklist-stats {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .species-table {
+    font-size: 0.9rem;
+  }
+
+  .species-table th,
+  .species-table td {
+    padding: 0.75rem;
+  }
+
+  .col-species {
+    min-width: 200px;
+  }
+
+  /* Hide less critical columns on mobile */
+  .col-thumbnail,
+  .col-latest,
+  .col-conservation {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .detection-filter-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .detection-filter-btn {
+    width: 100%;
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .species-table tbody tr.detected {
+    background-color: #d4fce3;
+    border-left: 4px solid #38a169;
+  }
+
+  .species-table tbody tr.undetected {
+    background-color: #f0f0f0;
+    border-left: 4px solid #cbd5e0;
+  }
+
+  .detection-filter-btn.active {
+    border-width: 3px;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    border-top-color: transparent;
+  }
+
+  .species-table tbody tr,
+  .detection-filter-btn,
+  .external-link {
+    transition: none;
+  }
+}

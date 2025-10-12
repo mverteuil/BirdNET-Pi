@@ -2314,3 +2314,185 @@ class DetectionQueryService:
                 return detection_data_list, total_count
             finally:
                 await self.species_database.detach_all_from_session(session)
+
+    async def get_species_checklist(
+        self,
+        *,  # All parameters are keyword-only
+        family: str | None = None,
+        genus: str | None = None,
+        order: str | None = None,
+        detection_filter: str = "all",  # "all", "detected", "undetected"
+        sort_by: str = "name",  # "name", "detected", "count", "latest"
+        sort_order: str = "asc",  # "asc" or "desc"
+        page: int = 1,
+        per_page: int = 50,
+    ) -> tuple[list[dict[str, Any]], int, int, int]:
+        """Get species checklist with detection status.
+
+        Queries ALL species from IOC reference database and LEFT JOINs with detections
+        to determine which species have been detected. This is different from other
+        queries which start from detections.
+
+        Args:
+            family: Filter by taxonomic family
+            genus: Filter by taxonomic genus
+            order: Filter by taxonomic order
+            detection_filter: "all", "detected", or "undetected"
+            sort_by: Column to sort by ("name", "detected", "count", "latest")
+            sort_order: Sort direction ("asc" or "desc")
+            page: Page number (1-indexed)
+            per_page: Items per page
+
+        Returns:
+            Tuple of (species_list, total_count, detected_count, undetected_count)
+        """
+        async with self.core_database.get_async_db() as session:
+            await self.species_database.attach_all_to_session(session)
+            try:
+                # Build WHERE clause for filters
+                where_conditions = []
+                params: dict[str, Any] = {"language_code": self.config.language}
+
+                if family:
+                    where_conditions.append("s.family = :family")
+                    params["family"] = family
+                if genus:
+                    where_conditions.append("s.genus = :genus")
+                    params["genus"] = genus
+                if order:
+                    where_conditions.append("s.order_name = :order_name")
+                    params["order_name"] = order
+
+                where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+
+                # Build detection filter for WHERE clause (not HAVING)
+                if detection_filter == "detected":
+                    # Only show species with detections
+                    where_conditions.append("detection_stats.count > 0")
+                elif detection_filter == "undetected":
+                    # Only show species without detections
+                    where_conditions.append(
+                        "(detection_stats.count IS NULL OR detection_stats.count = 0)"
+                    )
+
+                # Rebuild WHERE clause with detection filter
+                where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+
+                # Get total counts (before pagination)
+                count_query = text(  # nosemgrep
+                    f"""
+                    SELECT
+                        COUNT(*) as total,
+                        SUM(CASE WHEN detection_count > 0 THEN 1 ELSE 0 END) as detected,
+                        SUM(CASE WHEN detection_count = 0 THEN 1 ELSE 0 END) as undetected
+                    FROM (
+                        SELECT
+                            s.scientific_name,
+                            COALESCE(detection_stats.count, 0) as detection_count
+                        FROM ioc.species s
+                        LEFT JOIN (
+                            SELECT scientific_name, COUNT(*) as count
+                            FROM detections
+                            GROUP BY scientific_name
+                        ) detection_stats ON s.scientific_name = detection_stats.scientific_name
+                        WHERE {where_clause}
+                    )
+                    """
+                )
+
+                count_result = await session.execute(count_query, params)
+                count_row = count_result.fetchone()
+                total_count = count_row.total if count_row else 0  # type: ignore[attr-defined]
+                detected_count = count_row.detected if count_row else 0  # type: ignore[attr-defined]
+                undetected_count = count_row.undetected if count_row else 0  # type: ignore[attr-defined]
+
+                # Calculate offset for pagination
+                offset = (page - 1) * per_page
+                params["limit"] = per_page
+                params["offset"] = offset
+
+                # Build ORDER BY clause based on sort parameters
+                # Map sort_by values to actual column names/expressions
+                sort_column_map = {
+                    "name": "s.scientific_name",
+                    "detected": "is_detected",
+                    "count": "detection_count",
+                    "latest": "latest_detection",
+                }
+                sort_column = sort_column_map.get(sort_by, "s.scientific_name")
+                order_direction = "DESC" if sort_order.lower() == "desc" else "ASC"
+
+                # Main query with pagination
+                # Safe: WHERE clause uses pre-defined fragments, user data is parameterized
+                data_query = text(  # nosemgrep
+                    f"""
+                    SELECT
+                        s.scientific_name,
+                        s.english_name as common_name,
+                        COALESCE(
+                            t.common_name,
+                            w_trans.common_name,
+                            s.english_name
+                        ) as translated_name,
+                        s.family,
+                        s.genus,
+                        s.order_name,
+                        COALESCE(detection_stats.count, 0) as detection_count,
+                        detection_stats.latest_detection,
+                        CASE WHEN detection_stats.count > 0 THEN 1 ELSE 0 END as is_detected,
+                        w.image_url,
+                        w.conservation_status,
+                        s.bow_url
+                    FROM ioc.species s
+                    LEFT JOIN ioc.translations t
+                        ON s.avibase_id = t.avibase_id
+                        AND t.language_code = :language_code
+                    LEFT JOIN wikidata.species w
+                        ON s.avibase_id = w.avibase_id
+                    LEFT JOIN wikidata.translations w_trans
+                        ON s.avibase_id = w_trans.avibase_id
+                        AND w_trans.language_code = :language_code
+                    LEFT JOIN (
+                        SELECT
+                            scientific_name,
+                            COUNT(*) as count,
+                            MAX(timestamp) as latest_detection
+                        FROM detections
+                        GROUP BY scientific_name
+                    ) detection_stats ON s.scientific_name = detection_stats.scientific_name
+                    WHERE {where_clause}
+                    ORDER BY {sort_column} {order_direction}
+                    LIMIT :limit OFFSET :offset
+                    """
+                )
+
+                result = await session.execute(data_query, params)
+                results = result.fetchall()
+
+                # Convert to list of dicts
+                species_list = []
+                for row in results:
+                    species_data = {
+                        "scientific_name": row.scientific_name,  # type: ignore[attr-defined]
+                        "common_name": row.common_name,  # type: ignore[attr-defined]
+                        "translated_name": row.translated_name,  # type: ignore[attr-defined]
+                        "family": row.family,  # type: ignore[attr-defined]
+                        "genus": row.genus,  # type: ignore[attr-defined]
+                        "order_name": row.order_name,  # type: ignore[attr-defined]
+                        "detection_count": row.detection_count,  # type: ignore[attr-defined]
+                        "latest_detection": self._parse_timestamp(row.latest_detection)  # type: ignore[attr-defined]
+                        if row.latest_detection  # type: ignore[attr-defined]
+                        else None,
+                        "is_detected": bool(row.is_detected),  # type: ignore[attr-defined]
+                        "image_url": row.image_url if hasattr(row, "image_url") else None,  # type: ignore[attr-defined]
+                        "conservation_status": row.conservation_status  # type: ignore[attr-defined]
+                        if hasattr(row, "conservation_status")
+                        else None,
+                        "bow_url": row.bow_url if hasattr(row, "bow_url") else None,  # type: ignore[attr-defined]
+                    }
+                    species_list.append(species_data)
+
+                return species_list, total_count, detected_count, undetected_count
+
+            finally:
+                await self.species_database.detach_all_from_session(session)

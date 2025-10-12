@@ -36,6 +36,8 @@ from birdnetpi.web.models.detections import (
     PaginatedDetectionsResponse,
     PaginationInfo,
     RecentDetectionsResponse,
+    SpeciesChecklistItem,
+    SpeciesChecklistResponse,
     SpeciesFrequency,
     SpeciesInfo,
     SpeciesSummaryResponse,
@@ -908,6 +910,96 @@ async def get_species_summary(
     except Exception as e:
         logger.error("Error getting species summary: %s", e)
         raise HTTPException(status_code=500, detail="Error retrieving species summary") from e
+
+
+@router.get("/species/checklist", response_model=SpeciesChecklistResponse)
+@inject
+async def get_species_checklist(
+    detection_query_service: Annotated[
+        DetectionQueryService, Depends(Provide[Container.detection_query_service])
+    ],
+    family: str | None = Query(None, description="Filter by taxonomic family"),
+    genus: str | None = Query(None, description="Filter by genus"),
+    order: str | None = Query(None, description="Filter by taxonomic order"),
+    detection_filter: str = Query(
+        "all", description="Filter by detection status: all, detected, undetected"
+    ),
+    sort_by: str = Query("name", description="Sort by: name, detected, count, latest"),
+    sort_order: str = Query("asc", description="Sort order: asc or desc"),
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(50, ge=10, le=200, description="Items per page"),
+) -> SpeciesChecklistResponse:
+    """Get species checklist with detection status.
+
+    This endpoint returns ALL species from the IOC reference database (not just detected ones),
+    along with their detection status and counts. This is different from other endpoints which
+    start from detections.
+
+    Supports filtering by:
+    - Taxonomy (family, genus, order)
+    - Detection status (all, detected, undetected)
+    """
+    try:
+        # Validate detection_filter parameter
+        if detection_filter not in ["all", "detected", "undetected"]:
+            raise HTTPException(
+                status_code=400,
+                detail="detection_filter must be 'all', 'detected', or 'undetected'",
+            )
+
+        # Get species checklist with detection status
+        (
+            species_list,
+            total_count,
+            detected_count,
+            undetected_count,
+        ) = await detection_query_service.get_species_checklist(
+            family=family,
+            genus=genus,
+            order=order,
+            detection_filter=detection_filter,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            page=page,
+            per_page=per_page,
+        )
+
+        # Convert to Pydantic models
+        species_items = [SpeciesChecklistItem(**species) for species in species_list]
+
+        # Calculate pagination metadata
+        total_pages = (total_count + per_page - 1) // per_page if total_count > 0 else 0
+        has_prev = page > 1
+        has_next = page < total_pages
+
+        # Build filters dict
+        filters = {
+            "family": family,
+            "genus": genus,
+            "order": order,
+            "detection_filter": detection_filter,
+        }
+
+        return SpeciesChecklistResponse(
+            species=species_items,
+            pagination=PaginationInfo(
+                page=page,
+                per_page=per_page,
+                total=total_count,
+                total_pages=total_pages,
+                has_prev=has_prev,
+                has_next=has_next,
+            ),
+            filters=filters,
+            total_species=total_count,
+            detected_species=detected_count,
+            undetected_species=undetected_count,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error getting species checklist: %s", e)
+        raise HTTPException(status_code=500, detail="Error retrieving species checklist") from e
 
 
 @router.get("/{detection_id}/audio")

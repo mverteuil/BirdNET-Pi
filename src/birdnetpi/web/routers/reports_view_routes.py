@@ -19,6 +19,7 @@ from birdnetpi.web.models.template_contexts import (
     AnalysisPageContext,
     BestRecordingsPageContext,
     DetectionsPageContext,
+    SpeciesChecklistPageContext,
 )
 
 logger = logging.getLogger(__name__)
@@ -219,3 +220,41 @@ async def best_recordings_view(
             "reports/best_recordings.html.j2",
             error_context.model_dump(),
         )
+
+
+@router.get("/species", response_class=HTMLResponse)
+@inject
+async def species_checklist_view(
+    request: Request,
+    templates: Annotated[Jinja2Templates, Depends(Provide[Container.templates])],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
+    translation_manager: Annotated[
+        TranslationManager, Depends(Provide[Container.translation_manager])
+    ],
+) -> HTMLResponse:
+    """Render the species checklist page.
+
+    This page shows all species from the IOC reference database along with
+    their detection status. Uses progressive loading - all data is fetched
+    client-side via JavaScript from the API.
+    """
+    # Get user language and translator
+    language = get_user_language(request, config)
+    _ = translation_manager.get_translation(language).gettext
+
+    # Build validated context using Pydantic model
+    # No data loading needed - everything is progressive
+    context = SpeciesChecklistPageContext(
+        config=config,
+        system_status={"device_name": SystemInspector.get_device_name()},
+        language=language,
+        active_page="species",
+        page_name=_("Species Checklist"),
+    )
+
+    # Render template
+    return templates.TemplateResponse(
+        request,
+        "reports/species_checklist.html.j2",
+        context.model_dump(),
+    )

@@ -1,0 +1,125 @@
+{% extends "base.html.j2" %}
+
+{% block title %}{{ page_name }} - BirdNET-Pi{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/taxonomy_display.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/species_checklist.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="species-checklist-container">
+    <header class="page-header">
+        <h1>{{ _('Species Checklist') }}</h1>
+        <p class="page-description">{{ _('View all bird species and track which ones you\'ve detected') }}</p>
+    </header>
+
+    <!-- Detection Status Filter (Custom for this page) -->
+    <div class="detection-filter-section" role="region" aria-label="{{ _('Detection status filter') }}">
+        <label class="filter-label">{{ _('Show') }}</label>
+        <div class="detection-filter-buttons" role="radiogroup" aria-label="{{ _('Filter by detection status') }}">
+            <button
+                id="filter-all"
+                class="detection-filter-btn active"
+                data-filter="all"
+                role="radio"
+                aria-checked="true"
+                onclick="onDetectionFilterChange('all')">
+                {{ _('All Species') }}
+            </button>
+            <button
+                id="filter-detected"
+                class="detection-filter-btn"
+                data-filter="detected"
+                role="radio"
+                aria-checked="false"
+                onclick="onDetectionFilterChange('detected')">
+                ✓ {{ _('Detected') }}
+            </button>
+            <button
+                id="filter-undetected"
+                class="detection-filter-btn"
+                data-filter="undetected"
+                role="radio"
+                aria-checked="false"
+                onclick="onDetectionFilterChange('undetected')">
+                ○ {{ _('Not Detected') }}
+            </button>
+        </div>
+    </div>
+
+    <!-- Taxonomic Filters Component (reused) -->
+    {% set show_confidence = false %}
+    {% include 'components/taxonomic_filters.html.j2' %}
+
+    <!-- Summary Stats -->
+    <div class="checklist-stats" role="region" aria-label="{{ _('Checklist statistics') }}" aria-live="polite">
+        <div class="stat-item">
+            <span class="stat-label">{{ _('Total Species') }}:</span>
+            <span class="stat-value" id="total-species">{{ _('Loading...') }}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">{{ _('Detected') }}:</span>
+            <span class="stat-value" id="detected-count">-</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">{{ _('Not Detected') }}:</span>
+            <span class="stat-value" id="undetected-count">-</span>
+        </div>
+    </div>
+
+    <!-- Species Table -->
+    <div class="species-table-container">
+        <table class="species-table" role="table" aria-label="{{ _('Species checklist table') }}">
+            <thead>
+                <tr>
+                    <th scope="col" class="col-thumbnail" aria-label="{{ _('Image') }}">
+                        <span class="sr-only">{{ _('Thumbnail') }}</span>
+                    </th>
+                    <th scope="col" class="col-status sortable" data-sort="detected" onclick="sortTable('detected')" aria-label="{{ _('Detection status') }}">
+                        <span aria-hidden="true">✓</span>
+                        <span class="sr-only">{{ _('Status') }}</span>
+                    </th>
+                    <th scope="col" class="col-species sortable" data-sort="name" onclick="sortTable('name')">{{ _('Species') }}</th>
+                    <th scope="col" class="col-detections sortable" data-sort="count" onclick="sortTable('count')">{{ _('Detections') }}</th>
+                    <th scope="col" class="col-latest sortable" data-sort="latest" onclick="sortTable('latest')">{{ _('Latest') }}</th>
+                    <th scope="col" class="col-conservation" aria-label="{{ _('Conservation status') }}">
+                        <span aria-hidden="true">🦜</span>
+                        <span class="sr-only">{{ _('Conservation') }}</span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="species-table-body">
+                <!-- Loading indicator -->
+                <tr id="loading-row">
+                    <td colspan="6" class="loading-cell">
+                        <div class="loading-spinner" role="status">
+                            <span class="sr-only">{{ _('Loading species data...') }}</span>
+                            <div class="spinner"></div>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% include 'components/pagination.html.j2' %}
+
+    <!-- Empty State -->
+    <div id="empty-state" class="empty-state" style="display: none;" role="status">
+        <p>{{ _('No species found matching the current filters.') }}</p>
+        <button onclick="clearAllFilters()" class="btn-clear">{{ _('Clear Filters') }}</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='/js/taxonomy_display.js') }}"></script>
+<script src="{{ url_for('static', path='/js/taxonomic_filters.js') }}"></script>
+<script src="{{ url_for('static', path='/js/species_checklist.js') }}"></script>
+<script>
+    // Initialize with language from server context
+    const userLanguage = "{{ language }}";
+</script>
+{% endblock %}
