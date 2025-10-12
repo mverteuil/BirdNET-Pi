@@ -243,17 +243,33 @@ function createSpeciesRow(species) {
  * Get icon for conservation status
  */
 function getConservationIcon(status) {
-  const icons = {
-    CR: "🔴", // Critically Endangered
-    EN: "🟠", // Endangered
-    VU: "🟡", // Vulnerable
-    NT: "🔵", // Near Threatened
-    LC: "🟢", // Least Concern
-    DD: "⚪", // Data Deficient
-    EX: "⚫", // Extinct
-    EW: "⚫", // Extinct in the Wild
+  // Normalize status to uppercase for comparison
+  const normalizedStatus = status.toUpperCase();
+
+  // Map both short codes and full names to icons
+  const iconMap = {
+    // Short codes
+    CR: "🔴",
+    EN: "🟠",
+    VU: "🟡",
+    NT: "🔵",
+    LC: "🟢",
+    DD: "⚪",
+    EX: "⚫",
+    EW: "⚫",
+    // Full names from Wikidata
+    "CRITICALLY ENDANGERED": "🔴",
+    ENDANGERED: "🟠",
+    "ENDANGERED STATUS": "🟠", // Alternative Wikidata format
+    VULNERABLE: "🟡",
+    "NEAR THREATENED": "🔵",
+    "LEAST CONCERN": "🟢",
+    "DATA DEFICIENT": "⚪",
+    EXTINCT: "⚫",
+    "EXTINCT IN THE WILD": "⚫",
   };
-  return icons[status] || "❓";
+
+  return iconMap[normalizedStatus] || "❓";
 }
 
 /**
