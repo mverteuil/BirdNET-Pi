@@ -47,6 +47,7 @@
     <section class="analysis-section">
         <h2>{{ _('Diversity Timeline') }}</h2>
         <p class="section-subtitle">{{ _('Shannon diversity, Simpson index, and species richness over time') }}</p>
+        <p class="method-note">{{ _('Tracks community diversity metrics over time.') }} <a href="https://en.wikipedia.org/wiki/Diversity_index" target="_blank" rel="noopener">{{ _('Shannon H\'') }}</a> {{ _('measures entropy (higher = more diverse),') }} <a href="https://en.wikipedia.org/wiki/Diversity_index#Simpson_index" target="_blank" rel="noopener">{{ _('Simpson D') }}</a> {{ _('measures dominance (higher = more even),') }} <a href="https://en.wikipedia.org/wiki/Species_richness" target="_blank" rel="noopener">{{ _('Richness S') }}</a> {{ _('counts unique species.') }}</p>
         <canvas id="diversity-timeline" width="800" height="300"></canvas>
     </section>
 
@@ -54,6 +55,7 @@
     <section class="analysis-section">
         <h2>{{ _('Species Accumulation') }}</h2>
         <p class="section-subtitle">{{ _('Cumulative species discovery as detections increase') }}</p>
+        <p class="method-note">{{ _('Shows how many unique species are found as more detections are recorded.') }} <a href="https://en.wikipedia.org/wiki/Species_discovery_curve" target="_blank" rel="noopener">{{ _('Species accumulation curves') }}</a> {{ _('help estimate sampling completeness and predict total diversity. Steep curves indicate high discovery rate, flattening curves suggest most species have been detected.') }}</p>
         <canvas id="accumulation-curve" width="800" height="300"></canvas>
     </section>
 
@@ -61,6 +63,7 @@
     <section class="analysis-section">
         <h2>{{ _('Community Similarity Matrix') }}</h2>
         <p class="section-subtitle" id="similarity-subtitle">{{ _('Jaccard similarity between time periods') }}</p>
+        <p class="method-note">{{ _('Compares species composition between time windows.') }} <a href="https://en.wikipedia.org/wiki/Jaccard_index" target="_blank" rel="noopener">{{ _('Jaccard similarity') }}</a> {{ _('measures overlap: 0% = no shared species, 100% = identical communities. High values indicate stable communities, low values show turnover or seasonal changes.') }}</p>
         <div id="similarity-matrix-container" class="similarity-matrix"></div>
     </section>
 
@@ -68,6 +71,7 @@
     <section class="analysis-section">
         <h2>{{ _('Beta Diversity (Species Turnover)') }}</h2>
         <p class="section-subtitle">{{ _('Community change between consecutive time windows') }}</p>
+        <p class="method-note">{{ _('Quantifies how much the bird community changes over time.') }} <a href="https://en.wikipedia.org/wiki/Beta_diversity" target="_blank" rel="noopener">{{ _('Beta diversity (β)') }}</a> {{ _('ranges from 0 (identical communities) to 1 (completely different). Green bars indicate stability, yellow shows moderate change, red indicates high turnover. Species gained (+) and lost (-) are shown below each bar.') }}</p>
         <canvas id="beta-diversity" width="800" height="300"></canvas>
     </section>
 
@@ -75,7 +79,7 @@
     <section class="analysis-section" id="weather-section">
         <h2>{{ _('Weather Correlations') }}</h2>
         <p class="section-subtitle">{{ _('Relationship between detections and weather variables') }}</p>
-        <p class="method-note">{{ _('Pearson correlation coefficient (r): -1 to +1 scale. Values near 0 indicate weak correlation, ±0.3-0.7 moderate, ±0.7-1.0 strong. Positive values show variables increase together, negative values show inverse relationships.') }}</p>
+        <p class="method-note">{{ _('Explores relationships between weather and bird activity.') }} <a href="https://en.wikipedia.org/wiki/Pearson_correlation_coefficient" target="_blank" rel="noopener">{{ _('Pearson correlation (r)') }}</a> {{ _('ranges from -1 to +1. Values near 0 indicate weak correlation, ±0.3-0.7 moderate, ±0.7-1.0 strong. Positive values show variables increase together, negative values show inverse relationships.') }}</p>
         <div class="weather-grid">
             <div>
                 <h3 class="chart-label">{{ _('Temperature (°C)') }}</h3>
@@ -99,6 +103,7 @@
     <section class="analysis-section">
         <h2>{{ _('Activity Heatmap') }}</h2>
         <p class="section-subtitle">{{ _('Detection patterns by day of week and hour') }}</p>
+        <p class="method-note">{{ _('Visualizes when birds are most active throughout the week.') }} <a href="https://en.wikipedia.org/wiki/Heat_map" target="_blank" rel="noopener">{{ _('Heat maps') }}</a> {{ _('use color intensity to show detection frequency by day and hour. Darker cells indicate higher activity, lighter cells show fewer detections. Patterns reveal daily rhythms and weekly variations in bird behavior.') }}</p>
         <canvas id="activity-heatmap" width="800" height="280"></canvas>
     </section>
 </div>
