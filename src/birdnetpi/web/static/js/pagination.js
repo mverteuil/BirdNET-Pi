@@ -27,18 +27,41 @@ function renderPagination(elementId, data, loadFunction, itemName = "items") {
   let paginationHTML = "";
 
   if (data.total_pages > 1) {
-    // Show page info
+    // Show page info with i18n support
+    const pageInfo = window._
+      ? window._("Page %(page)s of %(total_pages)s", {
+          page: data.page,
+          total_pages: data.total_pages,
+        })
+      : `Page ${data.page} of ${data.total_pages}`;
+
+    const totalItems = window._
+      ? window._("%(count)s total %(items)s", {
+          count: data.total,
+          items: itemName,
+        })
+      : `${data.total} total ${itemName}`;
+
     paginationHTML = `
             <span class="text-secondary" aria-live="polite">
-                Page ${data.page} of ${data.total_pages}
-                (${data.total} total ${itemName})
+                ${pageInfo}
+                (${totalItems})
             </span><br>
         `;
 
     // Previous page links
     if (data.has_prev) {
-      paginationHTML += `<a href="#" onclick="${loadFunction}(1); return false;" aria-label="Go to first page">« First</a> `;
-      paginationHTML += `<a href="#" onclick="${loadFunction}(${data.page - 1}); return false;" aria-label="Go to previous page">‹ Prev</a> `;
+      const firstLabel = window._
+        ? window._("Go to first page")
+        : "Go to first page";
+      const prevLabel = window._
+        ? window._("Go to previous page")
+        : "Go to previous page";
+      const firstText = window._ ? window._("First") : "First";
+      const prevText = window._ ? window._("Prev") : "Prev";
+
+      paginationHTML += `<a href="#" onclick="${loadFunction}(1); return false;" aria-label="${firstLabel}">« ${firstText}</a> `;
+      paginationHTML += `<a href="#" onclick="${loadFunction}(${data.page - 1}); return false;" aria-label="${prevLabel}">‹ ${prevText}</a> `;
     }
 
     // Page numbers
@@ -47,23 +70,44 @@ function renderPagination(elementId, data, loadFunction, itemName = "items") {
 
     for (let i = startPage; i <= endPage; i++) {
       if (i === data.page) {
-        paginationHTML += `<span class="current-page" aria-current="page" aria-label="Current page, page ${i}">${i}</span> `;
+        const currentLabel = window._
+          ? window._("Current page, page %(page)s", { page: i })
+          : `Current page, page ${i}`;
+        paginationHTML += `<span class="current-page" aria-current="page" aria-label="${currentLabel}">${i}</span> `;
       } else {
-        paginationHTML += `<a href="#" onclick="${loadFunction}(${i}); return false;" aria-label="Go to page ${i}">${i}</a> `;
+        const pageLabel = window._
+          ? window._("Go to page %(page)s", { page: i })
+          : `Go to page ${i}`;
+        paginationHTML += `<a href="#" onclick="${loadFunction}(${i}); return false;" aria-label="${pageLabel}">${i}</a> `;
       }
     }
 
     // Next page links
     if (data.has_next) {
-      paginationHTML += `<a href="#" onclick="${loadFunction}(${data.page + 1}); return false;" aria-label="Go to next page">Next ›</a> `;
-      paginationHTML += `<a href="#" onclick="${loadFunction}(${data.total_pages}); return false;" aria-label="Go to last page">Last »</a>`;
+      const nextLabel = window._
+        ? window._("Go to next page")
+        : "Go to next page";
+      const lastLabel = window._
+        ? window._("Go to last page")
+        : "Go to last page";
+      const nextText = window._ ? window._("Next") : "Next";
+      const lastText = window._ ? window._("Last") : "Last";
+
+      paginationHTML += `<a href="#" onclick="${loadFunction}(${data.page + 1}); return false;" aria-label="${nextLabel}">${nextText} ›</a> `;
+      paginationHTML += `<a href="#" onclick="${loadFunction}(${data.total_pages}); return false;" aria-label="${lastLabel}">${lastText} »</a>`;
     }
   } else if (data.total > 0) {
     // Single page with items
-    paginationHTML = `<span class="text-secondary" aria-live="polite">${data.total} ${itemName}</span>`;
+    const totalItems = window._
+      ? window._("%(count)s %(items)s", { count: data.total, items: itemName })
+      : `${data.total} ${itemName}`;
+    paginationHTML = `<span class="text-secondary" aria-live="polite">${totalItems}</span>`;
   } else {
     // No items
-    paginationHTML = `<span class="text-secondary" aria-live="polite">No ${itemName} found</span>`;
+    const noItems = window._
+      ? window._("No %(items)s found", { items: itemName })
+      : `No ${itemName} found`;
+    paginationHTML = `<span class="text-secondary" aria-live="polite">${noItems}</span>`;
   }
 
   pagination.innerHTML = paginationHTML;

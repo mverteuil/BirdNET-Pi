@@ -224,17 +224,21 @@ function createSpeciesRow(species) {
     const conservationSpan = document.createElement("span");
     conservationSpan.className = "conservation-status";
     conservationSpan.setAttribute("role", "img");
-    conservationSpan.setAttribute(
-      "aria-label",
-      `Conservation status: ${species.conservation_status}`,
-    );
+    const statusLabel = window._
+      ? window._("Conservation status: %(status)s", {
+          status: species.conservation_status,
+        })
+      : `Conservation status: ${species.conservation_status}`;
+    conservationSpan.setAttribute("aria-label", statusLabel);
     conservationSpan.textContent = getConservationIcon(
       species.conservation_status,
     );
     conservationCell.appendChild(conservationSpan);
   } else {
-    conservationCell.innerHTML =
-      '<span aria-label="Conservation status unknown">-</span>';
+    const unknownLabel = window._
+      ? window._("Conservation status unknown")
+      : "Conservation status unknown";
+    conservationCell.innerHTML = `<span aria-label="${unknownLabel}">-</span>`;
   }
   row.appendChild(conservationCell);
 
