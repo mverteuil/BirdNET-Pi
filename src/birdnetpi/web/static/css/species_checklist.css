@@ -30,8 +30,8 @@
 
 /* Detection Filter (Custom for this page) */
 .detection-filter-section {
-  margin: 2rem 0;
-  padding: 1rem;
+  margin: 1rem 0;
+  padding: 0.5rem 1rem;
   background: #f7fafc;
   border-radius: 8px;
   display: flex;
@@ -207,15 +207,21 @@
 
 .col-detections {
   text-align: center;
-  font-weight: 500;
-  color: #2d3748;
   width: 100px;
 }
 
+td.col-detections {
+  font-weight: 500;
+  color: #2d3748;
+}
+
 .col-latest {
+  width: 120px;
+}
+
+td.col-latest {
   color: #4a5568;
   font-size: 0.95rem;
-  width: 120px;
 }
 
 .col-conservation {

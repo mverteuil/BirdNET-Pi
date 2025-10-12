@@ -4,16 +4,12 @@
 
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/taxonomy_display.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/taxonomic_filters.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/species_checklist.css') }}">
 {% endblock %}
 
 {% block content %}
 <div class="species-checklist-container">
-    <header class="page-header">
-        <h1>{{ _('Species Checklist') }}</h1>
-        <p class="page-description">{{ _('View all bird species and track which ones you\'ve detected') }}</p>
-    </header>
-
     <!-- Detection Status Filter (Custom for this page) -->
     <div class="detection-filter-section" role="region" aria-label="{{ _('Detection status filter') }}">
         <label class="filter-label">{{ _('Show') }}</label>

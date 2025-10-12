@@ -25,11 +25,96 @@ const state = {
 const API_BASE = "/api/detections/species/checklist";
 
 /**
+ * Initialize state from URL parameters
+ */
+function initializeFromURL() {
+  const url = new URL(window.location);
+
+  // Get filter parameters
+  state.detectionFilter = url.searchParams.get("filter") || "all";
+  state.family = url.searchParams.get("family") || null;
+  state.genus = url.searchParams.get("genus") || null;
+  state.order = url.searchParams.get("order") || null;
+
+  // Get pagination
+  const page = url.searchParams.get("page");
+  if (page) {
+    state.currentPage = parseInt(page, 10);
+  }
+
+  // Get sorting
+  state.sortColumn = url.searchParams.get("sort_by") || "name";
+  state.sortDirection = url.searchParams.get("sort_order") || "asc";
+
+  // Update UI to match state
+  const filterBtn = document.getElementById(`filter-${state.detectionFilter}`);
+  if (filterBtn) {
+    document.querySelectorAll(".detection-filter-btn").forEach((btn) => {
+      btn.classList.remove("active");
+      btn.setAttribute("aria-checked", "false");
+    });
+    filterBtn.classList.add("active");
+    filterBtn.setAttribute("aria-checked", "true");
+  }
+}
+
+/**
+ * Update URL with current state
+ */
+function updateURL() {
+  const params = new URLSearchParams();
+
+  // Add filter parameters
+  if (state.detectionFilter !== "all") {
+    params.set("filter", state.detectionFilter);
+  }
+  if (state.family) {
+    params.set("family", state.family);
+  }
+  if (state.genus) {
+    params.set("genus", state.genus);
+  }
+  if (state.order) {
+    params.set("order", state.order);
+  }
+
+  // Add pagination
+  if (state.currentPage > 1) {
+    params.set("page", state.currentPage);
+  }
+
+  // Add sorting
+  if (state.sortColumn !== "name") {
+    params.set("sort_by", state.sortColumn);
+  }
+  if (
+    state.sortDirection !== "asc" ||
+    (state.sortColumn === "name" && state.sortDirection !== "asc")
+  ) {
+    params.set("sort_order", state.sortDirection);
+  }
+
+  // Update URL without reload
+  const newUrl = params.toString()
+    ? `${window.location.pathname}?${params.toString()}`
+    : window.location.pathname;
+
+  window.history.pushState({}, "", newUrl);
+}
+
+/**
  * Initialize the page
  */
 document.addEventListener("DOMContentLoaded", () => {
+  initializeFromURL();
   loadSpeciesData();
   loadFamilies();
+
+  // Handle browser back/forward buttons
+  window.addEventListener("popstate", () => {
+    initializeFromURL();
+    loadSpeciesData();
+  });
 });
 
 /**
@@ -79,6 +164,9 @@ async function loadSpeciesData() {
     } else {
       hideEmptyState();
     }
+
+    // Update URL with current state
+    updateURL();
   } catch (error) {
     console.error("Error loading species data:", error);
     showErrorState(error.message);
