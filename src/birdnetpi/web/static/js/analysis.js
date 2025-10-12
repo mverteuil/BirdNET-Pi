@@ -724,12 +724,19 @@ function drawWeatherCorrelations() {
       const weatherVar = weatherData.weather_variables[corr.data];
       if (weatherVar) {
         const maxDetections = Math.max(...weatherData.detection_counts);
-        const maxWeather = Math.max(...weatherVar);
-        const minWeather = Math.min(...weatherVar);
+        // Filter out null values for min/max calculations
+        const validWeatherValues = weatherVar.filter((v) => v != null);
+        if (validWeatherValues.length === 0) return; // Skip if no valid data
 
-        // Plot points
+        const maxWeather = Math.max(...validWeatherValues);
+        const minWeather = Math.min(...validWeatherValues);
+
+        // Plot points (skip null values)
         ctx.fillStyle = corr.color + "66"; // Add transparency
         weatherData.hours.forEach((hour, i) => {
+          // Skip null or undefined weather values
+          if (weatherVar[i] == null) return;
+
           const x =
             padding.left +
             (weatherData.detection_counts[i] / maxDetections) * width;

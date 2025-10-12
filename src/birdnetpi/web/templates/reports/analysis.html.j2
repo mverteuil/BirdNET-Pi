@@ -77,14 +77,17 @@
         <p class="section-subtitle">{{ _('Relationship between detections and weather variables') }}</p>
         <div class="weather-grid">
             <div>
+                <h3 class="chart-label">{{ _('Temperature (°C)') }}</h3>
                 <p class="correlation-value">r = --</p>
                 <canvas id="temp-correlation" width="250" height="200"></canvas>
             </div>
             <div>
+                <h3 class="chart-label">{{ _('Humidity (%)') }}</h3>
                 <p class="correlation-value">r = --</p>
                 <canvas id="humidity-correlation" width="250" height="200"></canvas>
             </div>
             <div>
+                <h3 class="chart-label">{{ _('Wind Speed (m/s)') }}</h3>
                 <p class="correlation-value">r = --</p>
                 <canvas id="wind-correlation" width="250" height="200"></canvas>
             </div>

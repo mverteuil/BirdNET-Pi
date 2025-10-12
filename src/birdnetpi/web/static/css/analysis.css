@@ -115,9 +115,24 @@
 }
 
 /* Weather correlation scatter */
+.weather-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+.chart-label {
+  font-size: 0.9rem;
+  font-weight: normal;
+  margin-bottom: 0.25rem;
+  color: var(--color-text-primary);
+}
+
 .correlation-value {
   font-family: "Courier New", monospace;
   font-size: 0.85rem;
+  margin-bottom: 0.5rem;
 }
 
 .correlation-strong {
