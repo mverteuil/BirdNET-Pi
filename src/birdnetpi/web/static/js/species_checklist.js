@@ -270,9 +270,12 @@ function updateStatistics() {
  * Update pagination controls
  */
 function updatePagination(pagination) {
-  // This would integrate with the existing pagination component
-  // Implementation depends on how pagination.html.j2 is structured
-  console.log("Pagination:", pagination);
+  BirdNETPagination.render(
+    "species-pagination",
+    pagination,
+    "goToPage",
+    "species",
+  );
 }
 
 /**
