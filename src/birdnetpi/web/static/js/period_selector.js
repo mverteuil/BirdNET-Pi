@@ -20,6 +20,7 @@ class PeriodSelector {
         : window.siteConfig?.longitude || 0;
     this.onChangeCallback = options.onChangeCallback || null;
     this.showHistorical = options.showHistorical !== false;
+    this.oldestDetectionDate = options.oldestDetectionDate || null;
     this.updateUrl = options.updateUrl !== false; // Enable URL updates by default
 
     // Initialize state from URL or defaults
@@ -225,7 +226,13 @@ class PeriodSelector {
         break;
 
       case "historical":
-        startDate = new Date(1970, 0, 1, 0, 0, 0, 0);
+        // Use actual oldest detection date, or fall back to 1970-01-01
+        if (this.oldestDetectionDate) {
+          startDate = new Date(this.oldestDetectionDate);
+          startDate.setHours(0, 0, 0, 0);
+        } else {
+          startDate = new Date(1970, 0, 1, 0, 0, 0, 0);
+        }
         endDate = new Date();
         displayLabel = _("All Time");
         break;

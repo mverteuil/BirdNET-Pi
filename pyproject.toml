@@ -58,6 +58,7 @@ dependencies = [
   "fastapi",
   "gpsdclient",
   "greenlet>=3.2.3",
+  "h3>=4.0.0",
   "httpx>=0.28.1",
   "librosa",
   "numpy<2",

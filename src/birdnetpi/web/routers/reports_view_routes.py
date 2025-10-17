@@ -102,6 +102,9 @@ async def analysis_view(
     request: Request,
     templates: Annotated[Jinja2Templates, Depends(Provide[Container.templates])],
     config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
+    detection_query_service: Annotated[
+        DetectionQueryService, Depends(Provide[Container.detection_query_service])
+    ],
     translation_manager: Annotated[
         TranslationManager, Depends(Provide[Container.translation_manager])
     ],
@@ -113,6 +116,19 @@ async def analysis_view(
     language = get_user_language(request, config)
     _ = translation_manager.get_translation(language).gettext
 
+    # Get oldest detection date for historical view
+    oldest_detection_date = None
+    try:
+        oldest_detections = await detection_query_service.query_detections(
+            limit=1,
+            order_by="timestamp",
+            order_desc=False,
+        )
+        if oldest_detections:
+            oldest_detection_date = oldest_detections[0].timestamp.strftime("%Y-%m-%d")
+    except Exception as e:
+        logger.warning(f"Could not query oldest detection date: {e}")
+
     # Build validated context using Pydantic model
     context = AnalysisPageContext(
         config=config,
@@ -122,6 +138,7 @@ async def analysis_view(
         page_name=_("Analysis"),
         period=period,
         comparison_period=comparison if comparison != "none" else None,
+        oldest_detection_date=oldest_detection_date,
     )
 
     return templates.TemplateResponse(

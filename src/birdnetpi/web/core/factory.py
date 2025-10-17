@@ -85,7 +85,6 @@ def create_app() -> FastAPI:
     # Access any endpoint with ?profile=1 to see profiling output
     if ConfigManager.should_enable_profiling():
         # Import only when needed to avoid dependency on pyinstrument in production
-        # ast-grep-ignore: no-local-import
         from birdnetpi.web.middleware.pyinstrument_profiling import PyInstrumentProfilerMiddleware
 
         app.add_middleware(PyInstrumentProfilerMiddleware, html_output=True)
@@ -132,7 +131,7 @@ def create_app() -> FastAPI:
     # Settings API routes
     app.include_router(settings_api_routes.router, prefix="/api", tags=["Settings API"])
 
-    # Core API routes (detections endpoints)
+    # Core API routes (detections endpoints, including cleanup)
     app.include_router(detections_api_routes.router, prefix="/api", tags=["Detections API"])
 
     # Health check routes (no authentication required)

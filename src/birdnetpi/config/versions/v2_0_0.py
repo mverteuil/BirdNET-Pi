@@ -91,6 +91,16 @@ class ConfigVersion_2_0_0:  # noqa: N801
                 "git_remote": "origin",
                 "git_branch": "main",
             },
+            # eBird Regional Filtering
+            "ebird_filtering": {
+                "enabled": False,
+                "region_pack": "",
+                "h3_resolution": 5,
+                "detection_mode": "off",
+                "detection_strictness": "vagrant",
+                "site_filtering_enabled": False,
+                "unknown_species_behavior": "allow",
+            },
         }
 
     def apply_defaults(self, config: dict[str, Any]) -> dict[str, Any]:
@@ -126,6 +136,18 @@ class ConfigVersion_2_0_0:  # noqa: N801
             config["notify_quiet_hours_start"] = ""
         if "notify_quiet_hours_end" not in config:
             config["notify_quiet_hours_end"] = ""
+
+        # Ensure eBird filtering section exists with defaults
+        if "ebird_filtering" not in config:
+            config["ebird_filtering"] = {
+                "enabled": False,
+                "region_pack": "",
+                "h3_resolution": 5,
+                "detection_mode": "off",
+                "detection_strictness": "vagrant",
+                "site_filtering_enabled": False,
+                "unknown_species_behavior": "allow",
+            }
 
         return config
 

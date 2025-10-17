@@ -53,6 +53,18 @@ class UpdateConfig(BaseModel):
         return v
 
 
+class EBirdFilterConfig(BaseModel):
+    """eBird regional confidence filtering settings."""
+
+    enabled: bool = False  # Enable eBird regional filtering
+    region_pack: str = ""  # e.g., "na-east-coast-2025.08"
+    h3_resolution: int = 5  # H3 resolution for lookups (must match pack data_resolution)
+    detection_mode: str = "off"  # off, warn, filter
+    detection_strictness: str = "vagrant"  # vagrant, rare, uncommon, common
+    site_filtering_enabled: bool = False  # Enable filtering in site queries
+    unknown_species_behavior: str = "allow"  # allow, block (for species not in eBird data)
+
+
 class BirdNETConfig(BaseModel):
     """Configuration settings for the BirdNET-Pi application."""
 
@@ -154,3 +166,6 @@ class BirdNETConfig(BaseModel):
 
     # Detection Processing
     detections_endpoint: str = "http://127.0.0.1:8888/api/detections/"  # Where to send detections
+
+    # eBird Regional Filtering
+    ebird_filtering: EBirdFilterConfig = Field(default_factory=EBirdFilterConfig)

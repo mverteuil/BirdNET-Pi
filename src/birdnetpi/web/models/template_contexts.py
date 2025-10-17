@@ -74,6 +74,9 @@ class AnalysisPageContext(BaseTemplateContext):
     comparison_period: str | None = Field(
         default=None, description="Comparison period for change analysis"
     )
+    oldest_detection_date: str | None = Field(
+        default=None, description="ISO date of oldest detection for historical view"
+    )
 
 
 class BestRecordingsPageContext(BaseTemplateContext):
