@@ -53,6 +53,7 @@ dependencies = [
   "dependency-injector==4.48.1",
   "fastapi",
   "gpsdclient",
+  "h3>=4.0.0",
   "httpx>=0.28.1",
   "librosa",
   "numpy<2",

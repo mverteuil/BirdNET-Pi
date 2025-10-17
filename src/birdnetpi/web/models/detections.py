@@ -110,7 +110,7 @@ class DetectionCreatedResponse(BaseModel):
     """Response after creating a detection."""
 
     message: str = Field(..., description="Success message")
-    detection_id: UUID = Field(..., description="ID of created detection")
+    detection_id: UUID | None = Field(..., description="ID of created detection (None if filtered)")
 
 
 class RecentDetectionsResponse(BaseModel):

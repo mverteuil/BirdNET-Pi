@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any
 from uuid import UUID
 
+import h3
 import pytz
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -14,6 +15,9 @@ from fastapi.responses import FileResponse, StreamingResponse
 
 from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.config import BirdNETConfig
+from birdnetpi.database.core import CoreDatabaseService
+from birdnetpi.database.ebird import EBirdRegionService
+from birdnetpi.detections.cleanup import DetectionCleanupService
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import Detection
 from birdnetpi.detections.queries import DetectionQueryService
@@ -22,6 +26,11 @@ from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.utils.cache import Cache
 from birdnetpi.utils.time_periods import calculate_period_boundaries
 from birdnetpi.web.core.container import Container
+from birdnetpi.web.models.admin import (
+    EBirdCleanupPreviewRequest,
+    EBirdCleanupRequest,
+    EBirdCleanupResponse,
+)
 from birdnetpi.web.models.detections import (
     BestRecordingsFilters,
     BestRecordingsResponse,
@@ -80,17 +89,61 @@ def _get_cache_invalidation_handler(cache: Cache) -> Callable:
 @inject
 async def create_detection(
     data_manager: Annotated[DataManager, Depends(Provide[Container.data_manager])],
+    core_database: Annotated[CoreDatabaseService, Depends(Provide[Container.core_database])],
+    ebird_service: Annotated[EBirdRegionService, Depends(Provide[Container.ebird_region_service])],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
     detection_event: DetectionEvent,
 ) -> DetectionCreatedResponse:
     """Receive a new detection event and dispatch it.
 
     DataManager handles both audio file saving and database persistence.
+    eBird filtering can optionally filter or warn about detections based on regional confidence.
     """
     logger.info(
         "Received detection: %s with confidence %s",
         detection_event.species_tensor or "Unknown",
         detection_event.confidence,
     )
+
+    # Apply eBird filtering if enabled (detection-time filtering)
+    if (
+        config.ebird_filtering.enabled
+        and config.ebird_filtering.detection_mode != "off"
+        and detection_event.latitude is not None
+        and detection_event.longitude is not None
+    ):
+        try:
+            should_filter, reason = await _apply_ebird_filter(
+                core_database=core_database,
+                ebird_service=ebird_service,
+                config=config,
+                scientific_name=detection_event.scientific_name,
+                latitude=detection_event.latitude,
+                longitude=detection_event.longitude,
+            )
+
+            if should_filter:
+                if config.ebird_filtering.detection_mode == "warn":
+                    # Warn mode: Log but allow detection
+                    logger.warning(
+                        "eBird filter would block %s: %s",
+                        detection_event.species_tensor,
+                        reason,
+                    )
+                elif config.ebird_filtering.detection_mode == "filter":
+                    # Filter mode: Block detection
+                    logger.info(
+                        "eBird filter blocked %s: %s",
+                        detection_event.species_tensor,
+                        reason,
+                    )
+                    return DetectionCreatedResponse(
+                        message=f"Detection filtered: {reason}",
+                        detection_id=None,
+                    )
+        except Exception as e:
+            # Don't fail detection creation if eBird filtering fails
+            logger.error("eBird filtering error (allowing detection): %s", e)
 
     # Create detection - DataManager handles audio saving and database persistence
     # Store the raw data from BirdNET as-is
@@ -106,6 +159,95 @@ async def create_detection(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create detection: {e!s}",
         ) from e
+
+
+def _check_strictness(confidence_tier: str, strictness: str) -> tuple[bool, str]:
+    """Check if a species should be blocked based on strictness level.
+
+    Args:
+        confidence_tier: Species confidence tier (vagrant, rare, uncommon, common)
+        strictness: Strictness level setting
+
+    Returns:
+        Tuple of (should_block, reason)
+    """
+    if strictness == "vagrant" and confidence_tier == "vagrant":
+        return (True, f"Species is vagrant in this region (strictness={strictness})")
+    elif strictness == "rare" and confidence_tier in ["vagrant", "rare"]:
+        return (True, f"Species is {confidence_tier} in this region (strictness={strictness})")
+    elif strictness == "uncommon" and confidence_tier in ["vagrant", "rare", "uncommon"]:
+        return (True, f"Species is {confidence_tier} in this region (strictness={strictness})")
+    elif strictness == "common" and confidence_tier != "common":
+        return (
+            True,
+            f"Species is {confidence_tier}, not common in region (strictness={strictness})",
+        )
+    return (False, "")
+
+
+async def _apply_ebird_filter(
+    core_database: CoreDatabaseService,
+    ebird_service: EBirdRegionService,
+    config: BirdNETConfig,
+    scientific_name: str,
+    latitude: float,
+    longitude: float,
+) -> tuple[bool, str]:
+    """Apply eBird regional confidence filtering to a detection.
+
+    Args:
+        core_database: CoreDatabaseService instance for session management
+        ebird_service: EBirdRegionService instance
+        config: BirdNET configuration
+        scientific_name: Scientific name of the species
+        latitude: Detection latitude
+        longitude: Detection longitude
+
+    Returns:
+        Tuple of (should_filter: bool, reason: str)
+        - should_filter: True if detection should be blocked
+        - reason: Human-readable reason for filtering decision
+    """
+    # Convert lat/lon to H3 cell at configured resolution
+    h3_cell = h3.latlng_to_cell(latitude, longitude, config.ebird_filtering.h3_resolution)
+
+    # Get or create database session and attach eBird pack
+    async with core_database.get_async_db() as session:
+        try:
+            # Attach eBird pack database
+            await ebird_service.attach_to_session(session, config.ebird_filtering.region_pack)
+
+            # Query confidence tier for this species at this location
+            confidence_tier = await ebird_service.get_species_confidence_tier(
+                session, scientific_name, h3_cell
+            )
+
+            # Handle unknown species
+            if confidence_tier is None:
+                behavior = config.ebird_filtering.unknown_species_behavior
+                if behavior == "block":
+                    return (
+                        True,
+                        f"Species not found in eBird data for region (behavior={behavior})",
+                    )
+                else:  # allow
+                    return (False, f"Species not in eBird data, allowing (behavior={behavior})")
+
+            # Apply strictness filtering
+            strictness = config.ebird_filtering.detection_strictness
+            should_block, reason = _check_strictness(confidence_tier, strictness)
+            if should_block:
+                return (True, reason)
+
+            # Species passes filtering
+            return (False, f"Species is {confidence_tier} in this region, allowed")
+
+        finally:
+            # Detach eBird database
+            try:
+                await ebird_service.detach_from_session(session)
+            except Exception as e:
+                logger.warning("Failed to detach eBird database: %s", e)
 
 
 @router.get("/recent", response_model=RecentDetectionsResponse)
@@ -1070,3 +1212,163 @@ async def get_detection_audio(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error serving audio file"
         ) from e
+
+
+# === Detection Cleanup Routes ===
+
+
+@router.post("/cleanup/preview", response_model=EBirdCleanupResponse)
+@inject
+async def preview_cleanup(
+    request: EBirdCleanupPreviewRequest,
+    cleanup_service: Annotated[
+        DetectionCleanupService, Depends(Provide[Container.detection_cleanup_service])
+    ],
+) -> EBirdCleanupResponse:
+    """Preview what would be deleted by detection cleanup without actually deleting.
+
+    This endpoint analyzes existing detections against eBird regional confidence data
+    and returns statistics about what would be removed based on the strictness level.
+
+    Args:
+        request: Preview request with strictness and region pack settings
+        cleanup_service: Detection cleanup service
+
+    Returns:
+        Response with preview statistics
+    """
+    try:
+        logger.info(
+            "eBird cleanup preview requested: strictness=%s, region=%s",
+            request.strictness,
+            request.region_pack,
+        )
+
+        # Validate strictness level
+        valid_strictness = ["vagrant", "rare", "uncommon", "common"]
+        if request.strictness not in valid_strictness:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid strictness level. Must be one of: {', '.join(valid_strictness)}",
+            )
+
+        # Run preview
+        stats = await cleanup_service.preview_cleanup(
+            strictness=request.strictness,
+            region_pack=request.region_pack,
+            h3_resolution=request.h3_resolution,
+            limit=request.limit,
+        )
+
+        logger.info(
+            "Preview complete: %d detections checked, %d would be filtered",
+            stats.total_checked,
+            stats.total_filtered,
+        )
+
+        return EBirdCleanupResponse(
+            success=True,
+            message=(
+                f"Preview complete: {stats.total_filtered} of {stats.total_checked} "
+                f"detections would be removed with strictness '{request.strictness}'"
+            ),
+            stats=stats.to_dict(),
+        )
+
+    except FileNotFoundError as e:
+        logger.error("eBird pack not found: %s", e)
+        raise HTTPException(
+            status_code=404,
+            detail=f"eBird region pack not found: {request.region_pack}. "
+            "Make sure the pack is installed in data/database/",
+        ) from e
+    except Exception as e:
+        logger.exception("Error during eBird cleanup preview")
+        raise HTTPException(status_code=500, detail=f"Failed to preview cleanup: {e!s}") from e
+
+
+@router.post("/cleanup/execute", response_model=EBirdCleanupResponse)
+@inject
+async def execute_cleanup(
+    request: EBirdCleanupRequest,
+    cleanup_service: Annotated[
+        DetectionCleanupService, Depends(Provide[Container.detection_cleanup_service])
+    ],
+) -> EBirdCleanupResponse:
+    """Execute detection cleanup - remove detections that don't meet criteria.
+
+    This endpoint permanently deletes detections and optionally their audio files
+    based on eBird regional confidence data and strictness settings.
+
+    **WARNING**: This operation cannot be undone. Use preview endpoint first.
+
+    Args:
+        request: Cleanup request with strictness, region pack, and confirmation
+        cleanup_service: Detection cleanup service
+
+    Returns:
+        Response with deletion statistics
+    """
+    # Require confirmation for safety
+    if not request.confirm:
+        return EBirdCleanupResponse(
+            success=False,
+            message="Cleanup requires confirmation. Set 'confirm' to true.",
+            stats=None,
+        )
+
+    try:
+        logger.warning(
+            "eBird cleanup execution requested: strictness=%s, region=%s, delete_audio=%s",
+            request.strictness,
+            request.region_pack,
+            request.delete_audio,
+        )
+
+        # Validate strictness level
+        valid_strictness = ["vagrant", "rare", "uncommon", "common"]
+        if request.strictness not in valid_strictness:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid strictness level. Must be one of: {', '.join(valid_strictness)}",
+            )
+
+        # Execute cleanup
+        stats = await cleanup_service.cleanup_detections(
+            strictness=request.strictness,
+            region_pack=request.region_pack,
+            h3_resolution=request.h3_resolution,
+            limit=request.limit,
+            delete_audio=request.delete_audio,
+        )
+
+        logger.warning(
+            "Cleanup complete: %d detections deleted, %d audio files deleted",
+            stats.detections_deleted,
+            stats.audio_files_deleted,
+        )
+
+        message_parts = [f"Cleanup complete: {stats.detections_deleted} detections deleted"]
+        if request.delete_audio:
+            message_parts.append(f"{stats.audio_files_deleted} audio files deleted")
+            if stats.audio_deletion_errors > 0:
+                message_parts.append(
+                    f"({stats.audio_deletion_errors} audio file errors - check logs)"
+                )
+
+        return EBirdCleanupResponse(
+            success=True,
+            message=", ".join(message_parts),
+            stats=stats.to_dict(),
+        )
+
+    except FileNotFoundError as e:
+        logger.error("eBird pack not found: %s", e)
+        raise HTTPException(
+            status_code=404,
+            detail=f"eBird region pack not found: {request.region_pack}. "
+            "Make sure the pack is installed in data/database/",
+        ) from e
+    except Exception as e:
+        logger.exception("Error during eBird cleanup execution")
+        raise HTTPException(status_code=500, detail=f"Failed to execute cleanup: {e!s}") from e

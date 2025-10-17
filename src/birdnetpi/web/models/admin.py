@@ -28,3 +28,31 @@ class SaveConfigResponse(BaseModel):
     success: bool = Field(..., description="Whether the save was successful")
     message: str | None = Field(None, description="Success message")
     error: str | None = Field(None, description="Error message if failed")
+
+
+class EBirdCleanupPreviewRequest(BaseModel):
+    """Request to preview eBird cleanup operation."""
+
+    strictness: str = Field(..., description="Strictness level: vagrant, rare, uncommon, common")
+    region_pack: str = Field(..., description="Name of region pack (e.g., 'na-east-coast-2025.08')")
+    h3_resolution: int = Field(5, description="H3 resolution for lookups (default: 5)")
+    limit: int | None = Field(None, description="Optional limit on detections to check")
+
+
+class EBirdCleanupRequest(BaseModel):
+    """Request to perform eBird cleanup operation."""
+
+    strictness: str = Field(..., description="Strictness level: vagrant, rare, uncommon, common")
+    region_pack: str = Field(..., description="Name of region pack (e.g., 'na-east-coast-2025.08')")
+    h3_resolution: int = Field(5, description="H3 resolution for lookups (default: 5)")
+    limit: int | None = Field(None, description="Optional limit on detections to process")
+    delete_audio: bool = Field(True, description="Whether to delete associated audio files")
+    confirm: bool = Field(False, description="Confirmation required for cleanup")
+
+
+class EBirdCleanupResponse(BaseModel):
+    """Response from eBird cleanup operation."""
+
+    success: bool
+    message: str
+    stats: dict | None = None  # CleanupStats.to_dict() result
