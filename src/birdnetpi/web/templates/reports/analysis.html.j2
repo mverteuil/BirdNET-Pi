@@ -8,6 +8,8 @@
 
 {% block scripts %}
     {{ super() }}
+    <!-- Plotly.js for charts -->
+    <script src="{{ url_for('static', path='js/vendor/plotly.min.js') }}"></script>
     <!-- Store period parameters for JavaScript to use -->
     <script>
     window.analysisConfig = {
@@ -16,8 +18,8 @@
     };
     </script>
     <!-- Period selector and analysis JavaScript -->
-    <script src="{{ request.url_for('static', path='js/period_selector.js') }}"></script>
-    <script src="{{ request.url_for('static', path='js/analysis.js') }}"></script>
+    <script src="{{ url_for('static', path='js/period_selector.js') }}"></script>
+    <script src="{{ url_for('static', path='js/analysis.js') }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -28,6 +30,7 @@
     {% set initial_period = period|default('month') %}
     {% set onchange_callback = 'onPrimaryPeriodChange' %}
     {% set show_historical = true %}
+    {% set oldest_detection_date = oldest_detection_date %}
     {% include 'components/period_selector.html.j2' %}
 
     <div class="comparison-controls" style="margin-top: 1rem;">
@@ -48,7 +51,7 @@
         <h2>{{ _('Diversity Timeline') }}</h2>
         <p class="section-subtitle">{{ _('Shannon diversity, Simpson index, and species richness over time') }}</p>
         <p class="method-note">{{ _('Tracks community diversity metrics over time.') }} <a href="https://en.wikipedia.org/wiki/Diversity_index" target="_blank" rel="noopener">{{ _('Shannon H\'') }}</a> {{ _('measures entropy (higher = more diverse),') }} <a href="https://en.wikipedia.org/wiki/Diversity_index#Simpson_index" target="_blank" rel="noopener">{{ _('Simpson D') }}</a> {{ _('measures dominance (higher = more even),') }} <a href="https://en.wikipedia.org/wiki/Species_richness" target="_blank" rel="noopener">{{ _('Richness S') }}</a> {{ _('counts unique species.') }}</p>
-        <canvas id="diversity-timeline" width="800" height="300"></canvas>
+        <div id="diversity-timeline" style="width: 100%; height: 300px;"></div>
     </section>
 
     <!-- Species Accumulation -->
@@ -56,7 +59,7 @@
         <h2>{{ _('Species Accumulation') }}</h2>
         <p class="section-subtitle">{{ _('Cumulative species discovery as detections increase') }}</p>
         <p class="method-note">{{ _('Shows how many unique species are found as more detections are recorded.') }} <a href="https://en.wikipedia.org/wiki/Species_discovery_curve" target="_blank" rel="noopener">{{ _('Species accumulation curves') }}</a> {{ _('help estimate sampling completeness and predict total diversity. Steep curves indicate high discovery rate, flattening curves suggest most species have been detected.') }}</p>
-        <canvas id="accumulation-curve" width="800" height="300"></canvas>
+        <div id="accumulation-curve" style="width: 100%; height: 300px;"></div>
     </section>
 
     <!-- Community Similarity -->
@@ -72,7 +75,7 @@
         <h2>{{ _('Beta Diversity (Species Turnover)') }}</h2>
         <p class="section-subtitle">{{ _('Community change between consecutive time windows') }}</p>
         <p class="method-note">{{ _('Quantifies how much the bird community changes over time.') }} <a href="https://en.wikipedia.org/wiki/Beta_diversity" target="_blank" rel="noopener">{{ _('Beta diversity (β)') }}</a> {{ _('ranges from 0 (identical communities) to 1 (completely different). Green bars indicate stability, yellow shows moderate change, red indicates high turnover. Species gained (+) and lost (-) are shown below each bar.') }}</p>
-        <canvas id="beta-diversity" width="800" height="300"></canvas>
+        <div id="beta-diversity" style="width: 100%; height: 300px;"></div>
     </section>
 
     <!-- Weather Correlations -->
@@ -84,17 +87,17 @@
             <div>
                 <h3 class="chart-label">{{ _('Temperature (°C)') }}</h3>
                 <p class="correlation-value">r = --</p>
-                <canvas id="temp-correlation" width="250" height="200"></canvas>
+                <div id="temp-correlation" style="width: 100%; height: 200px;"></div>
             </div>
             <div>
                 <h3 class="chart-label">{{ _('Humidity (%)') }}</h3>
                 <p class="correlation-value">r = --</p>
-                <canvas id="humidity-correlation" width="250" height="200"></canvas>
+                <div id="humidity-correlation" style="width: 100%; height: 200px;"></div>
             </div>
             <div>
                 <h3 class="chart-label">{{ _('Wind Speed (m/s)') }}</h3>
                 <p class="correlation-value">r = --</p>
-                <canvas id="wind-correlation" width="250" height="200"></canvas>
+                <div id="wind-correlation" style="width: 100%; height: 200px;"></div>
             </div>
         </div>
     </section>
@@ -104,7 +107,7 @@
         <h2>{{ _('Activity Heatmap') }}</h2>
         <p class="section-subtitle">{{ _('Detection patterns by day of week and hour') }}</p>
         <p class="method-note">{{ _('Visualizes when birds are most active throughout the week.') }} <a href="https://en.wikipedia.org/wiki/Heat_map" target="_blank" rel="noopener">{{ _('Heat maps') }}</a> {{ _('use color intensity to show detection frequency by day and hour. Darker cells indicate higher activity, lighter cells show fewer detections. Patterns reveal daily rhythms and weekly variations in bird behavior.') }}</p>
-        <canvas id="activity-heatmap" width="800" height="280"></canvas>
+        <div id="activity-heatmap" style="width: 100%; height: 280px;"></div>
     </section>
 </div>
 
