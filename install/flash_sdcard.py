@@ -110,8 +110,9 @@ def list_macos_devices() -> list[dict[str, str]]:
     """List block devices on macOS using diskutil."""
     result = subprocess.run(["diskutil", "list"], capture_output=True, text=True, check=True)
     devices = []
+    lines = result.stdout.splitlines()
 
-    for line in result.stdout.splitlines():
+    for i, line in enumerate(lines):
         # Match device identifier like /dev/disk2
         if match := re.match(r"^(/dev/disk\d+)\s+\((.+?), physical\):", line):
             device_path = match.group(1)
@@ -121,9 +122,12 @@ def list_macos_devices() -> list[dict[str, str]]:
             if device_path == "/dev/disk0":
                 continue
 
-            # Extract size from the same line
-            size_match = re.search(r"\*([0-9.]+\s*[KMGT]?B)", line)
-            size_str = size_match.group(1) if size_match else "Unknown"
+            # Size is on the partition scheme line (next few lines)
+            size_str = "Unknown"
+            for next_line in lines[i + 1 : i + 5]:  # Check next 4 lines
+                if size_match := re.search(r"\*([0-9.]+\s*[KMGT]?B)", next_line):
+                    size_str = size_match.group(1)
+                    break
 
             # Include both external and internal physical disks (for SD card readers)
             # Filter out large internal drives (> 256GB likely not an SD card)
