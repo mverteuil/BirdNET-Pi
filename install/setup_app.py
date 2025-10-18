@@ -6,9 +6,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Import whiptail UI (no dependencies)
-from ui_whiptail import InstallConfig, WhiptailUI
-
 
 def get_ip_address() -> str:
     """Get the primary IP address of this machine.
@@ -27,12 +24,8 @@ def get_ip_address() -> str:
         return "unknown"
 
 
-def install_system_dependencies(ui: WhiptailUI) -> None:
-    """Install system-level dependencies.
-
-    Args:
-        ui: Whiptail UI instance for error reporting
-    """
+def install_system_dependencies() -> None:
+    """Install system-level dependencies."""
     try:
         subprocess.run(["sudo", "apt-get", "update"], check=True)
         dependencies = [
@@ -68,16 +61,12 @@ def install_system_dependencies(ui: WhiptailUI) -> None:
             check=True,
         )
     except subprocess.CalledProcessError as e:
-        ui.show_error(f"Failed to install system dependencies: {e}")
+        print(f"ERROR: Failed to install system dependencies: {e}")
         sys.exit(1)
 
 
-def setup_user_and_directories(ui: WhiptailUI) -> None:
-    """Create birdnetpi user and required directories.
-
-    Args:
-        ui: Whiptail UI instance for error reporting
-    """
+def setup_user_and_directories() -> None:
+    """Create birdnetpi user and required directories."""
     try:
         # Create user (ignore error if already exists)
         subprocess.run(["sudo", "useradd", "-m", "-s", "/bin/bash", "birdnetpi"], check=False)
@@ -109,15 +98,12 @@ def setup_user_and_directories(ui: WhiptailUI) -> None:
             check=True,
         )
     except subprocess.CalledProcessError as e:
-        ui.show_error(f"Failed to create user and directories: {e}")
+        print(f"ERROR: Failed to create user and directories: {e}")
         sys.exit(1)
 
 
-def setup_venv_and_dependencies(ui: WhiptailUI) -> Path:
+def setup_venv_and_dependencies() -> Path:
     """Set up Python virtual environment and install dependencies.
-
-    Args:
-        ui: Whiptail UI instance for error reporting
 
     Returns:
         Path: Path to the virtual environment
@@ -166,22 +152,24 @@ def setup_venv_and_dependencies(ui: WhiptailUI) -> Path:
         return venv_dir
 
     except subprocess.CalledProcessError as e:
-        ui.show_error(f"Failed to set up Python environment: {e}")
+        print(f"ERROR: Failed to set up Python environment: {e}")
         sys.exit(1)
 
 
-def run_installation_with_progress(config: InstallConfig, venv_path: Path) -> None:
+def run_installation_with_progress(venv_path: Path) -> None:
     """Run the main installation with Rich progress UI.
 
     Args:
-        config: Installation configuration from pre-install
         venv_path: Path to the Python virtual environment
     """
     # Import Rich UI (now available after uv sync)
     from ui_progress import InstallStep, ProgressUI
 
+    # Use default configuration for now
+    site_name = "BirdNET-Pi"
+
     ui = ProgressUI()
-    ui.show_header(config.site_name)
+    ui.show_header(site_name)
     ui.create_tasks()
 
     try:
@@ -244,7 +232,7 @@ def run_installation_with_progress(config: InstallConfig, venv_path: Path) -> No
 
         # Show final summary
         ip_address = get_ip_address()
-        ui.show_final_summary(ip_address, config.site_name)
+        ui.show_final_summary(ip_address, site_name)
 
     except subprocess.CalledProcessError as e:
         ui.show_error(f"Installation failed: {e}")
@@ -362,33 +350,23 @@ def main() -> None:
         )
         sys.exit(1)
 
-    # Phase 1: Pre-install with whiptail (no dependencies)
-    # Check if whiptail is available
-    try:
-        subprocess.run(["which", "whiptail"], check=True, capture_output=True)
-    except subprocess.CalledProcessError:
-        print("ERROR: whiptail is not installed.")
-        print("Please install it with: sudo apt-get install -y whiptail")
-        sys.exit(1)
+    print("========================================")
+    print("BirdNET-Pi SBC Installer")
+    print("========================================")
+    print()
 
-    ui = WhiptailUI()
-    config = ui.run_pre_install()
+    # Phase 1: Bootstrap (no dependencies)
+    print("Installing system dependencies...")
+    install_system_dependencies()
 
-    if config is None:
-        print("Installation cancelled by user.")
-        sys.exit(0)
+    print("Creating user and directories...")
+    setup_user_and_directories()
 
-    # Install system dependencies
-    install_system_dependencies(ui)
+    print("Setting up Python environment...")
+    venv_path = setup_venv_and_dependencies()
 
-    # Create user and directories
-    setup_user_and_directories(ui)
-
-    # Set up venv and install Python dependencies (including Rich)
-    venv_path = setup_venv_and_dependencies(ui)
-
-    # Phase 2: Installation with Rich progress UI
-    run_installation_with_progress(config, venv_path)
+    # Phase 2: Interactive configuration and installation with Rich TUI
+    run_installation_with_progress(venv_path)
 
 
 if __name__ == "__main__":
