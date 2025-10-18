@@ -25,6 +25,7 @@ echo "  - /var/lib/birdnetpi directory"
 echo "  - /var/log/birdnetpi directory"
 echo "  - birdnetpi user"
 echo "  - /tmp/birdnet-installer directory"
+echo "  - BirdNET-Pi Caddyfile (restores original)"
 echo ""
 echo "System packages (Redis, Caddy, etc.) will remain installed."
 echo ""
@@ -68,7 +69,15 @@ systemctl daemon-reload
 
 echo "Stopping system services..."
 systemctl stop redis-server 2>/dev/null || true
-systemctl stop caddy 2>/dev/null || true
+
+echo "Restoring original Caddyfile..."
+if [ -f /etc/caddy/Caddyfile.original ]; then
+    mv /etc/caddy/Caddyfile.original /etc/caddy/Caddyfile
+    echo "  Original Caddyfile restored"
+    systemctl reload caddy 2>/dev/null || systemctl restart caddy 2>/dev/null || true
+else
+    echo "  No backup found, leaving Caddy config as-is"
+fi
 
 echo "Removing directories..."
 rm -rf /opt/birdnetpi
