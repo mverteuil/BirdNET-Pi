@@ -40,12 +40,12 @@ echo ""
 echo "Stopping BirdNET services..."
 # List of services to stop
 SERVICES=(
-    "birdnet_fastapi.service"
-    "birdnet_pulseaudio.service"
-    "birdnet_audio_capture.service"
-    "birdnet_audio_analysis.service"
-    "birdnet_audio_websocket.service"
-    "birdnet_update.service"
+    "birdnetpi-fastapi.service"
+    "birdnetpi-pulseaudio.service"
+    "birdnetpi-audio-capture.service"
+    "birdnetpi-audio-analysis.service"
+    "birdnetpi-audio-websocket.service"
+    "birdnetpi-update.service"
 )
 
 for service in "${SERVICES[@]}"; do
@@ -64,7 +64,7 @@ for service in "${SERVICES[@]}"; do
 done
 
 echo "Removing service files..."
-rm -f /etc/systemd/system/birdnet_*.service
+rm -f /etc/systemd/system/birdnetpi-*.service
 systemctl daemon-reload
 
 echo "Stopping system services..."

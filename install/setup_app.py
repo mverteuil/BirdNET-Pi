@@ -329,7 +329,7 @@ def setup_systemd_services(venv_path: Path) -> None:
 
     services = [
         {
-            "name": "birdnet_fastapi.service",
+            "name": "birdnetpi-fastapi.service",
             "description": "BirdNET FastAPI Server",
             "after": "network-online.target redis-server.service",
             "exec_start": (
@@ -338,36 +338,36 @@ def setup_systemd_services(venv_path: Path) -> None:
             "environment": "PYTHONPATH=/opt/birdnetpi/src",
         },
         {
-            "name": "birdnet_pulseaudio.service",
-            "description": "PulseAudio Sound Server",
+            "name": "birdnetpi-pulseaudio.service",
+            "description": "BirdNET PulseAudio Sound Server",
             "after": "network-online.target",
             "exec_start": "pulseaudio --daemonize=no --exit-idle-time=-1",
         },
         {
-            "name": "birdnet_audio_capture.service",
+            "name": "birdnetpi-audio-capture.service",
             "description": "BirdNET Audio Capture",
-            "after": "network-online.target birdnet_pulseaudio.service",
+            "after": "network-online.target birdnetpi-pulseaudio.service",
             "exec_start": f"{venv_path / 'bin' / 'audio-capture-daemon'}",
             "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=audio_capture",
         },
         {
-            "name": "birdnet_audio_analysis.service",
+            "name": "birdnetpi-audio-analysis.service",
             "description": "BirdNET Audio Analysis",
-            "after": "network-online.target birdnet_audio_capture.service",
+            "after": "network-online.target birdnetpi-audio-capture.service",
             "exec_start": f"{venv_path / 'bin' / 'audio-analysis-daemon'}",
             "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=audio_analysis",
         },
         {
-            "name": "birdnet_audio_websocket.service",
+            "name": "birdnetpi-audio-websocket.service",
             "description": "BirdNET Audio Websocket",
-            "after": "network-online.target birdnet_audio_capture.service",
+            "after": "network-online.target birdnetpi-audio-capture.service",
             "exec_start": f"{venv_path / 'bin' / 'audio-websocket-daemon'}",
             "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=audio_websocket",
         },
         {
-            "name": "birdnet_update.service",
-            "description": "BirdNET Update Daemon",
-            "after": "network-online.target birdnet_fastapi.service",
+            "name": "birdnetpi-update.service",
+            "description": "BirdNET Update Monitor",
+            "after": "network-online.target birdnetpi-fastapi.service",
             "exec_start": f"{venv_path / 'bin' / 'update-daemon'} --mode both",
             "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=update_daemon",
         },

@@ -119,12 +119,12 @@ class ProgressUI:
         services = [
             "redis-server.service",
             "caddy.service",
-            "birdnet_fastapi.service",
-            "birdnet_pulseaudio.service",
-            "birdnet_audio_capture.service",
-            "birdnet_audio_analysis.service",
-            "birdnet_audio_websocket.service",
-            "birdnet_update.service",
+            "birdnetpi-fastapi.service",
+            "birdnetpi-pulseaudio.service",
+            "birdnetpi-audio-capture.service",
+            "birdnetpi-audio-analysis.service",
+            "birdnetpi-audio-websocket.service",
+            "birdnetpi-update.service",
         ]
 
         table = Table(title="Service Status", show_header=True, header_style="bold cyan")
