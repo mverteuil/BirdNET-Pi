@@ -353,6 +353,20 @@ def flash_image(image_path: Path, device: str) -> None:
     if platform.system() == "Darwin":
         subprocess.run(["diskutil", "unmountDisk", device], check=True, stdout=subprocess.DEVNULL)
 
+    # Detect GNU dd (gdd) vs BSD dd on macOS
+    dd_cmd = "dd"
+    dd_bs = "bs=4m"  # BSD dd format
+    dd_extra_args = []
+
+    if platform.system() == "Darwin":
+        # Check if GNU dd (gdd) is available from coreutils
+        gdd_check = subprocess.run(["which", "gdd"], capture_output=True, check=False)
+        if gdd_check.returncode == 0:
+            dd_cmd = "gdd"
+            dd_bs = "bs=4M"  # GNU dd format
+            dd_extra_args = ["status=progress"]  # GNU dd supports progress
+            console.print("[dim]Using GNU dd (gdd) for progress reporting[/dim]")
+
     # Decompress and flash
     if image_path.suffix == ".xz":
         console.print(
@@ -362,13 +376,13 @@ def flash_image(image_path: Path, device: str) -> None:
         # xz -dc = decompress to stdout
         with subprocess.Popen(["xz", "-dc", str(image_path)], stdout=subprocess.PIPE) as xz_proc:
             subprocess.run(
-                ["sudo", "dd", f"of={device}", "bs=4m"],  # macOS uses lowercase 'm'
+                ["sudo", dd_cmd, f"of={device}", dd_bs, *dd_extra_args],
                 stdin=xz_proc.stdout,
                 check=True,
             )
     else:
         subprocess.run(
-            ["sudo", "dd", f"if={image_path}", f"of={device}", "bs=4m"],
+            ["sudo", dd_cmd, f"if={image_path}", f"of={device}", dd_bs, *dd_extra_args],
             check=True,
         )
 
