@@ -68,6 +68,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             webhook_url_list = [url.strip() for url in webhook_urls if url.strip()]
         webhook_service.configure_webhooks_from_urls(webhook_url_list)
 
+    # Configure Apprise service from config
+    apprise_service = container.apprise_service()
+    if config.apprise_targets:
+        apprise_service.configure_targets(config.apprise_targets)
+
     # Register notification listeners
     notification_manager.register_listeners()
 
@@ -93,6 +98,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # Start IoT services
         await container.mqtt_service().start()
         await container.webhook_service().start()
+        await container.apprise_service().start()
 
         logger.info("All services started successfully")
 
@@ -103,6 +109,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         # Cleanup: Stop services in reverse order
         try:
+            await container.apprise_service().stop()
             await container.webhook_service().stop()
             await container.mqtt_service().stop()
             # hardware_monitor_manager has been removed - functionality moved to SystemInspector
