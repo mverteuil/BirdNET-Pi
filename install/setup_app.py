@@ -175,18 +175,19 @@ def run_installation_with_progress(venv_path: Path) -> None:
     site_name = "BirdNET-Pi"
 
     ui = ProgressUI()
+    # Header will clear screen and show title
     ui.show_header(site_name)
 
-    # Start progress display
-    ui.progress.start()
+    # Create tasks and mark bootstrap steps as complete BEFORE starting progress
     ui.create_tasks()
-
-    # Mark bootstrap steps as complete
     ui.complete_task(InstallStep.SYSTEM_DEPS)
     ui.complete_task(InstallStep.USER_SETUP)
     ui.complete_task(InstallStep.VENV_SETUP)
     ui.complete_task(InstallStep.SOURCE_CODE)
     ui.complete_task(InstallStep.PYTHON_DEPS)
+
+    # Now start progress display - this will render all tasks once
+    ui.progress.start()
 
     try:
         # Copy config templates
@@ -207,6 +208,9 @@ def run_installation_with_progress(venv_path: Path) -> None:
         # Install assets
         ui.update_task(InstallStep.ASSETS, advance=10)
         install_assets_path = venv_path / "bin" / "install-assets"
+
+        # Use 'latest' to automatically get the most recent release
+        # Pass BIRDNETPI_DATA as environment variable
         result = subprocess.run(
             [
                 "sudo",
@@ -214,10 +218,10 @@ def run_installation_with_progress(venv_path: Path) -> None:
                 "birdnetpi",
                 str(install_assets_path),
                 "install",
-                "v2.2.0",
-                "--include-models",
-                "--include-ioc-db",
+                "latest",
+                "--skip-existing",
             ],
+            env={**os.environ, "BIRDNETPI_DATA": "/var/lib/birdnetpi"},
             check=False,
             capture_output=True,
             text=True,
