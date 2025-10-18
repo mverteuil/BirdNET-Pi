@@ -168,6 +168,9 @@ def run_installation_with_progress(venv_path: Path) -> None:
     Args:
         venv_path: Path to the Python virtual environment
     """
+    # Clear terminal before starting Rich UI (handles terminals where Rich clear doesn't work)
+    print("\033[2J\033[H", end="", flush=True)
+
     # Import Rich UI (now available after uv sync)
     from ui_progress import InstallStep, ProgressUI
 
