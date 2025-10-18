@@ -133,6 +133,13 @@ def setup_venv_and_dependencies() -> Path:
             subprocess.run(["sudo", "cp", "uv.lock", str(uv_lock_path)], check=True)
             subprocess.run(["sudo", "chown", "birdnetpi:birdnetpi", str(uv_lock_path)], check=True)
 
+        # Copy source code (required before uv sync can build the package)
+        subprocess.run(["sudo", "cp", "-r", "src", "/opt/birdnetpi/"], check=True)
+        subprocess.run(
+            ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/src"],
+            check=True,
+        )
+
         # Install dependencies with uv
         uv_path = str(venv_dir / "bin" / "uv")
         subprocess.run(
@@ -171,73 +178,75 @@ def run_installation_with_progress(venv_path: Path) -> None:
 
     ui = ProgressUI()
     ui.show_header(site_name)
-    ui.create_tasks()
 
-    try:
-        # Copy source code
-        ui.update_task(InstallStep.SOURCE_CODE, advance=20)
-        subprocess.run(["sudo", "cp", "-r", "src/birdnetpi", "/opt/birdnetpi/"], check=True)
-        subprocess.run(
-            ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/birdnetpi"],
-            check=True,
-        )
+    with ui.progress:
+        ui.create_tasks()
+
+        # Mark bootstrap steps as complete
+        ui.complete_task(InstallStep.SYSTEM_DEPS)
+        ui.complete_task(InstallStep.USER_SETUP)
+        ui.complete_task(InstallStep.VENV_SETUP)
         ui.complete_task(InstallStep.SOURCE_CODE)
+        ui.complete_task(InstallStep.PYTHON_DEPS)
 
-        # Copy config templates
-        ui.update_task(InstallStep.CONFIG_TEMPLATES, advance=20)
-        subprocess.run(["sudo", "cp", "-r", "config_templates", "/opt/birdnetpi/"], check=True)
-        subprocess.run(
-            ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/config_templates"],
-            check=True,
-        )
+        try:
+            # Copy config templates
+            ui.update_task(InstallStep.CONFIG_TEMPLATES, advance=20)
+            subprocess.run(["sudo", "cp", "-r", "config_templates", "/opt/birdnetpi/"], check=True)
+            subprocess.run(
+                ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/config_templates"],
+                check=True,
+            )
 
-        # Configure Caddy
-        caddyfile = Path("/etc/caddy/Caddyfile")
-        if not caddyfile.exists():
-            subprocess.run(["sudo", "cp", "config_templates/Caddyfile", str(caddyfile)], check=True)
-            subprocess.run(["sudo", "chown", "root:root", str(caddyfile)], check=True)
-        ui.complete_task(InstallStep.CONFIG_TEMPLATES)
+            # Configure Caddy
+            caddyfile = Path("/etc/caddy/Caddyfile")
+            if not caddyfile.exists():
+                subprocess.run(
+                    ["sudo", "cp", "config_templates/Caddyfile", str(caddyfile)], check=True
+                )
+                subprocess.run(["sudo", "chown", "root:root", str(caddyfile)], check=True)
+            ui.complete_task(InstallStep.CONFIG_TEMPLATES)
 
-        # Install assets
-        ui.update_task(InstallStep.ASSETS, advance=10)
-        install_assets_path = venv_path / "bin" / "install-assets"
-        result = subprocess.run(
-            [
-                "sudo",
-                "-u",
-                "birdnetpi",
-                str(install_assets_path),
-                "install",
-                "v2.2.0",
-                "--include-models",
-                "--include-ioc-db",
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0:
-            ui.complete_task(InstallStep.ASSETS)
-        else:
-            ui.show_error("Asset installation failed", result.stderr)
+            # Install assets
+            ui.update_task(InstallStep.ASSETS, advance=10)
+            install_assets_path = venv_path / "bin" / "install-assets"
+            result = subprocess.run(
+                [
+                    "sudo",
+                    "-u",
+                    "birdnetpi",
+                    str(install_assets_path),
+                    "install",
+                    "v2.2.0",
+                    "--include-models",
+                    "--include-ioc-db",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                ui.complete_task(InstallStep.ASSETS)
+            else:
+                ui.show_error("Asset installation failed", result.stderr)
 
-        # Setup systemd services
-        ui.update_task(InstallStep.SYSTEMD, advance=10)
-        setup_systemd_services(venv_path)
-        ui.complete_task(InstallStep.SYSTEMD)
+            # Setup systemd services
+            ui.update_task(InstallStep.SYSTEMD, advance=10)
+            setup_systemd_services(venv_path)
+            ui.complete_task(InstallStep.SYSTEMD)
 
-        # Health check
-        ui.update_task(InstallStep.HEALTH_CHECK, advance=50)
-        ui.show_service_status()
-        ui.complete_task(InstallStep.HEALTH_CHECK)
+            # Health check
+            ui.update_task(InstallStep.HEALTH_CHECK, advance=50)
+            ui.complete_task(InstallStep.HEALTH_CHECK)
 
-        # Show final summary
-        ip_address = get_ip_address()
-        ui.show_final_summary(ip_address, site_name)
+        except subprocess.CalledProcessError as e:
+            ui.show_error(f"Installation failed: {e}")
+            sys.exit(1)
 
-    except subprocess.CalledProcessError as e:
-        ui.show_error(f"Installation failed: {e}")
-        sys.exit(1)
+    # Show service status and final summary (outside progress context)
+    ui.show_service_status()
+    ip_address = get_ip_address()
+    ui.show_final_summary(ip_address, site_name)
 
 
 def setup_systemd_services(venv_path: Path) -> None:
