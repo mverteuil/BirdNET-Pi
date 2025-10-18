@@ -422,7 +422,9 @@ network={{
 
 
 @click.command()
-@click.option("--save-config", is_flag=True, help="Save configuration for future use")
+@click.option(
+    "--save-config", "save_config_flag", is_flag=True, help="Save configuration for future use"
+)
 def main(save_config_flag: bool) -> None:
     """Flash Raspberry Pi OS to SD card and configure for BirdNET-Pi."""
     console.print()
