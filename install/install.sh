@@ -37,12 +37,12 @@ if [ -d "$INSTALL_DIR" ]; then
     echo "Repository already exists at $INSTALL_DIR"
     echo "Pulling latest changes..."
     cd "$INSTALL_DIR"
-    git fetch origin
+    git fetch --depth 1 origin "$BRANCH"
     git checkout "$BRANCH"
     git pull origin "$BRANCH"
 else
     echo "Cloning repository..."
-    git clone --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
+    git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
     cd "$INSTALL_DIR"
 fi
 
