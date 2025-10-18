@@ -487,6 +487,9 @@ class TestDetectionBufferingWithAdminOperations:
         ]
 
         try:
+            # Stop background flush task to prevent race conditions with manual flushes
+            service.stop_buffer_flush_task()
+
             # Clear buffer
             with service.buffer_lock:
                 service.detection_buffer.clear()
@@ -573,4 +576,5 @@ class TestDetectionBufferingWithAdminOperations:
                 assert "Successfully flushed" in caplog.text
 
         finally:
-            service.stop_buffer_flush_task()
+            # Restart background flush task for other tests
+            service.start_buffer_flush_task()

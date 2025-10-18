@@ -2496,3 +2496,64 @@ class DetectionQueryService:
 
             finally:
                 await self.species_database.detach_all_from_session(session)
+
+    async def is_first_detection_ever(self, detection_id: str, scientific_name: str) -> bool:
+        """Check if a detection is the first ever for a species using window functions.
+
+        Args:
+            detection_id: ID of the detection to check
+            scientific_name: Scientific name of the species
+
+        Returns:
+            True if this is the first detection ever, False otherwise
+        """
+        async with self.core_database.get_async_db() as session:
+            stmt = text("""
+                SELECT
+                    ROW_NUMBER() OVER (
+                        PARTITION BY scientific_name ORDER BY timestamp
+                    ) as overall_rank
+                FROM detections
+                WHERE id = :detection_id AND scientific_name = :scientific_name
+            """)
+            result = await session.execute(
+                stmt, {"detection_id": detection_id, "scientific_name": scientific_name}
+            )
+            row = result.first()
+            return row is not None and row.overall_rank == 1
+
+    async def is_first_detection_in_period(
+        self, detection_id: str, scientific_name: str, period_start: dt
+    ) -> bool:
+        """Check if a detection is the first for a species in a time period.
+
+        Args:
+            detection_id: ID of the detection to check
+            scientific_name: Scientific name of the species
+            period_start: Start of the time period
+
+        Returns:
+            True if this is the first detection in the period, False otherwise
+        """
+        async with self.core_database.get_async_db() as session:
+            stmt = text("""
+                SELECT
+                    ROW_NUMBER() OVER (
+                        PARTITION BY scientific_name
+                        ORDER BY timestamp
+                    ) as period_rank
+                FROM detections
+                WHERE id = :detection_id
+                    AND scientific_name = :scientific_name
+                    AND timestamp >= :period_start
+            """)
+            result = await session.execute(
+                stmt,
+                {
+                    "detection_id": detection_id,
+                    "scientific_name": scientific_name,
+                    "period_start": period_start,
+                },
+            )
+            row = result.first()
+            return row is not None and row.period_rank == 1

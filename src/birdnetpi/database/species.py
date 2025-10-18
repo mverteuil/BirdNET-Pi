@@ -218,3 +218,37 @@ class SpeciesDatabaseService:
             "IOC World Bird List (www.worldbirdnames.org) - CC-BY-4.0",
             "Wikidata - Public Domain (CC0)",
         ]
+
+    async def get_species_taxonomy(
+        self, session: AsyncSession, scientific_name: str
+    ) -> dict[str, str] | None:
+        """Get taxonomic information for a species.
+
+        Args:
+            session: SQLAlchemy async session with databases attached
+            scientific_name: Scientific name to look up
+
+        Returns:
+            Dictionary with order, family, genus, or None if not found
+        """
+        # Query IOC database for taxonomy
+        # The IOC database has order_name and family columns in the species table
+        stmt = text("""
+            SELECT order_name, family
+            FROM ioc.species
+            WHERE LOWER(scientific_name) = LOWER(:sci_name)
+        """)
+        result = await session.execute(stmt, {"sci_name": scientific_name})
+        row = result.first()
+
+        if not row:
+            return None
+
+        # Extract genus from scientific name (first word)
+        genus = scientific_name.split()[0] if scientific_name else ""
+
+        return {
+            "order": row.order_name if hasattr(row, "order_name") else "",  # type: ignore[attr-defined]
+            "family": row.family if hasattr(row, "family") else "",  # type: ignore[attr-defined]
+            "genus": genus,
+        }
