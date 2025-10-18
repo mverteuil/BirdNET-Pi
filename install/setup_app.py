@@ -1,12 +1,262 @@
+"""BirdNET-Pi SBC installer with TUI."""
+
 import os
+import socket
 import subprocess
 import sys
 from pathlib import Path
 
+# Import whiptail UI (no dependencies)
+from ui_whiptail import InstallConfig, WhiptailUI
+
+
+def get_ip_address() -> str:
+    """Get the primary IP address of this machine.
+
+    Returns:
+        str: IP address or 'unknown' if not connected
+    """
+    try:
+        # Create a socket to determine the route to the internet
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "unknown"
+
+
+def install_system_dependencies(ui: WhiptailUI) -> None:
+    """Install system-level dependencies.
+
+    Args:
+        ui: Whiptail UI instance for error reporting
+    """
+    try:
+        subprocess.run(["sudo", "apt-get", "update"], check=True)
+        dependencies = [
+            "ffmpeg",
+            "sqlite3",
+            "icecast2",
+            "lsof",
+            "net-tools",
+            "alsa-utils",
+            "pulseaudio",
+            "avahi-utils",
+            "sox",
+            "libsox-fmt-mp3",
+            "bc",
+            "libjpeg-dev",
+            "zlib1g-dev",
+            "debian-keyring",
+            "debian-archive-keyring",
+            "apt-transport-https",
+            "gnupg",
+            "curl",
+            "ca-certificates",
+            "python3-venv",
+            "caddy",
+            "iproute2",
+            "libportaudio2",
+            "portaudio19-dev",
+            "systemd-journal-remote",
+            "redis-server",
+        ]
+        subprocess.run(
+            ["sudo", "apt-get", "install", "-y", "--no-install-recommends", *dependencies],
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        ui.show_error(f"Failed to install system dependencies: {e}")
+        sys.exit(1)
+
+
+def setup_user_and_directories(ui: WhiptailUI) -> None:
+    """Create birdnetpi user and required directories.
+
+    Args:
+        ui: Whiptail UI instance for error reporting
+    """
+    try:
+        # Create user (ignore error if already exists)
+        subprocess.run(["sudo", "useradd", "-m", "-s", "/bin/bash", "birdnetpi"], check=False)
+        subprocess.run(["sudo", "usermod", "-aG", "audio,video,dialout", "birdnetpi"], check=True)
+
+        # Create directories
+        dirs_to_create = [
+            "/var/log/birdnetpi",
+            "/opt/birdnetpi",
+            "/var/lib/birdnetpi/config",
+            "/var/lib/birdnetpi/models",
+            "/var/lib/birdnetpi/recordings",
+            "/var/lib/birdnetpi/database",
+        ]
+        for d in dirs_to_create:
+            subprocess.run(["sudo", "mkdir", "-p", d], check=True)
+
+        subprocess.run(["sudo", "chmod", "777", "/var/log"], check=True)
+        subprocess.run(
+            [
+                "sudo",
+                "chown",
+                "-R",
+                "birdnetpi:birdnetpi",
+                "/var/log/birdnetpi",
+                "/opt/birdnetpi",
+                "/var/lib/birdnetpi",
+            ],
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        ui.show_error(f"Failed to create user and directories: {e}")
+        sys.exit(1)
+
+
+def setup_venv_and_dependencies(ui: WhiptailUI) -> Path:
+    """Set up Python virtual environment and install dependencies.
+
+    Args:
+        ui: Whiptail UI instance for error reporting
+
+    Returns:
+        Path: Path to the virtual environment
+    """
+    try:
+        venv_dir = Path("/opt/birdnetpi/.venv")
+        if not venv_dir.exists():
+            subprocess.run(
+                ["sudo", "-u", "birdnetpi", "python3.11", "-m", "venv", str(venv_dir)],
+                check=True,
+            )
+
+        # Install uv
+        pip_path = str(venv_dir / "bin" / "pip")
+        subprocess.run(["sudo", "-u", "birdnetpi", pip_path, "install", "uv"], check=True)
+
+        # Copy project files
+        pyproject_path = Path("/opt/birdnetpi/pyproject.toml")
+        if not pyproject_path.exists():
+            subprocess.run(["sudo", "cp", "pyproject.toml", str(pyproject_path)], check=True)
+            subprocess.run(
+                ["sudo", "chown", "birdnetpi:birdnetpi", str(pyproject_path)], check=True
+            )
+
+        uv_lock_path = Path("/opt/birdnetpi/uv.lock")
+        if not uv_lock_path.exists():
+            subprocess.run(["sudo", "cp", "uv.lock", str(uv_lock_path)], check=True)
+            subprocess.run(["sudo", "chown", "birdnetpi:birdnetpi", str(uv_lock_path)], check=True)
+
+        # Install dependencies with uv
+        uv_path = str(venv_dir / "bin" / "uv")
+        subprocess.run(
+            [
+                "sudo",
+                "-u",
+                "birdnetpi",
+                uv_path,
+                "sync",
+                "--locked",
+                "--no-dev",
+                f"--python={sys.executable}",
+            ],
+            check=True,
+        )
+
+        return venv_dir
+
+    except subprocess.CalledProcessError as e:
+        ui.show_error(f"Failed to set up Python environment: {e}")
+        sys.exit(1)
+
+
+def run_installation_with_progress(config: InstallConfig, venv_path: Path) -> None:
+    """Run the main installation with Rich progress UI.
+
+    Args:
+        config: Installation configuration from pre-install
+        venv_path: Path to the Python virtual environment
+    """
+    # Import Rich UI (now available after uv sync)
+    from ui_progress import InstallStep, ProgressUI
+
+    ui = ProgressUI()
+    ui.show_header(config.site_name)
+    ui.create_tasks()
+
+    try:
+        # Copy source code
+        ui.update_task(InstallStep.SOURCE_CODE, advance=20)
+        subprocess.run(["sudo", "cp", "-r", "src/birdnetpi", "/opt/birdnetpi/"], check=True)
+        subprocess.run(
+            ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/birdnetpi"],
+            check=True,
+        )
+        ui.complete_task(InstallStep.SOURCE_CODE)
+
+        # Copy config templates
+        ui.update_task(InstallStep.CONFIG_TEMPLATES, advance=20)
+        subprocess.run(["sudo", "cp", "-r", "config_templates", "/opt/birdnetpi/"], check=True)
+        subprocess.run(
+            ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/config_templates"],
+            check=True,
+        )
+
+        # Configure Caddy
+        caddyfile = Path("/etc/caddy/Caddyfile")
+        if not caddyfile.exists():
+            subprocess.run(["sudo", "cp", "config_templates/Caddyfile", str(caddyfile)], check=True)
+            subprocess.run(["sudo", "chown", "root:root", str(caddyfile)], check=True)
+        ui.complete_task(InstallStep.CONFIG_TEMPLATES)
+
+        # Install assets
+        ui.update_task(InstallStep.ASSETS, advance=10)
+        install_assets_path = venv_path / "bin" / "install-assets"
+        result = subprocess.run(
+            [
+                "sudo",
+                "-u",
+                "birdnetpi",
+                str(install_assets_path),
+                "install",
+                "v2.2.0",
+                "--include-models",
+                "--include-ioc-db",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            ui.complete_task(InstallStep.ASSETS)
+        else:
+            ui.show_error("Asset installation failed", result.stderr)
+
+        # Setup systemd services
+        ui.update_task(InstallStep.SYSTEMD, advance=10)
+        setup_systemd_services(venv_path)
+        ui.complete_task(InstallStep.SYSTEMD)
+
+        # Health check
+        ui.update_task(InstallStep.HEALTH_CHECK, advance=50)
+        ui.show_service_status()
+        ui.complete_task(InstallStep.HEALTH_CHECK)
+
+        # Show final summary
+        ip_address = get_ip_address()
+        ui.show_final_summary(ip_address, config.site_name)
+
+    except subprocess.CalledProcessError as e:
+        ui.show_error(f"Installation failed: {e}")
+        sys.exit(1)
+
 
 def setup_systemd_services(venv_path: Path) -> None:
-    """Set up systemd services for the application."""
-    print("\nSetting up systemd services...")
+    """Set up systemd services for the application.
+
+    Args:
+        venv_path: Path to the Python virtual environment
+    """
     systemd_dir = "/etc/systemd/system/"
     user = "birdnetpi"
     python_exec = venv_path / "bin" / "python3"
@@ -74,6 +324,7 @@ def setup_systemd_services(venv_path: Path) -> None:
         service_name = service_config["name"]
         service_file_path = os.path.join(systemd_dir, service_name)
         content = "[Unit]\n"
+        content += f"Description={service_config['description']}\n"
         if "after" in service_config:
             content += f"After={service_config['after']}\n"
         content += """
@@ -99,11 +350,11 @@ WantedBy=multi-user.target
         subprocess.run(["sudo", "systemctl", "start", service_name], check=True)
 
     subprocess.run(["sudo", "systemctl", "daemon-reload"], check=True)
-    print("Systemd services setup complete.")
 
 
 def main() -> None:
-    """Set up the BirdNET-Pi application."""
+    """Run the main installer."""
+    # Check not running as root
     if os.geteuid() == 0:
         print(
             "This script should not be run as root. "
@@ -111,163 +362,25 @@ def main() -> None:
         )
         sys.exit(1)
 
-    # Install system dependencies
-    subprocess.run(["sudo", "apt-get", "update"], check=True)
-    dependencies = [
-        "ffmpeg",
-        "sqlite3",
-        "icecast2",
-        "lsof",
-        "net-tools",
-        "alsa-utils",
-        "pulseaudio",
-        "avahi-utils",
-        "sox",
-        "libsox-fmt-mp3",
-        "bc",
-        "libjpeg-dev",
-        "zlib1g-dev",
-        "debian-keyring",
-        "debian-archive-keyring",
-        "apt-transport-https",
-        "gnupg",
-        "curl",
-        "ca-certificates",
-        "python3-venv",
-        "caddy",
-        "iproute2",
-        "libportaudio2",
-        "portaudio19-dev",
-        "systemd-journal-remote",
-        "redis-server",
-    ]
-    subprocess.run(
-        ["sudo", "apt-get", "install", "-y", "--no-install-recommends", *dependencies],
-        check=True,
-    )
+    # Phase 1: Pre-install with whiptail (no dependencies)
+    ui = WhiptailUI()
+    config = ui.run_pre_install()
 
-    # Configure Caddy
-    subprocess.run(
-        [
-            "sudo",
-            "curl",
-            "-1sLf",
-            "https://dl.cloudsmith.io/public/caddy/stable/gpg.key",
-            "-o",
-            "/usr/share/keyrings/caddy-stable-archive-keyring.gpg",
-        ],
-        check=True,
-    )
-    subprocess.run(
-        [
-            "sudo",
-            "sh",
-            "-c",
-            "curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' "
-            "| tee /etc/apt/sources.list.d/caddy-stable.list",
-        ],
-        check=True,
-    )
-    caddyfile = Path("/etc/caddy/Caddyfile")
-    if not caddyfile.exists():
-        subprocess.run(["sudo", "cp", "config_templates/Caddyfile", str(caddyfile)], check=True)
-        subprocess.run(["sudo", "chown", "root:root", str(caddyfile)], check=True)
+    if config is None:
+        print("Installation cancelled by user.")
+        sys.exit(0)
+
+    # Install system dependencies
+    install_system_dependencies(ui)
 
     # Create user and directories
-    subprocess.run(["sudo", "useradd", "-m", "-s", "/bin/bash", "birdnetpi"], check=False)
-    subprocess.run(["sudo", "usermod", "-aG", "audio,video,dialout", "birdnetpi"], check=True)
-    dirs_to_create = [
-        "/var/log/birdnetpi",
-        "/opt/birdnetpi",
-        "/var/lib/birdnetpi/config",
-        "/var/lib/birdnetpi/models",
-        "/var/lib/birdnetpi/recordings",
-        "/var/lib/birdnetpi/database",
-    ]
-    for d in dirs_to_create:
-        subprocess.run(["sudo", "mkdir", "-p", d], check=True)
-    subprocess.run(["sudo", "chmod", "777", "/var/log"], check=True)
-    subprocess.run(
-        [
-            "sudo",
-            "chown",
-            "-R",
-            "birdnetpi:birdnetpi",
-            "/var/log/birdnetpi",
-            "/opt/birdnetpi",
-            "/var/lib/birdnetpi",
-        ],
-        check=True,
-    )
+    setup_user_and_directories(ui)
 
-    # Use a virtual environment for the application
-    venv_dir = Path("/opt/birdnetpi/.venv")
-    if not venv_dir.exists():
-        subprocess.run(
-            ["sudo", "-u", "birdnetpi", "python3.11", "-m", "venv", str(venv_dir)], check=True
-        )
+    # Set up venv and install Python dependencies (including Rich)
+    venv_path = setup_venv_and_dependencies(ui)
 
-    # Install Python dependencies
-    pip_path = str(venv_dir / "bin" / "pip")
-    subprocess.run(["sudo", "-u", "birdnetpi", pip_path, "install", "uv"], check=True)
-    uv_path = str(venv_dir / "bin" / "uv")
-    pyproject_path = Path("/opt/birdnetpi/pyproject.toml")
-    if not pyproject_path.exists():
-        subprocess.run(["sudo", "cp", "pyproject.toml", str(pyproject_path)], check=True)
-        subprocess.run(["sudo", "chown", "birdnetpi:birdnetpi", str(pyproject_path)], check=True)
-
-    uv_lock_path = Path("/opt/birdnetpi/uv.lock")
-    if not uv_lock_path.exists():
-        subprocess.run(["sudo", "cp", "uv.lock", str(uv_lock_path)], check=True)
-        subprocess.run(["sudo", "chown", "birdnetpi:birdnetpi", str(uv_lock_path)], check=True)
-
-    subprocess.run(
-        [
-            "sudo",
-            "-u",
-            "birdnetpi",
-            uv_path,
-            "sync",
-            "--locked",
-            "--no-dev",
-            f"--python={sys.executable}",
-        ],
-        check=True,
-    )
-
-    # Copy source code
-    subprocess.run(["sudo", "cp", "-r", "src/birdnetpi", "/opt/birdnetpi/"], check=True)
-    subprocess.run(
-        ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/birdnetpi"], check=True
-    )
-
-    # Copy config templates (for redis.conf, etc.)
-    subprocess.run(["sudo", "cp", "-r", "config_templates", "/opt/birdnetpi/"], check=True)
-    subprocess.run(
-        ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/config_templates"],
-        check=True,
-    )
-
-    # Install assets
-    install_assets_path = venv_dir / "bin" / "install-assets"
-    subprocess.run(
-        [
-            "sudo",
-            "-u",
-            "birdnetpi",
-            str(install_assets_path),
-            "install",
-            "v2.2.0",
-            "--include-models",
-            "--include-ioc-db",
-        ],
-        check=True,
-    )
-
-    # Setup systemd services
-    setup_systemd_services(venv_dir)
-
-    print("Installation complete.")
+    # Phase 2: Installation with Rich progress UI
+    run_installation_with_progress(config, venv_path)
 
 
 if __name__ == "__main__":
