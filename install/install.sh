@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # BirdNET-Pi SBC Installer Bootstrap Script
-# This script can be run via: curl -fsSL <url> | bash
-# It clones the repository and executes the main Python installer.
+#
+# One-liner installation (recommended):
+#   bash <(curl -fsSL https://raw.githubusercontent.com/mverteuil/BirdNET-Pi/feature/sbc-installer/install/install.sh)
+#
+# Or download first:
+#   curl -fsSL <url> -o install.sh && bash install.sh
 set -e
 
 # Configuration
