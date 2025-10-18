@@ -201,10 +201,16 @@ def run_installation_with_progress(venv_path: Path) -> None:
             check=True,
         )
 
-        # Configure Caddy
+        # Configure Caddy - substitute port 8000 with 80 for SBC
         caddyfile = Path("/etc/caddy/Caddyfile")
         if not caddyfile.exists():
-            subprocess.run(["sudo", "cp", "config_templates/Caddyfile", str(caddyfile)], check=True)
+            # Copy template and replace :8000 with :80 for SBC installs
+            subprocess.run(
+                ["sudo", "sed", "s/:8000/:80/g", "config_templates/Caddyfile"],
+                stdout=open("/tmp/Caddyfile.sbc", "w"),
+                check=True,
+            )
+            subprocess.run(["sudo", "mv", "/tmp/Caddyfile.sbc", str(caddyfile)], check=True)
             subprocess.run(["sudo", "chown", "root:root", str(caddyfile)], check=True)
         ui.complete_task(InstallStep.CONFIG_TEMPLATES)
 
