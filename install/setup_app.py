@@ -14,6 +14,12 @@ def setup_systemd_services(venv_path: Path) -> None:
 
     services = [
         {
+            "name": "birdnet_redis.service",
+            "description": "Redis Cache Server",
+            "after": "network-online.target",
+            "exec_start": "/usr/bin/redis-server /opt/birdnetpi/config_templates/redis.conf",
+        },
+        {
             "name": "birdnet_caddy.service",
             "description": "Caddy Web Server",
             "after": "network-online.target",
@@ -22,9 +28,9 @@ def setup_systemd_services(venv_path: Path) -> None:
         {
             "name": "birdnet_fastapi.service",
             "description": "BirdNET FastAPI Server",
-            "after": "network-online.target",
+            "after": "network-online.target birdnet_redis.service",
             "exec_start": (
-                f"{python_exec} -m uvicorn birdnetpi.web.main:app --host 0.0.0.0 --port 8000"
+                f"{python_exec} -m uvicorn birdnetpi.web.main:app --host 0.0.0.0 --port 8888"
             ),
             "environment": "PYTHONPATH=/opt/birdnetpi/src",
         },
@@ -37,23 +43,30 @@ def setup_systemd_services(venv_path: Path) -> None:
         {
             "name": "birdnet_audio_capture.service",
             "description": "BirdNET Audio Capture",
-            "after": "network-online.target",
-            "exec_start": f"{python_exec} -m birdnetpi.daemons.audio_capture_daemon",
-            "environment": "PYTHONPATH=/opt/birdnetpi/src",
+            "after": "network-online.target birdnet_pulseaudio.service",
+            "exec_start": f"{venv_path / 'bin' / 'audio-capture-daemon'}",
+            "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=audio_capture",
         },
         {
             "name": "birdnet_audio_analysis.service",
             "description": "BirdNET Audio Analysis",
-            "after": "network-online.target",
-            "exec_start": f"{python_exec} -m birdnetpi.daemons.audio_analysis_daemon",
-            "environment": "PYTHONPATH=/opt/birdnetpi/src",
+            "after": "network-online.target birdnet_audio_capture.service",
+            "exec_start": f"{venv_path / 'bin' / 'audio-analysis-daemon'}",
+            "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=audio_analysis",
         },
         {
             "name": "birdnet_audio_websocket.service",
             "description": "BirdNET Audio Websocket",
-            "after": "network-online.target",
-            "exec_start": f"{python_exec} -m birdnetpi.daemons.audio_websocket_daemon",
-            "environment": "PYTHONPATH=/opt/birdnetpi/src",
+            "after": "network-online.target birdnet_audio_capture.service",
+            "exec_start": f"{venv_path / 'bin' / 'audio-websocket-daemon'}",
+            "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=audio_websocket",
+        },
+        {
+            "name": "birdnet_update.service",
+            "description": "BirdNET Update Daemon",
+            "after": "network-online.target birdnet_fastapi.service",
+            "exec_start": f"{venv_path / 'bin' / 'update-daemon'} --mode both",
+            "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=update_daemon",
         },
     ]
 
@@ -126,6 +139,7 @@ def main() -> None:
         "libportaudio2",
         "portaudio19-dev",
         "systemd-journal-remote",
+        "redis-server",
     ]
     subprocess.run(
         ["sudo", "apt-get", "install", "-y", "--no-install-recommends", *dependencies],
@@ -227,6 +241,13 @@ def main() -> None:
         ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/birdnetpi"], check=True
     )
 
+    # Copy config templates (for redis.conf, etc.)
+    subprocess.run(["sudo", "cp", "-r", "config_templates", "/opt/birdnetpi/"], check=True)
+    subprocess.run(
+        ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/config_templates"],
+        check=True,
+    )
+
     # Install assets
     install_assets_path = venv_dir / "bin" / "install-assets"
     subprocess.run(
@@ -236,7 +257,7 @@ def main() -> None:
             "birdnetpi",
             str(install_assets_path),
             "install",
-            "v1.0.2",
+            "v2.2.0",
             "--include-models",
             "--include-ioc-db",
         ],
