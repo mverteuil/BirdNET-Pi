@@ -29,32 +29,23 @@ def install_system_dependencies() -> None:
     try:
         subprocess.run(["sudo", "apt-get", "update"], check=True)
         dependencies = [
-            "ffmpeg",
-            "sqlite3",
-            "icecast2",
-            "lsof",
-            "net-tools",
-            "alsa-utils",
-            "pulseaudio",
-            "avahi-utils",
-            "sox",
-            "libsox-fmt-mp3",
-            "bc",
-            "libjpeg-dev",
-            "zlib1g-dev",
-            "debian-keyring",
-            "debian-archive-keyring",
-            "apt-transport-https",
-            "gnupg",
-            "curl",
-            "ca-certificates",
-            "python3-venv",
-            "caddy",
-            "iproute2",
-            "libportaudio2",
-            "portaudio19-dev",
-            "systemd-journal-remote",
-            "redis-server",
+            # Core dependencies
+            "ffmpeg",  # Audio processing
+            "sqlite3",  # Database
+            "redis-server",  # Cache
+            "caddy",  # Web server
+            # Audio system
+            "alsa-utils",  # Audio drivers
+            "pulseaudio",  # Audio server
+            "libportaudio2",  # Audio I/O library
+            "portaudio19-dev",  # Audio I/O headers (for Python sounddevice)
+            # System utilities
+            "curl",  # HTTP client
+            "ca-certificates",  # SSL certificates
+            "systemd-journal-remote",  # Journal access for logs
+            # Build dependencies for Python packages
+            "libjpeg-dev",  # For Pillow (image processing)
+            "zlib1g-dev",  # For various Python packages
         ]
         subprocess.run(
             ["sudo", "apt-get", "install", "-y", "--no-install-recommends", *dependencies],
