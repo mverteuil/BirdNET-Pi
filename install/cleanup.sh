@@ -37,16 +37,38 @@ fi
 
 echo ""
 echo "Stopping BirdNET services..."
-systemctl stop birdnet_*.service 2>/dev/null || true
-systemctl stop redis-server 2>/dev/null || true
-systemctl stop caddy 2>/dev/null || true
+# List of services to stop
+SERVICES=(
+    "birdnet_fastapi.service"
+    "birdnet_pulseaudio.service"
+    "birdnet_audio_capture.service"
+    "birdnet_audio_analysis.service"
+    "birdnet_audio_websocket.service"
+    "birdnet_update.service"
+)
+
+for service in "${SERVICES[@]}"; do
+    if systemctl is-active --quiet "$service" 2>/dev/null; then
+        echo "  Stopping $service..."
+        systemctl stop "$service" --no-block 2>/dev/null || true
+    fi
+done
+
+# Give services a moment to stop
+sleep 2
 
 echo "Disabling BirdNET services..."
-systemctl disable birdnet_*.service 2>/dev/null || true
+for service in "${SERVICES[@]}"; do
+    systemctl disable "$service" 2>/dev/null || true
+done
 
 echo "Removing service files..."
 rm -f /etc/systemd/system/birdnet_*.service
 systemctl daemon-reload
+
+echo "Stopping system services..."
+systemctl stop redis-server 2>/dev/null || true
+systemctl stop caddy 2>/dev/null || true
 
 echo "Removing directories..."
 rm -rf /opt/birdnetpi
