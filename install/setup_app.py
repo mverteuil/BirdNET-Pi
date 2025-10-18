@@ -146,6 +146,7 @@ def setup_venv_and_dependencies() -> Path:
                 "--no-dev",
                 f"--python={sys.executable}",
             ],
+            cwd="/opt/birdnetpi",
             check=True,
         )
 
