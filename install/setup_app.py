@@ -363,6 +363,14 @@ def main() -> None:
         sys.exit(1)
 
     # Phase 1: Pre-install with whiptail (no dependencies)
+    # Check if whiptail is available
+    try:
+        subprocess.run(["which", "whiptail"], check=True, capture_output=True)
+    except subprocess.CalledProcessError:
+        print("ERROR: whiptail is not installed.")
+        print("Please install it with: sudo apt-get install -y whiptail")
+        sys.exit(1)
+
     ui = WhiptailUI()
     config = ui.run_pre_install()
 

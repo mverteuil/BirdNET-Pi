@@ -26,7 +26,7 @@ echo ""
 # Bootstrap the environment
 echo "Installing prerequisites..."
 sudo apt-get update
-sudo apt-get install -y git python3.11 python3.11-venv python3-pip
+sudo apt-get install -y git python3.11 python3.11-venv python3-pip whiptail
 
 # Clone or update repository
 if [ -d "$INSTALL_DIR" ]; then
