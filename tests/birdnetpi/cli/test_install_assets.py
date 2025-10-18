@@ -101,6 +101,78 @@ class TestInstallAssets:
         assert "export BIRDNETPI_DATA=./data" in result.output
         assert "uv run install-assets install v2.1.1" in result.output
 
+    @patch("birdnetpi.cli.install_assets.UpdateManager", autospec=True)
+    def test_install_assets_latest_version(
+        self, mock_update_manager_class, test_download_result, runner
+    ):
+        """Should resolve 'latest' to actual version."""
+        mock_manager = MagicMock(spec=UpdateManager)
+        mock_manager._resolve_latest_asset_version.return_value = "v2.1.1"
+        mock_manager.download_release_assets.return_value = test_download_result
+        mock_update_manager_class.return_value = mock_manager
+
+        result = runner.invoke(cli, ["install", "latest"])
+
+        assert result.exit_code == 0
+        assert "Resolving 'latest' to current release version..." in result.output
+        assert "Latest version: v2.1.1" in result.output
+        assert "Installing complete asset release: v2.1.1" in result.output
+
+        # Should resolve latest before downloading
+        mock_manager._resolve_latest_asset_version.assert_called_once_with("mverteuil/BirdNET-Pi")
+
+        # Should use resolved version for download
+        mock_manager.download_release_assets.assert_called_once_with(
+            version="v2.1.1",
+            include_models=True,
+            include_ioc_db=True,
+            include_wikidata_db=True,
+            github_repo="mverteuil/BirdNET-Pi",
+        )
+
+    @patch("birdnetpi.cli.install_assets.UpdateManager", autospec=True)
+    def test_install_assets_latest_with_skip_existing(
+        self, mock_update_manager_class, test_download_result, runner, tmp_path, path_resolver
+    ):
+        """Should resolve 'latest' and check if that version exists with --skip-existing."""
+        mock_manager = MagicMock(spec=UpdateManager)
+        mock_manager._resolve_latest_asset_version.return_value = "v2.1.1"
+        mock_manager.download_release_assets.return_value = test_download_result
+        mock_update_manager_class.return_value = mock_manager
+
+        # Set up path_resolver to use temp directory
+        path_resolver.data_dir = tmp_path
+        path_resolver.get_models_dir = lambda: tmp_path / "models"
+        path_resolver.get_ioc_database_path = lambda: tmp_path / "data" / "ioc_reference.db"
+        path_resolver.get_wikidata_database_path = (
+            lambda: tmp_path / "data" / "wikidata_reference.db"
+        )
+
+        # Create version marker file with resolved version
+        version_file = tmp_path / ".birdnet-assets-version"
+        version_file.write_text("v2.1.1")
+
+        # Create required assets
+        models_dir = tmp_path / "models"
+        models_dir.mkdir(parents=True)
+        (models_dir / "test.tflite").write_bytes(b"model")
+
+        data_dir = tmp_path / "data"
+        data_dir.mkdir(parents=True)
+        (data_dir / "ioc_reference.db").write_bytes(b"db")
+        (data_dir / "wikidata_reference.db").write_bytes(b"db")
+
+        with patch("birdnetpi.cli.install_assets.PathResolver", return_value=path_resolver):
+            result = runner.invoke(cli, ["install", "latest", "--skip-existing"])
+
+        assert result.exit_code == 0
+        assert "Resolving 'latest' to current release version..." in result.output
+        assert "Latest version: v2.1.1" in result.output
+        assert "✓ All assets present for version v2.1.1" in result.output
+
+        # Should not download since assets exist
+        mock_manager.download_release_assets.assert_not_called()
+
 
 class TestListVersions:
     """Test the list-versions command."""
