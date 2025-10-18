@@ -41,13 +41,9 @@ if [ -d "$INSTALL_DIR" ]; then
     rm -rf "$INSTALL_DIR"
 fi
 
-echo "Cloning repository (sparse checkout)..."
-git clone --filter=blob:none --sparse --depth 1 --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
+echo "Cloning repository..."
+git clone --filter=blob:none --depth 1 --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
 cd "$INSTALL_DIR"
-
-# Only checkout the directories and files needed for installation
-git sparse-checkout set install src config_templates
-git checkout "$BRANCH" -- pyproject.toml uv.lock
 
 # Execute the main setup script
 echo ""
