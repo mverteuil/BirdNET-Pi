@@ -360,23 +360,34 @@ def main() -> None:
         )
         sys.exit(1)
 
-    print("========================================")
-    print("BirdNET-Pi SBC Installer")
-    print("========================================")
-    print()
+    # Check if we're being re-executed from venv
+    in_venv = sys.prefix != sys.base_prefix
 
-    # Phase 1: Bootstrap (no dependencies)
-    print("Installing system dependencies...")
-    install_system_dependencies()
+    if not in_venv:
+        # Phase 1: Bootstrap (no dependencies)
+        print("========================================")
+        print("BirdNET-Pi SBC Installer")
+        print("========================================")
+        print()
 
-    print("Creating user and directories...")
-    setup_user_and_directories()
+        print("Installing system dependencies...")
+        install_system_dependencies()
 
-    print("Setting up Python environment...")
-    venv_path = setup_venv_and_dependencies()
+        print("Creating user and directories...")
+        setup_user_and_directories()
 
-    # Phase 2: Interactive configuration and installation with Rich TUI
-    run_installation_with_progress(venv_path)
+        print("Setting up Python environment...")
+        venv_path = setup_venv_and_dependencies()
+
+        # Re-execute this script with venv Python
+        print()
+        print("Re-executing with virtual environment...")
+        venv_python = venv_path / "bin" / "python3"
+        os.execv(str(venv_python), [str(venv_python), __file__])
+    else:
+        # Phase 2: Running from venv, can use Rich now
+        venv_path = Path(sys.prefix)
+        run_installation_with_progress(venv_path)
 
 
 if __name__ == "__main__":
