@@ -15,7 +15,7 @@
 	}
 }
 
-:8000 {
+:80 {
 	# Audio WebSocket route - proxy to standalone daemon (preserve path)
 	handle /ws/audio {
 		reverse_proxy localhost:9001

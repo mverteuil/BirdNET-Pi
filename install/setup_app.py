@@ -273,7 +273,7 @@ def setup_systemd_services(venv_path: Path) -> None:
             "description": "BirdNET FastAPI Server",
             "after": "network-online.target redis-server.service",
             "exec_start": (
-                f"{python_exec} -m uvicorn birdnetpi.web.main:app --host 0.0.0.0 --port 8888"
+                f"{python_exec} -m uvicorn birdnetpi.web.main:app --host 127.0.0.1 --port 8888"
             ),
             "environment": "PYTHONPATH=/opt/birdnetpi/src",
         },

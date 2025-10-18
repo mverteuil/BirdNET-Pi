@@ -149,8 +149,8 @@ class ProgressUI:
             Panel.fit(
                 f"[bold green]✓ Installation Complete![/bold green]\n\n"
                 f"Site Name: [yellow]{site_name}[/yellow]\n"
-                f"Web Interface: [cyan]http://{ip_address}:8888[/cyan]\n"
-                f"SSH Access: [cyan]ssh birdnet@{ip_address}[/cyan]\n\n"
+                f"Web Interface: [cyan]http://{ip_address}[/cyan]\n"
+                f"SSH Access: [cyan]ssh birdnetpi@{ip_address}[/cyan]\n\n"
                 f"[dim]The system is now capturing and analyzing bird calls.\n"
                 f"Visit the web interface to view detections and configure settings.[/dim]",
                 border_style="green",
