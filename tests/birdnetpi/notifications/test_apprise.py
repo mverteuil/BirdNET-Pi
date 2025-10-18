@@ -31,9 +31,9 @@ def enabled_apprise_service_with_add_mock():
     """
     service = AppriseService(enable_apprise=True)
     assert service.apprise_obj is not None  # Type narrowing for pyright
-    service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
-    service.apprise_obj.notify = MagicMock(spec=MagicMock, return_value=True)
-    service.apprise_obj.clear = MagicMock(spec=MagicMock)
+    service.apprise_obj.add = MagicMock(spec=apprise.Apprise.add, return_value=True)
+    service.apprise_obj.notify = MagicMock(spec=apprise.Apprise.notify, return_value=True)
+    service.apprise_obj.clear = MagicMock(spec=apprise.Apprise.clear)
     return service
 
 
@@ -94,7 +94,9 @@ class TestAppriseServiceStartStop:
 
         # Configure targets before starting
         # Mock apprise.Apprise.add() to return True
-        enabled_apprise_service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
+        enabled_apprise_service.apprise_obj.add = MagicMock(
+            spec=apprise.Apprise.add, return_value=True
+        )
 
         enabled_apprise_service.configure_targets(
             {
@@ -143,7 +145,9 @@ class TestAppriseServiceConfiguration:
         caplog.set_level(logging.INFO, logger="birdnetpi.notifications.apprise")
 
         # Mock apprise.Apprise.add() to return True
-        enabled_apprise_service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
+        enabled_apprise_service.apprise_obj.add = MagicMock(
+            spec=apprise.Apprise.add, return_value=True
+        )
 
         targets = {
             "discord": "discord://webhook_id/webhook_token",
@@ -162,7 +166,9 @@ class TestAppriseServiceConfiguration:
     def test_configure_targets_skip_empty_urls(self, enabled_apprise_service):
         """Should skip empty URLs when configuring targets."""
         # Mock apprise.Apprise.add() to return True
-        enabled_apprise_service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
+        enabled_apprise_service.apprise_obj.add = MagicMock(
+            spec=apprise.Apprise.add, return_value=True
+        )
 
         targets = {
             "discord": "discord://webhook_id/webhook_token",
@@ -212,7 +218,9 @@ class TestAppriseServiceConfiguration:
     def test_configure_targets_clears_existing(self, enabled_apprise_service):
         """Should clear existing targets when reconfiguring."""
         # Mock apprise.Apprise.add() to return True
-        enabled_apprise_service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
+        enabled_apprise_service.apprise_obj.add = MagicMock(
+            spec=apprise.Apprise.add, return_value=True
+        )
 
         # Configure initial targets
         enabled_apprise_service.configure_targets(
@@ -261,7 +269,9 @@ class TestAppriseServiceNotifications:
     async def test_send_notification_success(self, enabled_apprise_service):
         """Should successfully send notification."""
         # Mock apprise.Apprise.add() to return True
-        enabled_apprise_service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
+        enabled_apprise_service.apprise_obj.add = MagicMock(
+            spec=apprise.Apprise.add, return_value=True
+        )
 
         enabled_apprise_service.configure_targets(
             {
@@ -287,7 +297,9 @@ class TestAppriseServiceNotifications:
     async def test_send_notification_to_specific_target(self, enabled_apprise_service):
         """Should send notification to specific target."""
         # Mock apprise.Apprise.add() to return True
-        enabled_apprise_service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
+        enabled_apprise_service.apprise_obj.add = MagicMock(
+            spec=apprise.Apprise.add, return_value=True
+        )
 
         enabled_apprise_service.configure_targets(
             {
@@ -314,7 +326,9 @@ class TestAppriseServiceNotifications:
     async def test_send_notification_failure(self, enabled_apprise_service):
         """Should handle notification sending failure."""
         # Mock apprise.Apprise.add() to return True
-        enabled_apprise_service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
+        enabled_apprise_service.apprise_obj.add = MagicMock(
+            spec=apprise.Apprise.add, return_value=True
+        )
 
         enabled_apprise_service.configure_targets(
             {
@@ -338,7 +352,9 @@ class TestAppriseServiceNotifications:
         caplog.set_level(logging.ERROR, logger="birdnetpi.notifications.apprise")
 
         # Mock apprise.Apprise.add() to return True
-        enabled_apprise_service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
+        enabled_apprise_service.apprise_obj.add = MagicMock(
+            spec=apprise.Apprise.add, return_value=True
+        )
 
         enabled_apprise_service.configure_targets(
             {
@@ -371,7 +387,9 @@ class TestAppriseServiceNotifications:
     async def test_send_notification_types(self, enabled_apprise_service, notification_type):
         """Should send notifications with different notification types."""
         # Mock apprise.Apprise.add() to return True
-        enabled_apprise_service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
+        enabled_apprise_service.apprise_obj.add = MagicMock(
+            spec=apprise.Apprise.add, return_value=True
+        )
 
         enabled_apprise_service.configure_targets(
             {
@@ -402,7 +420,9 @@ class TestAppriseServiceDetectionNotification:
     ):
         """Should successfully send detection notification."""
         # Mock apprise.Apprise.add() to return True
-        enabled_apprise_service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
+        enabled_apprise_service.apprise_obj.add = MagicMock(
+            spec=apprise.Apprise.add, return_value=True
+        )
 
         enabled_apprise_service.configure_targets(
             {
@@ -433,7 +453,9 @@ class TestAppriseServiceDetectionNotification:
     ):
         """Should send detection notification to specific target."""
         # Mock apprise.Apprise.add() to return True
-        enabled_apprise_service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
+        enabled_apprise_service.apprise_obj.add = MagicMock(
+            spec=apprise.Apprise.add, return_value=True
+        )
 
         enabled_apprise_service.configure_targets(
             {
@@ -477,7 +499,9 @@ class TestAppriseServiceTestTarget:
     async def test_test_target_not_found(self, enabled_apprise_service):
         """Should handle testing non-existent target."""
         # Mock apprise.Apprise.add() to return True
-        enabled_apprise_service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
+        enabled_apprise_service.apprise_obj.add = MagicMock(
+            spec=apprise.Apprise.add, return_value=True
+        )
 
         enabled_apprise_service.configure_targets(
             {
@@ -494,7 +518,9 @@ class TestAppriseServiceTestTarget:
     async def test_test_target_success(self, enabled_apprise_service):
         """Should successfully test a target."""
         # Mock apprise.Apprise.add() to return True
-        enabled_apprise_service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
+        enabled_apprise_service.apprise_obj.add = MagicMock(
+            spec=apprise.Apprise.add, return_value=True
+        )
 
         enabled_apprise_service.configure_targets(
             {
@@ -513,7 +539,9 @@ class TestAppriseServiceTestTarget:
     async def test_test_target_failure(self, enabled_apprise_service):
         """Should handle test target failure."""
         # Mock apprise.Apprise.add() to return True
-        enabled_apprise_service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
+        enabled_apprise_service.apprise_obj.add = MagicMock(
+            spec=apprise.Apprise.add, return_value=True
+        )
 
         enabled_apprise_service.configure_targets(
             {
@@ -532,7 +560,9 @@ class TestAppriseServiceTestTarget:
     async def test_test_target_exception(self, enabled_apprise_service):
         """Should handle exceptions during target testing."""
         # Mock apprise.Apprise.add() to return True
-        enabled_apprise_service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
+        enabled_apprise_service.apprise_obj.add = MagicMock(
+            spec=apprise.Apprise.add, return_value=True
+        )
 
         enabled_apprise_service.configure_targets(
             {
@@ -589,7 +619,9 @@ class TestAppriseServiceStatus:
     def test_get_service_status_enabled_with_targets(self, enabled_apprise_service):
         """Should get service status when enabled with targets."""
         # Mock apprise.Apprise.add() to return True
-        enabled_apprise_service.apprise_obj.add = MagicMock(spec=MagicMock, return_value=True)
+        enabled_apprise_service.apprise_obj.add = MagicMock(
+            spec=apprise.Apprise.add, return_value=True
+        )
 
         enabled_apprise_service.configure_targets(
             {
