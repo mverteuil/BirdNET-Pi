@@ -85,27 +85,61 @@ def save_config(config: dict[str, Any]) -> None:
     console.print(f"[green]Configuration saved to {CONFIG_FILE}[/green]")
 
 
+def parse_size_to_gb(size_str: str) -> float | None:
+    """Parse size string like '15.9 GB' or '2.0 TB' to gigabytes."""
+    try:
+        match = re.match(r"([0-9.]+)\s*([KMGT]?B)", size_str)
+        if not match:
+            return None
+        value = float(match.group(1))
+        unit = match.group(2)
+
+        multipliers = {
+            "B": 1 / (1024**3),
+            "KB": 1 / (1024**2),
+            "MB": 1 / 1024,
+            "GB": 1,
+            "TB": 1024,
+        }
+        return value * multipliers.get(unit, 1)
+    except (ValueError, AttributeError):
+        return None
+
+
+def list_macos_devices() -> list[dict[str, str]]:
+    """List block devices on macOS using diskutil."""
+    result = subprocess.run(["diskutil", "list"], capture_output=True, text=True, check=True)
+    devices = []
+
+    for line in result.stdout.splitlines():
+        # Match device identifier like /dev/disk2
+        if match := re.match(r"^(/dev/disk\d+)\s+\((.+?), physical\):", line):
+            device_path = match.group(1)
+            device_type = match.group(2)  # "internal" or "external"
+
+            # Skip internal system disk (disk0) - too dangerous
+            if device_path == "/dev/disk0":
+                continue
+
+            # Extract size from the same line
+            size_match = re.search(r"\*([0-9.]+\s*[KMGT]?B)", line)
+            size_str = size_match.group(1) if size_match else "Unknown"
+
+            # Include both external and internal physical disks (for SD card readers)
+            # Filter out large internal drives (> 256GB likely not an SD card)
+            if size_str != "Unknown":
+                size_gb = parse_size_to_gb(size_str)
+                if size_gb and size_gb <= 256:  # SD cards typically <= 256GB
+                    display_type = "External" if device_type == "external" else "SD Card Reader"
+                    devices.append({"device": device_path, "size": size_str, "type": display_type})
+
+    return devices
+
+
 def list_block_devices() -> list[dict[str, str]]:
     """List available block devices (SD cards) on the system."""
     if platform.system() == "Darwin":
-        # macOS
-        result = subprocess.run(["diskutil", "list"], capture_output=True, text=True, check=True)
-        devices = []
-        current_device = None
-
-        for line in result.stdout.splitlines():
-            # Match device identifier like /dev/disk2
-            if match := re.match(r"^(/dev/disk\d+)", line):
-                current_device = match.group(1)
-            # Look for size info in the device header
-            elif current_device and "external, physical" in line.lower():
-                # Get size from the line
-                size_match = re.search(r"\*(\d+\.\d+\s+[A-Z]+)\*", line)
-                size = size_match.group(1) if size_match else "Unknown"
-                devices.append({"device": current_device, "size": size, "type": "SD Card"})
-                current_device = None
-
-        return devices
+        return list_macos_devices()
     elif platform.system() == "Linux":
         # Linux
         result = subprocess.run(
