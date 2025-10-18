@@ -240,6 +240,14 @@ def run_installation_with_progress(venv_path: Path) -> None:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+
+        # Reload Caddy to pick up new configuration (if already running)
+        subprocess.run(
+            ["sudo", "systemctl", "reload-or-restart", "caddy"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
         ui.complete_task(InstallStep.CONFIG_TEMPLATES)
 
         # Install assets
@@ -302,7 +310,7 @@ def setup_systemd_services(venv_path: Path) -> None:
     python_exec = venv_path / "bin" / "python3"
     repo_root = Path("/opt/birdnetpi")
 
-    # Enable and start system Redis and Caddy (don't create our own)
+    # Enable and start system Redis (Caddy already reloaded with new config earlier)
     subprocess.run(
         ["sudo", "systemctl", "enable", "redis-server"],
         check=True,
@@ -317,12 +325,6 @@ def setup_systemd_services(venv_path: Path) -> None:
     )
     subprocess.run(
         ["sudo", "systemctl", "enable", "caddy"],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    subprocess.run(
-        ["sudo", "systemctl", "start", "caddy"],
         check=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
