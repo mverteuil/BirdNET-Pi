@@ -358,16 +358,17 @@ def flash_image(image_path: Path, device: str) -> None:
         console.print(
             "[yellow]Decompressing and flashing (this may take several minutes)...[/yellow]"
         )
-        # Use shell pipeline: unxz -c image.xz | dd of=device
-        with subprocess.Popen(["unxz", "-c", str(image_path)], stdout=subprocess.PIPE) as unxz:
+        # Use shell pipeline: xz -dc image.xz | dd of=device
+        # xz -dc = decompress to stdout
+        with subprocess.Popen(["xz", "-dc", str(image_path)], stdout=subprocess.PIPE) as xz_proc:
             subprocess.run(
-                ["sudo", "dd", f"of={device}", "bs=4M", "status=progress"],
-                stdin=unxz.stdout,
+                ["sudo", "dd", f"of={device}", "bs=4m"],  # macOS uses lowercase 'm'
+                stdin=xz_proc.stdout,
                 check=True,
             )
     else:
         subprocess.run(
-            ["sudo", "dd", f"if={image_path}", f"of={device}", "bs=4M", "status=progress"],
+            ["sudo", "dd", f"if={image_path}", f"of={device}", "bs=4m"],
             check=True,
         )
 
