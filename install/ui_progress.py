@@ -115,8 +115,8 @@ class ProgressUI:
     def show_service_status(self) -> None:
         """Display status of all BirdNET-Pi services."""
         services = [
-            "birdnet_redis.service",
-            "birdnet_caddy.service",
+            "redis-server.service",
+            "caddy.service",
             "birdnet_fastapi.service",
             "birdnet_pulseaudio.service",
             "birdnet_audio_capture.service",

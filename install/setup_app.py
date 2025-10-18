@@ -177,69 +177,72 @@ def run_installation_with_progress(venv_path: Path) -> None:
     ui = ProgressUI()
     ui.show_header(site_name)
 
-    with ui.progress:
-        ui.create_tasks()
+    # Start progress display
+    ui.progress.start()
+    ui.create_tasks()
 
-        # Mark bootstrap steps as complete
-        ui.complete_task(InstallStep.SYSTEM_DEPS)
-        ui.complete_task(InstallStep.USER_SETUP)
-        ui.complete_task(InstallStep.VENV_SETUP)
-        ui.complete_task(InstallStep.SOURCE_CODE)
-        ui.complete_task(InstallStep.PYTHON_DEPS)
+    # Mark bootstrap steps as complete
+    ui.complete_task(InstallStep.SYSTEM_DEPS)
+    ui.complete_task(InstallStep.USER_SETUP)
+    ui.complete_task(InstallStep.VENV_SETUP)
+    ui.complete_task(InstallStep.SOURCE_CODE)
+    ui.complete_task(InstallStep.PYTHON_DEPS)
 
-        try:
-            # Copy config templates
-            ui.update_task(InstallStep.CONFIG_TEMPLATES, advance=20)
-            subprocess.run(["sudo", "cp", "-r", "config_templates", "/opt/birdnetpi/"], check=True)
-            subprocess.run(
-                ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/config_templates"],
-                check=True,
-            )
+    try:
+        # Copy config templates
+        ui.update_task(InstallStep.CONFIG_TEMPLATES, advance=20)
+        subprocess.run(["sudo", "cp", "-r", "config_templates", "/opt/birdnetpi/"], check=True)
+        subprocess.run(
+            ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/config_templates"],
+            check=True,
+        )
 
-            # Configure Caddy
-            caddyfile = Path("/etc/caddy/Caddyfile")
-            if not caddyfile.exists():
-                subprocess.run(
-                    ["sudo", "cp", "config_templates/Caddyfile", str(caddyfile)], check=True
-                )
-                subprocess.run(["sudo", "chown", "root:root", str(caddyfile)], check=True)
-            ui.complete_task(InstallStep.CONFIG_TEMPLATES)
+        # Configure Caddy
+        caddyfile = Path("/etc/caddy/Caddyfile")
+        if not caddyfile.exists():
+            subprocess.run(["sudo", "cp", "config_templates/Caddyfile", str(caddyfile)], check=True)
+            subprocess.run(["sudo", "chown", "root:root", str(caddyfile)], check=True)
+        ui.complete_task(InstallStep.CONFIG_TEMPLATES)
 
-            # Install assets
-            ui.update_task(InstallStep.ASSETS, advance=10)
-            install_assets_path = venv_path / "bin" / "install-assets"
-            result = subprocess.run(
-                [
-                    "sudo",
-                    "-u",
-                    "birdnetpi",
-                    str(install_assets_path),
-                    "install",
-                    "v2.2.0",
-                    "--include-models",
-                    "--include-ioc-db",
-                ],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                ui.complete_task(InstallStep.ASSETS)
-            else:
-                ui.show_error("Asset installation failed", result.stderr)
+        # Install assets
+        ui.update_task(InstallStep.ASSETS, advance=10)
+        install_assets_path = venv_path / "bin" / "install-assets"
+        result = subprocess.run(
+            [
+                "sudo",
+                "-u",
+                "birdnetpi",
+                str(install_assets_path),
+                "install",
+                "v2.2.0",
+                "--include-models",
+                "--include-ioc-db",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            ui.complete_task(InstallStep.ASSETS)
+        else:
+            ui.show_error("Asset installation failed", result.stderr)
 
-            # Setup systemd services
-            ui.update_task(InstallStep.SYSTEMD, advance=10)
-            setup_systemd_services(venv_path)
-            ui.complete_task(InstallStep.SYSTEMD)
+        # Setup systemd services
+        ui.update_task(InstallStep.SYSTEMD, advance=10)
+        setup_systemd_services(venv_path)
+        ui.complete_task(InstallStep.SYSTEMD)
 
-            # Health check
-            ui.update_task(InstallStep.HEALTH_CHECK, advance=50)
-            ui.complete_task(InstallStep.HEALTH_CHECK)
+        # Health check
+        ui.update_task(InstallStep.HEALTH_CHECK, advance=50)
+        ui.complete_task(InstallStep.HEALTH_CHECK)
 
-        except subprocess.CalledProcessError as e:
-            ui.show_error(f"Installation failed: {e}")
-            sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        ui.progress.stop()
+        ui.show_error(f"Installation failed: {e}")
+        sys.exit(1)
+    finally:
+        # Stop progress display before showing final status
+        ui.progress.stop()
 
     # Show service status and final summary (outside progress context)
     ui.show_service_status()
@@ -258,23 +261,17 @@ def setup_systemd_services(venv_path: Path) -> None:
     python_exec = venv_path / "bin" / "python3"
     repo_root = Path("/opt/birdnetpi")
 
+    # Enable and start system Redis and Caddy (don't create our own)
+    subprocess.run(["sudo", "systemctl", "enable", "redis-server"], check=True)
+    subprocess.run(["sudo", "systemctl", "start", "redis-server"], check=True)
+    subprocess.run(["sudo", "systemctl", "enable", "caddy"], check=True)
+    subprocess.run(["sudo", "systemctl", "start", "caddy"], check=True)
+
     services = [
-        {
-            "name": "birdnet_redis.service",
-            "description": "Redis Cache Server",
-            "after": "network-online.target",
-            "exec_start": "/usr/bin/redis-server /opt/birdnetpi/config_templates/redis.conf",
-        },
-        {
-            "name": "birdnet_caddy.service",
-            "description": "Caddy Web Server",
-            "after": "network-online.target",
-            "exec_start": "/usr/bin/caddy run --config /etc/caddy/Caddyfile",
-        },
         {
             "name": "birdnet_fastapi.service",
             "description": "BirdNET FastAPI Server",
-            "after": "network-online.target birdnet_redis.service",
+            "after": "network-online.target redis-server.service",
             "exec_start": (
                 f"{python_exec} -m uvicorn birdnetpi.web.main:app --host 0.0.0.0 --port 8888"
             ),
