@@ -195,10 +195,17 @@ def run_installation_with_progress(venv_path: Path) -> None:
     try:
         # Copy config templates
         ui.update_task(InstallStep.CONFIG_TEMPLATES, advance=20)
-        subprocess.run(["sudo", "cp", "-r", "config_templates", "/opt/birdnetpi/"], check=True)
+        subprocess.run(
+            ["sudo", "cp", "-r", "config_templates", "/opt/birdnetpi/"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
         subprocess.run(
             ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/config_templates"],
             check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
 
         # Configure Caddy - substitute port 8000 with 80 for SBC
@@ -207,12 +214,32 @@ def run_installation_with_progress(venv_path: Path) -> None:
 
         # Backup original Caddyfile if it exists and hasn't been backed up yet
         if caddyfile.exists() and not caddyfile_backup.exists():
-            subprocess.run(["sudo", "cp", str(caddyfile), str(caddyfile_backup)], check=True)
+            subprocess.run(
+                ["sudo", "cp", str(caddyfile), str(caddyfile_backup)],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
 
         # Copy template first, then replace :8000 with :80 in place for SBC installs
-        subprocess.run(["sudo", "cp", "config_templates/Caddyfile", str(caddyfile)], check=True)
-        subprocess.run(["sudo", "sed", "-i", "s/:8000/:80/g", str(caddyfile)], check=True)
-        subprocess.run(["sudo", "chown", "root:root", str(caddyfile)], check=True)
+        subprocess.run(
+            ["sudo", "cp", "config_templates/Caddyfile", str(caddyfile)],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["sudo", "sed", "-i", "s/:8000/:80/g", str(caddyfile)],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["sudo", "chown", "root:root", str(caddyfile)],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
         ui.complete_task(InstallStep.CONFIG_TEMPLATES)
 
         # Install assets
@@ -276,10 +303,30 @@ def setup_systemd_services(venv_path: Path) -> None:
     repo_root = Path("/opt/birdnetpi")
 
     # Enable and start system Redis and Caddy (don't create our own)
-    subprocess.run(["sudo", "systemctl", "enable", "redis-server"], check=True)
-    subprocess.run(["sudo", "systemctl", "start", "redis-server"], check=True)
-    subprocess.run(["sudo", "systemctl", "enable", "caddy"], check=True)
-    subprocess.run(["sudo", "systemctl", "start", "caddy"], check=True)
+    subprocess.run(
+        ["sudo", "systemctl", "enable", "redis-server"],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        ["sudo", "systemctl", "start", "redis-server"],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        ["sudo", "systemctl", "enable", "caddy"],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        ["sudo", "systemctl", "start", "caddy"],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
     services = [
         {
@@ -352,11 +399,31 @@ WantedBy=multi-user.target
         with open(temp_file_path, "w") as f:
             f.write(content)
 
-        subprocess.run(["sudo", "mv", temp_file_path, service_file_path], check=True)
-        subprocess.run(["sudo", "systemctl", "enable", service_name], check=True)
-        subprocess.run(["sudo", "systemctl", "start", service_name], check=True)
+        subprocess.run(
+            ["sudo", "mv", temp_file_path, service_file_path],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["sudo", "systemctl", "enable", service_name],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["sudo", "systemctl", "start", service_name],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
-    subprocess.run(["sudo", "systemctl", "daemon-reload"], check=True)
+    subprocess.run(
+        ["sudo", "systemctl", "daemon-reload"],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
 
 def main() -> None:
