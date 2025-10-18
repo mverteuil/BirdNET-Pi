@@ -157,6 +157,13 @@ def setup_venv_and_dependencies() -> Path:
             check=True,
         )
 
+        # Install Rich for installer UI (not in project dependencies)
+        pip_path = str(venv_dir / "bin" / "pip")
+        subprocess.run(
+            ["sudo", "-u", "birdnetpi", pip_path, "install", "rich"],
+            check=True,
+        )
+
         return venv_dir
 
     except subprocess.CalledProcessError as e:
