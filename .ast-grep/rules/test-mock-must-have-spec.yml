@@ -36,6 +36,8 @@ note: |
     mock_obj = Mock(spec=["attr"])       # List specs are wrong - use class
     mock_obj = Mock(spec=("attr",))      # Tuple specs are wrong - use class
     mock_obj = Mock(spec=("a", "b"))     # Tuple specs are wrong - use class
+    mock_obj = Mock(spec=MagicMock)      # Circular reference - completely useless!
+    mock_obj = MagicMock(spec=Mock)      # Circular reference - completely useless!
     mock_obj = Mock(spec=lambda: None)   # Lambda is not a valid spec - use actual class
 
   DO NOT attempt to circumvent this rule. The requirement exists to prevent
@@ -109,6 +111,17 @@ rule:
     - pattern: $MOCK($$$, autospec=False, $$$)
     - pattern: $MOCK(autospec=False)
     - pattern: $MOCK(autospec=False, $$$)
+
+    # Catch spec=Mock/MagicMock/AsyncMock (circular reference - useless)
+    - pattern: $MOCK($$$, spec=Mock, $$$)
+    - pattern: $MOCK(spec=Mock)
+    - pattern: $MOCK(spec=Mock, $$$)
+    - pattern: $MOCK($$$, spec=MagicMock, $$$)
+    - pattern: $MOCK(spec=MagicMock)
+    - pattern: $MOCK(spec=MagicMock, $$$)
+    - pattern: $MOCK($$$, spec=AsyncMock, $$$)
+    - pattern: $MOCK(spec=AsyncMock)
+    - pattern: $MOCK(spec=AsyncMock, $$$)
 
     # Catch spec=lambda: None (lambda is not a valid spec)
     - pattern: "$MOCK($$$, spec=lambda: None, $$$)"
