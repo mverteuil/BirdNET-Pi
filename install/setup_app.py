@@ -168,9 +168,6 @@ def run_installation_with_progress(venv_path: Path) -> None:
     Args:
         venv_path: Path to the Python virtual environment
     """
-    # Clear terminal before starting Rich UI (handles terminals where Rich clear doesn't work)
-    print("\033[2J\033[H", end="", flush=True)
-
     # Import Rich UI (now available after uv sync)
     from ui_progress import InstallStep, ProgressUI
 
@@ -178,7 +175,7 @@ def run_installation_with_progress(venv_path: Path) -> None:
     site_name = "BirdNET-Pi"
 
     ui = ProgressUI()
-    # Header will clear screen and show title
+    # Header clears screen and shows title
     ui.show_header(site_name)
 
     # Create tasks and mark bootstrap steps as complete BEFORE starting progress

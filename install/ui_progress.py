@@ -43,6 +43,8 @@ class ProgressUI:
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
             TimeElapsedColumn(),
             console=self.console,
+            refresh_per_second=4,  # Reduce refresh rate for better SSH performance
+            transient=False,  # Keep progress visible for debugging
         )
         self.tasks: dict[InstallStep, TaskID] = {}
         self.service_status: dict[str, str] = {}
