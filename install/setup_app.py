@@ -175,7 +175,7 @@ def install_python_dependencies() -> None:
     """
     # uv is installed to ~/.cargo/bin/uv by the official installer
     uv_path = "/home/birdnetpi/.cargo/bin/uv"
-    subprocess.run(
+    result = subprocess.run(
         [
             "sudo",
             "-u",
@@ -187,11 +187,13 @@ def install_python_dependencies() -> None:
             "--quiet",
         ],
         cwd="/opt/birdnetpi",
-        check=True,
+        check=False,
         stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
     )
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to install Python dependencies: {result.stderr}")
 
 
 def install_assets() -> None:
