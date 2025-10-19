@@ -101,9 +101,12 @@ def path_resolver(tmp_path: Path, repo_root: Path) -> PathResolver:
     temp_database_dir.mkdir(parents=True)
     temp_config_dir = tmp_path / "config"
     temp_config_dir.mkdir(parents=True)
+    temp_data_dir = tmp_path / "data"
+    temp_data_dir.mkdir(parents=True)
     # Override WRITABLE paths to use temp directory
     resolver.get_database_path = lambda: temp_database_dir / "birdnetpi.db"
     resolver.get_birdnetpi_config_path = lambda: temp_config_dir / "birdnetpi.yaml"
+    resolver.get_data_dir = lambda: temp_data_dir
 
     # Keep READ-ONLY paths pointing to real repo locations
     # These are already correct from the base PathResolver, but let's be explicit:

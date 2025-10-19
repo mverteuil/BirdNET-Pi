@@ -126,6 +126,11 @@ class BirdNETConfig(BaseModel):
     enable_gps: bool = False  # Enable GPS tracking for field deployments
     gps_update_interval: float = 5.0  # GPS update interval in seconds
 
+    # E-paper Display settings (SBC only)
+    enable_epaper_display: bool = False  # Enable e-paper HAT display
+    epaper_refresh_interval: int = 5  # Display refresh interval in seconds
+    epaper_display_type: str = "2in13_V4"  # Waveshare display model (2in13_V4 default)
+
     # MQTT Integration settings
     enable_mqtt: bool = False  # Enable MQTT publishing
     mqtt_broker_host: str = "localhost"  # MQTT broker hostname

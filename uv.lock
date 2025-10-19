@@ -272,6 +272,13 @@ dependencies = [
     { name = "wtforms" },
 ]
 
+[package.optional-dependencies]
+epaper = [
+    { name = "rpi-gpio", marker = "platform_machine == 'aarch64' or platform_machine == 'armv7l'" },
+    { name = "spidev", marker = "platform_machine == 'aarch64' or platform_machine == 'armv7l'" },
+    { name = "waveshare-epd" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "httpx" },
@@ -332,9 +339,11 @@ requires-dist = [
     { name = "pytz" },
     { name = "redis", extras = ["hiredis"], specifier = ">=5.0.0" },
     { name = "resampy" },
+    { name = "rpi-gpio", marker = "(platform_machine == 'aarch64' and extra == 'epaper') or (platform_machine == 'armv7l' and extra == 'epaper')", specifier = ">=0.7.1" },
     { name = "seaborn" },
     { name = "setuptools" },
     { name = "sounddevice", specifier = ">=0.5.2" },
+    { name = "spidev", marker = "(platform_machine == 'aarch64' and extra == 'epaper') or (platform_machine == 'armv7l' and extra == 'epaper')", specifier = ">=3.6" },
     { name = "sqladmin", specifier = ">=0.21.0" },
     { name = "sqlalchemy" },
     { name = "sqlmodel", specifier = ">=0.0.24" },
@@ -343,10 +352,12 @@ requires-dist = [
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "tzlocal" },
     { name = "uvicorn" },
+    { name = "waveshare-epd", marker = "extra == 'epaper'", git = "https://github.com/waveshareteam/e-Paper.git?subdirectory=RaspberryPi_JetsonNano%2Fpython" },
     { name = "websockets", specifier = ">=15.0.1" },
     { name = "wheel" },
     { name = "wtforms", specifier = ">=3.1.2" },
 ]
+provides-extras = ["epaper"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -744,6 +755,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/f2/97/ebf4da567aa6827c9
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2c/e1/e6716421ea10d38022b952c159d5161ca1193197fb744506875fbb87ea7b/iniconfig-2.1.0-py3-none-any.whl", hash = "sha256:9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760", size = 6050, upload-time = "2025-03-19T20:10:01.071Z" },
 ]
+
+[[package]]
+name = "jetson-gpio"
+version = "2.1.12"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/74/5e/a40eaa9f4f79182b1e3a97059fbaeab4ee567639188fc00d352f3a129751/jetson_gpio-2.1.12.tar.gz", hash = "sha256:43110ba2e3bbf747bfe65ef2cc442cee91bdea8924e946bc64ec55b67f9eb948", size = 37412, upload-time = "2025-09-30T16:02:50.571Z" }
 
 [[package]]
 name = "jinja2"
@@ -1580,6 +1597,12 @@ wheels = [
 ]
 
 [[package]]
+name = "rpi-gpio"
+version = "0.7.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c4/0f/10b524a12b3445af1c607c27b2f5ed122ef55756e29942900e5c950735f2/RPi.GPIO-0.7.1.tar.gz", hash = "sha256:cd61c4b03c37b62bba4a5acfea9862749c33c618e0295e7e90aa4713fb373b70", size = 29090, upload-time = "2022-02-06T15:15:06.022Z" }
+
+[[package]]
 name = "scikit-learn"
 version = "1.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1725,6 +1748,12 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/e1/1a/569ea0420a0c4801c2c8dd40d8d544989522f6014d51def689125f3f2935/soxr-0.5.0.post1-cp312-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a3f16810dd649ab1f433991d2a9661e9e6a116c2b4101039b53b3c3e90a094fc", size = 248455, upload-time = "2024-08-31T03:43:22.165Z" },
     { url = "https://files.pythonhosted.org/packages/bc/10/440f1ba3d4955e0dc740bbe4ce8968c254a3d644d013eb75eea729becdb8/soxr-0.5.0.post1-cp312-abi3-win_amd64.whl", hash = "sha256:b1be9fee90afb38546bdbd7bde714d1d9a8c5a45137f97478a83b65e7f3146f6", size = 164937, upload-time = "2024-08-31T03:43:23.671Z" },
 ]
+
+[[package]]
+name = "spidev"
+version = "3.8"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/67/87/039b6eeea781598015b538691bc174cc0bf77df9d4d2d3b8bf9245c0de8c/spidev-3.8.tar.gz", hash = "sha256:2bc02fb8c6312d519ebf1f4331067427c0921d3f77b8bcaf05189a2e8b8382c0", size = 13893, upload-time = "2025-09-15T18:56:20.672Z" }
 
 [[package]]
 name = "sqladmin"
@@ -2029,6 +2058,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/5e/42/e0e305207bb88c6b8d3061399c6a961ffe5fbb7e2aa63c9234df7259e9cd/uvicorn-0.35.0.tar.gz", hash = "sha256:bc662f087f7cf2ce11a1d7fd70b90c9f98ef2e2831556dd078d131b96cc94a01", size = 78473, upload-time = "2025-06-28T16:15:46.058Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d2/e2/dc81b1bd1dcfe91735810265e9d26bc8ec5da45b4c0f6237e286819194c3/uvicorn-0.35.0-py3-none-any.whl", hash = "sha256:197535216b25ff9b785e29a0b79199f55222193d47f820816e7da751e9bc8d4a", size = 66406, upload-time = "2025-06-28T16:15:44.816Z" },
+]
+
+[[package]]
+name = "waveshare-epd"
+version = "0.0.0"
+source = { git = "https://github.com/waveshareteam/e-Paper.git?subdirectory=RaspberryPi_JetsonNano%2Fpython#b304c5151aa1edb31bc35e9eaf660f4dc7769590" }
+dependencies = [
+    { name = "jetson-gpio" },
+    { name = "pillow" },
 ]
 
 [[package]]
