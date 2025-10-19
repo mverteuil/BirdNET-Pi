@@ -1,5 +1,12 @@
 {% extends "base.html.j2" %}
 
+{% block styles %}
+    <!-- Leaflet CSS for map widget -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+{% endblock %}
+
 {% block content %}
 
     <form method="post" action="/admin/settings" role="form" aria-label="{{ _('System settings') }}" id="settings-form">
@@ -238,30 +245,35 @@
                     <div class="label-text">{{ _('Coordinates') }}</div>
                     <div class="label-description">{{ _('For species list and sunrise/sunset') }}</div>
                 </div>
-                <div class="coordinate-input">
-                    <div class="coord-field">
-                        <label class="coord-label" for="latitude">{{ _('Latitude') }}</label>
-                        <input type="number"
-                               class="coord-input"
-                               id="latitude"
-                               name="latitude"
-                               value="{{ config.latitude }}"
-                               min="-90"
-                               max="90"
-                               step="0.0001"
-                               aria-label="{{ _('Latitude in decimal degrees') }}">
-                    </div>
-                    <div class="coord-field">
-                        <label class="coord-label" for="longitude">{{ _('Longitude') }}</label>
-                        <input type="number"
-                               class="coord-input"
-                               id="longitude"
-                               name="longitude"
-                               value="{{ config.longitude }}"
-                               min="-180"
-                               max="180"
-                               step="0.0001"
-                               aria-label="{{ _('Longitude in decimal degrees') }}">
+                <div class="coordinate-section">
+                    <!-- Location Map Widget -->
+                    {% include 'components/location_map.html.j2' %}
+
+                    <div class="coordinate-input">
+                        <div class="coord-field">
+                            <label class="coord-label" for="latitude">{{ _('Latitude') }}</label>
+                            <input type="number"
+                                   class="coord-input"
+                                   id="latitude"
+                                   name="latitude"
+                                   value="{{ config.latitude }}"
+                                   min="-90"
+                                   max="90"
+                                   step="0.000001"
+                                   aria-label="{{ _('Latitude in decimal degrees') }}">
+                        </div>
+                        <div class="coord-field">
+                            <label class="coord-label" for="longitude">{{ _('Longitude') }}</label>
+                            <input type="number"
+                                   class="coord-input"
+                                   id="longitude"
+                                   name="longitude"
+                                   value="{{ config.longitude }}"
+                                   min="-180"
+                                   max="180"
+                                   step="0.000001"
+                                   aria-label="{{ _('Longitude in decimal degrees') }}">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -531,6 +543,11 @@
 {% endblock %}
 
 {% block scripts %}
+    <!-- Leaflet JavaScript for map widget -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+
     <script src="{{ request.url_for('static', path='script.js') }}"></script>
     <script>
         // Initialize dynamic positioning from data attributes

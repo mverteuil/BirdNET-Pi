@@ -901,12 +901,32 @@ h1 {
   font-weight: 500;
 }
 
-/* Coordinate input */
+/* Coordinate section wrapper */
+.coordinate-section {
+  width: 100%;
+}
+
+/* Coordinate input fields */
 .coordinate-input {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
   max-width: 400px;
+}
+
+/* Make coordinate fields fit nicely */
+.coordinate-input > .coord-field {
+  max-width: 200px;
+}
+
+/* Map widget takes full width of coordinate-section */
+.coordinate-section > .location-map-widget {
+  width: 100%;
+}
+
+/* Coordinate inputs after map - no extra margin needed */
+.coordinate-section > .coordinate-input {
+  margin-top: 0;
 }
 
 .coord-field {

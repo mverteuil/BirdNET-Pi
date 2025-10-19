@@ -149,7 +149,7 @@ def create_app() -> FastAPI:
     # System API routes
     app.include_router(system_api_routes.router, prefix="/api", tags=["System API"])
 
-    # Update API routes
+    # Update API routes (includes region pack status)
     app.include_router(update_api_routes.router, prefix="/api", tags=["Update API"])
 
     # Real-time communication
