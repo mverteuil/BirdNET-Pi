@@ -84,8 +84,13 @@ rm -rf /var/lib/birdnetpi
 rm -rf /var/log/birdnetpi
 rm -rf /dev/shm/birdnet-installer
 
-echo "Removing birdnetpi user..."
-userdel -r birdnetpi 2>/dev/null || true
+# Only remove birdnetpi user if not run by birdnetpi user
+if [ "$SUDO_USER" = "birdnetpi" ]; then
+    echo "Skipping user removal (script run by birdnetpi user)"
+else
+    echo "Removing birdnetpi user..."
+    userdel -r birdnetpi 2>/dev/null || true
+fi
 
 echo ""
 echo "=========================================="

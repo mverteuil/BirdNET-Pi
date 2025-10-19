@@ -10,7 +10,7 @@ set -e
 
 # Configuration
 REPO_URL="${BIRDNET_REPO_URL:-https://github.com/mverteuil/BirdNET-Pi.git}"
-BRANCH="${BIRDNET_BRANCH:-feature/sbc-installer}"
+BRANCH="${BIRDNET_BRANCH:-main}"
 INSTALL_DIR="/opt/birdnetpi"
 
 # Check if running as root
