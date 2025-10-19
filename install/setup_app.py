@@ -22,9 +22,10 @@ def log(status: str, message: str) -> None:
         message: Message to log
     """
     with _log_lock:
+        # Ensure any pending output is flushed before we log
+        sys.stdout.flush()
+        sys.stderr.flush()
         timestamp = datetime.now().strftime("%H:%M:%S")
-        # Use simple print to avoid terminal corruption from escape codes
-        # interacting with subprocess output
         print(f"[{timestamp}] {status} {message}", flush=True)
 
 
