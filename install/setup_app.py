@@ -144,10 +144,33 @@ def install_uv() -> None:
     UV will automatically create and manage the virtual environment
     when we run 'uv sync' later.
     """
-    # Download and run the official uv installer as birdnetpi user
-    # The installer script needs to run in a shell pipeline
+    # Create /opt/uv directory
+    subprocess.run(
+        ["sudo", "mkdir", "-p", "/opt/uv/bin"],
+        check=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/uv"],
+        check=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    # Download and run the official uv installer with custom path
+    # UV_INSTALL_DIR tells the installer where to put the binaries
     result = subprocess.run(
-        ["sudo", "-u", "birdnetpi", "sh", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"],
+        [
+            "sudo",
+            "-u",
+            "birdnetpi",
+            "sh",
+            "-c",
+            "UV_INSTALL_DIR=/opt/uv curl -LsSf https://astral.sh/uv/install.sh | sh",
+        ],
         check=False,
         stdin=subprocess.DEVNULL,
         capture_output=True,
@@ -163,18 +186,19 @@ def install_python_dependencies() -> None:
     UV will automatically create the virtual environment at .venv/
     during the sync operation.
     """
-    # Use login shell to pick up PATH from uv installer
-    # The uv installer adds ~/.cargo/bin to PATH in shell profile
+    # uv is installed to /opt/uv/bin/uv
     result = subprocess.run(
         [
             "sudo",
             "-u",
             "birdnetpi",
-            "-i",
-            "sh",
-            "-c",
-            "cd /opt/birdnetpi && uv sync --locked --no-dev --quiet",
+            "/opt/uv/bin/uv",
+            "sync",
+            "--locked",
+            "--no-dev",
+            "--quiet",
         ],
+        cwd="/opt/birdnetpi",
         check=False,
         stdin=subprocess.DEVNULL,
         capture_output=True,
