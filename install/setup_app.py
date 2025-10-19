@@ -333,8 +333,9 @@ def setup_systemd_services() -> None:
     python_exec = "/opt/birdnetpi/.venv/bin/python3"
     repo_root = "/opt/birdnetpi"
 
-    # Enable and start system services (Redis, Caddy, PulseAudio)
-    system_services = ["redis-server", "caddy", "pulseaudio"]
+    # Enable and start system services (Redis, Caddy)
+    # Note: PulseAudio runs as a user service on Raspberry Pi OS, not a system service
+    system_services = ["redis-server", "caddy"]
     for service in system_services:
         subprocess.run(
             ["sudo", "systemctl", "enable", service],
@@ -362,7 +363,7 @@ def setup_systemd_services() -> None:
         {
             "name": "birdnetpi-audio-capture.service",
             "description": "BirdNET Audio Capture",
-            "after": "network-online.target pulseaudio.service",
+            "after": "network-online.target",
             "exec_start": "/opt/birdnetpi/.venv/bin/audio-capture-daemon",
             "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=audio_capture",
         },
@@ -481,7 +482,6 @@ def show_final_summary(ip_address: str) -> None:
     services = [
         "redis-server.service",
         "caddy.service",
-        "pulseaudio.service",
         "birdnetpi-fastapi.service",
         "birdnetpi-audio-capture.service",
         "birdnetpi-audio-analysis.service",
