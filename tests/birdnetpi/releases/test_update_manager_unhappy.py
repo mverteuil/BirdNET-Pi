@@ -58,10 +58,9 @@ class TestNetworkFailures:
         mocker.patch.object(update_manager, "get_latest_version", return_value="v1.1.0")
         mocker.patch.object(update_manager, "_is_newer_version", return_value=True)
         result = await update_manager.check_for_updates()
-        assert result["update_available"] is True
+        assert result["available"] is True
         assert result["current_version"] == "v1.0.0"
         assert result["latest_version"] == "v1.1.0"
-        assert result.get("release_notes") is None
 
     @pytest.mark.asyncio
     async def test_check_for_updates_github_api_error(self, update_manager, mocker):
@@ -73,7 +72,7 @@ class TestNetworkFailures:
         mocker.patch.object(update_manager, "get_latest_version", return_value="v1.1.0")
         mocker.patch.object(update_manager, "_is_newer_version", return_value=True)
         result = await update_manager.check_for_updates()
-        assert result["update_available"] is True
+        assert result["available"] is True
         assert "error" not in result
 
     @pytest.mark.asyncio

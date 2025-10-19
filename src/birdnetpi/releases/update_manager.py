@@ -20,6 +20,7 @@ from birdnetpi.releases.asset_manifest import AssetManifest, AssetType
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.system_control import SystemControlService
+from birdnetpi.system.system_utils import SystemUtils
 
 
 class StateFileManager:
@@ -637,6 +638,9 @@ class UpdateManager:
         # Development versions start with "dev-", release versions are tags like "v1.0.0"
         version_type = "development" if current_version.startswith("dev-") else "release"
 
+        # Get deployment type
+        deployment_type = SystemUtils.get_deployment_environment()
+
         try:
             # Get latest version from remote (needs config for git remote)
             # This needs to be fixed to pass config
@@ -648,19 +652,20 @@ class UpdateManager:
             update_available = self._is_newer_version(latest_version, current_version)
 
             return {
+                "available": update_available,
                 "current_version": current_version,
                 "latest_version": latest_version,
-                "update_available": update_available,
-                "version_type": version_type,
-                "checked_at": datetime.now().isoformat(),
+                "can_auto_update": version_type == "release" and deployment_type == "sbc",
+                "deployment_type": deployment_type,
             }
         except Exception as e:
-            # Even on error, include current version info so dev banner can show
+            # Even on error, return valid response
             return {
+                "available": False,
                 "current_version": current_version,
-                "version_type": version_type,
+                "can_auto_update": False,
+                "deployment_type": deployment_type,
                 "error": f"Failed to get latest version: {e}",
-                "checked_at": datetime.now().isoformat(),
             }
 
     def get_current_version(self) -> str:

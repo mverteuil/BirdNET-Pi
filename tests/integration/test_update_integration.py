@@ -44,7 +44,7 @@ def mock_update_manager(path_resolver):
     mock.check_for_updates = AsyncMock(
         spec=UpdateManager.check_for_updates,
         return_value={
-            "update_available": True,
+            "available": True,
             "current_version": "v1.0.0",
             "latest_version": "v1.1.0",
             "release_notes": "New features and fixes",
@@ -225,7 +225,7 @@ class TestUpdateDaemonIntegration:
         # Test check request flow
         check_request = {"action": "check", "force": False}
         check_result = {
-            "update_available": True,
+            "available": True,
             "current_version": "v1.0.0",
             "latest_version": "v1.1.0",
         }

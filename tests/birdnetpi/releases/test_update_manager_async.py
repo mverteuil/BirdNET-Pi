@@ -72,10 +72,11 @@ class TestUpdateManagerAsync:
         mock_response.raise_for_status.return_value = None
         with patch("httpx.get", autospec=True, return_value=mock_response):
             result = await update_manager_with_state.check_for_updates()
-        assert result["update_available"] is True
+        assert result["available"] is True
         assert result["current_version"] == "v1.0.0"
         assert result["latest_version"] == "v1.1.0"
-        assert "checked_at" in result
+        assert "deployment_type" in result
+        assert "can_auto_update" in result
 
     @pytest.mark.asyncio
     async def test_check_for_updates_when_up_to_date(self, update_manager_with_state, mocker):
@@ -84,7 +85,7 @@ class TestUpdateManagerAsync:
         mocker.patch.object(update_manager_with_state, "get_latest_version", return_value="v1.1.0")
         mocker.patch.object(update_manager_with_state, "_is_newer_version", return_value=False)
         result = await update_manager_with_state.check_for_updates()
-        assert result["update_available"] is False
+        assert result["available"] is False
         assert result["current_version"] == "v1.1.0"
         assert result["latest_version"] == "v1.1.0"
 

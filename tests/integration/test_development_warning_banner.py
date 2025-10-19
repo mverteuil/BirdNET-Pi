@@ -50,7 +50,7 @@ class TestDevelopmentWarningBanner:
                     "current_version": "dev-abc1234",
                     "latest_version": "v1.0.0",
                     "version_type": "development",
-                    "update_available": False,
+                    "available": False,
                 }
 
                 # Create a test environment
@@ -81,7 +81,7 @@ class TestDevelopmentWarningBanner:
                     "current_version": "dev-abc1234",
                     "latest_version": "v1.0.0",
                     "version_type": "development",
-                    "update_available": False,
+                    "available": False,
                 }
 
                 # Create a test environment
@@ -111,7 +111,7 @@ class TestDevelopmentWarningBanner:
                     "current_version": "v1.0.0",
                     "latest_version": "v1.1.0",
                     "version_type": "release",
-                    "update_available": True,
+                    "available": True,
                 }
 
                 # Create a test environment
@@ -140,7 +140,7 @@ class TestDevelopmentWarningBanner:
                 "current_version": "dev-main123",
                 "latest_version": "v1.0.0",
                 "version_type": "development",
-                "update_available": False,
+                "available": False,
             }
 
         def mock_show_development_warning():
@@ -282,7 +282,7 @@ class TestUpdateDaemonIntegration:
             "current_version": "dev-main456",
             "latest_version": "v2.0.0",
             "version_type": "development",
-            "update_available": True,
+            "available": True,
             "checked_at": "2024-01-01T12:00:00",
         }
         DaemonState.update_manager.check_for_updates = AsyncMock(
