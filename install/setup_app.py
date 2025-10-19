@@ -148,24 +148,14 @@ def create_directories() -> None:
     )
 
 
-def create_venv() -> None:
-    """Create Python virtual environment."""
-    venv_dir = Path("/opt/birdnetpi/.venv")
-    if not venv_dir.exists():
-        subprocess.run(
-            ["sudo", "-u", "birdnetpi", "python3.11", "-m", "venv", str(venv_dir)],
-            check=True,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-
-
 def install_uv() -> None:
-    """Install uv package manager into venv."""
-    pip_path = "/opt/birdnetpi/.venv/bin/pip"
+    """Install uv package manager to system Python.
+
+    UV will automatically create and manage the virtual environment
+    when we run 'uv sync' later.
+    """
     subprocess.run(
-        ["sudo", "-u", "birdnetpi", pip_path, "install", "-q", "uv"],
+        ["sudo", "pip3", "install", "-q", "uv"],
         check=True,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
@@ -174,23 +164,27 @@ def install_uv() -> None:
 
 
 def install_python_dependencies() -> None:
-    """Install Python dependencies with uv."""
-    uv_path = "/opt/birdnetpi/.venv/bin/uv"
+    """Install Python dependencies with uv.
+
+    UV will automatically create the virtual environment at .venv/
+    during the sync operation.
+    """
     subprocess.run(
         [
             "sudo",
             "-u",
             "birdnetpi",
-            uv_path,
+            "uv",
             "sync",
             "--locked",
             "--no-dev",
             "--quiet",
-            f"--python={sys.executable}",
         ],
         cwd="/opt/birdnetpi",
         check=True,
         stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
 
 
@@ -267,26 +261,19 @@ def configure_caddy() -> None:
     )
 
 
-def setup_systemd_services() -> None:
-    """Set up systemd services for the application."""
+def install_systemd_services() -> None:
+    """Install and enable systemd services without starting them."""
     systemd_dir = "/etc/systemd/system/"
     user = "birdnetpi"
     python_exec = "/opt/birdnetpi/.venv/bin/python3"
     repo_root = "/opt/birdnetpi"
 
-    # Enable and start system services (Redis, Caddy)
+    # Enable system services (Redis, Caddy) but don't start yet
     # Note: No PulseAudio daemon on Raspberry Pi OS Lite - we use ALSA directly via PortAudio
     system_services = ["redis-server", "caddy"]
     for service in system_services:
         subprocess.run(
             ["sudo", "systemctl", "enable", service],
-            check=True,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        subprocess.run(
-            ["sudo", "systemctl", "start", service],
             check=True,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
@@ -379,13 +366,6 @@ WantedBy=multi-user.target
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        subprocess.run(
-            ["sudo", "systemctl", "start", service_name],
-            check=True,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
 
     subprocess.run(
         ["sudo", "systemctl", "daemon-reload"],
@@ -394,6 +374,37 @@ WantedBy=multi-user.target
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+
+
+def start_systemd_services() -> None:
+    """Start all systemd services."""
+    # Start system services first
+    system_services = ["redis-server", "caddy"]
+    for service in system_services:
+        subprocess.run(
+            ["sudo", "systemctl", "start", service],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+    # Start BirdNET services
+    birdnet_services = [
+        "birdnetpi-fastapi.service",
+        "birdnetpi-audio-capture.service",
+        "birdnetpi-audio-analysis.service",
+        "birdnetpi-audio-websocket.service",
+        "birdnetpi-update.service",
+    ]
+    for service in birdnet_services:
+        subprocess.run(
+            ["sudo", "systemctl", "start", service],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
 
 def check_service_status(service_name: str) -> str:
@@ -418,6 +429,29 @@ def check_service_status(service_name: str) -> str:
         return "○"
     else:
         return "✗"
+
+
+def check_services_health() -> None:
+    """Check that all services are running and healthy."""
+    services = [
+        "redis-server.service",
+        "caddy.service",
+        "birdnetpi-fastapi.service",
+        "birdnetpi-audio-capture.service",
+        "birdnetpi-audio-analysis.service",
+        "birdnetpi-audio-websocket.service",
+        "birdnetpi-update.service",
+    ]
+
+    all_healthy = True
+    for service in services:
+        status = check_service_status(service)
+        if status != "✓":
+            all_healthy = False
+            log("✗", f"Service {service} is not running")
+
+    if not all_healthy:
+        raise RuntimeError("Not all services are healthy")
 
 
 def show_final_summary(ip_address: str) -> None:
@@ -473,7 +507,7 @@ def main() -> None:
     print()
 
     try:
-        # Foundation setup
+        # Wave 1: Foundation setup
         log("→", "Creating data directories")
         create_directories()
         log("✓", "Creating data directories")
@@ -482,46 +516,49 @@ def main() -> None:
         apt_update()
         log("✓", "Updating package lists")
 
-        # System setup (parallel)
+        # Wave 2: System packages and uv (parallel)
         print()
-        log("→", "Starting: system packages, Python environment")
+        log("→", "Starting: system packages, uv package manager")
         run_parallel(
             [
                 ("Installing system packages", install_system_packages),
-                ("Creating Python virtual environment", create_venv),
+                ("Installing uv package manager", install_uv),
             ]
         )
-        log("✓", "Completed: system packages, Python environment")
+        log("✓", "Completed: system packages, uv package manager")
 
-        # Python setup
+        # Wave 3: Python dependencies (sequential, needs uv)
         print()
-        log("→", "Installing uv package manager")
-        install_uv()
-        log("✓", "Installing uv package manager")
-
         log("→", "Installing Python dependencies")
         install_python_dependencies()
         log("✓", "Installing Python dependencies")
 
-        # Assets and configuration (parallel)
+        # Wave 4: Configuration and services (parallel, long-running tasks at bottom)
         print()
-        log("→", "Starting: asset download, web server configuration")
+        log("→", "Starting: web server configuration, systemd services, asset download")
         run_parallel(
             [
+                ("Configuring Caddy web server", configure_caddy),
+                ("Installing systemd services", install_systemd_services),
                 (
                     "Downloading BirdNET assets (may take 1-10 minutes depending on connection)",
                     install_assets,
                 ),
-                ("Configuring Caddy web server", configure_caddy),
             ]
         )
-        log("✓", "Completed: asset download, web server configuration")
+        log("✓", "Completed: web server configuration, systemd services, asset download")
 
-        # Service setup
+        # Wave 5: Start services (sequential, after assets are ready)
         print()
-        log("→", "Setting up systemd services")
-        setup_systemd_services()
-        log("✓", "Setting up systemd services")
+        log("→", "Starting systemd services")
+        start_systemd_services()
+        log("✓", "Starting systemd services")
+
+        # Wave 6: Health check
+        print()
+        log("→", "Checking service health")
+        check_services_health()
+        log("✓", "Checking service health")
 
         # Show final summary
         ip_address = get_ip_address()
