@@ -528,17 +528,23 @@ def main() -> None:
         apt_update()
         log("✓", "Updating package lists")
 
-        # Wave 2: Initial setup (parallel)
+        # Wave 2: System packages and venv (parallel)
         run_parallel(
             [
                 ("Installing system packages", install_system_packages),
                 ("Creating Python virtual environment", create_venv),
+            ]
+        )
+
+        # Wave 3: Venv setup (parallel - after venv exists)
+        run_parallel(
+            [
                 ("Installing uv package manager", install_uv),
                 ("Copying project files", copy_project_files),
             ]
         )
 
-        # Wave 3: Source code installation (sequential - uv needs source)
+        # Wave 4: Source code installation (sequential - uv needs source)
         log("→", "Copying source code")
         copy_source_code()
         log("✓", "Copying source code")
@@ -547,7 +553,7 @@ def main() -> None:
         install_python_dependencies()
         log("✓", "Installing Python dependencies")
 
-        # Wave 4: Assets and configuration (parallel)
+        # Wave 5: Assets and configuration (parallel)
         run_parallel(
             [
                 ("Downloading BirdNET assets", install_assets),
@@ -556,7 +562,7 @@ def main() -> None:
             ]
         )
 
-        # Wave 5: Services and final checks (sequential)
+        # Wave 6: Services and final checks (sequential)
         log("→", "Setting up systemd services")
         setup_systemd_services()
         log("✓", "Setting up systemd services")
