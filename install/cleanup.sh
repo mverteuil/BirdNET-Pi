@@ -85,8 +85,10 @@ rm -rf /var/log/birdnetpi
 rm -rf /dev/shm/birdnet-installer
 
 # Only remove birdnetpi user if not run by birdnetpi user
+USER_PRESERVED=false
 if [ "$SUDO_USER" = "birdnetpi" ]; then
-    echo "Skipping user removal (script run by birdnetpi user)"
+    echo "Removing birdnetpi user... SKIPPED (script run by birdnetpi user)"
+    USER_PRESERVED=true
 else
     echo "Removing birdnetpi user..."
     userdel -r birdnetpi 2>/dev/null || true
@@ -97,6 +99,10 @@ echo "=========================================="
 echo "Cleanup complete!"
 echo "=========================================="
 echo ""
+if [ "$USER_PRESERVED" = true ]; then
+    echo "Note: birdnetpi user was preserved (script run by that user)"
+    echo ""
+fi
 echo "System packages (Redis, Caddy, etc.) are still installed."
 echo "Redis and Caddy services have been stopped."
 echo ""
