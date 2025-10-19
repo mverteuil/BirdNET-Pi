@@ -22,9 +22,6 @@ def log(status: str, message: str) -> None:
         message: Message to log
     """
     with _log_lock:
-        # Ensure any pending output is flushed before we log
-        sys.stdout.flush()
-        sys.stderr.flush()
         timestamp = datetime.now().strftime("%H:%M:%S")
         print(f"[{timestamp}] {status} {message}", flush=True)
 
@@ -77,6 +74,7 @@ def apt_update() -> None:
     subprocess.run(
         ["sudo", "apt-get", "update"],
         check=True,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -99,6 +97,7 @@ def install_system_packages() -> None:
     subprocess.run(
         ["sudo", "apt-get", "install", "-y", "--no-install-recommends", *dependencies],
         check=True,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -121,6 +120,7 @@ def create_directories() -> None:
         subprocess.run(
             ["sudo", "mkdir", "-p", d],
             check=True,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -128,6 +128,7 @@ def create_directories() -> None:
     subprocess.run(
         ["sudo", "chmod", "777", "/var/log"],
         check=True,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -141,6 +142,7 @@ def create_directories() -> None:
             "/var/lib/birdnetpi",
         ],
         check=True,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -153,6 +155,7 @@ def create_venv() -> None:
         subprocess.run(
             ["sudo", "-u", "birdnetpi", "python3.11", "-m", "venv", str(venv_dir)],
             check=True,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -164,6 +167,7 @@ def install_uv() -> None:
     subprocess.run(
         ["sudo", "-u", "birdnetpi", pip_path, "install", "-q", "uv"],
         check=True,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -186,6 +190,7 @@ def install_python_dependencies() -> None:
         ],
         cwd="/opt/birdnetpi",
         check=True,
+        stdin=subprocess.DEVNULL,
     )
 
 
@@ -224,6 +229,7 @@ def configure_caddy() -> None:
         subprocess.run(
             ["sudo", "cp", str(caddyfile), str(caddyfile_backup)],
             check=True,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -232,18 +238,21 @@ def configure_caddy() -> None:
     subprocess.run(
         ["sudo", "cp", str(repo_root / "config_templates" / "Caddyfile"), str(caddyfile)],
         check=True,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
     subprocess.run(
         ["sudo", "sed", "-i", "s/:8000/:80/g", str(caddyfile)],
         check=True,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
     subprocess.run(
         ["sudo", "chown", "root:root", str(caddyfile)],
         check=True,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -252,6 +261,7 @@ def configure_caddy() -> None:
     subprocess.run(
         ["sudo", "systemctl", "reload-or-restart", "caddy"],
         check=True,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -271,12 +281,14 @@ def setup_systemd_services() -> None:
         subprocess.run(
             ["sudo", "systemctl", "enable", service],
             check=True,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
         subprocess.run(
             ["sudo", "systemctl", "start", service],
             check=True,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -356,18 +368,21 @@ WantedBy=multi-user.target
         subprocess.run(
             ["sudo", "mv", temp_file_path, service_file_path],
             check=True,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
         subprocess.run(
             ["sudo", "systemctl", "enable", service_name],
             check=True,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
         subprocess.run(
             ["sudo", "systemctl", "start", service_name],
             check=True,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -375,6 +390,7 @@ WantedBy=multi-user.target
     subprocess.run(
         ["sudo", "systemctl", "daemon-reload"],
         check=True,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
