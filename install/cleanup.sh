@@ -23,8 +23,7 @@ echo "  - All BirdNET-Pi systemd services"
 echo "  - /opt/birdnetpi directory"
 echo "  - /var/lib/birdnetpi directory"
 echo "  - /var/log/birdnetpi directory"
-echo "  - birdnetpi user"
-echo "  - /dev/shm/birdnet-installer directory (if present)"
+echo "  - birdnetpi user (unless you are logged in as that user)"
 echo "  - BirdNET-Pi Caddyfile (restores original)"
 echo ""
 echo "System packages (Redis, Caddy, etc.) will remain installed."
@@ -82,7 +81,6 @@ echo "Removing directories..."
 rm -rf /opt/birdnetpi
 rm -rf /var/lib/birdnetpi
 rm -rf /var/log/birdnetpi
-rm -rf /dev/shm/birdnet-installer
 
 # Only remove birdnetpi user if not run by birdnetpi user
 USER_PRESERVED=false
