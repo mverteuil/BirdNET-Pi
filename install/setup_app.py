@@ -23,9 +23,8 @@ def log(status: str, message: str) -> None:
     """
     with _log_lock:
         timestamp = datetime.now().strftime("%H:%M:%S")
-        # Clear line and ensure we start at column 0
-        sys.stdout.write(f"\r\033[K[{timestamp}] {status} {message}\n")
-        sys.stdout.flush()
+        # Clear current line, write message, then CRLF to start fresh line
+        print(f"\r\033[K[{timestamp}] {status} {message}", flush=True)
 
 
 def run_parallel(tasks: list[tuple[str, Callable[[], None]]]) -> None:
