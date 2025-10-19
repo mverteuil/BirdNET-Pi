@@ -90,8 +90,9 @@ def install_system_packages() -> None:
     # Already in Raspberry Pi OS Lite (verified 2024-07-04 Bookworm):
     # - curl, ca-certificates, alsa-utils
     # - sqlite3, libsqlite3-0
-    # - pulseaudio, pulseaudio-utils, libportaudio2
+    # - libportaudio2, libportaudiocpp0 (PortAudio runtime libraries)
     # - libjpeg-dev (as libjpeg62-turbo-dev), zlib1g-dev
+    # Note: We use ALSA directly via PortAudio, no PulseAudio daemon needed
     subprocess.run(
         ["sudo", "apt-get", "install", "-y", "--no-install-recommends", *dependencies],
         check=True,
@@ -334,7 +335,7 @@ def setup_systemd_services() -> None:
     repo_root = "/opt/birdnetpi"
 
     # Enable and start system services (Redis, Caddy)
-    # Note: PulseAudio runs as a user service on Raspberry Pi OS, not a system service
+    # Note: No PulseAudio daemon on Raspberry Pi OS Lite - we use ALSA directly via PortAudio
     system_services = ["redis-server", "caddy"]
     for service in system_services:
         subprocess.run(
