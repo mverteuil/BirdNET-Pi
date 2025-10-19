@@ -101,26 +101,14 @@ def install_system_packages() -> None:
     )
 
 
-def create_user_and_directories() -> None:
-    """Create birdnetpi user and required directories."""
-    # Create user (ignore error if already exists)
-    subprocess.run(
-        ["sudo", "useradd", "-m", "-s", "/bin/bash", "birdnetpi"],
-        check=False,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    subprocess.run(
-        ["sudo", "usermod", "-aG", "audio,video,dialout", "birdnetpi"],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+def create_directories() -> None:
+    """Create required data directories.
 
-    # Create directories
+    Note: /opt/birdnetpi and birdnetpi user are created by install.sh before cloning.
+    """
+    # Create data directories
     dirs_to_create = [
         "/var/log/birdnetpi",
-        "/opt/birdnetpi",
         "/var/lib/birdnetpi/config",
         "/var/lib/birdnetpi/models",
         "/var/lib/birdnetpi/recordings",
@@ -147,7 +135,6 @@ def create_user_and_directories() -> None:
             "-R",
             "birdnetpi:birdnetpi",
             "/var/log/birdnetpi",
-            "/opt/birdnetpi",
             "/var/lib/birdnetpi",
         ],
         check=True,
@@ -173,47 +160,6 @@ def install_uv() -> None:
     pip_path = "/opt/birdnetpi/.venv/bin/pip"
     subprocess.run(
         ["sudo", "-u", "birdnetpi", pip_path, "install", "-q", "uv"],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-
-
-def copy_project_files() -> None:
-    """Copy pyproject.toml and uv.lock to installation directory."""
-    script_dir = Path(__file__).parent
-    repo_root = script_dir.parent
-
-    for filename in ["pyproject.toml", "uv.lock"]:
-        dest_path = Path(f"/opt/birdnetpi/{filename}")
-        if not dest_path.exists():
-            subprocess.run(
-                ["sudo", "cp", str(repo_root / filename), str(dest_path)],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            subprocess.run(
-                ["sudo", "chown", "birdnetpi:birdnetpi", str(dest_path)],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-
-
-def copy_source_code() -> None:
-    """Copy source code to installation directory."""
-    script_dir = Path(__file__).parent
-    repo_root = script_dir.parent
-
-    subprocess.run(
-        ["sudo", "cp", "-r", str(repo_root / "src"), "/opt/birdnetpi/"],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    subprocess.run(
-        ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/src"],
         check=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -260,25 +206,6 @@ def install_assets() -> None:
     )
     if result.returncode != 0:
         raise RuntimeError(f"Asset installation failed: {result.stderr}")
-
-
-def copy_config_templates() -> None:
-    """Copy configuration templates to installation directory."""
-    script_dir = Path(__file__).parent
-    repo_root = script_dir.parent
-
-    subprocess.run(
-        ["sudo", "cp", "-r", str(repo_root / "config_templates"), "/opt/birdnetpi/"],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    subprocess.run(
-        ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/config_templates"],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
 
 
 def configure_caddy() -> None:
@@ -528,9 +455,9 @@ def main() -> None:
 
     try:
         # Wave 1: Foundation (sequential)
-        log("→", "Creating user and directories")
-        create_user_and_directories()
-        log("✓", "Creating user and directories")
+        log("→", "Creating data directories")
+        create_directories()
+        log("✓", "Creating data directories")
 
         log("→", "Updating package lists")
         apt_update()
@@ -544,33 +471,24 @@ def main() -> None:
             ]
         )
 
-        # Wave 3: Venv setup (parallel - after venv exists)
-        run_parallel(
-            [
-                ("Installing uv package manager", install_uv),
-                ("Copying project files", copy_project_files),
-            ]
-        )
-
-        # Wave 4: Source code installation (sequential - uv needs source)
-        log("→", "Copying source code")
-        copy_source_code()
-        log("✓", "Copying source code")
+        # Wave 3: Venv setup (sequential - need venv before uv)
+        log("→", "Installing uv package manager")
+        install_uv()
+        log("✓", "Installing uv package manager")
 
         log("→", "Installing Python dependencies")
         install_python_dependencies()
         log("✓", "Installing Python dependencies")
 
-        # Wave 5: Assets and configuration (parallel)
+        # Wave 4: Assets and configuration (parallel)
         run_parallel(
             [
                 ("Downloading BirdNET assets", install_assets),
-                ("Copying configuration templates", copy_config_templates),
                 ("Configuring Caddy web server", configure_caddy),
             ]
         )
 
-        # Wave 6: Services and final checks (sequential)
+        # Wave 5: Services and final checks (sequential)
         log("→", "Setting up systemd services")
         setup_systemd_services()
         log("✓", "Setting up systemd services")
