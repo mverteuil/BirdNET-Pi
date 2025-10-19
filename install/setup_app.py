@@ -138,13 +138,26 @@ def create_directories() -> None:
 
 
 def install_uv() -> None:
-    """Install uv package manager to system Python.
+    """Install uv package manager using official installer.
 
+    Uses the standalone installer which doesn't require pip.
     UV will automatically create and manage the virtual environment
     when we run 'uv sync' later.
     """
+    # Download and run the official uv installer
     result = subprocess.run(
-        ["sudo", "pip3", "install", "-q", "uv"],
+        ["curl", "-LsSf", "https://astral.sh/uv/install.sh"],
+        check=False,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to download uv installer: {result.stderr}")
+
+    # Run the installer script as the birdnetpi user
+    result = subprocess.run(
+        ["sudo", "-u", "birdnetpi", "sh", "-c", result.stdout],
         check=False,
         stdin=subprocess.DEVNULL,
         capture_output=True,
@@ -160,12 +173,14 @@ def install_python_dependencies() -> None:
     UV will automatically create the virtual environment at .venv/
     during the sync operation.
     """
+    # uv is installed to ~/.cargo/bin/uv by the official installer
+    uv_path = "/home/birdnetpi/.cargo/bin/uv"
     subprocess.run(
         [
             "sudo",
             "-u",
             "birdnetpi",
-            "uv",
+            uv_path,
             "sync",
             "--locked",
             "--no-dev",
