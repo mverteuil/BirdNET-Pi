@@ -163,20 +163,18 @@ def install_python_dependencies() -> None:
     UV will automatically create the virtual environment at .venv/
     during the sync operation.
     """
-    # uv is installed to ~/.cargo/bin/uv by the official installer
-    uv_path = "/home/birdnetpi/.cargo/bin/uv"
+    # Use login shell to pick up PATH from uv installer
+    # The uv installer adds ~/.cargo/bin to PATH in shell profile
     result = subprocess.run(
         [
             "sudo",
             "-u",
             "birdnetpi",
-            uv_path,
-            "sync",
-            "--locked",
-            "--no-dev",
-            "--quiet",
+            "-i",
+            "sh",
+            "-c",
+            "cd /opt/birdnetpi && uv sync --locked --no-dev --quiet",
         ],
-        cwd="/opt/birdnetpi",
         check=False,
         stdin=subprocess.DEVNULL,
         capture_output=True,
