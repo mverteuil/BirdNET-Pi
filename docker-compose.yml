@@ -27,7 +27,7 @@ services:
       target: init  # Use the init stage which runs as root
     container_name: birdnet-pi-init
     environment:
-      BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-v2.2.0}
+      BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-latest}
     logging:
       driver: json-file
     volumes:
@@ -48,7 +48,7 @@ services:
     environment:
       PULSE_SERVER: host.docker.internal:4713
       DOCKER_CONTAINER: "true"
-      BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-v2.2.0}
+      BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-latest}
       # Force PortAudio to use PulseAudio backend instead of ALSA
       PA_ALSA_PLUGHW: 0
       # Profiling is explicitly disabled in production (pyinstrument not included)
@@ -89,7 +89,7 @@ services:
     environment:
       PULSE_SERVER: host.docker.internal:4713
       DOCKER_CONTAINER: "true"
-      BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-v2.2.0}
+      BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-latest}
       # Force PortAudio to use PulseAudio backend instead of ALSA
       PA_ALSA_PLUGHW: 0
       # Profiling is always enabled for this service

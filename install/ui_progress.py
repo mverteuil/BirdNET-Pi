@@ -119,8 +119,8 @@ class ProgressUI:
         services = [
             "redis-server.service",
             "caddy.service",
+            "pulseaudio.service",
             "birdnetpi-fastapi.service",
-            "birdnetpi-pulseaudio.service",
             "birdnetpi-audio-capture.service",
             "birdnetpi-audio-analysis.service",
             "birdnetpi-audio-websocket.service",

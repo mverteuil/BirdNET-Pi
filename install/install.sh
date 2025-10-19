@@ -11,7 +11,7 @@ set -e
 # Configuration
 REPO_URL="${BIRDNET_REPO_URL:-https://github.com/mverteuil/BirdNET-Pi.git}"
 BRANCH="${BIRDNET_BRANCH:-feature/sbc-installer}"
-INSTALL_DIR="${BIRDNET_INSTALL_DIR:-/tmp/birdnet-installer}"
+INSTALL_DIR="${BIRDNET_INSTALL_DIR:-/dev/shm/birdnet-installer}"
 
 # Check if running as root
 if [ "$(id -u)" -eq 0 ]; then
@@ -24,7 +24,7 @@ echo "BirdNET-Pi SBC Installer"
 echo "========================================"
 echo "Repository: $REPO_URL"
 echo "Branch: $BRANCH"
-echo "Temporary directory: $INSTALL_DIR"
+echo "Temporary directory (RAM): $INSTALL_DIR"
 echo ""
 echo "App code will install to: /opt/birdnetpi"
 echo "Data will install to: /var/lib/birdnetpi"

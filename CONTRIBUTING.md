@@ -35,7 +35,7 @@ docker-compose up  # Start development environment
 Only these commands run outside Docker (use inline env vars):
 ```bash
 # Download models locally
-BIRDNETPI_DATA=./data uv run install-assets install v2.1.1
+BIRDNETPI_DATA=./data uv run install-assets install latest
 
 # Create releases
 BIRDNETPI_DATA=./data uv run manage-releases create

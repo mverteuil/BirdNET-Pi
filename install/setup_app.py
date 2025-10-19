@@ -29,24 +29,18 @@ def install_system_dependencies() -> None:
     try:
         subprocess.run(["sudo", "apt-get", "update"], check=True)
         dependencies = [
-            # Core dependencies
-            "ffmpeg",  # Audio processing
-            "sqlite3",  # Database
-            "redis-server",  # Cache
-            "caddy",  # Web server
-            # Audio system
-            "alsa-utils",  # Audio drivers
-            "pulseaudio",  # Audio server
-            "libportaudio2",  # Audio I/O library
-            "portaudio19-dev",  # Audio I/O headers (for Python sounddevice)
-            # System utilities
-            "curl",  # HTTP client
-            "ca-certificates",  # SSL certificates
-            "systemd-journal-remote",  # Journal access for logs
-            # Build dependencies for Python packages
-            "libjpeg-dev",  # For Pillow (image processing)
-            "zlib1g-dev",  # For various Python packages
+            # ONLY packages NOT in Raspberry Pi OS Lite by default
+            "redis-server",  # Cache server - NOT in Lite
+            "caddy",  # Web server/reverse proxy - NOT in Lite
+            "portaudio19-dev",  # Audio I/O headers for building sounddevice
         ]
+        # Already in Raspberry Pi OS Lite (verified 2024-07-04 Bookworm):
+        # - curl, ca-certificates, alsa-utils
+        # - sqlite3, libsqlite3-0
+        # - pulseaudio, pulseaudio-utils, libportaudio2
+        # - libjpeg-dev (as libjpeg62-turbo-dev), zlib1g-dev
+        # Install packages
+        # Note: squeezelite-pulseaudio pulls in ffmpeg, but we don't use it for BirdNET
         subprocess.run(
             ["sudo", "apt-get", "install", "-y", "--no-install-recommends", *dependencies],
             check=True,
@@ -100,6 +94,10 @@ def setup_venv_and_dependencies() -> Path:
         Path: Path to the virtual environment
     """
     try:
+        # Determine repository root (script is in install/ subdirectory)
+        script_dir = Path(__file__).parent
+        repo_root = script_dir.parent
+
         venv_dir = Path("/opt/birdnetpi/.venv")
         if not venv_dir.exists():
             subprocess.run(
@@ -111,21 +109,26 @@ def setup_venv_and_dependencies() -> Path:
         pip_path = str(venv_dir / "bin" / "pip")
         subprocess.run(["sudo", "-u", "birdnetpi", pip_path, "install", "uv"], check=True)
 
-        # Copy project files
+        # Copy project files from repository root
         pyproject_path = Path("/opt/birdnetpi/pyproject.toml")
         if not pyproject_path.exists():
-            subprocess.run(["sudo", "cp", "pyproject.toml", str(pyproject_path)], check=True)
+            subprocess.run(
+                ["sudo", "cp", str(repo_root / "pyproject.toml"), str(pyproject_path)],
+                check=True,
+            )
             subprocess.run(
                 ["sudo", "chown", "birdnetpi:birdnetpi", str(pyproject_path)], check=True
             )
 
         uv_lock_path = Path("/opt/birdnetpi/uv.lock")
         if not uv_lock_path.exists():
-            subprocess.run(["sudo", "cp", "uv.lock", str(uv_lock_path)], check=True)
+            subprocess.run(
+                ["sudo", "cp", str(repo_root / "uv.lock"), str(uv_lock_path)], check=True
+            )
             subprocess.run(["sudo", "chown", "birdnetpi:birdnetpi", str(uv_lock_path)], check=True)
 
         # Copy source code (required before uv sync can build the package)
-        subprocess.run(["sudo", "cp", "-r", "src", "/opt/birdnetpi/"], check=True)
+        subprocess.run(["sudo", "cp", "-r", str(repo_root / "src"), "/opt/birdnetpi/"], check=True)
         subprocess.run(
             ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/birdnetpi/src"],
             check=True,
@@ -171,6 +174,10 @@ def run_installation_with_progress(venv_path: Path) -> None:
     # Import Rich UI (now available after uv sync)
     from ui_progress import InstallStep, ProgressUI
 
+    # Determine repository root (script is in install/ subdirectory)
+    script_dir = Path(__file__).parent
+    repo_root = script_dir.parent
+
     # Use default configuration for now
     site_name = "BirdNET-Pi"
 
@@ -193,7 +200,7 @@ def run_installation_with_progress(venv_path: Path) -> None:
         # Copy config templates
         ui.update_task(InstallStep.CONFIG_TEMPLATES, advance=20)
         subprocess.run(
-            ["sudo", "cp", "-r", "config_templates", "/opt/birdnetpi/"],
+            ["sudo", "cp", "-r", str(repo_root / "config_templates"), "/opt/birdnetpi/"],
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -220,7 +227,7 @@ def run_installation_with_progress(venv_path: Path) -> None:
 
         # Copy template first, then replace :8000 with :80 in place for SBC installs
         subprocess.run(
-            ["sudo", "cp", "config_templates/Caddyfile", str(caddyfile)],
+            ["sudo", "cp", str(repo_root / "config_templates" / "Caddyfile"), str(caddyfile)],
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -307,7 +314,8 @@ def setup_systemd_services(venv_path: Path) -> None:
     python_exec = venv_path / "bin" / "python3"
     repo_root = Path("/opt/birdnetpi")
 
-    # Enable and start system Redis (Caddy already reloaded with new config earlier)
+    # Enable and start system services (Redis, Caddy, PulseAudio)
+    # PulseAudio is provided by the system package, not a custom service
     subprocess.run(
         ["sudo", "systemctl", "enable", "redis-server"],
         check=True,
@@ -326,6 +334,19 @@ def setup_systemd_services(venv_path: Path) -> None:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+    # Enable system PulseAudio service
+    subprocess.run(
+        ["sudo", "systemctl", "enable", "pulseaudio"],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        ["sudo", "systemctl", "start", "pulseaudio"],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
     services = [
         {
@@ -338,15 +359,9 @@ def setup_systemd_services(venv_path: Path) -> None:
             "environment": "PYTHONPATH=/opt/birdnetpi/src",
         },
         {
-            "name": "birdnetpi-pulseaudio.service",
-            "description": "BirdNET PulseAudio Sound Server",
-            "after": "network-online.target",
-            "exec_start": "pulseaudio --daemonize=no --exit-idle-time=-1",
-        },
-        {
             "name": "birdnetpi-audio-capture.service",
             "description": "BirdNET Audio Capture",
-            "after": "network-online.target birdnetpi-pulseaudio.service",
+            "after": "network-online.target pulseaudio.service",
             "exec_start": f"{venv_path / 'bin' / 'audio-capture-daemon'}",
             "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=audio_capture",
         },

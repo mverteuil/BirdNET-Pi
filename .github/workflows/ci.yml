@@ -91,7 +91,7 @@ jobs:
         if: steps.cache-assets.outputs.cache-hit != 'true'
         env:
           BIRDNETPI_DATA: ${{ github.workspace }}/data
-          ASSETS_VERSION: v2.2.0
+          ASSETS_VERSION: latest
         run: |
           uv run install-assets install ${ASSETS_VERSION}
       - name: Run pytest tests

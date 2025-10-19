@@ -24,7 +24,7 @@ echo "  - /opt/birdnetpi directory"
 echo "  - /var/lib/birdnetpi directory"
 echo "  - /var/log/birdnetpi directory"
 echo "  - birdnetpi user"
-echo "  - /tmp/birdnet-installer directory"
+echo "  - /dev/shm/birdnet-installer directory (if present)"
 echo "  - BirdNET-Pi Caddyfile (restores original)"
 echo ""
 echo "System packages (Redis, Caddy, etc.) will remain installed."
@@ -41,7 +41,6 @@ echo "Stopping BirdNET services..."
 # List of services to stop
 SERVICES=(
     "birdnetpi-fastapi.service"
-    "birdnetpi-pulseaudio.service"
     "birdnetpi-audio-capture.service"
     "birdnetpi-audio-analysis.service"
     "birdnetpi-audio-websocket.service"
@@ -83,7 +82,7 @@ echo "Removing directories..."
 rm -rf /opt/birdnetpi
 rm -rf /var/lib/birdnetpi
 rm -rf /var/log/birdnetpi
-rm -rf /tmp/birdnet-installer
+rm -rf /dev/shm/birdnet-installer
 
 echo "Removing birdnetpi user..."
 userdel -r birdnetpi 2>/dev/null || true

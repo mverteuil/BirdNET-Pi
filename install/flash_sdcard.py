@@ -23,6 +23,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +43,60 @@ from rich.table import Table  # type: ignore[import-untyped]
 
 console = Console()
 
+
+def escape_toml_string(s: str) -> str:
+    """Escape a string for use in TOML basic strings.
+
+    Args:
+        s: String to escape
+
+    Returns:
+        Escaped string safe for TOML
+    """
+    return s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
+
+
+def find_command(cmd: str, homebrew_paths: list[str] | None = None) -> str:
+    """Find command in PATH or common Homebrew locations.
+
+    Args:
+        cmd: Command name to find (e.g., "xz", "gdd")
+        homebrew_paths: Optional list of Homebrew paths to check
+
+    Returns:
+        Full path to command or command name (will fail later if not found)
+    """
+    # Try shutil.which first (checks PATH)
+    if result := shutil.which(cmd):
+        return result
+
+    # Check common Homebrew locations on macOS
+    if platform.system() == "Darwin":
+        # For xz specifically, also check the Cellar (brew --prefix xz doesn't work in subprocess)
+        if cmd == "xz":
+            xz_cellar_paths = [
+                "/opt/homebrew/Cellar/xz/5.8.1/bin/xz",  # Apple Silicon Cellar
+                "/usr/local/Cellar/xz/5.8.1/bin/xz",  # Intel Mac Cellar
+            ]
+            for path in xz_cellar_paths:
+                if Path(path).exists() and Path(path).is_file():
+                    return path
+
+        homebrew_paths = homebrew_paths or [
+            "/opt/homebrew/bin",  # Apple Silicon
+            "/opt/homebrew/opt/xz/bin",  # xz-specific path on Apple Silicon
+            "/usr/local/bin",  # Intel Macs
+            "/usr/local/opt/xz/bin",  # xz-specific path on Intel Macs
+        ]
+        for path in homebrew_paths:
+            full_path = Path(path) / cmd
+            if full_path.exists() and full_path.is_file():
+                return str(full_path)
+
+    # Fall back to command name (will fail if not in PATH)
+    return cmd
+
+
 # Raspberry Pi OS image URLs (Lite versions for headless server)
 PI_IMAGES = {
     "Pi 5": {
@@ -53,12 +108,14 @@ PI_IMAGES = {
         "sha256": "3e8d1d7166aa832aded24e90484d83f4e8ad594b5a33bb4a9a1ff3ac0ac84d92",
     },
     "Pi 3": {
-        "url": "https://downloads.raspberrypi.org/raspios_lite_armhf/images/raspios_lite_armhf-2024-07-04/2024-07-04-raspios-bookworm-armhf-lite.img.xz",
-        "sha256": "TODO",  # TODO: Add real SHA256 hash from raspberrypi.org
+        # Pi 3B+ and newer support 64-bit - using arm64 for ai-edge-litert compatibility
+        "url": "https://downloads.raspberrypi.org/raspios_lite_arm64/images/raspios_lite_arm64-2024-07-04/2024-07-04-raspios-bookworm-arm64-lite.img.xz",
+        "sha256": "3e8d1d7166aa832aded24e90484d83f4e8ad594b5a33bb4a9a1ff3ac0ac84d92",
     },
     "Pi Zero 2 W": {
-        "url": "https://downloads.raspberrypi.org/raspios_lite_armhf/images/raspios_lite_armhf-2024-07-04/2024-07-04-raspios-bookworm-armhf-lite.img.xz",
-        "sha256": "TODO",  # TODO: Add real SHA256 hash from raspberrypi.org
+        # Zero 2 W has same BCM2710A1 as Pi 3 - supports 64-bit
+        "url": "https://downloads.raspberrypi.org/raspios_lite_arm64/images/raspios_lite_arm64-2024-07-04/2024-07-04-raspios-bookworm-arm64-lite.img.xz",
+        "sha256": "3e8d1d7166aa832aded24e90484d83f4e8ad594b5a33bb4a9a1ff3ac0ac84d92",
     },
 }
 
@@ -228,19 +285,28 @@ def select_pi_version() -> str:
     table.add_column("Index", style="dim")
     table.add_column("Model", style="green")
 
-    models = list(PI_IMAGES.keys())
-    for idx, model in enumerate(models, 1):
-        table.add_row(str(idx), model)
+    # Map version numbers to model names for intuitive selection
+    version_map = {
+        "5": "Pi 5",
+        "4": "Pi 4",
+        "3": "Pi 3",
+        "0": "Pi Zero 2 W",
+    }
+
+    # Display in ascending order (0, 3, 4, 5)
+    for version in ["0", "3", "4", "5"]:
+        model = version_map[version]
+        table.add_row(version, model)
 
     console.print(table)
     console.print()
 
     choice = Prompt.ask(
         "[bold]Select Raspberry Pi model[/bold]",
-        choices=[str(i) for i in range(1, len(models) + 1)],
+        choices=list(version_map.keys()),
     )
 
-    return models[int(choice) - 1]
+    return version_map[choice]
 
 
 def download_image(pi_version: str, download_dir: Path) -> Path:
@@ -279,7 +345,7 @@ def download_image(pi_version: str, download_dir: Path) -> Path:
     return filepath
 
 
-def get_config_from_prompts(saved_config: dict[str, Any] | None) -> dict[str, Any]:
+def get_config_from_prompts(saved_config: dict[str, Any] | None) -> dict[str, Any]:  # noqa: C901
     """Prompt user for configuration options."""
     config: dict[str, Any] = {}
 
@@ -328,6 +394,12 @@ def get_config_from_prompts(saved_config: dict[str, Any] | None) -> dict[str, An
     else:
         config["admin_password"] = Prompt.ask("Device Password", password=True)
 
+    if saved_config and "hostname" in saved_config:
+        config["hostname"] = saved_config["hostname"]
+        console.print(f"[dim]Using saved hostname: {config['hostname']}[/dim]")
+    else:
+        config["hostname"] = Prompt.ask("Device Hostname", default="birdnetpi")
+
     # Advanced settings
     if saved_config and "gpio_debug" in saved_config:
         config["gpio_debug"] = saved_config["gpio_debug"]
@@ -335,11 +407,11 @@ def get_config_from_prompts(saved_config: dict[str, Any] | None) -> dict[str, An
     else:
         config["gpio_debug"] = Confirm.ask("Enable GPIO Debugging (Advanced)?", default=False)
 
-    if saved_config and "run_installer" in saved_config:
-        config["run_installer"] = saved_config["run_installer"]
-        console.print(f"[dim]Using saved run installer: {config['run_installer']}[/dim]")
+    if saved_config and "copy_installer" in saved_config:
+        config["copy_installer"] = saved_config["copy_installer"]
+        console.print(f"[dim]Using saved copy installer: {config['copy_installer']}[/dim]")
     else:
-        config["run_installer"] = Confirm.ask("Run installer on first boot?", default=True)
+        config["copy_installer"] = Confirm.ask("Copy install.sh?", default=True)
 
     return config
 
@@ -348,6 +420,9 @@ def flash_image(image_path: Path, device: str) -> None:
     """Flash the image to the SD card."""
     console.print()
     console.print(f"[cyan]Flashing {image_path.name} to {device}...[/cyan]")
+
+    # Record start time
+    start_time = time.time()
 
     # Unmount device first
     if platform.system() == "Darwin":
@@ -360,9 +435,9 @@ def flash_image(image_path: Path, device: str) -> None:
 
     if platform.system() == "Darwin":
         # Check if GNU dd (gdd) is available from coreutils
-        gdd_check = subprocess.run(["which", "gdd"], capture_output=True, check=False)
-        if gdd_check.returncode == 0:
-            dd_cmd = "gdd"
+        gdd_path = find_command("gdd")
+        if gdd_path != "gdd":  # Found full path, not just the name
+            dd_cmd = gdd_path
             dd_bs = "bs=4M"  # GNU dd format
             dd_extra_args = ["status=progress"]  # GNU dd supports progress
             console.print("[dim]Using GNU dd (gdd) for progress reporting[/dim]")
@@ -374,7 +449,23 @@ def flash_image(image_path: Path, device: str) -> None:
         )
         # Use shell pipeline: xz -dc image.xz | dd of=device
         # xz -dc = decompress to stdout
-        with subprocess.Popen(["xz", "-dc", str(image_path)], stdout=subprocess.PIPE) as xz_proc:
+        xz_cmd = find_command("xz")
+        console.print(f"[dim]Using xz at: {xz_cmd}[/dim]")
+
+        # Verify the command exists
+        if not Path(xz_cmd).exists() and xz_cmd == "xz":
+            console.print("[red]Error: xz command not found in PATH or Homebrew locations[/red]")
+            console.print("[yellow]Checking common paths:[/yellow]")
+            for check_path in [
+                "/opt/homebrew/bin/xz",
+                "/opt/homebrew/opt/xz/bin/xz",
+                "/usr/local/bin/xz",
+            ]:
+                exists = Path(check_path).exists()
+                console.print(f"  {check_path}: {'✓ exists' if exists else '✗ not found'}")
+            sys.exit(1)
+
+        with subprocess.Popen([xz_cmd, "-dc", str(image_path)], stdout=subprocess.PIPE) as xz_proc:
             subprocess.run(
                 ["sudo", dd_cmd, f"of={device}", dd_bs, *dd_extra_args],
                 stdin=xz_proc.stdout,
@@ -387,10 +478,22 @@ def flash_image(image_path: Path, device: str) -> None:
         )
 
     subprocess.run(["sync"], check=True)
-    console.print("[green]✓ Image flashed successfully[/green]")
+
+    # Calculate and display flash duration
+    end_time = time.time()
+    duration = end_time - start_time
+    minutes = int(duration // 60)
+    seconds = int(duration % 60)
+
+    if minutes > 0:
+        duration_str = f"{minutes}m {seconds}s"
+    else:
+        duration_str = f"{seconds}s"
+
+    console.print(f"[green]✓ Image flashed successfully in {duration_str}[/green]")
 
 
-def configure_boot_partition(device: str, config: dict[str, Any]) -> None:
+def configure_boot_partition(device: str, config: dict[str, Any]) -> None:  # noqa: C901
     """Configure the bootfs partition with user settings."""
     console.print()
     console.print("[cyan]Configuring boot partition...[/cyan]")
@@ -412,56 +515,177 @@ def configure_boot_partition(device: str, config: dict[str, Any]) -> None:
         subprocess.run(["sudo", "mount", f"{device}1", str(boot_mount)], check=True)
 
     try:
-        # Enable SSH
-        (boot_mount / "ssh").touch()
-        console.print("[green]✓ SSH enabled[/green]")
+        # Create custom.toml for first-boot configuration (Bookworm official method)
+        # This configures user, SSH, and optionally WiFi on first boot
+        # Use proper TOML string escaping for special characters
+        hostname = escape_toml_string(config.get("hostname", "birdnetpi"))
+        admin_user = escape_toml_string(config["admin_user"])
+        admin_password = escape_toml_string(config["admin_password"])
 
-        # Configure user (userconf.txt format: username:encrypted_password)
-        # Generate encrypted password
-        password_hash = subprocess.run(
-            ["openssl", "passwd", "-6", config["admin_password"]],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
+        toml_content = f"""[system]
+hostname = "{hostname}"
 
-        userconf = boot_mount / "userconf.txt"
-        userconf.write_text(f"{config['admin_user']}:{password_hash}\n")
-        console.print(f"[green]✓ User configured: {config['admin_user']}[/green]")
+[user]
+name = "{admin_user}"
+password = "{admin_password}"
+password_encrypted = false
 
-        # Configure WiFi if enabled
-        if config.get("enable_wifi"):
-            wpa_conf = boot_mount / "wpa_supplicant.conf"
-            wpa_conf.write_text(
-                f"""country=US
-ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-update_config=1
-
-network={{
-    ssid="{config["wifi_ssid"]}"
-    psk="{config["wifi_password"]}"
-    key_mgmt={config.get("wifi_auth", "WPA-PSK")}
-}}
+[ssh]
+enabled = true
 """
+
+        # Add WiFi configuration if enabled
+        if config.get("enable_wifi"):
+            wifi_ssid = escape_toml_string(config["wifi_ssid"])
+            wifi_password = escape_toml_string(config["wifi_password"])
+            toml_content += f"""
+[wlan]
+ssid = "{wifi_ssid}"
+password = "{wifi_password}"
+password_encrypted = false
+hidden = false
+country = "US"
+"""
+
+        # Write custom.toml to temp file then copy with sudo
+        temp_toml = Path("/tmp/birdnetpi_custom.toml")
+        temp_toml.write_text(toml_content)
+        subprocess.run(
+            ["sudo", "cp", str(temp_toml), str(boot_mount / "custom.toml")],
+            check=True,
+        )
+        temp_toml.unlink()
+
+        config_summary = f"User: {config['admin_user']}, SSH: enabled"
+        if config.get("enable_wifi"):
+            config_summary += f", WiFi: {config['wifi_ssid']}"
+        console.print(f"[green]✓ First-boot configuration: {config_summary}[/green]")
+
+        # DEPRECATED: Old userconf.txt and firstrun.sh methods (kept for reference)
+        # Bookworm now uses custom.toml instead
+        if False and config.get("enable_wifi"):
+            # Create a firstrun.sh script that creates a NetworkManager connection file
+            # This is more reliable than running nmcli during early boot
+            wifi_ssid = config["wifi_ssid"]
+            wifi_password = config["wifi_password"]
+
+            # Generate UUID for the connection
+            import uuid
+
+            connection_uuid = str(uuid.uuid4())
+
+            firstrun_content = f"""#!/bin/bash
+
+set +e
+
+# Unblock WiFi
+rfkill unblock wlan
+
+# Set WiFi country
+COUNTRY=US
+if [ -e /usr/bin/raspi-config ]; then
+    raspi-config nonint do_wifi_country "$COUNTRY"
+fi
+
+# Create NetworkManager connection file for WiFi
+cat > /etc/NetworkManager/system-connections/preconfigured.nmconnection << 'NMEOF'
+[connection]
+id=preconfigured
+uuid={connection_uuid}
+type=wifi
+interface-name=wlan0
+
+[wifi]
+mode=infrastructure
+ssid={wifi_ssid}
+
+[wifi-security]
+auth-alg=open
+key-mgmt=wpa-psk
+psk={wifi_password}
+
+[ipv4]
+method=auto
+
+[ipv6]
+addr-gen-mode=default
+method=auto
+
+[proxy]
+NMEOF
+
+# Set proper permissions (NetworkManager requires 600)
+chmod 600 /etc/NetworkManager/system-connections/preconfigured.nmconnection
+
+# Clean up firstrun
+rm -f /boot/firmware/firstrun.sh
+sed -i 's| systemd.run=/boot/firmware/firstrun.sh||g' /boot/firmware/cmdline.txt
+exit 0
+"""
+            temp_firstrun = Path("/tmp/birdnetpi_firstrun.sh")
+            temp_firstrun.write_text(firstrun_content)
+
+            # Copy to boot partition
+            firstrun_dest = boot_mount / "firstrun.sh"
+            subprocess.run(
+                ["sudo", "cp", str(temp_firstrun), str(firstrun_dest)],
+                check=True,
             )
-            console.print("[green]✓ WiFi configured[/green]")
+            # Make executable
+            subprocess.run(
+                ["sudo", "chmod", "+x", str(firstrun_dest)],
+                check=True,
+            )
+
+            # Modify cmdline.txt to run firstrun.sh on boot
+            cmdline_path = boot_mount / "cmdline.txt"
+            result = subprocess.run(
+                ["sudo", "cat", str(cmdline_path)],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            cmdline = result.stdout.strip()
+
+            # Add systemd.run parameter if not already present
+            if "systemd.run=/boot/firmware/firstrun.sh" not in cmdline:
+                cmdline += (
+                    " systemd.run=/boot/firmware/firstrun.sh"
+                    " systemd.unit=kernel-command-line.target"
+                )
+                temp_cmdline = Path("/tmp/birdnetpi_cmdline.txt")
+                temp_cmdline.write_text(cmdline)
+                subprocess.run(
+                    ["sudo", "cp", str(temp_cmdline), str(cmdline_path)],
+                    check=True,
+                )
+                temp_cmdline.unlink()
+
+            temp_firstrun.unlink()
+            console.print(f"[green]✓ WiFi configured (SSID: {config['wifi_ssid']})[/green]")
 
         # GPIO debugging
         if config.get("gpio_debug"):
-            config_txt = boot_mount / "config.txt"
-            with open(config_txt, "a") as f:
-                f.write("\n# GPIO Debugging\nenable_uart=1\n")
+            # Append to config.txt using shell redirection with sudo
+            gpio_config = "\n# GPIO Debugging\nenable_uart=1\n"
+            subprocess.run(
+                ["sudo", "bash", "-c", f"echo '{gpio_config}' >> {boot_mount / 'config.txt'}"],
+                check=True,
+            )
             console.print("[green]✓ GPIO debugging enabled[/green]")
 
         # Copy installer script if requested
-        if config.get("run_installer"):
-            install_script = Path(__file__).parent / "setup_app.py"
+        if config.get("copy_installer"):
+            install_script = Path(__file__).parent / "install.sh"
             if install_script.exists():
-                shutil.copy(install_script, boot_mount / "birdnetpi_install.py")
-                console.print("[green]✓ Installer copied to boot partition[/green]")
+                subprocess.run(
+                    ["sudo", "cp", str(install_script), str(boot_mount / "install.sh")],
+                    check=True,
+                )
+                console.print("[green]✓ install.sh copied to boot partition[/green]")
             else:
                 console.print(
-                    "[yellow]Warning: setup_app.py not found, skipping auto-installer[/yellow]"
+                    "[yellow]Warning: install.sh not found, skipping installer copy[/yellow]"
                 )
 
     finally:
@@ -515,6 +739,18 @@ def main(save_config_flag: bool) -> None:
         save_config(config)
 
     # Flash image
+    console.print()
+    console.print(
+        Panel.fit(
+            "[bold yellow]Administrator Access Required[/bold yellow]\n\n"
+            "The next steps will flash and configure the SD card.\n"
+            "You may be prompted to enter your [cyan]system password[/cyan] "
+            "[bold]multiple times[/bold].\n\n"
+            "[dim]This is normal and safe - the password is only used to "
+            "write to the SD card.[/dim]",
+            border_style="yellow",
+        )
+    )
     flash_image(image_path, device)
 
     # Configure boot partition
@@ -529,14 +765,40 @@ def main(save_config_flag: bool) -> None:
         subprocess.run(["sudo", "eject", device], check=True)
 
     console.print()
+
+    # Build summary message
+    summary_parts = [
+        "[bold green]✓ SD Card Ready![/bold green]\n",
+        f"Raspberry Pi Model: [yellow]{pi_version}[/yellow]",
+        f"Hostname: [cyan]{config.get('hostname', 'birdnetpi')}[/cyan]",
+        f"Admin User: [cyan]{config['admin_user']}[/cyan]",
+        "SSH: [green]Enabled[/green]",
+    ]
+
+    # Add WiFi status
+    if config.get("enable_wifi"):
+        summary_parts.append(f"WiFi: [green]Configured ({config['wifi_ssid']})[/green]")
+    else:
+        summary_parts.append("WiFi: [yellow]Not configured (Ethernet required)[/yellow]")
+
+    # Add installer script status
+    if config.get("copy_installer"):
+        summary_parts.append("Installer: [green]Copied to /boot/firmware/install.sh[/green]\n")
+        summary_parts.append(
+            "[dim]Insert the SD card into your Raspberry Pi and power it on.\n"
+            "First boot will configure the system.\n"
+            "Then SSH in and run: [cyan]bash /boot/firmware/install.sh[/cyan][/dim]"
+        )
+    else:
+        summary_parts.append("Installer: [yellow]Not copied[/yellow]\n")
+        summary_parts.append(
+            "[dim]Insert the SD card into your Raspberry Pi and power it on.\n"
+            "First boot will configure the system.[/dim]"
+        )
+
     console.print(
         Panel.fit(
-            "[bold green]✓ SD Card Ready![/bold green]\n\n"
-            f"Raspberry Pi Model: [yellow]{pi_version}[/yellow]\n"
-            f"Admin User: [cyan]{config['admin_user']}[/cyan]\n"
-            f"WiFi Enabled: [cyan]{'Yes' if config.get('enable_wifi') else 'No'}[/cyan]\n"
-            f"Auto-Installer: [cyan]{'Yes' if config.get('run_installer') else 'No'}[/cyan]\n\n"
-            "[dim]You can now insert the SD card into your Raspberry Pi and power it on.[/dim]",
+            "\n".join(summary_parts),
             border_style="green",
         )
     )
