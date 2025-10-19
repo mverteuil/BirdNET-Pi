@@ -455,7 +455,7 @@ def main() -> None:
     print()
 
     try:
-        # Wave 1: Foundation (sequential)
+        # Foundation setup
         log("→", "Creating data directories")
         create_directories()
         log("✓", "Creating data directories")
@@ -464,15 +464,19 @@ def main() -> None:
         apt_update()
         log("✓", "Updating package lists")
 
-        # Wave 2: System packages and venv (parallel)
+        # System setup (parallel)
+        print()
+        log("→", "Starting: system packages, Python environment")
         run_parallel(
             [
                 ("Installing system packages", install_system_packages),
                 ("Creating Python virtual environment", create_venv),
             ]
         )
+        log("✓", "Completed: system packages, Python environment")
 
-        # Wave 3: Venv setup (sequential - need venv before uv)
+        # Python setup
+        print()
         log("→", "Installing uv package manager")
         install_uv()
         log("✓", "Installing uv package manager")
@@ -481,15 +485,22 @@ def main() -> None:
         install_python_dependencies()
         log("✓", "Installing Python dependencies")
 
-        # Wave 4: Assets and configuration (parallel)
+        # Assets and configuration (parallel)
+        print()
+        log("→", "Starting: asset download, web server configuration")
         run_parallel(
             [
-                ("Downloading BirdNET assets", install_assets),
+                (
+                    "Downloading BirdNET assets (may take 1-10 minutes depending on connection)",
+                    install_assets,
+                ),
                 ("Configuring Caddy web server", configure_caddy),
             ]
         )
+        log("✓", "Completed: asset download, web server configuration")
 
-        # Wave 5: Services and final checks (sequential)
+        # Service setup
+        print()
         log("→", "Setting up systemd services")
         setup_systemd_services()
         log("✓", "Setting up systemd services")
