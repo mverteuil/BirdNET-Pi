@@ -143,13 +143,15 @@ def install_uv() -> None:
     UV will automatically create and manage the virtual environment
     when we run 'uv sync' later.
     """
-    subprocess.run(
+    result = subprocess.run(
         ["sudo", "pip3", "install", "-q", "uv"],
-        check=True,
+        check=False,
         stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
     )
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to install uv: {result.stderr}")
 
 
 def install_python_dependencies() -> None:
