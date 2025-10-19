@@ -34,12 +34,7 @@ echo "Installing prerequisites..."
 sudo apt-get update
 sudo apt-get install -y git python3.11 python3.11-venv python3-pip
 
-# Create birdnetpi user early (needed for ownership)
-echo "Creating birdnetpi user..."
-sudo useradd -m -s /bin/bash birdnetpi 2>/dev/null || true
-sudo usermod -aG audio,video,dialout birdnetpi
-
-# Create installation directory with proper ownership
+# Create installation directory first (will become home directory)
 if [ -d "$INSTALL_DIR" ]; then
     echo "Cleaning up existing installation directory..."
     sudo rm -rf "$INSTALL_DIR"
@@ -47,6 +42,17 @@ fi
 
 echo "Creating installation directory..."
 sudo mkdir -p "$INSTALL_DIR"
+
+# Create or update birdnetpi user with /opt/birdnetpi as home directory
+echo "Setting up birdnetpi user..."
+if id "birdnetpi" &>/dev/null; then
+    # User exists - update home directory
+    sudo usermod -d "$INSTALL_DIR" birdnetpi
+else
+    # User doesn't exist - create with /opt/birdnetpi as home (no -m since dir exists)
+    sudo useradd -d "$INSTALL_DIR" -s /bin/bash birdnetpi
+fi
+sudo usermod -aG audio,video,dialout birdnetpi
 sudo chown birdnetpi:birdnetpi "$INSTALL_DIR"
 
 # Clone repository directly to installation directory as birdnetpi user

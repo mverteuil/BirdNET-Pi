@@ -91,7 +91,8 @@ if [ "$SUDO_USER" = "birdnetpi" ]; then
     USER_PRESERVED=true
 else
     echo "Removing birdnetpi user..."
-    userdel -r birdnetpi 2>/dev/null || true
+    # Don't use -r flag since home directory (/opt/birdnetpi) is already removed above
+    userdel birdnetpi 2>/dev/null || true
 fi
 
 echo ""
