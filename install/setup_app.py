@@ -69,17 +69,6 @@ def get_ip_address() -> str:
         return "unknown"
 
 
-def apt_update() -> None:
-    """Update package lists."""
-    subprocess.run(
-        ["sudo", "apt-get", "update"],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-
-
 def install_system_packages() -> None:
     """Install system-level package dependencies."""
     dependencies = [
@@ -507,33 +496,25 @@ def main() -> None:
     print()
 
     try:
-        # Wave 1: Foundation setup
-        log("→", "Creating data directories")
-        create_directories()
-        log("✓", "Creating data directories")
-
-        log("→", "Updating package lists")
-        apt_update()
-        log("✓", "Updating package lists")
-
-        # Wave 2: System packages and uv (parallel)
+        # Wave 1: System setup (parallel - apt-update already done in install.sh)
         print()
-        log("→", "Starting: system packages, uv package manager")
+        log("→", "Starting: data directories, system packages, uv package manager")
         run_parallel(
             [
+                ("Creating data directories", create_directories),
                 ("Installing system packages", install_system_packages),
                 ("Installing uv package manager", install_uv),
             ]
         )
-        log("✓", "Completed: system packages, uv package manager")
+        log("✓", "Completed: data directories, system packages, uv package manager")
 
-        # Wave 3: Python dependencies (sequential, needs uv)
+        # Wave 2: Python dependencies (sequential, needs uv)
         print()
         log("→", "Installing Python dependencies")
         install_python_dependencies()
         log("✓", "Installing Python dependencies")
 
-        # Wave 4: Configuration and services (parallel, long-running tasks at bottom)
+        # Wave 3: Configuration and services (parallel, long-running tasks at bottom)
         print()
         log("→", "Starting: web server configuration, systemd services, asset download")
         run_parallel(
@@ -548,13 +529,13 @@ def main() -> None:
         )
         log("✓", "Completed: web server configuration, systemd services, asset download")
 
-        # Wave 5: Start services (sequential, after assets are ready)
+        # Wave 4: Start services (sequential, after assets are ready)
         print()
         log("→", "Starting systemd services")
         start_systemd_services()
         log("✓", "Starting systemd services")
 
-        # Wave 6: Health check
+        # Wave 5: Health check
         print()
         log("→", "Checking service health")
         check_services_health()
