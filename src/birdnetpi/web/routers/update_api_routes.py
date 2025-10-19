@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.config.manager import ConfigManager
+from birdnetpi.releases.region_pack_status import RegionPackStatusService
 from birdnetpi.system.git_operations import GitOperationsService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.system_utils import SystemUtils
@@ -465,3 +466,37 @@ async def list_git_branches(
     except Exception as e:
         logger.error("Failed to list branches for remote '%s': %s", remote_name, e)
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/region-pack/status")
+@inject
+async def get_region_pack_status(
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
+) -> dict[str, Any]:
+    """Get region pack status.
+
+    Returns:
+        Status information about configured region pack
+    """
+    service = RegionPackStatusService(path_resolver, config)
+    return service.check_status()
+
+
+@router.get("/region-pack/available")
+@inject
+async def list_available_region_packs(
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
+) -> dict[str, Any]:
+    """List available region pack files.
+
+    Returns:
+        List of available region pack names
+    """
+    service = RegionPackStatusService(path_resolver, config)
+    packs = service.list_available_packs()
+    return {
+        "packs": [p.name for p in packs],
+        "count": len(packs),
+    }

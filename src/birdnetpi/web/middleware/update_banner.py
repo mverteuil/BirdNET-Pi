@@ -10,6 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import Response
 from starlette.templating import Jinja2Templates
 
+from birdnetpi.releases.region_pack_status import RegionPackStatusService
 from birdnetpi.utils.cache import Cache
 from birdnetpi.web.core.container import Container
 
@@ -62,7 +63,7 @@ class UpdateBannerMiddleware(BaseHTTPMiddleware):
         return response
 
 
-def add_update_status_to_templates(
+def add_update_status_to_templates(  # noqa: C901
     templates: Jinja2Templates | Environment, container: Container
 ) -> None:
     """Add a template context processor that includes update_status.
@@ -118,3 +119,15 @@ def add_update_status_to_templates(
         return bool(status and status.get("version_type") == "development")
 
     globals_dict["show_development_warning"] = show_development_warning
+
+    # Add function to get region pack status
+    def get_region_pack_status() -> dict[str, Any] | None:
+        """Get current region pack status."""
+        try:
+            path_resolver = container.path_resolver()
+            service = RegionPackStatusService(path_resolver, config)
+            return service.check_status()
+        except Exception:
+            return None
+
+    globals_dict["get_region_pack_status"] = get_region_pack_status

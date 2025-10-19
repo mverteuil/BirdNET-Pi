@@ -1,8 +1,7 @@
 """Service for querying eBird regional confidence data.
 
 This service provides access to eBird regional pack databases for location-aware
-confidence filtering. It uses H3 geospatial indexing to map lat/lon coordinates
-to grid cells and queries species occurrence data within those cells.
+confidence filtering. It handles database attachment/detachment and basic queries.
 """
 
 from __future__ import annotations
@@ -20,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class EBirdRegionService:
-    """Service for querying eBird regional confidence data using H3 geospatial indexing."""
+    """Service for eBird regional pack database session management."""
 
     def __init__(self, path_resolver: PathResolver):
         """Initialize eBird region service.
@@ -35,7 +34,7 @@ class EBirdRegionService:
 
         Args:
             session: SQLAlchemy async session (typically from main detections database)
-            region_pack_name: Name of the region pack (e.g., "na-east-coast-2025.08")
+            region_pack_name: Name of the region pack (e.g., "africa-east-2025.08")
         """
         pack_path = self.path_resolver.get_ebird_pack_path(region_pack_name)
 
@@ -85,10 +84,11 @@ class EBirdRegionService:
             return None
 
         stmt = text("""
-            SELECT confidence_tier
-            FROM ebird.grid_species
-            WHERE h3_cell = :h3_cell
-            AND scientific_name = :scientific_name
+            SELECT gs.confidence_tier
+            FROM ebird.grid_species gs
+            JOIN ebird.species_lookup sl ON gs.avibase_id = sl.avibase_id
+            WHERE gs.h3_cell = :h3_cell
+            AND sl.scientific_name = :scientific_name
         """)
 
         result = await session.execute(
@@ -124,10 +124,11 @@ class EBirdRegionService:
             return None
 
         stmt = text("""
-            SELECT confidence_boost
-            FROM ebird.grid_species
-            WHERE h3_cell = :h3_cell
-            AND scientific_name = :scientific_name
+            SELECT gs.confidence_boost
+            FROM ebird.grid_species gs
+            JOIN ebird.species_lookup sl ON gs.avibase_id = sl.avibase_id
+            WHERE gs.h3_cell = :h3_cell
+            AND sl.scientific_name = :scientific_name
         """)
 
         result = await session.execute(
@@ -205,10 +206,11 @@ class EBirdRegionService:
         # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         stmt = text(  # nosemgrep
             f"""
-            SELECT DISTINCT scientific_name
-            FROM ebird.grid_species
-            WHERE h3_cell = :h3_cell
-            AND {tier_filter}
+            SELECT DISTINCT sl.scientific_name
+            FROM ebird.grid_species gs
+            JOIN ebird.species_lookup sl ON gs.avibase_id = sl.avibase_id
+            WHERE gs.h3_cell = :h3_cell
+            AND gs.{tier_filter}
         """
         )
 

@@ -1,0 +1,30 @@
+{# Region Pack banner component - shows when region pack is missing or mismatched #}
+{# This should be included in base.html.j2 to appear on all pages #}
+
+{# Get the region pack status once #}
+{% set pack_status = get_region_pack_status() %}
+
+{# Region pack warning banner #}
+{% if pack_status and pack_status.get('needs_attention') %}
+<div class="region-pack-banner" id="region-pack-banner" role="alert" aria-live="polite">
+    <div class="region-pack-banner-content">
+        <span class="region-pack-banner-icon" aria-hidden="true">📍</span>
+        <span class="region-pack-banner-message">
+            {{ pack_status.get('message', _('Region pack not configured.')) }}
+            <a href="{{ url_for('update_page') }}#region-pack-management" class="region-pack-banner-link">
+                {{ _('Download region pack') }}
+            </a>
+        </span>
+    </div>
+
+    <button
+        type="button"
+        class="region-pack-banner-dismiss"
+        onclick="dismissRegionPackBanner()"
+        aria-label="{{ _('Dismiss region pack notification') }}"
+        title="{{ _('Dismiss for this session') }}"
+    >
+        ×
+    </button>
+</div>
+{% endif %}
