@@ -46,8 +46,13 @@ sudo mkdir -p "$INSTALL_DIR"
 # Create or update birdnetpi user with /opt/birdnetpi as home directory
 echo "Setting up birdnetpi user..."
 if id "birdnetpi" &>/dev/null; then
-    # User exists - update home directory
-    sudo usermod -d "$INSTALL_DIR" birdnetpi
+    # User exists - update home directory (unless currently logged in as birdnetpi)
+    if [ "$USER" = "birdnetpi" ]; then
+        echo "Note: Cannot modify birdnetpi user while logged in as that user"
+        echo "      Home directory will be set to $INSTALL_DIR on next login"
+    else
+        sudo usermod -d "$INSTALL_DIR" birdnetpi
+    fi
 else
     # User doesn't exist - create with /opt/birdnetpi as home (no -m since dir exists)
     sudo useradd -d "$INSTALL_DIR" -s /bin/bash birdnetpi
