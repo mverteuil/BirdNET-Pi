@@ -144,20 +144,10 @@ def install_uv() -> None:
     UV will automatically create and manage the virtual environment
     when we run 'uv sync' later.
     """
-    # Download and run the official uv installer
+    # Download and run the official uv installer as birdnetpi user
+    # The installer script needs to run in a shell pipeline
     result = subprocess.run(
-        ["curl", "-LsSf", "https://astral.sh/uv/install.sh"],
-        check=False,
-        stdin=subprocess.DEVNULL,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Failed to download uv installer: {result.stderr}")
-
-    # Run the installer script as the birdnetpi user
-    result = subprocess.run(
-        ["sudo", "-u", "birdnetpi", "sh", "-c", result.stdout],
+        ["sudo", "-u", "birdnetpi", "sh", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"],
         check=False,
         stdin=subprocess.DEVNULL,
         capture_output=True,
