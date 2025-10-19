@@ -20,7 +20,7 @@ if [ "$(id -u)" -eq 0 ]; then
 fi
 
 echo "========================================"
-echo "BirdNET-Pi SBC Installer"
+echo "BirdNET-Pi SBC Pre-installer"
 echo "========================================"
 echo "Repository: $REPO_URL"
 echo "Branch: $BRANCH"
