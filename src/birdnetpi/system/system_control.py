@@ -13,7 +13,6 @@ SERVICES_CONFIG = {
         ServiceConfig("update", "Update daemon for automatic updates"),
         ServiceConfig("caddy", "Web server and reverse proxy", critical=True),
         ServiceConfig("redis", "Cache service (memory-only)"),
-        ServiceConfig("pulseaudio", "Audio system", optional=True),
     ],
     "sbc": [
         ServiceConfig("birdnetpi-fastapi", "Web interface and API", critical=True),
@@ -26,7 +25,6 @@ SERVICES_CONFIG = {
         ),
         ServiceConfig("caddy", "Web server and reverse proxy", critical=True),
         ServiceConfig("redis", "Cache service (memory-only)"),
-        ServiceConfig("pulseaudio", "Audio system"),
     ],
 }
 

@@ -53,7 +53,6 @@ class TestSupervisordConfig:
         # Verify ordering
         assert priorities.get("update_migrate") == 1  # First
         assert priorities.get("redis") == 50  # Infrastructure
-        assert priorities.get("pulseaudio") == 100  # Audio system
         assert priorities.get("audio_capture") == 200  # Audio services
         assert priorities.get("audio_analysis") == 300
         assert priorities.get("audio_websocket") == 300
