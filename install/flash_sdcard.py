@@ -413,6 +413,58 @@ def get_config_from_prompts(saved_config: dict[str, Any] | None) -> dict[str, An
     else:
         config["copy_installer"] = Confirm.ask("Copy install.sh?", default=True)
 
+    # BirdNET-Pi pre-configuration (optional)
+    console.print()
+    console.print("[bold cyan]BirdNET-Pi Configuration (Optional):[/bold cyan]")
+    console.print("[dim]Pre-configure BirdNET-Pi for headless installation[/dim]")
+    console.print()
+
+    if saved_config and "birdnet_device_name" in saved_config:
+        config["birdnet_device_name"] = saved_config["birdnet_device_name"]
+        console.print(f"[dim]Using saved device name: {config['birdnet_device_name']}[/dim]")
+    else:
+        config["birdnet_device_name"] = Prompt.ask("Device Name", default="", show_default=False)
+
+    if saved_config and "birdnet_latitude" in saved_config:
+        config["birdnet_latitude"] = saved_config["birdnet_latitude"]
+        console.print(f"[dim]Using saved latitude: {config['birdnet_latitude']}[/dim]")
+    else:
+        lat_input = Prompt.ask("Latitude", default="", show_default=False)
+        config["birdnet_latitude"] = lat_input if lat_input else None
+
+    if config["birdnet_latitude"]:
+        if saved_config and "birdnet_longitude" in saved_config:
+            config["birdnet_longitude"] = saved_config["birdnet_longitude"]
+            console.print(f"[dim]Using saved longitude: {config['birdnet_longitude']}[/dim]")
+        else:
+            lon_input = Prompt.ask("Longitude", default="", show_default=False)
+            config["birdnet_longitude"] = lon_input if lon_input else None
+
+        if config["birdnet_longitude"]:
+            if saved_config and "birdnet_timezone" in saved_config:
+                config["birdnet_timezone"] = saved_config["birdnet_timezone"]
+                console.print(f"[dim]Using saved timezone: {config['birdnet_timezone']}[/dim]")
+            else:
+                console.print()
+                console.print("[dim]Common timezones:[/dim]")
+                console.print(
+                    "[dim]  Americas: America/New_York, America/Chicago, America/Los_Angeles[/dim]"
+                )
+                console.print("[dim]  Europe: Europe/London, Europe/Paris, Europe/Berlin[/dim]")
+                console.print("[dim]  Asia: Asia/Tokyo, Asia/Shanghai, Asia/Kolkata[/dim]")
+                console.print("[dim]  Pacific: Pacific/Auckland, Australia/Sydney[/dim]")
+                tz_input = Prompt.ask("Timezone", default="", show_default=False)
+                config["birdnet_timezone"] = tz_input if tz_input else None
+
+    if saved_config and "birdnet_language" in saved_config:
+        config["birdnet_language"] = saved_config["birdnet_language"]
+        console.print(f"[dim]Using saved language: {config['birdnet_language']}[/dim]")
+    else:
+        console.print()
+        console.print("[dim]Common languages: en, es, fr, de, it, pt, nl, ru, zh, ja[/dim]")
+        lang_input = Prompt.ask("Language Code", default="", show_default=False)
+        config["birdnet_language"] = lang_input if lang_input else None
+
     return config
 
 
@@ -687,6 +739,40 @@ exit 0
                 console.print(
                     "[yellow]Warning: install.sh not found, skipping installer copy[/yellow]"
                 )
+
+        # Create BirdNET-Pi pre-configuration file if any settings provided
+        birdnet_config_lines = ["# BirdNET-Pi boot configuration"]
+        has_birdnet_config = False
+
+        if config.get("birdnet_device_name"):
+            birdnet_config_lines.append(f"device_name={config['birdnet_device_name']}")
+            has_birdnet_config = True
+
+        if config.get("birdnet_latitude"):
+            birdnet_config_lines.append(f"latitude={config['birdnet_latitude']}")
+            has_birdnet_config = True
+
+        if config.get("birdnet_longitude"):
+            birdnet_config_lines.append(f"longitude={config['birdnet_longitude']}")
+            has_birdnet_config = True
+
+        if config.get("birdnet_timezone"):
+            birdnet_config_lines.append(f"timezone={config['birdnet_timezone']}")
+            has_birdnet_config = True
+
+        if config.get("birdnet_language"):
+            birdnet_config_lines.append(f"language={config['birdnet_language']}")
+            has_birdnet_config = True
+
+        if has_birdnet_config:
+            temp_birdnet_config = Path("/tmp/birdnetpi_config.txt")
+            temp_birdnet_config.write_text("\n".join(birdnet_config_lines) + "\n")
+            subprocess.run(
+                ["sudo", "cp", str(temp_birdnet_config), str(boot_mount / "birdnetpi_config.txt")],
+                check=True,
+            )
+            temp_birdnet_config.unlink()
+            console.print("[green]✓ BirdNET-Pi configuration written to boot partition[/green]")
 
     finally:
         # Unmount

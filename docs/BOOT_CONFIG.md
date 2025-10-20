@@ -4,6 +4,24 @@ BirdNET-Pi supports pre-configuration via a text file placed on the boot volume.
 
 ## Creating a Boot Configuration File
 
+### Option 1: Using the SD Card Flasher (Recommended)
+
+The easiest way to pre-configure your BirdNET-Pi installation is to use the built-in flasher tool:
+
+```bash
+uv run install/flash_sdcard.py
+```
+
+The flasher will prompt you for optional BirdNET-Pi configuration:
+- Device Name
+- Latitude/Longitude
+- Timezone
+- Language Code
+
+These values will be automatically written to `birdnetpi_config.txt` on the boot partition.
+
+### Option 2: Manual Configuration
+
 Create a file named `birdnetpi_config.txt` in the `/boot/firmware/` directory with your desired configuration values:
 
 ```
