@@ -121,7 +121,7 @@ class TestDetectionBufferingEndToEnd:
         ]
 
         # Phase 1: FastAPI unavailable - detections should be buffered
-        with patch("httpx.AsyncClient", autospec=True) as mock_client:
+        with patch("birdnetpi.audio.analysis.httpx.AsyncClient", autospec=True) as mock_client:
             mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
                 "Connection failed", request=MagicMock(spec=httpx.Request)
             )
@@ -146,7 +146,7 @@ class TestDetectionBufferingEndToEnd:
             assert "Buffered detection event for Corvus brachyrhynchos" in caplog.text
 
         # Phase 2: FastAPI becomes available - buffered detections should flush
-        with patch("httpx.AsyncClient", autospec=True) as mock_client:
+        with patch("birdnetpi.audio.analysis.httpx.AsyncClient", autospec=True) as mock_client:
             mock_response = MagicMock(spec=httpx.Response)
             mock_response.raise_for_status.return_value = None
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
