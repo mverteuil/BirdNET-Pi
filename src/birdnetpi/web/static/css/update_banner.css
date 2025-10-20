@@ -186,7 +186,7 @@ body.has-development-banner.has-update-banner {
   padding: 10px 20px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   font-size: 14px;
   position: fixed;
   top: 0;
@@ -201,7 +201,8 @@ body.has-development-banner.has-update-banner {
 .region-pack-banner-content {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 15px;
+  flex-grow: 1;
 }
 
 .region-pack-banner-icon {
@@ -209,19 +210,39 @@ body.has-development-banner.has-update-banner {
 }
 
 .region-pack-banner-message {
-  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.region-pack-banner-title {
+  font-weight: 600;
+}
+
+.region-pack-banner-text {
+  font-size: 13px;
+  opacity: 0.95;
+}
+
+.region-pack-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .region-pack-banner-link {
   color: white;
-  text-decoration: underline;
+  text-decoration: none;
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  transition: background 0.2s;
   font-weight: 500;
-  transition: opacity 0.2s;
 }
 
 .region-pack-banner-link:hover {
-  opacity: 0.8;
-  text-decoration: underline;
+  background: rgba(255, 255, 255, 0.3);
+  text-decoration: none;
 }
 
 .region-pack-banner-dismiss {
@@ -234,8 +255,6 @@ body.has-development-banner.has-update-banner {
   opacity: 0.8;
   transition: opacity 0.2s;
   line-height: 1;
-  position: absolute;
-  right: 20px;
 }
 
 .region-pack-banner-dismiss:hover {
