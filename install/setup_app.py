@@ -189,7 +189,7 @@ def install_uv() -> None:
         stderr=subprocess.DEVNULL,
     )
     subprocess.run(
-        ["sudo", "mv", "/opt/birdnetpi/.cargo/bin/uv", "/opt/uv/bin/uv"],
+        ["sudo", "-u", "birdnetpi", "sh", "-c", "mv $HOME/.cargo/bin/uv /opt/uv/bin/uv"],
         check=True,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
