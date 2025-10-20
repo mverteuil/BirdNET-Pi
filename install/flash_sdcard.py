@@ -419,51 +419,67 @@ def get_config_from_prompts(saved_config: dict[str, Any] | None) -> dict[str, An
     console.print("[dim]Pre-configure BirdNET-Pi for headless installation[/dim]")
     console.print()
 
-    if saved_config and "birdnet_device_name" in saved_config:
-        config["birdnet_device_name"] = saved_config["birdnet_device_name"]
-        console.print(f"[dim]Using saved device name: {config['birdnet_device_name']}[/dim]")
-    else:
-        config["birdnet_device_name"] = Prompt.ask("Device Name", default="", show_default=False)
+    # Sentinel for missing/empty values
+    unset = object()
 
-    if saved_config and "birdnet_latitude" in saved_config:
-        config["birdnet_latitude"] = saved_config["birdnet_latitude"]
-        console.print(f"[dim]Using saved latitude: {config['birdnet_latitude']}[/dim]")
-    else:
-        lat_input = Prompt.ask("Latitude", default="", show_default=False)
-        config["birdnet_latitude"] = lat_input if lat_input else None
+    # Configuration prompts - only shown if previous field was provided
+    birdnet_prompts = {
+        "birdnet_device_name": {
+            "prompt": "Device Name",
+            "help": None,
+            "condition": None,
+        },
+        "birdnet_latitude": {
+            "prompt": "Latitude",
+            "help": None,
+            "condition": None,
+        },
+        "birdnet_longitude": {
+            "prompt": "Longitude",
+            "help": None,
+            "condition": "birdnet_latitude",  # Only ask if latitude provided
+        },
+        "birdnet_timezone": {
+            "prompt": "Timezone",
+            "help": [
+                "Common timezones:",
+                "  Americas: America/New_York, America/Chicago, America/Los_Angeles",
+                "  Europe: Europe/London, Europe/Paris, Europe/Berlin",
+                "  Asia: Asia/Tokyo, Asia/Shanghai, Asia/Kolkata",
+                "  Pacific: Pacific/Auckland, Australia/Sydney",
+            ],
+            "condition": "birdnet_longitude",  # Only ask if longitude provided
+        },
+        "birdnet_language": {
+            "prompt": "Language Code",
+            "help": ["Common languages: en, es, fr, de, it, pt, nl, ru, zh, ja"],
+            "condition": None,
+        },
+    }
 
-    if config["birdnet_latitude"]:
-        if saved_config and "birdnet_longitude" in saved_config:
-            config["birdnet_longitude"] = saved_config["birdnet_longitude"]
-            console.print(f"[dim]Using saved longitude: {config['birdnet_longitude']}[/dim]")
+    for key, prompt_config in birdnet_prompts.items():
+        # Check if condition is met (if any)
+        condition = prompt_config["condition"]
+        if condition and not config.get(condition):
+            continue
+
+        # Check for saved value (must not be None or empty string)
+        saved_value = saved_config.get(key, unset) if saved_config else unset
+        if saved_value is not unset and saved_value not in (None, ""):
+            config[key] = saved_value
+            console.print(
+                f"[dim]Using saved {prompt_config['prompt'].lower()}: {saved_value}[/dim]"
+            )
         else:
-            lon_input = Prompt.ask("Longitude", default="", show_default=False)
-            config["birdnet_longitude"] = lon_input if lon_input else None
-
-        if config["birdnet_longitude"]:
-            if saved_config and "birdnet_timezone" in saved_config:
-                config["birdnet_timezone"] = saved_config["birdnet_timezone"]
-                console.print(f"[dim]Using saved timezone: {config['birdnet_timezone']}[/dim]")
-            else:
+            # Show help text if provided
+            if prompt_config["help"]:
                 console.print()
-                console.print("[dim]Common timezones:[/dim]")
-                console.print(
-                    "[dim]  Americas: America/New_York, America/Chicago, America/Los_Angeles[/dim]"
-                )
-                console.print("[dim]  Europe: Europe/London, Europe/Paris, Europe/Berlin[/dim]")
-                console.print("[dim]  Asia: Asia/Tokyo, Asia/Shanghai, Asia/Kolkata[/dim]")
-                console.print("[dim]  Pacific: Pacific/Auckland, Australia/Sydney[/dim]")
-                tz_input = Prompt.ask("Timezone", default="", show_default=False)
-                config["birdnet_timezone"] = tz_input if tz_input else None
+                for line in prompt_config["help"]:
+                    console.print(f"[dim]{line}[/dim]")
 
-    if saved_config and "birdnet_language" in saved_config:
-        config["birdnet_language"] = saved_config["birdnet_language"]
-        console.print(f"[dim]Using saved language: {config['birdnet_language']}[/dim]")
-    else:
-        console.print()
-        console.print("[dim]Common languages: en, es, fr, de, it, pt, nl, ru, zh, ja[/dim]")
-        lang_input = Prompt.ask("Language Code", default="", show_default=False)
-        config["birdnet_language"] = lang_input if lang_input else None
+            # Prompt user
+            user_input = Prompt.ask(prompt_config["prompt"], default="", show_default=False)
+            config[key] = user_input if user_input else None
 
     return config
 
