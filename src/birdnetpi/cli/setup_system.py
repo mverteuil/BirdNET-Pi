@@ -9,12 +9,16 @@ before services start. It handles:
 - Boot volume pre-configuration support
 """
 
+import sqlite3
 import sys
 from pathlib import Path
 from typing import Any
 
 import click
+import pytz
 import sounddevice as sd
+from gpsdclient.client import GPSDClient
+from tzlocal import get_localzone
 
 from birdnetpi.config.manager import ConfigManager
 from birdnetpi.config.models import BirdNETConfig
@@ -73,11 +77,38 @@ def detect_audio_devices() -> tuple[int | None, str]:
 def detect_gps() -> tuple[float | None, float | None, str | None]:
     """Detect GPS device and get location.
 
+    Attempts to connect to gpsd and get a GPS fix. Waits up to 10 seconds
+    for a valid position fix.
+
     Returns:
         Tuple of (latitude, longitude, timezone) or (None, None, None)
     """
-    # TODO: Implement GPS detection using gpsdclient
-    # For now, return None to indicate GPS not available
+    try:
+        client = GPSDClient()
+        # Try to get a GPS fix with timeout
+        for packet in client.dict_stream(filter={"TPV"}):
+            # TPV (Time-Position-Velocity) packets contain position data
+            mode = packet.get("mode", 0)
+
+            # mode 2 = 2D fix, mode 3 = 3D fix
+            if mode >= 2:
+                lat = packet.get("lat")
+                lon = packet.get("lon")
+                if lat is not None and lon is not None:
+                    # Try to determine timezone from system
+                    try:
+                        tz = str(get_localzone())
+                    except Exception:
+                        tz = "UTC"
+                    return float(lat), float(lon), tz
+
+            # Only check a few packets before giving up
+            break
+
+    except Exception:
+        # GPS not available (gpsd not running, no GPS device, etc.)
+        pass
+
     return None, None, None
 
 
@@ -115,6 +146,133 @@ def is_attended_install() -> bool:
         True if stdin is a TTY (interactive), False otherwise
     """
     return sys.stdin.isatty()
+
+
+def get_common_timezones() -> list[str]:
+    """Get list of common timezones for user selection.
+
+    Returns:
+        List of timezone names (e.g., "America/New_York")
+    """
+    return pytz.common_timezones
+
+
+def prompt_timezone_selection(default: str = "UTC") -> str:
+    """Prompt user to select a timezone.
+
+    Args:
+        default: Default timezone to use
+
+    Returns:
+        Selected timezone name
+    """
+    timezones = get_common_timezones()
+
+    click.echo("\nCommon timezones:")
+    click.echo("  Americas: America/New_York, America/Chicago, America/Los_Angeles")
+    click.echo("  Europe: Europe/London, Europe/Paris, Europe/Berlin")
+    click.echo("  Asia: Asia/Tokyo, Asia/Shanghai, Asia/Kolkata")
+    click.echo("  Pacific: Pacific/Auckland, Australia/Sydney")
+    click.echo("\nFor full list, see: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones")
+
+    while True:
+        tz = click.prompt("\nTimezone", default=default, show_default=True)
+        if tz in timezones:
+            return tz
+        else:
+            click.echo(f"  ✗ Invalid timezone: {tz}")
+            click.echo("  Please enter a valid timezone (e.g., America/New_York)")
+
+
+def get_supported_languages(path_resolver: PathResolver) -> dict[str, tuple[str, int]]:
+    """Get supported language codes from species databases.
+
+    Queries the IOC reference database to get all languages with their
+    translation counts. Falls back to a hardcoded list if database not available.
+
+    Args:
+        path_resolver: PathResolver to locate database
+
+    Returns:
+        Dict mapping language codes to (language_name, translation_count) tuples
+    """
+    ioc_db_path = path_resolver.get_ioc_database_path()
+
+    # Fallback languages if database not available
+    fallback = {
+        "en": ("English", 10983),
+        "es": ("Spanish / Español", 10823),
+        "fr": ("French / Français", 10983),
+        "de": ("German / Deutsch", 10785),
+        "it": ("Italian / Italiano", 10006),
+        "pt": ("Portuguese / Português", 10981),
+        "nl": ("Dutch / Nederlands", 10983),
+        "ru": ("Russian / Русский", 10567),
+        "zh": ("Chinese / 中文", 10983),
+        "ja": ("Japanese / 日本語", 10537),
+    }
+
+    if not ioc_db_path.exists():
+        return fallback
+
+    try:
+        conn = sqlite3.connect(ioc_db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT language_code, language_name, translation_count "
+            "FROM languages "
+            "ORDER BY translation_count DESC"
+        )
+        results = cursor.fetchall()
+        conn.close()
+
+        return {code: (name, count) for code, name, count in results if count > 0}
+    except Exception:
+        return fallback
+
+
+def prompt_language_selection(path_resolver: PathResolver, default: str = "en") -> str:
+    """Prompt user to select a language.
+
+    Args:
+        path_resolver: PathResolver to locate database
+        default: Default language code
+
+    Returns:
+        Selected language code
+    """
+    languages = get_supported_languages(path_resolver)
+
+    click.echo("\nSupported languages (sorted by species coverage):")
+    click.echo("-" * 60)
+
+    # Show top languages with full coverage (>10,000 species)
+    full_coverage = {k: v for k, v in languages.items() if v[1] >= 10000}
+    if full_coverage:
+        click.echo("\nFull coverage (>10,000 species):")
+        for code, (name, count) in sorted(
+            full_coverage.items(), key=lambda x: x[1][1], reverse=True
+        )[:10]:
+            click.echo(f"  {code:6} - {name:30} ({count:,} species)")
+
+    # Show partial coverage languages
+    partial_coverage = {k: v for k, v in languages.items() if 1000 < v[1] < 10000}
+    if partial_coverage:
+        click.echo("\nPartial coverage (1,000-10,000 species):")
+        for code, (name, count) in sorted(
+            partial_coverage.items(), key=lambda x: x[1][1], reverse=True
+        )[:10]:
+            click.echo(f"  {code:6} - {name:30} ({count:,} species)")
+
+    click.echo(f"\nTotal languages available: {len(languages)}")
+
+    while True:
+        lang = click.prompt("\nLanguage code", default=default, show_default=True)
+        if lang in languages:
+            return lang
+        else:
+            click.echo(f"  ✗ Invalid language code: {lang}")
+            click.echo("  Please enter a valid language code (e.g., en, es, fr)")
 
 
 def configure_audio_device(config: BirdNETConfig) -> None:
@@ -194,8 +352,8 @@ def configure_location(
             config.latitude = lat_input
             config.longitude = lon_input
 
-            # TODO: Get timezone list
-            tz_input = click.prompt("Timezone", default="UTC")
+            # Prompt for timezone with validation
+            tz_input = prompt_timezone_selection(default="UTC")
             config.timezone = tz_input
         else:
             click.echo("  Skipping location (can configure later in web UI)")
@@ -211,17 +369,18 @@ def configure_location(
 def configure_language(
     config: BirdNETConfig,
     boot_config: dict[str, str],
+    path_resolver: PathResolver,
 ) -> None:
     """Configure language via prompt or boot config.
 
     Args:
         config: BirdNETConfig to update
         boot_config: Boot volume pre-configuration
+        path_resolver: PathResolver to locate databases
     """
     if "language" not in boot_config:
-        # TODO: Get language options with support levels
-        # For now, just prompt for basic language code
-        language_input = click.prompt("Language code", default="en", show_default=True)
+        # Use dynamic language selection from database
+        language_input = prompt_language_selection(path_resolver, default="en")
         config.language = language_input
     else:
         config.language = boot_config["language"]
@@ -310,7 +469,7 @@ def main(non_interactive: bool) -> None:
 
         configure_device_name(config, boot_config)
         configure_location(config, boot_config, lat_detected)
-        configure_language(config, boot_config)
+        configure_language(config, boot_config, path_resolver)
 
     # Save config
     click.echo()
