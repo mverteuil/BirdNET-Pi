@@ -10,7 +10,10 @@ from gpsdclient.client import GPSDClient
 
 from birdnetpi.cli.setup_system import (
     configure_audio_device,
+    configure_device_name,
     configure_gps,
+    configure_language,
+    configure_location,
     detect_audio_devices,
     detect_gps,
     get_boot_config,
@@ -350,6 +353,99 @@ class TestConfigureGPS:
         assert config.longitude == original_lon
         assert lat is None
         assert lon is None
+
+
+class TestBootConfigIntegration:
+    """Tests for boot config integration in configure functions."""
+
+    def test_configure_device_name_from_boot_config(self):
+        """Should use device name from boot config."""
+        config = BirdNETConfig()
+        boot_config = {"device_name": "My Custom Device"}
+
+        configure_device_name(config, boot_config)
+
+        assert config.site_name == "My Custom Device"
+
+    def test_configure_device_name_prompt_when_not_in_boot_config(self):
+        """Should prompt for device name when not in boot config."""
+        config = BirdNETConfig()
+        boot_config = {}
+
+        with patch("click.prompt", return_value="Prompted Device"):
+            configure_device_name(config, boot_config)
+
+        assert config.site_name == "Prompted Device"
+
+    def test_configure_location_from_boot_config(self):
+        """Should use location from boot config."""
+        config = BirdNETConfig()
+        boot_config = {
+            "latitude": "51.5074",
+            "longitude": "-0.1278",
+            "timezone": "Europe/London",
+        }
+
+        configure_location(config, boot_config, lat_detected=None)
+
+        assert config.latitude == 51.5074
+        assert config.longitude == -0.1278
+        assert config.timezone == "Europe/London"
+
+    def test_configure_location_skip_when_gps_detected(self):
+        """Should skip prompts when GPS already detected location."""
+        config = BirdNETConfig()
+        config.latitude = 40.7128
+        config.longitude = -74.0060
+        boot_config = {}
+
+        # When GPS detected (lat_detected is not None), should not prompt
+        configure_location(config, boot_config, lat_detected=40.7128)
+
+        # Config values should remain from GPS detection
+        assert config.latitude == 40.7128
+        assert config.longitude == -74.0060
+
+    def test_configure_location_boot_config_overrides_defaults(self):
+        """Should use boot config location even when defaults exist."""
+        config = BirdNETConfig()
+        # Config has some default values
+        config.latitude = 0.0
+        config.longitude = 0.0
+
+        boot_config = {
+            "latitude": "48.8566",
+            "longitude": "2.3522",
+            "timezone": "Europe/Paris",
+        }
+
+        configure_location(config, boot_config, lat_detected=None)
+
+        assert config.latitude == 48.8566
+        assert config.longitude == 2.3522
+        assert config.timezone == "Europe/Paris"
+
+    def test_configure_language_from_boot_config(self, path_resolver):
+        """Should use language from boot config."""
+        config = BirdNETConfig()
+        boot_config = {"language": "es"}
+
+        configure_language(config, boot_config, path_resolver)
+
+        assert config.language == "es"
+
+    def test_configure_language_prompt_when_not_in_boot_config(self, path_resolver):
+        """Should prompt for language when not in boot config."""
+        config = BirdNETConfig()
+        boot_config = {}
+
+        # Mock the database to avoid filesystem dependencies
+        path_resolver.get_ioc_database_path = lambda: Path("/nonexistent/db.db")
+
+        with patch("click.prompt", return_value="fr"):
+            configure_language(config, boot_config, path_resolver)
+
+        assert config.language == "fr"
 
 
 class TestMainCLI:
