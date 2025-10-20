@@ -1,0 +1,328 @@
+"""System setup CLI for initial BirdNET-Pi configuration.
+
+This tool runs during installation to configure critical system settings
+before services start. It handles:
+- Config file initialization
+- Audio device auto-detection
+- GPS auto-detection
+- Interactive prompts for attended installs
+- Boot volume pre-configuration support
+"""
+
+import sys
+from pathlib import Path
+from typing import Any
+
+import click
+import sounddevice as sd
+
+from birdnetpi.config.manager import ConfigManager
+from birdnetpi.config.models import BirdNETConfig
+from birdnetpi.system.path_resolver import PathResolver
+
+
+def detect_audio_devices() -> tuple[int | None, str]:
+    """Detect and select the best audio input device.
+
+    Priority:
+    1. USB sound devices (always preferred)
+    2. Best native sample rate among USB devices
+    3. Fallback to best available device
+
+    Returns:
+        Tuple of (device_index, device_name)
+    """
+    devices: Any = sd.query_devices()
+
+    usb_devices = []
+    other_devices = []
+
+    for idx, device in enumerate(devices):
+        # Skip output-only devices
+        if device["max_input_channels"] == 0:  # type: ignore[index]
+            continue
+
+        device_info = {
+            "index": idx,
+            "name": device["name"],  # type: ignore[index]
+            "sample_rate": device["default_samplerate"],  # type: ignore[index]
+            "channels": device["max_input_channels"],  # type: ignore[index]
+        }
+
+        # Check if USB device (common USB audio device name patterns)
+        name_lower = device["name"].lower()  # type: ignore[index]
+        usb_markers = ["usb", "webcam", "logitech", "blue"]
+        if any(usb_marker in name_lower for usb_marker in usb_markers):
+            usb_devices.append(device_info)
+        else:
+            other_devices.append(device_info)
+
+    # Prefer USB devices, sorted by sample rate (higher is better)
+    if usb_devices:
+        best = max(usb_devices, key=lambda d: d["sample_rate"])
+        return best["index"], best["name"]
+
+    # Fallback to best non-USB device
+    if other_devices:
+        best = max(other_devices, key=lambda d: d["sample_rate"])
+        return best["index"], best["name"]
+
+    return None, "No input devices found"
+
+
+def detect_gps() -> tuple[float | None, float | None, str | None]:
+    """Detect GPS device and get location.
+
+    Returns:
+        Tuple of (latitude, longitude, timezone) or (None, None, None)
+    """
+    # TODO: Implement GPS detection using gpsdclient
+    # For now, return None to indicate GPS not available
+    return None, None, None
+
+
+def get_boot_config() -> dict[str, str]:
+    """Load pre-configuration from boot volume.
+
+    Checks /boot/firmware/birdnetpi_config.txt for pre-configured values.
+
+    Returns:
+        Dict of pre-configured values (empty if not found)
+    """
+    boot_config_path = Path("/boot/firmware/birdnetpi_config.txt")
+    if not boot_config_path.exists():
+        return {}
+
+    config = {}
+    try:
+        for line in boot_config_path.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" in line:
+                key, value = line.split("=", 1)
+                config[key.strip()] = value.strip()
+    except Exception as e:
+        click.echo(f"Warning: Could not read boot config: {e}", err=True)
+
+    return config
+
+
+def is_attended_install() -> bool:
+    """Check if this is an attended installation.
+
+    Returns:
+        True if stdin is a TTY (interactive), False otherwise
+    """
+    return sys.stdin.isatty()
+
+
+def configure_audio_device(config: BirdNETConfig) -> None:
+    """Auto-detect and configure audio device.
+
+    Args:
+        config: BirdNETConfig to update
+    """
+    click.echo()
+    click.echo("Detecting audio devices...")
+    device_index, device_name = detect_audio_devices()
+    if device_index is not None:
+        click.echo(f"  ✓ Selected: {device_name} (index {device_index})")
+        config.audio_device_index = device_index
+    else:
+        click.echo(f"  ✗ {device_name}")
+
+
+def configure_gps(config: BirdNETConfig) -> tuple[float | None, float | None]:
+    """Auto-detect and configure GPS.
+
+    Args:
+        config: BirdNETConfig to update
+
+    Returns:
+        Tuple of (latitude, longitude) from detection
+    """
+    click.echo()
+    click.echo("Checking for GPS...")
+    lat, lon, tz = detect_gps()
+    if lat is not None and lon is not None:
+        click.echo(f"  ✓ GPS found: {lat}, {lon}")
+        config.latitude = lat
+        config.longitude = lon
+        if tz:
+            config.timezone = tz
+    else:
+        click.echo("  ○ No GPS detected")
+    return lat, lon
+
+
+def configure_device_name(
+    config: BirdNETConfig,
+    boot_config: dict[str, str],
+) -> None:
+    """Configure device name via prompt or boot config.
+
+    Args:
+        config: BirdNETConfig to update
+        boot_config: Boot volume pre-configuration
+    """
+    if "device_name" not in boot_config:
+        default_name = config.site_name or "BirdNET-Pi"
+        device_name_input = click.prompt("Device name", default=default_name, show_default=True)
+        config.site_name = device_name_input
+    else:
+        config.site_name = boot_config["device_name"]
+        click.echo(f"Device name: {config.site_name} (from boot config)")
+
+
+def configure_location(
+    config: BirdNETConfig,
+    boot_config: dict[str, str],
+    lat_detected: float | None,
+) -> None:
+    """Configure location via prompt or boot config.
+
+    Args:
+        config: BirdNETConfig to update
+        boot_config: Boot volume pre-configuration
+        lat_detected: Latitude from GPS detection (None if not detected)
+    """
+    if lat_detected is None and "latitude" not in boot_config:
+        if click.confirm("Configure location now?", default=True):
+            lat_input = click.prompt("Latitude", type=float)
+            lon_input = click.prompt("Longitude", type=float)
+            config.latitude = lat_input
+            config.longitude = lon_input
+
+            # TODO: Get timezone list
+            tz_input = click.prompt("Timezone", default="UTC")
+            config.timezone = tz_input
+        else:
+            click.echo("  Skipping location (can configure later in web UI)")
+    elif "latitude" in boot_config and "longitude" in boot_config:
+        config.latitude = float(boot_config["latitude"])
+        config.longitude = float(boot_config["longitude"])
+        if "timezone" in boot_config:
+            config.timezone = boot_config["timezone"]
+        loc_msg = f"Location: {config.latitude}, {config.longitude} (from boot config)"
+        click.echo(loc_msg)
+
+
+def configure_language(
+    config: BirdNETConfig,
+    boot_config: dict[str, str],
+) -> None:
+    """Configure language via prompt or boot config.
+
+    Args:
+        config: BirdNETConfig to update
+        boot_config: Boot volume pre-configuration
+    """
+    if "language" not in boot_config:
+        # TODO: Get language options with support levels
+        # For now, just prompt for basic language code
+        language_input = click.prompt("Language code", default="en", show_default=True)
+        config.language = language_input
+    else:
+        config.language = boot_config["language"]
+        click.echo(f"Language: {config.language} (from boot config)")
+
+
+def initialize_config(
+    path_resolver: PathResolver,
+) -> tuple[Path, BirdNETConfig, dict[str, str]]:
+    """Initialize configuration from template.
+
+    Args:
+        path_resolver: PathResolver instance
+
+    Returns:
+        Tuple of (config_path, config, boot_config)
+    """
+    config_manager = ConfigManager(path_resolver)
+    config_path = path_resolver.get_birdnetpi_config_path()
+
+    # Load boot volume pre-configuration
+    boot_config = get_boot_config()
+    if boot_config:
+        click.echo("Found pre-configuration from boot volume")
+
+    # Initialize config from template
+    click.echo("Initializing configuration...")
+    template_path = path_resolver.app_dir / "config_templates" / "birdnetpi.yaml"
+    if not template_path.exists():
+        click.echo(f"Error: Template not found at {template_path}", err=True)
+        sys.exit(1)
+
+    # Copy template to config location
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(template_path.read_text())
+
+    # Load config
+    config = config_manager.load()
+
+    return config_path, config, boot_config
+
+
+@click.command()
+@click.option(
+    "--non-interactive",
+    is_flag=True,
+    help="Run in non-interactive mode (use defaults/auto-detection only)",
+)
+def main(non_interactive: bool) -> None:
+    """Configure BirdNET-Pi system settings.
+
+    This tool initializes the configuration file and sets up critical
+    system settings before services start.
+    """
+    path_resolver = PathResolver()
+    config_manager = ConfigManager(path_resolver)
+
+    click.echo("=" * 60)
+    click.echo("BirdNET-Pi System Setup")
+    click.echo("=" * 60)
+    click.echo()
+
+    # Check if config already exists
+    config_path = path_resolver.get_birdnetpi_config_path()
+    if config_path.exists():
+        click.echo(f"Configuration already exists at {config_path}")
+        click.echo("Skipping setup.")
+        return
+
+    # Initialize config from template
+    config_path, config, boot_config = initialize_config(path_resolver)
+
+    # Auto-detect audio device
+    configure_audio_device(config)
+
+    # Auto-detect GPS
+    lat_detected, _ = configure_gps(config)
+
+    # Interactive prompts (only if attended AND values not pre-configured)
+    attended = is_attended_install() and not non_interactive
+
+    if attended:
+        click.echo()
+        click.echo("Configuration Prompts")
+        click.echo("-" * 60)
+
+        configure_device_name(config, boot_config)
+        configure_location(config, boot_config, lat_detected)
+        configure_language(config, boot_config)
+
+    # Save config
+    click.echo()
+    click.echo("Saving configuration...")
+    config_manager.save(config)
+    click.echo(f"  ✓ Configuration saved to {config_path}")
+
+    click.echo()
+    click.echo("=" * 60)
+    click.echo("System setup complete!")
+    click.echo("=" * 60)
+
+
+if __name__ == "__main__":
+    main()

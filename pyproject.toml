@@ -106,6 +106,7 @@ install-assets = "birdnetpi.cli.install_assets:main"
 manage-releases = "birdnetpi.cli.manage_releases:main"
 manage-translations = "birdnetpi.cli.manage_translations:main"
 profile-landing-page = "birdnetpi.cli.profile_landing_page:main"
+setup-system = "birdnetpi.cli.setup_system:main"
 
 [tool.coverage.run]
 source = ["src/birdnetpi"]

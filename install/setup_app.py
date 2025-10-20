@@ -566,6 +566,28 @@ def main() -> None:
         )
         log("✓", "Completed: web server configuration, systemd services, asset download")
 
+        # Wave 4.5: System configuration (sequential, before starting services)
+        print()
+        log("→", "Configuring system settings")
+        setup_cmd = [
+            "sudo",
+            "-u",
+            "birdnetpi",
+            "/opt/birdnetpi/.venv/bin/setup-system",
+        ]
+        if not sys.stdin.isatty():
+            setup_cmd.append("--non-interactive")
+        result = subprocess.run(
+            setup_cmd,
+            env={**os.environ, "BIRDNETPI_DATA": "/var/lib/birdnetpi"},
+            check=False,
+            stdin=sys.stdin if sys.stdin.isatty() else subprocess.DEVNULL,
+            capture_output=False,
+        )
+        if result.returncode != 0:
+            raise RuntimeError("System setup failed")
+        log("✓", "Configuring system settings")
+
         # Wave 5: Start services (sequential, after assets are ready)
         print()
         log("→", "Starting systemd services")
