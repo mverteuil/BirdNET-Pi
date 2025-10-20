@@ -161,8 +161,8 @@ def install_uv() -> None:
         stderr=subprocess.DEVNULL,
     )
 
-    # Download and run the official uv installer with custom path
-    # UV_INSTALL_DIR tells the installer where to put the binaries
+    # Download and run the official uv installer
+    # The installer installs to $HOME/.cargo/bin by default
     result = subprocess.run(
         [
             "sudo",
@@ -170,7 +170,7 @@ def install_uv() -> None:
             "birdnetpi",
             "sh",
             "-c",
-            "UV_INSTALL_DIR=/opt/uv curl -LsSf https://astral.sh/uv/install.sh | sh",
+            "curl -LsSf https://astral.sh/uv/install.sh | sh",
         ],
         check=False,
         stdin=subprocess.DEVNULL,
@@ -179,6 +179,29 @@ def install_uv() -> None:
     )
     if result.returncode != 0:
         raise RuntimeError(f"Failed to install uv: {result.stderr}")
+
+    # Move uv binary to /opt/uv/bin for consistency
+    subprocess.run(
+        ["sudo", "mkdir", "-p", "/opt/uv/bin"],
+        check=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        ["sudo", "mv", "/opt/birdnetpi/.cargo/bin/uv", "/opt/uv/bin/uv"],
+        check=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/uv"],
+        check=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
 
 def install_python_dependencies() -> None:
