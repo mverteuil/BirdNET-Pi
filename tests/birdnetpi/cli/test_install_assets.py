@@ -109,7 +109,7 @@ class TestListVersions:
     def test_list_versions(self, mock_update_manager_class, test_version_data, runner):
         """Should list available asset versions."""
         mock_manager = MagicMock(spec=UpdateManager)
-        mock_manager.list_available_versions.return_value = test_version_data
+        mock_manager.list_available_asset_versions.return_value = test_version_data
         mock_update_manager_class.return_value = mock_manager
         result = runner.invoke(cli, ["list-versions"])
         assert result.exit_code == 0
@@ -123,7 +123,7 @@ class TestListVersions:
     def test_list_versions_empty(self, mock_update_manager_class, runner):
         """Should handle empty version list."""
         mock_manager = MagicMock(spec=UpdateManager)
-        mock_manager.list_available_versions.return_value = []
+        mock_manager.list_available_asset_versions.return_value = []
         mock_update_manager_class.return_value = mock_manager
         result = runner.invoke(cli, ["list-versions"])
         assert result.exit_code == 0
@@ -133,7 +133,7 @@ class TestListVersions:
     def test_list_versions_error(self, mock_update_manager_class, runner):
         """Should handle listing errors gracefully."""
         mock_manager = MagicMock(spec=UpdateManager)
-        mock_manager.list_available_versions.side_effect = Exception("API error")
+        mock_manager.list_available_asset_versions.side_effect = Exception("API error")
         mock_update_manager_class.return_value = mock_manager
         result = runner.invoke(cli, ["list-versions"])
         assert result.exit_code == 1

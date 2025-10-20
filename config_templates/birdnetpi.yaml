@@ -12,7 +12,7 @@ model: BirdNET_GLOBAL_6K_V2.4_Model_FP16
 metadata_model: BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16
 species_confidence_threshold: 0.70  # Minimum confidence threshold for species detection
 sensitivity_setting: 1.25
-audio_overlap: 0.50  # Overlap between audio segments (0.0 to 3.0)
+analysis_overlap: 0.50  # Overlap between audio segments (0.0 to 3.0)
 audio_device_index: -1  # -1 for system default
 sample_rate: 48000
 audio_channels: 1

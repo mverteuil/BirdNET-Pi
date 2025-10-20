@@ -507,8 +507,8 @@ class TestDetectionBufferingWithAdminOperations:
                 mock_response.raise_for_status.return_value = None
                 mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
-                # Wait for background flush to process buffered detection
-                await asyncio.sleep(0.2)
+                # Manually trigger flush to process buffered detection
+                await service._flush_detection_buffer()
 
                 # Buffer should be empty after admin operation completes
                 with service.buffer_lock:
@@ -554,6 +554,9 @@ class TestDetectionBufferingWithAdminOperations:
                 assert cycle1_buffer_size == 3
 
             # Cycle 2: Partial flush, then more failures
+            # Stop background flush to avoid interference
+            service.stop_buffer_flush_task()
+
             with patch("httpx.AsyncClient", autospec=True) as mock_client:
                 post_mock = mock_client.return_value.__aenter__.return_value.post
 
@@ -601,8 +604,8 @@ class TestDetectionBufferingWithAdminOperations:
                 mock_response.raise_for_status.return_value = None
                 mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
-                # Wait for background flush
-                await asyncio.sleep(0.2)
+                # Manually trigger final flush
+                await service._flush_detection_buffer()
 
                 # All detections should be flushed
                 with service.buffer_lock:
