@@ -226,7 +226,10 @@ def get_supported_languages(path_resolver: PathResolver) -> dict[str, tuple[str,
         results = cursor.fetchall()
         conn.close()
 
-        return {code: (name, count) for code, name, count in results if count > 0}
+        languages = {code: (name, count) for code, name, count in results if count > 0}
+        # Always include English (scientific names) even though it's not in the database
+        languages["en"] = ("English", 10983)
+        return languages
     except Exception:
         return fallback
 

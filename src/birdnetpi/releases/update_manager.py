@@ -11,6 +11,7 @@ from typing import Any
 
 import httpx
 from alembic.config import Config
+from packaging.version import InvalidVersion, Version
 from sqlalchemy import create_engine, text
 from tqdm import tqdm
 
@@ -725,10 +726,18 @@ class UpdateManager:
             if not tags:
                 raise RuntimeError("No tags found in remote repository")
 
-            # Sort tags to get the latest (assumes semantic versioning)
-            tags.sort(
-                key=lambda x: [int(p) if p.isdigit() else p for p in x.replace("v", "").split(".")]
-            )
+            # Sort tags using packaging.version.Version for proper semantic versioning
+            def parse_version(tag: str) -> Version:
+                """Parse version tag, handling 'v' prefix."""
+                try:
+                    # Remove 'v' prefix if present
+                    return Version(tag.lstrip("v"))
+                except InvalidVersion:
+                    # If it's not a valid version, use a fallback
+                    # This handles tags like 'main' or other non-version tags
+                    return Version("0.0.0")
+
+            tags.sort(key=parse_version)
             return tags[-1]
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to get latest version: {e}") from e
@@ -747,8 +756,14 @@ class UpdateManager:
         if current.startswith("dev-"):
             return True  # Development versions are always considered outdated
 
-        # Simple version comparison
-        return latest != current and latest > current
+        # Use packaging.version.Version for proper semantic version comparison
+        try:
+            latest_ver = Version(latest.lstrip("v"))
+            current_ver = Version(current.lstrip("v"))
+            return latest_ver > current_ver
+        except InvalidVersion:
+            # Fall back to string comparison if versions are invalid
+            return latest != current and latest > current
 
     async def apply_update(self, version: str) -> dict:
         """Apply an update to the specified version.

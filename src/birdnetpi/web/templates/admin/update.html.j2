@@ -198,6 +198,7 @@
                         id="git-remote"
                         name="git_remote"
                         aria-describedby="git-remote-help"
+                        data-current-value="{{ git_remote or '' }}"
                         required
                     >
                         <option value="">{{ _('Loading remotes...') }}</option>
@@ -220,6 +221,7 @@
                     id="git-branch"
                     name="git_branch"
                     aria-describedby="git-branch-help"
+                    data-current-value="{{ git_branch or '' }}"
                     required
                 >
                     <option value="">{{ _('Select a remote first') }}</option>
