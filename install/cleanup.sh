@@ -20,7 +20,8 @@ echo "=========================================="
 echo ""
 echo "This will remove:"
 echo "  - All BirdNET-Pi systemd services"
-echo "  - /opt/birdnetpi directory (including uv)"
+echo "  - /opt/birdnetpi directory"
+echo "  - /opt/uv directory"
 echo "  - /var/lib/birdnetpi directory"
 echo "  - /var/log/birdnetpi directory"
 echo "  - birdnetpi user (unless you are logged in as that user)"
@@ -79,6 +80,7 @@ fi
 
 echo "Removing directories..."
 rm -rf /opt/birdnetpi
+rm -rf /opt/uv
 rm -rf /var/lib/birdnetpi
 rm -rf /var/log/birdnetpi
 
