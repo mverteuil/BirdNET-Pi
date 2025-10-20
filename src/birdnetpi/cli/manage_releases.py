@@ -10,9 +10,37 @@ from pathlib import Path
 from typing import Any
 
 import click
+from packaging.version import InvalidVersion, Version
 
 from birdnetpi.releases.release_manager import ReleaseAsset, ReleaseConfig, ReleaseManager
 from birdnetpi.system.path_resolver import PathResolver
+
+
+def _normalize_version(version: str) -> str:
+    """Normalize version string by stripping leading 'v' characters.
+
+    Args:
+        version: Version string that may have leading 'v' characters (e.g., "v2.2.0", "vv2.2.0")
+
+    Returns:
+        Normalized version string without leading 'v' (e.g., "2.2.0")
+
+    Raises:
+        click.BadParameter: If the version string is invalid after normalization
+    """
+    # Strip all leading 'v' characters (handles v, vv, vvv, etc.)
+    normalized = version.lstrip("v")
+
+    # Validate that the result is a valid version using packaging.version
+    try:
+        Version(normalized)
+    except InvalidVersion as e:
+        raise click.BadParameter(
+            f"Invalid version string '{version}' - after removing leading 'v' characters, "
+            f"'{normalized}' is not a valid semantic version: {e}"
+        ) from e
+
+    return normalized
 
 
 def _add_asset_if_requested(
@@ -166,8 +194,15 @@ def create(
 ) -> None:
     """Create a new release with assets.
 
-    VERSION: Release version (e.g., v2.0.0)
+    VERSION: Release version (e.g., v2.0.0 or 2.0.0)
     """
+    # Normalize version by stripping leading 'v' characters
+    version = _normalize_version(version)
+
+    # Normalize tag_name if provided
+    if tag_name:
+        tag_name = _normalize_version(tag_name)
+
     release_manager = obj["release_manager"]
 
     # Build asset list
