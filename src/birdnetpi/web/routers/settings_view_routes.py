@@ -20,6 +20,7 @@ from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.system.log_reader import LogReaderService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.status import SystemInspector
+from birdnetpi.utils.helpers import prefer
 from birdnetpi.utils.language import get_user_language
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.detections import DetectionEvent
@@ -128,16 +129,13 @@ async def post_settings_view(
     audio_device_index: int = Form(...),
     sample_rate: int = Form(...),
     audio_channels: int = Form(...),
-    analysis_overlap: float = Form(...),
+    audio_overlap: float = Form(...),
     # External Services (optional - preserves existing if not provided)
     birdweather_id: str | None = Form(None),
     # New notification fields (JSON) - optional
     apprise_targets_json: str | None = Form(None),
     webhook_targets_json: str | None = Form(None),
     notification_rules_json: str | None = Form(None),
-    # Flickr (optional)
-    flickr_api_key: str | None = Form(None),
-    flickr_filter_email: str | None = Form(None),
     # Localization (optional)
     language: str | None = Form(None),
     species_display_mode: str | None = Form(None),
@@ -145,10 +143,6 @@ async def post_settings_view(
     # Field Mode and GPS (optional)
     enable_gps: bool | None = Form(None),
     gps_update_interval: float | None = Form(None),
-    hardware_check_interval: float | None = Form(None),
-    enable_audio_device_check: bool | None = Form(None),
-    enable_system_resource_check: bool | None = Form(None),
-    enable_gps_check: bool | None = Form(None),
     # Analysis (optional)
     privacy_threshold: float | None = Form(None),
     # MQTT Integration (optional)
@@ -227,11 +221,9 @@ async def post_settings_view(
         audio_device_index=audio_device_index,
         sample_rate=sample_rate,
         audio_channels=audio_channels,
-        analysis_overlap=analysis_overlap,
+        audio_overlap=audio_overlap,
         # External Services (preserve if not provided)
-        birdweather_id=birdweather_id
-        if birdweather_id is not None
-        else current_config.birdweather_id,
+        birdweather_id=prefer(birdweather_id, current_config.birdweather_id),
         # New Notification System (preserve if not provided)
         apprise_targets=apprise_targets,
         webhook_targets=webhook_targets,
@@ -240,64 +232,27 @@ async def post_settings_view(
         notification_body_default=current_config.notification_body_default,
         notify_quiet_hours_start=current_config.notify_quiet_hours_start,
         notify_quiet_hours_end=current_config.notify_quiet_hours_end,
-        # Flickr (preserve if not provided)
-        flickr_api_key=flickr_api_key
-        if flickr_api_key is not None
-        else current_config.flickr_api_key,
-        flickr_filter_email=flickr_filter_email
-        if flickr_filter_email is not None
-        else current_config.flickr_filter_email,
         # Localization (preserve if not provided)
-        language=language if language is not None else current_config.language,
-        species_display_mode=species_display_mode
-        if species_display_mode is not None
-        else current_config.species_display_mode,
-        timezone=timezone if timezone is not None else current_config.timezone,
+        language=prefer(language, current_config.language),
+        species_display_mode=prefer(species_display_mode, current_config.species_display_mode),
+        timezone=prefer(timezone, current_config.timezone),
         # Field Mode and GPS (preserve if not provided)
-        enable_gps=enable_gps if enable_gps is not None else current_config.enable_gps,
-        gps_update_interval=gps_update_interval
-        if gps_update_interval is not None
-        else current_config.gps_update_interval,
-        hardware_check_interval=hardware_check_interval
-        if hardware_check_interval is not None
-        else current_config.hardware_check_interval,
-        enable_audio_device_check=enable_audio_device_check
-        if enable_audio_device_check is not None
-        else current_config.enable_audio_device_check,
-        enable_system_resource_check=enable_system_resource_check
-        if enable_system_resource_check is not None
-        else current_config.enable_system_resource_check,
-        enable_gps_check=enable_gps_check
-        if enable_gps_check is not None
-        else current_config.enable_gps_check,
+        enable_gps=prefer(enable_gps, current_config.enable_gps),
+        gps_update_interval=prefer(gps_update_interval, current_config.gps_update_interval),
         # Analysis (preserve if not provided)
-        privacy_threshold=privacy_threshold
-        if privacy_threshold is not None
-        else current_config.privacy_threshold,
+        privacy_threshold=prefer(privacy_threshold, current_config.privacy_threshold),
         # MQTT Integration (preserve if not provided)
-        enable_mqtt=enable_mqtt if enable_mqtt is not None else current_config.enable_mqtt,
-        mqtt_broker_host=mqtt_broker_host
-        if mqtt_broker_host is not None
-        else current_config.mqtt_broker_host,
-        mqtt_broker_port=mqtt_broker_port
-        if mqtt_broker_port is not None
-        else current_config.mqtt_broker_port,
-        mqtt_username=mqtt_username if mqtt_username is not None else current_config.mqtt_username,
-        mqtt_password=mqtt_password if mqtt_password is not None else current_config.mqtt_password,
-        mqtt_topic_prefix=mqtt_topic_prefix
-        if mqtt_topic_prefix is not None
-        else current_config.mqtt_topic_prefix,
-        mqtt_client_id=mqtt_client_id
-        if mqtt_client_id is not None
-        else current_config.mqtt_client_id,
+        enable_mqtt=prefer(enable_mqtt, current_config.enable_mqtt),
+        mqtt_broker_host=prefer(mqtt_broker_host, current_config.mqtt_broker_host),
+        mqtt_broker_port=prefer(mqtt_broker_port, current_config.mqtt_broker_port),
+        mqtt_username=prefer(mqtt_username, current_config.mqtt_username),
+        mqtt_password=prefer(mqtt_password, current_config.mqtt_password),
+        mqtt_topic_prefix=prefer(mqtt_topic_prefix, current_config.mqtt_topic_prefix),
+        mqtt_client_id=prefer(mqtt_client_id, current_config.mqtt_client_id),
         # Webhook Integration (preserve if not provided)
-        enable_webhooks=enable_webhooks
-        if enable_webhooks is not None
-        else current_config.enable_webhooks,
+        enable_webhooks=prefer(enable_webhooks, current_config.enable_webhooks),
         webhook_urls=webhook_urls_list,
-        webhook_events=webhook_events
-        if webhook_events is not None
-        else current_config.webhook_events,
+        webhook_events=prefer(webhook_events, current_config.webhook_events),
         # Update settings (always preserved from current config)
         updates=current_config.updates,
     )

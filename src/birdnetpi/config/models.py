@@ -75,7 +75,7 @@ class BirdNETConfig(BaseModel):
     audio_device_index: int = -1  # Default to -1 for system default or auto-detection
     sample_rate: int = 48000  # Default sample rate (BirdNET expects 48kHz)
     audio_channels: int = 1  # Default to mono (BirdNET processes mono audio)
-    analysis_overlap: float = 0.5  # Overlap in seconds between consecutive audio segments
+    audio_overlap: float = 0.5  # Overlap in seconds between consecutive audio segments
 
     # Logging settings
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
@@ -117,10 +117,6 @@ class BirdNETConfig(BaseModel):
     notify_quiet_hours_start: str = ""  # "HH:MM" or empty for no quiet hours
     notify_quiet_hours_end: str = ""  # "HH:MM" or empty for no quiet hours
 
-    # Flickr
-    flickr_api_key: str = ""
-    flickr_filter_email: str = ""
-
     # Localization and Species Display
     language: str = "en"  # Language code for UI and species name translation
     species_display_mode: str = "full"  # Options: "full", "common_name", "scientific_name"
@@ -129,12 +125,6 @@ class BirdNETConfig(BaseModel):
     # Field mode and GPS settings
     enable_gps: bool = False  # Enable GPS tracking for field deployments
     gps_update_interval: float = 5.0  # GPS update interval in seconds
-    hardware_check_interval: float = 10.0  # Hardware monitoring interval in seconds
-
-    # Hardware monitoring settings
-    enable_audio_device_check: bool = True  # Enable audio device monitoring
-    enable_system_resource_check: bool = True  # Enable system resource monitoring
-    enable_gps_check: bool = False  # Enable GPS device monitoring
 
     # MQTT Integration settings
     enable_mqtt: bool = False  # Enable MQTT publishing
