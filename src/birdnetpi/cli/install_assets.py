@@ -151,6 +151,13 @@ def install(
       install-assets install latest --output-json install.json
     """
     path_resolver = ctx.obj["path_resolver"]
+    update_manager = ctx.obj["update_manager"]
+
+    # Resolve "latest" to actual version for consistency
+    if version.lower() == "latest":
+        click.echo("Resolving 'latest' to current release version...")
+        version = update_manager._resolve_latest_asset_version("mverteuil/BirdNET-Pi")
+        click.echo(f"  Latest version: {version}")
 
     if skip_existing:
         # Skip existing mode - check if all required assets exist, install only if missing
@@ -164,17 +171,18 @@ def install(
             click.echo(f"Installing missing assets for version: {version}")
             # Continue to installation below
 
-    update_manager = ctx.obj["update_manager"]
     click.echo(f"Installing complete asset release: {version}")
 
     try:
         result = _perform_installation(update_manager, version)
 
         # Write version file after successful installation
+        # Use the resolved version from the result (handles "latest")
+        installed_version = result["version"]
         version_file = path_resolver.data_dir / ".birdnet-assets-version"
         try:
-            version_file.write_text(version)
-            click.echo(f"  Version marker written: {version}")
+            version_file.write_text(installed_version)
+            click.echo(f"  Version marker written: {installed_version}")
         except Exception as e:
             click.echo(
                 click.style(f"Warning: Could not write version file: {e}", fg="yellow"), err=True

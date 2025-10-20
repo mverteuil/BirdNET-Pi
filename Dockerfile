@@ -35,7 +35,7 @@ RUN cp -r /source/* . 2>/dev/null || true && \
 FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS runtime
 
 # Asset version for runtime downloads (can be overridden via environment variable)
-ARG BIRDNET_ASSETS_VERSION=v2.2.0
+ARG BIRDNET_ASSETS_VERSION=latest
 
 # Combine ENV declarations for better layer efficiency
 ENV DNS_SERVER=8.8.8.8 \
@@ -58,7 +58,6 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # This reduces the image size by ~100MB
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    ffmpeg \
     alsa-utils \
     apt-transport-https \
     avahi-utils \

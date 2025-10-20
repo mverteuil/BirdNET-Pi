@@ -1,20 +1,51 @@
 #!/usr/bin/env bash
-# This script is a simple wrapper around the main Python setup script.
-# It ensures that the Python script is executed with the correct permissions
-# and that the environment is properly configured.
+# BirdNET-Pi SBC Installer Bootstrap Script
+#
+# One-liner installation (recommended):
+#   bash <(curl -fsSL https://raw.githubusercontent.com/mverteuil/BirdNET-Pi/feature/sbc-installer/install/install.sh)
+#
+# Or download first:
+#   curl -fsSL <url> -o install.sh && bash install.sh
 set -e
-# It is highly recommended to run this script as a non-root user with sudo privileges.
-# The script will elevate permissions only when necessary.
-if [  "$(id -u)" -eq 0 ]; then
+
+# Configuration
+REPO_URL="${BIRDNET_REPO_URL:-https://github.com/mverteuil/BirdNET-Pi.git}"
+BRANCH="${BIRDNET_BRANCH:-feature/sbc-installer}"
+INSTALL_DIR="${BIRDNET_INSTALL_DIR:-/dev/shm/birdnet-installer}"
+
+# Check if running as root
+if [ "$(id -u)" -eq 0 ]; then
     echo "This script should not be run as root. Please run as a non-root user with sudo privileges."
     exit 1
 fi
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+echo "========================================"
+echo "BirdNET-Pi SBC Installer"
+echo "========================================"
+echo "Repository: $REPO_URL"
+echo "Branch: $BRANCH"
+echo "Temporary directory (RAM): $INSTALL_DIR"
+echo ""
+echo "App code will install to: /opt/birdnetpi"
+echo "Data will install to: /var/lib/birdnetpi"
+echo ""
 
 # Bootstrap the environment
+echo "Installing prerequisites..."
 sudo apt-get update
-sudo apt-get install -y python3.11 python3.11-venv python3-pip
+sudo apt-get install -y git python3.11 python3.11-venv python3-pip
 
-# Execute the main setup script, which will handle all the installation and configuration logic.
-# The Python script is responsible for elevating its own permissions via `sudo` when necessary.
-python3.11 "${SCRIPT_DIR}/setup_app.py"
+# Clone repository with sparse checkout (only installation files)
+if [ -d "$INSTALL_DIR" ]; then
+    echo "Cleaning up existing temporary directory..."
+    rm -rf "$INSTALL_DIR"
+fi
+
+echo "Cloning repository..."
+git clone --filter=blob:none --depth 1 --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
+cd "$INSTALL_DIR"
+
+# Execute the main setup script
+echo ""
+echo "Starting installation..."
+python3.11 "$INSTALL_DIR/install/setup_app.py"

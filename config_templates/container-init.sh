@@ -9,7 +9,7 @@ echo "Installing BirdNET assets..."
 cd /opt/birdnetpi
 # Use su without dash to preserve PATH environment variable
 # shellcheck disable=SC2016
-su birdnetpi -c "install-assets install ${BIRDNET_ASSETS_VERSION:-v2.2.0} --skip-existing"
+su birdnetpi -c "install-assets install ${BIRDNET_ASSETS_VERSION:-latest} --skip-existing"
 
 # Set up config
 echo "Setting up configuration..."

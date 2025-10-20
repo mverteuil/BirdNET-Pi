@@ -447,7 +447,7 @@ def check_required_assets(repo_root: Path):
         print("│" + " " * 78 + "│")
         print("│  To run tests with assets, install them first:" + " " * 29 + "│")
         print("│    export BIRDNETPI_DATA=./data" + " " * 43 + "│")
-        print("│    uv run install-assets install v2.2.0" + " " * 36 + "│")
+        print("│    uv run install-assets install latest" + " " * 35 + "│")
         print("│" + " " * 78 + "│")
         print("│  Most tests will still pass without assets (mocked dependencies)." + " " * 9 + "│")
         print(
