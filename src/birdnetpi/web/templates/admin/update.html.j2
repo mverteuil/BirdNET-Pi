@@ -79,11 +79,11 @@
         <div id="update-actions" class="update-actions" {% if not update_status.available %}style="display: none;"{% endif %}>
             <h3>{{ _('Update Details') }}</h3>
 
+            {% if update_status.release_notes %}
             <div id="release-notes" class="release-notes">
-                {% if update_status.release_notes %}
-                    {{ update_status.release_notes | safe }}
-                {% endif %}
+                {{ update_status.release_notes | safe }}
             </div>
+            {% endif %}
 
             {% if update_status.release_url %}
             <div class="release-link">
