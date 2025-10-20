@@ -167,7 +167,7 @@ def install_uv() -> None:
     )
 
     # Download and run the official uv installer
-    # The installer installs to $HOME/.cargo/bin by default
+    # The installer installs to $HOME/.local/bin by default
     result = subprocess.run(
         [
             "sudo",
@@ -193,7 +193,7 @@ def install_uv() -> None:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    uv_source = f"{birdnetpi_home}/.cargo/bin/uv"
+    uv_source = f"{birdnetpi_home}/.local/bin/uv"
     subprocess.run(
         ["sudo", "mv", uv_source, "/opt/uv/bin/uv"],
         check=True,
