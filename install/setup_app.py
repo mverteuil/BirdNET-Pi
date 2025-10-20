@@ -507,23 +507,28 @@ def main() -> None:
     try:
         # Wave 1: System setup (parallel - apt-update already done in install.sh)
         print()
-        log("→", "Starting: data directories, system packages, uv package manager")
+        log("→", "Starting: data directories, system packages")
         run_parallel(
             [
                 ("Creating data directories", create_directories),
                 ("Installing system packages", install_system_packages),
-                ("Installing uv package manager", install_uv),
             ]
         )
-        log("✓", "Completed: data directories, system packages, uv package manager")
+        log("✓", "Completed: data directories, system packages")
 
-        # Wave 2: Python dependencies (sequential, needs uv)
+        # Wave 2: Install uv (sequential, needs network after apt operations complete)
+        print()
+        log("→", "Installing uv package manager")
+        install_uv()
+        log("✓", "Installing uv package manager")
+
+        # Wave 3: Python dependencies (sequential, needs uv)
         print()
         log("→", "Installing Python dependencies")
         install_python_dependencies()
         log("✓", "Installing Python dependencies")
 
-        # Wave 3: Configuration and services (parallel, long-running tasks at bottom)
+        # Wave 4: Configuration and services (parallel, long-running tasks at bottom)
         print()
         log("→", "Starting: web server configuration, systemd services, asset download")
         run_parallel(
@@ -538,13 +543,13 @@ def main() -> None:
         )
         log("✓", "Completed: web server configuration, systemd services, asset download")
 
-        # Wave 4: Start services (sequential, after assets are ready)
+        # Wave 5: Start services (sequential, after assets are ready)
         print()
         log("→", "Starting systemd services")
         start_systemd_services()
         log("✓", "Starting systemd services")
 
-        # Wave 5: Health check
+        # Wave 6: Health check
         print()
         log("→", "Checking service health")
         check_services_health()
