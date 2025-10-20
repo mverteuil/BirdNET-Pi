@@ -4,13 +4,9 @@ on:
   push:
     branches:
       - main
-      - development
-      - feature/*
   pull_request:
     branches:
       - main
-      - development
-      - feature/*
 
 jobs:
   lint_and_format:
