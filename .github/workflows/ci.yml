@@ -41,7 +41,7 @@ jobs:
       - name: Install pre-commit
         run: ~/.local/bin/uv pip install pre-commit
       - name: Run pre-commit checks
-        run: ~/.local/bin/uv run pre-commit run
+        run: ~/.local/bin/uv run pre-commit run --all-files
 
   test:
     runs-on: ubuntu-latest
