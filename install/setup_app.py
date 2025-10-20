@@ -145,6 +145,11 @@ def install_uv() -> None:
     UV will automatically create and manage the virtual environment
     when we run 'uv sync' later.
     """
+    import pwd
+
+    # Get birdnetpi user's home directory
+    birdnetpi_home = pwd.getpwnam("birdnetpi").pw_dir
+
     # Create /opt/uv directory
     subprocess.run(
         ["sudo", "mkdir", "-p", "/opt/uv"],
@@ -188,8 +193,9 @@ def install_uv() -> None:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+    uv_source = f"{birdnetpi_home}/.cargo/bin/uv"
     subprocess.run(
-        ["sudo", "sh", "-c", "mv ~birdnetpi/.cargo/bin/uv /opt/uv/bin/uv"],
+        ["sudo", "mv", uv_source, "/opt/uv/bin/uv"],
         check=True,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
