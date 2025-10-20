@@ -20,9 +20,9 @@
 </div>
 {% endif %}
 
-{# Update available banner #}
+{# Update available banner - only show if not on development version #}
 {% if update_status %}
-{% if 'available' in update_status and update_status['available'] %}
+{% if 'available' in update_status and update_status['available'] and update_status.get('version_type') != 'development' %}
 <div class="update-banner" id="update-banner" role="alert" aria-live="polite"
      data-version="{{ update_status['latest_version'] }}">
 <div class="update-banner-content">

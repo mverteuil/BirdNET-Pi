@@ -210,28 +210,19 @@ class GitOperationsService:
         Raises:
             subprocess.CalledProcessError: If git command fails
         """
-        # First fetch to ensure we have latest refs
-        try:
-            self.fetch_remote(remote)
-        except subprocess.CalledProcessError as e:
-            logger.warning(f"Failed to fetch remote '{remote}': {e}")
-            # Continue anyway, use cached refs
-
-        # List remote branches
-        result = self._run_git_command(["branch", "-r", "--list", f"{remote}/*"])
+        # Use ls-remote to list branches without fetching
+        # This is much faster than fetch + branch -r
+        result = self._run_git_command(["ls-remote", "--heads", remote])
 
         branches = []
         for line in result.stdout.strip().split("\n"):
             if not line:
                 continue
 
-            # Remove leading/trailing whitespace and remote prefix
-            branch = line.strip()
-            # Remove 'origin/' prefix
-            if branch.startswith(f"{remote}/"):
-                branch = branch[len(remote) + 1 :]
-            # Skip HEAD pointer
-            if "HEAD" not in branch:
+            # Parse ls-remote output: <hash><tab>refs/heads/<branch>
+            parts = line.split("\t")
+            if len(parts) == 2 and parts[1].startswith("refs/heads/"):
+                branch = parts[1].replace("refs/heads/", "")
                 branches.append(branch)
 
         return sorted(branches)
@@ -240,30 +231,39 @@ class GitOperationsService:
         """List tags available (optionally from a remote).
 
         Args:
-            remote: Remote name (if provided, fetches first)
+            remote: Remote name (if provided, queries remote directly)
 
         Returns:
-            List of tag names
+            List of tag names (most recent first)
 
         Raises:
             subprocess.CalledProcessError: If git command fails
         """
-        # Fetch from remote if specified
         if remote:
-            try:
-                self.fetch_remote(remote)
-            except subprocess.CalledProcessError as e:
-                logger.warning(f"Failed to fetch remote '{remote}': {e}")
-                # Continue anyway, use cached tags
+            # Use ls-remote to list tags without fetching
+            result = self._run_git_command(["ls-remote", "--tags", remote])
 
-        # List all tags
-        result = self._run_git_command(["tag", "--list"])
+            tags = []
+            for line in result.stdout.strip().split("\n"):
+                if not line:
+                    continue
 
-        tags = []
-        for line in result.stdout.strip().split("\n"):
-            line = line.strip()
-            if line:
-                tags.append(line)
+                # Parse ls-remote output: <hash><tab>refs/tags/<tag>
+                parts = line.split("\t")
+                if len(parts) == 2 and parts[1].startswith("refs/tags/"):
+                    tag = parts[1].replace("refs/tags/", "")
+                    # Skip ^{} (annotated tag references)
+                    if not tag.endswith("^{}"):
+                        tags.append(tag)
+        else:
+            # List local tags
+            result = self._run_git_command(["tag", "--list"])
+
+            tags = []
+            for line in result.stdout.strip().split("\n"):
+                line = line.strip()
+                if line:
+                    tags.append(line)
 
         return sorted(tags, reverse=True)  # Most recent tags first
 

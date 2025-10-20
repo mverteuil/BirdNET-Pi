@@ -94,14 +94,13 @@
             </div>
             {% endif %}
 
-            {% if deployment_type == 'sbc' %}
+            {% if deployment_type == 'sbc' and update_status.can_auto_update %}
             <div class="update-buttons">
                 <button
                     type="button"
                     id="apply-update-btn"
                     class="btn btn-warning"
                     aria-label="{{ _('Apply update') }}"
-                    {% if not update_status.can_auto_update %}disabled{% endif %}
                 >
                     <span class="btn-icon" aria-hidden="true">⬇️</span>
                     {{ _('Apply Update') }}
@@ -112,19 +111,16 @@
                     id="test-update-btn"
                     class="btn btn-secondary"
                     aria-label="{{ _('Test update without applying') }}"
-                    {% if not update_status.can_auto_update %}disabled{% endif %}
                 >
                     <span class="btn-icon" aria-hidden="true">🧪</span>
                     {{ _('Test Update (Dry Run)') }}
                 </button>
             </div>
-
-            {% if not update_status.can_auto_update %}
+            {% elif deployment_type == 'sbc' %}
             <div class="alert alert-info" role="alert">
                 <strong>{{ _('Manual Update Required') }}</strong>
                 <p>{{ _('This update cannot be applied automatically. Please see instructions below.') }}</p>
             </div>
-            {% endif %}
             {% endif %}
         </div>
     </div>

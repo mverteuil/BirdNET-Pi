@@ -656,6 +656,7 @@ class UpdateManager:
                 "available": update_available,
                 "current_version": current_version,
                 "latest_version": latest_version,
+                "version_type": version_type,
                 "can_auto_update": version_type == "release" and deployment_type == "sbc",
                 "deployment_type": deployment_type,
             }
@@ -664,6 +665,7 @@ class UpdateManager:
             return {
                 "available": False,
                 "current_version": current_version,
+                "version_type": version_type,
                 "can_auto_update": False,
                 "deployment_type": deployment_type,
                 "error": f"Failed to get latest version: {e}",
