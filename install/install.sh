@@ -34,6 +34,9 @@ echo "Installing prerequisites..."
 sudo apt-get update
 sudo apt-get install -y git python3.11 python3.11-venv python3-pip
 
+# Wait for DNS to settle after apt operations
+sleep 2
+
 # Create installation directory first (will become home directory)
 if [ -d "$INSTALL_DIR" ]; then
     echo "Cleaning up existing installation directory..."
