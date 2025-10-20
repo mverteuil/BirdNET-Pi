@@ -175,8 +175,9 @@ class TestGitOperationsService:
 
     def test_list_branches_success(self, git_service):
         """Should list branches from a remote."""
+        # Use correct ls-remote --heads output format
         mock_output = (
-            "  origin/main\n  origin/develop\n  origin/feature/test\n  origin/HEAD -> origin/main\n"
+            "abc123\trefs/heads/main\ndef456\trefs/heads/develop\nghi789\trefs/heads/feature/test\n"
         )
 
         with patch.object(git_service, "fetch_remote", autospec=True):
@@ -191,12 +192,11 @@ class TestGitOperationsService:
                 assert "main" in branches
                 assert "develop" in branches
                 assert "feature/test" in branches
-                # HEAD should be filtered out
-                assert "HEAD" not in " ".join(branches)
 
     def test_list_branches_fetch_failure(self, git_service):
         """Should list branches even when fetch fails."""
-        mock_branches_output = "  origin/main\n  origin/develop\n"
+        # Use correct ls-remote --heads output format
+        mock_branches_output = "abc123\trefs/heads/main\ndef456\trefs/heads/develop\n"
 
         with patch.object(git_service, "fetch_remote", autospec=True) as mock_fetch:
             with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
@@ -228,7 +228,8 @@ class TestGitOperationsService:
 
     def test_list_tags_with_remote(self, git_service):
         """Should list tags from remote."""
-        mock_output = "v2.1.0\nv2.0.0\n"
+        # Use correct ls-remote --tags output format
+        mock_output = "abc123\trefs/tags/v2.1.0\ndef456\trefs/tags/v2.0.0\n"
 
         with patch.object(git_service, "fetch_remote", autospec=True):
             with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
@@ -239,6 +240,45 @@ class TestGitOperationsService:
                 tags = git_service.list_tags("origin")
 
                 assert tags == ["v2.1.0", "v2.0.0"]
+
+    def test_list_tags_filters_assets(self, git_service):
+        """Should filter out assets- prefixed tags from local tags."""
+        mock_output = "v2.1.0\nassets-2024-01-01\nv2.0.0\nassets-test\nv1.9.0\n"
+
+        with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
+            mock_run.return_value = MagicMock(
+                spec=CompletedProcess, stdout=mock_output, returncode=0
+            )
+
+            tags = git_service.list_tags()
+
+            # Should only include version tags, not assets- tags
+            assert tags == ["v2.1.0", "v2.0.0", "v1.9.0"]
+            assert "assets-2024-01-01" not in tags
+            assert "assets-test" not in tags
+
+    def test_list_tags_filters_assets_remote(self, git_service):
+        """Should filter out assets- prefixed tags from remote tags."""
+        mock_output = (
+            "abc123\trefs/tags/v2.1.0\n"
+            "def456\trefs/tags/assets-2024-01-01\n"
+            "ghi789\trefs/tags/v2.0.0\n"
+            "jkl012\trefs/tags/assets-models\n"
+            "mno345\trefs/tags/v1.9.0\n"
+            "pqr678\trefs/tags/v2.1.0^{}\n"  # Annotated tag reference (should be filtered)
+        )
+
+        with patch.object(git_service, "_run_git_command", autospec=True) as mock_run:
+            mock_run.return_value = MagicMock(
+                spec=CompletedProcess, stdout=mock_output, returncode=0
+            )
+
+            tags = git_service.list_tags("origin")
+
+            # Should only include version tags, not assets- tags or ^{} refs
+            assert tags == ["v2.1.0", "v2.0.0", "v1.9.0"]
+            assert "assets-2024-01-01" not in tags
+            assert "assets-models" not in tags
 
     def test_list_tags_empty(self, git_service):
         """Should return empty list when no tags exist."""

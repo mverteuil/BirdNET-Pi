@@ -234,7 +234,7 @@ class GitOperationsService:
             remote: Remote name (if provided, queries remote directly)
 
         Returns:
-            List of tag names (most recent first)
+            List of tag names (most recent first), excluding asset tags
 
         Raises:
             subprocess.CalledProcessError: If git command fails
@@ -252,8 +252,8 @@ class GitOperationsService:
                 parts = line.split("\t")
                 if len(parts) == 2 and parts[1].startswith("refs/tags/"):
                     tag = parts[1].replace("refs/tags/", "")
-                    # Skip ^{} (annotated tag references)
-                    if not tag.endswith("^{}"):
+                    # Skip ^{} (annotated tag references) and assets- prefixed tags
+                    if not tag.endswith("^{}") and not tag.startswith("assets-"):
                         tags.append(tag)
         else:
             # List local tags
@@ -262,7 +262,8 @@ class GitOperationsService:
             tags = []
             for line in result.stdout.strip().split("\n"):
                 line = line.strip()
-                if line:
+                # Filter out assets- prefixed tags
+                if line and not line.startswith("assets-"):
                     tags.append(line)
 
         return sorted(tags, reverse=True)  # Most recent tags first
