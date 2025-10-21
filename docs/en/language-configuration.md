@@ -8,19 +8,29 @@ BirdNET-Pi provides multilingual support for bird species names through an intel
 
 ### Setting Your Language
 
-1. **Web Interface**: Navigate to Settings → Localization and enter your preferred language code in the "Language" field
-2. **Default Language**: English (`en`) is used by default if no language is configured
-3. **Language Codes**: Use standard ISO language codes (e.g., `es`, `fr`, `de`, `zh`)
-
-### Example Configuration
-
-In the web interface settings form:
-```
-Language: es
-Timezone: Europe/Madrid
+**Configuration File** (`birdnetpi.yaml`):
+```yaml
+# Set language for UI and species names
+language: en  # or es, fr, de, etc.
 ```
 
-This configures Spanish (`es`) as the display language for bird species names.
+**Web Interface**: Navigate to Settings → Localization and enter your preferred language code
+
+### Common Setup Examples
+
+**German Configuration**:
+```yaml
+language: de
+timezone: Europe/Berlin
+```
+
+**Spanish Configuration**:
+```yaml
+language: es
+timezone: Europe/Madrid
+```
+
+**Default**: English (`en`) is used by default if no language is configured
 
 ## Supported Language Codes
 
@@ -118,39 +128,43 @@ Both systems use the same language code, providing a consistent multilingual exp
 
 ### European Languages
 
+**German Setup**:
+```yaml
+language: de
 ```
-# German Setup
-Language: de
-Expected Results:
+Expected results:
 - UI in German
 - Species names like "Amsel" instead of "Blackbird"
 - Sources: Primarily IOC, PatLevin fallback
 
-# French Setup
-Language: fr
-Expected Results:
+**French Setup**:
+```yaml
+language: fr
+```
+Expected results:
 - UI in French
 - Species names like "Merle noir" instead of "Blackbird"
 - Sources: Primarily IOC, PatLevin fallback
-```
 
 ### Asian Languages
 
+**Japanese Setup**:
+```yaml
+language: ja
 ```
-# Japanese Setup
-Language: ja
-Expected Results:
+Expected results:
 - UI in Japanese (if UI translations available)
 - Species names like "クロウタドリ" instead of "Blackbird"
 - Sources: Primarily Avibase (IOC limited for Japanese)
 
-# Chinese Setup
-Language: zh
-Expected Results:
+**Chinese Setup**:
+```yaml
+language: zh
+```
+Expected results:
 - UI in Chinese (if UI translations available)
 - Species names like "黑鸫" instead of "Blackbird"
 - Sources: Primarily Avibase (IOC limited for Chinese)
-```
 
 ## Advanced Configuration
 

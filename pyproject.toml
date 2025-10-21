@@ -109,6 +109,11 @@ manage-translations = "birdnetpi.cli.manage_translations:main"
 profile-landing-page = "birdnetpi.cli.profile_landing_page:main"
 setup-system = "birdnetpi.cli.setup_system:main"
 
+[project.urls]
+Homepage = "https://github.com/mverteuil/BirdNET-Pi"
+Repository = "https://github.com/mverteuil/BirdNET-Pi"
+Issues = "https://github.com/mverteuil/BirdNET-Pi/issues"
+
 [tool.coverage.run]
 source = ["src/birdnetpi"]
 omit = [

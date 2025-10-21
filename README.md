@@ -1,8 +1,3 @@
-Of course. Here is the complete, finalized `README.md` file based on all of our
-collaborative work.
-
------
-
 <h1 align="center">
     <img src="src/birdnetpi/web/static/images/birdnetpi-icon@0.25x.png" alt="BirdNET-Pi Logo" width="150" />
     <br />
@@ -17,7 +12,7 @@ collaborative work.
 ## 🚀 About This Project
 
 This project is a complete architectural rewrite of the
-original [BirdNET-Pi](https://github.com/mcguirepr89/BirdNET-Pi). It honors the spirit of
+[original BirdNET-Pi project](https://github.com/mcguirepr89/BirdNET-Pi) by Patrick McGuire. It honors the spirit of
 the original while building a more robust, maintainable, and extensible platform for the
 future of acoustic bird monitoring.
 
@@ -32,6 +27,8 @@ developers:
   common pain point for single-board computers.
 * **Streamlined User Interface**: The web interface has been redesigned from the ground up
   for a more cohesive, intuitive, and user-friendly experience.
+* **Home Assistant Integration**: Seamless integration with Home Assistant via MQTT,
+  automatic device discovery, and rich automation support for smart home enthusiasts.
 * **Developer-Friendly**: With modern tools and best practices, contributing to BirdNET-Pi
   has never been easier. We welcome you to help us build the future of this platform\!
 
@@ -54,21 +51,27 @@ components, or any derivatives to create or sell a commercial product.
 
 ## 🏁 Getting Started
 
-During this pre-release phase, the simplest way to get up and running is with **Docker**.
+BirdNET-Pi supports two installation methods:
 
-1. **Build the Docker image:**
-   ```bash
-   docker-compose build
-   ```
-2. **Start the services:**
-   ```bash
-   docker-compose up -d
-   ```
+### Docker Installation (Recommended for Testing)
 
-That's it! You can access the web interface at `http://<your-device-ip>:8000`.
+Perfect for trying out BirdNET-Pi on your desktop, laptop, or server:
 
-A primary goal for our first official release is a simple, one-step installation script
-for Raspberry Pi OS and other SBCs.
+- **Quick Start**: `docker-compose build && docker-compose up -d`
+- **Works on**: Windows, macOS, Linux (x86_64/amd64)
+- **Web Interface**: `http://localhost:8000`
+
+📖 **[Complete Docker Installation Guide](./docs/en/docker-installation.md)** - Detailed setup, audio configuration, and troubleshooting
+
+### SBC Installation (Recommended for Production)
+
+For permanent installations on Raspberry Pi and similar devices:
+
+- **Attended Installation**: Flash SD card with Raspberry Pi Imager → Run one-line installer
+- **Unattended Installation**: Pre-configure everything for completely headless setup
+- **Built-in Flasher**: Tool for preparing SD cards with saved configurations
+
+📖 **[Complete SBC Installation Guide](./docs/en/sbc-installation.md)** - Step-by-step instructions for both installation methods
 
 ## 🖥️ Hardware
 
