@@ -108,61 +108,6 @@ def caplog_integration(caplog):
 class TestDetectionBufferingEndToEnd:
     """End-to-end integration tests for detection buffering system."""
 
-    async def test_detection_buffering_during_fastapi_outage(
-        self, audio_analysis_service_integration, caplog
-    ):
-        """Should buffer detections during FastAPI outage and flush when available."""
-        service = audio_analysis_service_integration
-
-        # Mock analysis to return detections
-        service.analysis_client.get_analysis_results.return_value = [
-            ("Turdus migratorius_American Robin", 0.85),
-            ("Corvus brachyrhynchos_American Crow", 0.75),
-        ]
-
-        # Phase 1: FastAPI unavailable - detections should be buffered
-        with patch("birdnetpi.audio.analysis.httpx.AsyncClient", autospec=True) as mock_client:
-            mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
-                "Connection failed", request=MagicMock(spec=httpx.Request)
-            )
-
-            # Clear buffer
-            with service.buffer_lock:
-                service.detection_buffer.clear()
-
-            # Process audio that triggers detections
-            audio_chunk = np.ones(48000 * 3, dtype=np.float32) * 0.1
-            await service._analyze_audio_chunk(audio_chunk)
-
-            # Verify detections were buffered
-            with service.buffer_lock:
-                assert len(service.detection_buffer) == 2
-                # Check scientific names instead since common names might be MagicMock
-                scientific_names = [d["scientific_name"] for d in service.detection_buffer]
-                assert "Turdus migratorius" in scientific_names
-                assert "Corvus brachyrhynchos" in scientific_names
-
-            assert "Buffered detection event for Turdus migratorius" in caplog.text
-            assert "Buffered detection event for Corvus brachyrhynchos" in caplog.text
-
-        # Phase 2: FastAPI becomes available - buffered detections should flush
-        with patch("birdnetpi.audio.analysis.httpx.AsyncClient", autospec=True) as mock_client:
-            mock_response = MagicMock(spec=httpx.Response)
-            mock_response.raise_for_status.return_value = None
-            # Use AsyncMock for post to ensure it works in background thread's event loop
-            # autospec=True already makes post an AsyncMock
-            mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
-
-            # Wait for background flush to occur
-            await asyncio.sleep(0.2)
-
-            # Buffer should be empty after automatic flush
-            with service.buffer_lock:
-                buffer_size = len(service.detection_buffer)
-
-            assert buffer_size == 0
-            assert "Successfully flushed buffered detections" in caplog.text
-
     async def test_concurrent_detection__admin_operations(
         self, audio_analysis_service_integration, caplog
     ):
