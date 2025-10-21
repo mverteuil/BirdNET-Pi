@@ -151,4 +151,4 @@ jobs:
       - name: Install minimal dependencies
         run: uv sync
       - name: Run expensive pytest tests
-        run: uv run pytest -m "expensive and not e2e"
+        run: uv run pytest -m "expensive"
