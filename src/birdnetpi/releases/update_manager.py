@@ -446,7 +446,8 @@ class UpdateManager:
                     except ValueError as err:
                         raise RuntimeError(f"Unsafe tarball member path: {member.name}") from err
                 # Safe to extract after validation above
-                tar.extractall(models_target)  # nosemgrep
+                # nosemgrep
+                tar.extractall(models_target)
 
             # Count what we extracted
             model_files = list(models_target.glob("*.tflite"))

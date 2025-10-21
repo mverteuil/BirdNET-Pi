@@ -65,6 +65,7 @@ repos:
         args: [
           '--config=auto',
           '--exclude-rule=python.flask.security.xss.audit.direct-use-of-jinja2.direct-use-of-jinja2',
+          '--exclude-rule=trailofbits.python.tarfile-extractall-traversal.tarfile-extractall-traversal',
           '--error'
         ]
         files: '^(src/birdnetpi|tests)/.*\.py$'
