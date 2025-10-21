@@ -38,7 +38,7 @@ def mock_update_manager(path_resolver):
     manager.check_for_updates.return_value = {
         "current_version": "v1.0.0",
         "latest_version": "v1.1.0",
-        "update_available": True,
+        "available": True,
         "checked_at": "2024-01-01T12:00:00",
     }
     manager.apply_update.return_value = {"success": True, "version": "v1.1.0"}
@@ -271,7 +271,7 @@ class TestUpdateProcessing:
             {
                 "current_version": "v1.0.0",
                 "latest_version": "v1.1.0",
-                "update_available": True,
+                "available": True,
                 "checked_at": "2024-01-01T12:00:00",
             },
         )

@@ -1,18 +1,48 @@
 /* Update Page Styles */
 
+/* Skip Link - Screen Reader Only */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.skip-link:focus {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  width: auto;
+  height: auto;
+  padding: 0.5rem 1rem;
+  background: #000;
+  color: #fff;
+  z-index: 10000;
+  border-radius: 4px;
+}
+
+/* Deployment Banner - Remove orphaned badge */
+.deployment-banner {
+  display: none;
+}
+
 /* Git Configuration Panel */
 .git-config-panel {
   margin: 2rem 0;
-  padding: 1.5rem;
-  background: var(--surface-color, #f9f9f9);
+  padding: 2rem;
+  background: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .git-config-panel h2 {
-  margin-bottom: 1.5rem;
-  font-size: 1.25rem;
-  color: var(--text-primary, #333);
+  margin: 0 0 1.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f0f0f0;
 }
 
 .git-config-form {
@@ -79,41 +109,102 @@
 
 /* Update Status Panel */
 .update-status-panel {
-  padding: 1.5rem;
+  padding: 2rem;
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
 }
 
 .status-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.status-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
 }
 
 .status-content {
-  margin-top: 1rem;
+  margin-top: 1.5rem;
 }
 
 .status-row {
   display: flex;
   justify-content: space-between;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid #eee;
+  align-items: center;
+  min-height: 3rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.status-row:last-child {
+  border-bottom: none;
 }
 
 .status-label {
   font-weight: 500;
+  font-size: 0.95rem;
+  color: #555;
 }
 
 .status-value {
   color: #666;
+  font-size: 0.95rem;
+}
+
+/* Update Actions Section */
+.update-actions {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #f0f0f0;
+}
+
+.update-actions h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.release-notes {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+  line-height: 1.6;
+}
+
+.release-link {
+  margin: 1rem 0;
+}
+
+.release-link a {
+  color: #4caf50;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.release-link a:hover {
+  text-decoration: underline;
+}
+
+.update-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
 }
 
 /* Badges */
 .badge {
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 0.75rem;
   border-radius: 4px;
   font-size: 0.875rem;
   font-weight: 500;
@@ -173,13 +264,124 @@
   color: white;
 }
 
-/* Progress Panel */
-.update-progress-panel {
-  margin-top: 2rem;
-  padding: 1.5rem;
+/* Docker and Unknown Deployment Panels */
+.docker-config-panel,
+.unknown-deployment-panel {
+  margin: 2rem 0;
+  padding: 2rem;
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.docker-config-panel h2,
+.unknown-deployment-panel h2 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.info-section {
+  margin: 1rem 0;
+}
+
+.info-text {
+  line-height: 1.6;
+  color: #555;
+}
+
+.instructions-details {
+  margin: 1rem 0;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+}
+
+.instructions-details summary {
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  background: #f8f9fa;
+  font-weight: 500;
+  user-select: none;
+}
+
+.instructions-details summary:hover {
+  background: #e9ecef;
+}
+
+.instructions-content {
+  padding: 1.5rem;
+  line-height: 1.6;
+}
+
+.instructions-content ol,
+.instructions-content ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.instructions-content li {
+  margin: 0.75rem 0;
+}
+
+.instructions-content pre {
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  background: #2d2d2d;
+  color: #f8f8f2;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.instructions-content code {
+  font-family: "Monaco", "Menlo", "Consolas", monospace;
+  font-size: 0.9rem;
+}
+
+/* Alert Styles */
+.alert {
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+  line-height: 1.6;
+}
+
+.alert-info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+.alert-warning {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.alert strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+/* Progress Panel */
+.update-progress-panel {
+  margin-top: 2rem;
+  padding: 2rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.update-progress-panel h2 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f0f0f0;
 }
 
 .progress-container {
@@ -218,9 +420,19 @@
 /* Help Panel */
 .help-panel {
   margin-top: 2rem;
-  padding: 1.5rem;
-  background: #f8f9fa;
+  padding: 2rem;
+  background: white;
   border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.help-panel h2 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f0f0f0;
 }
 
 .help-panel details {
@@ -229,13 +441,232 @@
 
 .help-panel summary {
   cursor: pointer;
-  padding: 0.5rem;
-  background: white;
+  padding: 0.75rem;
+  background: #f8f9fa;
   border-radius: 4px;
   font-weight: 500;
+}
+
+.help-panel summary:hover {
+  background: #e9ecef;
 }
 
 .help-content {
   padding: 1rem;
   margin-top: 0.5rem;
+  line-height: 1.6;
+}
+
+.help-content ul,
+.help-content ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.help-content li {
+  margin: 0.5rem 0;
+}
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: 5% auto;
+  padding: 0;
+  border: 1px solid #888;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #ddd;
+  background-color: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #333;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: #000;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+/* Remote Management Styles */
+.remote-list {
+  margin-bottom: 1.5rem;
+}
+
+.remote-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  border: 1px solid #dee2e6;
+}
+
+.remote-info {
+  flex: 1;
+}
+
+.remote-info strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #333;
+  font-size: 1rem;
+}
+
+.remote-url {
+  color: #666;
+  font-size: 0.875rem;
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.remote-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-sm {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.add-remote-details {
+  margin-top: 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+.add-remote-details summary {
+  cursor: pointer;
+  padding: 0.5rem;
+  font-weight: 500;
+  user-select: none;
+}
+
+.remote-form {
+  padding: 1rem;
+}
+
+.form-row {
+  margin-bottom: 1rem;
+}
+
+.form-row label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.form-row input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.form-row input:focus {
+  outline: none;
+  border-color: #4caf50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+}
+
+.form-row small {
+  display: block;
+  margin-top: 0.25rem;
+  color: #666;
+  font-size: 0.875rem;
+}
+
+/* Input Group for Remote Selector */
+.input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.input-group select {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: white;
+  cursor: pointer;
+}
+
+.input-group select:focus {
+  outline: none;
+  border-color: #4caf50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+}
+
+.input-group .btn {
+  white-space: nowrap;
+}
+
+/* Improve Select Styling */
+select {
+  padding: 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: white;
+  cursor: pointer;
+  width: 100%;
+}
+
+select:focus {
+  outline: none;
+  border-color: #4caf50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+}
+
+select:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+  opacity: 0.6;
 }

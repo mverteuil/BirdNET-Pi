@@ -413,6 +413,74 @@ def get_config_from_prompts(saved_config: dict[str, Any] | None) -> dict[str, An
     else:
         config["copy_installer"] = Confirm.ask("Copy install.sh?", default=True)
 
+    # BirdNET-Pi pre-configuration (optional)
+    console.print()
+    console.print("[bold cyan]BirdNET-Pi Configuration (Optional):[/bold cyan]")
+    console.print("[dim]Pre-configure BirdNET-Pi for headless installation[/dim]")
+    console.print()
+
+    # Sentinel for missing/empty values
+    unset = object()
+
+    # Configuration prompts - only shown if previous field was provided
+    birdnet_prompts = {
+        "birdnet_device_name": {
+            "prompt": "Device Name",
+            "help": None,
+            "condition": None,
+        },
+        "birdnet_latitude": {
+            "prompt": "Latitude",
+            "help": None,
+            "condition": None,
+        },
+        "birdnet_longitude": {
+            "prompt": "Longitude",
+            "help": None,
+            "condition": "birdnet_latitude",  # Only ask if latitude provided
+        },
+        "birdnet_timezone": {
+            "prompt": "Timezone",
+            "help": [
+                "Common timezones:",
+                "  Americas: America/New_York, America/Chicago, America/Los_Angeles",
+                "  Europe: Europe/London, Europe/Paris, Europe/Berlin",
+                "  Asia: Asia/Tokyo, Asia/Shanghai, Asia/Kolkata",
+                "  Pacific: Pacific/Auckland, Australia/Sydney",
+            ],
+            "condition": "birdnet_longitude",  # Only ask if longitude provided
+        },
+        "birdnet_language": {
+            "prompt": "Language Code",
+            "help": ["Common languages: en, es, fr, de, it, pt, nl, ru, zh, ja"],
+            "condition": None,
+        },
+    }
+
+    for key, prompt_config in birdnet_prompts.items():
+        # Check if condition is met (if any)
+        condition = prompt_config["condition"]
+        if condition and not config.get(condition):
+            continue
+
+        # Check for saved value (must not be None or empty string)
+        saved_value = saved_config.get(key, unset) if saved_config else unset
+        if saved_value is not unset and saved_value not in (None, ""):
+            config[key] = saved_value
+            console.print(
+                f"[dim]Using saved {prompt_config['prompt'].lower()}: {saved_value}[/dim]"
+            )
+        else:
+            # Show help text if provided
+            if prompt_config["help"]:
+                console.print()
+                for line in prompt_config["help"]:
+                    console.print(f"[dim]{line}[/dim]")
+
+            # Prompt user
+            user_input = Prompt.ask(prompt_config["prompt"], default="", show_default=False)
+            config[key] = user_input if user_input else None
+
     return config
 
 
@@ -687,6 +755,40 @@ exit 0
                 console.print(
                     "[yellow]Warning: install.sh not found, skipping installer copy[/yellow]"
                 )
+
+        # Create BirdNET-Pi pre-configuration file if any settings provided
+        birdnet_config_lines = ["# BirdNET-Pi boot configuration"]
+        has_birdnet_config = False
+
+        if config.get("birdnet_device_name"):
+            birdnet_config_lines.append(f"device_name={config['birdnet_device_name']}")
+            has_birdnet_config = True
+
+        if config.get("birdnet_latitude"):
+            birdnet_config_lines.append(f"latitude={config['birdnet_latitude']}")
+            has_birdnet_config = True
+
+        if config.get("birdnet_longitude"):
+            birdnet_config_lines.append(f"longitude={config['birdnet_longitude']}")
+            has_birdnet_config = True
+
+        if config.get("birdnet_timezone"):
+            birdnet_config_lines.append(f"timezone={config['birdnet_timezone']}")
+            has_birdnet_config = True
+
+        if config.get("birdnet_language"):
+            birdnet_config_lines.append(f"language={config['birdnet_language']}")
+            has_birdnet_config = True
+
+        if has_birdnet_config:
+            temp_birdnet_config = Path("/tmp/birdnetpi_config.txt")
+            temp_birdnet_config.write_text("\n".join(birdnet_config_lines) + "\n")
+            subprocess.run(
+                ["sudo", "cp", str(temp_birdnet_config), str(boot_mount / "birdnetpi_config.txt")],
+                check=True,
+            )
+            temp_birdnet_config.unlink()
+            console.print("[green]✓ BirdNET-Pi configuration written to boot partition[/green]")
 
     finally:
         # Unmount

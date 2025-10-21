@@ -40,6 +40,24 @@ matplotlib.use("Agg")
 # The pytest plugin automatically handles this when tests are marked with @pytest.mark.no_leaks
 
 
+def pytest_addoption(parser):
+    """Add custom command-line options."""
+    parser.addoption(
+        "--blocking-threshold",
+        action="store",
+        default="0.2",
+        help="PyLeak blocking threshold in seconds (default: 0.2)",
+    )
+
+
+def pytest_configure(config):
+    """Configure pytest and PyLeak settings."""
+    # Read blocking threshold from command line or use default
+    threshold = float(config.getoption("--blocking-threshold"))
+    # Store in config for PyLeak to use
+    config.option.blocking_threshold = threshold
+
+
 class _AsyncContextManagerProtocol:
     """Protocol for async context manager - used as spec for mocking."""
 

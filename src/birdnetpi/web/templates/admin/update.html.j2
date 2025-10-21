@@ -79,11 +79,11 @@
         <div id="update-actions" class="update-actions" {% if not update_status.available %}style="display: none;"{% endif %}>
             <h3>{{ _('Update Details') }}</h3>
 
+            {% if update_status.release_notes %}
             <div id="release-notes" class="release-notes">
-                {% if update_status.release_notes %}
-                    {{ update_status.release_notes | safe }}
-                {% endif %}
+                {{ update_status.release_notes | safe }}
             </div>
+            {% endif %}
 
             {% if update_status.release_url %}
             <div class="release-link">
@@ -94,14 +94,13 @@
             </div>
             {% endif %}
 
-            {% if deployment_type == 'sbc' %}
+            {% if deployment_type == 'sbc' and update_status.can_auto_update %}
             <div class="update-buttons">
                 <button
                     type="button"
                     id="apply-update-btn"
                     class="btn btn-warning"
                     aria-label="{{ _('Apply update') }}"
-                    {% if not update_status.can_auto_update %}disabled{% endif %}
                 >
                     <span class="btn-icon" aria-hidden="true">⬇️</span>
                     {{ _('Apply Update') }}
@@ -112,19 +111,16 @@
                     id="test-update-btn"
                     class="btn btn-secondary"
                     aria-label="{{ _('Test update without applying') }}"
-                    {% if not update_status.can_auto_update %}disabled{% endif %}
                 >
                     <span class="btn-icon" aria-hidden="true">🧪</span>
                     {{ _('Test Update (Dry Run)') }}
                 </button>
             </div>
-
-            {% if not update_status.can_auto_update %}
+            {% elif deployment_type == 'sbc' %}
             <div class="alert alert-info" role="alert">
                 <strong>{{ _('Manual Update Required') }}</strong>
                 <p>{{ _('This update cannot be applied automatically. Please see instructions below.') }}</p>
             </div>
-            {% endif %}
             {% endif %}
         </div>
     </div>
@@ -198,6 +194,7 @@
                         id="git-remote"
                         name="git_remote"
                         aria-describedby="git-remote-help"
+                        data-current-value="{{ git_remote or '' }}"
                         required
                     >
                         <option value="">{{ _('Loading remotes...') }}</option>
@@ -220,6 +217,7 @@
                     id="git-branch"
                     name="git_branch"
                     aria-describedby="git-branch-help"
+                    data-current-value="{{ git_branch or '' }}"
                     required
                 >
                     <option value="">{{ _('Select a remote first') }}</option>

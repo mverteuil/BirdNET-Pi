@@ -21,10 +21,10 @@ echo ""
 echo "This will remove:"
 echo "  - All BirdNET-Pi systemd services"
 echo "  - /opt/birdnetpi directory"
+echo "  - /opt/uv directory"
 echo "  - /var/lib/birdnetpi directory"
 echo "  - /var/log/birdnetpi directory"
-echo "  - birdnetpi user"
-echo "  - /dev/shm/birdnet-installer directory (if present)"
+echo "  - birdnetpi user (unless you are logged in as that user)"
 echo "  - BirdNET-Pi Caddyfile (restores original)"
 echo ""
 echo "System packages (Redis, Caddy, etc.) will remain installed."
@@ -80,18 +80,30 @@ fi
 
 echo "Removing directories..."
 rm -rf /opt/birdnetpi
+rm -rf /opt/uv
 rm -rf /var/lib/birdnetpi
 rm -rf /var/log/birdnetpi
-rm -rf /dev/shm/birdnet-installer
 
-echo "Removing birdnetpi user..."
-userdel -r birdnetpi 2>/dev/null || true
+# Only remove birdnetpi user if not run by birdnetpi user
+USER_PRESERVED=false
+if [ "$SUDO_USER" = "birdnetpi" ]; then
+    echo "Removing birdnetpi user... SKIPPED (script run by birdnetpi user)"
+    USER_PRESERVED=true
+else
+    echo "Removing birdnetpi user..."
+    # Don't use -r flag since home directory (/opt/birdnetpi) is already removed above
+    userdel birdnetpi 2>/dev/null || true
+fi
 
 echo ""
 echo "=========================================="
 echo "Cleanup complete!"
 echo "=========================================="
 echo ""
+if [ "$USER_PRESERVED" = true ]; then
+    echo "Note: birdnetpi user was preserved (script run by that user)"
+    echo ""
+fi
 echo "System packages (Redis, Caddy, etc.) are still installed."
 echo "Redis and Caddy services have been stopped."
 echo ""

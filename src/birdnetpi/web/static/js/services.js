@@ -8,9 +8,12 @@
   // State management
   let refreshInterval = null;
   let pendingAction = null;
+  let rebootStartTime = null;
 
   // Configuration
   const REFRESH_INTERVAL = 10000; // 10 seconds
+  const REBOOT_TIMEOUT = 300000; // 5 minutes in milliseconds
+  const REBOOT_CHECK_INTERVAL = 5000; // Check every 5 seconds
   const CRITICAL_SERVICES = {
     fastapi:
       "The web interface will be temporarily unavailable. If settings are misconfigured, you may lose the ability to access the interface.",
@@ -322,8 +325,9 @@
       const data = await response.json();
 
       if (data.success && data.reboot_initiated) {
-        $("#rebootModal").modal("hide");
-        showToast("warning", data.message);
+        // Close modal using consistent method
+        closeAllModals();
+
         announceStatus("System reboot initiated");
 
         // Stop auto-refresh during reboot
@@ -346,23 +350,28 @@
    * Show reboot countdown overlay
    */
   function showRebootCountdown() {
+    // Record start time for timeout tracking
+    rebootStartTime = Date.now();
+
     const overlay = document.createElement("div");
+    overlay.id = "reboot-overlay";
     overlay.className = "reboot-overlay";
     overlay.setAttribute("role", "alert");
     overlay.setAttribute("aria-live", "assertive");
     overlay.innerHTML = `
-            <div class="reboot-message">
-                <i class="fas fa-power-off fa-3x mb-3"></i>
-                <h2>System is rebooting...</h2>
-                <p>The page will automatically reload when the system is back online.</p>
-                <div class="spinner-border text-light mt-3" role="status">
-                    <span class="sr-only">Waiting for system...</span>
+            <div class="reboot-message" role="status">
+                <i class="fas fa-power-off fa-3x mb-3" aria-hidden="true"></i>
+                <h2>${_("System is rebooting...")}</h2>
+                <p>${_("The page will automatically reload when the system is back online.")}</p>
+                <p class="text-muted mt-2">${_("This may take 1-2 minutes.")}</p>
+                <div class="spinner-border text-light mt-3" role="status" aria-label="${_("Waiting for system to restart")}">
+                    <span class="visually-hidden">${_("Waiting for system...")}</span>
                 </div>
             </div>
         `;
     document.body.appendChild(overlay);
 
-    // Start checking for system availability
+    // Start checking for system availability after 10 seconds
     setTimeout(() => checkSystemAvailability(), 10000);
   }
 
@@ -370,6 +379,13 @@
    * Check if system is back online after reboot
    */
   async function checkSystemAvailability() {
+    // Check if timeout has been exceeded
+    const elapsedTime = Date.now() - rebootStartTime;
+    if (elapsedTime > REBOOT_TIMEOUT) {
+      showRebootTimeout();
+      return;
+    }
+
     try {
       const response = await fetch("/api/system/services/info", {
         method: "GET",
@@ -381,12 +397,53 @@
         window.location.reload();
       } else {
         // Not ready yet, check again
-        setTimeout(() => checkSystemAvailability(), 5000);
+        setTimeout(() => checkSystemAvailability(), REBOOT_CHECK_INTERVAL);
       }
     } catch {
-      // Network error, system not ready
-      setTimeout(() => checkSystemAvailability(), 5000);
+      // Network error, system not ready - check again
+      setTimeout(() => checkSystemAvailability(), REBOOT_CHECK_INTERVAL);
     }
+  }
+
+  /**
+   * Show timeout error when system doesn't come back within expected time
+   */
+  function showRebootTimeout() {
+    const overlay = document.getElementById("reboot-overlay");
+    if (!overlay) return;
+
+    overlay.innerHTML = `
+            <div class="reboot-message" role="alert" aria-live="assertive">
+                <i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning" aria-hidden="true"></i>
+                <h2 id="timeout-heading">${_("System Recovery Timeout")}</h2>
+                <p>${_("The system has not responded within the expected time (5 minutes).")}</p>
+                <div class="alert alert-warning mt-3" style="max-width: 600px; text-align: left;" role="region" aria-labelledby="troubleshooting-heading">
+                    <h6 id="troubleshooting-heading">
+                        <i class="fas fa-info-circle" aria-hidden="true"></i>
+                        ${_("Troubleshooting Steps:")}
+                    </h6>
+                    <ul aria-label="${_("Troubleshooting steps list")}">
+                        <li>${_("Check if the device has power and network connectivity")}</li>
+                        <li>${_("Try accessing via SSH or serial console")}</li>
+                        <li>${_("Check system logs for boot errors")}</li>
+                        <li>${_("If using SBC, check the device's LED indicators")}</li>
+                    </ul>
+                </div>
+                <button
+                    type="button"
+                    class="btn btn-primary mt-3"
+                    onclick="window.location.reload()"
+                    aria-label="${_("Try reloading the page")}"
+                >
+                    <i class="fas fa-sync" aria-hidden="true"></i>
+                    ${_("Try Reloading Page")}
+                </button>
+            </div>
+        `;
+
+    announceStatus(
+      _("System reboot timeout - manual intervention may be required"),
+    );
   }
 
   /**

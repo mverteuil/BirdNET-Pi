@@ -11,6 +11,7 @@ from typing import Any
 
 import httpx
 from alembic.config import Config
+from packaging.version import InvalidVersion, Version
 from sqlalchemy import create_engine, text
 from tqdm import tqdm
 
@@ -20,6 +21,7 @@ from birdnetpi.releases.asset_manifest import AssetManifest, AssetType
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.system_control import SystemControlService
+from birdnetpi.system.system_utils import SystemUtils
 
 
 class StateFileManager:
@@ -637,6 +639,9 @@ class UpdateManager:
         # Development versions start with "dev-", release versions are tags like "v1.0.0"
         version_type = "development" if current_version.startswith("dev-") else "release"
 
+        # Get deployment type
+        deployment_type = SystemUtils.get_deployment_environment()
+
         try:
             # Get latest version from remote (needs config for git remote)
             # This needs to be fixed to pass config
@@ -648,19 +653,22 @@ class UpdateManager:
             update_available = self._is_newer_version(latest_version, current_version)
 
             return {
+                "available": update_available,
                 "current_version": current_version,
                 "latest_version": latest_version,
-                "update_available": update_available,
                 "version_type": version_type,
-                "checked_at": datetime.now().isoformat(),
+                "can_auto_update": version_type == "release" and deployment_type == "sbc",
+                "deployment_type": deployment_type,
             }
         except Exception as e:
-            # Even on error, include current version info so dev banner can show
+            # Even on error, return valid response
             return {
+                "available": False,
                 "current_version": current_version,
                 "version_type": version_type,
+                "can_auto_update": False,
+                "deployment_type": deployment_type,
                 "error": f"Failed to get latest version: {e}",
-                "checked_at": datetime.now().isoformat(),
             }
 
     def get_current_version(self) -> str:
@@ -720,10 +728,18 @@ class UpdateManager:
             if not tags:
                 raise RuntimeError("No tags found in remote repository")
 
-            # Sort tags to get the latest (assumes semantic versioning)
-            tags.sort(
-                key=lambda x: [int(p) if p.isdigit() else p for p in x.replace("v", "").split(".")]
-            )
+            # Sort tags using packaging.version.Version for proper semantic versioning
+            def parse_version(tag: str) -> Version:
+                """Parse version tag, handling 'v' prefix."""
+                try:
+                    # Remove 'v' prefix if present
+                    return Version(tag.lstrip("v"))
+                except InvalidVersion:
+                    # If it's not a valid version, use a fallback
+                    # This handles tags like 'main' or other non-version tags
+                    return Version("0.0.0")
+
+            tags.sort(key=parse_version)
             return tags[-1]
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to get latest version: {e}") from e
@@ -742,8 +758,14 @@ class UpdateManager:
         if current.startswith("dev-"):
             return True  # Development versions are always considered outdated
 
-        # Simple version comparison
-        return latest != current and latest > current
+        # Use packaging.version.Version for proper semantic version comparison
+        try:
+            latest_ver = Version(latest.lstrip("v"))
+            current_ver = Version(current.lstrip("v"))
+            return latest_ver > current_ver
+        except InvalidVersion:
+            # Fall back to string comparison if versions are invalid
+            return latest != current and latest > current
 
     async def apply_update(self, version: str) -> dict:
         """Apply an update to the specified version.

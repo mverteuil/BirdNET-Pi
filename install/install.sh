@@ -10,8 +10,8 @@ set -e
 
 # Configuration
 REPO_URL="${BIRDNET_REPO_URL:-https://github.com/mverteuil/BirdNET-Pi.git}"
-BRANCH="${BIRDNET_BRANCH:-feature/sbc-installer}"
-INSTALL_DIR="${BIRDNET_INSTALL_DIR:-/dev/shm/birdnet-installer}"
+BRANCH="${BIRDNET_BRANCH:-main}"
+INSTALL_DIR="/opt/birdnetpi"
 
 # Check if running as root
 if [ "$(id -u)" -eq 0 ]; then
@@ -20,13 +20,12 @@ if [ "$(id -u)" -eq 0 ]; then
 fi
 
 echo "========================================"
-echo "BirdNET-Pi SBC Installer"
+echo "BirdNET-Pi SBC Pre-installer"
 echo "========================================"
 echo "Repository: $REPO_URL"
 echo "Branch: $BRANCH"
-echo "Temporary directory (RAM): $INSTALL_DIR"
+echo "Installation directory: $INSTALL_DIR"
 echo ""
-echo "App code will install to: /opt/birdnetpi"
 echo "Data will install to: /var/lib/birdnetpi"
 echo ""
 
@@ -35,17 +34,41 @@ echo "Installing prerequisites..."
 sudo apt-get update
 sudo apt-get install -y git python3.11 python3.11-venv python3-pip
 
-# Clone repository with sparse checkout (only installation files)
+# Wait for DNS to settle after apt operations
+sleep 2
+
+# Create installation directory first (will become home directory)
 if [ -d "$INSTALL_DIR" ]; then
-    echo "Cleaning up existing temporary directory..."
-    rm -rf "$INSTALL_DIR"
+    echo "Cleaning up existing installation directory..."
+    sudo rm -rf "$INSTALL_DIR"
 fi
 
+echo "Creating installation directory..."
+sudo mkdir -p "$INSTALL_DIR"
+
+# Create or update birdnetpi user with /opt/birdnetpi as home directory
+echo "Setting up birdnetpi user..."
+if id "birdnetpi" &>/dev/null; then
+    # User exists - update home directory (unless currently logged in as birdnetpi)
+    if [ "$USER" = "birdnetpi" ]; then
+        echo "Note: Cannot modify birdnetpi user while logged in as that user"
+        echo "      Home directory will be set to $INSTALL_DIR on next login"
+    else
+        sudo usermod -d "$INSTALL_DIR" birdnetpi
+    fi
+else
+    # User doesn't exist - create with /opt/birdnetpi as home (no -m since dir exists)
+    sudo useradd -d "$INSTALL_DIR" -s /bin/bash birdnetpi
+fi
+sudo usermod -aG audio,video,dialout birdnetpi
+sudo chown birdnetpi:birdnetpi "$INSTALL_DIR"
+
+# Clone repository directly to installation directory as birdnetpi user
 echo "Cloning repository..."
-git clone --filter=blob:none --depth 1 --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
-cd "$INSTALL_DIR"
+sudo -u birdnetpi git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
 
 # Execute the main setup script
 echo ""
 echo "Starting installation..."
+cd "$INSTALL_DIR"
 python3.11 "$INSTALL_DIR/install/setup_app.py"

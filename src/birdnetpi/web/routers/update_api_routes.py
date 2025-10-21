@@ -1,6 +1,7 @@
 """Update API routes for system update management."""
 
 import logging
+import subprocess
 from typing import Annotated, Any
 
 from dependency_injector.wiring import Provide, inject
@@ -269,6 +270,13 @@ async def list_git_remotes(
         return GitRemoteListResponse(
             remotes=[GitRemoteModel(name=r.name, url=r.url) for r in remotes]
         )
+    except subprocess.CalledProcessError as e:
+        # Exit code 128 means not a git repository - return empty list
+        if e.returncode == 128:
+            logger.info("Not a git repository, returning empty remotes list")
+            return GitRemoteListResponse(remotes=[])
+        logger.error("Git command failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
     except Exception as e:
         logger.error("Failed to list git remotes: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -305,6 +313,18 @@ async def add_git_remote(
             success=True,
             message=f"Git remote '{request.name}' added successfully",
         )
+    except subprocess.CalledProcessError as e:
+        # Exit code 128 means not a git repository
+        if e.returncode == 128:
+            return UpdateActionResponse(
+                success=False,
+                error=(
+                    "Installation directory is not a git repository. "
+                    "Git-based updates are not available for this deployment."
+                ),
+            )
+        logger.error("Git command failed: %s", e)
+        return UpdateActionResponse(success=False, error=f"Git command failed: {e}")
     except ValueError as e:
         logger.warning("Invalid git remote request: %s", e)
         return UpdateActionResponse(success=False, error=str(e))
@@ -435,6 +455,13 @@ async def list_git_branches(
         branches = git_service.list_branches(remote_name)
 
         return GitBranchListResponse(tags=tags, branches=branches)
+    except subprocess.CalledProcessError as e:
+        # Exit code 128 means not a git repository - return empty lists
+        if e.returncode == 128:
+            logger.info("Not a git repository, returning empty branches/tags list")
+            return GitBranchListResponse(tags=[], branches=[])
+        logger.error("Git command failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
     except Exception as e:
         logger.error("Failed to list branches for remote '%s': %s", remote_name, e)
         raise HTTPException(status_code=500, detail=str(e)) from e
