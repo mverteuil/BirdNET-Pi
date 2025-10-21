@@ -42,6 +42,7 @@ class ConfigVersion_2_0_0:  # noqa: N801
             "audio_device_index": -1,
             "sample_rate": 48000,
             "audio_channels": 1,
+            "audio_overlap": 0.5,
             # Enhanced Logging Configuration
             "logging": {
                 "level": "INFO",
@@ -61,9 +62,6 @@ class ConfigVersion_2_0_0:  # noqa: N801
             "notification_rules": [],
             "notify_quiet_hours_start": "",
             "notify_quiet_hours_end": "",
-            # Flickr
-            "flickr_api_key": "",
-            "flickr_filter_email": "",
             # Localization and Species Display
             "language": "en",
             "species_display_mode": "full",
@@ -71,11 +69,6 @@ class ConfigVersion_2_0_0:  # noqa: N801
             # Field mode and GPS settings
             "enable_gps": False,
             "gps_update_interval": 5.0,
-            "hardware_check_interval": 10.0,
-            # Hardware monitoring settings
-            "enable_audio_device_check": True,
-            "enable_system_resource_check": True,
-            "enable_gps_check": False,
             # MQTT Integration settings
             "enable_mqtt": False,
             "mqtt_broker_host": "localhost",

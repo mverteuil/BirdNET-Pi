@@ -46,7 +46,7 @@ class TestSettingsViewRendering:
             audio_device_index=0,
             sample_rate=48000,
             audio_channels=1,
-            analysis_overlap=0.5,
+            audio_overlap=0.5,
             model="BirdNET_GLOBAL_6K_V2.4_Model_FP16",
             metadata_model="BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16",
         )

@@ -183,7 +183,10 @@ class DetectionWithTaxa(DetectionBase):
                 # Create a display service with the config and use it
                 display_service = SpeciesDisplayService(config)
                 # Always prefer translation (as recommended)
-                display_name = display_service.format_species_display(self, prefer_translation=True)
+                # Use format_full_species_display to respect species_display_mode setting
+                display_name = display_service.format_full_species_display(
+                    self, prefer_translation=True
+                )
 
                 # Set both display_name and common_name for backward compatibility
                 data["display_name"] = display_name

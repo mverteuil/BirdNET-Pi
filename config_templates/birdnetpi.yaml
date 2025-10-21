@@ -121,10 +121,6 @@ notification_rules: []
 notify_quiet_hours_start: ""    # e.g., "22:00" for 10 PM (empty = no quiet hours)
 notify_quiet_hours_end: ""      # e.g., "06:00" for 6 AM
 
-# Flickr Integration
-flickr_api_key: ""
-flickr_filter_email: ""
-
 # Localization and Species Display
 language: en  # Language code for UI and species name translation
 species_display_mode: full  # Options: "full" (Common Name (Scientific Name)), "common_name", "scientific_name"
@@ -133,12 +129,6 @@ timezone: UTC
 # Field Mode and GPS Settings
 enable_gps: false
 gps_update_interval: 5.0
-
-# Hardware Monitoring
-hardware_check_interval: 10.0
-enable_audio_device_check: true
-enable_system_resource_check: true
-enable_gps_check: false
 
 # Analysis Configuration
 privacy_threshold: 10.0

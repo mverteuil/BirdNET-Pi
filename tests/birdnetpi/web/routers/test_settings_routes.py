@@ -61,7 +61,7 @@ def test_config():
         audio_device_index=0,
         sample_rate=48000,
         audio_channels=1,
-        analysis_overlap=0.5,
+        audio_overlap=0.5,
         model="BirdNET_GLOBAL_6K_V2.4_Model_FP16",
         metadata_model="BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16",
         apprise_targets={},
@@ -211,7 +211,7 @@ class TestSettingsPostRoute:
             "audio_device_index": "1",
             "sample_rate": "48000",
             "audio_channels": "1",
-            "analysis_overlap": "0.5",
+            "audio_overlap": "0.5",
         }
         response = client.post("/admin/settings", data=form_data, follow_redirects=False)
         if response.status_code not in [302, 303]:
@@ -237,7 +237,7 @@ class TestSettingsPostRoute:
             "audio_device_index": "2",
             "sample_rate": "44100",
             "audio_channels": "2",
-            "analysis_overlap": "1.0",
+            "audio_overlap": "1.0",
         }
         response = client.post("/admin/settings", data=form_data, follow_redirects=False)
         assert response.status_code in [302, 303]
@@ -264,7 +264,7 @@ class TestSettingsPostRoute:
             "audio_device_index": "0",
             "sample_rate": "48000",
             "audio_channels": "1",
-            "analysis_overlap": "0.5",
+            "audio_overlap": "0.5",
             "enable_gps": "on",
             "enable_mqtt": "on",
         }
@@ -288,7 +288,7 @@ class TestSettingsPostRoute:
             "audio_device_index": "0",
             "sample_rate": "48000",
             "audio_channels": "1",
-            "analysis_overlap": "0.5",
+            "audio_overlap": "0.5",
             "webhook_urls": "http://example.com/hook1, http://example.com/hook2",
         }
         response = client.post("/admin/settings", data=form_data, follow_redirects=False)
@@ -310,7 +310,7 @@ class TestSettingsPostRoute:
             "audio_device_index": "0",
             "sample_rate": "48000",
             "audio_channels": "1",
-            "analysis_overlap": "0.5",
+            "audio_overlap": "0.5",
         }
         response = client.post("/admin/settings", data=form_data, follow_redirects=False)
         assert response.status_code in [302, 303]
@@ -330,7 +330,7 @@ class TestSettingsPostRoute:
             "audio_device_index": "0",
             "sample_rate": "48000",
             "audio_channels": "1",
-            "analysis_overlap": "0.5",
+            "audio_overlap": "0.5",
         }
         response = client.post("/admin/settings", data=form_data, follow_redirects=False)
         assert response.status_code in [302, 303]

@@ -195,11 +195,11 @@ class AudioAnalysisManager:
 
             # Remove processed samples from buffer (keep overlap for continuity)
             # Clamp overlap to reasonable range (0.5 to 1.5 seconds, never >= buffer size)
-            overlap_seconds = min(self.config.analysis_overlap, 1.5)
+            overlap_seconds = min(self.config.audio_overlap, 1.5)
             if overlap_seconds >= 3.0:
                 logger.warning(
-                    "Invalid analysis_overlap %.1f seconds (must be < 3.0), using 1.0 second",
-                    self.config.analysis_overlap,
+                    "Invalid audio_overlap %.1f seconds (must be < 3.0), using 1.0 second",
+                    self.config.audio_overlap,
                 )
                 overlap_seconds = 1.0
             overlap_samples = int(overlap_seconds * self.config.sample_rate)
@@ -323,7 +323,7 @@ class AudioAnalysisManager:
             "species_confidence_threshold": self.config.species_confidence_threshold,
             "week": current_week,
             "sensitivity_setting": self.config.sensitivity_setting,
-            "overlap": self.config.analysis_overlap,
+            "overlap": self.config.audio_overlap,
         }
 
         # Try to send detection event to API

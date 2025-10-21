@@ -53,9 +53,6 @@ class ConfigVersion_1_9_0:  # noqa: N801
             "apprise_only_notify_species_names": "",
             "apprise_weekly_report": False,
             "minimum_time_limit": 0,
-            # Flickr
-            "flickr_api_key": "",
-            "flickr_filter_email": "",
             # Localization
             "language": "en",
             "species_display_mode": "full",

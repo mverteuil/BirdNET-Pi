@@ -1,0 +1,340 @@
+{# Location Map Widget Component #}
+{# Uses Leaflet.js with OpenStreetMap tiles (no API key required) #}
+
+<div class="location-map-widget">
+    <!-- Address Search -->
+    <div class="map-search-container">
+        <input type="text"
+               id="location-search"
+               class="map-search-input"
+               placeholder="{{ _('Search for address or place...') }}"
+               aria-label="{{ _('Search for location by address') }}">
+        <button type="button"
+                class="map-search-btn"
+                onclick="searchLocation()"
+                aria-label="{{ _('Search') }}">
+            🔍 {{ _('Search') }}
+        </button>
+        <div id="search-status" class="search-status" aria-live="polite"></div>
+    </div>
+
+    <!-- Map Container -->
+    <div id="location-map" class="location-map" role="application" aria-label="{{ _('Interactive map for location selection') }}"></div>
+
+    <!-- Map Instructions -->
+    <div class="map-instructions">
+        <p>{{ _('Click on the map to set your location, or search for an address above.') }}</p>
+    </div>
+</div>
+
+<style>
+/* Location Map Widget Styles */
+.location-map-widget {
+    margin-top: 0;
+}
+
+.map-search-container {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.map-search-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border, #e0e0e0);
+    border-radius: 4px;
+    font-size: 1rem;
+    background: var(--color-bg-secondary, #ffffff);
+    color: var(--color-text, #333333);
+    box-sizing: border-box;
+}
+
+.map-search-input:focus {
+    outline: 2px solid var(--color-accent, #4CAF50);
+    outline-offset: 2px;
+}
+
+.map-search-btn {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--color-accent, #4CAF50);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.map-search-btn:hover {
+    background: var(--color-accent-dark, #45a049);
+}
+
+.map-search-btn:active {
+    transform: translateY(1px);
+}
+
+.search-status {
+    padding: 0.5rem;
+    min-height: 1.5rem;
+    font-size: 0.9rem;
+    border-radius: 4px;
+}
+
+.search-status.success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.search-status.error {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.search-status.info {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.location-map {
+    width: 100%;
+    height: 500px;
+    border: 1px solid var(--color-border, #e0e0e0);
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+}
+
+.map-instructions {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary, #666666);
+    font-style: italic;
+    margin-bottom: 1.5rem;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .map-search-input {
+        background: var(--color-bg-secondary, #2a2a2a);
+        color: var(--color-text, #e0e0e0);
+        border-color: var(--color-border, #444444);
+    }
+
+    .location-map {
+        border-color: var(--color-border, #444444);
+    }
+}
+</style>
+
+<script>
+// Location Map Widget JavaScript
+(function() {
+    let map = null;
+    let marker = null;
+    const searchStatusEl = document.getElementById('search-status');
+    const latInput = document.getElementById('latitude');
+    const lngInput = document.getElementById('longitude');
+
+    // Initialize map on page load
+    function initMap() {
+        // Get initial coordinates from inputs or use default
+        const initialLat = parseFloat(latInput?.value) || 40.7128;
+        const initialLng = parseFloat(lngInput?.value) || -74.0060;
+
+        // Create map centered on initial coordinates
+        map = L.map('location-map').setView([initialLat, initialLng], 13);
+
+        // Add OpenStreetMap tile layer (no API key required)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Add initial marker
+        marker = L.marker([initialLat, initialLng], {
+            draggable: true
+        }).addTo(map);
+
+        // Update coordinates when marker is dragged
+        marker.on('dragend', function(e) {
+            const position = marker.getLatLng();
+            updateCoordinates(position.lat, position.lng);
+        });
+
+        // Update marker position when clicking on map
+        map.on('click', function(e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+
+            // Move marker to clicked position
+            marker.setLatLng([lat, lng]);
+            updateCoordinates(lat, lng);
+        });
+
+        // Allow Enter key to trigger search
+        document.getElementById('location-search').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                searchLocation();
+            }
+        });
+    }
+
+    // Update coordinate inputs and timezone
+    function updateCoordinates(lat, lng) {
+        if (latInput) latInput.value = lat.toFixed(6);
+        if (lngInput) lngInput.value = lng.toFixed(6);
+
+        // Try to update timezone based on coordinates
+        updateTimezoneFromCoordinates(lat, lng);
+
+        showStatus('{{ _("Location updated") }}', 'success');
+    }
+
+    // Simple timezone estimation based on longitude
+    // This is a rough approximation - works for most common cases
+    function estimateTimezoneFromCoordinates(lat, lng) {
+        const timezoneSelect = document.getElementById('timezone');
+        if (!timezoneSelect) return;
+
+        // Map longitude ranges to common timezones
+        // This is approximate but handles the most common cases without API calls
+        let suggestedTimezone = null;
+
+        // North America
+        if (lat > 15 && lat < 72) {
+            if (lng >= -180 && lng < -140) suggestedTimezone = 'Pacific/Honolulu';
+            else if (lng >= -140 && lng < -130) suggestedTimezone = 'America/Anchorage';
+            else if (lng >= -130 && lng < -114) suggestedTimezone = 'America/Los_Angeles';
+            else if (lng >= -114 && lng < -103) suggestedTimezone = 'America/Denver';
+            else if (lng >= -103 && lng < -90) suggestedTimezone = 'America/Chicago';
+            else if (lng >= -90 && lng < -60) suggestedTimezone = 'America/New_York';
+        }
+        // Europe
+        else if (lat > 35 && lat < 72 && lng >= -10 && lng < 40) {
+            if (lng >= -10 && lng < 0) suggestedTimezone = 'Europe/London';
+            else if (lng >= 0 && lng < 15) suggestedTimezone = 'Europe/Paris';
+            else if (lng >= 15 && lng < 30) suggestedTimezone = 'Europe/Athens';
+            else if (lng >= 30 && lng < 40) suggestedTimezone = 'Europe/Moscow';
+        }
+        // Asia
+        else if (lat > 0 && lat < 55 && lng >= 40 && lng < 180) {
+            if (lng >= 40 && lng < 75) suggestedTimezone = 'Asia/Dubai';
+            else if (lng >= 75 && lng < 90) suggestedTimezone = 'Asia/Kolkata';
+            else if (lng >= 90 && lng < 110) suggestedTimezone = 'Asia/Bangkok';
+            else if (lng >= 110 && lng < 130) suggestedTimezone = 'Asia/Shanghai';
+            else if (lng >= 130 && lng < 145) suggestedTimezone = 'Asia/Tokyo';
+        }
+        // Australia / Oceania
+        else if (lat > -45 && lat < -10 && lng >= 110 && lng < 180) {
+            if (lng >= 110 && lng < 135) suggestedTimezone = 'Australia/Perth';
+            else if (lng >= 135 && lng < 145) suggestedTimezone = 'Australia/Adelaide';
+            else if (lng >= 145 && lng < 160) suggestedTimezone = 'Australia/Sydney';
+            else if (lng >= 160 && lng < 180) suggestedTimezone = 'Pacific/Auckland';
+        }
+        // South America
+        else if (lat > -60 && lat < 15 && lng >= -85 && lng < -30) {
+            if (lng >= -85 && lng < -70) suggestedTimezone = 'America/Mexico_City';
+            else if (lng >= -70 && lng < -50) suggestedTimezone = 'America/Sao_Paulo';
+            else if (lng >= -50 && lng < -30) suggestedTimezone = 'America/Buenos_Aires';
+        }
+        // Africa
+        else if (lat > -35 && lat < 40 && lng >= -20 && lng < 55) {
+            if (lng >= -20 && lng < 10) suggestedTimezone = 'Africa/Lagos';
+            else if (lng >= 10 && lng < 35) suggestedTimezone = 'Africa/Cairo';
+            else if (lng >= 35 && lng < 55) suggestedTimezone = 'Africa/Nairobi';
+        }
+
+        if (suggestedTimezone) {
+            const options = Array.from(timezoneSelect.options);
+            const matchingOption = options.find(opt => opt.value === suggestedTimezone);
+
+            if (matchingOption) {
+                timezoneSelect.value = suggestedTimezone;
+                timezoneSelect.dispatchEvent(new Event('change'));
+                showStatus('{{ _("Location and timezone updated") }}', 'success');
+            }
+        }
+    }
+
+    // Wrapper to handle timezone updates
+    function updateTimezoneFromCoordinates(lat, lng) {
+        estimateTimezoneFromCoordinates(lat, lng);
+    }
+
+    // Search for location using Nominatim (OpenStreetMap geocoding - no API key)
+    window.searchLocation = async function() {
+        const searchInput = document.getElementById('location-search');
+        const query = searchInput.value.trim();
+
+        if (!query) {
+            showStatus('{{ _("Please enter a location to search") }}', 'error');
+            return;
+        }
+
+        showStatus('{{ _("Searching...") }}', 'info');
+
+        try {
+            // Use Nominatim API (free, no API key required)
+            // Rate limit: max 1 request per second
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'BirdNET-Pi/2.0' // Required by Nominatim usage policy
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('{{ _("Search service unavailable") }}');
+            }
+
+            const results = await response.json();
+
+            if (results.length === 0) {
+                showStatus('{{ _("No results found. Try a different search term.") }}', 'error');
+                return;
+            }
+
+            const result = results[0];
+            const lat = parseFloat(result.lat);
+            const lng = parseFloat(result.lon);
+
+            // Update map and marker
+            map.setView([lat, lng], 13);
+            marker.setLatLng([lat, lng]);
+            updateCoordinates(lat, lng);
+
+            showStatus(`{{ _("Found:") }} ${result.display_name}`, 'success');
+
+        } catch (error) {
+            console.error('Geocoding error:', error);
+            showStatus('{{ _("Search failed. Please try again.") }}', 'error');
+        }
+    };
+
+    // Show status message
+    function showStatus(message, type) {
+        if (!searchStatusEl) return;
+
+        searchStatusEl.textContent = message;
+        searchStatusEl.className = `search-status ${type}`;
+
+        // Clear success messages after 5 seconds
+        if (type === 'success') {
+            setTimeout(() => {
+                searchStatusEl.textContent = '';
+                searchStatusEl.className = 'search-status';
+            }, 5000);
+        }
+    }
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initMap);
+    } else {
+        initMap();
+    }
+})();
+</script>

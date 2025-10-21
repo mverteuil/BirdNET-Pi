@@ -357,7 +357,7 @@ class TestPaginatedDetections:
         assert response.status_code == 200
         data = response.json()
         assert len(data["detections"]) == 1
-        assert data["detections"][0]["common_name"] == "American Robin"
+        assert data["detections"][0]["common_name"] == "American Robin (Turdus migratorius)"
 
     @pytest.mark.parametrize(
         "mock_return,expected_status,expected_error",
