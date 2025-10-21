@@ -1,6 +1,5 @@
 import asyncio
 import inspect
-import os
 import subprocess
 import time
 import uuid
@@ -41,12 +40,21 @@ matplotlib.use("Agg")
 # The pytest plugin automatically handles this when tests are marked with @pytest.mark.no_leaks
 
 
+def pytest_addoption(parser):
+    """Add custom command-line options."""
+    parser.addoption(
+        "--blocking-threshold",
+        action="store",
+        default="0.2",
+        help="PyLeak blocking threshold in seconds (default: 0.2)",
+    )
+
+
 def pytest_configure(config):
-    """Configure pytest with custom settings."""
-    # Configure pyleak blocking threshold
-    # Default is 0.2s for local runs, but CI can be slower due to I/O overhead
-    # Set PYLEAK_BLOCKING_THRESHOLD=0.5 in CI environment
-    threshold = float(os.getenv("PYLEAK_BLOCKING_THRESHOLD", "0.2"))
+    """Configure pytest and PyLeak settings."""
+    # Read blocking threshold from command line or use default
+    threshold = float(config.getoption("--blocking-threshold"))
+    # Store in config for PyLeak to use
     config.option.blocking_threshold = threshold
 
 

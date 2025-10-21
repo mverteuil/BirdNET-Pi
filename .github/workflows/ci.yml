@@ -89,9 +89,7 @@ jobs:
         run: |
           uv run install-assets install latest
       - name: Run pytest tests
-        env:
-          PYLEAK_BLOCKING_THRESHOLD: "0.5"
-        run: uv run pytest --cov=src --cov-fail-under=77 -m "not expensive"
+        run: uv run pytest --cov=src --cov-fail-under=77 -m "not expensive" --blocking-threshold=0.5
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
