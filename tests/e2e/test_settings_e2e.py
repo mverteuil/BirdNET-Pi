@@ -182,7 +182,7 @@ class TestSettingsE2E:
                 "audio_device_index": "2",  # Select USB Microphone
                 "sample_rate": "48000",
                 "audio_channels": "1",
-                "analysis_overlap": "0.5",
+                "audio_overlap": "0.5",
                 "enable_gps": "on",  # Enable GPS
                 "birdweather_id": "test123",
             }
@@ -234,7 +234,7 @@ class TestSettingsE2E:
                 "audio_device_index": "3",  # Select Webcam Mic
                 "sample_rate": "44100",
                 "audio_channels": "2",
-                "analysis_overlap": "1.5",
+                "audio_overlap": "1.5",
                 "webhook_urls": "http://hook1.example.com, http://hook2.example.com",
             }
 
@@ -306,7 +306,7 @@ class TestSettingsE2E:
                 "audio_device_index": "0",
                 "sample_rate": "48000",
                 "audio_channels": "1",
-                "analysis_overlap": "0.5",
+                "audio_overlap": "0.5",
             }
 
             response3 = client.post("/admin/settings", data=form_data1, follow_redirects=False)
@@ -327,7 +327,7 @@ class TestSettingsE2E:
                 "audio_device_index": "1",
                 "sample_rate": "48000",
                 "audio_channels": "1",
-                "analysis_overlap": "0.5",
+                "audio_overlap": "0.5",
             }
 
             response4 = client.post("/admin/settings", data=form_data2, follow_redirects=False)
@@ -366,7 +366,7 @@ class TestSettingsE2E:
                 "audio_device_index": "-1",
                 "sample_rate": "48000",
                 "audio_channels": "1",
-                "analysis_overlap": "0.5",
+                "audio_overlap": "0.5",
             }
 
             response = client.post("/admin/settings", data=form_data, follow_redirects=False)

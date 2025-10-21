@@ -119,7 +119,7 @@ def test_post_settings_view_with_notification_rules(
         "audio_device_index": "-1",
         "sample_rate": "48000",
         "audio_channels": "1",
-        "analysis_overlap": "0.5",
+        "audio_overlap": "0.5",
         "birdweather_id": "",
         "apprise_targets_json": json.dumps({"discord": "discord://webhook/token"}),
         "webhook_targets_json": json.dumps({"home_assistant": "http://ha.local/webhook"}),
