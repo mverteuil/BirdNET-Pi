@@ -220,8 +220,13 @@ class TestDevelopmentWarningBanner:
         # Check that development banner element is NOT present
         assert 'id="development-banner"' not in rendered
 
-    def test_both_banners_can_show(self, repo_root):
-        """Should show both banners when on dev version AND update available."""
+    def test_dev_banner_takes_priority_over_update(self, repo_root):
+        """Should show only dev banner when on dev version with update available.
+
+        When on a development version, the dev banner takes priority even if an
+        update is available. This prevents confusion about what version the user
+        is actually on.
+        """
         # Create a test environment with our templates
         template_dir = repo_root / "src/birdnetpi/web/templates"
         env = Environment(
@@ -260,11 +265,14 @@ class TestDevelopmentWarningBanner:
         template = env.get_template("update_banner.html.j2")
         rendered = template.render()
 
-        # Check that BOTH banners are present
+        # Check that dev banner is present
         assert "development-banner" in rendered
         assert "Development Version" in rendered
-        assert 'id="update-banner"' in rendered
-        assert "A new version is available!" in rendered
+        assert "dev-abc123" in rendered
+
+        # Check that update banner is NOT present (dev banner takes priority)
+        assert 'id="update-banner"' not in rendered
+        assert "A new version is available!" not in rendered
 
 
 class TestUpdateDaemonIntegration:
