@@ -872,11 +872,11 @@ def db_session_factory():
             result.all.return_value = fetch_results
 
         # Configure scalar methods - both on result and session
-        if scalar_result is not None:
-            result.scalar_one_or_none.return_value = scalar_result
-            result.scalar.return_value = scalar_result
-            # Also configure session.scalar() directly for queries that use it
-            session.scalar.return_value = scalar_result
+        # Note: always configure even if scalar_result is None (to return None instead of MagicMock)
+        result.scalar_one_or_none.return_value = scalar_result
+        result.scalar.return_value = scalar_result
+        # Also configure session.scalar() directly for queries that use it
+        session.scalar.return_value = scalar_result
 
         # Configure mappings
         if mappings_result is not None:

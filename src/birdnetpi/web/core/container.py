@@ -15,6 +15,7 @@ from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.location.gps import GPSService
 from birdnetpi.location.sun import SunService
 from birdnetpi.location.weather import WeatherSignalHandler
+from birdnetpi.notifications.apprise import AppriseService
 from birdnetpi.notifications.manager import NotificationManager
 from birdnetpi.notifications.mqtt import MQTTService
 from birdnetpi.notifications.webhooks import WebhookService
@@ -180,13 +181,25 @@ class Container(containers.DeclarativeContainer):
         enable_webhooks=providers.Factory(lambda c: c.enable_webhooks, c=config),
     )
 
+    apprise_service = providers.Singleton(
+        AppriseService,
+        enable_apprise=providers.Factory(
+            lambda c: bool(c.apprise_targets or c.notification_rules),
+            c=config,
+        ),
+    )
+
     # Notification manager - singleton (depends on other services)
     notification_manager = providers.Singleton(
         NotificationManager,
         active_websockets=providers.Object(set()),  # Will be set by factory
         config=config,
+        core_database=core_database,
+        species_db_service=species_database,
+        detection_query_service=detection_query_service,
         mqtt_service=mqtt_service,
         webhook_service=webhook_service,
+        apprise_service=apprise_service,
     )
 
     # Analytics and Presentation services

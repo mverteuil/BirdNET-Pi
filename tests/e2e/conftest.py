@@ -34,7 +34,8 @@ def docker_compose_up_down() -> Generator[None, None, None]:
     compose_cmd = ["docker", "compose"]
 
     # Bring up Docker Compose (without --wait to avoid health check timeout issues in CI)
-    subprocess.run([*compose_cmd, "up", "-d", "--build"], env=env, check=True)
+    # Note: --build removed because images are pre-built in CI workflow
+    subprocess.run([*compose_cmd, "up", "-d"], env=env, check=True)
 
     # Wait for services to be ready by polling the health endpoint
     # This is more forgiving than Docker health checks and provides better diagnostics
