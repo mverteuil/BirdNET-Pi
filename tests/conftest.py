@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import os
 import subprocess
 import time
 import uuid
@@ -38,6 +39,15 @@ matplotlib.use("Agg")
 
 # Pyleak is available for manual use in tests via @pytest.mark.no_leaks
 # The pytest plugin automatically handles this when tests are marked with @pytest.mark.no_leaks
+
+
+def pytest_configure(config):
+    """Configure pytest with custom settings."""
+    # Configure pyleak blocking threshold
+    # Default is 0.2s for local runs, but CI can be slower due to I/O overhead
+    # Set PYLEAK_BLOCKING_THRESHOLD=0.5 in CI environment
+    threshold = float(os.getenv("PYLEAK_BLOCKING_THRESHOLD", "0.2"))
+    config.option.blocking_threshold = threshold
 
 
 class _AsyncContextManagerProtocol:
