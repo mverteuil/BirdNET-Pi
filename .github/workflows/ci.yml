@@ -86,9 +86,8 @@ jobs:
         if: steps.cache-assets.outputs.cache-hit != 'true'
         env:
           BIRDNETPI_DATA: ${{ github.workspace }}/data
-          ASSETS_VERSION: latest
         run: |
-          uv run install-assets install ${ASSETS_VERSION}
+          uv run install-assets install latest
       - name: Run pytest tests
         run: uv run pytest --cov=src --cov-fail-under=77 -m "not expensive"
       - name: Upload coverage report
@@ -123,6 +122,28 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libportaudio2 portaudio19-dev
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Cache BirdNET assets
+        id: cache-assets
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/models
+            data/database
+          key: ${{ runner.os }}-birdnet-assets-v2.2.0
+          restore-keys: |
+            ${{ runner.os }}-birdnet-assets-
+      - name: Install BirdNET assets
+        if: steps.cache-assets.outputs.cache-hit != 'true'
+        env:
+          BIRDNETPI_DATA: ${{ github.workspace }}/data
+        run: |
+          uv run install-assets install latest
+      - name: Create test volume and populate with cached assets
+        run: |
+          docker volume create birdnet-test-data
+          docker run --rm -v birdnet-test-data:/data -v ${{ github.workspace }}/data:/source alpine sh -c "cp -r /source/* /data/ 2>/dev/null || true"
       - name: Install minimal dependencies
         run: uv sync
       - name: Run expensive pytest tests
