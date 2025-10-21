@@ -158,7 +158,7 @@ class TestInstallAssets:
         (models_dir / "test.tflite").write_bytes(b"model")
 
         data_dir = tmp_path / "data"
-        data_dir.mkdir(parents=True)
+        data_dir.mkdir(parents=True, exist_ok=True)
         (data_dir / "ioc_reference.db").write_bytes(b"db")
         (data_dir / "wikidata_reference.db").write_bytes(b"db")
 
