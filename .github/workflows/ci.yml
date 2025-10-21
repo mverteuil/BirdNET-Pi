@@ -79,7 +79,7 @@ jobs:
           path: |
             data/models
             data/database
-          key: ${{ runner.os }}-birdnet-assets-v2.2.0
+          key: ${{ runner.os }}-birdnet-assets-v2.2.1
           restore-keys: |
             ${{ runner.os }}-birdnet-assets-
       - name: Install BirdNET assets
