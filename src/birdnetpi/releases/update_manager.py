@@ -314,81 +314,185 @@ class UpdateManager:
 
         return asset_tag
 
-    def _download_and_extract_assets(self, asset_tag: str, github_repo: str) -> Path:
-        """Download and extract asset archive from release tag, return extracted directory."""
-        archive_url = f"https://github.com/{github_repo}/archive/{asset_tag}.tar.gz"
+    def _get_release_assets(self, asset_tag: str, github_repo: str) -> list[dict[str, Any]]:
+        """Get list of assets attached to a GitHub release.
+
+        Args:
+            asset_tag: Release tag name (e.g., "assets-v1.0.0")
+            github_repo: GitHub repository in format "owner/repo"
+
+        Returns:
+            List of asset dictionaries with 'name' and 'browser_download_url'
+        """
+        release_api_url = f"https://api.github.com/repos/{github_repo}/releases/tags/{asset_tag}"
+
+        with httpx.Client() as client:
+            response = client.get(release_api_url)
+            response.raise_for_status()
+            release_data = response.json()
+
+        return release_data.get("assets", [])
+
+    def _download_and_extract_assets(
+        self, asset_tag: str, github_repo: str
+    ) -> list[dict[str, Any]]:
+        """Download asset files from GitHub release attachments.
+
+        Returns:
+            List of asset dictionaries from the release
+        """
         print(f"Downloading assets from release tag {asset_tag}")
 
-        temp_dir = Path(tempfile.mkdtemp())
-        archive_path = temp_dir / "assets.tar.gz"
+        # Get list of release assets
+        assets = self._get_release_assets(asset_tag, github_repo)
 
-        # Download with progress bar
+        if not assets:
+            print(f"Warning: No assets found in release {asset_tag}")
+
+        return assets
+
+    def _download_gzipped_asset(self, asset_url: str, target_path: Path, asset_name: str) -> None:
+        """Download a gzipped asset and decompress it directly to target path.
+
+        Args:
+            asset_url: URL to download the gzipped asset
+            target_path: Path to write the decompressed file
+            asset_name: Name of the asset for display
+        """
+        import gzip
+        import io
+
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        print(f"  Downloading and decompressing {asset_name}...")
+
         with httpx.Client(follow_redirects=True, timeout=600.0) as client:
-            with client.stream("GET", archive_url) as response:
+            with client.stream("GET", asset_url) as response:
                 response.raise_for_status()
                 total_size = int(response.headers.get("content-length", 0))
 
-                with open(archive_path, "wb") as f:
-                    with tqdm(
-                        total=total_size,
-                        unit="B",
-                        unit_scale=True,
-                        unit_divisor=1024,
-                        desc="Downloading assets",
-                    ) as progress:
-                        for chunk in response.iter_bytes(chunk_size=8192):
-                            f.write(chunk)
-                            progress.update(len(chunk))
+                # Create a BytesIO buffer to accumulate chunks for gzip
+                compressed_buffer = io.BytesIO()
 
-        # Extract archive
-        extract_path = temp_dir / "extracted"
-        shutil.unpack_archive(archive_path, extract_path)
+                # Download with progress bar
+                with tqdm(
+                    total=total_size,
+                    unit="B",
+                    unit_scale=True,
+                    unit_divisor=1024,
+                    desc=f"  {asset_name}",
+                ) as progress:
+                    for chunk in response.iter_bytes(chunk_size=8192):
+                        compressed_buffer.write(chunk)
+                        progress.update(len(chunk))
 
-        # Find extracted directory
-        extracted_dirs = list(extract_path.iterdir())
-        if not extracted_dirs:
-            raise RuntimeError("No extracted directory found")
+                # Reset buffer position and decompress
+                compressed_buffer.seek(0)
+                print(f"  Decompressing {asset_name}...")
 
-        return extracted_dirs[0]
+                with gzip.open(compressed_buffer, "rb") as gz_stream:
+                    with open(target_path, "wb") as f_out:
+                        shutil.copyfileobj(gz_stream, f_out)
 
-    def _download_models(self, asset_source_dir: Path, results: dict[str, Any]) -> None:
-        """Download model files from asset source."""
-        models_source = asset_source_dir / "data" / "models"
-        if not models_source.exists():
-            results["errors"].append("Models directory not found in release")
-            return
+    def _download_models(self, assets: list[dict[str, Any]], results: dict[str, Any]) -> None:
+        """Download model files from release assets.
+
+        Args:
+            assets: List of asset dictionaries from GitHub release
+            results: Results dictionary to update with downloaded assets
+        """
+        import tarfile
 
         models_target = self.path_resolver.get_models_dir()
         models_target.mkdir(parents=True, exist_ok=True)
 
-        # Copy all model files (.tflite and .txt labels)
-        for pattern in ["*.tflite", "*.txt"]:
-            for model_file in models_source.glob(pattern):
-                target_file = models_target / model_file.name
-                shutil.copy2(model_file, target_file)
-                file_type = "Model" if model_file.suffix == ".tflite" else "Labels"
-                results["downloaded_assets"].append(f"{file_type}: {model_file.name}")
+        # Find the models tarball
+        models_asset = next((a for a in assets if a["name"] == "models.tar.gz"), None)
+        if not models_asset:
+            results["errors"].append("Models tarball not found in release")
+            return
 
-        print(f"Downloaded models to {models_target}")
+        # Download and extract models tarball
+        print("  Downloading models tarball...")
+        temp_tarball = Path(tempfile.mktemp(suffix=".tar.gz"))
+
+        try:
+            with httpx.Client(follow_redirects=True, timeout=600.0) as client:
+                with client.stream("GET", models_asset["browser_download_url"]) as response:
+                    response.raise_for_status()
+                    total_size = int(response.headers.get("content-length", 0))
+
+                    with open(temp_tarball, "wb") as f:
+                        with tqdm(
+                            total=total_size,
+                            unit="B",
+                            unit_scale=True,
+                            unit_divisor=1024,
+                            desc="  Models",
+                        ) as progress:
+                            for chunk in response.iter_bytes(chunk_size=8192):
+                                f.write(chunk)
+                                progress.update(len(chunk))
+
+            # Extract tarball safely (validate paths to prevent traversal)
+            print("  Extracting models...")
+            with tarfile.open(temp_tarball, "r:gz") as tar:
+                # Validate that all members are safe before extracting
+                for member in tar.getmembers():
+                    # Ensure paths don't escape the target directory
+                    member_path = Path(models_target) / member.name
+                    try:
+                        member_path.resolve().relative_to(models_target.resolve())
+                    except ValueError as err:
+                        raise RuntimeError(f"Unsafe tarball member path: {member.name}") from err
+                # Safe to extract after validation above
+                # nosemgrep
+                tar.extractall(models_target)
+
+            # Count what we extracted
+            model_files = list(models_target.glob("*.tflite"))
+            label_files = list(models_target.glob("*.txt"))
+
+            for model_file in model_files:
+                results["downloaded_assets"].append(f"Model: {model_file.name}")
+            for label_file in label_files:
+                results["downloaded_assets"].append(f"Labels: {label_file.name}")
+
+            print(f"  Extracted {len(model_files)} models and {len(label_files)} label files")
+
+        finally:
+            if temp_tarball.exists():
+                temp_tarball.unlink()
 
     def _download_database(
         self,
-        asset_source_dir: Path,
+        assets: list[dict[str, Any]],
         db_filename: str,
         target_path: Path,
         display_name: str,
         results: dict[str, Any],
     ) -> None:
-        """Download a database file from asset source."""
-        db_source = asset_source_dir / "data" / "database" / db_filename
-        if not db_source.exists():
-            results["errors"].append(f"{display_name} not found in release")
+        """Download a database file from release assets.
+
+        Args:
+            assets: List of asset dictionaries from GitHub release
+            db_filename: Name of the database file (e.g., "ioc_reference.db")
+            target_path: Path to write the database
+            display_name: Display name for progress
+            results: Results dictionary to update
+        """
+        # Find the gzipped database asset
+        db_asset_name = f"{db_filename}.gz"
+        db_asset = next((a for a in assets if a["name"] == db_asset_name), None)
+
+        if not db_asset:
+            results["errors"].append(f"{display_name} ({db_asset_name}) not found in release")
             return
 
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(db_source, target_path)
+        self._download_gzipped_asset(db_asset["browser_download_url"], target_path, display_name)
+
         results["downloaded_assets"].append(display_name)
-        print(f"Downloaded {display_name} to {target_path}")
+        print(f"  Downloaded {display_name} to {target_path}")
 
     def download_release_assets(
         self,
@@ -421,7 +525,7 @@ class UpdateManager:
 
         try:
             asset_tag = self._validate_asset_release(version, github_repo)
-            asset_source_dir = self._download_and_extract_assets(asset_tag, github_repo)
+            release_assets = self._download_and_extract_assets(asset_tag, github_repo)
 
             # Use AssetManifest to determine what to download
             asset_flags = {
@@ -438,7 +542,7 @@ class UpdateManager:
                     target_path = method()
 
                     if asset.asset_type == AssetType.MODEL:
-                        self._download_models(asset_source_dir, results)
+                        self._download_models(release_assets, results)
                     else:
                         # For databases, determine the source filename
                         if "ioc" in asset.name.lower():
@@ -449,7 +553,7 @@ class UpdateManager:
                             continue
 
                         self._download_database(
-                            asset_source_dir, db_filename, target_path, asset.description, results
+                            release_assets, db_filename, target_path, asset.description, results
                         )
 
             print(f"Asset download completed for version {version}")

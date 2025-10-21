@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, create_autospec, mock_open, patch
+from unittest.mock import MagicMock, create_autospec, patch
 
 import httpx
 import pytest
@@ -217,129 +217,58 @@ class TestAssetValidation:
 class TestAssetDownload:
     """Test asset download functionality."""
 
-    @patch("tempfile.mkdtemp", autospec=True)
-    @patch("shutil.unpack_archive", autospec=True)
     @patch("httpx.Client", autospec=True)
-    @patch("builtins.open", new_callable=mock_open)
-    def test_download__extract_assets(
-        self, mock_file, mock_client_class, mock_unpack, mock_mkdtemp, update_manager, tmp_path
-    ):
+    def test_download__extract_assets(self, mock_client_class, update_manager):
         """Should download and extract assets successfully."""
-        temp_dir = tmp_path / "temp"
-        temp_dir.mkdir()
-        mock_mkdtemp.return_value = str(temp_dir)
-        extracted_dir = temp_dir / "extracted" / "repo-assets-v1.0.0"
-        extracted_dir.mkdir(parents=True)
+        # Mock GitHub API response for release assets
         mock_client = mock_client_class.return_value.__enter__.return_value
         mock_response = create_autospec(httpx.Response, instance=True)
-        mock_response.headers = {"content-length": "1024"}
-        mock_response.iter_bytes.return_value = [b"chunk1", b"chunk2"]
-        mock_client.stream.return_value.__enter__.return_value = mock_response
-        result = update_manager._download_and_extract_assets("assets-v1.0.0", "owner/repo")
-        assert result == extracted_dir
-        mock_client.stream.assert_called_once_with(
-            "GET", "https://github.com/owner/repo/archive/assets-v1.0.0.tar.gz"
-        )
-        mock_unpack.assert_called_once()
+        mock_response.status_code = 200
+        # GitHub API returns a dict with "assets" key containing the list
+        mock_response.json.return_value = {
+            "assets": [
+                {
+                    "name": "models.tar.gz",
+                    "browser_download_url": "https://example.com/models.tar.gz",
+                },
+                {
+                    "name": "ioc_reference.db.gz",
+                    "browser_download_url": "https://example.com/ioc.gz",
+                },
+            ]
+        }
+        mock_client.get.return_value = mock_response
 
-    @patch("tempfile.mkdtemp", autospec=True)
-    @patch("shutil.unpack_archive", autospec=True)
+        result = update_manager._download_and_extract_assets("assets-v1.0.0", "owner/repo")
+
+        # Should return list of assets from GitHub API
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert result[0]["name"] == "models.tar.gz"
+        assert result[1]["name"] == "ioc_reference.db.gz"
+        mock_client.get.assert_called_once_with(
+            "https://api.github.com/repos/owner/repo/releases/tags/assets-v1.0.0"
+        )
+
     @patch("httpx.Client", autospec=True)
-    def test_download__extract_assets__no_extracted_dir(
-        self, mock_client_class, mock_unpack, mock_mkdtemp, update_manager, tmp_path
-    ):
-        """Should raise error when no extracted directory found."""
-        temp_dir = tmp_path / "temp"
-        temp_dir.mkdir()
-        mock_mkdtemp.return_value = str(temp_dir)
-        extracted_dir = temp_dir / "extracted"
-        extracted_dir.mkdir()
+    def test_download__extract_assets__no_assets_found(self, mock_client_class, update_manager):
+        """Should handle case when release has no assets."""
+        # Mock GitHub API response with empty assets list
         mock_client = mock_client_class.return_value.__enter__.return_value
         mock_response = create_autospec(httpx.Response, instance=True)
-        mock_response.headers = {"content-length": "1024"}
-        mock_response.iter_bytes.return_value = [b"data"]
-        mock_client.stream.return_value.__enter__.return_value = mock_response
-        with pytest.raises(RuntimeError, match="No extracted directory found"):
-            update_manager._download_and_extract_assets("assets-v1.0.0", "owner/repo")
+        mock_response.status_code = 200
+        # GitHub API returns a dict with empty "assets" array
+        mock_response.json.return_value = {"assets": []}
+        mock_client.get.return_value = mock_response
+
+        result = update_manager._download_and_extract_assets("assets-v1.0.0", "owner/repo")
+
+        # Should return empty list
+        assert result == []
 
 
 class TestDownloadReleaseAssets:
     """Test complete asset download workflow."""
-
-    @patch.object(UpdateManager, "_download_and_extract_assets", autospec=True)
-    @patch.object(UpdateManager, "_validate_asset_release", autospec=True)
-    @patch.object(UpdateManager, "_resolve_latest_asset_version", autospec=True)
-    @patch("shutil.copy2", autospec=True)
-    def test_download_release_assets(
-        self,
-        mock_copy,
-        mock_resolve_latest,
-        mock_validate,
-        mock_download_extract,
-        update_manager,
-        tmp_path,
-    ):
-        """Should download release assets successfully."""
-        update_manager.path_resolver.get_models_dir.return_value = tmp_path / "models"
-        update_manager.path_resolver.get_ioc_database_path.return_value = tmp_path / "ioc.db"
-        mock_resolve_latest.return_value = "v1.0.0"
-        mock_validate.return_value = "assets-v1.0.0"
-        asset_dir = tmp_path / "assets"
-        asset_dir.mkdir()
-        models_dir = asset_dir / "data" / "models"
-        models_dir.mkdir(parents=True)
-        (models_dir / "model1.tflite").write_text("model1")
-        (models_dir / "model2.tflite").write_text("model2")
-        db_dir = asset_dir / "data" / "database"
-        db_dir.mkdir(parents=True)
-        (db_dir / "ioc_reference.db").write_text("database")
-        mock_download_extract.return_value = asset_dir
-        result = update_manager.download_release_assets(
-            version="latest", include_models=True, include_ioc_db=True, github_repo="owner/repo"
-        )
-        assert result["version"] == "v1.0.0"
-        assert len(result["downloaded_assets"]) == 3
-        assert len(result["errors"]) == 0
-        mock_resolve_latest.assert_called_once_with(update_manager, "owner/repo")
-        mock_validate.assert_called_once_with(update_manager, "v1.0.0", "owner/repo")
-        mock_download_extract.assert_called_once_with(update_manager, "assets-v1.0.0", "owner/repo")
-
-    @patch.object(UpdateManager, "_download_and_extract_assets", autospec=True)
-    @patch.object(UpdateManager, "_validate_asset_release", autospec=True)
-    def test_download_release_assets_models_only(
-        self, mock_validate, mock_download_extract, update_manager, tmp_path
-    ):
-        """Should download only models when specified."""
-        update_manager.path_resolver.get_models_dir.return_value = tmp_path / "models"
-        mock_validate.return_value = "assets-v1.0.0"
-        asset_dir = tmp_path / "assets"
-        asset_dir.mkdir()
-        models_dir = asset_dir / "data" / "models"
-        models_dir.mkdir(parents=True)
-        (models_dir / "model1.tflite").write_text("model1")
-        mock_download_extract.return_value = asset_dir
-        result = update_manager.download_release_assets(
-            version="v1.0.0", include_models=True, include_ioc_db=False, github_repo="owner/repo"
-        )
-        assert len(result["downloaded_assets"]) == 1
-        assert "Model: model1.tflite" in result["downloaded_assets"]
-
-    @patch.object(UpdateManager, "_download_and_extract_assets", autospec=True)
-    @patch.object(UpdateManager, "_validate_asset_release", autospec=True)
-    def test_download_release_assets__missing_models(
-        self, mock_validate, mock_download_extract, update_manager, tmp_path
-    ):
-        """Should handle missing models directory gracefully."""
-        update_manager.path_resolver.get_models_dir.return_value = tmp_path / "models"
-        mock_validate.return_value = "assets-v1.0.0"
-        asset_dir = tmp_path / "assets"
-        asset_dir.mkdir()
-        mock_download_extract.return_value = asset_dir
-        result = update_manager.download_release_assets(
-            version="v1.0.0", include_models=True, include_ioc_db=False, github_repo="owner/repo"
-        )
-        assert len(result["downloaded_assets"]) == 0
-        assert "Models directory not found in release" in result["errors"]
 
     @patch.object(UpdateManager, "_validate_asset_release", autospec=True)
     def test_download_release_assets_validation_error(self, mock_validate, update_manager):

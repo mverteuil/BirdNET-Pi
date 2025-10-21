@@ -80,29 +80,30 @@ class ReleaseManager:
             raise FileNotFoundError(f"Missing assets: {missing_assets}")
 
     def _create_orphaned_commit(self, config: ReleaseConfig) -> str:
-        """Create the orphaned commit with assets and tag it."""
+        """Create the orphaned commit with README only, then upload gzipped assets."""
         import tempfile
 
-        # Create a temporary directory to preserve assets
+        # Create a temporary directory for gzipped assets
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
 
-            # Copy assets to temp directory before cleaning
-            print("Preserving assets in temporary location...")
+            # IMPORTANT: Preserve assets BEFORE creating orphaned branch
+            # (we lose access to working directory files after checkout --orphan)
+            print("Preserving assets before branch creation...")
             preserved_assets = []
             for asset in config.assets:
                 source = asset.source_path
                 if source.exists():
-                    temp_target = temp_path / asset.target_name
-                    temp_target.parent.mkdir(parents=True, exist_ok=True)
+                    temp_asset = temp_path / "sources" / asset.target_name
+                    temp_asset.parent.mkdir(parents=True, exist_ok=True)
 
                     if source.is_file():
-                        shutil.copy2(source, temp_target)
+                        shutil.copy2(source, temp_asset)
                     elif source.is_dir():
-                        shutil.copytree(source, temp_target, dirs_exist_ok=True)
+                        shutil.copytree(source, temp_asset, dirs_exist_ok=True)
 
                     preserved_assets.append(
-                        ReleaseAsset(temp_target, asset.target_name, asset.description)
+                        ReleaseAsset(temp_asset, asset.target_name, asset.description)
                     )
                     print(f"  Preserved {asset.target_name}")
 
@@ -115,13 +116,12 @@ class ReleaseManager:
             self._run_git_command(["rm", "-rf", "."], check=False)
             self._run_git_command(["clean", "-fxd"], check=False)
 
-            # Set up the orphaned branch
+            # Set up the orphaned branch with ONLY README (no asset files)
             self._create_asset_gitignore()
-            self._copy_assets_to_branch(preserved_assets)
             self._create_asset_readme(config)
 
-            # Commit the assets
-            self._commit_assets(config)
+            # Commit only README and .gitignore
+            self._commit_readme_only(config)
 
             # Get commit SHA
             commit_sha = self._run_git_command(["rev-parse", "HEAD"], capture_output=True).strip()
@@ -163,6 +163,20 @@ class ReleaseManager:
                     "create the release manually"
                 )
 
+            # Gzip and upload assets to the release using preserved copies
+            print("\nGzipping and uploading assets to release...")
+            self._upload_gzipped_assets(
+                ReleaseConfig(
+                    version=config.version,
+                    asset_branch_name=config.asset_branch_name,
+                    commit_message=config.commit_message,
+                    assets=preserved_assets,
+                    tag_name=config.tag_name,
+                ),
+                tag_name,
+                temp_path,
+            )
+
             return commit_sha
 
     def _copy_assets_to_branch(self, assets: list[ReleaseAsset]) -> None:
@@ -183,13 +197,64 @@ class ReleaseManager:
                 shutil.copytree(source, target, dirs_exist_ok=True)
                 print(f"  Copied directory {source} -> {asset.target_name}")
 
-    def _commit_assets(self, config: ReleaseConfig) -> None:
-        """Add and commit only the assets to the orphaned branch."""
-        for asset in config.assets:
-            self._run_git_command(["add", str(asset.target_name)])
+    def _commit_readme_only(self, config: ReleaseConfig) -> None:
+        """Add and commit only README and .gitignore to the orphaned branch."""
         self._run_git_command(["add", "README.md"])
         self._run_git_command(["add", ".gitignore"])
         self._run_git_command(["commit", "-m", config.commit_message, "--no-verify"])
+
+    def _upload_gzipped_assets(self, config: ReleaseConfig, tag_name: str, temp_dir: Path) -> None:
+        """Gzip assets and upload them to the GitHub release."""
+        import gzip
+
+        upload_args = ["gh", "release", "upload", tag_name]
+
+        for asset in config.assets:
+            source = asset.source_path
+            if not source.exists():
+                print(f"Warning: Asset not found: {source}")
+                continue
+
+            if source.is_file():
+                # Gzip the file
+                gzipped_path = temp_dir / f"{asset.target_name.name}.gz"
+                print(f"  Gzipping {asset.target_name}...")
+
+                with open(source, "rb") as f_in:
+                    with gzip.open(gzipped_path, "wb", compresslevel=9) as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+
+                # Add to upload args
+                upload_args.append(str(gzipped_path))
+                print(f"  Queued for upload: {gzipped_path.name}")
+
+            elif source.is_dir():
+                # For directories, create a tar.gz
+                import tarfile
+
+                tarball_path = temp_dir / f"{asset.target_name.name}.tar.gz"
+                print(f"  Creating tarball {tarball_path.name}...")
+
+                with tarfile.open(tarball_path, "w:gz", compresslevel=9) as tar:
+                    # Add directory contents without the parent directory
+                    for item in source.iterdir():
+                        tar.add(item, arcname=item.name)
+
+                # Add to upload args
+                upload_args.append(str(tarball_path))
+                print(f"  Queued for upload: {tarball_path.name}")
+
+        # Upload all assets in one command
+        if len(upload_args) > 3:  # More than just gh release upload tag_name
+            print("\nUploading assets to GitHub release...")
+            try:
+                subprocess.run(upload_args, check=True, cwd=self.repo_path)
+                print("All assets uploaded successfully!")
+            except subprocess.CalledProcessError as e:
+                print(f"Warning: Failed to upload assets: {e}")
+                print("You may need to upload them manually")
+        else:
+            print("No assets to upload")
 
     def _cleanup_and_return_to_branch(self, original_branch: str) -> None:
         """Return to original branch with proper cleanup."""
@@ -372,62 +437,90 @@ venv/
         """Create a README file for the asset branch."""
         readme_content = f"""# BirdNET-Pi Release Assets - {config.version}
 
-This branch contains binary assets for BirdNET-Pi version {config.version}.
+This orphaned commit provides a lightweight tag for BirdNET-Pi asset release {config.version}.
 
-## Assets Included
+## Assets Available as Downloads
+
+All binary assets are attached to this release as gzipped downloads to minimize repository size.
 
 """
         for asset in config.assets:
-            readme_content += f"- **{asset.target_name}**: {asset.description}\n"
+            # Determine the download filename
+            if asset.source_path.is_dir():
+                download_name = f"{asset.target_name.name}.tar.gz"
+            else:
+                download_name = f"{asset.target_name.name}.gz"
+            readme_content += f"- **{download_name}**: {asset.description}\n"
 
         readme_content += f"""
 
 ## Installation
 
-These assets are automatically downloaded during BirdNET-Pi installation.
+These assets are automatically downloaded and decompressed during BirdNET-Pi installation.
+
 For manual installation:
 
-1. Clone the main BirdNET-Pi repository
-2. Download assets from this tagged release
+1. Download the gzipped asset files from this release's downloads
+2. Decompress them: `gunzip <filename>.gz` or `tar xzf <filename>.tar.gz`
 3. Place assets in the appropriate directories as specified in the documentation
 
 ## Technical Details
 
-This release uses the orphaned commit strategy to distribute large binary files
-without bloating the main repository history. Credit to Ben Webber for this approach.
+This release uses the orphaned commit strategy with external asset storage:
+- The orphaned commit contains only this README (keeping it tiny)
+- Binary assets are attached as gzipped release downloads
+- Downloads are automatically decompressed during installation
+
+Credit to Ben Webber for the orphaned commit approach.
 
 - **Release Version**: {config.version}
 - **Asset Tag**: {config.asset_branch_name}
 - **Created**: Automated release system
+- **Compression**: gzip (level 9)
 """
         readme_path = self.repo_path / "README.md"
         readme_path.write_text(readme_content)
 
     def _generate_release_notes(self, config: ReleaseConfig, asset_commit_sha: str) -> str:
         """Generate release notes for GitHub release."""
-        notes = f"""## BirdNET-Pi {config.version}
+        notes = f"""## BirdNET-Pi Assets Release {config.version}
 
-### Binary Assets
+### Binary Assets (Gzipped Downloads)
 
-This release includes the following binary assets distributed via orphaned commit:
+This release includes the following binary assets as gzipped downloads attached to this release:
 
 """
         for asset in config.assets:
-            notes += f"- **{asset.target_name}**: {asset.description}\n"
+            # Determine the download filename
+            if asset.source_path.is_dir():
+                download_name = f"{asset.target_name.name}.tar.gz"
+            else:
+                download_name = f"{asset.target_name.name}.gz"
+            notes += f"- **{download_name}**: {asset.description}\n"
 
         notes += f"""
 
-### Asset Download
+### Download and Installation
 
-Binary assets are available from the orphaned commit tagged as `{config.asset_branch_name}`
-[{asset_commit_sha[:8]}](../../commit/{asset_commit_sha})
-and can be downloaded automatically during installation.
+Binary assets are attached to this release as gzipped downloads. The orphaned
+commit [{asset_commit_sha[:8]}](../../commit/{asset_commit_sha}) contains only
+a README to keep the tag lightweight.
+
+Assets are automatically downloaded and decompressed during BirdNET-Pi installation
+using the `install-assets` CLI tool.
 
 ### Technical Details
 
 - **Asset Tag**: `{config.asset_branch_name}`
-- **Asset Commit**: `{asset_commit_sha}`
-- **Distribution Strategy**: Orphaned commits with tags (credit: Ben Webber)
+- **Asset Commit**: `{asset_commit_sha}` (README only)
+- **Distribution Strategy**: Orphaned commits with external gzipped assets
+- **Compression**: gzip level 9
+- **Benefits**:
+  - Tiny orphaned commit (just README)
+  - Efficient compression reduces download size
+  - Automatic decompression during installation
+
+Credit to Ben Webber for the orphaned commit approach.
 
 For installation instructions, see the main repository README.
 """
