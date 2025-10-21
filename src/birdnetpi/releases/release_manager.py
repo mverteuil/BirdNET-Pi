@@ -87,6 +87,26 @@ class ReleaseManager:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
 
+            # IMPORTANT: Preserve assets BEFORE creating orphaned branch
+            # (we lose access to working directory files after checkout --orphan)
+            print("Preserving assets before branch creation...")
+            preserved_assets = []
+            for asset in config.assets:
+                source = asset.source_path
+                if source.exists():
+                    temp_asset = temp_path / "sources" / asset.target_name
+                    temp_asset.parent.mkdir(parents=True, exist_ok=True)
+
+                    if source.is_file():
+                        shutil.copy2(source, temp_asset)
+                    elif source.is_dir():
+                        shutil.copytree(source, temp_asset, dirs_exist_ok=True)
+
+                    preserved_assets.append(
+                        ReleaseAsset(temp_asset, asset.target_name, asset.description)
+                    )
+                    print(f"  Preserved {asset.target_name}")
+
             # Create temporary orphaned branch
             temp_branch = f"temp-{config.asset_branch_name}"
             print(f"Creating temporary orphaned branch: {temp_branch}")
@@ -143,9 +163,19 @@ class ReleaseManager:
                     "create the release manually"
                 )
 
-            # Gzip and upload assets to the release
+            # Gzip and upload assets to the release using preserved copies
             print("\nGzipping and uploading assets to release...")
-            self._upload_gzipped_assets(config, tag_name, temp_path)
+            self._upload_gzipped_assets(
+                ReleaseConfig(
+                    version=config.version,
+                    asset_branch_name=config.asset_branch_name,
+                    commit_message=config.commit_message,
+                    assets=preserved_assets,
+                    tag_name=config.tag_name,
+                ),
+                tag_name,
+                temp_path,
+            )
 
             return commit_sha
 
