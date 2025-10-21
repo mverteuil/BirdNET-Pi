@@ -236,7 +236,9 @@ class ReleaseManager:
                 print(f"  Creating tarball {tarball_path.name}...")
 
                 with tarfile.open(tarball_path, "w:gz", compresslevel=9) as tar:
-                    tar.add(source, arcname=asset.target_name.name)
+                    # Add directory contents without the parent directory
+                    for item in source.iterdir():
+                        tar.add(item, arcname=item.name)
 
                 # Add to upload args
                 upload_args.append(str(tarball_path))
