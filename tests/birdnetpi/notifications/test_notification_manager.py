@@ -49,10 +49,10 @@ def notification_manager(
     # Mock detection query service
     mock_detection_query_service = Mock(spec=DetectionQueryService)
     mock_detection_query_service.is_first_detection_ever = AsyncMock(
-        spec=DetectionQueryService.is_first_detection_ever, return_value=True
+        spec_set=True, return_value=True
     )
     mock_detection_query_service.is_first_detection_in_period = AsyncMock(
-        spec=DetectionQueryService.is_first_detection_in_period, return_value=True
+        spec_set=True, return_value=True
     )
 
     service = NotificationManager(
