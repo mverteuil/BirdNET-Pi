@@ -32,13 +32,17 @@ def rule_processor(test_config, db_session_factory):
 
     # Mock species database service
     species_db_service = MagicMock(spec=SpeciesDatabaseService)
-    species_db_service.get_species_taxonomy = AsyncMock(spec=AsyncMock, return_value=None)
+    species_db_service.get_species_taxonomy = AsyncMock(
+        spec=SpeciesDatabaseService.get_species_taxonomy, return_value=None
+    )
 
     # Mock detection query service
     detection_query_service = MagicMock(spec=DetectionQueryService)
-    detection_query_service.is_first_detection_ever = AsyncMock(spec=AsyncMock, return_value=True)
+    detection_query_service.is_first_detection_ever = AsyncMock(
+        spec=DetectionQueryService.is_first_detection_ever, return_value=True
+    )
     detection_query_service.is_first_detection_in_period = AsyncMock(
-        spec=AsyncMock, return_value=True
+        spec=DetectionQueryService.is_first_detection_in_period, return_value=True
     )
 
     return NotificationRuleProcessor(
@@ -347,7 +351,8 @@ class TestTaxaFilters:
 
         # Mock IOC database lookup
         rule_processor.species_db_service.get_species_taxonomy = AsyncMock(
-            spec=AsyncMock, return_value={"family": "Turdidae", "order": "Passeriformes"}
+            spec=SpeciesDatabaseService.get_species_taxonomy,
+            return_value={"family": "Turdidae", "order": "Passeriformes"},
         )
 
         result = await rule_processor._check_taxa_filters(rule, detection)
@@ -368,7 +373,8 @@ class TestTaxaFilters:
 
         # Mock IOC database lookup
         rule_processor.species_db_service.get_species_taxonomy = AsyncMock(
-            spec=AsyncMock, return_value={"family": "Turdidae", "order": "Passeriformes"}
+            spec=SpeciesDatabaseService.get_species_taxonomy,
+            return_value={"family": "Turdidae", "order": "Passeriformes"},
         )
 
         result = await rule_processor._check_taxa_filters(rule, detection)
@@ -390,7 +396,7 @@ class TestTaxaFilters:
 
         # Mock IOC database returning None
         rule_processor.species_db_service.get_species_taxonomy = AsyncMock(
-            spec=AsyncMock, return_value=None
+            spec=SpeciesDatabaseService.get_species_taxonomy, return_value=None
         )
 
         result = await rule_processor._check_taxa_filters(rule, detection)
