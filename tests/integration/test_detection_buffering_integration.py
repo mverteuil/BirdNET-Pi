@@ -149,6 +149,8 @@ class TestDetectionBufferingEndToEnd:
         with patch("birdnetpi.audio.analysis.httpx.AsyncClient", autospec=True) as mock_client:
             mock_response = MagicMock(spec=httpx.Response)
             mock_response.raise_for_status.return_value = None
+            # Use AsyncMock for post to ensure it works in background thread's event loop
+            # autospec=True already makes post an AsyncMock
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
             # Wait for background flush to occur
@@ -198,7 +200,7 @@ class TestDetectionBufferingEndToEnd:
             service.detection_buffer.clear()
 
         # Patch HTTP client for the entire test duration to simulate FastAPI being down
-        with patch("httpx.AsyncClient", autospec=True) as mock_client:
+        with patch("birdnetpi.audio.analysis.httpx.AsyncClient", autospec=True) as mock_client:
             mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
                 "Connection failed", request=MagicMock(spec=httpx.Request)
             )
@@ -261,7 +263,7 @@ class TestDetectionBufferingEndToEnd:
         ]
 
         try:
-            with patch("httpx.AsyncClient", autospec=True) as mock_client:
+            with patch("birdnetpi.audio.analysis.httpx.AsyncClient", autospec=True) as mock_client:
                 # Mock persistent HTTP failure
                 mock_client.return_value.__aenter__.return_value.post.side_effect = (
                     httpx.RequestError("Connection failed", request=MagicMock(spec=httpx.Request))
@@ -298,7 +300,7 @@ class TestDetectionBufferingEndToEnd:
         ]
 
         # Phase 1: Service unavailable, buffer detections
-        with patch("httpx.AsyncClient", autospec=True) as mock_client:
+        with patch("birdnetpi.audio.analysis.httpx.AsyncClient", autospec=True) as mock_client:
             mock_client.return_value.__aenter__.return_value.post.side_effect = httpx.RequestError(
                 "Connection failed", request=MagicMock(spec=httpx.Request)
             )
@@ -317,10 +319,12 @@ class TestDetectionBufferingEndToEnd:
                 assert len(service.detection_buffer) == 3
 
         # Phase 2: Simulate service recovery
-        with patch("httpx.AsyncClient", autospec=True) as mock_client:
+        with patch("birdnetpi.audio.analysis.httpx.AsyncClient", autospec=True) as mock_client:
             # Mock successful responses
             mock_response = MagicMock(spec=httpx.Response)
             mock_response.raise_for_status.return_value = None
+            # Use AsyncMock for post to ensure it works in background thread's event loop
+            # autospec=True already makes post an AsyncMock
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
             # Wait for background flush to process buffered detections
@@ -347,7 +351,7 @@ class TestDetectionBufferingEndToEnd:
             ("Cardinalis cardinalis_Northern Cardinal", 0.90),
         ]
 
-        with patch("httpx.AsyncClient", autospec=True) as mock_client:
+        with patch("birdnetpi.audio.analysis.httpx.AsyncClient", autospec=True) as mock_client:
             post_mock = mock_client.return_value.__aenter__.return_value.post
 
             # Mock intermittent failures: success, fail, success, fail
@@ -415,9 +419,11 @@ class TestDetectionBufferingWithAdminOperations:
 
         try:
             # Start with working FastAPI
-            with patch("httpx.AsyncClient", autospec=True) as mock_client:
+            with patch("birdnetpi.audio.analysis.httpx.AsyncClient", autospec=True) as mock_client:
                 mock_response = MagicMock(spec=httpx.Response)
                 mock_response.raise_for_status.return_value = None
+                # Use AsyncMock for post to ensure it works correctly
+                # autospec=True already makes post an AsyncMock
                 mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
                 # Clear buffer
@@ -482,7 +488,9 @@ class TestDetectionBufferingWithAdminOperations:
                 mock_data_manager.return_value.get_all_detections.return_value = []
 
                 # During admin operation, simulate FastAPI being down
-                with patch("httpx.AsyncClient", autospec=True) as mock_client:
+                with patch(
+                    "birdnetpi.audio.analysis.httpx.AsyncClient", autospec=True
+                ) as mock_client:
                     mock_client.return_value.__aenter__.return_value.post.side_effect = (
                         httpx.RequestError(
                             "Service temporarily unavailable", request=MagicMock(spec=httpx.Request)
@@ -502,13 +510,16 @@ class TestDetectionBufferingWithAdminOperations:
                     await gdd.run()
 
             # After admin operation, FastAPI should be available again
-            with patch("httpx.AsyncClient", autospec=True) as mock_client:
+            with patch("birdnetpi.audio.analysis.httpx.AsyncClient", autospec=True) as mock_client:
                 mock_response = MagicMock(spec=httpx.Response)
                 mock_response.raise_for_status.return_value = None
+                # Use AsyncMock for post to ensure it works in background thread's event loop
+                # autospec=True already makes post an AsyncMock
                 mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
-                # Manually trigger flush to process buffered detection
-                await service._flush_detection_buffer()
+                # Wait for background flush to process buffered detection
+                # Flush interval is 0.1s, so 0.5s should be more than enough
+                await asyncio.sleep(0.5)
 
                 # Buffer should be empty after admin operation completes
                 with service.buffer_lock:
@@ -536,7 +547,7 @@ class TestDetectionBufferingWithAdminOperations:
                 service.detection_buffer.clear()
 
             # Cycle 1: Build up buffer during first admin operation
-            with patch("httpx.AsyncClient", autospec=True) as mock_client:
+            with patch("birdnetpi.audio.analysis.httpx.AsyncClient", autospec=True) as mock_client:
                 mock_client.return_value.__aenter__.return_value.post.side_effect = (
                     httpx.RequestError("Service down", request=MagicMock(spec=httpx.Request))
                 )
@@ -557,7 +568,7 @@ class TestDetectionBufferingWithAdminOperations:
             # Stop background flush to avoid interference
             service.stop_buffer_flush_task()
 
-            with patch("httpx.AsyncClient", autospec=True) as mock_client:
+            with patch("birdnetpi.audio.analysis.httpx.AsyncClient", autospec=True) as mock_client:
                 post_mock = mock_client.return_value.__aenter__.return_value.post
 
                 # First flush attempt: partial success
@@ -599,9 +610,11 @@ class TestDetectionBufferingWithAdminOperations:
                 assert cycle2_final_buffer_size == 3  # 1 from partial flush + 2 new
 
             # Cycle 3: Full recovery and complete flush
-            with patch("httpx.AsyncClient", autospec=True) as mock_client:
+            with patch("birdnetpi.audio.analysis.httpx.AsyncClient", autospec=True) as mock_client:
                 mock_response = MagicMock(spec=httpx.Response)
                 mock_response.raise_for_status.return_value = None
+                # Use AsyncMock for post to ensure it works correctly
+                # autospec=True already makes post an AsyncMock
                 mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
 
                 # Manually trigger final flush

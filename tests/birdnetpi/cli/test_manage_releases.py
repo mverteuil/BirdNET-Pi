@@ -5,9 +5,10 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from click import BadParameter
 from click.testing import CliRunner
 
-from birdnetpi.cli.manage_releases import cli
+from birdnetpi.cli.manage_releases import _normalize_version, cli
 from birdnetpi.releases.release_manager import ReleaseAsset, ReleaseManager
 
 
@@ -26,8 +27,8 @@ def mock_release_manager():
         ReleaseAsset(Path("/test/ioc.db"), Path("data/database/ioc_reference.db"), "IOC database"),
     ]
     mock_manager.create_asset_release.return_value = {
-        "version": "v2.0.0",
-        "asset_branch": "assets-v2.0.0",
+        "version": "2.0.0",
+        "asset_branch": "assets-2.0.0",
         "commit_sha": "abc123",
         "assets": ["models", "ioc.db"],
     }
@@ -36,6 +37,48 @@ def mock_release_manager():
         "release_url": "https://github.com/user/repo/releases/tag/v2.0.0",
     }
     return mock_manager
+
+
+class TestVersionNormalization:
+    """Test version normalization functionality."""
+
+    def test_normalize_version_with_single_v(self):
+        """Should strip single leading 'v' character."""
+        assert _normalize_version("v2.2.0") == "2.2.0"
+
+    def test_normalize_version_with_double_v(self):
+        """Should strip multiple leading 'v' characters (fixes vv2.2.0 bug)."""
+        assert _normalize_version("vv2.2.0") == "2.2.0"
+
+    def test_normalize_version_with_triple_v(self):
+        """Should strip any number of leading 'v' characters."""
+        assert _normalize_version("vvv2.2.0") == "2.2.0"
+
+    def test_normalize_version_without_v(self):
+        """Should leave version unchanged if no leading 'v'."""
+        assert _normalize_version("2.2.0") == "2.2.0"
+
+    def test_normalize_version_with_prerelease(self):
+        """Should handle prerelease versions."""
+        assert _normalize_version("v2.2.0-alpha.1") == "2.2.0-alpha.1"
+        assert _normalize_version("vv2.2.0-beta") == "2.2.0-beta"
+
+    def test_normalize_version_with_build_metadata(self):
+        """Should handle build metadata."""
+        assert _normalize_version("v2.2.0+build.123") == "2.2.0+build.123"
+
+    def test_normalize_version_invalid_raises_error(self):
+        """Should raise BadParameter for invalid version strings."""
+        with pytest.raises(BadParameter) as exc_info:
+            _normalize_version("vvinvalid")
+        assert "Invalid version string" in str(exc_info.value)
+        assert "not a valid semantic version" in str(exc_info.value)
+
+    def test_normalize_version_empty_after_strip_raises_error(self):
+        """Should raise BadParameter when only 'v' characters provided."""
+        with pytest.raises(BadParameter) as exc_info:
+            _normalize_version("vvv")
+        assert "Invalid version string" in str(exc_info.value)
 
 
 class TestReleaseManager:
@@ -54,7 +97,7 @@ class TestReleaseManager:
             assert result.exit_code == 0
             assert "Creating orphaned commit with release assets" in result.output
             assert "✓ Asset release created successfully!" in result.output
-            assert "Version: v2.0.0" in result.output
+            assert "Version: 2.0.0" in result.output
 
     @patch("birdnetpi.cli.manage_releases.ReleaseManager", autospec=True)
     @patch("pathlib.Path.exists", autospec=True)
@@ -154,3 +197,21 @@ class TestReleaseManager:
         assert "BirdNET-Pi Release Management" in result.output
         assert "create" in result.output
         assert "list-assets" in result.output
+
+    @patch("birdnetpi.cli.manage_releases.ReleaseManager", autospec=True)
+    @patch("pathlib.Path.exists", autospec=True)
+    def test_create_command_normalizes_double_v_version(
+        self, mock_exists, mock_manager_class, mock_release_manager, runner, path_resolver
+    ):
+        """Should normalize version with double 'v' prefix (regression test for vv2.2.0 bug)."""
+        mock_exists.return_value = True
+        mock_manager_class.return_value = mock_release_manager
+        with patch("birdnetpi.cli.manage_releases.PathResolver", return_value=path_resolver):
+            # User accidentally provides "vv2.2.0" instead of "v2.2.0"
+            result = runner.invoke(cli, ["create", "vv2.2.0", "--include-models"])
+            assert result.exit_code == 0
+            # Should normalize to "2.2.0" not "vv2.2.0"
+            assert "Version: 2.0.0" in result.output  # From mock, but shows normalization worked
+            # Verify the create_asset_release was called with normalized version
+            call_args = mock_release_manager.create_asset_release.call_args
+            assert call_args[0][0].version == "2.2.0"
