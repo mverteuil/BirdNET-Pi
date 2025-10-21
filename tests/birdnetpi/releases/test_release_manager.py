@@ -174,17 +174,21 @@ class TestReleaseManager:
         assert readme_path.exists()
         content = readme_path.read_text()
         assert "BirdNET-Pi Release Assets - 1.0.0" in content
-        assert "data/models" in content
-        assert "BirdNET models" in content
+        # Check for gzipped download filenames instead of paths
+        assert "models.tar.gz" in content
+        assert "BirdNET" in content
+        assert "gzipped downloads" in content
 
     def test_generate_release_notes(self, release_manager, sample_config):
         """Should generate proper release notes."""
         notes = release_manager._generate_release_notes(sample_config, "abc123")
-        assert "BirdNET-Pi 1.0.0" in notes
-        assert "data/models" in notes
-        assert "BirdNET models" in notes
+        assert "BirdNET-Pi Assets Release 1.0.0" in notes
+        # Check for gzipped download filenames instead of paths
+        assert "models.tar.gz" in notes
+        assert "BirdNET" in notes
         assert "assets-v1.0.0" in notes
         assert "abc123" in notes
+        assert "Gzipped Downloads" in notes
 
     def test_build_release_info(self, release_manager, sample_config):
         """Should build proper release info dictionary."""
@@ -259,45 +263,6 @@ class TestReleaseManager:
         call_args = mock_run.call_args[0][0]
         assert call_args[0] == "git"
         assert "status" in call_args
-
-    @patch("shutil.copy2", autospec=True)
-    @patch("shutil.copytree", autospec=True)
-    def test_copy_assets_to_branch_file(self, mock_copytree, mock_copy2, release_manager, tmp_path):
-        """Should copy file assets correctly."""
-        source_file = tmp_path / "source.txt"
-        source_file.write_text("content")
-
-        assets = [ReleaseAsset(source_file, Path("target.txt"), "description")]
-        release_manager._copy_assets_to_branch(assets)
-
-        mock_copy2.assert_called_once()
-        mock_copytree.assert_not_called()
-
-    @patch("shutil.copy2", autospec=True)
-    @patch("shutil.copytree", autospec=True)
-    def test_copy_assets_to_branch_directory(
-        self, mock_copytree, mock_copy2, release_manager, tmp_path
-    ):
-        """Should copy directory assets correctly."""
-        source_dir = tmp_path / "source_dir"
-        source_dir.mkdir()
-
-        assets = [ReleaseAsset(source_dir, Path("target_dir"), "description")]
-        release_manager._copy_assets_to_branch(assets)
-
-        mock_copytree.assert_called_once()
-        mock_copy2.assert_not_called()
-
-    @patch.object(ReleaseManager, "_run_git_command", autospec=True)
-    def test_commit_assets(self, mock_git, release_manager, sample_config):
-        """Should commit assets with proper git commands."""
-        release_manager._commit_assets(sample_config)
-
-        # Check that git add was called for each asset
-        # With autospec=True, call[0][0] is self, call[0][1] is args parameter
-        git_calls = mock_git.call_args_list
-        add_calls = [call for call in git_calls if call[0][1][0] == "add"]
-        assert len(add_calls) >= 2  # At least for assets
 
     @patch.object(ReleaseManager, "_run_command", autospec=True)
     def test_create_github_release(self, mock_run, release_manager, sample_config):
