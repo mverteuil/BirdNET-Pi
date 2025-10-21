@@ -21,6 +21,9 @@ SERVICES_CONFIG = {
         ServiceConfig("birdnetpi-audio-analysis", "Bird detection service"),
         ServiceConfig("birdnetpi-audio-websocket", "Real-time audio streaming"),
         ServiceConfig("birdnetpi-update", "Update daemon for automatic updates"),
+        ServiceConfig(
+            "birdnetpi-epaper-display", "E-Paper display for system status", optional=True
+        ),
         ServiceConfig("caddy", "Web server and reverse proxy", critical=True),
         ServiceConfig("redis", "Cache service (memory-only)"),
         ServiceConfig("pulseaudio", "Audio system"),

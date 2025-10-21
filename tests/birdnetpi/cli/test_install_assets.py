@@ -158,7 +158,7 @@ class TestInstallAssets:
         (models_dir / "test.tflite").write_bytes(b"model")
 
         data_dir = tmp_path / "data"
-        data_dir.mkdir(parents=True)
+        data_dir.mkdir(parents=True, exist_ok=True)
         (data_dir / "ioc_reference.db").write_bytes(b"db")
         (data_dir / "wikidata_reference.db").write_bytes(b"db")
 
@@ -226,7 +226,7 @@ class TestCheckLocal:
             (models_dir / "model1.tflite").write_bytes(b"model" * 1000)
             (models_dir / "model2.tflite").write_bytes(b"model" * 2000)
             data_dir = tmp_path / "data"
-            data_dir.mkdir(parents=True)
+            data_dir.mkdir(parents=True, exist_ok=True)
             (data_dir / "ioc_db.sqlite").write_bytes(b"database" * 1000)
             (data_dir / "wikidata_reference.db").write_bytes(b"wikidata" * 750)
             result = runner.invoke(cli, ["check-local"])

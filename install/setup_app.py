@@ -389,6 +389,13 @@ def setup_systemd_services() -> None:
             "exec_start": "/opt/birdnetpi/.venv/bin/update-daemon --mode both",
             "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=update_daemon",
         },
+        {
+            "name": "birdnetpi-epaper-display.service",
+            "description": "BirdNET E-Paper Display",
+            "after": "network-online.target birdnetpi-fastapi.service",
+            "exec_start": "/opt/birdnetpi/.venv/bin/epaper-display-daemon",
+            "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=epaper_display",
+        },
     ]
 
     for service_config in services:
