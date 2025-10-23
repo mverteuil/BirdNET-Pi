@@ -1,0 +1,69 @@
+# Production Docker Compose Configuration
+# Uses pre-built images from GitHub Container Registry
+#
+# Quick Start:
+#   docker compose -f docker-compose.production.yml up -d
+#
+# For Home Assistant:
+#   1. Use bind mount instead of volume (see volumes section below)
+#   2. Ensure directory has proper permissions (UID 1000)
+#
+# WARNING: NEVER use 'docker compose down -v' as it removes volumes!
+# To stop: docker compose -f docker-compose.production.yml down
+#
+services:
+  # Init container to ensure assets are installed and permissions are correct
+  birdnet-pi-init:
+    image: ghcr.io/mverteuil/birdnet-pi:${BIRDNETPI_VERSION:-latest}-init
+    container_name: birdnet-pi-init
+    environment:
+      BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-latest}
+    logging:
+      driver: json-file
+    volumes:
+      - ${BIRDNETPI_DATA_VOLUME:-birdnetpi-data}:/var/lib/birdnetpi
+      # For Home Assistant/bind mount, use:
+      # - /path/to/your/data:/var/lib/birdnetpi
+    networks:
+      - birdnetpi-network
+
+  birdnet-pi:
+    image: ghcr.io/mverteuil/birdnet-pi:${BIRDNETPI_VERSION:-latest}
+    container_name: birdnet-pi
+    restart: unless-stopped
+    depends_on:
+      birdnet-pi-init:
+        condition: service_completed_successfully
+    environment:
+      PULSE_SERVER: host.docker.internal:4713
+      DOCKER_CONTAINER: "true"
+      BIRDNET_ASSETS_VERSION: ${BIRDNET_ASSETS_VERSION:-latest}
+      # Force PortAudio to use PulseAudio backend instead of ALSA
+      PA_ALSA_PLUGHW: 0
+      ENABLE_PROFILING: 0
+      UVICORN_RELOAD: 0
+    ports:
+      - "${BIRDNETPI_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+    volumes:
+      - ${BIRDNETPI_DATA_VOLUME:-birdnetpi-data}:/var/lib/birdnetpi
+      # For Home Assistant/bind mount, use:
+      # - /path/to/your/data:/var/lib/birdnetpi
+      - ~/.config/pulse/cookie:/home/birdnetpi/.config/pulse/cookie:ro
+    networks:
+      - birdnetpi-network
+
+volumes:
+  birdnetpi-data:
+    driver: local
+
+networks:
+  birdnetpi-network:
+    driver: bridge
