@@ -288,7 +288,7 @@ After installation:
 
 ## Getting Help
 
-- **Documentation**: Browse the [user documentation](./README.md)
+- **Documentation**: Browse the [user documentation](./index.md)
 - **Issues**: Report problems on [GitHub Issues](https://github.com/mverteuil/BirdNET-Pi/issues)
 - **Community**: Join discussions on GitHub Discussions (coming soon)
 

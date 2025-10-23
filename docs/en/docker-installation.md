@@ -342,39 +342,36 @@ networks:
 
 #### MQTT Integration
 
-Enable automatic Home Assistant discovery via MQTT:
+BirdNET-Pi can publish detection events to MQTT for Home Assistant integration.
 
-1. **Configure MQTT in BirdNET-Pi** (via web interface):
-   - Navigate to **Settings** → **Notifications** → **MQTT**
-   - Enable MQTT
-   - Enter your MQTT broker details:
-     - Broker: `mosquitto` (if using HA's Mosquitto add-on)
-     - Port: `1883`
-     - Username/Password: (your MQTT credentials)
-   - Enable **Home Assistant Discovery**
+**Configuration in BirdNET-Pi** (`birdnetpi.yaml`):
 
-2. **MQTT Topics Published**:
-
-BirdNET-Pi publishes detection events to:
-```
-birdnetpi/detections/[species_name]
+```yaml
+# Enable MQTT publishing
+enable_mqtt: true
+mqtt_broker_host: localhost  # or 'mosquitto' for HA add-on
+mqtt_broker_port: 1883
+mqtt_username: "your_username"
+mqtt_password: "your_password"
+mqtt_topic_prefix: birdnet
 ```
 
-Home Assistant discovery topics:
+**MQTT Topics Published**:
+
+BirdNET-Pi publishes to the following topics:
 ```
-homeassistant/sensor/birdnetpi/[sensor_name]/config
+birdnet/detections     # Detection events
+birdnet/status         # System status
+birdnet/health         # Health checks
+birdnet/gps            # GPS updates (if enabled)
+birdnet/system         # System events
 ```
 
-3. **Automatic Entities Created**:
-
-Home Assistant will automatically create:
-- **Sensors**: Recent detections, detection counts, top species
-- **Binary Sensors**: Detection activity status
-- **Attributes**: Confidence, timestamp, audio file path
+**Note**: Home Assistant auto-discovery is not currently implemented. You'll need to manually configure MQTT sensors in Home Assistant (see examples below).
 
 #### Example Home Assistant Configuration
 
-Once MQTT discovery is enabled, entities appear automatically. You can also create manual sensors:
+Configure sensors manually in Home Assistant's `configuration.yaml`:
 
 ```yaml
 # configuration.yaml
@@ -389,34 +386,34 @@ sensor:
 
   - platform: mqtt
     name: "Latest Bird Detection"
-    state_topic: "birdnetpi/detections/latest"
+    state_topic: "birdnet/detections"
     value_template: "{{ value_json.common_name }}"
-    json_attributes_topic: "birdnetpi/detections/latest"
+    json_attributes_topic: "birdnet/detections"
 ```
 
 #### Example Automations
 
-**Notify on rare bird detection**:
+**Notify on high-confidence bird detection**:
 
 ```yaml
 automation:
-  - alias: "Rare Bird Alert"
+  - alias: "High Confidence Bird Alert"
     trigger:
       - platform: mqtt
-        topic: "birdnetpi/detections/+"
+        topic: "birdnet/detections"
     condition:
       - condition: template
         value_template: "{{ trigger.payload_json.confidence > 0.90 }}"
     action:
       - service: notify.mobile_app
         data:
-          title: "Rare Bird Detected!"
+          title: "High Confidence Bird Detected!"
           message: >
             {{ trigger.payload_json.common_name }} detected
             with {{ (trigger.payload_json.confidence * 100) | round(1) }}% confidence
 ```
 
-**Daily detection summary**:
+**Daily detection summary using REST API**:
 
 ```yaml
 automation:
@@ -429,8 +426,7 @@ automation:
         data:
           title: "Today's Bird Activity"
           message: >
-            {{ state_attr('sensor.birdnetpi_daily_detections', 'total_species') }}
-            species detected today
+            Check http://birdnet-pi:8000 for today's detections
 ```
 
 #### Data Persistence
@@ -444,32 +440,23 @@ Your detection history and settings are preserved automatically.
 
 #### Lovelace Dashboard Card
 
-Create a custom card to display recent detections:
+Create a custom card to display recent detections (using the manual sensors configured above):
 
 ```yaml
 type: entities
 title: Recent Bird Detections
 entities:
-  - entity: sensor.birdnetpi_recent_detections
-  - type: attribute
-    entity: sensor.birdnetpi_recent_detections
-    attribute: detections
-    name: Latest Detections
+  - entity: sensor.birdnet_pi_recent_detections
+  - entity: sensor.latest_bird_detection
 ```
 
-Or use a picture-elements card for a more visual display:
+Or use an iframe card to embed the BirdNET-Pi web interface:
 
 ```yaml
-type: picture-elements
-image: /local/birdnetpi-background.jpg
-elements:
-  - type: state-label
-    entity: sensor.latest_bird_detection
-    style:
-      top: 50%
-      left: 50%
-      font-size: 24px
-      color: white
+type: iframe
+url: http://birdnet-pi:8000
+aspect_ratio: 16:9
+title: BirdNET-Pi Live Feed
 ```
 
 #### Network Considerations
@@ -701,7 +688,7 @@ After installation:
 
 ## Getting Help
 
-- **Documentation**: Browse the [user documentation](./README.md)
+- **Documentation**: Browse the [user documentation](./index.md)
 - **Issues**: Report problems on [GitHub Issues](https://github.com/mverteuil/BirdNET-Pi/issues)
 - **Docker Logs**: `docker compose logs -f birdnet-pi`
 - **Community**: Join discussions on GitHub Discussions (coming soon)
