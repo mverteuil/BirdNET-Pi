@@ -142,11 +142,11 @@ jobs:
           uv run install-assets install latest
       - name: Create test volume and populate with cached assets
         run: |
-          docker volume create birdnet-test-data
-          docker run --rm -v birdnet-test-data:/data -v ${{ github.workspace }}/data:/source alpine sh -c "cp -r /source/* /data/ 2>/dev/null || true"
+          docker volume create birdnetpi-test-data
+          docker run --rm -v birdnetpi-test-data:/data -v ${{ github.workspace }}/data:/source alpine sh -c "cp -r /source/* /data/ 2>/dev/null || true"
       - name: Build Docker images
         env:
-          BIRDNET_DATA_VOLUME: birdnet-test-data
+          BIRDNETPI_DATA_VOLUME: birdnetpi-test-data
         run: docker compose build --parallel
       - name: Install minimal dependencies
         run: uv sync

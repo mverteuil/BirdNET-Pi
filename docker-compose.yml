@@ -1,6 +1,6 @@
 # WARNING: NEVER use 'docker compose down -v' as it removes ALL volumes including production data!
-# For E2E tests, use: BIRDNET_DATA_VOLUME=birdnet-test-data docker compose up/down
-# To remove test volume only: docker volume rm birdnet-test-data
+# For E2E tests, use: BIRDNETPI_DATA_VOLUME=birdnetpi-test-data docker compose up/down
+# To remove test volume only: docker volume rm birdnetpi-test-data
 #
 # PROFILING:
 # - Production image (default): Lean image without profiling tools
@@ -31,7 +31,7 @@ services:
     logging:
       driver: json-file
     volumes:
-      - ${BIRDNET_DATA_VOLUME:-birdnet-data}:/var/lib/birdnetpi # Shared data volume
+      - ${BIRDNETPI_DATA_VOLUME:-birdnetpi-data}:/var/lib/birdnetpi # Shared data volume
     networks:
       - birdnetpi-network
 
@@ -66,7 +66,7 @@ services:
     logging:
       driver: json-file
     volumes:
-      - ${BIRDNET_DATA_VOLUME:-birdnet-data}:/var/lib/birdnetpi # Persistent data storage
+      - ${BIRDNETPI_DATA_VOLUME:-birdnetpi-data}:/var/lib/birdnetpi # Persistent data storage
       - ~/.config/pulse/cookie:/home/birdnetpi/.config/pulse/cookie:ro # PulseAudio auth cookie only (read-only)
       - ./src:/opt/birdnetpi/src:ro # Source code bind mount for development
     networks:
@@ -107,16 +107,16 @@ services:
     logging:
       driver: json-file
     volumes:
-      - ${BIRDNET_DATA_VOLUME:-birdnet-data}:/var/lib/birdnetpi # Persistent data storage
+      - ${BIRDNETPI_DATA_VOLUME:-birdnetpi-data}:/var/lib/birdnetpi # Persistent data storage
       - ~/.config/pulse/cookie:/home/birdnetpi/.config/pulse/cookie:ro # PulseAudio auth cookie only (read-only)
       - ./src:/opt/birdnetpi/src:ro # Source code bind mount for development
     networks:
       - birdnetpi-network
 
 volumes:
-  birdnet-data:
+  birdnetpi-data:
     driver: local
-  birdnet-test-data:
+  birdnetpi-test-data:
     driver: local
 
 networks:
