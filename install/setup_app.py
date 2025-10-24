@@ -210,24 +210,52 @@ def install_uv() -> None:
     )
 
 
+def has_waveshare_epaper_hat() -> bool:
+    """Detect if a Waveshare e-paper HAT is connected.
+
+    Waveshare e-paper HATs use SPI interface. We detect them by checking for
+    SPI devices at /dev/spidev*.
+
+    Returns:
+        bool: True if SPI devices are detected (indicating potential e-paper HAT)
+    """
+    try:
+        # Check if /dev/spidev0.0 or /dev/spidev0.1 exists
+        spi_devices = list(Path("/dev").glob("spidev*"))
+        return len(spi_devices) > 0
+    except Exception:
+        return False
+
+
 def install_python_dependencies() -> None:
     """Install Python dependencies with uv.
 
     UV will automatically create the virtual environment at .venv/
-    during the sync operation.
+    during the sync operation. If a Waveshare e-paper HAT is detected,
+    the epaper extras will be installed automatically.
     """
+    # Build uv sync command
+    cmd = [
+        "sudo",
+        "-u",
+        "birdnetpi",
+        "/opt/uv/bin/uv",
+        "sync",
+        "--locked",
+        "--no-dev",
+        "--quiet",
+    ]
+
+    # Auto-detect and install e-paper dependencies if hardware is present
+    if has_waveshare_epaper_hat():
+        log("ℹ", "Waveshare e-paper HAT detected (SPI devices found)")  # noqa: RUF001
+        cmd.extend(["--extra", "epaper"])
+    else:
+        log("ℹ", "No e-paper HAT detected, skipping epaper extras")  # noqa: RUF001
+
     # uv is installed to /opt/uv/bin/uv
     result = subprocess.run(
-        [
-            "sudo",
-            "-u",
-            "birdnetpi",
-            "/opt/uv/bin/uv",
-            "sync",
-            "--locked",
-            "--no-dev",
-            "--quiet",
-        ],
+        cmd,
         cwd="/opt/birdnetpi",
         check=False,
         stdin=subprocess.DEVNULL,
