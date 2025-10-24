@@ -299,16 +299,30 @@ def install_python_dependencies() -> None:
     else:
         log("ℹ", "No e-paper HAT detected, skipping epaper extras")  # noqa: RUF001
 
-    # uv is installed to /opt/uv/bin/uv
-    result = subprocess.run(
-        cmd,
-        cwd="/opt/birdnetpi",
-        check=False,
-        stdin=subprocess.DEVNULL,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
+    # Retry up to 3 times for network failures (GitHub access for waveshare-epd)
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        result = subprocess.run(
+            cmd,
+            cwd="/opt/birdnetpi",
+            check=False,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            break
+
+        # Check if it's a network error
+        if "Could not resolve host" in result.stderr or "failed to fetch" in result.stderr:
+            if attempt < max_retries:
+                log("⚠", f"Network error, retrying ({attempt}/{max_retries})...")
+                import time
+
+                time.sleep(5)  # Wait 5 seconds before retry
+                continue
+
+        # Non-network error or final retry failed
         raise RuntimeError(f"Failed to install Python dependencies: {result.stderr}")
 
 
