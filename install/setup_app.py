@@ -227,8 +227,11 @@ def enable_spi_interface() -> bool:
     try:
         content = boot_config.read_text()
 
-        # Check if SPI is already enabled
-        if "dtparam=spi=on" in content and not content.startswith("#dtparam=spi=on"):
+        # Check if SPI is already enabled (uncommented dtparam=spi=on exists)
+        lines = content.split("\n")
+        spi_enabled = any(line.strip() == "dtparam=spi=on" for line in lines)
+
+        if spi_enabled:
             return False  # Already enabled, no reboot needed
 
         # Enable SPI by uncommenting the line
