@@ -353,14 +353,21 @@ def configure_redis() -> None:
     script_dir = Path(__file__).parent
     repo_root = script_dir.parent
 
-    redis_conf = Path("/etc/redis/redis.conf")
-    redis_conf_backup = Path("/etc/redis/redis.conf.original")
+    redis_conf = "/etc/redis/redis.conf"
+    redis_conf_backup = "/etc/redis/redis.conf.original"
 
     # Backup original redis.conf if it exists and hasn't been backed up yet
-    if redis_conf.exists() and not redis_conf_backup.exists():
+    # Use test -f to check file existence with sudo permissions
+    backup_check = subprocess.run(
+        ["sudo", "test", "-f", redis_conf_backup],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    if backup_check.returncode != 0:  # Backup doesn't exist
         subprocess.run(
-            ["sudo", "cp", str(redis_conf), str(redis_conf_backup)],
-            check=True,
+            ["sudo", "cp", "-n", redis_conf, redis_conf_backup],
+            check=False,  # Don't fail if source doesn't exist
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -368,14 +375,14 @@ def configure_redis() -> None:
 
     # Copy our optimized Redis configuration
     subprocess.run(
-        ["sudo", "cp", str(repo_root / "config_templates" / "redis.conf"), str(redis_conf)],
+        ["sudo", "cp", str(repo_root / "config_templates" / "redis.conf"), redis_conf],
         check=True,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
     subprocess.run(
-        ["sudo", "chown", "redis:redis", str(redis_conf)],
+        ["sudo", "chown", "redis:redis", redis_conf],
         check=True,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
