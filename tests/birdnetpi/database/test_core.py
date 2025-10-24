@@ -83,7 +83,6 @@ async def test_database_operations(
                 mock_session.commit.assert_called_once()
 
 
-@pytest.mark.no_leaks
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "checkpoint_type,should_fail",
