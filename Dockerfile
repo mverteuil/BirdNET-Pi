@@ -158,7 +158,7 @@ FROM runtime AS profiling
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked --no-install-project --group profiling
+    uv sync --locked --group profiling
 
 # ============================================================================
 # Init stage - for permission setup (runs as root)

@@ -204,13 +204,17 @@ class TestEPaperDisplayService:
         }
         health = {"status": "ready", "database": True}
 
-        image = epaper_service_no_hardware._draw_status_screen(stats, health, None, False)
+        black_image, red_image = epaper_service_no_hardware._draw_status_screen(
+            stats, health, None, False, 0
+        )
 
-        assert isinstance(image, Image.Image)
-        assert image.size == (
+        assert isinstance(black_image, Image.Image)
+        assert black_image.size == (
             EPaperDisplayService.DISPLAY_WIDTH,
             EPaperDisplayService.DISPLAY_HEIGHT,
         )
+        # Red image should be None for non-color display or when no animation
+        assert red_image is None or isinstance(red_image, Image.Image)
 
     def test_draw_status_screen_with_detection(self, epaper_service_no_hardware):
         """Should draw status screen with a detection."""
@@ -235,9 +239,12 @@ class TestEPaperDisplayService:
             longitude=-71.0,
         )
 
-        image = epaper_service_no_hardware._draw_status_screen(stats, health, detection, False)
+        black_image, red_image = epaper_service_no_hardware._draw_status_screen(
+            stats, health, detection, False, 0
+        )
 
-        assert isinstance(image, Image.Image)
+        assert isinstance(black_image, Image.Image)
+        assert red_image is None or isinstance(red_image, Image.Image)
 
     def test_draw_status_screen_with_animation(self, epaper_service_no_hardware):
         """Should draw status screen with animation effect."""
@@ -262,19 +269,28 @@ class TestEPaperDisplayService:
             longitude=-71.0,
         )
 
-        image = epaper_service_no_hardware._draw_status_screen(stats, health, detection, True)
+        black_image, red_image = epaper_service_no_hardware._draw_status_screen(
+            stats, health, detection, True, 0
+        )
 
-        assert isinstance(image, Image.Image)
+        assert isinstance(black_image, Image.Image)
+        # With animation on a color display, we should have a red image
+        assert isinstance(red_image, Image.Image)
 
     def test_update_display_simulation_mode(self, epaper_service_no_hardware, path_resolver):
-        """Should save display image to file in simulation mode."""
-        image = epaper_service_no_hardware._create_image()
+        """Should save display image files in simulation mode when in Docker."""
+        black_image = epaper_service_no_hardware._create_image()
+        red_image = epaper_service_no_hardware._create_image()
 
-        epaper_service_no_hardware._update_display(image)
+        # Mock Docker environment check to return True
+        with patch("birdnetpi.display.epaper.SystemUtils.is_docker_environment", return_value=True):
+            epaper_service_no_hardware._update_display(black_image, red_image)
 
-        # Check that file was saved
-        output_path = path_resolver.get_data_dir() / "display_output.png"
-        assert output_path.exists()
+        # Check that files were saved
+        data_dir = path_resolver.get_data_dir()
+        assert (data_dir / "display_output_black.png").exists()
+        assert (data_dir / "display_output_red.png").exists()
+        assert (data_dir / "display_output_comp.png").exists()
 
     @pytest.mark.asyncio
     async def test_check_for_new_detection_first_detection(self, epaper_service_no_hardware):

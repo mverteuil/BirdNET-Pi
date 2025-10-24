@@ -128,8 +128,12 @@ class BirdNETConfig(BaseModel):
 
     # E-paper Display settings (SBC only)
     enable_epaper_display: bool = False  # Enable e-paper HAT display
-    epaper_refresh_interval: int = 5  # Display refresh interval in seconds
-    epaper_display_type: str = "2in13_V4"  # Waveshare display model (2in13_V4 default)
+    epaper_refresh_interval: int = (
+        30  # Display refresh interval in seconds (default 30s to preserve display lifespan)
+    )
+    epaper_display_type: str = (
+        "2in13b_V4"  # Waveshare display model: 2in13_V4 (2-color), 2in13b_V3/V4 (3-color)
+    )
 
     # MQTT Integration settings
     enable_mqtt: bool = False  # Enable MQTT publishing
