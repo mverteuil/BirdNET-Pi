@@ -286,11 +286,11 @@ class TestEPaperDisplayService:
         with patch("birdnetpi.display.epaper.SystemUtils.is_docker_environment", return_value=True):
             epaper_service_no_hardware._update_display(black_image, red_image)
 
-        # Check that files were saved
-        data_dir = path_resolver.get_data_dir()
-        assert (data_dir / "display_output_black.png").exists()
-        assert (data_dir / "display_output_red.png").exists()
-        assert (data_dir / "display_output_comp.png").exists()
+        # Check that files were saved in display-simulator subdirectory
+        simulator_dir = path_resolver.get_display_simulator_dir()
+        assert (simulator_dir / "display_output_black.png").exists()
+        assert (simulator_dir / "display_output_red.png").exists()
+        assert (simulator_dir / "display_output_comp.png").exists()
 
     @pytest.mark.asyncio
     async def test_check_for_new_detection_first_detection(self, epaper_service_no_hardware):

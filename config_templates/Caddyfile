@@ -26,9 +26,9 @@
 		reverse_proxy 127.0.0.1:8888
 	}
 
-	# E-Paper Display Simulator - serve PNG files from data directory
+	# E-Paper Display Simulator - serve PNG files from display-simulator directory
 	handle /display-simulator/* {
-		root * /var/lib/birdnetpi
+		root * /var/lib/birdnetpi/display-simulator
 		uri strip_prefix /display-simulator
 		file_server
 	}

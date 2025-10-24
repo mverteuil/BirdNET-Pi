@@ -413,19 +413,20 @@ class EPaperDisplayService:
             # In simulation mode, only save files if running in Docker
             # On SBC without hardware, skip file writes to avoid excessive disk wear
             if SystemUtils.is_docker_environment():
-                data_dir = self.path_resolver.get_data_dir()
-                black_path = data_dir / "display_output_black.png"
+                simulator_dir = self.path_resolver.get_display_simulator_dir()
+                simulator_dir.mkdir(parents=True, exist_ok=True)
+                black_path = simulator_dir / "display_output_black.png"
                 black_image.save(black_path)
                 logger.debug("Display black layer saved to %s", black_path)
 
                 if red_image:
-                    red_path = data_dir / "display_output_red.png"
+                    red_path = simulator_dir / "display_output_red.png"
                     red_image.save(red_path)
                     logger.debug("Display red layer saved to %s", red_path)
 
                 # Generate composite image showing final display output
                 composite = self._create_composite_image(black_image, red_image)
-                comp_path = data_dir / "display_output_comp.png"
+                comp_path = simulator_dir / "display_output_comp.png"
                 composite.save(comp_path)
                 logger.debug("Display composite saved to %s", comp_path)
             else:
