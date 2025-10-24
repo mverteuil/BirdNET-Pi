@@ -57,7 +57,7 @@ language=en
 
 ## How It Works
 
-1. **Flasher Integration**: When flashing an SD card with BirdNET-Pi, place this file in the boot partition
+1. **Flasher Integration**: When flashing an SD card with BirdNET-Pi, place `birdnetpi_config.txt` in the boot partition
 2. **First Boot**: On first boot, `setup-system` reads this file
 3. **Auto-Configuration**: Values from the file are used instead of prompting
 4. **Fallback**: If the file doesn't exist or values are missing, the system will:
@@ -69,10 +69,10 @@ language=en
 
 The setup system uses this priority order:
 
-1. **GPS Detection** - If GPS hardware is present and gets a fix
-2. **Boot Config File** - Values from `/boot/firmware/birdnetpi_config.txt`
-3. **User Prompts** - Interactive prompts (only in attended installs)
-4. **Defaults** - Fallback defaults if nothing else available
+1. **GPS Detection**: If GPS hardware is present and gets a fix
+2. **Boot Config File**: Values from `/boot/firmware/birdnetpi_config.txt`
+3. **User Prompts**: Interactive prompts (only in attended installs)
+4. **Defaults**: Fallback defaults if nothing else available
 
 ## Example: Headless Installation
 

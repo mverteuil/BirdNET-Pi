@@ -171,3 +171,11 @@ class PathResolver:
         rollback_dir = self.data_dir / "rollback"
         rollback_dir.mkdir(parents=True, exist_ok=True)
         return rollback_dir
+
+    def get_display_simulator_dir(self) -> Path:
+        """Get the directory for e-paper display simulator output files.
+
+        Returns:
+            Path to the display simulator directory where PNG files are saved.
+        """
+        return self.data_dir / "display-simulator"
