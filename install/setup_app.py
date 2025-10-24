@@ -260,6 +260,41 @@ def install_assets() -> None:
         raise RuntimeError(f"Asset installation failed: {result.stderr}")
 
 
+def configure_redis() -> None:
+    """Configure Redis with memory limits optimized for small devices."""
+    script_dir = Path(__file__).parent
+    repo_root = script_dir.parent
+
+    redis_conf = Path("/etc/redis/redis.conf")
+    redis_conf_backup = Path("/etc/redis/redis.conf.original")
+
+    # Backup original redis.conf if it exists and hasn't been backed up yet
+    if redis_conf.exists() and not redis_conf_backup.exists():
+        subprocess.run(
+            ["sudo", "cp", str(redis_conf), str(redis_conf_backup)],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+    # Copy our optimized Redis configuration
+    subprocess.run(
+        ["sudo", "cp", str(repo_root / "config_templates" / "redis.conf"), str(redis_conf)],
+        check=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        ["sudo", "chown", "redis:redis", str(redis_conf)],
+        check=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
 def configure_caddy() -> None:
     """Configure Caddy web server for port 80."""
     script_dir = Path(__file__).parent
@@ -582,9 +617,10 @@ def main() -> None:
 
         # Wave 4: Configuration and services (parallel, long-running tasks at bottom)
         print()
-        log("→", "Starting: web server configuration, systemd services, asset download")
+        log("→", "Starting: web/cache configuration, systemd services, asset download")
         run_parallel(
             [
+                ("Configuring Redis cache server", configure_redis),
                 ("Configuring Caddy web server", configure_caddy),
                 ("Installing systemd services", install_systemd_services),
                 (
@@ -593,7 +629,7 @@ def main() -> None:
                 ),
             ]
         )
-        log("✓", "Completed: web server configuration, systemd services, asset download")
+        log("✓", "Completed: web/cache configuration, systemd services, asset download")
 
         # Wave 4.5: System configuration (sequential, before starting services)
         print()
