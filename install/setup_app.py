@@ -212,79 +212,6 @@ def create_directories() -> None:
     )
 
 
-def install_uv() -> None:
-    """Install uv package manager using official installer.
-
-    Uses the standalone installer which doesn't require pip.
-    Installs to /opt/uv for consistency across installations.
-    UV will automatically create and manage the virtual environment
-    when we run 'uv sync' later.
-    """
-    import pwd
-
-    # Get birdnetpi user's home directory
-    birdnetpi_home = pwd.getpwnam("birdnetpi").pw_dir
-
-    # Create /opt/uv directory
-    subprocess.run(
-        ["sudo", "mkdir", "-p", "/opt/uv"],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    subprocess.run(
-        ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/uv"],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-
-    # Download and run the official uv installer
-    # The installer installs to $HOME/.local/bin by default
-    result = subprocess.run(
-        [
-            "sudo",
-            "-u",
-            "birdnetpi",
-            "sh",
-            "-c",
-            "curl -LsSf https://astral.sh/uv/install.sh | sh",
-        ],
-        check=False,
-        stdin=subprocess.DEVNULL,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Failed to install uv: {result.stderr}")
-
-    # Move uv binary to /opt/uv/bin for consistency
-    subprocess.run(
-        ["sudo", "mkdir", "-p", "/opt/uv/bin"],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    uv_source = f"{birdnetpi_home}/.local/bin/uv"
-    subprocess.run(
-        ["sudo", "mv", uv_source, "/opt/uv/bin/uv"],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    subprocess.run(
-        ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/uv"],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-
-
 def enable_spi_interface() -> bool:
     """Enable SPI interface in Raspberry Pi boot configuration.
 
@@ -349,59 +276,6 @@ def has_waveshare_epaper_hat() -> bool:
         return len(spi_devices) > 0
     except Exception:
         return False
-
-
-def install_python_dependencies() -> None:
-    """Install Python dependencies with uv.
-
-    UV will automatically create the virtual environment at .venv/
-    during the sync operation. If a Waveshare e-paper HAT is detected,
-    the epaper extras will be installed automatically.
-    """
-    # Build uv sync command
-    cmd = [
-        "sudo",
-        "-u",
-        "birdnetpi",
-        "/opt/uv/bin/uv",
-        "sync",
-        "--locked",
-        "--no-dev",
-        "--quiet",
-    ]
-
-    # Auto-detect and install e-paper dependencies if hardware is present
-    if has_waveshare_epaper_hat():
-        log("ℹ", "Waveshare e-paper HAT detected (SPI devices found)")  # noqa: RUF001
-        cmd.extend(["--extra", "epaper"])
-    else:
-        log("ℹ", "No e-paper HAT detected, skipping epaper extras")  # noqa: RUF001
-
-    # Retry up to 3 times for network failures (GitHub access for waveshare-epd)
-    max_retries = 3
-    for attempt in range(1, max_retries + 1):
-        result = subprocess.run(
-            cmd,
-            cwd="/opt/birdnetpi",
-            check=False,
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0:
-            break
-
-        # Check if it's a network error
-        if "Could not resolve host" in result.stderr or "failed to fetch" in result.stderr:
-            if attempt < max_retries:
-                log("⚠", f"Network error, retrying ({attempt}/{max_retries})...")
-                import time
-
-                time.sleep(5)  # Wait 5 seconds before retry
-                continue
-
-        # Non-network error or final retry failed
-        raise RuntimeError(f"Failed to install Python dependencies: {result.stderr}")
 
 
 def install_assets() -> None:
@@ -676,14 +550,22 @@ def install_systemd_services() -> None:
             "exec_start": "/opt/birdnetpi/.venv/bin/update-daemon --mode both",
             "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=update_daemon",
         },
-        {
-            "name": "birdnetpi-epaper-display.service",
-            "description": "BirdNET E-Paper Display",
-            "after": "network-online.target birdnetpi-fastapi.service",
-            "exec_start": "/opt/birdnetpi/.venv/bin/epaper-display-daemon",
-            "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=epaper_display",
-        },
     ]
+
+    # Conditionally add epaper display service if hardware detected
+    if has_waveshare_epaper_hat():
+        log("ℹ", "Installing epaper display service (hardware detected)")  # noqa: RUF001
+        services.append(
+            {
+                "name": "birdnetpi-epaper-display.service",
+                "description": "BirdNET E-Paper Display",
+                "after": "network-online.target birdnetpi-fastapi.service",
+                "exec_start": "/opt/birdnetpi/.venv/bin/epaper-display-daemon",
+                "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=epaper_display",
+            }
+        )
+    else:
+        log("ℹ", "Skipping epaper display service (no hardware detected)")  # noqa: RUF001
 
     for service_config in services:
         service_name = service_config["name"]
@@ -902,19 +784,8 @@ def main() -> None:
         )
         log("✓", "Completed: data directories, system packages")
 
-        # Wave 2: Install uv (sequential, needs network after apt operations complete)
-        print()
-        log("→", "Installing uv package manager")
-        install_uv()
-        log("✓", "Installing uv package manager")
-
-        # Wave 3: Python dependencies (sequential, needs uv)
-        print()
-        log("→", "Installing Python dependencies")
-        install_python_dependencies()
-        log("✓", "Installing Python dependencies")
-
-        # Wave 4: Configuration and services (parallel, long-running tasks at bottom)
+        # Wave 2: Configuration and services (parallel, long-running tasks at bottom)
+        # Note: uv and Python dependencies already installed by install.sh
         print()
         log("→", "Starting: web/cache configuration, systemd services, asset download")
         run_parallel(
