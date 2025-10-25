@@ -9,8 +9,19 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
+from typing import TypedDict
 
 from jinja2 import Template
+
+
+class DeviceSpecs(TypedDict):
+    """Device specifications returned by detect_device_specs()."""
+
+    device_type: str
+    total_ram_mb: int
+    maxmemory: str
+    memory_comment: str
+
 
 # Thread-safe logging
 _log_lock = threading.Lock()
@@ -71,15 +82,15 @@ def get_ip_address() -> str:
         return "unknown"
 
 
-def detect_device_specs() -> dict[str, str | int]:
+def detect_device_specs() -> DeviceSpecs:
     """Detect device type and memory specifications.
 
     Returns:
-        dict: Device specifications including:
-            - device_type: Detected device name or 'Unknown'
-            - total_ram_mb: Total RAM in MB
-            - maxmemory: Redis memory limit (e.g., '32mb', '64mb', '128mb')
-            - memory_comment: Explanation for the memory limit
+        DeviceSpecs: Device specifications including:
+            - device_type: Detected device name or 'Unknown' (str)
+            - total_ram_mb: Total RAM in MB (int)
+            - maxmemory: Redis memory limit (e.g., '32mb', '64mb', '128mb') (str)
+            - memory_comment: Explanation for the memory limit (str)
     """
     # Get total RAM
     try:
@@ -533,6 +544,54 @@ def configure_caddy() -> None:
     )
 
 
+def disable_unnecessary_services(total_ram_mb: int) -> None:
+    """Disable unnecessary system services on low-memory devices.
+
+    Args:
+        total_ram_mb: Total RAM in MB from device detection
+    """
+    # Only disable services on very low-memory devices (512MB or less)
+    if total_ram_mb > 512:
+        return
+
+    # Services safe to disable on headless Pi Zero 2W
+    # Saves ~12MB RAM total
+    services_to_disable = [
+        "ModemManager",  # ~3.3MB - cellular modem support not needed
+        "bluetooth",  # ~1.9MB - Bluetooth not needed for BirdNET-Pi
+        "triggerhappy",  # ~1.6MB - hotkey daemon not needed headless
+        "avahi-daemon",  # ~2.8MB - mDNS/Bonjour nice-to-have but not essential
+    ]
+
+    log(
+        "ℹ",  # noqa: RUF001
+        f"Low memory detected ({total_ram_mb}MB) - disabling unnecessary services",
+    )
+
+    for service in services_to_disable:
+        try:
+            # Check if service exists before trying to disable
+            result = subprocess.run(
+                ["systemctl", "is-enabled", service],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            # Only disable if service exists and is enabled
+            if result.returncode == 0:
+                subprocess.run(
+                    ["sudo", "systemctl", "disable", "--now", service],
+                    check=True,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                log("✓", f"Disabled {service}")
+        except Exception as e:
+            # Don't fail installation if we can't disable a service
+            log("⚠", f"Could not disable {service}: {e}")
+
+
 def install_systemd_services() -> None:
     """Install and enable systemd services without starting them."""
     systemd_dir = "/etc/systemd/system/"
@@ -845,6 +904,13 @@ def main() -> None:
         log("✓", "Completed: web/cache configuration, systemd services, asset download")
 
         # Wave 4.5: System configuration (sequential, before starting services)
+        print()
+        log("→", "Optimizing system for device")
+        # Disable unnecessary services on low-memory devices
+        device_specs = detect_device_specs()
+        disable_unnecessary_services(device_specs["total_ram_mb"])
+        log("✓", "Optimizing system for device")
+
         print()
         log("→", "Configuring system settings")
         setup_cmd = [
