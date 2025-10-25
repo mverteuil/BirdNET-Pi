@@ -29,6 +29,38 @@ echo ""
 echo "Data will install to: /var/lib/birdnetpi"
 echo ""
 
+# Enable SPI interface early (required for e-paper HAT detection)
+# Must reboot immediately for SPI devices to appear at /dev/spidev*
+BOOT_CONFIG="/boot/firmware/config.txt"
+if [ -f "$BOOT_CONFIG" ]; then
+    echo "Checking SPI interface..."
+    if grep -q "^dtparam=spi=on" "$BOOT_CONFIG"; then
+        echo "SPI already enabled"
+    else
+        echo "Enabling SPI interface..."
+        # Uncomment if commented, or add if missing
+        if grep -q "^#dtparam=spi=on" "$BOOT_CONFIG"; then
+            sudo sed -i 's/^#dtparam=spi=on/dtparam=spi=on/' "$BOOT_CONFIG"
+        else
+            echo "dtparam=spi=on" | sudo tee -a "$BOOT_CONFIG" > /dev/null
+        fi
+        echo ""
+        echo "========================================"
+        echo "SPI interface enabled!"
+        echo "System must reboot for changes to take effect."
+        echo ""
+        echo "After reboot, re-run this installer:"
+        echo "  curl -fsSL <url> | bash"
+        echo "or"
+        echo "  bash install.sh"
+        echo "========================================"
+        echo ""
+        read -r -p "Press Enter to reboot now, or Ctrl+C to cancel..."
+        sudo reboot
+        exit 0
+    fi
+fi
+
 # Bootstrap the environment
 echo "Installing prerequisites..."
 sudo apt-get update
@@ -84,7 +116,7 @@ fi
 # Install Python dependencies (makes Jinja2 available for setup_app.py)
 echo "Installing Python dependencies..."
 cd "$INSTALL_DIR"
-UV_CMD="sudo -u birdnetpi /opt/uv/bin/uv sync --locked --no-dev --quiet"
+UV_CMD="sudo -u birdnetpi /opt/uv/uv sync --locked --no-dev --quiet"
 if [ -n "$EPAPER_EXTRAS" ]; then
     UV_CMD="$UV_CMD $EPAPER_EXTRAS"
 fi
@@ -93,4 +125,4 @@ eval "$UV_CMD"
 # Execute the main setup script with uv run (dependencies now available)
 echo ""
 echo "Starting installation..."
-/opt/uv/bin/uv run python "$INSTALL_DIR/install/setup_app.py"
+/opt/uv/uv run python "$INSTALL_DIR/install/setup_app.py"

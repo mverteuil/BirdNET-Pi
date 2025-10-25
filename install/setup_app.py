@@ -212,55 +212,6 @@ def create_directories() -> None:
     )
 
 
-def enable_spi_interface() -> bool:
-    """Enable SPI interface in Raspberry Pi boot configuration.
-
-    Waveshare e-paper HATs require SPI to be enabled. This function checks if
-    SPI is enabled and enables it if needed.
-
-    Returns:
-        bool: True if a reboot is required to apply changes
-    """
-    boot_config = Path("/boot/firmware/config.txt")
-    if not boot_config.exists():
-        # Not a Raspberry Pi or config not found
-        return False
-
-    try:
-        content = boot_config.read_text()
-
-        # Check if SPI is already enabled (uncommented dtparam=spi=on exists)
-        lines = content.split("\n")
-        spi_enabled = any(line.strip() == "dtparam=spi=on" for line in lines)
-
-        if spi_enabled:
-            return False  # Already enabled, no reboot needed
-
-        # Enable SPI by uncommenting the line
-        updated_content = content.replace("#dtparam=spi=on", "dtparam=spi=on")
-
-        # If the line doesn't exist at all, add it
-        if "dtparam=spi=on" not in updated_content:
-            updated_content += "\n# Enable SPI for e-paper HAT\ndtparam=spi=on\n"
-
-        # Write the updated config
-        subprocess.run(
-            ["sudo", "tee", str(boot_config)],
-            input=updated_content,
-            text=True,
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-
-        log("✓", "SPI interface enabled in boot config (reboot required)")
-        return True  # Reboot required
-
-    except Exception as e:
-        log("✗", f"Failed to enable SPI: {e}")
-        return False
-
-
 def has_waveshare_epaper_hat() -> bool:
     """Detect if a Waveshare e-paper HAT is connected.
 
@@ -746,31 +697,8 @@ def main() -> None:
     print("=" * 60)
     print()
 
-    # Check and enable SPI if needed (must be before any hardware detection)
-    print()
-    log("→", "Checking SPI interface for e-paper HAT support")
-    needs_reboot = enable_spi_interface()
-    if needs_reboot:
-        print()
-        print("=" * 60)
-        print("REBOOT REQUIRED")
-        print("=" * 60)
-        print()
-        print("SPI interface has been enabled for e-paper HAT support.")
-        print("The system needs to reboot to apply this change.")
-        print()
-        print("After reboot, please run the installer again:")
-        print("  cd /opt/birdnetpi && sudo -u birdnetpi .venv/bin/python install/setup_app.py")
-        print()
-        print("=" * 60)
-        print()
-        response = input("Reboot now? (y/n): ").strip().lower()
-        if response == "y":
-            subprocess.run(["sudo", "reboot"], check=True)
-        else:
-            print("Please reboot manually and re-run the installer.")
-            sys.exit(0)
-    log("✓", "SPI interface check complete")
+    # Note: SPI enablement is now handled by install.sh before this script runs
+    # Hardware detection (epaper HAT) will work correctly if SPI was enabled
 
     try:
         # Wave 1: System setup (parallel - apt-update already done in install.sh)
