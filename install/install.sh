@@ -113,14 +113,37 @@ else
     echo "No e-paper HAT detected, skipping epaper extras"
 fi
 
-# Install Python dependencies (makes Jinja2 available for setup_app.py)
+# Install Python dependencies with retry mechanism (for network issues)
 echo "Installing Python dependencies..."
 cd "$INSTALL_DIR"
 UV_CMD="sudo -u birdnetpi /opt/uv/uv sync --locked --no-dev --quiet"
 if [ -n "$EPAPER_EXTRAS" ]; then
     UV_CMD="$UV_CMD $EPAPER_EXTRAS"
 fi
-eval "$UV_CMD"
+
+MAX_RETRIES=3
+RETRY_COUNT=0
+RETRY_DELAY=5
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if eval "$UV_CMD"; then
+        echo "Python dependencies installed successfully"
+        break
+    else
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+            echo "Failed to install dependencies (attempt $RETRY_COUNT/$MAX_RETRIES)"
+            echo "Waiting $RETRY_DELAY seconds before retry..."
+            sleep $RETRY_DELAY
+            # Increase delay for next retry (exponential backoff)
+            RETRY_DELAY=$((RETRY_DELAY * 2))
+        else
+            echo "ERROR: Failed to install Python dependencies after $MAX_RETRIES attempts"
+            echo "This usually indicates a network issue. Please check your internet connection and try again."
+            exit 1
+        fi
+    fi
+done
 
 # Execute the main setup script with uv run (dependencies now available)
 echo ""
