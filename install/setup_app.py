@@ -545,7 +545,7 @@ def configure_caddy() -> None:
 
 
 def disable_unnecessary_services(total_ram_mb: int) -> None:
-    """Disable unnecessary system services on low-memory devices.
+    """Disable unnecessary system services and swap on low-memory devices.
 
     Args:
         total_ram_mb: Total RAM in MB from device detection
@@ -565,8 +565,35 @@ def disable_unnecessary_services(total_ram_mb: int) -> None:
 
     log(
         "ℹ",  # noqa: RUF001
-        f"Low memory detected ({total_ram_mb}MB) - disabling unnecessary services",
+        f"Low memory detected ({total_ram_mb}MB) - optimizing system",
     )
+
+    # Disable swap to prevent SD card wear and thrashing
+    try:
+        subprocess.run(
+            ["sudo", "dphys-swapfile", "swapoff"],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["sudo", "dphys-swapfile", "uninstall"],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["sudo", "systemctl", "disable", "dphys-swapfile"],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        log("✓", "Disabled swap (prevents SD card wear)")
+    except Exception as e:
+        log("⚠", f"Could not disable swap: {e}")
 
     for service in services_to_disable:
         try:
