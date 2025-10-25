@@ -7,6 +7,8 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from birdnetpi.releases.registry_service import RegistryService
+
 if TYPE_CHECKING:
     from birdnetpi.config import BirdNETConfig
     from birdnetpi.system.path_resolver import PathResolver
@@ -26,68 +28,96 @@ class RegionPackStatusService:
         """
         self.path_resolver = path_resolver
         self.config = config
+        self.registry_service = RegistryService(path_resolver)
 
     def check_status(self) -> dict[str, object]:
         """Check region pack status.
 
         Region packs are auto-selected based on latitude/longitude.
-        This checks if ANY pack exists and if location is set.
+        This checks if the correct pack exists for the configured location.
 
         Returns:
             Dictionary with status information:
-            - has_pack: Whether any region pack exists
-            - pack_count: Number of available packs
+            - has_pack: Whether any region pack exists locally
+            - pack_count: Number of available local packs
             - location_set: Whether lat/lon coordinates are configured
+            - correct_pack_installed: Whether correct pack for location is installed
+            - recommended_pack: Region ID of recommended pack (if location set)
             - needs_attention: Whether user should take action
             - message: Human-readable status message
         """
-        # Check if location is configured (not default)
-        location_set = not (self.config.latitude == 0.0 and self.config.longitude == 0.0)
+        # Check if location is configured
+        lat = self.config.latitude
+        lon = self.config.longitude
+        location_set = not (lat == 0.0 and lon == 0.0)
 
-        # Get list of available packs
+        # Get list of locally available packs
         available_packs = self.list_available_packs()
         pack_count = len(available_packs)
         has_pack = pack_count > 0
 
-        # If no packs available
-        if not has_pack:
-            if location_set:
-                return {
-                    "has_pack": False,
-                    "pack_count": 0,
-                    "location_set": True,
-                    "needs_attention": True,
-                    "message": "No region pack installed for your location. "
-                    "Visit Updates to download a region pack for your coordinates.",
-                }
-            else:
-                msg = "Set your location in Settings to enable regional species filtering."
-                return {
-                    "has_pack": False,
-                    "pack_count": 0,
-                    "location_set": False,
-                    "needs_attention": True,
-                    "message": msg,
-                }
+        # If location is set, find the recommended pack
+        recommended_pack = None
+        correct_pack_installed = False
 
-        # Packs available
         if location_set:
+            try:
+                region_info = self.registry_service.find_pack_for_coordinates(lat, lon)
+                if region_info:
+                    recommended_pack = region_info.region_id
+                    # Check if we have the correct pack locally
+                    recommended_file = f"{region_info.region_id}.db"
+                    correct_pack_installed = any(
+                        p.name == recommended_file for p in available_packs
+                    )
+            except Exception as e:
+                logger.warning("Failed to check registry for location (%s, %s): %s", lat, lon, e)
+
+        # Build status response
+        if not location_set:
+            return {
+                "has_pack": has_pack,
+                "pack_count": pack_count,
+                "location_set": False,
+                "correct_pack_installed": False,
+                "recommended_pack": None,
+                "needs_attention": True,
+                "message": "Set your location in Settings to enable regional species filtering.",
+            }
+
+        if not recommended_pack:
+            return {
+                "has_pack": has_pack,
+                "pack_count": pack_count,
+                "location_set": True,
+                "correct_pack_installed": False,
+                "recommended_pack": None,
+                "needs_attention": True,
+                "message": f"No region pack available for coordinates ({lat}, {lon}). "
+                "This location may not be covered yet.",
+            }
+
+        if correct_pack_installed:
             return {
                 "has_pack": True,
                 "pack_count": pack_count,
                 "location_set": True,
+                "correct_pack_installed": True,
+                "recommended_pack": recommended_pack,
                 "needs_attention": False,
                 "message": None,
             }
-        else:
-            return {
-                "has_pack": True,
-                "pack_count": pack_count,
-                "location_set": False,
-                "needs_attention": True,
-                "message": "Region pack available but location not set. "
-                "Set your location for accurate regional filtering.",
-            }
+
+        # Recommended pack not installed
+        return {
+            "has_pack": has_pack,
+            "pack_count": pack_count,
+            "location_set": True,
+            "correct_pack_installed": False,
+            "recommended_pack": recommended_pack,
+            "needs_attention": True,
+            "message": f"Download recommended pack '{recommended_pack}' for your location.",
+        }
 
     def _extract_region_from_pack_name(self, pack_name: str) -> str | None:
         """Extract region identifier from pack name.
