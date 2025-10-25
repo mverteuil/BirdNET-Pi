@@ -10,6 +10,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
+from jinja2 import Template
+
 # Thread-safe logging
 _log_lock = threading.Lock()
 
@@ -67,6 +69,68 @@ def get_ip_address() -> str:
         return ip
     except Exception:
         return "unknown"
+
+
+def detect_device_specs() -> dict[str, str | int]:
+    """Detect device type and memory specifications.
+
+    Returns:
+        dict: Device specifications including:
+            - device_type: Detected device name or 'Unknown'
+            - total_ram_mb: Total RAM in MB
+            - maxmemory: Redis memory limit (e.g., '32mb', '64mb', '128mb')
+            - memory_comment: Explanation for the memory limit
+    """
+    # Get total RAM
+    try:
+        meminfo = Path("/proc/meminfo").read_text()
+        for line in meminfo.split("\n"):
+            if line.startswith("MemTotal:"):
+                total_kb = int(line.split()[1])
+                total_mb = total_kb // 1024
+                break
+        else:
+            total_mb = 512  # Default fallback
+    except Exception:
+        total_mb = 512  # Default fallback
+
+    # Detect device type
+    device_type = "Unknown"
+    try:
+        model_info = Path("/proc/device-tree/model").read_text().strip("\x00")
+        device_type = model_info
+    except Exception:
+        pass
+
+    # Determine Redis memory limits based on total RAM
+    # Leave sufficient room for:
+    # - System (kernel, system services): ~100-150MB
+    # - Python daemons (audio/analysis/web): ~150-200MB
+    # - Buffer for peaks and filesystem cache: ~100MB
+    if total_mb <= 512:
+        # Pi Zero 2W or similar: 512MB total
+        # Very tight - minimal Redis, consider display-only mode
+        maxmemory = "32mb"
+        memory_comment = "Minimal limit for 512MB devices (display-only recommended)"
+    elif total_mb <= 1024:
+        # Pi 3B or similar: 1GB total
+        maxmemory = "64mb"
+        memory_comment = "Conservative limit for 1GB devices"
+    elif total_mb <= 2048:
+        # Pi 4B 2GB
+        maxmemory = "128mb"
+        memory_comment = "Moderate limit for 2GB devices"
+    else:
+        # Pi 4B 4GB+ or Pi 5
+        maxmemory = "256mb"
+        memory_comment = "Standard limit for 4GB+ devices"
+
+    return {
+        "device_type": device_type,
+        "total_ram_mb": total_mb,
+        "maxmemory": maxmemory,
+        "memory_comment": memory_comment,
+    }
 
 
 def install_system_packages() -> None:
@@ -352,7 +416,7 @@ def install_assets() -> None:
 
 
 def configure_redis() -> None:
-    """Configure Redis with memory limits optimized for small devices."""
+    """Configure Redis with memory limits optimized for device specs."""
     script_dir = Path(__file__).parent
     repo_root = script_dir.parent
 
@@ -376,21 +440,46 @@ def configure_redis() -> None:
             stderr=subprocess.DEVNULL,
         )
 
-    # Copy our optimized Redis configuration
-    subprocess.run(
-        ["sudo", "cp", str(repo_root / "config_templates" / "redis.conf"), redis_conf],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+    # Detect device specifications
+    device_specs = detect_device_specs()
+    log(
+        "ℹ",  # noqa: RUF001
+        f"Detected: {device_specs['device_type']} ({device_specs['total_ram_mb']}MB RAM)",
     )
-    subprocess.run(
-        ["sudo", "chown", "redis:redis", redis_conf],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    log("ℹ", f"Redis memory limit: {device_specs['maxmemory']}")  # noqa: RUF001
+
+    # Render Redis configuration from template
+    template_path = repo_root / "config_templates" / "redis.conf.j2"
+    template_content = template_path.read_text()
+    template = Template(template_content)
+    rendered_config = template.render(**device_specs)
+
+    # Write rendered configuration to temporary file
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".conf") as tmp:
+        tmp.write(rendered_config)
+        tmp_path = tmp.name
+
+    try:
+        # Copy rendered config to system location
+        subprocess.run(
+            ["sudo", "cp", tmp_path, redis_conf],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["sudo", "chown", "redis:redis", redis_conf],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    finally:
+        # Clean up temporary file
+        Path(tmp_path).unlink(missing_ok=True)
 
 
 def configure_caddy() -> None:
