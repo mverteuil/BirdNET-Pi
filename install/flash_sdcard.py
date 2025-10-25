@@ -117,29 +117,139 @@ PI_IMAGES = {
         "url": "https://downloads.raspberrypi.org/raspios_lite_arm64/images/raspios_lite_arm64-2024-07-04/2024-07-04-raspios-bookworm-arm64-lite.img.xz",
         "sha256": "3e8d1d7166aa832aded24e90484d83f4e8ad594b5a33bb4a9a1ff3ac0ac84d92",
     },
+    "Le Potato": {
+        # LibreComputer AML-S905X-CC - uses same arm64 image as Pi, requires portability script
+        "url": "https://downloads.raspberrypi.org/raspios_lite_arm64/images/raspios_lite_arm64-2024-07-04/2024-07-04-raspios-bookworm-arm64-lite.img.xz",
+        "sha256": "3e8d1d7166aa832aded24e90484d83f4e8ad594b5a33bb4a9a1ff3ac0ac84d92",
+        "requires_portability": True,
+    },
 }
 
 CONFIG_DIR = Path.home() / ".config" / "birdnetpi"
-CONFIG_FILE = CONFIG_DIR / "image_options.json"
+PROFILES_DIR = CONFIG_DIR / "profiles"
 
 
-def load_saved_config() -> dict[str, Any] | None:
-    """Load saved configuration from ~/.config/birdnetpi/image_options.json."""
-    if CONFIG_FILE.exists():
+def list_profiles() -> list[dict[str, Any]]:
+    """List all saved profiles with metadata.
+
+    Returns:
+        List of profile dicts with 'name', 'path', and 'config' keys
+    """
+    if not PROFILES_DIR.exists():
+        return []
+
+    profiles = []
+    for profile_file in sorted(PROFILES_DIR.glob("*.json")):
         try:
-            with open(CONFIG_FILE) as f:
+            with open(profile_file) as f:
+                config = json.load(f)
+                profiles.append(
+                    {
+                        "name": profile_file.stem,
+                        "path": profile_file,
+                        "config": config,
+                    }
+                )
+        except Exception as e:
+            console.print(
+                f"[yellow]Warning: Could not load profile {profile_file.name}: {e}[/yellow]"
+            )
+
+    return profiles
+
+
+def load_profile(profile_name: str) -> dict[str, Any] | None:
+    """Load a specific profile by name.
+
+    Args:
+        profile_name: Name of the profile to load
+
+    Returns:
+        Profile configuration dict or None if not found
+    """
+    profile_path = PROFILES_DIR / f"{profile_name}.json"
+    if profile_path.exists():
+        try:
+            with open(profile_path) as f:
                 return json.load(f)
         except Exception as e:
-            console.print(f"[yellow]Warning: Could not load saved config: {e}[/yellow]")
+            console.print(f"[yellow]Warning: Could not load profile {profile_name}: {e}[/yellow]")
     return None
 
 
-def save_config(config: dict[str, Any]) -> None:
-    """Save configuration to ~/.config/birdnetpi/image_options.json."""
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    with open(CONFIG_FILE, "w") as f:
+def save_profile(profile_name: str, config: dict[str, Any]) -> None:
+    """Save configuration as a named profile.
+
+    Args:
+        profile_name: Name for the profile
+        config: Configuration dict to save
+    """
+    PROFILES_DIR.mkdir(parents=True, exist_ok=True)
+    profile_path = PROFILES_DIR / f"{profile_name}.json"
+    with open(profile_path, "w") as f:
         json.dump(config, f, indent=2)
-    console.print(f"[green]Configuration saved to {CONFIG_FILE}[/green]")
+    console.print(f"[green]Profile '{profile_name}' saved to {profile_path}[/green]")
+
+
+def select_profile() -> tuple[dict[str, Any] | None, str | None, bool]:
+    """Display available profiles and let user select one (supports 0-9).
+
+    Returns:
+        Tuple of (selected profile config or None, profile name or None, should_edit flag)
+    """
+    profiles = list_profiles()
+
+    if not profiles:
+        return None, None, False
+
+    # Limit to first 10 profiles (0-9)
+    profiles = profiles[:10]
+
+    console.print()
+    console.print("[bold cyan]Saved Profiles:[/bold cyan]")
+    table = Table(show_header=True, header_style="bold cyan")
+    table.add_column("Key", style="dim")
+    table.add_column("Profile Name", style="green")
+    table.add_column("Hostname", justify="left")
+    table.add_column("WiFi SSID", justify="left")
+
+    for idx, profile in enumerate(profiles):
+        config = profile["config"]
+        hostname = config.get("hostname", "N/A")
+        wifi_ssid = config.get("wifi_ssid", "Not configured")
+        table.add_row(str(idx), profile["name"], hostname, wifi_ssid)
+
+    console.print(table)
+    console.print()
+
+    choices = [str(i) for i in range(len(profiles))] + ["n"]
+    choice = Prompt.ask(
+        "[bold]Select profile (0-9) or 'n' for new configuration[/bold]",
+        choices=choices,
+        default="n",
+    )
+
+    if choice == "n":
+        return None, None, False
+
+    selected_profile = profiles[int(choice)]
+    profile_name = selected_profile["name"]
+    console.print(f"[green]Selected profile: {profile_name}[/green]")
+
+    # Ask if user wants to use as-is or edit
+    action = Prompt.ask(
+        "[bold]Use profile as-is or edit/duplicate?[/bold]",
+        choices=["use", "edit"],
+        default="use",
+    )
+
+    should_edit = action == "edit"
+    if should_edit:
+        console.print(
+            "[cyan]You can now edit the configuration (press Enter to keep existing values)[/cyan]"
+        )
+
+    return selected_profile["config"], profile_name, should_edit
 
 
 def parse_size_to_gb(size_str: str) -> float | None:
@@ -278,12 +388,13 @@ def select_device() -> str:
 
 
 def select_pi_version() -> str:
-    """Prompt user to select Raspberry Pi version."""
+    """Prompt user to select device model."""
     console.print()
-    console.print("[bold cyan]Select Raspberry Pi Version:[/bold cyan]")
+    console.print("[bold cyan]Select Device Model:[/bold cyan]")
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("Index", style="dim")
     table.add_column("Model", style="green")
+    table.add_column("Notes", style="dim")
 
     # Map version numbers to model names for intuitive selection
     version_map = {
@@ -291,18 +402,26 @@ def select_pi_version() -> str:
         "4": "Pi 4",
         "3": "Pi 3",
         "0": "Pi Zero 2 W",
+        "L": "Le Potato",
     }
 
-    # Display in ascending order (0, 3, 4, 5)
-    for version in ["0", "3", "4", "5"]:
-        model = version_map[version]
-        table.add_row(version, model)
+    # Display in order (0, 3, 4, 5, L)
+    display_order = [
+        ("0", "Pi Zero 2 W", ""),
+        ("3", "Pi 3", ""),
+        ("4", "Pi 4", ""),
+        ("5", "Pi 5", ""),
+        ("L", "Le Potato", "AML-S905X-CC"),
+    ]
+
+    for version, model, notes in display_order:
+        table.add_row(version, model, notes)
 
     console.print(table)
     console.print()
 
     choice = Prompt.ask(
-        "[bold]Select Raspberry Pi model[/bold]",
+        "[bold]Select device model[/bold]",
         choices=list(version_map.keys()),
     )
 
@@ -345,8 +464,16 @@ def download_image(pi_version: str, download_dir: Path) -> Path:
     return filepath
 
 
-def get_config_from_prompts(saved_config: dict[str, Any] | None) -> dict[str, Any]:  # noqa: C901
-    """Prompt user for configuration options."""
+def get_config_from_prompts(  # noqa: C901
+    saved_config: dict[str, Any] | None,
+    edit_mode: bool = False,
+) -> dict[str, Any]:
+    """Prompt user for configuration options.
+
+    Args:
+        saved_config: Previously saved configuration to use as defaults
+        edit_mode: If True, show prompts with defaults; if False, auto-use saved values
+    """
     config: dict[str, Any] = {}
 
     console.print()
@@ -354,64 +481,88 @@ def get_config_from_prompts(saved_config: dict[str, Any] | None) -> dict[str, An
     console.print()
 
     # WiFi settings
-    if saved_config and "enable_wifi" in saved_config:
+    if saved_config and "enable_wifi" in saved_config and not edit_mode:
         config["enable_wifi"] = saved_config["enable_wifi"]
         console.print(f"[dim]Using saved WiFi enabled: {config['enable_wifi']}[/dim]")
     else:
-        config["enable_wifi"] = Confirm.ask("Enable WiFi?", default=False)
+        default_wifi = saved_config.get("enable_wifi", False) if saved_config else False
+        config["enable_wifi"] = Confirm.ask("Enable WiFi?", default=default_wifi)
 
     if config["enable_wifi"]:
-        if saved_config and "wifi_ssid" in saved_config:
+        if saved_config and "wifi_ssid" in saved_config and not edit_mode:
             config["wifi_ssid"] = saved_config["wifi_ssid"]
             console.print(f"[dim]Using saved WiFi SSID: {config['wifi_ssid']}[/dim]")
         else:
-            config["wifi_ssid"] = Prompt.ask("WiFi SSID")
+            default_ssid = saved_config.get("wifi_ssid", "") if saved_config else ""
+            config["wifi_ssid"] = Prompt.ask("WiFi SSID", default=default_ssid or "")
 
-        if saved_config and "wifi_auth" in saved_config:
+        if saved_config and "wifi_auth" in saved_config and not edit_mode:
             config["wifi_auth"] = saved_config["wifi_auth"]
             console.print(f"[dim]Using saved WiFi Auth: {config['wifi_auth']}[/dim]")
         else:
+            default_auth = saved_config.get("wifi_auth", "WPA2") if saved_config else "WPA2"
             config["wifi_auth"] = Prompt.ask(
-                "WiFi Auth Type", choices=["WPA", "WPA2", "WPA3"], default="WPA2"
+                "WiFi Auth Type", choices=["WPA", "WPA2", "WPA3"], default=default_auth
             )
 
-        if saved_config and "wifi_password" in saved_config:
+        if saved_config and "wifi_password" in saved_config and not edit_mode:
             config["wifi_password"] = saved_config["wifi_password"]
             console.print("[dim]Using saved WiFi password[/dim]")
         else:
-            config["wifi_password"] = Prompt.ask("WiFi Password", password=True)
+            default_pass = saved_config.get("wifi_password", "") if saved_config else ""
+            config["wifi_password"] = Prompt.ask(
+                "WiFi Password", password=True, default=default_pass
+            )
 
     # User settings
-    if saved_config and "admin_user" in saved_config:
+    if saved_config and "admin_user" in saved_config and not edit_mode:
         config["admin_user"] = saved_config["admin_user"]
         console.print(f"[dim]Using saved admin user: {config['admin_user']}[/dim]")
     else:
-        config["admin_user"] = Prompt.ask("Device Admin", default="birdnetpi")
+        default_user = saved_config.get("admin_user", "birdnetpi") if saved_config else "birdnetpi"
+        config["admin_user"] = Prompt.ask("Device Admin", default=default_user)
 
-    if saved_config and "admin_password" in saved_config:
+    if saved_config and "admin_password" in saved_config and not edit_mode:
         config["admin_password"] = saved_config["admin_password"]
         console.print("[dim]Using saved admin password[/dim]")
     else:
-        config["admin_password"] = Prompt.ask("Device Password", password=True)
+        default_pass = saved_config.get("admin_password", "") if saved_config else ""
+        config["admin_password"] = Prompt.ask(
+            "Device Password", password=True, default=default_pass
+        )
 
-    if saved_config and "hostname" in saved_config:
+    if saved_config and "hostname" in saved_config and not edit_mode:
         config["hostname"] = saved_config["hostname"]
         console.print(f"[dim]Using saved hostname: {config['hostname']}[/dim]")
     else:
-        config["hostname"] = Prompt.ask("Device Hostname", default="birdnetpi")
+        default_hostname = (
+            saved_config.get("hostname", "birdnetpi") if saved_config else "birdnetpi"
+        )
+        config["hostname"] = Prompt.ask("Device Hostname", default=default_hostname)
 
     # Advanced settings
-    if saved_config and "gpio_debug" in saved_config:
+    if saved_config and "gpio_debug" in saved_config and not edit_mode:
         config["gpio_debug"] = saved_config["gpio_debug"]
         console.print(f"[dim]Using saved GPIO debug: {config['gpio_debug']}[/dim]")
     else:
-        config["gpio_debug"] = Confirm.ask("Enable GPIO Debugging (Advanced)?", default=False)
+        default_gpio = saved_config.get("gpio_debug", False) if saved_config else False
+        config["gpio_debug"] = Confirm.ask(
+            "Enable GPIO Debugging (Advanced)?", default=default_gpio
+        )
 
-    if saved_config and "copy_installer" in saved_config:
+    if saved_config and "copy_installer" in saved_config and not edit_mode:
         config["copy_installer"] = saved_config["copy_installer"]
         console.print(f"[dim]Using saved copy installer: {config['copy_installer']}[/dim]")
     else:
-        config["copy_installer"] = Confirm.ask("Copy install.sh?", default=True)
+        default_copy = saved_config.get("copy_installer", True) if saved_config else True
+        config["copy_installer"] = Confirm.ask("Copy install.sh?", default=default_copy)
+
+    if saved_config and "enable_spi" in saved_config and not edit_mode:
+        config["enable_spi"] = saved_config["enable_spi"]
+        console.print(f"[dim]Using saved SPI enabled: {config['enable_spi']}[/dim]")
+    else:
+        default_spi = saved_config.get("enable_spi", False) if saved_config else False
+        config["enable_spi"] = Confirm.ask("Enable SPI (for ePaper HAT)?", default=default_spi)
 
     # BirdNET-Pi pre-configuration (optional)
     console.print()
@@ -465,7 +616,7 @@ def get_config_from_prompts(saved_config: dict[str, Any] | None) -> dict[str, An
 
         # Check for saved value (must not be None or empty string)
         saved_value = saved_config.get(key, unset) if saved_config else unset
-        if saved_value is not unset and saved_value not in (None, ""):
+        if saved_value is not unset and saved_value not in (None, "") and not edit_mode:
             config[key] = saved_value
             console.print(
                 f"[dim]Using saved {prompt_config['prompt'].lower()}: {saved_value}[/dim]"
@@ -477,8 +628,17 @@ def get_config_from_prompts(saved_config: dict[str, Any] | None) -> dict[str, An
                 for line in prompt_config["help"]:
                     console.print(f"[dim]{line}[/dim]")
 
+            # Get default value for edit mode
+            default_value = ""
+            if edit_mode and saved_value is not unset and saved_value not in (None, ""):
+                default_value = str(saved_value)
+
             # Prompt user
-            user_input = Prompt.ask(prompt_config["prompt"], default="", show_default=False)
+            user_input = Prompt.ask(
+                prompt_config["prompt"],
+                default=default_value,
+                show_default=bool(default_value),
+            )
             config[key] = user_input if user_input else None
 
     return config
@@ -561,7 +721,11 @@ def flash_image(image_path: Path, device: str) -> None:
     console.print(f"[green]✓ Image flashed successfully in {duration_str}[/green]")
 
 
-def configure_boot_partition(device: str, config: dict[str, Any]) -> None:  # noqa: C901
+def configure_boot_partition(  # noqa: C901
+    device: str,
+    config: dict[str, Any],
+    pi_version: str,
+) -> None:
     """Configure the bootfs partition with user settings."""
     console.print()
     console.print("[cyan]Configuring boot partition...[/cyan]")
@@ -742,6 +906,35 @@ exit 0
             )
             console.print("[green]✓ GPIO debugging enabled[/green]")
 
+        # Enable SPI for ePaper HAT
+        if config.get("enable_spi"):
+            # Uncomment dtparam=spi=on in config.txt (or add if missing)
+            config_txt_path = boot_mount / "config.txt"
+            result = subprocess.run(
+                ["sudo", "cat", str(config_txt_path)],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            config_content = result.stdout
+
+            # Check if line exists (commented or uncommented)
+            if "dtparam=spi=on" in config_content:
+                # Uncomment if commented
+                config_content = config_content.replace("#dtparam=spi=on", "dtparam=spi=on")
+            else:
+                # Add if missing
+                config_content += "\n# Enable SPI for ePaper HAT\ndtparam=spi=on\n"
+
+            temp_config = Path("/tmp/birdnetpi_config_txt")
+            temp_config.write_text(config_content)
+            subprocess.run(
+                ["sudo", "cp", str(temp_config), str(config_txt_path)],
+                check=True,
+            )
+            temp_config.unlink()
+            console.print("[green]✓ SPI enabled for ePaper HAT[/green]")
+
         # Copy installer script if requested
         if config.get("copy_installer"):
             install_script = Path(__file__).parent / "install.sh"
@@ -755,6 +948,134 @@ exit 0
                 console.print(
                     "[yellow]Warning: install.sh not found, skipping installer copy[/yellow]"
                 )
+
+        # Copy LibreComputer portability script for Le Potato
+        if pi_version == "Le Potato":
+            console.print()
+            console.print("[cyan]Installing LibreComputer Raspbian Portability Script...[/cyan]")
+
+            # Clone the portability repo to boot partition
+            lrp_dest = boot_mount / "lrp"
+            temp_clone = Path("/tmp/lrp_clone")
+
+            # Remove any existing temp directory
+            if temp_clone.exists():
+                subprocess.run(["rm", "-rf", str(temp_clone)], check=True)
+
+            # Clone the repo
+            subprocess.run(
+                [
+                    "git",
+                    "clone",
+                    "--depth",
+                    "1",
+                    "https://github.com/libre-computer-project/libretech-raspbian-portability.git",
+                    str(temp_clone),
+                ],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+            # Copy to boot partition
+            subprocess.run(
+                ["sudo", "cp", "-r", str(temp_clone), str(lrp_dest)],
+                check=True,
+            )
+
+            # Clean up temp directory
+            subprocess.run(["rm", "-rf", str(temp_clone)], check=True)
+
+            # Create helper script that runs portability script with correct model
+            helper_script = """#!/bin/bash
+# LibreComputer Le Potato Portability Helper Script
+# This script automatically runs the portability script with the correct model number
+
+set -e
+
+echo "========================================="
+echo "LibreComputer Le Potato Portability Setup"
+echo "========================================="
+echo ""
+echo "This will convert this Raspbian SD card to boot on the Le Potato (AML-S905X-CC)."
+echo ""
+echo "WARNING: This will modify the bootloader and kernel on this SD card."
+echo "After this process completes, the SD card will ONLY work on Le Potato,"
+echo "not on Raspberry Pi anymore."
+echo ""
+read -r -p "Press Enter to continue, or Ctrl+C to cancel..."
+echo ""
+
+# Run the portability script with the Le Potato model number
+sudo /boot/firmware/lrp/oneshot.sh aml-s905x-cc
+
+echo ""
+echo "Conversion complete! System will shut down."
+echo "After shutdown, move the SD card to your Le Potato and boot it."
+"""
+            temp_helper = Path("/tmp/lepotato_setup.sh")
+            temp_helper.write_text(helper_script)
+            subprocess.run(
+                ["sudo", "cp", str(temp_helper), str(boot_mount / "lepotato_setup.sh")],
+                check=True,
+            )
+            # Make executable
+            subprocess.run(
+                ["sudo", "chmod", "+x", str(boot_mount / "lepotato_setup.sh")],
+                check=True,
+            )
+            temp_helper.unlink()
+
+            # Create README for user
+            readme_content = """# LibreComputer Le Potato Setup Instructions
+
+This SD card contains the Raspbian Portability Script for Le Potato.
+
+## IMPORTANT: Two-Step Boot Process Required
+
+1. **First boot on a Raspberry Pi:**
+   - Insert this SD card into a Raspberry Pi (any model)
+   - Boot the Pi and log in with the credentials you configured
+   - Run the helper script: bash /boot/firmware/lepotato_setup.sh
+   - The Pi will shut down when complete
+
+2. **Move to Le Potato:**
+   - Remove the SD card from the Raspberry Pi
+   - Insert it into your Le Potato
+   - Power on the Le Potato - it will now boot successfully!
+
+3. **Install BirdNET-Pi:**
+   - SSH into the Le Potato
+   - Run: bash /boot/firmware/install.sh
+
+## Helper Script
+
+The lepotato_setup.sh script automatically runs the portability conversion
+with the correct model number (aml-s905x-cc). You can also run the portability
+script directly if needed:
+
+    sudo /boot/firmware/lrp/oneshot.sh aml-s905x-cc
+
+## Why This Is Necessary
+
+The Le Potato (AML-S905X-CC) requires a modified bootloader and kernel to run
+Raspbian. The portability script must run on a real Raspberry Pi to install
+these components before the SD card will boot on the Le Potato.
+
+For more information, visit:
+https://github.com/libre-computer-project/libretech-raspbian-portability
+"""
+            temp_readme = Path("/tmp/birdnetpi_lepotato_readme.txt")
+            temp_readme.write_text(readme_content)
+            subprocess.run(
+                ["sudo", "cp", str(temp_readme), str(boot_mount / "LE_POTATO_README.txt")],
+                check=True,
+            )
+            temp_readme.unlink()
+
+            console.print("[green]✓ LibreComputer portability script installed[/green]")
+            console.print("[green]✓ Le Potato helper script: lepotato_setup.sh[/green]")
+            console.print("[green]✓ Setup instructions: LE_POTATO_README.txt[/green]")
 
         # Create BirdNET-Pi pre-configuration file if any settings provided
         birdnet_config_lines = ["# BirdNET-Pi boot configuration"]
@@ -815,10 +1136,11 @@ def main(save_config_flag: bool) -> None:
         )
     )
 
-    # Load saved configuration
-    saved_config = load_saved_config()
-    if saved_config:
-        console.print(f"[green]Found saved configuration at {CONFIG_FILE}[/green]")
+    # Try to select from saved profiles first
+    profile_config, profile_name, edit_mode = select_profile()
+
+    # Store which profile was selected (None for new config)
+    saved_config = profile_config
 
     # Select device
     device = select_device()
@@ -831,14 +1153,19 @@ def main(save_config_flag: bool) -> None:
     download_dir.mkdir(parents=True, exist_ok=True)
     image_path = download_image(pi_version, download_dir)
 
-    # Get configuration
-    config = get_config_from_prompts(saved_config)
+    # Get configuration (edit_mode shows prompts with defaults instead of auto-using saved values)
+    config = get_config_from_prompts(saved_config, edit_mode=edit_mode)
 
-    # Save configuration if requested
-    if save_config_flag or (
-        not saved_config and Confirm.ask("Save this configuration for future use?")
+    # Save configuration as profile
+    # CRITICAL FIX: When editing, default to the original profile name, not "default"
+    if (
+        save_config_flag
+        or edit_mode
+        or (not saved_config and Confirm.ask("Save this configuration as a profile?"))
     ):
-        save_config(config)
+        default_name = profile_name if profile_name else "default"
+        new_profile_name = Prompt.ask("Profile name", default=default_name)
+        save_profile(new_profile_name, config)
 
     # Flash image
     console.print()
@@ -856,7 +1183,7 @@ def main(save_config_flag: bool) -> None:
     flash_image(image_path, device)
 
     # Configure boot partition
-    configure_boot_partition(device, config)
+    configure_boot_partition(device, config, pi_version)
 
     # Eject SD card
     console.print()
@@ -871,7 +1198,7 @@ def main(save_config_flag: bool) -> None:
     # Build summary message
     summary_parts = [
         "[bold green]✓ SD Card Ready![/bold green]\n",
-        f"Raspberry Pi Model: [yellow]{pi_version}[/yellow]",
+        f"Device Model: [yellow]{pi_version}[/yellow]",
         f"Hostname: [cyan]{config.get('hostname', 'birdnetpi')}[/cyan]",
         f"Admin User: [cyan]{config['admin_user']}[/cyan]",
         "SSH: [green]Enabled[/green]",
@@ -883,8 +1210,22 @@ def main(save_config_flag: bool) -> None:
     else:
         summary_parts.append("WiFi: [yellow]Not configured (Ethernet required)[/yellow]")
 
-    # Add installer script status
-    if config.get("copy_installer"):
+    # Special instructions for Le Potato
+    if pi_version == "Le Potato":
+        summary_parts.append("Portability Script: [green]Installed[/green]\n")
+        summary_parts.append(
+            "[bold yellow]⚠ IMPORTANT: Two-Step Boot Process Required![/bold yellow]\n"
+        )
+        summary_parts.append(
+            "[dim]1. Boot this SD card in a Raspberry Pi (any model)\n"
+            "2. Run: [cyan]bash /boot/firmware/lepotato_setup.sh[/cyan]\n"
+            "3. Wait for Pi to shut down\n"
+            "4. Move SD card to Le Potato and boot\n"
+            "5. SSH in and run: [cyan]bash /boot/firmware/install.sh[/cyan]\n\n"
+            "See [cyan]LE_POTATO_README.txt[/cyan] on boot partition for details.[/dim]"
+        )
+    # Add installer script status for regular Pi
+    elif config.get("copy_installer"):
         summary_parts.append("Installer: [green]Copied to /boot/firmware/install.sh[/green]\n")
         summary_parts.append(
             "[dim]Insert the SD card into your Raspberry Pi and power it on.\n"
