@@ -145,7 +145,9 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     fi
 done
 
-# Execute the main setup script with uv run (dependencies now available)
+# Execute the main setup script using the venv directly
+# We use the venv's python instead of uv run to avoid permission issues
+# (uv sync ran as birdnetpi, but setup_app.py needs sudo for system operations)
 echo ""
 echo "Starting installation..."
-/opt/uv/uv run python "$INSTALL_DIR/install/setup_app.py"
+"$INSTALL_DIR/.venv/bin/python" "$INSTALL_DIR/install/setup_app.py"
