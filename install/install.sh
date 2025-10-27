@@ -113,6 +113,24 @@ else
     echo "No e-paper HAT detected, skipping epaper extras"
 fi
 
+# Wait for network and DNS to be ready
+echo "Checking network connectivity..."
+MAX_NETWORK_WAIT=30
+NETWORK_WAIT=0
+while [ $NETWORK_WAIT -lt $MAX_NETWORK_WAIT ]; do
+    if ping -c 1 -W 2 github.com >/dev/null 2>&1; then
+        echo "Network is ready"
+        break
+    fi
+    NETWORK_WAIT=$((NETWORK_WAIT + 1))
+    if [ $NETWORK_WAIT -lt $MAX_NETWORK_WAIT ]; then
+        echo "Waiting for network... ($NETWORK_WAIT/$MAX_NETWORK_WAIT)"
+        sleep 2
+    else
+        echo "WARNING: Network check timed out, proceeding anyway..."
+    fi
+done
+
 # Install Python dependencies with retry mechanism (for network issues)
 echo "Installing Python dependencies..."
 cd "$INSTALL_DIR"
