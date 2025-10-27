@@ -160,6 +160,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             sleep $RETRY_DELAY
             # Increase delay for next retry (exponential backoff)
             RETRY_DELAY=$((RETRY_DELAY * 2))
+            echo "Retrying dependency installation (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)..."
         else
             echo "ERROR: Failed to install Python dependencies after $MAX_RETRIES attempts"
             echo "This usually indicates a network issue. Please check your internet connection and try again."
