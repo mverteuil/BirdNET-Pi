@@ -101,7 +101,7 @@ else
     # User doesn't exist - create with /opt/birdnetpi as home (no -m since dir exists)
     sudo useradd -d "$INSTALL_DIR" -s /bin/bash birdnetpi
 fi
-sudo usermod -aG audio,video,dialout birdnetpi
+sudo usermod -aG audio,video,dialout,spi,gpio birdnetpi
 sudo chown birdnetpi:birdnetpi "$INSTALL_DIR"
 
 # Clone repository directly to installation directory as birdnetpi user
