@@ -164,6 +164,10 @@ if [ -d "$WAVESHARE_BOOT_PATH" ] && [ -n "$EPAPER_EXTRAS" ]; then
     # Patch pyproject.toml to use the copied local path instead of git URL
     sudo -u birdnetpi sed -i 's|waveshare-epd = {git = "https://github.com/waveshareteam/e-Paper.git", subdirectory = "RaspberryPi_JetsonNano/python"}|waveshare-epd = {path = "/opt/birdnetpi/waveshare-epd"}|' pyproject.toml
 
+    # Regenerate lockfile since we changed the source
+    echo "Regenerating lockfile for local Waveshare library..."
+    sudo -u birdnetpi /opt/uv/uv lock --quiet
+
     echo "✓ Configured to use local Waveshare library"
 fi
 
