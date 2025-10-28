@@ -8,6 +8,7 @@ Can be run standalone without installing the full BirdNET-Pi system.
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 
 def check_spi_devices() -> bool:
@@ -37,7 +38,7 @@ def check_waveshare_module() -> bool:
     print("=" * 50)
 
     try:
-        import waveshare_epd  # noqa: F401
+        import waveshare_epd  # noqa: F401  # type: ignore[import-not-found]
 
         print("✓ waveshare_epd module is installed")
         return True
@@ -48,7 +49,7 @@ def check_waveshare_module() -> bool:
         return False
 
 
-def detect_display_model() -> tuple[object | None, str | None]:
+def detect_display_model() -> tuple[Any, str | None]:
     """Try to detect which ePaper display model is connected."""
     print("\n" + "=" * 50)
     print("Detecting display model...")
@@ -90,7 +91,7 @@ def detect_display_model() -> tuple[object | None, str | None]:
     return None, None
 
 
-def test_display(epd: object, model: str) -> bool:
+def test_display(epd: Any, model: str) -> bool:
     """Test the display by drawing a simple pattern."""
     print("\n" + "=" * 50)
     print(f"Testing display: {model}")
@@ -102,8 +103,10 @@ def test_display(epd: object, model: str) -> bool:
         print("  Creating test image...")
 
         # Create blank image
-        width = epd.height  # Note: height/width are swapped for rotation
-        height = epd.width
+        width: int = (
+            epd.height
+        )  # Note: height/width are swapped for rotation  # type: ignore[attr-defined]
+        height: int = epd.width  # type: ignore[attr-defined]
         image = Image.new("1", (width, height), 255)  # 1-bit, white background
         draw = ImageDraw.Draw(image)
 
@@ -111,7 +114,7 @@ def test_display(epd: object, model: str) -> bool:
         print("  Drawing test pattern...")
 
         # Border
-        draw.rectangle([(0, 0), (width - 1, height - 1)], outline=0)
+        draw.rectangle(((0, 0), (width - 1, height - 1)), outline=0)
 
         # Text
         try:
@@ -136,17 +139,24 @@ def test_display(epd: object, model: str) -> bool:
         draw.line([(0, height - 1), (width - 1, 0)], fill=0, width=2)
 
         print("  Displaying image...")
-        epd.display(epd.getbuffer(image))
+        # Three-color displays (B versions) need two buffers: black/white and red
+        if "b" in model.lower():
+            # Create a blank red layer (all white = no red)
+            image_red = Image.new("1", (width, height), 255)
+            epd.display(epd.getbuffer(image), epd.getbuffer(image_red))  # type: ignore[attr-defined]
+        else:
+            # Two-color displays only need black/white buffer
+            epd.display(epd.getbuffer(image))  # type: ignore[attr-defined]
 
         print("  Waiting 5 seconds...")
         time.sleep(5)
 
         print("  Clearing display...")
-        epd.init()
-        epd.Clear()
+        epd.init()  # type: ignore[attr-defined]
+        epd.Clear()  # type: ignore[attr-defined]
 
         print("  Putting display to sleep...")
-        epd.sleep()
+        epd.sleep()  # type: ignore[attr-defined]
 
         print("\n✓ Display test successful!")
         print("  If you saw the test pattern on the display, it's working correctly.")
@@ -183,7 +193,7 @@ def main() -> int:
 
     # Detect and test display
     epd, model = detect_display_model()
-    if not epd:
+    if not epd or not model:
         print("\n" + "=" * 50)
         print("RESULT: Could not detect display")
         print("=" * 50)

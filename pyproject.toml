@@ -191,6 +191,7 @@ unfixable = ["TID252"] # Disallow `from ... import *`
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN"]
+"install/*" = ["ANN401"] # Allow Any for dynamically imported modules
 
 [tool.setuptools]
 package-dir = {"" = "src"}
