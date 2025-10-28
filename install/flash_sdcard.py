@@ -947,7 +947,7 @@ exit 0
             # Clone only the Python subdirectory using sparse-checkout (~45MB vs full repo)
             # This is small enough to fit on the boot partition
             with console.status(
-                "[cyan]Downloading Waveshare ePaper library (Python only, ~45MB)...[/cyan]"
+                "[cyan]Downloading Waveshare ePaper library (Python subdirectory, ~6MB transfer)...[/cyan]"
             ):
                 # Initialize sparse checkout
                 subprocess.run(
