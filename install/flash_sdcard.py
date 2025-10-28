@@ -1056,25 +1056,30 @@ exit 0
                         "only Raspbian 11 is supported",
                         "only Raspbian 11 and 12 are supported",
                     )
-                    # Make all apt operations non-fatal (LibreComputer repo has expired GPG key)
-                    # Using || true ensures commands always succeed even with set -e
-                    import re
 
-                    # Find all lines with apt commands (apt, apt-get, apt-mark, apt-key, etc.)
-                    # Matches: "apt update", "apt-mark hold", "apt -y install", etc.
-                    oneshot_content = re.sub(
-                        r"^(\s*apt[-\w]*\s+.+?)$",
-                        r"\1 || true",
-                        oneshot_content,
-                        flags=re.MULTILINE,
-                    )
-                    # Also handle piped apt commands like: wget ... | sudo apt-key add -
-                    oneshot_content = re.sub(
-                        r"^(.+\|\s*sudo\s+apt[-\w]+\s+.+?)$",
-                        r"\1 || true",
-                        oneshot_content,
-                        flags=re.MULTILINE,
-                    )
+                    # Add LibreComputer keyring installation at the beginning
+                    # This fixes expired GPG key issues - official solution from:
+                    # https://hub.libre.computer/t/signatures-were-invalid-expkeysig-2e5fb7fc58c58ffb/4166
+                    keyring_fix = """
+# Install updated LibreComputer keyring to fix expired GPG keys
+echo "Installing updated LibreComputer keyring..."
+wget -q https://deb.libre.computer/repo/pool/main/libr/libretech-keyring/libretech-keyring_2024.05.19_all.deb -O /tmp/libretech-keyring.deb
+dpkg -i /tmp/libretech-keyring.deb
+rm /tmp/libretech-keyring.deb
+echo "✓ LibreComputer keyring updated"
+
+"""
+                    # Insert after the shebang line
+                    lines = oneshot_content.split("\n")
+                    # Find first non-comment, non-empty line after shebang
+                    insert_index = 1
+                    for i, line in enumerate(lines[1:], 1):
+                        if line.strip() and not line.strip().startswith("#"):
+                            insert_index = i
+                            break
+                    lines.insert(insert_index, keyring_fix)
+                    oneshot_content = "\n".join(lines)
+
                     oneshot_path.write_text(oneshot_content)
                     console.print(
                         "[green]✓ Patched oneshot.sh to support Raspbian 12 (Bookworm)[/green]"
