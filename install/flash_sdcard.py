@@ -1110,6 +1110,15 @@ fi
                         flags=re.MULTILINE,
                     )
 
+                    # Make grub-install non-fatal (Le Potato uses u-boot, not grub)
+                    # The script tries to run grub-install for x86 boards, but Le Potato doesn't need it
+                    oneshot_content = re.sub(
+                        r"^(\$grub_install_cmd)$",
+                        r"\1 || true  # Non-fatal: Le Potato uses u-boot, not grub",
+                        oneshot_content,
+                        flags=re.MULTILINE,
+                    )
+
                     oneshot_path.write_text(oneshot_content)
                     console.print(
                         "[green]✓ Patched oneshot.sh to support Raspbian 12 (Bookworm)[/green]"
