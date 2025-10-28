@@ -155,9 +155,8 @@ if [ -d "$WAVESHARE_BOOT_PATH" ] && [ -n "$EPAPER_EXTRAS" ]; then
     cd "$INSTALL_DIR"
 
     # Patch pyproject.toml to use local path instead of git URL
-    # Replace: waveshare-epd = {git = "...", subdirectory = "..."}
-    # With: waveshare-epd = {path = "/boot/firmware/waveshare-epd/RaspberryPi_JetsonNano/python"}
-    sudo -u birdnetpi sed -i 's|waveshare-epd = {git = "https://github.com/waveshareteam/e-Paper.git", subdirectory = "RaspberryPi_JetsonNano/python"}|waveshare-epd = {path = "/boot/firmware/waveshare-epd/RaspberryPi_JetsonNano/python"}|' pyproject.toml
+    # The Python subdirectory is copied directly to /boot/firmware/waveshare-epd
+    sudo -u birdnetpi sed -i 's|waveshare-epd = {git = "https://github.com/waveshareteam/e-Paper.git", subdirectory = "RaspberryPi_JetsonNano/python"}|waveshare-epd = {path = "/boot/firmware/waveshare-epd"}|' pyproject.toml
 
     echo "✓ Configured to use local Waveshare library"
 fi

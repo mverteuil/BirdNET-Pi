@@ -944,17 +944,20 @@ exit 0
             if temp_waveshare.exists():
                 shutil.rmtree(temp_waveshare)
 
-            # Clone with depth 1 for speed (only latest commit)
-            # Note: This can take 1-2 minutes depending on network speed
+            # Clone only the Python subdirectory using sparse-checkout (~45MB vs full repo)
+            # This is small enough to fit on the boot partition
             with console.status(
-                "[cyan]Downloading Waveshare ePaper library (this may take 1-2 minutes)...[/cyan]"
+                "[cyan]Downloading Waveshare ePaper library (Python only, ~45MB)...[/cyan]"
             ):
+                # Initialize sparse checkout
                 subprocess.run(
                     [
                         "git",
                         "clone",
                         "--depth",
                         "1",
+                        "--filter=blob:none",
+                        "--no-checkout",
                         "--quiet",
                         "https://github.com/waveshareteam/e-Paper.git",
                         str(temp_waveshare),
@@ -962,9 +965,33 @@ exit 0
                     check=True,
                 )
 
-                # Copy to boot partition
+                # Configure sparse checkout for Python subdirectory only
                 subprocess.run(
-                    ["sudo", "cp", "-r", str(temp_waveshare), str(waveshare_dest)],
+                    ["git", "-C", str(temp_waveshare), "sparse-checkout", "init", "--cone"],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                )
+                subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(temp_waveshare),
+                        "sparse-checkout",
+                        "set",
+                        "RaspberryPi_JetsonNano/python",
+                    ],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                )
+                subprocess.run(
+                    ["git", "-C", str(temp_waveshare), "checkout", "--quiet"],
+                    check=True,
+                )
+
+                # Copy only the Python subdirectory to boot partition
+                python_dir = temp_waveshare / "RaspberryPi_JetsonNano" / "python"
+                subprocess.run(
+                    ["sudo", "cp", "-r", str(python_dir), str(waveshare_dest)],
                     check=True,
                 )
                 shutil.rmtree(temp_waveshare)
