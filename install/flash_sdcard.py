@@ -1060,9 +1060,17 @@ exit 0
                     # Using || true ensures commands always succeed even with set -e
                     import re
 
-                    # Find all lines with apt-get and add || true if not already present
+                    # Find all lines with apt commands (apt, apt-get, apt-mark, apt-key, etc.)
+                    # Matches: "apt update", "apt-mark hold", "apt -y install", etc.
                     oneshot_content = re.sub(
-                        r"^(\s*apt-get\s+.+?)$",
+                        r"^(\s*apt[-\w]*\s+.+?)$",
+                        r"\1 || true",
+                        oneshot_content,
+                        flags=re.MULTILINE,
+                    )
+                    # Also handle piped apt commands like: wget ... | sudo apt-key add -
+                    oneshot_content = re.sub(
+                        r"^(.+\|\s*sudo\s+apt[-\w]+\s+.+?)$",
                         r"\1 || true",
                         oneshot_content,
                         flags=re.MULTILINE,
