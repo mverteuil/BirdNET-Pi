@@ -1014,17 +1014,24 @@ exit 0
             if oneshot_path.exists():
                 oneshot_content = oneshot_path.read_text()
                 # Change the version check from "11" only to "11" or "12"
-                oneshot_content = oneshot_content.replace(
-                    'elif [ "${TARGET_OS_RELEASE[VERSION_ID]}" != \'"11"\' ]; then\n'
-                    '\t\techo "os-release: for 64-bit systems, only Raspbian 11 is supported." >&2',
+                # The bash script uses '"11"' which in Python needs to be written as \'"11"\'
+                old_check = 'elif [ "${TARGET_OS_RELEASE[VERSION_ID]}" != \'"11"\' ]; then'
+                new_check = (
                     'elif [ "${TARGET_OS_RELEASE[VERSION_ID]}" != \'"11"\' ] && '
-                    '[ "${TARGET_OS_RELEASE[VERSION_ID]}" != \'"12"\' ]; then\n'
-                    '\t\techo "os-release: only Raspbian 11 and 12 supported for 64-bit." >&2',
+                    '[ "${TARGET_OS_RELEASE[VERSION_ID]}" != \'"12"\' ]; then'
                 )
-                oneshot_path.write_text(oneshot_content)
-                console.print(
-                    "[green]✓ Patched oneshot.sh to support Raspbian 12 (Bookworm)[/green]"
-                )
+                if old_check in oneshot_content:
+                    oneshot_content = oneshot_content.replace(old_check, new_check)
+                    oneshot_content = oneshot_content.replace(
+                        "only Raspbian 11 is supported",
+                        "only Raspbian 11 and 12 are supported",
+                    )
+                    oneshot_path.write_text(oneshot_content)
+                    console.print(
+                        "[green]✓ Patched oneshot.sh to support Raspbian 12 (Bookworm)[/green]"
+                    )
+                else:
+                    console.print("[yellow]Warning: Could not find version check to patch[/yellow]")
 
             # Copy to boot partition
             subprocess.run(
