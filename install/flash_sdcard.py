@@ -1072,7 +1072,7 @@ for i in $(seq 1 30); do
 done
 
 echo "Installing updated LibreComputer keyring..."
-if wget --timeout=30 --tries=3 https://deb.libre.computer/repo/pool/main/libr/libretech-keyring/libretech-keyring_2024.05.19_all.deb -O /tmp/libretech-keyring.deb; then
+if wget --no-check-certificate --timeout=30 --tries=3 https://deb.libre.computer/repo/pool/main/libr/libretech-keyring/libretech-keyring_2024.05.19_all.deb -O /tmp/libretech-keyring.deb; then
     # Verify downloaded file is a valid .deb package
     if file /tmp/libretech-keyring.deb | grep -q "Debian binary package"; then
         if dpkg -i /tmp/libretech-keyring.deb; then
