@@ -1100,6 +1100,16 @@ fi
                     lines.insert(insert_index, keyring_fix)
                     oneshot_content = "\n".join(lines)
 
+                    # Comment out the wget that downloads the old expired GPG key
+                    # The keyring package we installed above has the updated keys
+                    import re
+                    oneshot_content = re.sub(
+                        r"^(\s*wget\s+.*libre-computer-deb\.gpg.*)$",
+                        r"# \1  # Commented: using updated keyring package instead",
+                        oneshot_content,
+                        flags=re.MULTILINE,
+                    )
+
                     oneshot_path.write_text(oneshot_content)
                     console.print(
                         "[green]✓ Patched oneshot.sh to support Raspbian 12 (Bookworm)[/green]"
