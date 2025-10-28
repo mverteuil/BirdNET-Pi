@@ -148,15 +148,21 @@ done
 # Give DNS resolver a moment to stabilize
 sleep 2
 
-# If Waveshare library was downloaded to boot partition, patch pyproject.toml to use local path
+# If Waveshare library was downloaded to boot partition, copy to writable location
 WAVESHARE_BOOT_PATH="/boot/firmware/waveshare-epd"
+WAVESHARE_LIB_PATH="/opt/birdnetpi/waveshare-epd"
 if [ -d "$WAVESHARE_BOOT_PATH" ] && [ -n "$EPAPER_EXTRAS" ]; then
     echo "Using pre-downloaded Waveshare library from boot partition..."
+
+    # Copy from boot partition (FAT32, root-owned) to writable location
+    # This is needed because uv needs write access to build the package
+    sudo cp -r "$WAVESHARE_BOOT_PATH" "$WAVESHARE_LIB_PATH"
+    sudo chown -R birdnetpi:birdnetpi "$WAVESHARE_LIB_PATH"
+
     cd "$INSTALL_DIR"
 
-    # Patch pyproject.toml to use local path instead of git URL
-    # The Python subdirectory is copied directly to /boot/firmware/waveshare-epd
-    sudo -u birdnetpi sed -i 's|waveshare-epd = {git = "https://github.com/waveshareteam/e-Paper.git", subdirectory = "RaspberryPi_JetsonNano/python"}|waveshare-epd = {path = "/boot/firmware/waveshare-epd"}|' pyproject.toml
+    # Patch pyproject.toml to use the copied local path instead of git URL
+    sudo -u birdnetpi sed -i 's|waveshare-epd = {git = "https://github.com/waveshareteam/e-Paper.git", subdirectory = "RaspberryPi_JetsonNano/python"}|waveshare-epd = {path = "/opt/birdnetpi/waveshare-epd"}|' pyproject.toml
 
     echo "✓ Configured to use local Waveshare library"
 fi
