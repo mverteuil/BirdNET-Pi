@@ -1056,6 +1056,12 @@ exit 0
                         "only Raspbian 11 is supported",
                         "only Raspbian 11 and 12 are supported",
                     )
+                    # Also make apt-get update non-fatal (LibreComputer repo has expired GPG key)
+                    # This allows bootloader conversion to proceed even if package repo fails
+                    oneshot_content = oneshot_content.replace(
+                        "apt-get update",
+                        "apt-get update || echo 'Warning: apt update failed, continuing anyway...'",
+                    )
                     oneshot_path.write_text(oneshot_content)
                     console.print(
                         "[green]✓ Patched oneshot.sh to support Raspbian 12 (Bookworm)[/green]"
