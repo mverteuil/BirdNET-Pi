@@ -1062,11 +1062,31 @@ exit 0
                     # https://hub.libre.computer/t/signatures-were-invalid-expkeysig-2e5fb7fc58c58ffb/4166
                     keyring_fix = """
 # Install updated LibreComputer keyring to fix expired GPG keys
+echo "Waiting for network to be ready..."
+for i in $(seq 1 30); do
+    if ping -c 1 -W 2 deb.libre.computer >/dev/null 2>&1; then
+        echo "Network ready"
+        break
+    fi
+    sleep 1
+done
+
 echo "Installing updated LibreComputer keyring..."
-wget -q https://deb.libre.computer/repo/pool/main/libr/libretech-keyring/libretech-keyring_2024.05.19_all.deb -O /tmp/libretech-keyring.deb
-dpkg -i /tmp/libretech-keyring.deb
-rm /tmp/libretech-keyring.deb
-echo "✓ LibreComputer keyring updated"
+if wget --timeout=30 --tries=3 https://deb.libre.computer/repo/pool/main/libr/libretech-keyring/libretech-keyring_2024.05.19_all.deb -O /tmp/libretech-keyring.deb; then
+    # Verify downloaded file is a valid .deb package
+    if file /tmp/libretech-keyring.deb | grep -q "Debian binary package"; then
+        if dpkg -i /tmp/libretech-keyring.deb; then
+            echo "✓ LibreComputer keyring updated successfully"
+        else
+            echo "⚠ Warning: Failed to install keyring package, continuing anyway..."
+        fi
+    else
+        echo "⚠ Warning: Downloaded file is not a valid .deb package, skipping..."
+    fi
+    rm -f /tmp/libretech-keyring.deb
+else
+    echo "⚠ Warning: Failed to download keyring package, continuing anyway..."
+fi
 
 """
                     # Insert after the shebang line
