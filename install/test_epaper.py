@@ -55,9 +55,12 @@ def detect_display_model() -> tuple[object | None, str | None]:
     print("=" * 50)
 
     # Common Waveshare ePaper display models
+    # Try B (three-color) versions first as they're more common
     models = [
-        "epd2in13_V4",  # 2.13inch e-Paper HAT (V4)
-        "epd2in13_V3",  # 2.13inch e-Paper HAT (V3)
+        "epd2in13b_V4",  # 2.13inch e-Paper HAT (V4) - Three color (B/W/Red)
+        "epd2in13_V4",  # 2.13inch e-Paper HAT (V4) - Two color (B/W)
+        "epd2in13b_V3",  # 2.13inch e-Paper HAT (V3) - Three color
+        "epd2in13_V3",  # 2.13inch e-Paper HAT (V3) - Two color
         "epd2in13",  # 2.13inch e-Paper HAT
         "epd2in9",  # 2.9inch e-Paper HAT
         "epd2in7",  # 2.7inch e-Paper HAT
