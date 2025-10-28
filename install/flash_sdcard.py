@@ -1056,11 +1056,16 @@ exit 0
                         "only Raspbian 11 is supported",
                         "only Raspbian 11 and 12 are supported",
                     )
-                    # Also make apt-get update non-fatal (LibreComputer repo has expired GPG key)
-                    # This allows bootloader conversion to proceed even if package repo fails
-                    oneshot_content = oneshot_content.replace(
-                        "apt-get update",
-                        "apt-get update || echo 'Warning: apt update failed, continuing anyway...'",
+                    # Make all apt operations non-fatal (LibreComputer repo has expired GPG key)
+                    # Using || true ensures commands always succeed even with set -e
+                    import re
+
+                    # Find all lines with apt-get and add || true if not already present
+                    oneshot_content = re.sub(
+                        r"^(\s*apt-get\s+.+?)$",
+                        r"\1 || true",
+                        oneshot_content,
+                        flags=re.MULTILINE,
                     )
                     oneshot_path.write_text(oneshot_content)
                     console.print(
