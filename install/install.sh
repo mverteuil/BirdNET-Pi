@@ -6,12 +6,21 @@
 #
 # Or download first:
 #   curl -fsSL <url> -o install.sh && bash install.sh
+#
+# Test ePaper HAT only:
+#   bash install.sh --test-epaper
 set -e
 
 # Configuration
 REPO_URL="${BIRDNET_REPO_URL:-https://github.com/mverteuil/BirdNET-Pi.git}"
 BRANCH="${BIRDNET_BRANCH:-main}"
 INSTALL_DIR="/opt/birdnetpi"
+
+# Parse command line arguments
+TEST_EPAPER=false
+if [ "$1" = "--test-epaper" ]; then
+    TEST_EPAPER=true
+fi
 
 # Check if running as root
 if [ "$(id -u)" -eq 0 ]; then
@@ -104,9 +113,12 @@ echo "Installing uv package manager..."
 sudo mkdir -p /opt/uv
 sudo curl -LsSf https://astral.sh/uv/install.sh | sudo INSTALLER_NO_MODIFY_PATH=1 UV_INSTALL_DIR=/opt/uv sh
 
-# Detect Waveshare e-paper HAT via SPI devices
+# Detect Waveshare e-paper HAT via SPI devices (or force for test mode)
 EPAPER_EXTRAS=""
-if ls /dev/spidev* &>/dev/null; then
+if [ "$TEST_EPAPER" = true ]; then
+    echo "Test mode: forcing ePaper HAT extras installation"
+    EPAPER_EXTRAS="--extra epaper"
+elif ls /dev/spidev* &>/dev/null; then
     echo "Waveshare e-paper HAT detected (SPI devices found)"
     EPAPER_EXTRAS="--extra epaper"
 else
@@ -135,6 +147,20 @@ done
 
 # Give DNS resolver a moment to stabilize
 sleep 2
+
+# If Waveshare library was downloaded to boot partition, patch pyproject.toml to use local path
+WAVESHARE_BOOT_PATH="/boot/firmware/waveshare-epd"
+if [ -d "$WAVESHARE_BOOT_PATH" ] && [ -n "$EPAPER_EXTRAS" ]; then
+    echo "Using pre-downloaded Waveshare library from boot partition..."
+    cd "$INSTALL_DIR"
+
+    # Patch pyproject.toml to use local path instead of git URL
+    # Replace: waveshare-epd = {git = "...", subdirectory = "..."}
+    # With: waveshare-epd = {path = "/boot/firmware/waveshare-epd/RaspberryPi_JetsonNano/python"}
+    sudo -u birdnetpi sed -i 's|waveshare-epd = {git = "https://github.com/waveshareteam/e-Paper.git", subdirectory = "RaspberryPi_JetsonNano/python"}|waveshare-epd = {path = "/boot/firmware/waveshare-epd/RaspberryPi_JetsonNano/python"}|' pyproject.toml
+
+    echo "✓ Configured to use local Waveshare library"
+fi
 
 # Install Python dependencies with retry mechanism (for network issues)
 echo "Installing Python dependencies..."
@@ -168,6 +194,17 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
         fi
     fi
 done
+
+# If test mode, run ePaper test and exit
+if [ "$TEST_EPAPER" = true ]; then
+    echo ""
+    echo "========================================"
+    echo "ePaper HAT Test Mode"
+    echo "========================================"
+    echo ""
+    "$INSTALL_DIR/.venv/bin/python" "$INSTALL_DIR/install/test_epaper.py"
+    exit $?
+fi
 
 # Execute the main setup script using the venv directly
 # We use the venv's python instead of uv run to avoid permission issues

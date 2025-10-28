@@ -935,6 +935,38 @@ exit 0
             temp_config.unlink()
             console.print("[green]✓ SPI enabled for ePaper HAT[/green]")
 
+            # Clone Waveshare ePaper library to boot partition for offline installation
+            console.print()
+            console.print("[cyan]Downloading Waveshare ePaper library...[/cyan]")
+            waveshare_dest = boot_mount / "waveshare-epd"
+            temp_waveshare = Path("/tmp/waveshare_clone")
+
+            # Remove old temp clone if it exists
+            if temp_waveshare.exists():
+                shutil.rmtree(temp_waveshare)
+
+            # Clone with depth 1 for speed (only latest commit)
+            subprocess.run(
+                [
+                    "git",
+                    "clone",
+                    "--depth",
+                    "1",
+                    "https://github.com/waveshareteam/e-Paper.git",
+                    str(temp_waveshare),
+                ],
+                check=True,
+                capture_output=True,
+            )
+
+            # Copy to boot partition
+            subprocess.run(
+                ["sudo", "cp", "-r", str(temp_waveshare), str(waveshare_dest)],
+                check=True,
+            )
+            shutil.rmtree(temp_waveshare)
+            console.print("[green]✓ Waveshare ePaper library downloaded to boot partition[/green]")
+
         # Copy installer script if requested
         if config.get("copy_installer"):
             install_script = Path(__file__).parent / "install.sh"
@@ -976,6 +1008,23 @@ exit 0
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
+
+            # Patch oneshot.sh to support Raspbian 12 (Bookworm) in addition to 11 (Bullseye)
+            oneshot_path = temp_clone / "oneshot.sh"
+            if oneshot_path.exists():
+                oneshot_content = oneshot_path.read_text()
+                # Change the version check from "11" only to "11" or "12"
+                oneshot_content = oneshot_content.replace(
+                    'elif [ "${TARGET_OS_RELEASE[VERSION_ID]}" != \'"11"\' ]; then\n'
+                    '\t\techo "os-release: for 64-bit systems, only Raspbian 11 is supported." >&2',
+                    'elif [ "${TARGET_OS_RELEASE[VERSION_ID]}" != \'"11"\' ] && '
+                    '[ "${TARGET_OS_RELEASE[VERSION_ID]}" != \'"12"\' ]; then\n'
+                    '\t\techo "os-release: only Raspbian 11 and 12 supported for 64-bit." >&2',
+                )
+                oneshot_path.write_text(oneshot_content)
+                console.print(
+                    "[green]✓ Patched oneshot.sh to support Raspbian 12 (Bookworm)[/green]"
+                )
 
             # Copy to boot partition
             subprocess.run(
