@@ -1104,7 +1104,7 @@ fi
                     # The keyring package we installed above has the updated keys
                     import re
                     oneshot_content = re.sub(
-                        r"^(\s*wget\s+.*libre-computer-deb\.gpg.*)$",
+                        r"^(wget\s+.*libre-computer-deb\.gpg.*)$",
                         r"# \1  # Commented: using updated keyring package instead",
                         oneshot_content,
                         flags=re.MULTILINE,
