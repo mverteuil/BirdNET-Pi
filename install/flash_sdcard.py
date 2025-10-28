@@ -937,7 +937,6 @@ exit 0
 
             # Clone Waveshare ePaper library to boot partition for offline installation
             console.print()
-            console.print("[cyan]Downloading Waveshare ePaper library...[/cyan]")
             waveshare_dest = boot_mount / "waveshare-epd"
             temp_waveshare = Path("/tmp/waveshare_clone")
 
@@ -946,25 +945,29 @@ exit 0
                 shutil.rmtree(temp_waveshare)
 
             # Clone with depth 1 for speed (only latest commit)
-            subprocess.run(
-                [
-                    "git",
-                    "clone",
-                    "--depth",
-                    "1",
-                    "https://github.com/waveshareteam/e-Paper.git",
-                    str(temp_waveshare),
-                ],
-                check=True,
-                capture_output=True,
-            )
+            # Note: This can take 1-2 minutes depending on network speed
+            with console.status(
+                "[cyan]Downloading Waveshare ePaper library (this may take 1-2 minutes)...[/cyan]"
+            ):
+                subprocess.run(
+                    [
+                        "git",
+                        "clone",
+                        "--depth",
+                        "1",
+                        "--quiet",
+                        "https://github.com/waveshareteam/e-Paper.git",
+                        str(temp_waveshare),
+                    ],
+                    check=True,
+                )
 
-            # Copy to boot partition
-            subprocess.run(
-                ["sudo", "cp", "-r", str(temp_waveshare), str(waveshare_dest)],
-                check=True,
-            )
-            shutil.rmtree(temp_waveshare)
+                # Copy to boot partition
+                subprocess.run(
+                    ["sudo", "cp", "-r", str(temp_waveshare), str(waveshare_dest)],
+                    check=True,
+                )
+                shutil.rmtree(temp_waveshare)
             console.print("[green]✓ Waveshare ePaper library downloaded to boot partition[/green]")
 
         # Copy installer script if requested
