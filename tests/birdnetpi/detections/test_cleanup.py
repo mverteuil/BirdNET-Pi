@@ -37,7 +37,6 @@ def cleanup_service_factory(db_service_factory, async_mock_factory, path_resolve
         # Configure test_config with eBird filtering settings
         test_config.ebird_filtering = EBirdFilterConfig(
             enabled=True,
-            region_pack="test-pack-2025.08",
             h3_resolution=5,
             detection_mode="filter",
             detection_strictness="vagrant",

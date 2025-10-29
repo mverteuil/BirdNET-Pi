@@ -14,6 +14,7 @@ from dependency_injector import providers
 from httpx import ASGITransport, AsyncClient
 
 from birdnetpi.database.ebird import EBirdRegionService
+from birdnetpi.releases.registry_service import BoundingBox, RegionPackInfo, RegistryService
 from birdnetpi.web.core.container import Container
 
 
@@ -76,12 +77,26 @@ async def app_with_ebird_filtering(app_with_temp_data, mock_ebird_service, tmp_p
     # Override the eBird service in the container
     Container.ebird_region_service.override(providers.Singleton(lambda: mock_ebird_service))
 
+    # Create mock registry service that returns test pack info
+    mock_registry_service = MagicMock(spec=RegistryService)
+    mock_registry_service.find_pack_for_coordinates.return_value = RegionPackInfo(
+        region_id="test-pack",
+        release_name="test-pack-2025.08",
+        h3_cells=[],
+        pack_count=1,
+        total_size_mb=1.0,
+        resolution=5,
+        center={"lat": 40.7128, "lon": -74.0060},
+        bbox=BoundingBox(min_lat=40.0, max_lat=41.0, min_lon=-75.0, max_lon=-73.0),
+        download_url=None,
+    )
+    Container.registry_service.override(providers.Singleton(lambda: mock_registry_service))
+
     # Update config to enable eBird filtering
     config = Container.config()
     config.ebird_filtering.enabled = True
     config.ebird_filtering.detection_mode = "filter"
     config.ebird_filtering.detection_strictness = "vagrant"
-    config.ebird_filtering.region_pack = "test-pack-2025.08"
     config.ebird_filtering.h3_resolution = 5
     config.ebird_filtering.unknown_species_behavior = "allow"
 
@@ -92,6 +107,7 @@ async def app_with_ebird_filtering(app_with_temp_data, mock_ebird_service, tmp_p
 
     # Clean up
     Container.ebird_region_service.reset_override()
+    Container.registry_service.reset_override()
     path_resolver.get_ebird_pack_path = original_get_ebird_pack_path
 
 

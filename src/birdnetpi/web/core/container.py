@@ -21,6 +21,7 @@ from birdnetpi.notifications.apprise import AppriseService
 from birdnetpi.notifications.manager import NotificationManager
 from birdnetpi.notifications.mqtt import MQTTService
 from birdnetpi.notifications.webhooks import WebhookService
+from birdnetpi.releases.registry_service import RegistryService
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.log_reader import LogReaderService
@@ -93,6 +94,12 @@ class Container(containers.DeclarativeContainer):
     # eBird regional filtering service - singleton
     ebird_region_service = providers.Singleton(
         EBirdRegionService,
+        path_resolver=path_resolver,
+    )
+
+    # eBird region pack registry service - singleton
+    registry_service = providers.Singleton(
+        RegistryService,
         path_resolver=path_resolver,
     )
 

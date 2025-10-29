@@ -22,6 +22,7 @@ from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.models import Detection
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.notifications.signals import detection_signal
+from birdnetpi.releases.registry_service import RegistryService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.utils.cache import Cache
 from birdnetpi.utils.time_periods import calculate_period_boundaries
@@ -91,6 +92,7 @@ async def create_detection(
     data_manager: Annotated[DataManager, Depends(Provide[Container.data_manager])],
     core_database: Annotated[CoreDatabaseService, Depends(Provide[Container.core_database])],
     ebird_service: Annotated[EBirdRegionService, Depends(Provide[Container.ebird_region_service])],
+    registry_service: Annotated[RegistryService, Depends(Provide[Container.registry_service])],
     config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
     detection_event: DetectionEvent,
 ) -> DetectionCreatedResponse:
@@ -116,6 +118,7 @@ async def create_detection(
             should_filter, reason = await _apply_ebird_filter(
                 core_database=core_database,
                 ebird_service=ebird_service,
+                registry_service=registry_service,
                 config=config,
                 scientific_name=detection_event.scientific_name,
                 latitude=detection_event.latitude,
@@ -188,6 +191,7 @@ def _check_strictness(confidence_tier: str, strictness: str) -> tuple[bool, str]
 async def _apply_ebird_filter(
     core_database: CoreDatabaseService,
     ebird_service: EBirdRegionService,
+    registry_service: RegistryService,
     config: BirdNETConfig,
     scientific_name: str,
     latitude: float,
@@ -198,6 +202,7 @@ async def _apply_ebird_filter(
     Args:
         core_database: CoreDatabaseService instance for session management
         ebird_service: EBirdRegionService instance
+        registry_service: RegistryService to find appropriate pack for location
         config: BirdNET configuration
         scientific_name: Scientific name of the species
         latitude: Detection latitude
@@ -208,14 +213,24 @@ async def _apply_ebird_filter(
         - should_filter: True if detection should be blocked
         - reason: Human-readable reason for filtering decision
     """
+    # Find the appropriate region pack for this location
+    region_info = registry_service.find_pack_for_coordinates(latitude, longitude)
+    if not region_info:
+        # No pack available for this location
+        behavior = config.ebird_filtering.unknown_species_behavior
+        if behavior == "block":
+            return (True, f"No eBird pack available for location ({latitude}, {longitude})")
+        else:  # allow
+            return (False, f"No eBird pack for location, allowing (behavior={behavior})")
+
     # Convert lat/lon to H3 cell at configured resolution
     h3_cell = h3.latlng_to_cell(latitude, longitude, config.ebird_filtering.h3_resolution)
 
     # Get or create database session and attach eBird pack
     async with core_database.get_async_db() as session:
         try:
-            # Attach eBird pack database
-            await ebird_service.attach_to_session(session, config.ebird_filtering.region_pack)
+            # Attach eBird pack database using the release name
+            await ebird_service.attach_to_session(session, region_info.release_name)
 
             # Query confidence tier for this species at this location
             confidence_tier = await ebird_service.get_species_confidence_tier(
