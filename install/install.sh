@@ -12,8 +12,8 @@
 set -e
 
 # Configuration
-REPO_URL="${BIRDNET_REPO_URL:-https://github.com/mverteuil/BirdNET-Pi.git}"
-BRANCH="${BIRDNET_BRANCH:-main}"
+REPO_URL="${BIRDNETPI_REPO_URL:-https://github.com/mverteuil/BirdNET-Pi.git}"
+BRANCH="${BIRDNETPI_BRANCH:-main}"
 INSTALL_DIR="/opt/birdnetpi"
 
 # Parse command line arguments

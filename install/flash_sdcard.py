@@ -97,7 +97,7 @@ def find_command(cmd: str, homebrew_paths: list[str] | None = None) -> str:
     return cmd
 
 
-# Raspberry Pi OS image URLs (Lite versions for headless server)
+# Raspberry Pi OS and Armbian image URLs (Lite/Minimal versions for headless server)
 PI_IMAGES = {
     "Pi 5": {
         "url": "https://downloads.raspberrypi.org/raspios_lite_arm64/images/raspios_lite_arm64-2024-07-04/2024-07-04-raspios-bookworm-arm64-lite.img.xz",
@@ -117,11 +117,18 @@ PI_IMAGES = {
         "url": "https://downloads.raspberrypi.org/raspios_lite_arm64/images/raspios_lite_arm64-2024-07-04/2024-07-04-raspios-bookworm-arm64-lite.img.xz",
         "sha256": "3e8d1d7166aa832aded24e90484d83f4e8ad594b5a33bb4a9a1ff3ac0ac84d92",
     },
-    "Le Potato": {
+    "Le Potato (Raspbian)": {
         # LibreComputer AML-S905X-CC - uses same arm64 image as Pi, requires portability script
         "url": "https://downloads.raspberrypi.org/raspios_lite_arm64/images/raspios_lite_arm64-2024-07-04/2024-07-04-raspios-bookworm-arm64-lite.img.xz",
         "sha256": "3e8d1d7166aa832aded24e90484d83f4e8ad594b5a33bb4a9a1ff3ac0ac84d92",
         "requires_portability": True,
+    },
+    "Le Potato (Armbian)": {
+        # LibreComputer AML-S905X-CC - Native Armbian Bookworm minimal
+        # URL format: https://dl.armbian.com/lepotato/Bookworm_current_minimal
+        # This redirects to the latest stable build with .sha file available
+        "url": "https://dl.armbian.com/lepotato/Bookworm_current_minimal",
+        "is_armbian": True,  # Will download and verify .sha file from same location
     },
 }
 
@@ -210,14 +217,16 @@ def select_profile() -> tuple[dict[str, Any] | None, str | None, bool]:
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("Key", style="dim")
     table.add_column("Profile Name", style="green")
+    table.add_column("Device Type", justify="left")
     table.add_column("Hostname", justify="left")
     table.add_column("WiFi SSID", justify="left")
 
     for idx, profile in enumerate(profiles):
         config = profile["config"]
+        device_type = config.get("device_type", "Not set")
         hostname = config.get("hostname", "N/A")
         wifi_ssid = config.get("wifi_ssid", "Not configured")
-        table.add_row(str(idx), profile["name"], hostname, wifi_ssid)
+        table.add_row(str(idx), profile["name"], device_type, hostname, wifi_ssid)
 
     console.print(table)
     console.print()
@@ -344,14 +353,42 @@ def list_block_devices() -> list[dict[str, str]]:
         sys.exit(1)
 
 
-def select_device() -> str:
-    """Prompt user to select a block device to flash."""
+def select_device(device_index: int | None = None) -> str:
+    """Prompt user to select a block device to flash.
+
+    Args:
+        device_index: Optional 1-based index to select device without prompting
+
+    Returns:
+        Selected device path (e.g., "/dev/disk2")
+    """
     devices = list_block_devices()
 
     if not devices:
         console.print("[red]No removable devices found![/red]")
         sys.exit(1)
 
+    # If device_index provided, validate and use it
+    if device_index is not None:
+        if device_index < 1 or device_index > len(devices):
+            console.print(f"[red]Invalid device index: {device_index}[/red]")
+            console.print(f"[yellow]Available indices: 1-{len(devices)}[/yellow]")
+            sys.exit(1)
+
+        selected = devices[device_index - 1]
+        console.print(f"[cyan]Using device {device_index}: {selected['device']}[/cyan]")
+
+        console.print()
+        console.print(
+            Panel(
+                f"[bold yellow]WARNING: ALL DATA ON {selected['device']} "
+                "WILL BE ERASED![/bold yellow]",
+                border_style="red",
+            )
+        )
+        return selected["device"]
+
+    # Otherwise, prompt user to select
     console.print()
     console.print("[bold cyan]Available Devices:[/bold cyan]")
     table = Table(show_header=True, header_style="bold cyan")
@@ -387,8 +424,41 @@ def select_device() -> str:
     return selected["device"]
 
 
-def select_pi_version() -> str:
-    """Prompt user to select device model."""
+def select_pi_version(
+    saved_device_type: str | None = None,
+    device_type_override: str | None = None,
+    edit_mode: bool = False,
+) -> str:
+    """Prompt user to select device model.
+
+    Args:
+        saved_device_type: Device type from saved profile
+        device_type_override: CLI override for device type
+        edit_mode: If True, show prompts with defaults; if False, auto-use saved values
+
+    Returns:
+        Selected device model name (e.g., "Pi 4", "Le Potato (Armbian)")
+    """
+    # Use override if provided
+    if device_type_override:
+        if device_type_override not in PI_IMAGES:
+            console.print(f"[red]Invalid device type: {device_type_override}[/red]")
+            console.print(f"[yellow]Available types: {', '.join(PI_IMAGES.keys())}[/yellow]")
+            sys.exit(1)
+        console.print(f"[cyan]Using device type from CLI: {device_type_override}[/cyan]")
+        return device_type_override
+
+    # Use saved value if not in edit mode
+    if saved_device_type and not edit_mode:
+        if saved_device_type in PI_IMAGES:
+            console.print(f"[dim]Using saved device type: {saved_device_type}[/dim]")
+            return saved_device_type
+        else:
+            console.print(
+                f"[yellow]Warning: Saved device type '{saved_device_type}' not found[/yellow]"
+            )
+
+    # Prompt user to select
     console.print()
     console.print("[bold cyan]Select Device Model:[/bold cyan]")
     table = Table(show_header=True, header_style="bold cyan")
@@ -402,16 +472,18 @@ def select_pi_version() -> str:
         "4": "Pi 4",
         "3": "Pi 3",
         "0": "Pi Zero 2 W",
-        "L": "Le Potato",
+        "R": "Le Potato (Raspbian)",
+        "A": "Le Potato (Armbian)",
     }
 
-    # Display in order (0, 3, 4, 5, L)
+    # Display in order (0, 3, 4, 5, R, A)
     display_order = [
         ("0", "Pi Zero 2 W", ""),
         ("3", "Pi 3", ""),
         ("4", "Pi 4", ""),
         ("5", "Pi 5", ""),
-        ("L", "Le Potato", "AML-S905X-CC"),
+        ("R", "Le Potato (Raspbian)", "Two-step boot required"),
+        ("A", "Le Potato (Armbian)", "Native Armbian, direct boot"),
     ]
 
     for version, model, notes in display_order:
@@ -420,26 +492,63 @@ def select_pi_version() -> str:
     console.print(table)
     console.print()
 
+    # Use saved value as default in edit mode
+    default_choice = None
+    if edit_mode and saved_device_type:
+        # Find the key for the saved device type
+        for key, model in version_map.items():
+            if model == saved_device_type:
+                default_choice = key
+                break
+
     choice = Prompt.ask(
         "[bold]Select device model[/bold]",
         choices=list(version_map.keys()),
+        default=default_choice,
+        show_default=bool(default_choice),
     )
 
     return version_map[choice]
 
 
 def download_image(pi_version: str, download_dir: Path) -> Path:
-    """Download Raspberry Pi OS image if not already cached."""
+    """Download Raspberry Pi OS or Armbian image if not already cached.
+
+    Args:
+        pi_version: Device model name (e.g., "Pi 4", "Le Potato (Armbian)")
+        download_dir: Directory to store downloaded images
+
+    Returns:
+        Path to the downloaded image file
+    """
     image_info = PI_IMAGES[pi_version]
     url = image_info["url"]
-    filename = url.split("/")[-1]
+    is_armbian = image_info.get("is_armbian", False)
+
+    # For Armbian, follow redirects to get actual download URL
+    if is_armbian:
+        console.print(f"[cyan]Resolving Armbian image URL for {pi_version}...[/cyan]")
+        # HEAD request to follow redirects and get actual filename
+        # SSL verification is enabled - redirect should have valid cert
+        head_response = requests.head(url, allow_redirects=True, timeout=30)
+        head_response.raise_for_status()
+
+        # Extract final URL and filename after redirect
+        final_url = head_response.url
+        url = final_url  # Use the actual file URL for download
+        filename = final_url.split("/")[-1]
+
+        console.print(f"[dim]Resolved to: {filename}[/dim]")
+    else:
+        filename = url.split("/")[-1]
+
     filepath = download_dir / filename
 
     if filepath.exists():
         console.print(f"[green]Using cached image: {filepath}[/green]")
         return filepath
 
-    console.print(f"[cyan]Downloading Raspberry Pi OS image for {pi_version}...[/cyan]")
+    console.print(f"[cyan]Downloading image for {pi_version}...[/cyan]")
 
     with Progress(
         TextColumn("[bold blue]{task.description}"),
@@ -449,6 +558,7 @@ def download_image(pi_version: str, download_dir: Path) -> Path:
         TimeElapsedColumn(),
         console=console,
     ) as progress:
+        # Download with SSL verification enabled
         response = requests.get(url, stream=True, timeout=30)
         response.raise_for_status()
 
@@ -461,6 +571,38 @@ def download_image(pi_version: str, download_dir: Path) -> Path:
                 progress.update(task, advance=len(chunk))
 
     console.print(f"[green]Downloaded: {filepath}[/green]")
+
+    # Verify SHA256 for Armbian (download .sha file from same location)
+    if is_armbian:
+        console.print("[cyan]Verifying image integrity...[/cyan]")
+        sha_url = f"{url}.sha"
+        try:
+            sha_response = requests.get(sha_url, timeout=30)
+            sha_response.raise_for_status()
+            # SHA file format: "hash filename"
+            expected_sha = sha_response.text.strip().split()[0]
+
+            # Calculate actual SHA256
+            import hashlib
+
+            sha256_hash = hashlib.sha256()
+            with open(filepath, "rb") as f:
+                for byte_block in iter(lambda: f.read(8192), b""):
+                    sha256_hash.update(byte_block)
+            actual_sha = sha256_hash.hexdigest()
+
+            if actual_sha == expected_sha:
+                console.print("[green]✓ SHA256 verification passed[/green]")
+            else:
+                console.print("[red]✗ SHA256 verification failed![/red]")
+                console.print(f"[red]Expected: {expected_sha}[/red]")
+                console.print(f"[red]Got: {actual_sha}[/red]")
+                filepath.unlink()  # Delete corrupted file
+                sys.exit(1)
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not verify SHA256: {e}[/yellow]")
+            console.print("[yellow]Proceeding anyway, but file integrity is not verified[/yellow]")
+
     return filepath
 
 
@@ -947,7 +1089,8 @@ exit 0
             # Clone only the Python subdirectory using sparse-checkout (~45MB vs full repo)
             # This is small enough to fit on the boot partition
             with console.status(
-                "[cyan]Downloading Waveshare ePaper library (Python subdirectory, ~6MB transfer)...[/cyan]"
+                "[cyan]Downloading Waveshare ePaper library "
+                "(Python subdirectory, ~6MB transfer)...[/cyan]"
             ):
                 # Initialize sparse checkout
                 subprocess.run(
@@ -1011,8 +1154,8 @@ exit 0
                     "[yellow]Warning: install.sh not found, skipping installer copy[/yellow]"
                 )
 
-        # Copy LibreComputer portability script for Le Potato
-        if pi_version == "Le Potato":
+        # Copy LibreComputer portability script for Le Potato (Raspbian only, not Armbian)
+        if pi_version == "Le Potato (Raspbian)":
             console.print()
             console.print("[cyan]Installing LibreComputer Raspbian Portability Script...[/cyan]")
 
@@ -1072,7 +1215,10 @@ for i in $(seq 1 30); do
 done
 
 echo "Installing updated LibreComputer keyring..."
-if wget --no-check-certificate --timeout=30 --tries=3 https://deb.libre.computer/repo/pool/main/libr/libretech-keyring/libretech-keyring_2024.05.19_all.deb -O /tmp/libretech-keyring.deb; then
+KEYRING_URL="https://deb.libre.computer/repo/pool/main/libr/libretech-keyring"
+KEYRING_DEB="libretech-keyring_2024.05.19_all.deb"
+if wget --no-check-certificate --timeout=30 --tries=3 \
+    "$KEYRING_URL/$KEYRING_DEB" -O /tmp/libretech-keyring.deb; then
     # Verify downloaded file is a valid .deb package
     if file /tmp/libretech-keyring.deb | grep -q "Debian binary package"; then
         if dpkg -i /tmp/libretech-keyring.deb; then
@@ -1103,6 +1249,7 @@ fi
                     # Comment out the wget that downloads the old expired GPG key
                     # The keyring package we installed above has the updated keys
                     import re
+
                     oneshot_content = re.sub(
                         r"^(wget\s+.*libre-computer-deb\.gpg.*)$",
                         r"# \1  # Commented: using updated keyring package instead",
@@ -1111,7 +1258,8 @@ fi
                     )
 
                     # Make grub-install non-fatal (Le Potato uses u-boot, not grub)
-                    # The script tries to run grub-install for x86 boards, but Le Potato doesn't need it
+                    # The script tries to run grub-install for x86 boards,
+                    # but Le Potato doesn't need it
                     oneshot_content = re.sub(
                         r"^(\$grub_install_cmd)$",
                         r"\1 || true  # Non-fatal: Le Potato uses u-boot, not grub",
@@ -1274,7 +1422,17 @@ https://github.com/libre-computer-project/libretech-raspbian-portability
 @click.option(
     "--save-config", "save_config_flag", is_flag=True, help="Save configuration for future use"
 )
-def main(save_config_flag: bool) -> None:
+@click.option(
+    "--device-index",
+    type=int,
+    help="SD card device index (1-based) for unattended operation",
+)
+@click.option(
+    "--device-type",
+    type=str,
+    help="Device type override (e.g., 'Pi 4', 'Le Potato (Armbian)')",
+)
+def main(save_config_flag: bool, device_index: int | None, device_type: str | None) -> None:
     """Flash Raspberry Pi OS to SD card and configure for BirdNET-Pi."""
     console.print()
     console.print(
@@ -1292,10 +1450,14 @@ def main(save_config_flag: bool) -> None:
     saved_config = profile_config
 
     # Select device
-    device = select_device()
+    device = select_device(device_index=device_index)
 
     # Select Pi version
-    pi_version = select_pi_version()
+    pi_version = select_pi_version(
+        saved_device_type=saved_config.get("device_type") if saved_config else None,
+        device_type_override=device_type,
+        edit_mode=edit_mode,
+    )
 
     # Download image
     download_dir = Path.home() / ".cache" / "birdnetpi" / "images"
@@ -1304,6 +1466,9 @@ def main(save_config_flag: bool) -> None:
 
     # Get configuration (edit_mode shows prompts with defaults instead of auto-using saved values)
     config = get_config_from_prompts(saved_config, edit_mode=edit_mode)
+
+    # Add device_type to config before saving
+    config["device_type"] = pi_version
 
     # Save configuration as profile
     # CRITICAL FIX: When editing, default to the original profile name, not "default"
@@ -1331,8 +1496,17 @@ def main(save_config_flag: bool) -> None:
     )
     flash_image(image_path, device)
 
-    # Configure boot partition
-    configure_boot_partition(device, config, pi_version)
+    # Configure boot partition (skip for Armbian - uses different partition layout)
+    image_info = PI_IMAGES[pi_version]
+    is_armbian = image_info.get("is_armbian", False)
+    if not is_armbian:
+        configure_boot_partition(device, config, pi_version)
+    else:
+        console.print()
+        console.print("[yellow]Note: Armbian uses its own first-boot configuration wizard[/yellow]")
+        console.print(
+            "[dim]You will be prompted to create a user and set up SSH on first boot[/dim]"
+        )
 
     # Eject SD card
     console.print()
@@ -1359,8 +1533,8 @@ def main(save_config_flag: bool) -> None:
     else:
         summary_parts.append("WiFi: [yellow]Not configured (Ethernet required)[/yellow]")
 
-    # Special instructions for Le Potato
-    if pi_version == "Le Potato":
+    # Special instructions for Le Potato (Raspbian)
+    if pi_version == "Le Potato (Raspbian)":
         summary_parts.append("Portability Script: [green]Installed[/green]\n")
         summary_parts.append(
             "[bold yellow]⚠ IMPORTANT: Two-Step Boot Process Required![/bold yellow]\n"
@@ -1372,6 +1546,19 @@ def main(save_config_flag: bool) -> None:
             "4. Move SD card to Le Potato and boot\n"
             "5. SSH in and run: [cyan]bash /boot/firmware/install.sh[/cyan]\n\n"
             "See [cyan]LE_POTATO_README.txt[/cyan] on boot partition for details.[/dim]"
+        )
+    # Direct boot instructions for Le Potato (Armbian)
+    elif pi_version == "Le Potato (Armbian)":
+        summary_parts.append("Native Armbian: [green]Direct boot ready[/green]\n")
+        summary_parts.append(
+            "[dim]Insert the SD card into your Le Potato and power it on.\n"
+            "Armbian will run its first-boot setup wizard:\n"
+            "  1. Create a root password\n"
+            "  2. Create a user account\n"
+            "  3. Configure locale/timezone\n\n"
+            "After setup, SSH in and run the BirdNET-Pi installer:\n"
+            "  [cyan]curl -fsSL https://raw.githubusercontent.com/mverteuil/BirdNET-Pi/"
+            "main/install/install.sh | bash[/cyan][/dim]"
         )
     # Add installer script status for regular Pi
     elif config.get("copy_installer"):
