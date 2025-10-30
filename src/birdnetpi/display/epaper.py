@@ -74,6 +74,10 @@ class EPaperDisplayService:
         self._last_detection_id: uuid.UUID | None = None
         self._animation_frames = 0
 
+        # Partial refresh tracking
+        self._partial_refresh_count = 0
+        self._full_refresh_interval = 20  # Full refresh every N partial updates
+
         # Try to import Waveshare library based on config
         display_type = self.config.epaper_display_type
         module_name = self.DISPLAY_MODULES.get(display_type)
@@ -117,9 +121,16 @@ class EPaperDisplayService:
 
         try:
             self._epd = self._epd_module.EPD()
-            self._epd.init()
-            self._epd.Clear()
-            logger.info("E-paper display initialized")
+            self._epd.init()  # Full refresh init
+            self._epd.Clear()  # Clear the display
+            # Switch to partial refresh mode for subsequent updates
+            # This eliminates flicker for normal status updates
+            try:
+                self._epd.init_part()
+                logger.info("E-paper display initialized (partial refresh mode)")
+            except (AttributeError, OSError):
+                # Some displays don't support partial refresh
+                logger.info("E-paper display initialized (full refresh only)")
         except Exception:
             logger.exception("Failed to initialize e-paper display")
             self._has_hardware = False
@@ -412,13 +423,17 @@ class EPaperDisplayService:
         return composite
 
     def _update_display(
-        self, black_image: Image.Image, red_image: Image.Image | None = None
+        self,
+        black_image: Image.Image,
+        red_image: Image.Image | None = None,
+        force_full_refresh: bool = False,
     ) -> None:
         """Update the physical e-paper display with the given image(s).
 
         Args:
             black_image: PIL Image for black layer
             red_image: Optional PIL Image for red layer (3-color displays only)
+            force_full_refresh: Force a full refresh instead of partial (eliminates ghosting)
         """
         if not self._has_hardware or self._epd is None:
             # In simulation mode, only save files if running in Docker
@@ -447,14 +462,51 @@ class EPaperDisplayService:
             return
 
         try:
-            if self._is_color_display and red_image:
-                # 3-color display: send both black and red buffers
-                self._epd.display(self._epd.getbuffer(black_image), self._epd.getbuffer(red_image))
-                logger.debug("3-color display updated (black + red)")
+            # Decide whether to use full or partial refresh
+            use_full_refresh = force_full_refresh or (
+                self._partial_refresh_count >= self._full_refresh_interval
+            )
+
+            if use_full_refresh:
+                # Full refresh: clear screen completely (eliminates ghosting but flickers)
+                self._epd.init()  # Reinit for full refresh mode
+                if self._is_color_display and red_image:
+                    # 3-color display: send both black and red buffers
+                    self._epd.display(
+                        self._epd.getbuffer(black_image), self._epd.getbuffer(red_image)
+                    )
+                    logger.debug("3-color display updated (full refresh)")
+                else:
+                    # 2-color display: send only black buffer
+                    self._epd.display(self._epd.getbuffer(black_image))
+                    logger.debug("2-color display updated (full refresh)")
+
+                # Reset counter and prepare for partial refresh
+                self._partial_refresh_count = 0
+                self._epd.init_part()  # Switch to partial refresh mode
             else:
-                # 2-color display: send only black buffer
-                self._epd.display(self._epd.getbuffer(black_image))
-                logger.debug("2-color display updated")
+                # Partial refresh: update only changed pixels (no flicker but can ghost)
+                # Try partial refresh even for 3-color displays (V4 may support it)
+                # Note: red layer won't update in partial mode, only black layer
+                try:
+                    self._epd.displayPartial(self._epd.getbuffer(black_image))
+                    self._partial_refresh_count += 1
+                    logger.debug(
+                        "Display updated (partial refresh %d/%d)",
+                        self._partial_refresh_count,
+                        self._full_refresh_interval,
+                    )
+                except (AttributeError, TypeError):
+                    # Partial refresh not supported, fall back to full
+                    logger.warning("Partial refresh failed, falling back to full refresh")
+                    self._epd.init()
+                    if self._is_color_display and red_image:
+                        self._epd.display(
+                            self._epd.getbuffer(black_image), self._epd.getbuffer(red_image)
+                        )
+                    else:
+                        self._epd.display(self._epd.getbuffer(black_image))
+                    self._partial_refresh_count = 0  # Reset to force full refresh mode
         except Exception:
             logger.exception("Failed to update e-paper display")
 
@@ -507,6 +559,11 @@ class EPaperDisplayService:
                     stats, health, detection, show_animation, animation_frame
                 )
                 self._update_display(black_image, red_image)
+                logger.info(
+                    "Display updated - Health: %s, Detection: %s",
+                    health.get("status", "unknown"),
+                    detection.common_name if detection else "None",
+                )
 
                 # Use faster refresh during animation (2 seconds) for better visibility
                 # Normal refresh otherwise (default 30 seconds) to preserve e-paper lifespan
