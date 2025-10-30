@@ -10,6 +10,7 @@ before services start. It handles:
 """
 
 import sqlite3
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -426,6 +427,42 @@ def initialize_config(
     return config_path, config, boot_config
 
 
+def set_system_timezone(config: BirdNETConfig) -> None:
+    """Set the system timezone based on the configuration.
+
+    Uses timedatectl to set the system timezone to match the configured timezone.
+    This ensures that system logs and timestamps match the user's expected timezone.
+
+    Args:
+        config: Configuration containing the timezone setting
+    """
+    timezone = config.timezone
+    if not timezone or timezone == "UTC":
+        click.echo("  Timezone is UTC (default), skipping system timezone update")
+        return
+
+    try:
+        # Validate timezone exists in pytz
+        if timezone not in pytz.all_timezones:
+            click.echo(f"  ! Invalid timezone '{timezone}', skipping system timezone update")
+            return
+
+        # Set system timezone using timedatectl
+        result = subprocess.run(
+            ["timedatectl", "set-timezone", timezone],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        if result.returncode == 0:
+            click.echo(f"  ✓ System timezone set to {timezone}")
+        else:
+            click.echo(f"  ! Failed to set system timezone: {result.stderr.strip()}")
+    except Exception as e:
+        click.echo(f"  ! Error setting system timezone: {e}")
+
+
 @click.command()
 @click.option(
     "--non-interactive",
@@ -479,6 +516,11 @@ def main(non_interactive: bool) -> None:
     click.echo("Saving configuration...")
     config_manager.save(config)
     click.echo(f"  ✓ Configuration saved to {config_path}")
+
+    # Set system timezone to match config
+    click.echo()
+    click.echo("Setting system timezone...")
+    set_system_timezone(config)
 
     click.echo()
     click.echo("=" * 60)

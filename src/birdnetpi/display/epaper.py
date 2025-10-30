@@ -10,8 +10,9 @@ output to a PNG file for testing purposes.
 import asyncio
 import logging
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, ClassVar
+from zoneinfo import ZoneInfo
 
 import aiohttp
 import psutil
@@ -74,6 +75,14 @@ class EPaperDisplayService:
         self._last_detection_id: uuid.UUID | None = None
         self._animation_frames = 0
 
+        # Partial refresh tracking
+        self._partial_refresh_count = 0
+        self._full_refresh_interval = 20  # Full refresh every N partial updates
+
+        # Update timing tracking
+        self._last_update_time: datetime | None = None
+        self._next_update_time: datetime | None = None
+
         # Try to import Waveshare library based on config
         display_type = self.config.epaper_display_type
         module_name = self.DISPLAY_MODULES.get(display_type)
@@ -117,9 +126,16 @@ class EPaperDisplayService:
 
         try:
             self._epd = self._epd_module.EPD()
-            self._epd.init()
-            self._epd.Clear()
-            logger.info("E-paper display initialized")
+            self._epd.init()  # Full refresh init
+            self._epd.Clear()  # Clear the display
+            # Switch to partial refresh mode for subsequent updates
+            # This eliminates flicker for normal status updates
+            try:
+                self._epd.init_part()
+                logger.info("E-paper display initialized (partial refresh mode)")
+            except (AttributeError, OSError):
+                # Some displays don't support partial refresh
+                logger.info("E-paper display initialized (full refresh only)")
         except Exception:
             logger.exception("Failed to initialize e-paper display")
             self._has_hardware = False
@@ -181,8 +197,19 @@ class EPaperDisplayService:
             Dictionary with health status information
         """
         try:
+            # Extract API base URL from detections_endpoint config
+            # Default to port 8000 if config not available
+            api_url = "http://localhost:8000"
+            if hasattr(self.config, "detections_endpoint") and self.config.detections_endpoint:
+                # Parse endpoint like "http://127.0.0.1:8888/api/detections/"
+                # to get base URL "http://127.0.0.1:8888"
+                endpoint = self.config.detections_endpoint
+                if "/api/" in endpoint:
+                    api_url = endpoint.split("/api/")[0]
+
             async with aiohttp.ClientSession() as session:
-                async with session.get("http://localhost:8000/api/health/ready") as response:
+                health_url = f"{api_url}/api/health/ready"
+                async with session.get(health_url) as response:
                     if response.status == 200:
                         data = await response.json()
                         return {
@@ -237,10 +264,11 @@ class EPaperDisplayService:
         black_image = self._create_image()
         black_draw = ImageDraw.Draw(black_image)
 
-        # Create red layer (only for 3-color displays)
+        # Create red layer (only for 3-color displays AND only when showing animation)
+        # This allows partial refresh when not animating
         red_image = None
         red_draw = None
-        if self._is_color_display:
+        if self._is_color_display and show_animation:
             red_image = self._create_image()
             red_draw = ImageDraw.Draw(red_image)
 
@@ -248,20 +276,44 @@ class EPaperDisplayService:
         draw = black_draw
 
         font_small = self._get_font(10)
+        font_tiny = self._get_font(8)
         font_medium = self._get_font(12)
         font_large = self._get_font(16)
 
         y_offset = 0
 
-        # Header with site name and timestamp
+        # Header with site name and local time
         header_text = self.config.site_name[:20]  # Limit length
         draw.text((2, y_offset), header_text, font=font_large, fill=self.COLOR_BLACK)
 
-        timestamp = datetime.now().strftime("%H:%M")
+        # Get timezone for converting UTC to local time
+        tz = self._get_local_timezone()
+
+        # Convert current time to configured timezone
+        timestamp = self._format_time_in_timezone(datetime.now(UTC), tz, "%H:%M")
         draw.text((200, y_offset), timestamp, font=font_medium, fill=self.COLOR_BLACK)
         y_offset += 18
 
-        # System stats
+        # Update timing info (small text)
+        update_info = f"Updates: {self.config.epaper_refresh_interval}s"
+        if self._next_update_time:
+            next_time_str = self._format_time_in_timezone(self._next_update_time, tz)
+            update_info += f" | Next: {next_time_str}"
+        draw.text((2, y_offset), update_info, font=font_tiny, fill=self.COLOR_BLACK)
+        y_offset += 10
+
+        # Health status (swapped with system stats)
+        health_symbol = "✓" if health.get("status") == "ready" else "✗"
+        db_symbol = "✓" if health.get("database") else "✗"
+        draw.text(
+            (2, y_offset),
+            f"Health: {health_symbol}  DB: {db_symbol}",
+            font=font_small,
+            fill=self.COLOR_BLACK,
+        )
+        y_offset += 12
+
+        # System stats (swapped with health status)
         draw.text(
             (2, y_offset),
             f"CPU: {stats['cpu_percent']:.1f}%",
@@ -277,17 +329,6 @@ class EPaperDisplayService:
         draw.text(
             (160, y_offset),
             f"DSK: {stats['disk_percent']:.1f}%",
-            font=font_small,
-            fill=self.COLOR_BLACK,
-        )
-        y_offset += 12
-
-        # Health status
-        health_symbol = "✓" if health.get("status") == "ready" else "✗"
-        db_symbol = "✓" if health.get("database") else "✗"
-        draw.text(
-            (2, y_offset),
-            f"Health: {health_symbol}  DB: {db_symbol}",
             font=font_small,
             fill=self.COLOR_BLACK,
         )
@@ -354,7 +395,8 @@ class EPaperDisplayService:
 
             # Confidence and time - always black
             confidence_text = f"{detection.confidence * 100:.1f}%"
-            time_text = detection.timestamp.strftime("%H:%M:%S")
+            # Convert detection time to local timezone (reuse tz from above)
+            time_text = self._format_time_in_timezone(detection.timestamp, tz)
             draw.text(
                 (2, y_offset),
                 f"{confidence_text} at {time_text}",
@@ -370,6 +412,37 @@ class EPaperDisplayService:
             )
 
         return black_image, red_image
+
+    def _get_local_timezone(self) -> ZoneInfo | None:
+        """Get the configured timezone for display conversions.
+
+        Returns:
+            ZoneInfo object for the configured timezone, or None if invalid
+        """
+        try:
+            return ZoneInfo(self.config.timezone)
+        except Exception:
+            return None
+
+    def _format_time_in_timezone(
+        self, dt: datetime, tz: ZoneInfo | None, fmt: str = "%H:%M:%S"
+    ) -> str:
+        """Format a datetime in the configured timezone.
+
+        Args:
+            dt: Datetime to format (should be timezone-aware)
+            tz: Timezone to convert to (None for system time)
+            fmt: strftime format string
+
+        Returns:
+            Formatted time string
+        """
+        if tz:
+            try:
+                return dt.astimezone(tz).strftime(fmt)
+            except Exception:
+                pass
+        return dt.strftime(fmt)
 
     def _create_composite_image(
         self, black_image: Image.Image, red_image: Image.Image | None
@@ -400,52 +473,116 @@ class EPaperDisplayService:
 
         return composite
 
+    def _update_display_partial(self, black_image: Image.Image) -> bool:
+        """Attempt partial refresh update for 2-color displays.
+
+        Returns:
+            True if partial refresh succeeded, False if full refresh needed
+        """
+        assert self._epd is not None  # Type narrowing for pyright
+        try:
+            # Try different method names (varies by display model)
+            if hasattr(self._epd, "displayPartial"):
+                self._epd.displayPartial(self._epd.getbuffer(black_image))
+            elif hasattr(self._epd, "DisplayPartial"):
+                self._epd.DisplayPartial(self._epd.getbuffer(black_image))
+            elif hasattr(self._epd, "display_Partial"):
+                self._epd.display_Partial(self._epd.getbuffer(black_image))
+            else:
+                return False
+
+            self._partial_refresh_count += 1
+            logger.debug(
+                "Display updated (partial refresh %d/%d)",
+                self._partial_refresh_count,
+                self._full_refresh_interval,
+            )
+            return True
+        except (AttributeError, TypeError):
+            return False
+
     def _update_display(
-        self, black_image: Image.Image, red_image: Image.Image | None = None
+        self,
+        black_image: Image.Image,
+        red_image: Image.Image | None = None,
+        force_full_refresh: bool = False,
     ) -> None:
         """Update the physical e-paper display with the given image(s).
 
         Args:
             black_image: PIL Image for black layer
             red_image: Optional PIL Image for red layer (3-color displays only)
+            force_full_refresh: Force a full refresh instead of partial (eliminates ghosting)
         """
         if not self._has_hardware or self._epd is None:
-            # In simulation mode, only save files if running in Docker
-            # On SBC without hardware, skip file writes to avoid excessive disk wear
-            if SystemUtils.is_docker_environment():
-                simulator_dir = self.path_resolver.get_display_simulator_dir()
-                simulator_dir.mkdir(parents=True, exist_ok=True)
-                black_path = simulator_dir / "display_output_black.png"
-                black_image.save(black_path)
-                logger.debug("Display black layer saved to %s", black_path)
-
-                if red_image:
-                    red_path = simulator_dir / "display_output_red.png"
-                    red_image.save(red_path)
-                    logger.debug("Display red layer saved to %s", red_path)
-
-                # Generate composite image showing final display output
-                composite = self._create_composite_image(black_image, red_image)
-                comp_path = simulator_dir / "display_output_comp.png"
-                composite.save(comp_path)
-                logger.debug("Display composite saved to %s", comp_path)
-            else:
-                logger.debug(
-                    "Skipping simulation file writes on SBC (no hardware detected, not in Docker)"
-                )
+            self._save_simulation_images(black_image, red_image)
             return
 
         try:
-            if self._is_color_display and red_image:
-                # 3-color display: send both black and red buffers
-                self._epd.display(self._epd.getbuffer(black_image), self._epd.getbuffer(red_image))
-                logger.debug("3-color display updated (black + red)")
+            if self._is_color_display:
+                self._update_3color_display(black_image, red_image)
             else:
-                # 2-color display: send only black buffer
-                self._epd.display(self._epd.getbuffer(black_image))
-                logger.debug("2-color display updated")
+                self._update_2color_display(black_image, force_full_refresh)
         except Exception:
             logger.exception("Failed to update e-paper display")
+
+    def _save_simulation_images(
+        self, black_image: Image.Image, red_image: Image.Image | None
+    ) -> None:
+        """Save display images in simulation mode."""
+        if not SystemUtils.is_docker_environment():
+            logger.debug(
+                "Skipping simulation file writes on SBC (no hardware detected, not in Docker)"
+            )
+            return
+
+        simulator_dir = self.path_resolver.get_display_simulator_dir()
+        simulator_dir.mkdir(parents=True, exist_ok=True)
+
+        black_path = simulator_dir / "display_output_black.png"
+        black_image.save(black_path)
+        logger.debug("Display black layer saved to %s", black_path)
+
+        if red_image:
+            red_path = simulator_dir / "display_output_red.png"
+            red_image.save(red_path)
+            logger.debug("Display red layer saved to %s", red_path)
+
+        composite = self._create_composite_image(black_image, red_image)
+        comp_path = simulator_dir / "display_output_comp.png"
+        composite.save(comp_path)
+        logger.debug("Display composite saved to %s", comp_path)
+
+    def _update_3color_display(
+        self, black_image: Image.Image, red_image: Image.Image | None
+    ) -> None:
+        """Update 3-color display (always uses full refresh)."""
+        assert self._epd is not None  # Type narrowing for pyright
+        self._epd.init()
+        if red_image is None:
+            red_image = self._create_image()
+        self._epd.display(self._epd.getbuffer(black_image), self._epd.getbuffer(red_image))
+        logger.debug("3-color display updated (full refresh)")
+
+    def _update_2color_display(self, black_image: Image.Image, force_full_refresh: bool) -> None:
+        """Update 2-color display with partial refresh support."""
+        assert self._epd is not None  # Type narrowing for pyright
+        use_full_refresh = (
+            force_full_refresh or self._partial_refresh_count >= self._full_refresh_interval
+        )
+
+        if use_full_refresh or not self._update_display_partial(black_image):
+            # Full refresh
+            self._epd.init()
+            self._epd.display(self._epd.getbuffer(black_image))
+            logger.debug("Display updated (full refresh)")
+
+            # Reset counter and switch to partial mode
+            self._partial_refresh_count = 0
+            try:
+                self._epd.init_part()
+            except (AttributeError, OSError):
+                pass
 
     async def _check_for_new_detection(self) -> bool:
         """Check if there's a new detection since last check.
@@ -491,18 +628,30 @@ class EPaperDisplayService:
                     animation_frame = 12 - self._animation_frames
                     self._animation_frames -= 1
 
+                # Track update timing
+                self._last_update_time = datetime.now(UTC)
+
+                # Calculate next update time
+                if self._animation_frames > 0:
+                    sleep_duration = 2  # Fast refresh during animation
+                else:
+                    sleep_duration = self.config.epaper_refresh_interval
+                self._next_update_time = self._last_update_time + timedelta(seconds=sleep_duration)
+
                 # Draw and update display
                 black_image, red_image = self._draw_status_screen(
                     stats, health, detection, show_animation, animation_frame
                 )
                 self._update_display(black_image, red_image)
+                logger.info(
+                    "Display updated - Health: %s, Detection: %s",
+                    health.get("status", "unknown"),
+                    detection.common_name if detection else "None",
+                )
 
                 # Use faster refresh during animation (2 seconds) for better visibility
                 # Normal refresh otherwise (default 30 seconds) to preserve e-paper lifespan
-                if self._animation_frames > 0:
-                    await asyncio.sleep(2)  # Fast refresh during animation
-                else:
-                    await asyncio.sleep(self.config.epaper_refresh_interval)
+                await asyncio.sleep(sleep_duration)
 
             except Exception:
                 logger.exception("Error in display loop")
