@@ -10,8 +10,9 @@ output to a PNG file for testing purposes.
 import asyncio
 import logging
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, ClassVar
+from zoneinfo import ZoneInfo
 
 import aiohttp
 import psutil
@@ -77,6 +78,10 @@ class EPaperDisplayService:
         # Partial refresh tracking
         self._partial_refresh_count = 0
         self._full_refresh_interval = 20  # Full refresh every N partial updates
+
+        # Update timing tracking
+        self._last_update_time: datetime | None = None
+        self._next_update_time: datetime | None = None
 
         # Try to import Waveshare library based on config
         display_type = self.config.epaper_display_type
@@ -271,20 +276,44 @@ class EPaperDisplayService:
         draw = black_draw
 
         font_small = self._get_font(10)
+        font_tiny = self._get_font(8)
         font_medium = self._get_font(12)
         font_large = self._get_font(16)
 
         y_offset = 0
 
-        # Header with site name and timestamp
+        # Header with site name and local time
         header_text = self.config.site_name[:20]  # Limit length
         draw.text((2, y_offset), header_text, font=font_large, fill=self.COLOR_BLACK)
 
-        timestamp = datetime.now().strftime("%H:%M")
+        # Get timezone for converting UTC to local time
+        tz = self._get_local_timezone()
+
+        # Convert current time to configured timezone
+        timestamp = self._format_time_in_timezone(datetime.now(UTC), tz, "%H:%M")
         draw.text((200, y_offset), timestamp, font=font_medium, fill=self.COLOR_BLACK)
         y_offset += 18
 
-        # System stats
+        # Update timing info (small text)
+        update_info = f"Updates: {self.config.epaper_refresh_interval}s"
+        if self._next_update_time:
+            next_time_str = self._format_time_in_timezone(self._next_update_time, tz)
+            update_info += f" | Next: {next_time_str}"
+        draw.text((2, y_offset), update_info, font=font_tiny, fill=self.COLOR_BLACK)
+        y_offset += 10
+
+        # Health status (swapped with system stats)
+        health_symbol = "✓" if health.get("status") == "ready" else "✗"
+        db_symbol = "✓" if health.get("database") else "✗"
+        draw.text(
+            (2, y_offset),
+            f"Health: {health_symbol}  DB: {db_symbol}",
+            font=font_small,
+            fill=self.COLOR_BLACK,
+        )
+        y_offset += 12
+
+        # System stats (swapped with health status)
         draw.text(
             (2, y_offset),
             f"CPU: {stats['cpu_percent']:.1f}%",
@@ -300,17 +329,6 @@ class EPaperDisplayService:
         draw.text(
             (160, y_offset),
             f"DSK: {stats['disk_percent']:.1f}%",
-            font=font_small,
-            fill=self.COLOR_BLACK,
-        )
-        y_offset += 12
-
-        # Health status
-        health_symbol = "✓" if health.get("status") == "ready" else "✗"
-        db_symbol = "✓" if health.get("database") else "✗"
-        draw.text(
-            (2, y_offset),
-            f"Health: {health_symbol}  DB: {db_symbol}",
             font=font_small,
             fill=self.COLOR_BLACK,
         )
@@ -377,7 +395,8 @@ class EPaperDisplayService:
 
             # Confidence and time - always black
             confidence_text = f"{detection.confidence * 100:.1f}%"
-            time_text = detection.timestamp.strftime("%H:%M:%S")
+            # Convert detection time to local timezone (reuse tz from above)
+            time_text = self._format_time_in_timezone(detection.timestamp, tz)
             draw.text(
                 (2, y_offset),
                 f"{confidence_text} at {time_text}",
@@ -393,6 +412,37 @@ class EPaperDisplayService:
             )
 
         return black_image, red_image
+
+    def _get_local_timezone(self) -> ZoneInfo | None:
+        """Get the configured timezone for display conversions.
+
+        Returns:
+            ZoneInfo object for the configured timezone, or None if invalid
+        """
+        try:
+            return ZoneInfo(self.config.timezone)
+        except Exception:
+            return None
+
+    def _format_time_in_timezone(
+        self, dt: datetime, tz: ZoneInfo | None, fmt: str = "%H:%M:%S"
+    ) -> str:
+        """Format a datetime in the configured timezone.
+
+        Args:
+            dt: Datetime to format (should be timezone-aware)
+            tz: Timezone to convert to (None for system time)
+            fmt: strftime format string
+
+        Returns:
+            Formatted time string
+        """
+        if tz:
+            try:
+                return dt.astimezone(tz).strftime(fmt)
+            except Exception:
+                pass
+        return dt.strftime(fmt)
 
     def _create_composite_image(
         self, black_image: Image.Image, red_image: Image.Image | None
@@ -578,6 +628,16 @@ class EPaperDisplayService:
                     animation_frame = 12 - self._animation_frames
                     self._animation_frames -= 1
 
+                # Track update timing
+                self._last_update_time = datetime.now(UTC)
+
+                # Calculate next update time
+                if self._animation_frames > 0:
+                    sleep_duration = 2  # Fast refresh during animation
+                else:
+                    sleep_duration = self.config.epaper_refresh_interval
+                self._next_update_time = self._last_update_time + timedelta(seconds=sleep_duration)
+
                 # Draw and update display
                 black_image, red_image = self._draw_status_screen(
                     stats, health, detection, show_animation, animation_frame
@@ -591,10 +651,7 @@ class EPaperDisplayService:
 
                 # Use faster refresh during animation (2 seconds) for better visibility
                 # Normal refresh otherwise (default 30 seconds) to preserve e-paper lifespan
-                if self._animation_frames > 0:
-                    await asyncio.sleep(2)  # Fast refresh during animation
-                else:
-                    await asyncio.sleep(self.config.epaper_refresh_interval)
+                await asyncio.sleep(sleep_duration)
 
             except Exception:
                 logger.exception("Error in display loop")
