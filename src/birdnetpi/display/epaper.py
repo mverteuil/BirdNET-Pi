@@ -181,8 +181,19 @@ class EPaperDisplayService:
             Dictionary with health status information
         """
         try:
+            # Extract API base URL from detections_endpoint config
+            # Default to port 8000 if config not available
+            api_url = "http://localhost:8000"
+            if hasattr(self.config, "detections_endpoint") and self.config.detections_endpoint:
+                # Parse endpoint like "http://127.0.0.1:8888/api/detections/"
+                # to get base URL "http://127.0.0.1:8888"
+                endpoint = self.config.detections_endpoint
+                if "/api/" in endpoint:
+                    api_url = endpoint.split("/api/")[0]
+
             async with aiohttp.ClientSession() as session:
-                async with session.get("http://localhost:8000/api/health/ready") as response:
+                health_url = f"{api_url}/api/health/ready"
+                async with session.get(health_url) as response:
                     if response.status == 200:
                         data = await response.json()
                         return {
