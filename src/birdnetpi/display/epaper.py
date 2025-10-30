@@ -259,10 +259,11 @@ class EPaperDisplayService:
         black_image = self._create_image()
         black_draw = ImageDraw.Draw(black_image)
 
-        # Create red layer (only for 3-color displays)
+        # Create red layer (only for 3-color displays AND only when showing animation)
+        # This allows partial refresh when not animating
         red_image = None
         red_draw = None
-        if self._is_color_display:
+        if self._is_color_display and show_animation:
             red_image = self._create_image()
             red_draw = ImageDraw.Draw(red_image)
 
@@ -422,6 +423,34 @@ class EPaperDisplayService:
 
         return composite
 
+    def _update_display_partial(self, black_image: Image.Image) -> bool:
+        """Attempt partial refresh update for 2-color displays.
+
+        Returns:
+            True if partial refresh succeeded, False if full refresh needed
+        """
+        assert self._epd is not None  # Type narrowing for pyright
+        try:
+            # Try different method names (varies by display model)
+            if hasattr(self._epd, "displayPartial"):
+                self._epd.displayPartial(self._epd.getbuffer(black_image))
+            elif hasattr(self._epd, "DisplayPartial"):
+                self._epd.DisplayPartial(self._epd.getbuffer(black_image))
+            elif hasattr(self._epd, "display_Partial"):
+                self._epd.display_Partial(self._epd.getbuffer(black_image))
+            else:
+                return False
+
+            self._partial_refresh_count += 1
+            logger.debug(
+                "Display updated (partial refresh %d/%d)",
+                self._partial_refresh_count,
+                self._full_refresh_interval,
+            )
+            return True
+        except (AttributeError, TypeError):
+            return False
+
     def _update_display(
         self,
         black_image: Image.Image,
@@ -436,79 +465,74 @@ class EPaperDisplayService:
             force_full_refresh: Force a full refresh instead of partial (eliminates ghosting)
         """
         if not self._has_hardware or self._epd is None:
-            # In simulation mode, only save files if running in Docker
-            # On SBC without hardware, skip file writes to avoid excessive disk wear
-            if SystemUtils.is_docker_environment():
-                simulator_dir = self.path_resolver.get_display_simulator_dir()
-                simulator_dir.mkdir(parents=True, exist_ok=True)
-                black_path = simulator_dir / "display_output_black.png"
-                black_image.save(black_path)
-                logger.debug("Display black layer saved to %s", black_path)
-
-                if red_image:
-                    red_path = simulator_dir / "display_output_red.png"
-                    red_image.save(red_path)
-                    logger.debug("Display red layer saved to %s", red_path)
-
-                # Generate composite image showing final display output
-                composite = self._create_composite_image(black_image, red_image)
-                comp_path = simulator_dir / "display_output_comp.png"
-                composite.save(comp_path)
-                logger.debug("Display composite saved to %s", comp_path)
-            else:
-                logger.debug(
-                    "Skipping simulation file writes on SBC (no hardware detected, not in Docker)"
-                )
+            self._save_simulation_images(black_image, red_image)
             return
 
         try:
-            # Decide whether to use full or partial refresh
-            use_full_refresh = force_full_refresh or (
-                self._partial_refresh_count >= self._full_refresh_interval
-            )
-
-            if use_full_refresh:
-                # Full refresh: clear screen completely (eliminates ghosting but flickers)
-                self._epd.init()  # Reinit for full refresh mode
-                if self._is_color_display and red_image:
-                    # 3-color display: send both black and red buffers
-                    self._epd.display(
-                        self._epd.getbuffer(black_image), self._epd.getbuffer(red_image)
-                    )
-                    logger.debug("3-color display updated (full refresh)")
-                else:
-                    # 2-color display: send only black buffer
-                    self._epd.display(self._epd.getbuffer(black_image))
-                    logger.debug("2-color display updated (full refresh)")
-
-                # Reset counter and prepare for partial refresh
-                self._partial_refresh_count = 0
-                self._epd.init_part()  # Switch to partial refresh mode
+            if self._is_color_display:
+                self._update_3color_display(black_image, red_image)
             else:
-                # Partial refresh: update only changed pixels (no flicker but can ghost)
-                # Try partial refresh even for 3-color displays (V4 may support it)
-                # Note: red layer won't update in partial mode, only black layer
-                try:
-                    self._epd.displayPartial(self._epd.getbuffer(black_image))
-                    self._partial_refresh_count += 1
-                    logger.debug(
-                        "Display updated (partial refresh %d/%d)",
-                        self._partial_refresh_count,
-                        self._full_refresh_interval,
-                    )
-                except (AttributeError, TypeError):
-                    # Partial refresh not supported, fall back to full
-                    logger.warning("Partial refresh failed, falling back to full refresh")
-                    self._epd.init()
-                    if self._is_color_display and red_image:
-                        self._epd.display(
-                            self._epd.getbuffer(black_image), self._epd.getbuffer(red_image)
-                        )
-                    else:
-                        self._epd.display(self._epd.getbuffer(black_image))
-                    self._partial_refresh_count = 0  # Reset to force full refresh mode
+                self._update_2color_display(black_image, force_full_refresh)
         except Exception:
             logger.exception("Failed to update e-paper display")
+
+    def _save_simulation_images(
+        self, black_image: Image.Image, red_image: Image.Image | None
+    ) -> None:
+        """Save display images in simulation mode."""
+        if not SystemUtils.is_docker_environment():
+            logger.debug(
+                "Skipping simulation file writes on SBC (no hardware detected, not in Docker)"
+            )
+            return
+
+        simulator_dir = self.path_resolver.get_display_simulator_dir()
+        simulator_dir.mkdir(parents=True, exist_ok=True)
+
+        black_path = simulator_dir / "display_output_black.png"
+        black_image.save(black_path)
+        logger.debug("Display black layer saved to %s", black_path)
+
+        if red_image:
+            red_path = simulator_dir / "display_output_red.png"
+            red_image.save(red_path)
+            logger.debug("Display red layer saved to %s", red_path)
+
+        composite = self._create_composite_image(black_image, red_image)
+        comp_path = simulator_dir / "display_output_comp.png"
+        composite.save(comp_path)
+        logger.debug("Display composite saved to %s", comp_path)
+
+    def _update_3color_display(
+        self, black_image: Image.Image, red_image: Image.Image | None
+    ) -> None:
+        """Update 3-color display (always uses full refresh)."""
+        assert self._epd is not None  # Type narrowing for pyright
+        self._epd.init()
+        if red_image is None:
+            red_image = self._create_image()
+        self._epd.display(self._epd.getbuffer(black_image), self._epd.getbuffer(red_image))
+        logger.debug("3-color display updated (full refresh)")
+
+    def _update_2color_display(self, black_image: Image.Image, force_full_refresh: bool) -> None:
+        """Update 2-color display with partial refresh support."""
+        assert self._epd is not None  # Type narrowing for pyright
+        use_full_refresh = (
+            force_full_refresh or self._partial_refresh_count >= self._full_refresh_interval
+        )
+
+        if use_full_refresh or not self._update_display_partial(black_image):
+            # Full refresh
+            self._epd.init()
+            self._epd.display(self._epd.getbuffer(black_image))
+            logger.debug("Display updated (full refresh)")
+
+            # Reset counter and switch to partial mode
+            self._partial_refresh_count = 0
+            try:
+                self._epd.init_part()
+            except (AttributeError, OSError):
+                pass
 
     async def _check_for_new_detection(self) -> bool:
         """Check if there's a new detection since last check.
