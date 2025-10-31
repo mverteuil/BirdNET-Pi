@@ -122,6 +122,10 @@ def path_resolver(tmp_path: Path, repo_root: Path) -> PathResolver:
     temp_data_dir = tmp_path / "data"
     temp_data_dir.mkdir(parents=True)
     # Override WRITABLE paths to use temp directory
+    # IMPORTANT: Override both the attribute AND the method because some code accesses
+    # path_resolver.data_dir directly (e.g., RegistryService) while other code calls
+    # path_resolver.get_data_dir()
+    resolver.data_dir = temp_data_dir
     resolver.get_database_path = lambda: temp_database_dir / "birdnetpi.db"
     resolver.get_birdnetpi_config_path = lambda: temp_config_dir / "birdnetpi.yaml"
     resolver.get_data_dir = lambda: temp_data_dir
@@ -191,6 +195,19 @@ async def app_with_temp_data(path_resolver):
         **{"get.return_value": None, "set.return_value": True, "ping.return_value": True}
     )
     Container.cache_service.override(providers.Singleton(lambda: mock_cache))
+
+    # Reset dependent services to ensure they use the overridden path_resolver
+    # These are Singletons that depend on path_resolver and must be recreated
+    # with the test path_resolver to prevent permission errors on /var/lib/birdnetpi
+    # We reset cached Singleton instances so they get recreated with overridden path_resolver
+    try:
+        Container.registry_service.reset()
+    except AttributeError:
+        pass  # Provider might not support reset
+    try:
+        Container.ebird_region_service.reset()
+    except AttributeError:
+        pass  # Provider might not support reset
 
     # Now create the app with our overridden providers
     app = create_app()
