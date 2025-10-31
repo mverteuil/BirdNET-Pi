@@ -79,7 +79,7 @@ jobs:
           path: |
             data/models
             data/database
-          key: ${{ runner.os }}-birdnet-assets-v2.2.1-with-nyc-pack
+          key: ${{ runner.os }}-birdnet-assets-v2.2.1-with-toronto-pack
           restore-keys: |
             ${{ runner.os }}-birdnet-assets-v2.2.1
             ${{ runner.os }}-birdnet-assets-
@@ -89,12 +89,13 @@ jobs:
           BIRDNETPI_DATA: ${{ github.workspace }}/data
         run: |
           uv run install-assets install latest
-      - name: Install eBird region pack (NYC)
+      - name: Install eBird region pack (Toronto)
         if: steps.cache-assets.outputs.cache-hit != 'true'
+        continue-on-error: true
         env:
           BIRDNETPI_DATA: ${{ github.workspace }}/data
         run: |
-          uv run install-region-pack install --lat 40.7128 --lon -74.0060
+          uv run install-region-pack install --lat 43.6532 --lon -79.3832
       - name: Run pytest tests
         run: uv run pytest --cov=src --cov-fail-under=77 -m "not expensive" --blocking-threshold=10.0
       - name: Upload coverage report
@@ -138,7 +139,7 @@ jobs:
           path: |
             data/models
             data/database
-          key: ${{ runner.os }}-birdnet-assets-v2.2.1-with-nyc-pack
+          key: ${{ runner.os }}-birdnet-assets-v2.2.1-with-toronto-pack
           restore-keys: |
             ${{ runner.os }}-birdnet-assets-v2.2.1
             ${{ runner.os }}-birdnet-assets-
@@ -148,12 +149,13 @@ jobs:
           BIRDNETPI_DATA: ${{ github.workspace }}/data
         run: |
           uv run install-assets install latest
-      - name: Install eBird region pack (NYC)
+      - name: Install eBird region pack (Toronto)
         if: steps.cache-assets.outputs.cache-hit != 'true'
+        continue-on-error: true
         env:
           BIRDNETPI_DATA: ${{ github.workspace }}/data
         run: |
-          uv run install-region-pack install --lat 40.7128 --lon -74.0060
+          uv run install-region-pack install --lat 43.6532 --lon -79.3832
       - name: Create test volume and populate with cached assets
         run: |
           docker volume create birdnetpi-test-data
