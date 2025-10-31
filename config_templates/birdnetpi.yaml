@@ -6,8 +6,8 @@ config_version: "2.0.0"
 
 # Basic Settings
 site_name: BirdNET-Pi
-latitude: 63.4591
-longitude: -19.3647
+latitude: 43.6532
+longitude: -79.3832
 model: BirdNET_GLOBAL_6K_V2.4_Model_FP16
 metadata_model: BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16
 species_confidence_threshold: 0.70  # Minimum confidence threshold for species detection
