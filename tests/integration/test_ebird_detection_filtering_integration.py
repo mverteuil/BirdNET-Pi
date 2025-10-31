@@ -154,13 +154,11 @@ class TestEBirdFilteringModeOff:
         ) as client:
             response = await client.post(
                 "/api/detections/",
-                json={
-                    "species_tensor": "Turdus migratorius",
-                    "confidence": 0.95,
-                    "latitude": 43.6532,
-                    "longitude": -79.3832,
-                    "timestamp": datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC).isoformat(),
-                },
+                json=create_detection_payload(
+                    species_tensor="Turdus migratorius_American Robin",
+                    scientific_name="Turdus migratorius",
+                    common_name="American Robin",
+                ),
             )
 
             assert response.status_code == 201
@@ -189,13 +187,11 @@ class TestEBirdFilteringWarnMode:
         ) as client:
             response = await client.post(
                 "/api/detections/",
-                json={
-                    "species_tensor": "Turdus migratorius",
-                    "confidence": 0.95,
-                    "latitude": 43.6532,
-                    "longitude": -79.3832,
-                    "timestamp": datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC).isoformat(),
-                },
+                json=create_detection_payload(
+                    species_tensor="Turdus migratorius_American Robin",
+                    scientific_name="Turdus migratorius",
+                    common_name="American Robin",
+                ),
             )
 
             # Should still create detection in warn mode
@@ -224,13 +220,11 @@ class TestEBirdFilteringFilterMode:
         ) as client:
             response = await client.post(
                 "/api/detections/",
-                json={
-                    "species_tensor": "Turdus migratorius",
-                    "confidence": 0.95,
-                    "latitude": 43.6532,
-                    "longitude": -79.3832,
-                    "timestamp": datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC).isoformat(),
-                },
+                json=create_detection_payload(
+                    species_tensor="Turdus migratorius_American Robin",
+                    scientific_name="Turdus migratorius",
+                    common_name="American Robin",
+                ),
             )
 
             assert response.status_code == 201
@@ -255,13 +249,11 @@ class TestEBirdFilteringFilterMode:
         ) as client:
             response = await client.post(
                 "/api/detections/",
-                json={
-                    "species_tensor": "Corvus brachyrhynchos",
-                    "confidence": 0.95,
-                    "latitude": 43.6532,
-                    "longitude": -79.3832,
-                    "timestamp": datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC).isoformat(),
-                },
+                json=create_detection_payload(
+                    species_tensor="Corvus brachyrhynchos_American Crow",
+                    scientific_name="Corvus brachyrhynchos",
+                    common_name="American Crow",
+                ),
             )
 
             assert response.status_code == 201
@@ -286,13 +278,11 @@ class TestEBirdFilteringFilterMode:
         ) as client:
             response = await client.post(
                 "/api/detections/",
-                json={
-                    "species_tensor": "Cardinalis cardinalis",
-                    "confidence": 0.95,
-                    "latitude": 43.6532,
-                    "longitude": -79.3832,
-                    "timestamp": datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC).isoformat(),
-                },
+                json=create_detection_payload(
+                    species_tensor="Cardinalis cardinalis_Northern Cardinal",
+                    scientific_name="Cardinalis cardinalis",
+                    common_name="Northern Cardinal",
+                ),
             )
 
             assert response.status_code == 201
@@ -319,13 +309,11 @@ class TestEBirdFilteringFilterMode:
             ) as client:
                 response = await client.post(
                     "/api/detections/",
-                    json={
-                        "species_tensor": "Cyanocitta cristata",
-                        "confidence": 0.95,
-                        "latitude": 43.6532,
-                        "longitude": -79.3832,
-                        "timestamp": datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC).isoformat(),
-                    },
+                    json=create_detection_payload(
+                        species_tensor="Cyanocitta cristata_Blue Jay",
+                        scientific_name="Cyanocitta cristata",
+                        common_name="Blue Jay",
+                    ),
                 )
 
                 assert response.status_code == 201
@@ -352,13 +340,11 @@ class TestEBirdFilteringUnknownSpecies:
         ) as client:
             response = await client.post(
                 "/api/detections/",
-                json={
-                    "species_tensor": "Unknown species",
-                    "confidence": 0.95,
-                    "latitude": 43.6532,
-                    "longitude": -79.3832,
-                    "timestamp": datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC).isoformat(),
-                },
+                json=create_detection_payload(
+                    species_tensor="Unknown species_Unknown",
+                    scientific_name="Unknown species",
+                    common_name="Unknown",
+                ),
             )
 
             assert response.status_code == 201
@@ -380,13 +366,11 @@ class TestEBirdFilteringUnknownSpecies:
         ) as client:
             response = await client.post(
                 "/api/detections/",
-                json={
-                    "species_tensor": "Unknown species",
-                    "confidence": 0.95,
-                    "latitude": 43.6532,
-                    "longitude": -79.3832,
-                    "timestamp": datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC).isoformat(),
-                },
+                json=create_detection_payload(
+                    species_tensor="Unknown species_Unknown",
+                    scientific_name="Unknown species",
+                    common_name="Unknown",
+                ),
             )
 
             assert response.status_code == 201
@@ -410,12 +394,12 @@ class TestEBirdFilteringWithoutCoordinates:
         ) as client:
             response = await client.post(
                 "/api/detections/",
-                json={
-                    "species_tensor": "Turdus migratorius",
-                    "confidence": 0.95,
-                    "longitude": -79.3832,
-                    "timestamp": datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC).isoformat(),
-                },
+                json=create_detection_payload(
+                    species_tensor="Turdus migratorius_American Robin",
+                    scientific_name="Turdus migratorius",
+                    common_name="American Robin",
+                    latitude=None,
+                ),
             )
 
             assert response.status_code == 201
@@ -434,12 +418,12 @@ class TestEBirdFilteringWithoutCoordinates:
         ) as client:
             response = await client.post(
                 "/api/detections/",
-                json={
-                    "species_tensor": "Turdus migratorius",
-                    "confidence": 0.95,
-                    "latitude": 43.6532,
-                    "timestamp": datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC).isoformat(),
-                },
+                json=create_detection_payload(
+                    species_tensor="Turdus migratorius_American Robin",
+                    scientific_name="Turdus migratorius",
+                    common_name="American Robin",
+                    longitude=None,
+                ),
             )
 
             assert response.status_code == 201
@@ -470,13 +454,11 @@ class TestEBirdFilteringErrorHandling:
         ) as client:
             response = await client.post(
                 "/api/detections/",
-                json={
-                    "species_tensor": "Turdus migratorius",
-                    "confidence": 0.95,
-                    "latitude": 43.6532,
-                    "longitude": -79.3832,
-                    "timestamp": datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC).isoformat(),
-                },
+                json=create_detection_payload(
+                    species_tensor="Turdus migratorius_American Robin",
+                    scientific_name="Turdus migratorius",
+                    common_name="American Robin",
+                ),
             )
 
             # Should still create detection despite error
@@ -514,13 +496,11 @@ class TestEBirdFilteringStrictnessLevels:
             ) as client:
                 response = await client.post(
                     "/api/detections/",
-                    json={
-                        "species_tensor": "Test species",
-                        "confidence": 0.95,
-                        "latitude": 43.6532,
-                        "longitude": -79.3832,
-                        "timestamp": datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC).isoformat(),
-                    },
+                    json=create_detection_payload(
+                        species_tensor="Test species_Test Common",
+                        scientific_name="Test species",
+                        common_name="Test Common",
+                    ),
                 )
 
                 assert response.status_code == 201
@@ -555,13 +535,11 @@ class TestEBirdFilteringStrictnessLevels:
             ) as client:
                 response = await client.post(
                     "/api/detections/",
-                    json={
-                        "species_tensor": "Test species",
-                        "confidence": 0.95,
-                        "latitude": 43.6532,
-                        "longitude": -79.3832,
-                        "timestamp": datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC).isoformat(),
-                    },
+                    json=create_detection_payload(
+                        species_tensor="Test species_Test Common",
+                        scientific_name="Test species",
+                        common_name="Test Common",
+                    ),
                 )
 
                 assert response.status_code == 201
@@ -596,13 +574,11 @@ class TestEBirdFilteringStrictnessLevels:
             ) as client:
                 response = await client.post(
                     "/api/detections/",
-                    json={
-                        "species_tensor": "Test species",
-                        "confidence": 0.95,
-                        "latitude": 43.6532,
-                        "longitude": -79.3832,
-                        "timestamp": datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC).isoformat(),
-                    },
+                    json=create_detection_payload(
+                        species_tensor="Test species_Test Common",
+                        scientific_name="Test species",
+                        common_name="Test Common",
+                    ),
                 )
 
                 assert response.status_code == 201
@@ -637,13 +613,11 @@ class TestEBirdFilteringStrictnessLevels:
             ) as client:
                 response = await client.post(
                     "/api/detections/",
-                    json={
-                        "species_tensor": "Test species",
-                        "confidence": 0.95,
-                        "latitude": 43.6532,
-                        "longitude": -79.3832,
-                        "timestamp": datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC).isoformat(),
-                    },
+                    json=create_detection_payload(
+                        species_tensor="Test species_Test Common",
+                        scientific_name="Test species",
+                        common_name="Test Common",
+                    ),
                 )
 
                 assert response.status_code == 201
