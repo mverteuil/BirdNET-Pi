@@ -423,19 +423,33 @@ class TestIntegrationWithRealSession:
         # Create the database with test schema
         engine = create_engine(f"sqlite:///{ebird_db}")
         with engine.begin() as conn:
+            # Create species_lookup table
+            conn.execute(
+                text("""
+                CREATE TABLE species_lookup (
+                    avibase_id TEXT PRIMARY KEY,
+                    scientific_name TEXT
+                )
+            """)
+            )
+            # Create grid_species table
             conn.execute(
                 text("""
                 CREATE TABLE grid_species (
                     h3_cell INTEGER,
-                    scientific_name TEXT,
+                    avibase_id TEXT,
                     confidence_tier TEXT
                 )
             """)
             )
+            # Insert test data
             conn.execute(
-                text("""
-                INSERT INTO grid_species VALUES (599686042433355775, 'Test species', 'common')
-            """)
+                text("INSERT INTO species_lookup VALUES (:avibase_id, :scientific_name)"),
+                {"avibase_id": "TEST001", "scientific_name": "Test species"},
+            )
+            conn.execute(
+                text("INSERT INTO grid_species VALUES (:h3_cell, :avibase_id, :tier)"),
+                {"h3_cell": 599686042433355775, "avibase_id": "TEST001", "tier": "common"},
             )
         engine.dispose()
 
@@ -448,7 +462,7 @@ class TestIntegrationWithRealSession:
 
             # Verify database is attached by querying it
             result = await in_memory_session.execute(
-                text("SELECT scientific_name FROM ebird.grid_species")
+                text("SELECT scientific_name FROM ebird.species_lookup")
             )
             rows = result.fetchall()
             assert "Test species" in [row[0] for row in rows]
@@ -478,20 +492,36 @@ class TestIntegrationWithRealSession:
 
         engine = create_engine(f"sqlite:///{ebird_db}")
         with engine.begin() as conn:
+            # Create species_lookup table
+            conn.execute(
+                text("""
+                CREATE TABLE species_lookup (
+                    avibase_id TEXT PRIMARY KEY,
+                    scientific_name TEXT
+                )
+            """)
+            )
+            # Create grid_species table
             conn.execute(
                 text("""
                 CREATE TABLE grid_species (
                     h3_cell INTEGER,
-                    scientific_name TEXT,
-                    confidence_tier TEXT
+                    avibase_id TEXT,
+                    confidence_tier TEXT,
+                    confidence_boost REAL
                 )
             """)
+            )
+            # Insert test species
+            conn.execute(
+                text("INSERT INTO species_lookup VALUES (:avibase_id, :scientific_name)"),
+                {"avibase_id": "TEST001", "scientific_name": "Cyanocitta cristata"},
             )
             # Use the hex value converted to int
             h3_int = int("85283473fffffff", 16)
             conn.execute(
-                text("INSERT INTO grid_species VALUES (:h3_cell, :species, :tier)"),
-                {"h3_cell": h3_int, "species": "Cyanocitta cristata", "tier": "common"},
+                text("INSERT INTO grid_species VALUES (:h3_cell, :avibase_id, :tier, :boost)"),
+                {"h3_cell": h3_int, "avibase_id": "TEST001", "tier": "common", "boost": 1.5},
             )
         engine.dispose()
 
