@@ -13,9 +13,13 @@ import pytest
 from dependency_injector import providers
 from httpx import ASGITransport, AsyncClient
 
+from birdnetpi.config.manager import ConfigManager
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.ebird import EBirdRegionService
 from birdnetpi.releases.registry_service import BoundingBox, RegionPackInfo, RegistryService
+from birdnetpi.utils.cache.cache import Cache
 from birdnetpi.web.core.container import Container
+from birdnetpi.web.core.factory import create_app
 
 
 def create_detection_payload(**overrides):
@@ -53,31 +57,61 @@ def mock_ebird_service():
     async def get_tier(session, scientific_name, h3_cell):
         return mock_service._confidence_tiers.get(scientific_name)
 
-    mock_service.get_species_confidence_tier = get_tier
+    mock_service.get_species_confidence_tier = AsyncMock(spec=object, side_effect=get_tier)
 
     return mock_service
 
 
 @pytest.fixture
-async def app_with_ebird_filtering(app_with_temp_data, mock_ebird_service, tmp_path):
-    """FastAPI app with eBird filtering enabled and mocked eBird service."""
+async def app_with_ebird_filtering(path_resolver, mock_ebird_service, tmp_path):
+    """FastAPI app with eBird filtering enabled and mocked eBird service.
+
+    IMPORTANT: We override Container providers BEFORE creating the app
+    so that the mocked eBird service is used when the app is initialized.
+    """
     # Create mock eBird pack database file
     ebird_dir = tmp_path / "database" / "ebird_packs"
     ebird_dir.mkdir(parents=True, exist_ok=True)
     pack_db = ebird_dir / "test-pack-2025.08.db"
     pack_db.touch()
 
-    # Get the path resolver from container
-    path_resolver = Container.path_resolver()
-
     # Override path resolver to return test pack path
     original_get_ebird_pack_path = path_resolver.get_ebird_pack_path
     path_resolver.get_ebird_pack_path = lambda region_pack_name: pack_db
 
-    # Override the eBird service in the container
+    # Override Container providers BEFORE creating app
+    Container.path_resolver.override(providers.Singleton(lambda: path_resolver))
+    Container.database_path.override(providers.Factory(lambda: path_resolver.get_database_path()))
+
+    # Create test config
+    manager = ConfigManager(path_resolver)
+    test_config = manager.load()
+
+    # Enable eBird filtering in config
+    test_config.ebird_filtering.enabled = True
+    test_config.ebird_filtering.detection_mode = "filter"
+    test_config.ebird_filtering.detection_strictness = "vagrant"
+    test_config.ebird_filtering.h3_resolution = 5
+    test_config.ebird_filtering.unknown_species_behavior = "allow"
+
+    Container.config.override(providers.Singleton(lambda: test_config))
+
+    # Create test database service
+    temp_db_service = CoreDatabaseService(path_resolver.get_database_path())
+    await temp_db_service.initialize()
+    Container.core_database.override(providers.Singleton(lambda: temp_db_service))
+
+    # Mock cache service
+    mock_cache = MagicMock(spec=Cache)
+    mock_cache.configure_mock(
+        **{"get.return_value": None, "set.return_value": True, "ping.return_value": True}
+    )
+    Container.cache_service.override(providers.Singleton(lambda: mock_cache))
+
+    # Override the eBird service in the container BEFORE creating app
     Container.ebird_region_service.override(providers.Singleton(lambda: mock_ebird_service))
 
-    # Create mock registry service that returns test pack info
+    # Create mock registry service
     mock_registry_service = MagicMock(spec=RegistryService)
     mock_registry_service.find_pack_for_coordinates.return_value = RegionPackInfo(
         region_id="test-pack",
@@ -92,20 +126,34 @@ async def app_with_ebird_filtering(app_with_temp_data, mock_ebird_service, tmp_p
     )
     Container.registry_service.override(providers.Singleton(lambda: mock_registry_service))
 
-    # Update config to enable eBird filtering
-    config = Container.config()
-    config.ebird_filtering.enabled = True
-    config.ebird_filtering.detection_mode = "filter"
-    config.ebird_filtering.detection_strictness = "vagrant"
-    config.ebird_filtering.h3_resolution = 5
-    config.ebird_filtering.unknown_species_behavior = "allow"
+    # Reset dependent services
+    try:
+        Container.ebird_region_service.reset()
+    except AttributeError:
+        pass
+    try:
+        Container.registry_service.reset()
+    except AttributeError:
+        pass
 
-    # Store reference to mock service for test configuration
-    app_with_temp_data._mock_ebird_service = mock_ebird_service
+    # NOW create the app with our overridden providers
+    app = create_app()
 
-    yield app_with_temp_data
+    # Store references
+    app._test_db_service = temp_db_service  # type: ignore[attr-defined]
+    app._mock_ebird_service = mock_ebird_service  # type: ignore[attr-defined]
+
+    yield app
 
     # Clean up
+    if hasattr(temp_db_service, "async_engine") and temp_db_service.async_engine:
+        await temp_db_service.async_engine.dispose()
+
+    Container.path_resolver.reset_override()
+    Container.database_path.reset_override()
+    Container.config.reset_override()
+    Container.core_database.reset_override()
+    Container.cache_service.reset_override()
     Container.ebird_region_service.reset_override()
     Container.registry_service.reset_override()
     path_resolver.get_ebird_pack_path = original_get_ebird_pack_path
@@ -392,15 +440,15 @@ class TestEBirdFilteringWithoutCoordinates:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
         ) as client:
-            response = await client.post(
-                "/api/detections/",
-                json=create_detection_payload(
-                    species_tensor="Turdus migratorius_American Robin",
-                    scientific_name="Turdus migratorius",
-                    common_name="American Robin",
-                    latitude=None,
-                ),
+            # Create payload and remove latitude field
+            payload = create_detection_payload(
+                species_tensor="Turdus migratorius_American Robin",
+                scientific_name="Turdus migratorius",
+                common_name="American Robin",
             )
+            del payload["latitude"]
+
+            response = await client.post("/api/detections/", json=payload)
 
             assert response.status_code == 201
             data = response.json()
@@ -416,15 +464,15 @@ class TestEBirdFilteringWithoutCoordinates:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
         ) as client:
-            response = await client.post(
-                "/api/detections/",
-                json=create_detection_payload(
-                    species_tensor="Turdus migratorius_American Robin",
-                    scientific_name="Turdus migratorius",
-                    common_name="American Robin",
-                    longitude=None,
-                ),
+            # Create payload and remove longitude field
+            payload = create_detection_payload(
+                species_tensor="Turdus migratorius_American Robin",
+                scientific_name="Turdus migratorius",
+                common_name="American Robin",
             )
+            del payload["longitude"]
+
+            response = await client.post("/api/detections/", json=payload)
 
             assert response.status_code == 201
             data = response.json()
