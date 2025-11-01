@@ -119,6 +119,7 @@ async def test_checkpoint_wal(
             mock_session.commit.assert_called_once()
 
 
+@pytest.mark.ci_issue
 @pytest.mark.no_leaks
 @pytest.mark.asyncio
 async def test_get_database_stats(core_database_service, tmp_path, db_session_factory):

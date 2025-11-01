@@ -248,6 +248,7 @@ class TestCleanupDetections:
         assert stats.detections_deleted == 1
         session.commit.assert_called_once()
 
+    @pytest.mark.ci_issue
     @pytest.mark.asyncio
     async def test_cleanup_detections_with_audio_files(
         self, cleanup_service_factory, db_service_factory, path_resolver, tmp_path

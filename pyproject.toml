@@ -145,7 +145,8 @@ venvPath = "."
 [tool.pytest.ini_options]
 markers = [
   "expensive",
-  "no_leaks: detect asyncio task leaks, thread leaks, and event loop blocking"
+  "no_leaks: detect asyncio task leaks, thread leaks, and event loop blocking",
+  "ci_issue: tests that have known issues in CI environment"
 ]
 testpaths = ["tests"]
 norecursedirs = ["docs", "*.egg-info", ".git", ".venv", "data"]
