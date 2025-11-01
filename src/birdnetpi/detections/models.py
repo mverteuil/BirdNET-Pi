@@ -54,6 +54,10 @@ class DetectionBase(SQLModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
     audio_file_id: uuid.UUID | None = Field(default=None, foreign_key="audio_files.id", unique=True)
 
+    # Model versioning (for reproducibility and auditing)
+    tensor_model: str | None = None  # TensorFlow model filename used for detection
+    metadata_model: str | None = None  # Metadata model filename used for filtering
+
     # Location and analysis parameters
     latitude: float | None = None
     longitude: float | None = None
@@ -63,6 +67,15 @@ class DetectionBase(SQLModel):
     overlap: float | None = (
         None  # Audio analysis window overlap (0.0-1.0) for signal processing continuity
     )
+
+    # eBird regional filtering parameters (stored like tensor parameters for auditing)
+    ebird_confidence_tier: str | None = (
+        None  # eBird confidence tier: common, uncommon, rare, vagrant
+    )
+    ebird_confidence_boost: float | None = None  # Regional confidence boost (1.0-2.0)
+    ebird_h3_cell: str | None = None  # H3 cell where species was found (hex string)
+    ebird_ring_distance: int | None = None  # H3 ring distance from user location (0=exact match)
+    ebird_region_pack: str | None = None  # Region pack name used for lookup
 
     # Weather at detection time (references composite key)
     weather_timestamp: datetime | None = Field(default=None, foreign_key="weather.timestamp")
@@ -223,12 +236,19 @@ class DetectionWithTaxa(DetectionBase):
                 confidence=detection.confidence,
                 timestamp=detection.timestamp,
                 audio_file_id=detection.audio_file_id,
+                tensor_model=detection.tensor_model,
+                metadata_model=detection.metadata_model,
                 latitude=detection.latitude,
                 longitude=detection.longitude,
                 species_confidence_threshold=detection.species_confidence_threshold,
                 week=detection.week,
                 sensitivity_setting=detection.sensitivity_setting,
                 overlap=detection.overlap,
+                ebird_confidence_tier=detection.ebird_confidence_tier,
+                ebird_confidence_boost=detection.ebird_confidence_boost,
+                ebird_h3_cell=detection.ebird_h3_cell,
+                ebird_ring_distance=detection.ebird_ring_distance,
+                ebird_region_pack=detection.ebird_region_pack,
             )
         else:
             # Initialize from kwargs
@@ -266,12 +286,19 @@ class DetectionWithTaxa(DetectionBase):
             and self.confidence == other.confidence
             and self.timestamp == other.timestamp
             and self.audio_file_id == other.audio_file_id
+            and self.tensor_model == other.tensor_model
+            and self.metadata_model == other.metadata_model
             and self.latitude == other.latitude
             and self.longitude == other.longitude
             and self.species_confidence_threshold == other.species_confidence_threshold
             and self.week == other.week
             and self.sensitivity_setting == other.sensitivity_setting
             and self.overlap == other.overlap
+            and self.ebird_confidence_tier == other.ebird_confidence_tier
+            and self.ebird_confidence_boost == other.ebird_confidence_boost
+            and self.ebird_h3_cell == other.ebird_h3_cell
+            and self.ebird_ring_distance == other.ebird_ring_distance
+            and self.ebird_region_pack == other.ebird_region_pack
             and self.ioc_english_name == other.ioc_english_name
             and self.translated_name == other.translated_name
             and self.family == other.family

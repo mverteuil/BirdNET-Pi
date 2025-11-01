@@ -1,6 +1,7 @@
 """Tests for settings API routes."""
 
 import pytest
+from dependency_injector import providers
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -17,11 +18,14 @@ def client(tmp_path, path_resolver):
     # Create the real container
     container = Container()
 
+    # IMPORTANT: Override path_resolver IMMEDIATELY to prevent permission errors
+    container.path_resolver.override(providers.Singleton(lambda: path_resolver))
+    container.database_path.override(providers.Factory(lambda: path_resolver.get_database_path()))
+
     # Use the global path_resolver fixture and customize it
     path_resolver.get_ioc_database_path = lambda: tmp_path / "ioc_reference.db"
     path_resolver.get_models_dir = lambda: tmp_path / "models"
     path_resolver.get_wikidata_database_path = lambda: tmp_path / "wikidata_reference.db"
-    container.path_resolver.override(path_resolver)
 
     # Wire the container
     container.wire(modules=["birdnetpi.web.routers.settings_api_routes"])

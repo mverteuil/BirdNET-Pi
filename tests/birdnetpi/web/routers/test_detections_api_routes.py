@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 import pytest
+from dependency_injector import providers
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -27,6 +28,9 @@ def client(path_resolver, test_config, cache):
     """Create test client with detections API routes and mocked dependencies."""
     app = FastAPI()
     container = Container()
+    # IMPORTANT: Override path_resolver BEFORE any other providers to prevent permission errors
+    container.path_resolver.override(providers.Singleton(lambda: path_resolver))
+    container.database_path.override(providers.Factory(lambda: path_resolver.get_database_path()))
     mock_data_manager = MagicMock(spec=DataManager, query_service=None)
     mock_query_service = MagicMock(spec=DetectionQueryService)
     container.data_manager.override(mock_data_manager)

@@ -8,7 +8,9 @@ from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
 from birdnetpi.audio.websocket import AudioWebSocketService
 from birdnetpi.database.core import CoreDatabaseService
+from birdnetpi.database.ebird import EBirdRegionService
 from birdnetpi.database.species import SpeciesDatabaseService
+from birdnetpi.detections.cleanup import DetectionCleanupService
 from birdnetpi.detections.manager import DataManager
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.i18n.translation_manager import TranslationManager
@@ -19,6 +21,7 @@ from birdnetpi.notifications.apprise import AppriseService
 from birdnetpi.notifications.manager import NotificationManager
 from birdnetpi.notifications.mqtt import MQTTService
 from birdnetpi.notifications.webhooks import WebhookService
+from birdnetpi.releases.registry_service import RegistryService
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.log_reader import LogReaderService
@@ -88,6 +91,18 @@ class Container(containers.DeclarativeContainer):
         path_resolver=path_resolver,
     )
 
+    # eBird regional filtering service - singleton
+    ebird_region_service = providers.Singleton(
+        EBirdRegionService,
+        path_resolver=path_resolver,
+    )
+
+    # eBird region pack registry service - singleton
+    registry_service = providers.Singleton(
+        RegistryService,
+        path_resolver=path_resolver,
+    )
+
     # Species display service - singleton
     species_display_service = providers.Singleton(
         SpeciesDisplayService,
@@ -128,6 +143,15 @@ class Container(containers.DeclarativeContainer):
         file_manager=file_manager,
         path_resolver=path_resolver,
         detection_query_service=detection_query_service,
+    )
+
+    # Detection cleanup service for eBird filtering - singleton
+    detection_cleanup_service = providers.Singleton(
+        DetectionCleanupService,
+        core_db=core_database,
+        ebird_service=ebird_region_service,
+        path_resolver=path_resolver,
+        config=config,
     )
 
     sun_service = providers.Singleton(

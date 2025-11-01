@@ -132,12 +132,15 @@
 (function() {
     let map = null;
     let marker = null;
-    const searchStatusEl = document.getElementById('search-status');
-    const latInput = document.getElementById('latitude');
-    const lngInput = document.getElementById('longitude');
+    // Note: Don't cache input elements here - they may not exist yet in DOM
+    // The latitude/longitude inputs are defined after this component in settings.html.j2
 
     // Initialize map on page load
     function initMap() {
+        // Get input elements (now that DOM is ready)
+        const latInput = document.getElementById('latitude');
+        const lngInput = document.getElementById('longitude');
+
         // Get initial coordinates from inputs or use default
         const initialLat = parseFloat(latInput?.value) || 40.7128;
         const initialLng = parseFloat(lngInput?.value) || -74.0060;
@@ -183,6 +186,10 @@
 
     // Update coordinate inputs and timezone
     function updateCoordinates(lat, lng) {
+        // Get input elements each time (they're defined after this component)
+        const latInput = document.getElementById('latitude');
+        const lngInput = document.getElementById('longitude');
+
         if (latInput) latInput.value = lat.toFixed(6);
         if (lngInput) lngInput.value = lng.toFixed(6);
 
@@ -316,6 +323,7 @@
 
     // Show status message
     function showStatus(message, type) {
+        const searchStatusEl = document.getElementById('search-status');
         if (!searchStatusEl) return;
 
         searchStatusEl.textContent = message;

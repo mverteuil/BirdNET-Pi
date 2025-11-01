@@ -361,6 +361,70 @@
     </div>
     {% endif %}
 
+    <!-- Region Pack Management Section -->
+    <div class="region-pack-panel" id="region-pack-management" role="region" aria-label="{{ _('Region pack management') }}">
+        <h2>{{ _('Region Pack Management') }}</h2>
+
+        <div class="region-pack-status">
+            {% set pack_status = get_region_pack_status() %}
+
+            {% if pack_status.has_pack %}
+                <div class="status-row">
+                    <span class="status-label">{{ _('Installed Packs:') }}</span>
+                    <span class="status-value">
+                        <span class="badge badge-success">{{ pack_status.pack_count }} {{ _('pack(s) installed') }}</span>
+                    </span>
+                </div>
+
+                <div class="status-row">
+                    <span class="status-label">{{ _('Location:') }}</span>
+                    <span class="status-value">
+                        {% if pack_status.location_set %}
+                            <span class="badge badge-success">{{ _('Configured') }}</span>
+                        {% else %}
+                            <span class="badge badge-warning">{{ _('Not Set') }}</span>
+                        {% endif %}
+                    </span>
+                </div>
+            {% else %}
+                <div class="status-message warning">
+                    <span class="status-icon" aria-hidden="true">📍</span>
+                    <div>
+                        <strong>{{ _('No Region Pack Installed') }}</strong>
+                        <p>{{ _('Region packs provide location-specific bird species filtering based on eBird data. Install a pack for your coordinates to enable regional filtering.') }}</p>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if pack_status.location_set %}
+                <div class="region-pack-actions">
+                    <button
+                        type="button"
+                        id="download-region-pack-btn"
+                        class="btn btn-primary"
+                        aria-label="{{ _('Download region pack for your location') }}"
+                    >
+                        <span class="btn-icon" aria-hidden="true">📦</span>
+                        {{ _('Download Region Pack for My Location') }}
+                    </button>
+
+                    <p class="help-text">
+                        {{ _('This will download the appropriate region pack based on your configured coordinates:') }}
+                        <strong>{{ config.latitude }}, {{ config.longitude }}</strong>
+                    </p>
+                </div>
+            {% else %}
+                <div class="region-pack-actions">
+                    <p class="help-text warning">
+                        {{ _('Set your location in') }}
+                        <a href="{{ url_for('get_settings_view') }}">{{ _('Settings') }}</a>
+                        {{ _('to enable region pack download.') }}
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
     <!-- Help Section -->
     <div class="help-panel" id="help-panel" role="region" aria-label="{{ _('Update help') }}">
         <h2>{{ _('Update Help') }}</h2>

@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
+from dependency_injector import providers
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -16,10 +17,13 @@ from birdnetpi.web.routers.detections_api_routes import router
 
 
 @pytest.fixture
-def sse_client(test_config):
+def sse_client(path_resolver, test_config):
     """Create test client with SSE endpoints and mocked dependencies."""
     app = FastAPI()
     container = Container()
+    # IMPORTANT: Override path_resolver BEFORE any other providers to prevent permission errors
+    container.path_resolver.override(providers.Singleton(lambda: path_resolver))
+    container.database_path.override(providers.Factory(lambda: path_resolver.get_database_path()))
     mock_detection_query_service = MagicMock(spec=DetectionQueryService)
     container.detection_query_service.override(mock_detection_query_service)
     container.config.override(test_config)

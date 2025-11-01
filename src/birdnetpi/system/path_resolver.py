@@ -119,6 +119,21 @@ class PathResolver:
         wikidata_db_path = self.data_dir / "database" / "wikidata_reference.db"
         return wikidata_db_path
 
+    def get_ebird_pack_path(self, region_pack_name: str) -> Path:
+        """Get the path to a specific eBird regional pack database.
+
+        Args:
+            region_pack_name: Name of the region pack (e.g., "na-east-coast-2025.08")
+
+        Returns:
+            Path to the eBird pack database file in data/database/
+        """
+        # Add .db extension if not present
+        if not region_pack_name.endswith(".db"):
+            region_pack_name = f"{region_pack_name}.db"
+        ebird_pack_path = self.data_dir / "database" / region_pack_name
+        return ebird_pack_path
+
     def get_temp_dir(self) -> Path:
         """Get the temporary directory for cache files."""
         return Path("/tmp/birdnetpi")

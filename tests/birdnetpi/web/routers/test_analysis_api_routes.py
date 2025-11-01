@@ -4,6 +4,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock
 
 import pytest
+from dependency_injector import providers
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -13,13 +14,17 @@ from birdnetpi.web.routers.analysis_api_routes import router
 
 
 @pytest.fixture
-def client():
+def client(path_resolver):
     """Create test client with analysis API routes and mocked dependencies."""
     # Create the app
     app = FastAPI()
 
     # Create the real container
     container = Container()
+
+    # IMPORTANT: Override path_resolver BEFORE any other providers to prevent permission errors
+    container.path_resolver.override(providers.Singleton(lambda: path_resolver))
+    container.database_path.override(providers.Factory(lambda: path_resolver.get_database_path()))
 
     # Create mock presentation manager
     mock_presentation_manager = AsyncMock(spec=PresentationManager)
