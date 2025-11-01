@@ -68,17 +68,10 @@ async def app_with_ebird_filtering(path_resolver, mock_ebird_service, tmp_path):
 
     IMPORTANT: We override Container providers BEFORE creating the app
     so that the mocked eBird service is used when the app is initialized.
+
+    Uses the global path_resolver fixture which points to the real region pack
+    installed in CI (north-america-great-lakes). NO MagicMock for PathResolver!
     """
-    # Create mock eBird pack database file
-    ebird_dir = tmp_path / "database" / "ebird_packs"
-    ebird_dir.mkdir(parents=True, exist_ok=True)
-    pack_db = ebird_dir / "test-pack-2025.08.db"
-    pack_db.touch()
-
-    # Override path resolver to return test pack path
-    original_get_ebird_pack_path = path_resolver.get_ebird_pack_path
-    path_resolver.get_ebird_pack_path = lambda region_pack_name: pack_db
-
     # Override Container providers BEFORE creating app
     Container.path_resolver.override(providers.Singleton(lambda: path_resolver))
     Container.database_path.override(providers.Factory(lambda: path_resolver.get_database_path()))
@@ -111,17 +104,18 @@ async def app_with_ebird_filtering(path_resolver, mock_ebird_service, tmp_path):
     # Override the eBird service in the container BEFORE creating app
     Container.ebird_region_service.override(providers.Singleton(lambda: mock_ebird_service))
 
-    # Create mock registry service
+    # Create mock registry service that returns the real pack info for CI
+    # CI installs "north-america-great-lakes" region pack
     mock_registry_service = MagicMock(spec=RegistryService)
     mock_registry_service.find_pack_for_coordinates.return_value = RegionPackInfo(
-        region_id="test-pack",
-        release_name="test-pack-2025.08",
+        region_id="north-america-great-lakes",
+        release_name="north-america-great-lakes",
         h3_cells=[],
         pack_count=1,
         total_size_mb=1.0,
         resolution=5,
-        center={"lat": 40.7128, "lon": -74.0060},
-        bbox=BoundingBox(min_lat=40.0, max_lat=41.0, min_lon=-75.0, max_lon=-73.0),
+        center={"lat": 43.6532, "lon": -79.3832},  # Toronto area
+        bbox=BoundingBox(min_lat=40.0, max_lat=50.0, min_lon=-90.0, max_lon=-70.0),
         download_url=None,
     )
     Container.registry_service.override(providers.Singleton(lambda: mock_registry_service))
@@ -156,7 +150,6 @@ async def app_with_ebird_filtering(path_resolver, mock_ebird_service, tmp_path):
     Container.cache_service.reset_override()
     Container.ebird_region_service.reset_override()
     Container.registry_service.reset_override()
-    path_resolver.get_ebird_pack_path = original_get_ebird_pack_path
 
 
 class TestEBirdFilteringDisabled:
