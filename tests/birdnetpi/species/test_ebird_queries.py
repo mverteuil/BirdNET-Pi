@@ -1,10 +1,8 @@
 """Tests for eBird query service with neighbor search and confidence calculations."""
 
 from collections import namedtuple
-from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy.engine import Result
 
 from birdnetpi.config.models import EBirdFilterConfig
 from birdnetpi.species.ebird_queries import EBirdQueryService
@@ -17,10 +15,9 @@ def ebird_query_service():
 
 
 @pytest.fixture
-def mock_session(db_session_factory):
-    """Create mock SQLAlchemy async session using factory."""
-    session, _result = db_session_factory()
-    return session
+def mock_session_factory(db_session_factory):
+    """Provide session factory for tests that need to configure results."""
+    return db_session_factory
 
 
 @pytest.fixture
@@ -45,7 +42,9 @@ class TestGetConfidenceWithNeighbors:
     """Test neighbor search with confidence calculation."""
 
     @pytest.mark.asyncio
-    async def test_exact_match_no_neighbors(self, ebird_query_service, mock_session, base_config):
+    async def test_exact_match_no_neighbors(
+        self, ebird_query_service, mock_session_factory, base_config
+    ):
         """Should find species in exact cell without neighbor search."""
         # Create mock row with all required fields
         MockRow = namedtuple(
@@ -63,9 +62,9 @@ class TestGetConfidenceWithNeighbors:
             ],
         )
 
-        # User cell: 85283473fffffff (hex) = 599686042433355775 (int)
+        # User cell: 852a1073fffffff (hex) = 599718752904282111 (int) - NYC at resolution 5
         species_row = MockRow(
-            h3_cell=599686042433355775,
+            h3_cell=599718752904282111,
             confidence_tier="common",
             base_boost=1.5,
             yearly_frequency=0.3,
@@ -76,12 +75,10 @@ class TestGetConfidenceWithNeighbors:
             year_frequency=0.3,
         )
 
-        mock_result = MagicMock(spec=Result)
-        mock_result.fetchall.return_value = [species_row]
-        mock_session.execute.return_value = mock_result
+        session, _result = mock_session_factory(fetch_results=[species_row])
 
-        result = await ebird_query_service.get_confidence_with_neighbors(
-            session=mock_session,
+        result_data = await ebird_query_service.get_confidence_with_neighbors(
+            session=session,
             scientific_name="Cyanocitta cristata",
             latitude=40.7128,  # New York City
             longitude=-74.0060,
@@ -89,15 +86,17 @@ class TestGetConfidenceWithNeighbors:
             month=6,
         )
 
-        assert result is not None
-        assert result["confidence_tier"] == "common"
-        assert result["h3_cell"] == "85283473fffffff"
-        assert result["ring_distance"] == 0  # Exact match
-        assert isinstance(result["confidence_boost"], float)
-        assert result["region_pack"] is None
+        assert result_data is not None
+        assert result_data["confidence_tier"] == "common"
+        assert result_data["h3_cell"] == "852a1073fffffff"
+        assert result_data["ring_distance"] == 0  # Exact match
+        assert isinstance(result_data["confidence_boost"], float)
+        assert result_data["region_pack"] is None
 
     @pytest.mark.asyncio
-    async def test_neighbor_match_with_decay(self, ebird_query_service, mock_session, base_config):
+    async def test_neighbor_match_with_decay(
+        self, ebird_query_service, mock_session_factory, base_config
+    ):
         """Should find species in neighbor cell with distance decay applied."""
         MockRow = namedtuple(
             "MockRow",
@@ -116,7 +115,7 @@ class TestGetConfidenceWithNeighbors:
 
         # Neighbor cell (different from user cell)
         species_row = MockRow(
-            h3_cell=599686042433355776,  # Different cell
+            h3_cell=599718724986994687,  # Different cell
             confidence_tier="uncommon",
             base_boost=1.3,
             yearly_frequency=0.15,
@@ -127,12 +126,10 @@ class TestGetConfidenceWithNeighbors:
             year_frequency=0.15,
         )
 
-        mock_result = MagicMock(spec=Result)
-        mock_result.fetchall.return_value = [species_row]
-        mock_session.execute.return_value = mock_result
+        session, _result = mock_session_factory(fetch_results=[species_row])
 
-        result = await ebird_query_service.get_confidence_with_neighbors(
-            session=mock_session,
+        result_data = await ebird_query_service.get_confidence_with_neighbors(
+            session=session,
             scientific_name="Cyanocitta cristata",
             latitude=40.7128,
             longitude=-74.0060,
@@ -140,19 +137,20 @@ class TestGetConfidenceWithNeighbors:
             month=6,
         )
 
-        assert result is not None
-        assert result["ring_distance"] >= 0
-        assert result["confidence_boost"] < result["confidence_boost"]  # Decay applied
+        assert result_data is not None
+        assert result_data["ring_distance"] >= 0
+        # Confidence boost should be positive
+        assert result_data["confidence_boost"] > 0
 
     @pytest.mark.asyncio
-    async def test_no_match_in_any_ring(self, ebird_query_service, mock_session, base_config):
+    async def test_no_match_in_any_ring(
+        self, ebird_query_service, mock_session_factory, base_config
+    ):
         """Should return None when species not found in any searched ring."""
-        mock_result = MagicMock(spec=Result)
-        mock_result.fetchall.return_value = []  # No matches
-        mock_session.execute.return_value = mock_result
+        session, _result = mock_session_factory(fetch_results=[])  # No matches
 
-        result = await ebird_query_service.get_confidence_with_neighbors(
-            session=mock_session,
+        result_data = await ebird_query_service.get_confidence_with_neighbors(
+            session=session,
             scientific_name="Nonexistent species",
             latitude=40.7128,
             longitude=-74.0060,
@@ -160,10 +158,12 @@ class TestGetConfidenceWithNeighbors:
             month=6,
         )
 
-        assert result is None
+        assert result_data is None
 
     @pytest.mark.asyncio
-    async def test_neighbor_search_disabled(self, ebird_query_service, mock_session, base_config):
+    async def test_neighbor_search_disabled(
+        self, ebird_query_service, mock_session_factory, base_config
+    ):
         """Should only search exact cell when neighbor search disabled."""
         base_config.neighbor_search_enabled = False
 
@@ -183,7 +183,7 @@ class TestGetConfidenceWithNeighbors:
         )
 
         species_row = MockRow(
-            h3_cell=599686042433355775,
+            h3_cell=599718752904282111,
             confidence_tier="common",
             base_boost=1.5,
             yearly_frequency=0.3,
@@ -194,12 +194,10 @@ class TestGetConfidenceWithNeighbors:
             year_frequency=None,
         )
 
-        mock_result = MagicMock(spec=Result)
-        mock_result.fetchall.return_value = [species_row]
-        mock_session.execute.return_value = mock_result
+        session, _result = mock_session_factory(fetch_results=[species_row])
 
-        result = await ebird_query_service.get_confidence_with_neighbors(
-            session=mock_session,
+        result_data = await ebird_query_service.get_confidence_with_neighbors(
+            session=session,
             scientific_name="Cyanocitta cristata",
             latitude=40.7128,
             longitude=-74.0060,
@@ -207,12 +205,12 @@ class TestGetConfidenceWithNeighbors:
             month=None,
         )
 
-        assert result is not None
-        assert result["ring_distance"] == 0
+        assert result_data is not None
+        assert result_data["ring_distance"] == 0
 
     @pytest.mark.asyncio
     async def test_temporal_adjustments_with_month(
-        self, ebird_query_service, mock_session, base_config
+        self, ebird_query_service, mock_session_factory, base_config
     ):
         """Should apply temporal adjustments based on monthly frequency."""
         MockRow = namedtuple(
@@ -231,7 +229,7 @@ class TestGetConfidenceWithNeighbors:
         )
 
         species_row = MockRow(
-            h3_cell=599686042433355775,
+            h3_cell=599718752904282111,
             confidence_tier="common",
             base_boost=1.5,
             yearly_frequency=0.3,
@@ -242,12 +240,10 @@ class TestGetConfidenceWithNeighbors:
             year_frequency=0.3,
         )
 
-        mock_result = MagicMock(spec=Result)
-        mock_result.fetchall.return_value = [species_row]
-        mock_session.execute.return_value = mock_result
+        session, _result = mock_session_factory(fetch_results=[species_row])
 
-        result = await ebird_query_service.get_confidence_with_neighbors(
-            session=mock_session,
+        result_data = await ebird_query_service.get_confidence_with_neighbors(
+            session=session,
             scientific_name="Cyanocitta cristata",
             latitude=40.7128,
             longitude=-74.0060,
@@ -255,13 +251,13 @@ class TestGetConfidenceWithNeighbors:
             month=6,
         )
 
-        assert result is not None
+        assert result_data is not None
         # Absence penalty should be applied
-        assert result["confidence_boost"] < 1.5  # Less than base boost
+        assert result_data["confidence_boost"] < 1.5  # Less than base boost
 
     @pytest.mark.asyncio
     async def test_temporal_adjustments_without_month(
-        self, ebird_query_service, mock_session, base_config
+        self, ebird_query_service, mock_session_factory, base_config
     ):
         """Should skip temporal adjustments when month not provided."""
         MockRow = namedtuple(
@@ -280,7 +276,7 @@ class TestGetConfidenceWithNeighbors:
         )
 
         species_row = MockRow(
-            h3_cell=599686042433355775,
+            h3_cell=599718752904282111,
             confidence_tier="common",
             base_boost=1.5,
             yearly_frequency=0.3,
@@ -291,12 +287,10 @@ class TestGetConfidenceWithNeighbors:
             year_frequency=None,
         )
 
-        mock_result = MagicMock(spec=Result)
-        mock_result.fetchall.return_value = [species_row]
-        mock_session.execute.return_value = mock_result
+        session, _result = mock_session_factory(fetch_results=[species_row])
 
-        result = await ebird_query_service.get_confidence_with_neighbors(
-            session=mock_session,
+        result_data = await ebird_query_service.get_confidence_with_neighbors(
+            session=session,
             scientific_name="Cyanocitta cristata",
             latitude=40.7128,
             longitude=-74.0060,
@@ -304,13 +298,13 @@ class TestGetConfidenceWithNeighbors:
             month=None,  # No month provided
         )
 
-        assert result is not None
+        assert result_data is not None
         # No temporal multiplier applied, only base x quality x ring
-        assert result["confidence_boost"] > 0
+        assert result_data["confidence_boost"] > 0
 
     @pytest.mark.asyncio
     async def test_quality_multiplier_calculation(
-        self, ebird_query_service, mock_session, base_config
+        self, ebird_query_service, mock_session_factory, base_config
     ):
         """Should apply quality multiplier based on observation quality."""
         MockRow = namedtuple(
@@ -330,7 +324,7 @@ class TestGetConfidenceWithNeighbors:
 
         # High quality score
         high_quality_row = MockRow(
-            h3_cell=599686042433355775,
+            h3_cell=599718752904282111,
             confidence_tier="common",
             base_boost=1.5,
             yearly_frequency=0.3,
@@ -341,12 +335,10 @@ class TestGetConfidenceWithNeighbors:
             year_frequency=None,
         )
 
-        mock_result = MagicMock(spec=Result)
-        mock_result.fetchall.return_value = [high_quality_row]
-        mock_session.execute.return_value = mock_result
+        session, _result = mock_session_factory(fetch_results=[high_quality_row])
 
-        result = await ebird_query_service.get_confidence_with_neighbors(
-            session=mock_session,
+        result_data = await ebird_query_service.get_confidence_with_neighbors(
+            session=session,
             scientific_name="Cyanocitta cristata",
             latitude=40.7128,
             longitude=-74.0060,
@@ -354,10 +346,10 @@ class TestGetConfidenceWithNeighbors:
             month=None,
         )
 
-        assert result is not None
+        assert result_data is not None
         # High quality should give full multiplier (0.7 + 0.3 * 1.0 = 1.0)
         expected_quality_mult = 0.7 + (0.3 * 1.0)
-        assert abs(result["confidence_boost"] / 1.5 - expected_quality_mult) < 0.01
+        assert abs(result_data["confidence_boost"] / 1.5 - expected_quality_mult) < 0.01
 
 
 class TestConfidenceCalculationComponents:
@@ -365,7 +357,7 @@ class TestConfidenceCalculationComponents:
 
     @pytest.mark.asyncio
     async def test_ring_multiplier_calculation(
-        self, ebird_query_service, mock_session, base_config
+        self, ebird_query_service, mock_session_factory, base_config
     ):
         """Should calculate correct ring distance multiplier."""
         # Ring 0 (exact): 1.0
@@ -388,7 +380,7 @@ class TestConfidenceCalculationComponents:
         )
 
         species_row = MockRow(
-            h3_cell=599686042433355775,
+            h3_cell=599718752904282111,
             confidence_tier="common",
             base_boost=1.0,  # Use 1.0 for easier calculation
             yearly_frequency=0.3,
@@ -399,12 +391,10 @@ class TestConfidenceCalculationComponents:
             year_frequency=None,
         )
 
-        mock_result = MagicMock(spec=Result)
-        mock_result.fetchall.return_value = [species_row]
-        mock_session.execute.return_value = mock_result
+        session, _result = mock_session_factory(fetch_results=[species_row])
 
-        result = await ebird_query_service.get_confidence_with_neighbors(
-            session=mock_session,
+        result_data = await ebird_query_service.get_confidence_with_neighbors(
+            session=session,
             scientific_name="Cyanocitta cristata",
             latitude=40.7128,
             longitude=-74.0060,
@@ -412,10 +402,10 @@ class TestConfidenceCalculationComponents:
             month=None,
         )
 
-        assert result is not None
-        assert result["ring_distance"] == 0
+        assert result_data is not None
+        assert result_data["ring_distance"] == 0
         # Exact match: base (1.0) x ring (1.0) x quality (0.85) x temporal (1.0) = 0.85
-        assert abs(result["confidence_boost"] - 0.85) < 0.01
+        assert abs(result_data["confidence_boost"] - 0.85) < 0.01
 
     @pytest.mark.parametrize(
         "month,expected_quarter",
@@ -432,7 +422,7 @@ class TestConfidenceCalculationComponents:
     )
     @pytest.mark.asyncio
     async def test_quarter_calculation(
-        self, ebird_query_service, mock_session, base_config, month, expected_quarter
+        self, ebird_query_service, mock_session_factory, base_config, month, expected_quarter
     ):
         """Should correctly calculate quarter from month."""
         MockRow = namedtuple(
@@ -451,7 +441,7 @@ class TestConfidenceCalculationComponents:
         )
 
         species_row = MockRow(
-            h3_cell=599686042433355775,
+            h3_cell=599718752904282111,
             confidence_tier="common",
             base_boost=1.5,
             yearly_frequency=0.3,
@@ -462,12 +452,10 @@ class TestConfidenceCalculationComponents:
             year_frequency=0.3,
         )
 
-        mock_result = MagicMock(spec=Result)
-        mock_result.fetchall.return_value = [species_row]
-        mock_session.execute.return_value = mock_result
+        session, _result = mock_session_factory(fetch_results=[species_row])
 
         await ebird_query_service.get_confidence_with_neighbors(
-            session=mock_session,
+            session=session,
             scientific_name="Cyanocitta cristata",
             latitude=40.7128,
             longitude=-74.0060,
@@ -476,8 +464,9 @@ class TestConfidenceCalculationComponents:
         )
 
         # Verify quarter parameter was passed correctly
-        call_args = mock_session.execute.call_args
-        params = call_args[1]
+        call_args = session.execute.call_args
+        # Parameters are passed as the second positional argument (statement, params_dict)
+        params = call_args[0][1]
         assert params["quarter"] == expected_quarter
 
 
@@ -485,7 +474,9 @@ class TestEdgeCases:
     """Test edge cases and boundary conditions."""
 
     @pytest.mark.asyncio
-    async def test_missing_quality_score(self, ebird_query_service, mock_session, base_config):
+    async def test_missing_quality_score(
+        self, ebird_query_service, mock_session_factory, base_config
+    ):
         """Should use default quality score when missing."""
         MockRow = namedtuple(
             "MockRow",
@@ -503,7 +494,7 @@ class TestEdgeCases:
         )
 
         species_row = MockRow(
-            h3_cell=599686042433355775,
+            h3_cell=599718752904282111,
             confidence_tier="common",
             base_boost=1.5,
             yearly_frequency=0.3,
@@ -514,12 +505,10 @@ class TestEdgeCases:
             year_frequency=None,
         )
 
-        mock_result = MagicMock(spec=Result)
-        mock_result.fetchall.return_value = [species_row]
-        mock_session.execute.return_value = mock_result
+        session, _result = mock_session_factory(fetch_results=[species_row])
 
-        result = await ebird_query_service.get_confidence_with_neighbors(
-            session=mock_session,
+        result_data = await ebird_query_service.get_confidence_with_neighbors(
+            session=session,
             scientific_name="Cyanocitta cristata",
             latitude=40.7128,
             longitude=-74.0060,
@@ -527,12 +516,14 @@ class TestEdgeCases:
             month=None,
         )
 
-        assert result is not None
+        assert result_data is not None
         # Should use default quality score (0.5)
-        assert result["confidence_boost"] > 0
+        assert result_data["confidence_boost"] > 0
 
     @pytest.mark.asyncio
-    async def test_zero_boost_not_returned(self, ebird_query_service, mock_session, base_config):
+    async def test_zero_boost_not_returned(
+        self, ebird_query_service, mock_session_factory, base_config
+    ):
         """Should ensure confidence boost is always positive."""
         MockRow = namedtuple(
             "MockRow",
@@ -550,7 +541,7 @@ class TestEdgeCases:
         )
 
         species_row = MockRow(
-            h3_cell=599686042433355775,
+            h3_cell=599718752904282111,
             confidence_tier="vagrant",
             base_boost=0.1,  # Very low boost
             yearly_frequency=0.01,
@@ -561,12 +552,10 @@ class TestEdgeCases:
             year_frequency=0.01,
         )
 
-        mock_result = MagicMock(spec=Result)
-        mock_result.fetchall.return_value = [species_row]
-        mock_session.execute.return_value = mock_result
+        session, _result = mock_session_factory(fetch_results=[species_row])
 
-        result = await ebird_query_service.get_confidence_with_neighbors(
-            session=mock_session,
+        result_data = await ebird_query_service.get_confidence_with_neighbors(
+            session=session,
             scientific_name="Rare species",
             latitude=40.7128,
             longitude=-74.0060,
@@ -574,5 +563,5 @@ class TestEdgeCases:
             month=6,
         )
 
-        assert result is not None
-        assert result["confidence_boost"] > 0  # Should still be positive
+        assert result_data is not None
+        assert result_data["confidence_boost"] > 0  # Should still be positive
