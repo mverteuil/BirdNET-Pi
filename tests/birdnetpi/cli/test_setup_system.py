@@ -4,7 +4,6 @@ import sqlite3
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 from click.testing import CliRunner
 from gpsdclient.client import GPSDClient
 
@@ -463,13 +462,3 @@ class TestMainCLI:
 
         assert result.exit_code == 0
         assert "Configuration already exists" in result.output
-
-    @pytest.mark.skip(reason="Integration test - requires mocking Path.exists() behavior")
-    def test_main_non_interactive(self, path_resolver, tmp_path):
-        """Should run setup in non-interactive mode.
-
-        This test is skipped as it requires complex mocking of Path.exists()
-        behavior. The functionality is tested by individual function tests
-        and can be validated with end-to-end tests.
-        """
-        pass
