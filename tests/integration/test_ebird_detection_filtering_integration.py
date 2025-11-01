@@ -421,12 +421,12 @@ class TestEBirdFilteringUnknownSpecies:
 
 
 class TestEBirdFilteringWithoutCoordinates:
-    """Test that filtering is skipped when coordinates are missing."""
+    """Test that validation rejects detections when coordinates are missing."""
 
     # Using app_with_ebird_filtering instead of app_with_temp_data because we need
     # eBird filtering enabled with mocked eBird service for this integration test
-    async def test_detection_allowed_without_latitude(self, app_with_ebird_filtering):
-        """Should allow detection when latitude is missing."""
+    async def test_detection_rejected_without_latitude(self, app_with_ebird_filtering):
+        """Should reject detection with validation error when latitude is missing."""
         config = Container.config()
         config.ebird_filtering.detection_mode = "filter"
 
@@ -443,14 +443,15 @@ class TestEBirdFilteringWithoutCoordinates:
 
             response = await client.post("/api/detections/", json=payload)
 
-            assert response.status_code == 201
+            # Coordinates are required - should get validation error
+            assert response.status_code == 422
             data = response.json()
-            assert data["detection_id"] is not None
+            assert "detail" in data  # FastAPI validation error format
 
     # Using app_with_ebird_filtering instead of app_with_temp_data because we need
     # eBird filtering enabled with mocked eBird service for this integration test
-    async def test_detection_allowed_without_longitude(self, app_with_ebird_filtering):
-        """Should allow detection when longitude is missing."""
+    async def test_detection_rejected_without_longitude(self, app_with_ebird_filtering):
+        """Should reject detection with validation error when longitude is missing."""
         config = Container.config()
         config.ebird_filtering.detection_mode = "filter"
 
@@ -467,9 +468,10 @@ class TestEBirdFilteringWithoutCoordinates:
 
             response = await client.post("/api/detections/", json=payload)
 
-            assert response.status_code == 201
+            # Coordinates are required - should get validation error
+            assert response.status_code == 422
             data = response.json()
-            assert data["detection_id"] is not None
+            assert "detail" in data  # FastAPI validation error format
 
 
 class TestEBirdFilteringErrorHandling:
