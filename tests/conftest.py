@@ -13,7 +13,7 @@ import pytest
 import redis
 from dependency_injector import providers
 from sqlalchemy.engine import Result, Row
-from sqlalchemy.engine.result import MappingResult
+from sqlalchemy.engine.result import MappingResult, ScalarResult
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
@@ -919,6 +919,17 @@ def db_session_factory():
             mappings_mock = MagicMock(spec=MappingResult)
             mappings_mock.all.return_value = mappings_result
             result.mappings.return_value = mappings_mock
+
+        # Configure scalars (for result.scalars().all() pattern)
+        # Always configure to return proper object even when fetch_results is None
+        scalars_mock = MagicMock(spec=ScalarResult)
+        scalars_mock.all.return_value = fetch_results if fetch_results is not None else []
+        scalars_mock.fetchall.return_value = fetch_results if fetch_results is not None else []
+        scalars_mock.first.return_value = fetch_results[0] if fetch_results else None
+        scalars_mock.one_or_none.return_value = (
+            fetch_results[0] if fetch_results and len(fetch_results) == 1 else None
+        )
+        result.scalars.return_value = scalars_mock
 
         # Configure session.execute behavior
         if side_effect:
