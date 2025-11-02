@@ -1893,8 +1893,21 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                     if platform.system() == "Darwin":
                         # On macOS, use diskutil to mount the ext4 rootfs partition
                         # anylinuxfs allows writing to ext4 on macOS
+
+                        # Debug: List all partitions on the device
+                        console.print("[dim]Checking available partitions...[/dim]")
+                        list_result = subprocess.run(
+                            ["diskutil", "list", device],
+                            capture_output=True,
+                            text=True,
+                            check=False,
+                        )
+                        if list_result.returncode == 0:
+                            console.print(f"[dim]{list_result.stdout}[/dim]")
+
                         # DietPi uses partition 3 for rootfs (1=BIOS, 2=DIETPISETUP, 3=ROOTFS)
                         rootfs_partition_name = f"{device}s3"
+                        console.print(f"[dim]Attempting to mount {rootfs_partition_name}...[/dim]")
 
                         # Try to mount with diskutil (anylinuxfs handles ext4)
                         mount_result = subprocess.run(
@@ -1950,9 +1963,10 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                                         break
                         else:
                             console.print(
-                                "[yellow]Note: Could not mount rootfs partition - "
+                                f"[yellow]Note: Could not mount {rootfs_partition_name} - "
                                 "using boot partition only[/yellow]"
                             )
+                            console.print(f"[dim]Mount error: {mount_result.stderr}[/dim]")
                             console.print(
                                 "[yellow]Automation scripts will preserve "
                                 "install.sh during first boot[/yellow]"
