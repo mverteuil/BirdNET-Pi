@@ -8,6 +8,7 @@ Parameters:
   - initial_date: Initial date as ISO string (default: today)
   - onchange_callback: JavaScript function name to call on period change (required)
   - show_historical: Whether to show "Historical" option (default: true)
+  - oldest_detection_date: ISO date of oldest detection for historical view (optional, defaults to 1970-01-01)
   - latitude: Latitude for hemisphere detection (optional, uses config if not provided)
   - longitude: Longitude for future use (optional, uses config if not provided)
 
@@ -17,7 +18,8 @@ Example usage:
      label='Analysis period:',
      initial_period='month',
      onchange_callback='updateAnalysis',
-     show_historical=true
+     show_historical=true,
+     oldest_detection_date='2024-01-01'
   %}
 #}
 
@@ -28,6 +30,7 @@ Example usage:
 {% set selector_initial_date = initial_date|default('') %}
 {% set selector_callback = onchange_callback %}
 {% set selector_show_historical = show_historical if show_historical is defined else true %}
+{% set selector_oldest_detection_date = oldest_detection_date|default('') %}
 {% set selector_latitude = config['latitude'] %}
 {% set selector_longitude = config['longitude'] %}
 
@@ -42,6 +45,7 @@ Example usage:
        data-initial-date="{{ selector_initial_date }}"
        data-callback="{{ selector_callback }}"
        data-show-historical="{{ 'true' if selector_show_historical else 'false' }}"
+       data-oldest-detection-date="{{ selector_oldest_detection_date }}"
        data-latitude="{{ selector_latitude }}"
        data-longitude="{{ selector_longitude }}">
     {# Placeholder content - will be replaced by JavaScript #}
@@ -69,6 +73,7 @@ Example usage:
       initialPeriod: container.dataset.initialPeriod || 'day',
       initialDate: container.dataset.initialDate || null,
       showHistorical: container.dataset.showHistorical === 'true',
+      oldestDetectionDate: container.dataset.oldestDetectionDate || null,
       latitude: parseFloat(container.dataset.latitude) || 0,
       longitude: parseFloat(container.dataset.longitude) || 0,
       onChangeCallback: window['{{ selector_callback }}'] || null

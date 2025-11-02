@@ -9,6 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.config.manager import ConfigManager
+from birdnetpi.releases.region_pack_status import RegionPackStatusService
+from birdnetpi.releases.registry_service import RegistryService
 from birdnetpi.system.git_operations import GitOperationsService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.system_utils import SystemUtils
@@ -464,4 +466,108 @@ async def list_git_branches(
         raise HTTPException(status_code=500, detail=str(e)) from e
     except Exception as e:
         logger.error("Failed to list branches for remote '%s': %s", remote_name, e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/region-pack/status")
+@inject
+async def get_region_pack_status(
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
+) -> dict[str, Any]:
+    """Get region pack status.
+
+    Returns:
+        Status information about configured region pack
+    """
+    service = RegionPackStatusService(path_resolver, config)
+    return service.check_status()
+
+
+@router.get("/region-pack/available")
+@inject
+async def list_available_region_packs(
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
+) -> dict[str, Any]:
+    """List available region pack files.
+
+    Returns:
+        List of available region pack names
+    """
+    service = RegionPackStatusService(path_resolver, config)
+    packs = service.list_available_packs()
+    return {
+        "packs": [p.name for p in packs],
+        "count": len(packs),
+    }
+
+
+@router.post("/region-pack/download")
+@inject
+async def download_region_pack(
+    path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
+    config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
+    cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
+) -> UpdateActionResponse:
+    """Download appropriate region pack based on configured coordinates.
+
+    Uses the region pack registry to find the appropriate pack for the
+    configured latitude/longitude, then queues a download request.
+
+    Returns:
+        Success/error response with download information
+    """
+    try:
+        # Get coordinates from config
+        lat = config.latitude
+        lon = config.longitude
+
+        if lat == 0.0 and lon == 0.0:
+            return UpdateActionResponse(
+                success=False,
+                error=(
+                    "Location coordinates not configured. "
+                    "Please set latitude and longitude in settings."
+                ),
+            )
+
+        # Find appropriate region pack
+        registry_service = RegistryService(path_resolver)
+        region_pack = registry_service.find_pack_for_coordinates(lat, lon)
+
+        if not region_pack:
+            return UpdateActionResponse(
+                success=False,
+                error=f"No region pack found for coordinates ({lat}, {lon}). "
+                "This location may not be covered by available packs.",
+            )
+
+        if not region_pack.download_url:
+            return UpdateActionResponse(
+                success=False,
+                error=f"Region pack '{region_pack.region_id}' found but has no download URL.",
+            )
+
+        # Queue download request for update daemon
+        cache.set(
+            "region_pack:download_request",
+            {
+                "region_id": region_pack.region_id,
+                "download_url": region_pack.download_url,
+                "size_mb": region_pack.total_size_mb,
+            },
+            ttl=300,  # Request expires after 5 minutes
+        )
+
+        return UpdateActionResponse(
+            success=True,
+            message=(
+                f"Download queued for region pack '{region_pack.region_id}' "
+                f"({region_pack.total_size_mb:.1f} MB)"
+            ),
+        )
+
+    except Exception as e:
+        logger.error("Failed to download region pack: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e

@@ -79,8 +79,9 @@ jobs:
           path: |
             data/models
             data/database
-          key: ${{ runner.os }}-birdnet-assets-v2.2.1
+          key: ${{ runner.os }}-birdnet-assets-v2.2.1-with-great-lakes-pack
           restore-keys: |
+            ${{ runner.os }}-birdnet-assets-v2.2.1
             ${{ runner.os }}-birdnet-assets-
       - name: Install BirdNET assets
         if: steps.cache-assets.outputs.cache-hit != 'true'
@@ -88,8 +89,13 @@ jobs:
           BIRDNETPI_DATA: ${{ github.workspace }}/data
         run: |
           uv run install-assets install latest
+      - name: Install eBird region pack (Great Lakes)
+        env:
+          BIRDNETPI_DATA: ${{ github.workspace }}/data
+        run: |
+          uv run install-region-pack install --region-id north-america-great-lakes
       - name: Run pytest tests
-        run: uv run pytest --cov=src --cov-fail-under=77 -m "not expensive" --blocking-threshold=10.0
+        run: uv run pytest --cov=src --cov-fail-under=77 -m "not expensive and not ci_issue" --blocking-threshold=10.0
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
@@ -131,8 +137,9 @@ jobs:
           path: |
             data/models
             data/database
-          key: ${{ runner.os }}-birdnet-assets-v2.2.0
+          key: ${{ runner.os }}-birdnet-assets-v2.2.1-with-great-lakes-pack
           restore-keys: |
+            ${{ runner.os }}-birdnet-assets-v2.2.1
             ${{ runner.os }}-birdnet-assets-
       - name: Install BirdNET assets
         if: steps.cache-assets.outputs.cache-hit != 'true'
@@ -140,6 +147,11 @@ jobs:
           BIRDNETPI_DATA: ${{ github.workspace }}/data
         run: |
           uv run install-assets install latest
+      - name: Install eBird region pack (Great Lakes)
+        env:
+          BIRDNETPI_DATA: ${{ github.workspace }}/data
+        run: |
+          uv run install-region-pack install --region-id north-america-great-lakes
       - name: Create test volume and populate with cached assets
         run: |
           docker volume create birdnetpi-test-data

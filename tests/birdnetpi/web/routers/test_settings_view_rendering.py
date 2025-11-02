@@ -22,6 +22,7 @@ class TestSettingsViewRendering:
         env.globals["get_update_status"] = lambda: None
         env.globals["update_available"] = lambda: False
         env.globals["show_development_warning"] = lambda: False
+        env.globals["get_region_pack_status"] = lambda: None
         env.globals["url_for"] = lambda name, **kwargs: f"/{name}"
         env.globals["_"] = lambda x, **kwargs: x % kwargs if kwargs else x
         env.globals["gettext"] = env.globals["_"]

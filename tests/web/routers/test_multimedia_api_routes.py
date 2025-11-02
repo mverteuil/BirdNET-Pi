@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
 import pytest
+from dependency_injector import providers
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.engine import Result
@@ -34,6 +35,10 @@ def client(path_resolver, mock_audio_file, tmp_path, db_service_factory):
     # Create the real container
     container = Container()
 
+    # IMPORTANT: Override path_resolver IMMEDIATELY to prevent permission errors
+    container.path_resolver.override(providers.Singleton(lambda: path_resolver))
+    container.database_path.override(providers.Factory(lambda: path_resolver.get_database_path()))
+
     # Override get_recordings_dir to use temp directory
     temp_recordings_dir = tmp_path / "recordings"
     temp_recordings_dir.mkdir(parents=True, exist_ok=True)
@@ -51,7 +56,6 @@ def client(path_resolver, mock_audio_file, tmp_path, db_service_factory):
 
     # Override services
     container.core_database.override(mock_core_database)
-    container.path_resolver.override(path_resolver)
 
     # Wire the container
     container.wire(modules=["birdnetpi.web.routers.multimedia_api_routes"])

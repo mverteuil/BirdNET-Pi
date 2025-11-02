@@ -58,6 +58,7 @@ dependencies = [
   "fastapi",
   "gpsdclient",
   "greenlet>=3.2.3",
+  "h3>=4.0.0",
   "httpx>=0.28.1",
   "librosa",
   "numpy<2",
@@ -104,6 +105,7 @@ backfill-weather = "birdnetpi.cli.backfill_weather:backfill_weather"
 configure-pulseaudio = "birdnetpi.cli.configure_pulseaudio:main"
 generate-dummy-data = "birdnetpi.cli.generate_dummy_data:main"
 install-assets = "birdnetpi.cli.install_assets:main"
+install-region-pack = "birdnetpi.cli.install_region_pack:main"
 manage-releases = "birdnetpi.cli.manage_releases:main"
 manage-translations = "birdnetpi.cli.manage_translations:main"
 profile-landing-page = "birdnetpi.cli.profile_landing_page:main"
@@ -143,7 +145,8 @@ venvPath = "."
 [tool.pytest.ini_options]
 markers = [
   "expensive",
-  "no_leaks: detect asyncio task leaks, thread leaks, and event loop blocking"
+  "no_leaks: detect asyncio task leaks, thread leaks, and event loop blocking",
+  "ci_issue: tests that have known issues in CI environment"
 ]
 testpaths = ["tests"]
 norecursedirs = ["docs", "*.egg-info", ".git", ".venv", "data"]

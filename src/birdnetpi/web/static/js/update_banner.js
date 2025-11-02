@@ -54,9 +54,50 @@ function checkDismissalState() {
   }
 }
 
+// Apply body class when region pack banner is present
+function initRegionPackBanner() {
+  const regionPackBanner = document.getElementById("region-pack-banner");
+  if (regionPackBanner && !regionPackBanner.classList.contains("hidden")) {
+    document.body.classList.add("has-region-pack-banner");
+  }
+}
+
+// Dismiss region pack banner function (global for onclick handler)
+window.dismissRegionPackBanner = function () {
+  const banner = document.getElementById("region-pack-banner");
+  if (banner) {
+    // Add animation
+    banner.style.animation = "slideUp 0.3s ease-out forwards";
+
+    // Remove after animation
+    setTimeout(() => {
+      banner.classList.add("hidden");
+      document.body.classList.remove("has-region-pack-banner");
+    }, 300);
+
+    // Store dismissal in session storage
+    sessionStorage.setItem("region-pack-banner-dismissed", "true");
+  }
+};
+
+// Check if region pack banner was previously dismissed
+function checkRegionPackDismissalState() {
+  const banner = document.getElementById("region-pack-banner");
+  if (!banner) return;
+
+  const dismissed = sessionStorage.getItem("region-pack-banner-dismissed");
+
+  if (dismissed === "true") {
+    banner.classList.add("hidden");
+    document.body.classList.remove("has-region-pack-banner");
+  }
+}
+
 // Initialize on DOM content loaded
 document.addEventListener("DOMContentLoaded", function () {
   initDevelopmentBanner();
   initUpdateBanner();
   checkDismissalState();
+  initRegionPackBanner();
+  checkRegionPackDismissalState();
 });

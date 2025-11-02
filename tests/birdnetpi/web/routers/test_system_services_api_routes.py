@@ -19,7 +19,7 @@ def mock_system_control():
 
 
 @pytest.fixture
-def client(mock_system_control):
+def client(path_resolver, mock_system_control):
     """Create test client with services API routes.
 
     Mocks deployment environment to consistently return "docker" so tests
@@ -33,6 +33,11 @@ def client(mock_system_control):
     ):
         app = FastAPI()
         container = Container()
+        # IMPORTANT: Override path_resolver BEFORE any other providers to prevent permission errors
+        container.path_resolver.override(providers.Singleton(lambda: path_resolver))
+        container.database_path.override(
+            providers.Factory(lambda: path_resolver.get_database_path())
+        )
         container.system_control_service.override(providers.Object(mock_system_control))
         container.wire(modules=["birdnetpi.web.routers.system_api_routes"])
         app.include_router(router, prefix="/api")

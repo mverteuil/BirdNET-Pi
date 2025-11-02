@@ -13,7 +13,7 @@ import pytest
 import redis
 from dependency_injector import providers
 from sqlalchemy.engine import Result, Row
-from sqlalchemy.engine.result import MappingResult
+from sqlalchemy.engine.result import MappingResult, ScalarResult
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
@@ -122,6 +122,10 @@ def path_resolver(tmp_path: Path, repo_root: Path) -> PathResolver:
     temp_data_dir = tmp_path / "data"
     temp_data_dir.mkdir(parents=True)
     # Override WRITABLE paths to use temp directory
+    # IMPORTANT: Override both the attribute AND the method because some code accesses
+    # path_resolver.data_dir directly (e.g., RegistryService) while other code calls
+    # path_resolver.get_data_dir()
+    resolver.data_dir = temp_data_dir
     resolver.get_database_path = lambda: temp_database_dir / "birdnetpi.db"
     resolver.get_birdnetpi_config_path = lambda: temp_config_dir / "birdnetpi.yaml"
     resolver.get_data_dir = lambda: temp_data_dir
@@ -191,6 +195,19 @@ async def app_with_temp_data(path_resolver):
         **{"get.return_value": None, "set.return_value": True, "ping.return_value": True}
     )
     Container.cache_service.override(providers.Singleton(lambda: mock_cache))
+
+    # Reset dependent services to ensure they use the overridden path_resolver
+    # These are Singletons that depend on path_resolver and must be recreated
+    # with the test path_resolver to prevent permission errors on /var/lib/birdnetpi
+    # We reset cached Singleton instances so they get recreated with overridden path_resolver
+    try:
+        Container.registry_service.reset()
+    except AttributeError:
+        pass  # Provider might not support reset
+    try:
+        Container.ebird_region_service.reset()
+    except AttributeError:
+        pass  # Provider might not support reset
 
     # Now create the app with our overridden providers
     app = create_app()
@@ -902,6 +919,17 @@ def db_session_factory():
             mappings_mock = MagicMock(spec=MappingResult)
             mappings_mock.all.return_value = mappings_result
             result.mappings.return_value = mappings_mock
+
+        # Configure scalars (for result.scalars().all() pattern)
+        # Always configure to return proper object even when fetch_results is None
+        scalars_mock = MagicMock(spec=ScalarResult)
+        scalars_mock.all.return_value = fetch_results if fetch_results is not None else []
+        scalars_mock.fetchall.return_value = fetch_results if fetch_results is not None else []
+        scalars_mock.first.return_value = fetch_results[0] if fetch_results else None
+        scalars_mock.one_or_none.return_value = (
+            fetch_results[0] if fetch_results and len(fetch_results) == 1 else None
+        )
+        result.scalars.return_value = scalars_mock
 
         # Configure session.execute behavior
         if side_effect:

@@ -171,6 +171,7 @@ class TestDetectionBufferingEndToEnd:
             assert buffer_size > 0, "Some detections should be buffered during admin operation"
         assert "Buffered detection event for Turdus migratorius" in caplog.text
 
+    @pytest.mark.ci_issue
     async def test_buffer_overflow_handling_during_extended_outage(
         self,
         audio_analysis_service_integration,

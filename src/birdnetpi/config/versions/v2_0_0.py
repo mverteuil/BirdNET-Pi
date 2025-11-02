@@ -91,6 +91,16 @@ class ConfigVersion_2_0_0:  # noqa: N801
                 "git_remote": "origin",
                 "git_branch": "main",
             },
+            # eBird Regional Filtering
+            "ebird_filtering": {
+                "enabled": False,
+                "region_pack": "",
+                "h3_resolution": 5,
+                "detection_mode": "off",
+                "detection_strictness": "vagrant",
+                "site_filtering_enabled": False,
+                "unknown_species_behavior": "allow",
+            },
         }
 
     def apply_defaults(self, config: dict[str, Any]) -> dict[str, Any]:
@@ -127,6 +137,18 @@ class ConfigVersion_2_0_0:  # noqa: N801
         if "notify_quiet_hours_end" not in config:
             config["notify_quiet_hours_end"] = ""
 
+        # Ensure eBird filtering section exists with defaults
+        if "ebird_filtering" not in config:
+            config["ebird_filtering"] = {
+                "enabled": False,
+                "region_pack": "",
+                "h3_resolution": 5,
+                "detection_mode": "off",
+                "detection_strictness": "vagrant",
+                "site_filtering_enabled": False,
+                "unknown_species_behavior": "allow",
+            }
+
         return config
 
     def _rename_old_fields(self, config: dict[str, Any]) -> None:
@@ -138,6 +160,10 @@ class ConfigVersion_2_0_0:  # noqa: N801
         if "sensitivity" in config:
             config["sensitivity_setting"] = config.pop("sensitivity")
             print("  Renamed: sensitivity → sensitivity_setting")
+
+        if "analysis_overlap" in config:
+            config["audio_overlap"] = config.pop("analysis_overlap")
+            print("  Renamed: analysis_overlap → audio_overlap")
 
     def _upgrade_logging_config(self, config: dict[str, Any]) -> None:
         """Upgrade logging config structure to include new fields."""

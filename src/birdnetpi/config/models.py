@@ -53,6 +53,36 @@ class UpdateConfig(BaseModel):
         return v
 
 
+class EBirdFilterConfig(BaseModel):
+    """eBird regional confidence filtering settings.
+
+    Region packs are automatically downloaded and selected based on latitude/longitude
+    by the update manager. The appropriate pack is determined from the manifest.
+    """
+
+    enabled: bool = False  # Enable eBird regional filtering
+    h3_resolution: int = 5  # H3 resolution for lookups (must match pack data_resolution)
+    detection_mode: str = "off"  # off, warn, filter
+    detection_strictness: str = "vagrant"  # vagrant, rare, uncommon, common
+    site_filtering_enabled: bool = False  # Enable filtering in site queries
+    unknown_species_behavior: str = "allow"  # allow, block (for species not in eBird data)
+
+    # Neighbor search configuration (spatial uncertainty handling)
+    neighbor_search_enabled: bool = True  # Search surrounding H3 hexagons
+    neighbor_search_max_rings: int = 2  # Search up to k=2 rings (0=exact, 1=adjacent, 2=second)
+    neighbor_boost_decay_per_ring: float = 0.15  # Reduce boost by this amount per ring distance
+
+    # Quality-based confidence calculation
+    quality_multiplier_base: float = 0.7  # Minimum quality multiplier (when quality_score=0)
+    quality_multiplier_range: float = 0.3  # Additional multiplier range (when quality_score=1)
+
+    # Temporal adjustments
+    absence_penalty_factor: float = 0.8  # Penalty when species absent in current month
+    use_monthly_frequency: bool = True  # Use month-specific frequency data
+    peak_season_boost: float = 1.0  # Boost during peak months (1.0 = no boost)
+    off_season_penalty: float = 1.0  # Penalty during off-season (1.0 = no penalty)
+
+
 class BirdNETConfig(BaseModel):
     """Configuration settings for the BirdNET-Pi application."""
 
@@ -154,3 +184,6 @@ class BirdNETConfig(BaseModel):
 
     # Detection Processing
     detections_endpoint: str = "http://127.0.0.1:8888/api/detections/"  # Where to send detections
+
+    # eBird Regional Filtering
+    ebird_filtering: EBirdFilterConfig = Field(default_factory=EBirdFilterConfig)
