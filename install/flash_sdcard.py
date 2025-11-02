@@ -1896,6 +1896,8 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                         anylinuxfs_path = shutil.which("anylinuxfs")
                         mount_result = None
                         rootfs_partition_name = None
+                        volumes_path = Path("/Volumes")
+                        initial_volumes: set[Path] = set()
 
                         if not anylinuxfs_path:
                             console.print(
@@ -1926,6 +1928,11 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                             )
                             time.sleep(2)
 
+                            # Get list of volumes BEFORE anylinuxfs mount
+                            initial_volumes = (
+                                set(volumes_path.iterdir()) if volumes_path.exists() else set()
+                            )
+
                             # Mount with anylinuxfs
                             mount_result = subprocess.run(
                                 ["sudo", "anylinuxfs", rootfs_partition_name, "-w", "false"],
@@ -1936,17 +1943,28 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                         if anylinuxfs_path and mount_result and mount_result.returncode == 0:
                             # Wait for mount to appear in /Volumes
                             console.print("[dim]Waiting for mount to appear...[/dim]")
-                            possible_mount_names = ["dietpi_root", "DIETPI", "Linux"]
 
                             for attempt in range(60):
                                 time.sleep(1)
-                                volumes_path = Path("/Volumes")
-                                for mount_name in possible_mount_names:
-                                    potential_mount = volumes_path / mount_name
-                                    if potential_mount.exists() and potential_mount.is_dir():
-                                        rootfs_mount = potential_mount
-                                        rootfs_partition = rootfs_partition_name
-                                        break
+
+                                # Find new volumes that appeared after anylinuxfs mount
+                                current_volumes = (
+                                    set(volumes_path.iterdir()) if volumes_path.exists() else set()
+                                )
+                                new_volumes = current_volumes - initial_volumes
+
+                                # Look for a new volume that looks like a Linux filesystem
+                                for potential_mount in new_volumes:
+                                    if potential_mount.is_dir():
+                                        # Check if it looks like a rootfs (has /etc, /root, /usr)
+                                        if (
+                                            (potential_mount / "etc").exists()
+                                            and (potential_mount / "root").exists()
+                                            and (potential_mount / "usr").exists()
+                                        ):
+                                            rootfs_mount = potential_mount
+                                            rootfs_partition = rootfs_partition_name
+                                            break
 
                                 if rootfs_mount:
                                     break
