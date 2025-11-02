@@ -1893,11 +1893,12 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                     if platform.system() == "Darwin":
                         # On macOS, use diskutil to mount the ext4 rootfs partition
                         # anylinuxfs allows writing to ext4 on macOS
-                        rootfs_partition = f"{device}s2"
+                        # DietPi uses partition 3 for rootfs (1=BIOS, 2=DIETPISETUP, 3=ROOTFS)
+                        rootfs_partition_name = f"{device}s3"
 
                         # Try to mount with diskutil (anylinuxfs handles ext4)
                         mount_result = subprocess.run(
-                            ["diskutil", "mount", rootfs_partition],
+                            ["diskutil", "mount", rootfs_partition_name],
                             capture_output=True,
                             text=True,
                             check=False,
@@ -1907,7 +1908,7 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                             # Find where it mounted
                             time.sleep(1)
                             mount_info = subprocess.run(
-                                ["diskutil", "info", rootfs_partition],
+                                ["diskutil", "info", rootfs_partition_name],
                                 capture_output=True,
                                 text=True,
                                 check=True,
@@ -1920,10 +1921,16 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                                         and mount_path != "Not applicable (no file system)"
                                     ):
                                         rootfs_mount = Path(mount_path)
-                                        rootfs_partition = rootfs_partition  # Save for unmount
+                                        rootfs_partition = rootfs_partition_name
+
+                                        # Ensure /root directory exists on rootfs
+                                        root_dir = rootfs_mount / "root"
+                                        subprocess.run(
+                                            ["sudo", "mkdir", "-p", str(root_dir)], check=True
+                                        )
 
                                         # Copy install.sh to /root on rootfs
-                                        install_dest = rootfs_mount / "root" / "install.sh"
+                                        install_dest = root_dir / "install.sh"
                                         subprocess.run(
                                             ["sudo", "cp", str(install_script), str(install_dest)],
                                             check=True,
@@ -1960,8 +1967,12 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                             ["sudo", "mount", rootfs_partition, str(rootfs_mount)], check=True
                         )
 
+                        # Ensure /root directory exists on rootfs
+                        root_dir = rootfs_mount / "root"
+                        subprocess.run(["sudo", "mkdir", "-p", str(root_dir)], check=True)
+
                         # Copy install.sh to /root on rootfs
-                        install_dest = rootfs_mount / "root" / "install.sh"
+                        install_dest = root_dir / "install.sh"
                         subprocess.run(
                             ["sudo", "cp", str(install_script), str(install_dest)], check=True
                         )
