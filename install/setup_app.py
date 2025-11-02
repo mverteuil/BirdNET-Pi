@@ -1,6 +1,7 @@
 """BirdNET-Pi SBC installer with parallel execution."""
 
 import os
+import shlex
 import socket
 import subprocess
 import sys
@@ -9,6 +10,54 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
+from typing import Any, ClassVar, TypedDict
+
+from jinja2 import Template
+
+
+class DeviceSpecs(TypedDict):
+    """Device specifications returned by detect_device_specs()."""
+
+    device_type: str
+    total_ram_mb: int
+    maxmemory: str
+    memory_comment: str
+
+
+class ServiceRegistry:
+    """Central registry for system and BirdNET services."""
+
+    # System services (not managed by BirdNET)
+    SYSTEM_SERVICES: ClassVar[list[str]] = ["redis-server.service", "caddy.service"]
+
+    # Core BirdNET services (always installed)
+    CORE_SERVICES: ClassVar[list[str]] = [
+        "birdnetpi-fastapi.service",
+        "birdnetpi-audio-capture.service",
+        "birdnetpi-audio-analysis.service",
+        "birdnetpi-audio-websocket.service",
+        "birdnetpi-update.service",
+    ]
+
+    # Optional services (added at runtime based on hardware detection)
+    _optional_services: ClassVar[list[str]] = []
+
+    @classmethod
+    def add_optional_service(cls, service_name: str) -> None:
+        """Add an optional service to the registry."""
+        if service_name not in cls._optional_services:
+            cls._optional_services.append(service_name)
+
+    @classmethod
+    def get_birdnet_services(cls) -> list[str]:
+        """Get all BirdNET services (core + optional)."""
+        return cls.CORE_SERVICES + cls._optional_services
+
+    @classmethod
+    def get_all_services(cls) -> list[str]:
+        """Get all services (system + BirdNET)."""
+        return cls.SYSTEM_SERVICES + cls.get_birdnet_services()
+
 
 # Thread-safe logging
 _log_lock = threading.Lock()
@@ -67,6 +116,68 @@ def get_ip_address() -> str:
         return ip
     except Exception:
         return "unknown"
+
+
+def detect_device_specs() -> DeviceSpecs:
+    """Detect device type and memory specifications.
+
+    Returns:
+        DeviceSpecs: Device specifications including:
+            - device_type: Detected device name or 'Unknown' (str)
+            - total_ram_mb: Total RAM in MB (int)
+            - maxmemory: Redis memory limit (e.g., '32mb', '64mb', '128mb') (str)
+            - memory_comment: Explanation for the memory limit (str)
+    """
+    # Get total RAM
+    try:
+        meminfo = Path("/proc/meminfo").read_text()
+        for line in meminfo.split("\n"):
+            if line.startswith("MemTotal:"):
+                total_kb = int(line.split()[1])
+                total_mb = total_kb // 1024
+                break
+        else:
+            total_mb = 512  # Default fallback
+    except Exception:
+        total_mb = 512  # Default fallback
+
+    # Detect device type
+    device_type = "Unknown"
+    try:
+        model_info = Path("/proc/device-tree/model").read_text().strip("\x00")
+        device_type = model_info
+    except Exception:
+        pass
+
+    # Determine Redis memory limits based on total RAM
+    # Leave sufficient room for:
+    # - System (kernel, system services): ~100-150MB
+    # - Python daemons (audio/analysis/web): ~150-200MB
+    # - Buffer for peaks and filesystem cache: ~100MB
+    if total_mb <= 512:
+        # Pi Zero 2W or similar: 512MB total
+        # Very tight - minimal Redis, consider display-only mode
+        maxmemory = "32mb"
+        memory_comment = "Minimal limit for 512MB devices (display-only recommended)"
+    elif total_mb <= 1024:
+        # Pi 3B or similar: 1GB total
+        maxmemory = "64mb"
+        memory_comment = "Conservative limit for 1GB devices"
+    elif total_mb <= 2048:
+        # Pi 4B 2GB
+        maxmemory = "128mb"
+        memory_comment = "Moderate limit for 2GB devices"
+    else:
+        # Pi 4B 4GB+ or Pi 5
+        maxmemory = "256mb"
+        memory_comment = "Standard limit for 4GB+ devices"
+
+    return {
+        "device_type": device_type,
+        "total_ram_mb": total_mb,
+        "maxmemory": maxmemory,
+        "memory_comment": memory_comment,
+    }
 
 
 def install_system_packages() -> None:
@@ -137,79 +248,6 @@ def create_directories() -> None:
     )
 
 
-def install_uv() -> None:
-    """Install uv package manager using official installer.
-
-    Uses the standalone installer which doesn't require pip.
-    Installs to /opt/uv for consistency across installations.
-    UV will automatically create and manage the virtual environment
-    when we run 'uv sync' later.
-    """
-    import pwd
-
-    # Get birdnetpi user's home directory
-    birdnetpi_home = pwd.getpwnam("birdnetpi").pw_dir
-
-    # Create /opt/uv directory
-    subprocess.run(
-        ["sudo", "mkdir", "-p", "/opt/uv"],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    subprocess.run(
-        ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/uv"],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-
-    # Download and run the official uv installer
-    # The installer installs to $HOME/.local/bin by default
-    result = subprocess.run(
-        [
-            "sudo",
-            "-u",
-            "birdnetpi",
-            "sh",
-            "-c",
-            "curl -LsSf https://astral.sh/uv/install.sh | sh",
-        ],
-        check=False,
-        stdin=subprocess.DEVNULL,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Failed to install uv: {result.stderr}")
-
-    # Move uv binary to /opt/uv/bin for consistency
-    subprocess.run(
-        ["sudo", "mkdir", "-p", "/opt/uv/bin"],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    uv_source = f"{birdnetpi_home}/.local/bin/uv"
-    subprocess.run(
-        ["sudo", "mv", uv_source, "/opt/uv/bin/uv"],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    subprocess.run(
-        ["sudo", "chown", "-R", "birdnetpi:birdnetpi", "/opt/uv"],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-
-
 def has_waveshare_epaper_hat() -> bool:
     """Detect if a Waveshare e-paper HAT is connected.
 
@@ -225,45 +263,6 @@ def has_waveshare_epaper_hat() -> bool:
         return len(spi_devices) > 0
     except Exception:
         return False
-
-
-def install_python_dependencies() -> None:
-    """Install Python dependencies with uv.
-
-    UV will automatically create the virtual environment at .venv/
-    during the sync operation. If a Waveshare e-paper HAT is detected,
-    the epaper extras will be installed automatically.
-    """
-    # Build uv sync command
-    cmd = [
-        "sudo",
-        "-u",
-        "birdnetpi",
-        "/opt/uv/bin/uv",
-        "sync",
-        "--locked",
-        "--no-dev",
-        "--quiet",
-    ]
-
-    # Auto-detect and install e-paper dependencies if hardware is present
-    if has_waveshare_epaper_hat():
-        log("ℹ", "Waveshare e-paper HAT detected (SPI devices found)")  # noqa: RUF001
-        cmd.extend(["--extra", "epaper"])
-    else:
-        log("ℹ", "No e-paper HAT detected, skipping epaper extras")  # noqa: RUF001
-
-    # uv is installed to /opt/uv/bin/uv
-    result = subprocess.run(
-        cmd,
-        cwd="/opt/birdnetpi",
-        check=False,
-        stdin=subprocess.DEVNULL,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Failed to install Python dependencies: {result.stderr}")
 
 
 def install_assets() -> None:
@@ -289,38 +288,70 @@ def install_assets() -> None:
 
 
 def configure_redis() -> None:
-    """Configure Redis with memory limits optimized for small devices."""
+    """Configure Redis with memory limits optimized for device specs."""
     script_dir = Path(__file__).parent
     repo_root = script_dir.parent
 
-    redis_conf = Path("/etc/redis/redis.conf")
-    redis_conf_backup = Path("/etc/redis/redis.conf.original")
+    redis_conf = "/etc/redis/redis.conf"
+    redis_conf_backup = "/etc/redis/redis.conf.original"
 
     # Backup original redis.conf if it exists and hasn't been backed up yet
-    if redis_conf.exists() and not redis_conf_backup.exists():
+    # Use test -f to check file existence with sudo permissions
+    backup_check = subprocess.run(
+        ["sudo", "test", "-f", redis_conf_backup],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    if backup_check.returncode != 0:  # Backup doesn't exist
         subprocess.run(
-            ["sudo", "cp", str(redis_conf), str(redis_conf_backup)],
-            check=True,
+            ["sudo", "cp", "-n", redis_conf, redis_conf_backup],
+            check=False,  # Don't fail if source doesn't exist
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
 
-    # Copy our optimized Redis configuration
-    subprocess.run(
-        ["sudo", "cp", str(repo_root / "config_templates" / "redis.conf"), str(redis_conf)],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+    # Detect device specifications
+    device_specs = detect_device_specs()
+    log(
+        "ℹ",  # noqa: RUF001
+        f"Detected: {device_specs['device_type']} ({device_specs['total_ram_mb']}MB RAM)",
     )
-    subprocess.run(
-        ["sudo", "chown", "redis:redis", str(redis_conf)],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    log("ℹ", f"Redis memory limit: {device_specs['maxmemory']}")  # noqa: RUF001
+
+    # Render Redis configuration from template
+    template_path = repo_root / "config_templates" / "redis.conf.j2"
+    template_content = template_path.read_text()
+    template = Template(template_content)
+    rendered_config = template.render(**device_specs)
+
+    # Write rendered configuration to temporary file
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".conf") as tmp:
+        tmp.write(rendered_config)
+        tmp_path = tmp.name
+
+    try:
+        # Copy rendered config to system location
+        subprocess.run(
+            ["sudo", "cp", tmp_path, redis_conf],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["sudo", "chown", "redis:redis", redis_conf],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    finally:
+        # Clean up temporary file
+        Path(tmp_path).unlink(missing_ok=True)
 
 
 def configure_caddy() -> None:
@@ -372,6 +403,81 @@ def configure_caddy() -> None:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+
+
+def disable_unnecessary_services(total_ram_mb: int) -> None:
+    """Disable unnecessary system services and swap on low-memory devices.
+
+    Args:
+        total_ram_mb: Total RAM in MB from device detection
+    """
+    # Only disable services on very low-memory devices (512MB or less)
+    if total_ram_mb > 512:
+        return
+
+    # Services safe to disable on headless Pi Zero 2W
+    # Saves ~12MB RAM total
+    services_to_disable = [
+        "ModemManager",  # ~3.3MB - cellular modem support not needed
+        "bluetooth",  # ~1.9MB - Bluetooth not needed for BirdNET-Pi
+        "triggerhappy",  # ~1.6MB - hotkey daemon not needed headless
+        "avahi-daemon",  # ~2.8MB - mDNS/Bonjour nice-to-have but not essential
+    ]
+
+    log(
+        "ℹ",  # noqa: RUF001
+        f"Low memory detected ({total_ram_mb}MB) - optimizing system",
+    )
+
+    # Disable swap to prevent SD card wear and thrashing
+    try:
+        subprocess.run(
+            ["sudo", "dphys-swapfile", "swapoff"],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["sudo", "dphys-swapfile", "uninstall"],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["sudo", "systemctl", "disable", "dphys-swapfile"],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        log("✓", "Disabled swap (prevents SD card wear)")
+    except Exception as e:
+        log("⚠", f"Could not disable swap: {e}")
+
+    for service in services_to_disable:
+        try:
+            # Check if service exists before trying to disable
+            result = subprocess.run(
+                ["systemctl", "is-enabled", service],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            # Only disable if service exists and is enabled
+            if result.returncode == 0:
+                subprocess.run(
+                    ["sudo", "systemctl", "disable", "--now", service],
+                    check=True,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                log("✓", f"Disabled {service}")
+        except Exception as e:
+            # Don't fail installation if we can't disable a service
+            log("⚠", f"Could not disable {service}: {e}")
 
 
 def install_systemd_services() -> None:
@@ -431,14 +537,23 @@ def install_systemd_services() -> None:
             "exec_start": "/opt/birdnetpi/.venv/bin/update-daemon --mode both",
             "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=update_daemon",
         },
-        {
+    ]
+
+    # Conditionally add epaper display service if hardware detected
+    if has_waveshare_epaper_hat():
+        log("ℹ", "Installing epaper display service (hardware detected)")  # noqa: RUF001
+        service_config = {
             "name": "birdnetpi-epaper-display.service",
             "description": "BirdNET E-Paper Display",
             "after": "network-online.target birdnetpi-fastapi.service",
             "exec_start": "/opt/birdnetpi/.venv/bin/epaper-display-daemon",
             "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=epaper_display",
-        },
-    ]
+        }
+        services.append(service_config)
+        # Register service in the global registry
+        ServiceRegistry.add_optional_service(service_config["name"])
+    else:
+        log("ℹ", "Skipping epaper display service (no hardware detected)")  # noqa: RUF001
 
     for service_config in services:
         service_name = service_config["name"]
@@ -503,14 +618,7 @@ def start_systemd_services() -> None:
         )
 
     # Start BirdNET services
-    birdnet_services = [
-        "birdnetpi-fastapi.service",
-        "birdnetpi-audio-capture.service",
-        "birdnetpi-audio-analysis.service",
-        "birdnetpi-audio-websocket.service",
-        "birdnetpi-update.service",
-    ]
-    for service in birdnet_services:
+    for service in ServiceRegistry.get_birdnet_services():
         subprocess.run(
             ["sudo", "systemctl", "start", service],
             check=True,
@@ -546,18 +654,8 @@ def check_service_status(service_name: str) -> str:
 
 def check_services_health() -> None:
     """Check that all services are running and healthy."""
-    services = [
-        "redis-server.service",
-        "caddy.service",
-        "birdnetpi-fastapi.service",
-        "birdnetpi-audio-capture.service",
-        "birdnetpi-audio-analysis.service",
-        "birdnetpi-audio-websocket.service",
-        "birdnetpi-update.service",
-    ]
-
     all_healthy = True
-    for service in services:
+    for service in ServiceRegistry.get_all_services():
         status = check_service_status(service)
         if status != "✓":
             all_healthy = False
@@ -580,18 +678,8 @@ def show_final_summary(ip_address: str) -> None:
     print()
 
     # Show service status
-    services = [
-        "redis-server.service",
-        "caddy.service",
-        "birdnetpi-fastapi.service",
-        "birdnetpi-audio-capture.service",
-        "birdnetpi-audio-analysis.service",
-        "birdnetpi-audio-websocket.service",
-        "birdnetpi-update.service",
-    ]
-
     print("Service Status:")
-    for service in services:
+    for service in ServiceRegistry.get_all_services():
         status = check_service_status(service)
         print(f"  {status} {service}")
 
@@ -605,19 +693,68 @@ def show_final_summary(ip_address: str) -> None:
     print("=" * 60)
 
 
+class _SubprocessWrapper:
+    """Wrapper to convert sudo to su when running as root."""
+
+    def __init__(self, original_subprocess: Any) -> None:
+        self._original = original_subprocess
+
+    def run(self, cmd: list[str] | str, **kwargs: Any) -> subprocess.CompletedProcess:  # type: ignore[misc]
+        """Run command, converting sudo -u to su when running as root."""
+        if isinstance(cmd, list) and cmd and cmd[0] == "sudo":
+            user = None
+            actual_cmd = []
+            i = 1
+
+            # Parse sudo arguments
+            while i < len(cmd):
+                if cmd[i] in ("-u", "--user"):
+                    user = cmd[i + 1]
+                    i += 2
+                elif cmd[i] in ("-g", "--group"):
+                    i += 2  # Skip group flag
+                elif cmd[i].startswith("-"):
+                    i += 1  # Skip other flags
+                else:
+                    # Found the actual command
+                    actual_cmd = cmd[i:]
+                    break
+
+            if user:
+                # Convert to: su - user -c "command args..."
+                cmd_str = " ".join(shlex.quote(arg) for arg in actual_cmd)
+                cmd = ["su", "-", user, "-c", cmd_str]
+            else:
+                # No user, just run directly (strip sudo)
+                cmd = actual_cmd if actual_cmd else cmd[1:]
+
+        return self._original.run(cmd, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._original, name)
+
+
 def main() -> None:
     """Run the main installer with parallel execution."""
-    # Check not running as root
-    if os.geteuid() == 0:
-        print("ERROR: This script should not be run as root.")
-        print("Please run as a non-root user with sudo privileges.")
+    global subprocess
+
+    # Verify running as root (needed for systemctl, apt-get, etc.)
+    if os.geteuid() != 0:
+        print("ERROR: This script must be run as root.")
+        print("The install.sh script should handle running this with appropriate privileges.")
         sys.exit(1)
+
+    # When running as root, convert sudo commands to su
+    subprocess = _SubprocessWrapper(subprocess)
 
     print()
     print("=" * 60)
     print("BirdNET-Pi SBC Installer")
     print("=" * 60)
     print()
+
+    # Note: SPI enablement is now handled by install.sh before this script runs
+    # Hardware detection (epaper HAT) will work correctly if SPI was enabled
 
     try:
         # Wave 1: System setup (parallel - apt-update already done in install.sh)
@@ -631,19 +768,8 @@ def main() -> None:
         )
         log("✓", "Completed: data directories, system packages")
 
-        # Wave 2: Install uv (sequential, needs network after apt operations complete)
-        print()
-        log("→", "Installing uv package manager")
-        install_uv()
-        log("✓", "Installing uv package manager")
-
-        # Wave 3: Python dependencies (sequential, needs uv)
-        print()
-        log("→", "Installing Python dependencies")
-        install_python_dependencies()
-        log("✓", "Installing Python dependencies")
-
-        # Wave 4: Configuration and services (parallel, long-running tasks at bottom)
+        # Wave 2: Configuration and services (parallel, long-running tasks at bottom)
+        # Note: uv and Python dependencies already installed by install.sh
         print()
         log("→", "Starting: web/cache configuration, systemd services, asset download")
         run_parallel(
@@ -660,6 +786,13 @@ def main() -> None:
         log("✓", "Completed: web/cache configuration, systemd services, asset download")
 
         # Wave 4.5: System configuration (sequential, before starting services)
+        print()
+        log("→", "Optimizing system for device")
+        # Disable unnecessary services on low-memory devices
+        device_specs = detect_device_specs()
+        disable_unnecessary_services(device_specs["total_ram_mb"])
+        log("✓", "Optimizing system for device")
+
         print()
         log("→", "Configuring system settings")
         setup_cmd = [

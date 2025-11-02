@@ -90,9 +90,12 @@ dependencies = [
 
 [project.optional-dependencies]
 epaper = [
-  "waveshare-epd @ git+https://github.com/waveshareteam/e-Paper.git#subdirectory=RaspberryPi_JetsonNano/python",
+  "waveshare-epd",
+  "lgpio>=0.2.2.0; platform_machine=='armv7l' or platform_machine=='aarch64'",
+  "gpiozero>=2.0; platform_machine=='armv7l' or platform_machine=='aarch64'",
   "RPi.GPIO>=0.7.1; platform_machine=='armv7l' or platform_machine=='aarch64'",
-  "spidev>=3.6; platform_machine=='armv7l' or platform_machine=='aarch64'"
+  "spidev>=3.6; platform_machine=='armv7l' or platform_machine=='aarch64'",
+  "Pillow>=10.0.0; platform_machine=='armv7l' or platform_machine=='aarch64'"
 ]
 
 [project.scripts]
@@ -191,9 +194,13 @@ unfixable = ["TID252"] # Disallow `from ... import *`
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN"]
+"install/*" = ["ANN401"] # Allow Any for dynamically imported modules
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.uv.sources]
+waveshare-epd = {git = "https://github.com/waveshareteam/e-Paper.git", subdirectory = "RaspberryPi_JetsonNano/python"}

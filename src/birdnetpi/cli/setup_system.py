@@ -10,6 +10,7 @@ before services start. It handles:
 """
 
 import sqlite3
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -146,6 +147,90 @@ def is_attended_install() -> bool:
         True if stdin is a TTY (interactive), False otherwise
     """
     return sys.stdin.isatty()
+
+
+def get_supported_os_options() -> dict[str, str]:
+    """Get supported operating systems.
+
+    Returns:
+        Dict mapping OS keys to display names
+    """
+    return {
+        "raspbian": "Raspberry Pi OS",
+        "armbian": "Armbian",
+        "dietpi": "DietPi",
+    }
+
+
+def get_supported_devices() -> dict[str, str]:
+    """Get supported device types.
+
+    Returns:
+        Dict mapping device keys to display names
+    """
+    return {
+        "pi_zero_2w": "Raspberry Pi Zero 2W",
+        "pi_3b": "Raspberry Pi 3B/3B+",
+        "pi_4b": "Raspberry Pi 4B",
+        "pi_5": "Raspberry Pi 5",
+        "orange_pi_5": "Orange Pi 5",
+        "orange_pi_5_plus": "Orange Pi 5 Plus",
+        "orange_pi_5_pro": "Orange Pi 5 Pro",
+        "rock_5b": "Radxa ROCK 5B",
+        "other": "Other (generic configuration)",
+    }
+
+
+def prompt_os_selection(default: str = "raspbian") -> str:
+    """Prompt user to select an operating system.
+
+    Args:
+        default: Default OS key
+
+    Returns:
+        Selected OS key
+    """
+    os_options = get_supported_os_options()
+
+    click.echo("\nSupported Operating Systems:")
+    click.echo("-" * 60)
+    for key, name in os_options.items():
+        marker = "(default)" if key == default else ""
+        click.echo(f"  {key:12} - {name} {marker}")
+
+    while True:
+        os_key = click.prompt("\nOperating System", default=default, show_default=True)
+        if os_key in os_options:
+            return os_key
+        else:
+            click.echo(f"  ✗ Invalid OS: {os_key}")
+            click.echo(f"  Please enter one of: {', '.join(os_options.keys())}")
+
+
+def prompt_device_selection(default: str = "pi_4b") -> str:
+    """Prompt user to select a device type.
+
+    Args:
+        default: Default device key
+
+    Returns:
+        Selected device key
+    """
+    devices = get_supported_devices()
+
+    click.echo("\nSupported Devices:")
+    click.echo("-" * 60)
+    for key, name in devices.items():
+        marker = "(default)" if key == default else ""
+        click.echo(f"  {key:18} - {name} {marker}")
+
+    while True:
+        device_key = click.prompt("\nDevice Type", default=default, show_default=True)
+        if device_key in devices:
+            return device_key
+        else:
+            click.echo(f"  ✗ Invalid device: {device_key}")
+            click.echo(f"  Please enter one of: {', '.join(devices.keys())}")
 
 
 def get_common_timezones() -> list[str]:
@@ -369,6 +454,49 @@ def configure_location(
         click.echo(loc_msg)
 
 
+def configure_os(
+    boot_config: dict[str, str],
+) -> str:
+    """Configure operating system via prompt or boot config.
+
+    Args:
+        boot_config: Boot volume pre-configuration
+
+    Returns:
+        Selected OS key
+    """
+    if "os" not in boot_config:
+        os_key = prompt_os_selection(default="raspbian")
+        click.echo(f"  Selected OS: {get_supported_os_options()[os_key]}")
+        return os_key
+    else:
+        os_key = boot_config["os"]
+        click.echo(f"OS: {get_supported_os_options().get(os_key, os_key)} (from boot config)")
+        return os_key
+
+
+def configure_device(
+    boot_config: dict[str, str],
+) -> str:
+    """Configure device type via prompt or boot config.
+
+    Args:
+        boot_config: Boot volume pre-configuration
+
+    Returns:
+        Selected device key
+    """
+    if "device" not in boot_config:
+        device_key = prompt_device_selection(default="pi_4b")
+        click.echo(f"  Selected device: {get_supported_devices()[device_key]}")
+        return device_key
+    else:
+        device_key = boot_config["device"]
+        device_name = get_supported_devices().get(device_key, device_key)
+        click.echo(f"Device: {device_name} (from boot config)")
+        return device_key
+
+
 def configure_language(
     config: BirdNETConfig,
     boot_config: dict[str, str],
@@ -426,6 +554,64 @@ def initialize_config(
     return config_path, config, boot_config
 
 
+def set_system_timezone(config: BirdNETConfig) -> None:
+    """Set the system timezone based on the configuration.
+
+    Uses timedatectl to set the system timezone to match the configured timezone.
+    This ensures that system logs and timestamps match the user's expected timezone.
+
+    Args:
+        config: Configuration containing the timezone setting
+    """
+    timezone = config.timezone
+    if not timezone or timezone == "UTC":
+        click.echo("  Timezone is UTC (default), skipping system timezone update")
+        return
+
+    try:
+        # Validate timezone exists in pytz
+        if timezone not in pytz.all_timezones:
+            click.echo(f"  ! Invalid timezone '{timezone}', skipping system timezone update")
+            return
+
+        # Try timedatectl first (requires systemd/DBus)
+        result = subprocess.run(
+            ["timedatectl", "set-timezone", timezone],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        if result.returncode == 0:
+            click.echo(f"  ✓ System timezone set to {timezone}")
+        elif "Failed to connect to bus" in result.stderr:
+            # Fallback for systems without DBus (e.g., DietPi during installation)
+            # Directly set timezone files
+            try:
+                # Write timezone to /etc/timezone
+                with Path("/etc/timezone").open("w") as f:
+                    f.write(f"{timezone}\n")
+
+                # Link /etc/localtime to the zoneinfo file
+                zoneinfo_path = Path(f"/usr/share/zoneinfo/{timezone}")
+                localtime_path = Path("/etc/localtime")
+
+                if zoneinfo_path.exists():
+                    # Remove old symlink/file
+                    localtime_path.unlink(missing_ok=True)
+                    # Create new symlink
+                    localtime_path.symlink_to(zoneinfo_path)
+                    click.echo(f"  ✓ System timezone set to {timezone} (fallback method)")
+                else:
+                    click.echo(f"  ! Timezone file not found: {zoneinfo_path}")
+            except Exception as fallback_error:
+                click.echo(f"  ! Failed to set timezone (fallback): {fallback_error}")
+        else:
+            click.echo(f"  ! Failed to set system timezone: {result.stderr.strip()}")
+    except Exception as e:
+        click.echo(f"  ! Error setting system timezone: {e}")
+
+
 @click.command()
 @click.option(
     "--non-interactive",
@@ -470,6 +656,17 @@ def main(non_interactive: bool) -> None:
         click.echo("Configuration Prompts")
         click.echo("-" * 60)
 
+        # OS and device selection first
+        os_key = configure_os(boot_config)
+        device_key = configure_device(boot_config)
+
+        # Store OS and device info in config for reference
+        # Note: These aren't part of BirdNETConfig model, but we store them
+        # for future use (e.g., OS-specific optimizations, device-specific settings)
+        os_name = get_supported_os_options()[os_key]
+        device_name = get_supported_devices()[device_key]
+        click.echo(f"\nConfiguring for {os_name} on {device_name}")
+
         configure_device_name(config, boot_config)
         configure_location(config, boot_config, lat_detected)
         configure_language(config, boot_config, path_resolver)
@@ -479,6 +676,11 @@ def main(non_interactive: bool) -> None:
     click.echo("Saving configuration...")
     config_manager.save(config)
     click.echo(f"  ✓ Configuration saved to {config_path}")
+
+    # Set system timezone to match config
+    click.echo()
+    click.echo("Setting system timezone...")
+    set_system_timezone(config)
 
     click.echo()
     click.echo("=" * 60)

@@ -1,0 +1,142 @@
+/* BirdNET-Pi SD Card Flasher TUI Styles */
+
+/* Global screen alignment */
+Screen {
+    align: center middle;
+    background: $surface;
+}
+
+/* Main dialog container */
+#dialog {
+    width: 80;
+    height: auto;
+    max-height: 90%;
+    border: solid $accent;
+    padding: 1 2;
+    background: $panel;
+    overflow-y: auto;
+}
+
+/* Screen titles */
+.screen-title {
+    width: 100%;
+    content-align: center middle;
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 1;
+}
+
+/* Input widgets */
+Input {
+    width: 100%;
+    margin: 1 0;
+}
+
+Input.-invalid {
+    border: solid red;
+}
+
+Input.-valid:focus {
+    border: solid green;
+}
+
+/* Select widgets */
+Select {
+    width: 100%;
+    margin: 1 0;
+}
+
+/* Checkboxes and switches */
+Checkbox, Switch {
+    margin: 1 0;
+}
+
+/* Button groups */
+.button-group {
+    width: 100%;
+    height: auto;
+    align: right middle;
+    margin-top: 1;
+}
+
+Button {
+    margin: 0 1;
+    min-width: 12;
+}
+
+/* Static text */
+Static {
+    width: 100%;
+}
+
+/* Containers */
+Container {
+    height: auto;
+}
+
+Vertical {
+    height: auto;
+}
+
+Horizontal {
+    height: auto;
+}
+
+/* List views */
+ListView {
+    height: auto;
+    max-height: 20;
+    border: solid $primary;
+    margin: 1 0;
+}
+
+ListItem {
+    padding: 1;
+}
+
+ListItem:hover {
+    background: $primary-lighten-1;
+}
+
+ListItem > Label {
+    width: 100%;
+}
+
+/* Info sections */
+.info-section {
+    border: solid $primary-lighten-1;
+    padding: 1;
+    margin: 1 0;
+    background: $surface-lighten-1;
+}
+
+.info-label {
+    text-style: bold;
+    color: $text;
+}
+
+.info-value {
+    color: $text-muted;
+}
+
+/* Confirmation table */
+.config-table {
+    border: solid $primary;
+    padding: 1;
+    margin: 1 0;
+}
+
+.config-row {
+    height: auto;
+}
+
+.config-key {
+    width: 30%;
+    text-style: bold;
+    color: $accent;
+}
+
+.config-value {
+    width: 70%;
+    color: $text;
+}
