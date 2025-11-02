@@ -9,7 +9,7 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from jinja2 import Template
 
@@ -685,11 +685,26 @@ def show_final_summary(ip_address: str) -> None:
 
 def main() -> None:
     """Run the main installer with parallel execution."""
-    # Check not running as root
+    # When running as root, strip "sudo" from subprocess commands
+    global subprocess
     if os.geteuid() == 0:
-        print("ERROR: This script should not be run as root.")
-        print("Please run as a non-root user with sudo privileges.")
-        sys.exit(1)
+        print("Running as root - sudo commands will execute directly")
+        original_subprocess = subprocess
+
+        class SubprocessWrapper:
+            """Wrapper to strip 'sudo' from commands when running as root."""
+
+            @staticmethod
+            def run(cmd: list[str] | str, **kwargs: Any) -> subprocess.CompletedProcess:  # type: ignore[misc]
+                # Strip 'sudo' from command if present
+                if isinstance(cmd, list) and cmd and cmd[0] == "sudo":
+                    cmd = cmd[1:]
+                return original_subprocess.run(cmd, **kwargs)
+
+            def __getattr__(self, name: str) -> Any:
+                return getattr(original_subprocess, name)
+
+        subprocess = SubprocessWrapper()
 
     print()
     print("=" * 60)

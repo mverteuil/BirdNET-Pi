@@ -22,10 +22,57 @@ if [ "$1" = "--test-epaper" ]; then
     TEST_EPAPER=true
 fi
 
-# Check if running as root
+# Check if running as root - convert sudo to su
 if [ "$(id -u)" -eq 0 ]; then
-    echo "This script should not be run as root. Please run as a non-root user with sudo privileges."
-    exit 1
+    echo "Running as root - converting sudo commands to su"
+    sudo() {
+        local user=""
+        local env_vars=()
+        local cmd=()
+
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                -u|--user)
+                    user="$2"
+                    shift 2
+                    ;;
+                -g|--group)
+                    # Skip group flag (su doesn't support it the same way)
+                    shift 2
+                    ;;
+                -*)
+                    # Skip other sudo flags
+                    shift
+                    ;;
+                *=*)
+                    # Environment variable assignment
+                    env_vars+=("$1")
+                    shift
+                    ;;
+                *)
+                    # Rest are command arguments
+                    cmd=("$@")
+                    break
+                    ;;
+            esac
+        done
+
+        if [ -n "$user" ]; then
+            if [ ${#env_vars[@]} -gt 0 ]; then
+                su - "$user" -c "env ${env_vars[*]} ${cmd[*]}"
+            else
+                su - "$user" -c "${cmd[*]}"
+            fi
+        else
+            # No user specified, run as root with env vars if present
+            if [ ${#env_vars[@]} -gt 0 ]; then
+                env "${env_vars[@]}" "${cmd[@]}"
+            else
+                "${cmd[@]}"
+            fi
+        fi
+    }
+    export -f sudo
 fi
 
 echo "========================================"
@@ -73,7 +120,7 @@ fi
 # Bootstrap the environment
 echo "Installing prerequisites..."
 sudo apt-get update
-sudo apt-get install -y git python3.11 python3.11-venv python3-pip
+sudo apt-get install -y git python3.11 python3.11-venv python3-pip build-essential python3.11-dev
 
 # Wait for DNS to settle after apt operations
 sleep 2
@@ -166,7 +213,7 @@ if [ -d "$WAVESHARE_BOOT_PATH" ] && [ -n "$EPAPER_EXTRAS" ]; then
 
     # Regenerate lockfile since we changed the source
     echo "Regenerating lockfile for local Waveshare library..."
-    sudo -u birdnetpi /opt/uv/uv lock --quiet
+    sudo -u birdnetpi UV_HTTP_TIMEOUT=300 /opt/uv/uv lock --quiet
 
     echo "✓ Configured to use local Waveshare library"
 fi
@@ -174,7 +221,7 @@ fi
 # Install Python dependencies with retry mechanism (for network issues)
 echo "Installing Python dependencies..."
 cd "$INSTALL_DIR"
-UV_CMD="sudo -u birdnetpi /opt/uv/uv sync --locked --no-dev --quiet"
+UV_CMD="sudo -u birdnetpi UV_HTTP_TIMEOUT=300 UV_EXTRA_INDEX_URL=https://www.piwheels.org/simple /opt/uv/uv sync --locked --no-dev --quiet"
 if [ -n "$EPAPER_EXTRAS" ]; then
     UV_CMD="$UV_CMD $EPAPER_EXTRAS"
 fi
