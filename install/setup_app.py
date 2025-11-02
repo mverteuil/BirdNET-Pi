@@ -1,6 +1,7 @@
 """BirdNET-Pi SBC installer with parallel execution."""
 
 import os
+import shlex
 import socket
 import subprocess
 import sys
@@ -684,30 +685,40 @@ def show_final_summary(ip_address: str) -> None:
 
 
 class _SubprocessWrapper:
-    """Wrapper to strip 'sudo' from commands when running as root."""
+    """Wrapper to convert sudo to su when running as root."""
 
     def __init__(self, original_subprocess: Any) -> None:
         self._original = original_subprocess
 
     def run(self, cmd: list[str] | str, **kwargs: Any) -> subprocess.CompletedProcess:  # type: ignore[misc]
-        """Run command, stripping sudo flags when running as root."""
-        # Strip 'sudo' and its flags from command if present
+        """Run command, converting sudo -u to su when running as root."""
         if isinstance(cmd, list) and cmd and cmd[0] == "sudo":
-            # Remove "sudo" and any user-related flags
-            new_cmd = []
-            i = 1  # Skip "sudo"
+            user = None
+            actual_cmd = []
+            i = 1
+
+            # Parse sudo arguments
             while i < len(cmd):
-                if cmd[i] in ("-u", "--user", "-g", "--group"):
-                    # Skip flag and its argument
+                if cmd[i] in ("-u", "--user"):
+                    user = cmd[i + 1]
                     i += 2
+                elif cmd[i] in ("-g", "--group"):
+                    i += 2  # Skip group flag
                 elif cmd[i].startswith("-"):
-                    # Skip other flags
-                    i += 1
+                    i += 1  # Skip other flags
                 else:
                     # Found the actual command
-                    new_cmd = cmd[i:]
+                    actual_cmd = cmd[i:]
                     break
-            cmd = new_cmd if new_cmd else cmd[1:]
+
+            if user:
+                # Convert to: su - user -c "command args..."
+                cmd_str = " ".join(shlex.quote(arg) for arg in actual_cmd)
+                cmd = ["su", "-", user, "-c", cmd_str]
+            else:
+                # No user, just run directly (strip sudo)
+                cmd = actual_cmd if actual_cmd else cmd[1:]
+
         return self._original.run(cmd, **kwargs)
 
     def __getattr__(self, name: str) -> Any:
@@ -716,11 +727,16 @@ class _SubprocessWrapper:
 
 def main() -> None:
     """Run the main installer with parallel execution."""
-    # When running as root, strip "sudo" from subprocess commands
     global subprocess
-    if os.geteuid() == 0:
-        print("Running as root - sudo commands will execute directly")
-        subprocess = _SubprocessWrapper(subprocess)
+
+    # Verify running as root (needed for systemctl, apt-get, etc.)
+    if os.geteuid() != 0:
+        print("ERROR: This script must be run as root.")
+        print("The install.sh script should handle running this with appropriate privileges.")
+        sys.exit(1)
+
+    # When running as root, convert sudo commands to su
+    subprocess = _SubprocessWrapper(subprocess)
 
     print()
     print("=" * 60)
