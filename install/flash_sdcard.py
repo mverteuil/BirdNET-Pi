@@ -1877,6 +1877,57 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
         # Copy BirdNET-Pi pre-configuration file if any settings provided
         copy_birdnetpi_config(boot_mount, config)
 
+        # CRITICAL: Also copy install.sh to rootfs partition
+        # The DIETPISETUP partition (boot_mount) will be deleted after first boot
+        # So we must also place install.sh on the persistent rootfs partition
+        if config.get("copy_installer"):
+            install_script = Path(__file__).parent / "install.sh"
+            if install_script.exists():
+                console.print("[cyan]Copying install.sh to rootfs partition...[/cyan]")
+
+                # Mount rootfs partition (usually partition 2 on DietPi)
+                rootfs_mount = None
+                rootfs_partition = None
+
+                try:
+                    if platform.system() == "Darwin":
+                        # On macOS, try to find and mount the ext4 rootfs partition
+                        # Typically partition 2, but we need ext4fuse or similar
+                        console.print(
+                            "[yellow]Note: macOS cannot write to ext4 - "
+                            "using boot partition only[/yellow]"
+                        )
+                        console.print(
+                            "[yellow]Automation scripts will preserve "
+                            "install.sh during first boot[/yellow]"
+                        )
+                    else:
+                        # On Linux, mount partition 2 (rootfs)
+                        rootfs_partition = f"{device}2"
+                        rootfs_mount = Path("/mnt/dietpi_rootfs")
+                        rootfs_mount.mkdir(parents=True, exist_ok=True)
+
+                        subprocess.run(
+                            ["sudo", "mount", rootfs_partition, str(rootfs_mount)], check=True
+                        )
+
+                        # Copy install.sh to /root on rootfs
+                        install_dest = rootfs_mount / "root" / "install.sh"
+                        subprocess.run(
+                            ["sudo", "cp", str(install_script), str(install_dest)], check=True
+                        )
+                        subprocess.run(["sudo", "chmod", "+x", str(install_dest)], check=True)
+
+                        console.print(
+                            "[green]✓ install.sh copied to rootfs:/root/install.sh[/green]"
+                        )
+                        console.print("[dim]Persists after DIETPISETUP partition deletion[/dim]")
+
+                finally:
+                    # Unmount rootfs if we mounted it
+                    if rootfs_mount and rootfs_partition:
+                        subprocess.run(["sudo", "umount", str(rootfs_mount)], check=False)
+
     finally:
         # Unmount
         console.print("[cyan]Unmounting boot partition...[/cyan]")
