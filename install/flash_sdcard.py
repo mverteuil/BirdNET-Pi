@@ -1891,16 +1891,65 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
 
                 try:
                     if platform.system() == "Darwin":
-                        # On macOS, try to find and mount the ext4 rootfs partition
-                        # Typically partition 2, but we need ext4fuse or similar
-                        console.print(
-                            "[yellow]Note: macOS cannot write to ext4 - "
-                            "using boot partition only[/yellow]"
+                        # On macOS, use diskutil to mount the ext4 rootfs partition
+                        # anylinuxfs allows writing to ext4 on macOS
+                        rootfs_partition = f"{device}s2"
+
+                        # Try to mount with diskutil (anylinuxfs handles ext4)
+                        mount_result = subprocess.run(
+                            ["diskutil", "mount", rootfs_partition],
+                            capture_output=True,
+                            text=True,
+                            check=False,
                         )
-                        console.print(
-                            "[yellow]Automation scripts will preserve "
-                            "install.sh during first boot[/yellow]"
-                        )
+
+                        if mount_result.returncode == 0:
+                            # Find where it mounted
+                            time.sleep(1)
+                            mount_info = subprocess.run(
+                                ["diskutil", "info", rootfs_partition],
+                                capture_output=True,
+                                text=True,
+                                check=True,
+                            )
+                            for line in mount_info.stdout.splitlines():
+                                if "Mount Point:" in line:
+                                    mount_path = line.split(":", 1)[1].strip()
+                                    if (
+                                        mount_path
+                                        and mount_path != "Not applicable (no file system)"
+                                    ):
+                                        rootfs_mount = Path(mount_path)
+                                        rootfs_partition = rootfs_partition  # Save for unmount
+
+                                        # Copy install.sh to /root on rootfs
+                                        install_dest = rootfs_mount / "root" / "install.sh"
+                                        subprocess.run(
+                                            ["sudo", "cp", str(install_script), str(install_dest)],
+                                            check=True,
+                                        )
+                                        subprocess.run(
+                                            ["sudo", "chmod", "+x", str(install_dest)], check=True
+                                        )
+
+                                        console.print(
+                                            "[green]✓ install.sh copied to "
+                                            "rootfs:/root/install.sh[/green]"
+                                        )
+                                        console.print(
+                                            "[dim]Persists after DIETPISETUP "
+                                            "partition deletion[/dim]"
+                                        )
+                                        break
+                        else:
+                            console.print(
+                                "[yellow]Note: Could not mount rootfs partition - "
+                                "using boot partition only[/yellow]"
+                            )
+                            console.print(
+                                "[yellow]Automation scripts will preserve "
+                                "install.sh during first boot[/yellow]"
+                            )
                     else:
                         # On Linux, mount partition 2 (rootfs)
                         rootfs_partition = f"{device}2"
@@ -1926,7 +1975,12 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                 finally:
                     # Unmount rootfs if we mounted it
                     if rootfs_mount and rootfs_partition:
-                        subprocess.run(["sudo", "umount", str(rootfs_mount)], check=False)
+                        if platform.system() == "Darwin":
+                            subprocess.run(
+                                ["diskutil", "unmount", "force", str(rootfs_mount)], check=False
+                            )
+                        else:
+                            subprocess.run(["sudo", "umount", str(rootfs_mount)], check=False)
 
     finally:
         # Unmount
