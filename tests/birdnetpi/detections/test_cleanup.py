@@ -33,6 +33,7 @@ def cleanup_service_factory(db_service_factory, async_mock_factory, path_resolve
     def _create_cleanup_service(
         session_config: dict | None = None,
         ebird_config: dict | None = None,
+        unknown_species_behavior: str = "allow",
     ):
         # Configure test_config with eBird filtering settings
         test_config.ebird_filtering = EBirdFilterConfig(
@@ -40,7 +41,7 @@ def cleanup_service_factory(db_service_factory, async_mock_factory, path_resolve
             h3_resolution=5,
             detection_mode="filter",
             detection_strictness="vagrant",
-            unknown_species_behavior="allow",
+            unknown_species_behavior=unknown_species_behavior,
         )
 
         # Create database service using global factory
@@ -551,11 +552,9 @@ class TestShouldFilterDetection:
         """Should filter unknown species when behavior is block."""
         _, session, _ = db_service_factory()
 
-        # Change config to block unknown species
-        test_config.ebird_filtering.unknown_species_behavior = "block"
-
         cleanup_svc, _, _, _, _ = cleanup_service_factory(
-            ebird_config={"get_species_confidence_tier": None}
+            ebird_config={"get_species_confidence_tier": None},
+            unknown_species_behavior="block",
         )
 
         result = await cleanup_svc._should_filter_detection(
