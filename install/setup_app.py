@@ -683,28 +683,44 @@ def show_final_summary(ip_address: str) -> None:
     print("=" * 60)
 
 
+class _SubprocessWrapper:
+    """Wrapper to strip 'sudo' from commands when running as root."""
+
+    def __init__(self, original_subprocess: Any) -> None:
+        self._original = original_subprocess
+
+    def run(self, cmd: list[str] | str, **kwargs: Any) -> subprocess.CompletedProcess:  # type: ignore[misc]
+        """Run command, stripping sudo flags when running as root."""
+        # Strip 'sudo' and its flags from command if present
+        if isinstance(cmd, list) and cmd and cmd[0] == "sudo":
+            # Remove "sudo" and any user-related flags
+            new_cmd = []
+            i = 1  # Skip "sudo"
+            while i < len(cmd):
+                if cmd[i] in ("-u", "--user", "-g", "--group"):
+                    # Skip flag and its argument
+                    i += 2
+                elif cmd[i].startswith("-"):
+                    # Skip other flags
+                    i += 1
+                else:
+                    # Found the actual command
+                    new_cmd = cmd[i:]
+                    break
+            cmd = new_cmd if new_cmd else cmd[1:]
+        return self._original.run(cmd, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._original, name)
+
+
 def main() -> None:
     """Run the main installer with parallel execution."""
     # When running as root, strip "sudo" from subprocess commands
     global subprocess
     if os.geteuid() == 0:
         print("Running as root - sudo commands will execute directly")
-        original_subprocess = subprocess
-
-        class SubprocessWrapper:
-            """Wrapper to strip 'sudo' from commands when running as root."""
-
-            @staticmethod
-            def run(cmd: list[str] | str, **kwargs: Any) -> subprocess.CompletedProcess:  # type: ignore[misc]
-                # Strip 'sudo' from command if present
-                if isinstance(cmd, list) and cmd and cmd[0] == "sudo":
-                    cmd = cmd[1:]
-                return original_subprocess.run(cmd, **kwargs)
-
-            def __getattr__(self, name: str) -> Any:
-                return getattr(original_subprocess, name)
-
-        subprocess = SubprocessWrapper()
+        subprocess = _SubprocessWrapper(subprocess)
 
     print()
     print("=" * 60)
