@@ -1905,8 +1905,10 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                         if list_result.returncode == 0:
                             console.print(f"[dim]{list_result.stdout}[/dim]")
 
-                        # DietPi uses partition 3 for rootfs (1=BIOS, 2=DIETPISETUP, 3=ROOTFS)
-                        rootfs_partition_name = f"{device}s3"
+                        # Find the Linux Filesystem partition (rootfs)
+                        # On Orange Pi 5 Pro: partition 1 is rootfs, partition 2 is DIETPISETUP
+                        # Try partition 1 first (most common for DietPi)
+                        rootfs_partition_name = f"{device}s1"
                         console.print(f"[dim]Attempting to mount {rootfs_partition_name}...[/dim]")
 
                         # Try to mount with diskutil (anylinuxfs handles ext4)
