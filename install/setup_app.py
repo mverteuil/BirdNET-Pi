@@ -10,7 +10,7 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, ClassVar, TypedDict
 
 from jinja2 import Template
 
@@ -22,6 +22,41 @@ class DeviceSpecs(TypedDict):
     total_ram_mb: int
     maxmemory: str
     memory_comment: str
+
+
+class ServiceRegistry:
+    """Central registry for system and BirdNET services."""
+
+    # System services (not managed by BirdNET)
+    SYSTEM_SERVICES: ClassVar[list[str]] = ["redis-server.service", "caddy.service"]
+
+    # Core BirdNET services (always installed)
+    CORE_SERVICES: ClassVar[list[str]] = [
+        "birdnetpi-fastapi.service",
+        "birdnetpi-audio-capture.service",
+        "birdnetpi-audio-analysis.service",
+        "birdnetpi-audio-websocket.service",
+        "birdnetpi-update.service",
+    ]
+
+    # Optional services (added at runtime based on hardware detection)
+    _optional_services: ClassVar[list[str]] = []
+
+    @classmethod
+    def add_optional_service(cls, service_name: str) -> None:
+        """Add an optional service to the registry."""
+        if service_name not in cls._optional_services:
+            cls._optional_services.append(service_name)
+
+    @classmethod
+    def get_birdnet_services(cls) -> list[str]:
+        """Get all BirdNET services (core + optional)."""
+        return cls.CORE_SERVICES + cls._optional_services
+
+    @classmethod
+    def get_all_services(cls) -> list[str]:
+        """Get all services (system + BirdNET)."""
+        return cls.SYSTEM_SERVICES + cls.get_birdnet_services()
 
 
 # Thread-safe logging
@@ -507,15 +542,16 @@ def install_systemd_services() -> None:
     # Conditionally add epaper display service if hardware detected
     if has_waveshare_epaper_hat():
         log("ℹ", "Installing epaper display service (hardware detected)")  # noqa: RUF001
-        services.append(
-            {
-                "name": "birdnetpi-epaper-display.service",
-                "description": "BirdNET E-Paper Display",
-                "after": "network-online.target birdnetpi-fastapi.service",
-                "exec_start": "/opt/birdnetpi/.venv/bin/epaper-display-daemon",
-                "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=epaper_display",
-            }
-        )
+        service_config = {
+            "name": "birdnetpi-epaper-display.service",
+            "description": "BirdNET E-Paper Display",
+            "after": "network-online.target birdnetpi-fastapi.service",
+            "exec_start": "/opt/birdnetpi/.venv/bin/epaper-display-daemon",
+            "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=epaper_display",
+        }
+        services.append(service_config)
+        # Register service in the global registry
+        ServiceRegistry.add_optional_service(service_config["name"])
     else:
         log("ℹ", "Skipping epaper display service (no hardware detected)")  # noqa: RUF001
 
@@ -582,14 +618,7 @@ def start_systemd_services() -> None:
         )
 
     # Start BirdNET services
-    birdnet_services = [
-        "birdnetpi-fastapi.service",
-        "birdnetpi-audio-capture.service",
-        "birdnetpi-audio-analysis.service",
-        "birdnetpi-audio-websocket.service",
-        "birdnetpi-update.service",
-    ]
-    for service in birdnet_services:
+    for service in ServiceRegistry.get_birdnet_services():
         subprocess.run(
             ["sudo", "systemctl", "start", service],
             check=True,
@@ -625,18 +654,8 @@ def check_service_status(service_name: str) -> str:
 
 def check_services_health() -> None:
     """Check that all services are running and healthy."""
-    services = [
-        "redis-server.service",
-        "caddy.service",
-        "birdnetpi-fastapi.service",
-        "birdnetpi-audio-capture.service",
-        "birdnetpi-audio-analysis.service",
-        "birdnetpi-audio-websocket.service",
-        "birdnetpi-update.service",
-    ]
-
     all_healthy = True
-    for service in services:
+    for service in ServiceRegistry.get_all_services():
         status = check_service_status(service)
         if status != "✓":
             all_healthy = False
@@ -659,18 +678,8 @@ def show_final_summary(ip_address: str) -> None:
     print()
 
     # Show service status
-    services = [
-        "redis-server.service",
-        "caddy.service",
-        "birdnetpi-fastapi.service",
-        "birdnetpi-audio-capture.service",
-        "birdnetpi-audio-analysis.service",
-        "birdnetpi-audio-websocket.service",
-        "birdnetpi-update.service",
-    ]
-
     print("Service Status:")
-    for service in services:
+    for service in ServiceRegistry.get_all_services():
         status = check_service_status(service)
         print(f"  {status} {service}")
 
