@@ -8,12 +8,21 @@ import json
 from pathlib import Path
 from typing import Any
 
-from textual import on
-from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Vertical
-from textual.screen import ModalScreen
-from textual.validation import Function, ValidationResult, Validator
-from textual.widgets import Button, Checkbox, Input, Label, ListItem, ListView, Select, Static
+from textual import on  # type: ignore[import-untyped]
+from textual.app import App, ComposeResult  # type: ignore[import-untyped]
+from textual.containers import Container, Horizontal, Vertical  # type: ignore[import-untyped]
+from textual.screen import ModalScreen  # type: ignore[import-untyped]
+from textual.validation import Function, ValidationResult, Validator  # type: ignore[import-untyped]
+from textual.widgets import (  # type: ignore[import-untyped]
+    Button,
+    Checkbox,
+    Input,
+    Label,
+    ListItem,
+    ListView,
+    Select,
+    Static,
+)
 
 # ============================================================================
 # Capability Calculation
