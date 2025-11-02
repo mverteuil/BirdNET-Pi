@@ -244,15 +244,46 @@ def copy_installer_script(
 # Preserve and execute install.sh before/after DIETPISETUP partition is deleted
 # This script runs during DietPi first boot automation
 
+LOGFILE="/var/log/birdnetpi_preserve.log"
+exec >> "$LOGFILE" 2>&1
+
+echo "=== BirdNET-Pi Installer Preservation Script ==="
+echo "Started at: $(date)"
+echo "Running as: $(whoami)"
+echo "Working directory: $(pwd)"
+
+# Debug: Show what's mounted
+echo ""
+echo "=== Mounted filesystems ==="
+mount | grep -E '/boot|/root'
+
+# Debug: Show what's in /boot locations
+echo ""
+echo "=== /boot/firmware contents ==="
+ls -la /boot/firmware/ 2>&1 || echo "/boot/firmware does not exist"
+
+echo ""
+echo "=== /boot contents ==="
+ls -la /boot/ 2>&1 || echo "/boot does not exist"
+
 # Try /boot/firmware first (Raspberry Pi), then /boot (other boards)
 if [ -f /boot/firmware/install.sh ]; then
+    echo ""
+    echo "Found install.sh at /boot/firmware/install.sh"
     cp /boot/firmware/install.sh {final_path}
     chmod +x {final_path}
     echo "Preserved install.sh from /boot/firmware/ to {final_path}"
 elif [ -f /boot/install.sh ]; then
+    echo ""
+    echo "Found install.sh at /boot/install.sh"
     cp /boot/install.sh {final_path}
     chmod +x {final_path}
     echo "Preserved install.sh from /boot/ to {final_path}"
+else
+    echo ""
+    echo "ERROR: Could not find install.sh in /boot/firmware/ or /boot/"
+    echo "Skipping installation - install.sh must be run manually"
+    exit 0  # Don't fail DietPi automation, just skip
 fi
 
 if [ -f /boot/firmware/birdnetpi_config.txt ]; then
@@ -263,25 +294,25 @@ elif [ -f /boot/birdnetpi_config.txt ]; then
     echo "Preserved birdnetpi_config.txt from /boot/ to /root/"
 fi
 
-# Execute the preserved install.sh
-# DietPi automation runs as root, so install.sh will run as root
-if [ -f {final_path} ]; then
-    echo "Executing preserved install.sh from {final_path}"
-    cd /root
-
-    # Source environment variables from config if present
-    if [ -f /root/birdnetpi_config.txt ]; then
-        echo "Loading environment variables from /root/birdnetpi_config.txt"
-        # Source only the export lines
-        source <(grep "^export " /root/birdnetpi_config.txt || true)
-    fi
-
-    # Run install.sh
-    bash {final_path}
-else
-    echo "ERROR: Could not find preserved install.sh at {final_path}"
-    exit 1
+# Verify preservation was successful
+if [ ! -f {final_path} ]; then
+    echo ""
+    echo "ERROR: Failed to preserve install.sh to {final_path}"
+    echo "Installation must be run manually"
+    exit 0  # Don't fail DietPi automation
 fi
+
+echo ""
+echo "Successfully preserved install.sh to {final_path}"
+echo "Installation will NOT run automatically - run manually with:"
+echo "  sudo bash {final_path}"
+echo ""
+echo "Preservation complete at: $(date)"
+echo "Log saved to: $LOGFILE"
+
+# NOTE: We do NOT execute install.sh automatically anymore
+# Users should run it manually after first boot to have control
+exit 0
 """
         preserve_script_path = boot_mount / "preserve_installer.sh"
         temp_preserve = Path("/tmp/preserve_installer.sh")
@@ -289,7 +320,150 @@ fi
         subprocess.run(["sudo", "cp", str(temp_preserve), str(preserve_script_path)], check=True)
         subprocess.run(["sudo", "chmod", "+x", str(preserve_script_path)], check=True)
         temp_preserve.unlink()
-        console.print(f"[green]✓ Copied install.sh with preservation to {final_path}[/green]")
+
+        # ALSO create DietPi-Automation pre-script (runs BEFORE partition cleanup)
+        # This is critical because DIETPISETUP partition gets deleted after first boot
+        # Automation_Custom_PreScript.sh runs BEFORE the cleanup
+        automation_script_content = f"""#!/bin/bash
+# DietPi Pre-Automation Script - runs BEFORE DIETPISETUP partition deletion
+# This preserves install.sh from /boot BEFORE it gets deleted
+
+LOGFILE="/var/log/birdnetpi_automation.log"
+exec >> "$LOGFILE" 2>&1
+
+echo "=== BirdNET-Pi DietPi Pre-Automation Script ==="
+echo "Started at: $(date)"
+echo "Running as: $(whoami)"
+echo "PWD: $(pwd)"
+
+# Show what boot partitions exist
+echo ""
+echo "=== Available boot partitions ==="
+mount | grep -E "/boot"
+echo ""
+
+# Try to preserve install.sh from boot partition
+# On Orange Pi 5 Pro and similar, DIETPISETUP is at /boot (not /boot/firmware)
+if [ -f /boot/install.sh ]; then
+    echo "Found install.sh at /boot/install.sh"
+    cp -v /boot/install.sh {final_path}
+    chmod +x {final_path}
+    echo "Preserved install.sh to {final_path}"
+elif [ -f /boot/firmware/install.sh ]; then
+    echo "Found install.sh at /boot/firmware/install.sh"
+    cp -v /boot/firmware/install.sh {final_path}
+    chmod +x {final_path}
+    echo "Preserved install.sh to {final_path}"
+else
+    echo "ERROR: Could not find install.sh in /boot or /boot/firmware"
+    echo ""
+    echo "=== /boot contents ==="
+    ls -la /boot/ 2>&1 || echo "/boot not accessible"
+    echo ""
+    echo "=== /boot/firmware contents ==="
+    ls -la /boot/firmware/ 2>&1 || echo "/boot/firmware not accessible"
+    exit 1
+fi
+
+# Also preserve config if present
+if [ -f /boot/birdnetpi_config.txt ]; then
+    cp -v /boot/birdnetpi_config.txt /root/birdnetpi_config.txt
+    echo "Preserved birdnetpi_config.txt from /boot"
+elif [ -f /boot/firmware/birdnetpi_config.txt ]; then
+    cp -v /boot/firmware/birdnetpi_config.txt /root/birdnetpi_config.txt
+    echo "Preserved birdnetpi_config.txt from /boot/firmware"
+fi
+
+# Verify preservation
+if [ -f {final_path} ]; then
+    echo ""
+    echo "SUCCESS: install.sh preserved to {final_path}"
+    ls -lh {final_path}
+    echo ""
+    echo "================================================"
+    echo "BirdNET-Pi installer is ready!"
+    echo "After first boot, run: sudo bash {final_path}"
+    echo "================================================"
+else
+    echo ""
+    echo "FAILURE: Could not preserve install.sh"
+    exit 1
+fi
+
+echo ""
+echo "Pre-automation script completed at: $(date)"
+echo "Log saved to: $LOGFILE"
+exit 0
+"""
+        # Create BOTH PreScript (runs before cleanup) and regular Script (runs after)
+        # PreScript is what we need, but we'll create both for maximum compatibility
+        prescript_path = boot_mount / "Automation_Custom_PreScript.sh"
+        script_path = boot_mount / "Automation_Custom_Script.sh"
+
+        temp_automation = Path("/tmp/Automation_Custom_PreScript.sh")
+        temp_automation.write_text(automation_script_content)
+        subprocess.run(["sudo", "cp", str(temp_automation), str(prescript_path)], check=True)
+        subprocess.run(["sudo", "chmod", "+x", str(prescript_path)], check=True)
+
+        # Also copy as regular script for backwards compatibility
+        subprocess.run(["sudo", "cp", str(temp_automation), str(script_path)], check=True)
+        subprocess.run(["sudo", "chmod", "+x", str(script_path)], check=True)
+        temp_automation.unlink()
+
+        # Create README with installation instructions
+        readme_content = f"""BirdNET-Pi Installation Instructions for DietPi
+===============================================
+
+Your SD card has been configured for BirdNET-Pi installation!
+
+AFTER FIRST BOOT:
+-----------------
+1. SSH into your device
+2. Check if install.sh was preserved:
+
+   ls -l {final_path}
+
+3. If the file exists, run the installer:
+
+   sudo bash {final_path}
+
+TROUBLESHOOTING:
+----------------
+If {final_path} doesn't exist, check the preservation logs:
+
+   cat /var/log/birdnetpi_preserve.log       # AUTO_SETUP_CUSTOM_SCRIPT_EXEC log
+   cat /var/log/birdnetpi_automation.log     # Automation_Custom_Script.sh log
+
+These logs show what happened during the preservation process.
+At least one of these methods should work on your device.
+
+MANUAL INSTALLATION:
+--------------------
+If preservation failed, you can still install BirdNET-Pi manually:
+
+1. Clone the repository:
+   git clone https://github.com/your-repo/BirdNET-Pi.git
+   cd BirdNET-Pi
+
+2. Run the installer:
+   sudo bash install/install.sh
+
+For more help, visit: https://github.com/your-repo/BirdNET-Pi
+"""
+        readme_path = boot_mount / "BIRDNETPI_README.txt"
+        temp_readme = Path("/tmp/BIRDNETPI_README.txt")
+        temp_readme.write_text(readme_content)
+        subprocess.run(["sudo", "cp", str(temp_readme), str(readme_path)], check=True)
+        temp_readme.unlink()
+
+        console.print("[green]✓ Copied install.sh with triple preservation methods:[/green]")
+        console.print("[dim]  - preserve_installer.sh (via AUTO_SETUP_CUSTOM_SCRIPT_EXEC)[/dim]")
+        console.print(
+            "[dim]  - Automation_Custom_PreScript.sh (runs BEFORE partition cleanup)[/dim]"
+        )
+        console.print("[dim]  - Automation_Custom_Script.sh (runs AFTER partition cleanup)[/dim]")
+        console.print(f"[dim]  - Target location: {final_path}[/dim]")
+        console.print("[green]✓ Created BIRDNETPI_README.txt on boot partition[/green]")
     else:
         final_path = caps.get("install_sh_path", "/boot/install.sh")
         console.print(f"[green]✓ Copied install.sh to {final_path}[/green]")
@@ -1494,6 +1668,7 @@ def configure_dietpi_boot(  # noqa: C901
         # Update configuration values
         updates = {
             "AUTO_SETUP_AUTOMATED": "1",  # Enable automated first-run setup
+            "AUTO_SETUP_INSTALL_SOFTWARE": "1",  # Required for Automation_Custom_Script.sh to run!
             "AUTO_SETUP_NET_HOSTNAME": config.get("hostname", "birdnetpi"),
             "AUTO_SETUP_GLOBAL_PASSWORD": config["admin_password"],
             "AUTO_SETUP_TIMEZONE": config.get("timezone", "UTC"),
@@ -2450,10 +2625,25 @@ def main(save_config_flag: bool, device_index: int | None, device_type: str | No
         os_label = "Armbian" if is_armbian else "DietPi"
         summary_parts.append(f"Native {os_label}: [green]Configured and ready[/green]\n")
 
-        # Check if anylinuxfs was used
-        if shutil.which("anylinuxfs"):
+        # DietPi has special installer preservation
+        if is_dietpi:
+            caps = get_combined_capabilities(os_key, device_key)
+            install_path = caps.get("install_sh_path", "/root/install.sh")
             summary_parts.append(
-                "[dim]Insert the SD card into your Le Potato and power it on.\n"
+                f"[dim]Insert the SD card and power on your device.\n"
+                f"First boot will configure the system and preserve install.sh to:\n"
+                f"  [cyan]{install_path}[/cyan]\n\n"
+                f"After first boot, SSH in and run:\n"
+                f"  [cyan]sudo bash {install_path}[/cyan]\n\n"
+                f"[yellow]Troubleshooting (if install.sh is missing):[/yellow]\n"
+                f"  • Check logs: [cyan]cat /var/log/birdnetpi_*.log[/cyan]\n"
+                f"  • Read [cyan]BIRDNETPI_README.txt[/cyan] on boot partition\n"
+                f"  • Manual installation instructions in README[/dim]"
+            )
+        # Check if anylinuxfs was used for Armbian
+        elif shutil.which("anylinuxfs"):
+            summary_parts.append(
+                "[dim]Insert the SD card into your device and power it on.\n"
                 "First boot will apply pre-configuration automatically.\n\n"
                 f"SSH in as [cyan]{config['admin_user']}[/cyan] and run:\n"
                 "  [cyan]bash /boot/install.sh[/cyan]\n\n"
@@ -2462,7 +2652,7 @@ def main(save_config_flag: bool, device_index: int | None, device_type: str | No
             )
         else:
             summary_parts.append(
-                "[dim]Insert the SD card into your Le Potato and power it on.\n"
+                "[dim]Insert the SD card into your device and power it on.\n"
                 "[yellow]anylinuxfs not installed - using interactive setup:[/yellow]\n"
                 "  1. Create a root password\n"
                 "  2. Create a user account\n"
