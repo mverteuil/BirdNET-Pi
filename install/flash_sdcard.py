@@ -1891,84 +1891,105 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
 
                 try:
                     if platform.system() == "Darwin":
-                        # On macOS, use diskutil to mount the ext4 rootfs partition
-                        # anylinuxfs allows writing to ext4 on macOS
+                        # On macOS, use anylinuxfs to mount the ext4 rootfs partition
+                        # Check if anylinuxfs is installed
+                        anylinuxfs_path = shutil.which("anylinuxfs")
+                        mount_result = None
+                        rootfs_partition_name = None
 
-                        # Debug: List all partitions on the device
-                        console.print("[dim]Checking available partitions...[/dim]")
-                        list_result = subprocess.run(
-                            ["diskutil", "list", device],
-                            capture_output=True,
-                            text=True,
-                            check=False,
-                        )
-                        if list_result.returncode == 0:
-                            console.print(f"[dim]{list_result.stdout}[/dim]")
-
-                        # Find the Linux Filesystem partition (rootfs)
-                        # On Orange Pi 5 Pro: partition 1 is rootfs, partition 2 is DIETPISETUP
-                        # Try partition 1 first (most common for DietPi)
-                        rootfs_partition_name = f"{device}s1"
-                        console.print(f"[dim]Attempting to mount {rootfs_partition_name}...[/dim]")
-
-                        # Try to mount with diskutil (anylinuxfs handles ext4)
-                        mount_result = subprocess.run(
-                            ["diskutil", "mount", rootfs_partition_name],
-                            capture_output=True,
-                            text=True,
-                            check=False,
-                        )
-
-                        if mount_result.returncode == 0:
-                            # Find where it mounted
-                            time.sleep(1)
-                            mount_info = subprocess.run(
-                                ["diskutil", "info", rootfs_partition_name],
-                                capture_output=True,
-                                text=True,
-                                check=True,
-                            )
-                            for line in mount_info.stdout.splitlines():
-                                if "Mount Point:" in line:
-                                    mount_path = line.split(":", 1)[1].strip()
-                                    if (
-                                        mount_path
-                                        and mount_path != "Not applicable (no file system)"
-                                    ):
-                                        rootfs_mount = Path(mount_path)
-                                        rootfs_partition = rootfs_partition_name
-
-                                        # Ensure /root directory exists on rootfs
-                                        root_dir = rootfs_mount / "root"
-                                        subprocess.run(
-                                            ["sudo", "mkdir", "-p", str(root_dir)], check=True
-                                        )
-
-                                        # Copy install.sh to /root on rootfs
-                                        install_dest = root_dir / "install.sh"
-                                        subprocess.run(
-                                            ["sudo", "cp", str(install_script), str(install_dest)],
-                                            check=True,
-                                        )
-                                        subprocess.run(
-                                            ["sudo", "chmod", "+x", str(install_dest)], check=True
-                                        )
-
-                                        console.print(
-                                            "[green]✓ install.sh copied to "
-                                            "rootfs:/root/install.sh[/green]"
-                                        )
-                                        console.print(
-                                            "[dim]Persists after DIETPISETUP "
-                                            "partition deletion[/dim]"
-                                        )
-                                        break
-                        else:
+                        if not anylinuxfs_path:
                             console.print(
-                                f"[yellow]Note: Could not mount {rootfs_partition_name} - "
+                                "[yellow]anylinuxfs not found - skipping rootfs mount[/yellow]"
+                            )
+                            console.print(
+                                "[yellow]Automation scripts will preserve "
+                                "install.sh during first boot[/yellow]"
+                            )
+                        else:
+                            # Find the Linux Filesystem partition (rootfs)
+                            # On Orange Pi 5 Pro: partition 1 is rootfs, partition 2 is DIETPISETUP
+                            rootfs_partition_name = f"{device}s1"
+
+                            console.print(
+                                f"[cyan]Mounting {rootfs_partition_name} using anylinuxfs...[/cyan]"
+                            )
+                            console.print(
+                                "[dim]This may take 10-15 seconds to start the microVM...[/dim]"
+                            )
+
+                            # Unmount any existing anylinuxfs mount first
+                            subprocess.run(
+                                ["sudo", "anylinuxfs", "unmount"],
+                                capture_output=True,
+                                check=False,
+                                timeout=10,
+                            )
+                            time.sleep(2)
+
+                            # Mount with anylinuxfs
+                            mount_result = subprocess.run(
+                                ["sudo", "anylinuxfs", rootfs_partition_name, "-w", "false"],
+                                capture_output=False,  # Allow password prompt
+                                check=False,
+                            )
+
+                        if anylinuxfs_path and mount_result and mount_result.returncode == 0:
+                            # Wait for mount to appear in /Volumes
+                            console.print("[dim]Waiting for mount to appear...[/dim]")
+                            possible_mount_names = ["dietpi_root", "DIETPI", "Linux"]
+
+                            for attempt in range(60):
+                                time.sleep(1)
+                                volumes_path = Path("/Volumes")
+                                for mount_name in possible_mount_names:
+                                    potential_mount = volumes_path / mount_name
+                                    if potential_mount.exists() and potential_mount.is_dir():
+                                        rootfs_mount = potential_mount
+                                        rootfs_partition = rootfs_partition_name
+                                        break
+
+                                if rootfs_mount:
+                                    break
+
+                                if attempt % 5 == 0 and attempt > 0:
+                                    console.print(f"[dim]Still waiting... ({attempt}s)[/dim]")
+
+                            if rootfs_mount and rootfs_mount.exists():
+                                console.print(f"[green]✓ Mounted at {rootfs_mount}[/green]")
+
+                                # Ensure /root directory exists on rootfs
+                                root_dir = rootfs_mount / "root"
+                                subprocess.run(["sudo", "mkdir", "-p", str(root_dir)], check=True)
+
+                                # Copy install.sh to /root on rootfs
+                                install_dest = root_dir / "install.sh"
+                                subprocess.run(
+                                    ["sudo", "cp", str(install_script), str(install_dest)],
+                                    check=True,
+                                )
+                                subprocess.run(
+                                    ["sudo", "chmod", "+x", str(install_dest)], check=True
+                                )
+
+                                console.print(
+                                    "[green]✓ install.sh copied to rootfs:/root/install.sh[/green]"
+                                )
+                                console.print(
+                                    "[dim]Persists after DIETPISETUP partition deletion[/dim]"
+                                )
+                            else:
+                                console.print(
+                                    "[yellow]Could not find anylinuxfs mount after 60s[/yellow]"
+                                )
+                                console.print(
+                                    "[yellow]Automation scripts will preserve "
+                                    "install.sh during first boot[/yellow]"
+                                )
+                        elif anylinuxfs_path:
+                            console.print(
+                                "[yellow]anylinuxfs mount failed - "
                                 "using boot partition only[/yellow]"
                             )
-                            console.print(f"[dim]Mount error: {mount_result.stderr}[/dim]")
                             console.print(
                                 "[yellow]Automation scripts will preserve "
                                 "install.sh during first boot[/yellow]"
@@ -2003,9 +2024,16 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                     # Unmount rootfs if we mounted it
                     if rootfs_mount and rootfs_partition:
                         if platform.system() == "Darwin":
-                            subprocess.run(
-                                ["diskutil", "unmount", "force", str(rootfs_mount)], check=False
-                            )
+                            # Unmount anylinuxfs
+                            console.print("[cyan]Unmounting anylinuxfs...[/cyan]")
+                            try:
+                                subprocess.run(
+                                    ["sudo", "anylinuxfs", "unmount"], check=True, timeout=10
+                                )
+                            except subprocess.TimeoutExpired:
+                                subprocess.run(
+                                    ["sudo", "anylinuxfs", "stop"], check=False, timeout=5
+                                )
                         else:
                             subprocess.run(["sudo", "umount", str(rootfs_mount)], check=False)
 
