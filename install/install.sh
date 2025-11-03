@@ -11,7 +11,18 @@
 #   bash install.sh --test-epaper
 set -e
 
-# Configuration
+# Load config from boot partition or /root if it exists
+# Check multiple locations (for DietPi, DIETPISETUP is deleted after first boot)
+for config_location in "/root/birdnetpi_config.txt" "/boot/firmware/birdnetpi_config.txt" "/boot/birdnetpi_config.txt"; do
+    if [ -f "$config_location" ]; then
+        echo "Loading configuration from $config_location"
+        # shellcheck disable=SC1090
+        source "$config_location"
+        break
+    fi
+done
+
+# Configuration (can be overridden by birdnetpi_config.txt)
 REPO_URL="${BIRDNETPI_REPO_URL:-https://github.com/mverteuil/BirdNET-Pi.git}"
 BRANCH="${BIRDNETPI_BRANCH:-main}"
 INSTALL_DIR="/opt/birdnetpi"
@@ -272,4 +283,12 @@ fi
 # (uv sync ran as birdnetpi, but setup_app.py needs sudo for system operations)
 echo ""
 echo "Starting installation..."
+
+# Pass config values as environment variables if they were set
+export BIRDNETPI_DEVICE_NAME="${device_name:-}"
+export BIRDNETPI_LATITUDE="${latitude:-}"
+export BIRDNETPI_LONGITUDE="${longitude:-}"
+export BIRDNETPI_TIMEZONE="${timezone:-}"
+export BIRDNETPI_LANGUAGE="${language:-}"
+
 "$INSTALL_DIR/.venv/bin/python" "$INSTALL_DIR/install/setup_app.py"
