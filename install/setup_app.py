@@ -519,7 +519,9 @@ def install_systemd_services() -> None:
         {
             "name": "birdnetpi-audio-analysis.service",
             "description": "BirdNET Audio Analysis",
-            "after": "network-online.target birdnetpi-audio-capture.service",
+            "after": (
+                "network-online.target birdnetpi-audio-capture.service birdnetpi-fastapi.service"
+            ),
             "exec_start": "/opt/birdnetpi/.venv/bin/audio-analysis-daemon",
             "environment": "PYTHONPATH=/opt/birdnetpi/src SERVICE_NAME=audio_analysis",
         },
