@@ -501,11 +501,11 @@ def copy_birdnetpi_config(  # noqa: C901
 
     # OS and device information
     if os_key:
-        config_lines.append(f"os_key={os_key}")
+        config_lines.append(f"export os_key={os_key}")
         has_config = True
 
     if device_key:
-        config_lines.append(f"device_key={device_key}")
+        config_lines.append(f"export device_key={device_key}")
         has_config = True
 
     # Application settings
