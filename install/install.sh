@@ -285,6 +285,8 @@ echo ""
 echo "Starting installation..."
 
 # Pass config values as environment variables if they were set
+export BIRDNETPI_OS_KEY="${os_key:-}"
+export BIRDNETPI_DEVICE_KEY="${device_key:-}"
 export BIRDNETPI_DEVICE_NAME="${device_name:-}"
 export BIRDNETPI_LATITUDE="${latitude:-}"
 export BIRDNETPI_LONGITUDE="${longitude:-}"
