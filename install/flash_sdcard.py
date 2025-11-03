@@ -615,10 +615,10 @@ OS_IMAGES = {
                     },
                 ),
                 (
-                    "orange_pi_5",
+                    "orange_pi_0w2",
                     {
-                        "name": "Orange Pi 5",
-                        "url": "https://dl.armbian.com/orangepi5/Bookworm_current_minimal",
+                        "name": "Orange Pi Zero 2W",
+                        "url": "https://dl.armbian.com/orangepizero2w/Bookworm_current_minimal",
                         "is_armbian": True,
                     },
                 ),
@@ -693,10 +693,10 @@ OS_IMAGES = {
                 ),
                 # Non-Pi devices in alphabetical order
                 (
-                    "orange_pi_5",
+                    "orange_pi_0w2",
                     {
-                        "name": "Orange Pi 5",
-                        "url": "https://dietpi.com/downloads/images/DietPi_OrangePi5-ARMv8-Bookworm.img.xz",
+                        "name": "Orange Pi Zero 2W",
+                        "url": "https://dietpi.com/downloads/images/DietPi_OrangePiZero2W-ARMv8-Bookworm.img.xz",
                         "is_dietpi": True,
                     },
                 ),
@@ -1149,7 +1149,7 @@ def download_image_new(os_key: str, device_key: str, download_dir: Path) -> Path
 
     Args:
         os_key: Selected OS key (e.g., "raspbian", "armbian", "dietpi")
-        device_key: Selected device key (e.g., "pi_4", "orange_pi_5")
+        device_key: Selected device key (e.g., "pi_4", "orange_pi_5_pro")
         download_dir: Directory to store downloaded images
 
     Returns:
