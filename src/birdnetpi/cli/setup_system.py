@@ -114,12 +114,21 @@ def detect_gps() -> tuple[float | None, float | None, str | None]:
 
 
 def get_boot_config() -> dict[str, str]:
-    """Load pre-configuration from boot volume or root.
+    """Load pre-configuration from boot volume, root, or environment variables.
 
     Checks multiple locations for birdnetpi_config.txt:
     - /root/birdnetpi_config.txt (for DietPi, persists after DIETPISETUP deletion)
     - /boot/firmware/birdnetpi_config.txt (for Raspberry Pi OS)
     - /boot/birdnetpi_config.txt (fallback)
+
+    If no config file found, falls back to environment variables:
+    - BIRDNETPI_OS_KEY -> os_key
+    - BIRDNETPI_DEVICE_KEY -> device_key
+    - BIRDNETPI_DEVICE_NAME -> device_name
+    - BIRDNETPI_LATITUDE -> latitude
+    - BIRDNETPI_LONGITUDE -> longitude
+    - BIRDNETPI_TIMEZONE -> timezone
+    - BIRDNETPI_LANGUAGE -> language
 
     Returns:
         Dict of pre-configured values (empty if not found)
@@ -137,20 +146,38 @@ def get_boot_config() -> dict[str, str]:
             boot_config_path = path
             break
 
-    if not boot_config_path:
-        return {}
-
     config = {}
-    try:
-        for line in boot_config_path.read_text().splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" in line:
-                key, value = line.split("=", 1)
-                config[key.strip()] = value.strip()
-    except Exception as e:
-        click.echo(f"Warning: Could not read boot config: {e}", err=True)
+
+    if boot_config_path:
+        # Read from config file
+        try:
+            for line in boot_config_path.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    key, value = line.split("=", 1)
+                    config[key.strip()] = value.strip()
+        except Exception as e:
+            click.echo(f"Warning: Could not read boot config: {e}", err=True)
+    else:
+        # Fall back to environment variables
+        import os
+
+        env_mappings = {
+            "BIRDNETPI_OS_KEY": "os_key",
+            "BIRDNETPI_DEVICE_KEY": "device_key",
+            "BIRDNETPI_DEVICE_NAME": "device_name",
+            "BIRDNETPI_LATITUDE": "latitude",
+            "BIRDNETPI_LONGITUDE": "longitude",
+            "BIRDNETPI_TIMEZONE": "timezone",
+            "BIRDNETPI_LANGUAGE": "language",
+        }
+
+        for env_var, config_key in env_mappings.items():
+            value = os.environ.get(env_var, "").strip()
+            if value:
+                config[config_key] = value
 
     return config
 
