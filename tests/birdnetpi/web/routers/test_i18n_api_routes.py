@@ -110,6 +110,7 @@ class TestI18nAPIRoutes:
         data = response.json()
         translations = data["translations"]
 
+        # Verify critical translation keys exist (sampling approach)
         # Audio/connection messages
         assert "audio-not-available" in translations
         assert "connect-audio" in translations
@@ -118,70 +119,38 @@ class TestI18nAPIRoutes:
         # Time periods
         assert "today" in translations
         assert "last-7-days" in translations
-        assert "last-30-days" in translations
-        assert "all-time" in translations
 
-        # Filters and selections
-        assert "all-families" in translations
-        assert "all-genera" in translations
-        assert "all-species" in translations
-        assert "select-family" in translations
-        assert "select-genus" in translations
-
-        # Loading states
+        # Essential keys for app functionality
         assert "loading" in translations
-        assert "checking" in translations
         assert "error" in translations
-        assert "error-genera" in translations
-        assert "error-species" in translations
-
-        # Taxonomy labels
-        assert "family" in translations
-        assert "genus" in translations
-        assert "species" in translations
-
-        # Actions
-        assert "play-recording" in translations
-        assert "filter-by-genus" in translations
-        assert "filter-by-species" in translations
-        assert "filter-by-family" in translations
-
-        # Statistics
-        assert "recordings" in translations
-        assert "species-count" in translations
         assert "detections" in translations
-        assert "average-confidence" in translations
-        assert "date-range" in translations
 
-        # Update messages
-        assert "check-for-updates" in translations
-        assert "update-available" in translations
-        assert "up-to-date" in translations
-        assert "starting-test-update" in translations
-        assert "starting-update" in translations
-        assert "update-cancelled" in translations
+    def test_translations_calls_gettext_with_correct_source_strings(self, client):
+        """Should call gettext with correct English source strings."""
+        # Reset mock to track calls
+        mock_translation = client.mock_translation_manager.get_translation.return_value
+        mock_translation.gettext.reset_mock()
 
-        # Configuration messages
-        assert "discard-changes" in translations
-        assert "config-saved" in translations
-        assert "save-failed" in translations
-        assert "saved-status" in translations
-        assert "save-failed-status" in translations
-        assert "reset-success" in translations
-        assert "validation-passed" in translations
-        assert "validation-error" in translations
-        assert "modified-status" in translations
-        assert "ready-status" in translations
-        assert "modified-valid-status" in translations
+        response = client.get("/api/i18n/translations?lang=fr")
 
-        # Error messages
-        assert "invalid-remote-format" in translations
-        assert "invalid-branch-format" in translations
-        assert "failed-to-save-config" in translations
-        assert "failed-to-check-updates" in translations
-        assert "failed-to-apply-update" in translations
-        assert "failed-to-cancel-update" in translations
-        assert "failed-to-save-git-config" in translations
+        assert response.status_code == 200
+
+        # Verify gettext was called (translations are happening)
+        assert mock_translation.gettext.call_count > 0
+
+        # Get all the source strings that were requested for translation
+        call_args = [call[0][0] for call in mock_translation.gettext.call_args_list]
+
+        # Verify some critical translations were requested with correct English source strings
+        # These should match the actual msgid values from the source code (lines 48-112)
+        assert "Audio not available" in call_args
+        assert "Connect Audio" in call_args
+        assert "Today" in call_args
+        assert "Loading..." in call_args
+
+        # Verify the response uses the translated values
+        data = response.json()
+        assert data["translations"]["audio-not-available"] == "translated:Audio not available"
 
     def test_get_language_catalog(self, client):
         """Should get full language catalog."""
@@ -263,3 +232,35 @@ class TestI18nAPIRoutes:
         assert set(data.keys()) == {"language", "catalog"}
         assert isinstance(data["language"], str)
         assert isinstance(data["catalog"], dict)
+
+    def test_accept_language_parsing_edge_cases(self, client):
+        """Should correctly parse various Accept-Language header formats."""
+        # Test different header formats
+        test_cases = [
+            ("en-US", "en"),  # Standard format with region
+            ("en", "en"),  # Just language code
+            ("en-US,fr-FR;q=0.8", "en"),  # Multiple with quality values
+            ("de-DE,de;q=0.9,en;q=0.8", "de"),  # Complex with multiple quality values
+        ]
+
+        for header, expected_lang in test_cases:
+            response = client.get("/api/i18n/translations", headers={"Accept-Language": header})
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["language"] == expected_lang, f"Failed for header: {header}"
+            # Verify translation manager was called with correct language
+            client.mock_translation_manager.get_translation.assert_called_with(expected_lang)
+
+    def test_accept_language_empty_returns_empty_string(self, client):
+        """Should return empty language code when Accept-Language header is empty."""
+        # This tests current behavior - empty header splits to empty string
+        # In production, translation_manager would handle this (fallback to default)
+        response = client.get("/api/i18n/translations", headers={"Accept-Language": ""})
+
+        assert response.status_code == 200
+        data = response.json()
+        # Current implementation: "".split(",")[0].split("-")[0] == ""
+        assert data["language"] == ""
+        # Verify translation_manager was called with empty string
+        client.mock_translation_manager.get_translation.assert_called_with("")

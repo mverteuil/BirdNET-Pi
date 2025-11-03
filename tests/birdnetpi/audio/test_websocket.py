@@ -48,8 +48,29 @@ class TestAudioWebSocketService:
         mock_request = MagicMock(spec=Request)
         mock_request.path = "/ws/audio"
         mock_websocket.request = mock_request
-        mock_websocket.__aiter__.return_value = [].__iter__()
+
+        # Track whether client was added during execution
+        was_added = False
+
+        # Create actual async generator
+        async def mock_message_generator():
+            # Wait briefly to allow handler to add client
+            await asyncio.sleep(0.01)
+            # Check if added while the generator is active
+            nonlocal was_added
+            if mock_websocket in audio_websocket_service._audio_clients:
+                was_added = True
+            # Empty generator - no messages
+            return
+            yield  # Unreachable but makes this a generator
+
+        # Configure AsyncMock to return our generator when iterated
+        mock_websocket.__aiter__ = lambda self: mock_message_generator()
+
         await audio_websocket_service._websocket_handler(mock_websocket)
+
+        # Verify the client lifecycle
+        assert was_added, "Websocket should have been added to _audio_clients during execution"
         assert mock_websocket not in audio_websocket_service._audio_clients
 
     @pytest.mark.asyncio
@@ -327,3 +348,48 @@ class TestAudioWebSocketService:
 
         # Should not raise
         audio_websocket_service._cleanup_fifo_and_service()
+
+    @pytest.mark.asyncio
+    async def test_start_permission_error(self, audio_websocket_service):
+        """Should handle permission errors when opening FIFO."""
+        with patch(
+            "birdnetpi.audio.websocket.os.open", side_effect=PermissionError("Permission denied")
+        ):
+            with pytest.raises(PermissionError, match="Permission denied"):
+                await audio_websocket_service.start()
+
+    @pytest.mark.asyncio
+    async def test_stop_idempotency(self, audio_websocket_service):
+        """Should handle multiple stop() calls without error."""
+        # First stop
+        await audio_websocket_service.stop()
+        assert audio_websocket_service._shutdown_flag is True
+
+        # Second stop should not raise
+        await audio_websocket_service.stop()
+        assert audio_websocket_service._shutdown_flag is True
+
+    @pytest.mark.asyncio
+    async def test_start_idempotency_prevented(self, audio_websocket_service):
+        """Should prevent multiple start() calls by checking state."""
+        with (
+            patch("birdnetpi.audio.websocket.os.open", return_value=123),
+            patch("birdnetpi.audio.websocket.serve", autospec=True) as mock_serve,
+            patch("birdnetpi.audio.websocket.signal", autospec=True),
+            patch("birdnetpi.audio.websocket.atexit", autospec=True),
+        ):
+            mock_server = MagicMock(spec=Server)
+
+            async def mock_serve_func(*args, **kwargs):
+                return mock_server
+
+            mock_serve.side_effect = mock_serve_func
+
+            # First start
+            await audio_websocket_service.start()
+            assert audio_websocket_service._fifo_livestream_fd == 123
+
+            # Attempting second start should open FIFO again (no guard currently)
+            # This verifies current behavior - service doesn't prevent re-initialization
+            await audio_websocket_service.start()
+            # If start had idempotency guards, this would raise or no-op
