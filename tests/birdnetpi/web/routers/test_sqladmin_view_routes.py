@@ -1,6 +1,6 @@
 """Tests for SQLAdmin configuration and setup."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from fastapi import FastAPI
 from sqladmin import Admin
@@ -59,7 +59,7 @@ class TestSQLAdminViewRoutes:
         """Should setup_sqladmin creates and configures Admin instance."""
         app = FastAPI()
         mock_container = MagicMock(spec=Container)
-        mock_async_engine = AsyncMock(spec=AsyncEngine)
+        mock_async_engine = MagicMock(spec=AsyncEngine)
         mock_db_service = MagicMock(spec=CoreDatabaseService, async_engine=mock_async_engine)
         mock_container.core_database.return_value = mock_db_service
         mock_container_class.return_value = mock_container
@@ -82,7 +82,7 @@ class TestSQLAdminViewRoutes:
         """Should setup_sqladmin returns the Admin instance."""
         app = FastAPI()
         mock_container = MagicMock(spec=Container)
-        mock_async_engine = AsyncMock(spec=AsyncEngine)
+        mock_async_engine = MagicMock(spec=AsyncEngine)
         mock_db_service = MagicMock(spec=CoreDatabaseService, async_engine=mock_async_engine)
         mock_container.core_database.return_value = mock_db_service
         mock_container_class.return_value = mock_container

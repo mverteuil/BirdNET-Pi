@@ -83,7 +83,9 @@ class TestAudioAnalysisDaemon:
     async def test_init_session_and_service(self, mocker, path_resolver):
         """Should initialize session and audio analysis service."""
         mock_multilingual = MagicMock(spec=SpeciesDatabaseService)
-        mock_multilingual.attach_all_to_session = AsyncMock(spec=callable)
+        mock_multilingual.attach_all_to_session = AsyncMock(
+            spec=SpeciesDatabaseService.attach_all_to_session
+        )
         mock_session = MagicMock(spec=AsyncSession)
         with patch(
             "birdnetpi.daemons.audio_analysis_daemon.init_session_and_service", autospec=True

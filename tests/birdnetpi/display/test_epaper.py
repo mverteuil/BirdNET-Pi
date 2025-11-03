@@ -2,7 +2,6 @@
 
 import asyncio
 import uuid
-from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import aiohttp
@@ -14,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from birdnetpi.config.models import BirdNETConfig
 from birdnetpi.database.core import CoreDatabaseService
-from birdnetpi.detections.models import Detection
 from birdnetpi.display.epaper import EPaperDisplayService
 
 
@@ -160,16 +158,16 @@ class TestEPaperDisplayService:
         assert health["database"] is False
 
     @pytest.mark.asyncio
-    async def test_get_latest_detection(self, epaper_service_no_hardware, mock_db_service):
+    async def test_get_latest_detection(
+        self, epaper_service_no_hardware, mock_db_service, model_factory
+    ):
         """Should fetch the most recent detection from database."""
         # Create a mock detection
-        mock_detection = Detection(
-            id=uuid.uuid4(),
+        mock_detection = model_factory.create_detection(
             common_name="American Robin",
             scientific_name="Turdus migratorius",
             confidence=0.85,
             species_tensor="Turdus_migratorius_American Robin",
-            timestamp=datetime.now(),
             latitude=42.0,
             longitude=-71.0,
         )
@@ -216,7 +214,7 @@ class TestEPaperDisplayService:
         # Red image should be None for non-color display or when no animation
         assert red_image is None or isinstance(red_image, Image.Image)
 
-    def test_draw_status_screen_with_detection(self, epaper_service_no_hardware):
+    def test_draw_status_screen_with_detection(self, epaper_service_no_hardware, model_factory):
         """Should draw status screen with a detection."""
         stats = {
             "cpu_percent": 45.5,
@@ -228,13 +226,11 @@ class TestEPaperDisplayService:
             "disk_total_gb": 200.0,
         }
         health = {"status": "ready", "database": True}
-        detection = Detection(
-            id=uuid.uuid4(),
+        detection = model_factory.create_detection(
             common_name="American Robin",
             scientific_name="Turdus migratorius",
             confidence=0.85,
             species_tensor="Turdus_migratorius_American Robin",
-            timestamp=datetime.now(),
             latitude=42.0,
             longitude=-71.0,
         )
@@ -246,7 +242,7 @@ class TestEPaperDisplayService:
         assert isinstance(black_image, Image.Image)
         assert red_image is None or isinstance(red_image, Image.Image)
 
-    def test_draw_status_screen_with_animation(self, epaper_service_no_hardware):
+    def test_draw_status_screen_with_animation(self, epaper_service_no_hardware, model_factory):
         """Should draw status screen with animation effect."""
         stats = {
             "cpu_percent": 45.5,
@@ -258,13 +254,11 @@ class TestEPaperDisplayService:
             "disk_total_gb": 200.0,
         }
         health = {"status": "ready", "database": True}
-        detection = Detection(
-            id=uuid.uuid4(),
+        detection = model_factory.create_detection(
             common_name="American Robin",
             scientific_name="Turdus migratorius",
             confidence=0.85,
             species_tensor="Turdus_migratorius_American Robin",
-            timestamp=datetime.now(),
             latitude=42.0,
             longitude=-71.0,
         )
@@ -293,16 +287,17 @@ class TestEPaperDisplayService:
         assert (simulator_dir / "display_output_comp.png").exists()
 
     @pytest.mark.asyncio
-    async def test_check_for_new_detection_first_detection(self, epaper_service_no_hardware):
+    async def test_check_for_new_detection_first_detection(
+        self, epaper_service_no_hardware, model_factory
+    ):
         """Should detect new detection when it is the first one."""
         detection_id = uuid.uuid4()
-        mock_detection = Detection(
+        mock_detection = model_factory.create_detection(
             id=detection_id,
             common_name="American Robin",
             scientific_name="Turdus migratorius",
             confidence=0.85,
             species_tensor="Turdus_migratorius_American Robin",
-            timestamp=datetime.now(),
             latitude=42.0,
             longitude=-71.0,
         )
@@ -319,16 +314,17 @@ class TestEPaperDisplayService:
         assert epaper_service_no_hardware._last_detection_id == detection_id
 
     @pytest.mark.asyncio
-    async def test_check_for_new_detection_no_new_detection(self, epaper_service_no_hardware):
+    async def test_check_for_new_detection_no_new_detection(
+        self, epaper_service_no_hardware, model_factory
+    ):
         """Should return false when there is no new detection."""
         detection_id = uuid.uuid4()
-        mock_detection = Detection(
+        mock_detection = model_factory.create_detection(
             id=detection_id,
             common_name="American Robin",
             scientific_name="Turdus migratorius",
             confidence=0.85,
             species_tensor="Turdus_migratorius_American Robin",
-            timestamp=datetime.now(),
             latitude=42.0,
             longitude=-71.0,
         )
@@ -346,17 +342,18 @@ class TestEPaperDisplayService:
         assert is_new is False
 
     @pytest.mark.asyncio
-    async def test_check_for_new_detection_newer_detection(self, epaper_service_no_hardware):
+    async def test_check_for_new_detection_newer_detection(
+        self, epaper_service_no_hardware, model_factory
+    ):
         """Should detect when there is a newer detection."""
         old_id = uuid.uuid4()
         new_id = uuid.uuid4()
-        mock_detection = Detection(
+        mock_detection = model_factory.create_detection(
             id=new_id,
             common_name="Blue Jay",
             scientific_name="Cyanocitta cristata",
             confidence=0.90,
             species_tensor="Cyanocitta_cristata_Blue Jay",
-            timestamp=datetime.now(),
             latitude=42.0,
             longitude=-71.0,
         )
