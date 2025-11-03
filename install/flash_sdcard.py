@@ -151,21 +151,21 @@ DEVICE_PROPERTIES = {
         "has_wifi": False,  # No WiFi hardware
         "has_spi": True,  # GPIO header supports SPI
     },
-    "orangepi5": {
+    "orange_pi_0w2": {
         "has_wifi": True,  # Built-in WiFi
-        "has_spi": True,
+        "has_spi": True,  # Allwinner H618 supports SPI
     },
-    "orangepi5plus": {
+    "orange_pi_5_plus": {
         "has_wifi": True,  # Built-in WiFi
-        "has_spi": True,
+        "has_spi": True,  # RK3588 supports SPI
     },
-    "orangepi5pro": {
+    "orange_pi_5_pro": {
         "has_wifi": True,  # Built-in WiFi
-        "has_spi": True,
+        "has_spi": True,  # RK3588 supports SPI
     },
-    "rock5b": {
+    "rock_5b": {
         "has_wifi": True,  # M.2 WiFi module support
-        "has_spi": True,
+        "has_spi": True,  # RK3588 supports SPI
     },
 }
 
@@ -1837,7 +1837,7 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                 console.print("[green]✓ SPI enabled for ePaper HAT (Raspberry Pi)[/green]")
 
             elif dietpi_env_path.exists():
-                # RK3588-based SBC (OrangePi 5/5+/5 Pro, ROCK 5B) - use device tree overlay
+                # SBC with dietpiEnv.txt - use device tree overlay
                 result = subprocess.run(
                     ["sudo", "cat", str(dietpi_env_path)],
                     capture_output=True,
@@ -1847,43 +1847,54 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                 env_content = result.stdout
 
                 # Determine which SPI overlay to use based on device
-                # Orange Pi 5 series: SPI4-M0 is available on GPIO header
-                # ROCK 5B: SPI1-M1 or SPI3-M1 depending on configuration
-                spi_overlay = "rk3588-spi4-m0-cs1-spidev"
-                if device_key == "rock5b":
-                    spi_overlay = "rk3588-spi1-m1-cs0-spidev"
+                # Orange Pi Zero 2W: Allwinner H618 SPI1
+                # Orange Pi 5 series: RK3588 SPI4-M0 is available on GPIO header
+                # ROCK 5B: RK3588 SPI1-M1 or SPI3-M1 depending on configuration
+                spi_overlay = None
+                if device_key == "orange_pi_0w2":
+                    spi_overlay = "spi-spidev"  # Allwinner H618
+                elif device_key == "rock_5b":
+                    spi_overlay = "rk3588-spi1-m1-cs0-spidev"  # RK3588
+                elif device_key in ["orange_pi_5_plus", "orange_pi_5_pro"]:
+                    spi_overlay = "rk3588-spi4-m0-cs1-spidev"  # RK3588
 
-                # Check if overlays line exists
-                overlays_added = False
-                new_lines = []
-                for line in env_content.split("\n"):
-                    if line.startswith("overlays="):
-                        # Add SPI overlay to existing overlays line
-                        if spi_overlay not in line:
-                            line = line.rstrip() + f" {spi_overlay}"
-                        overlays_added = True
-                    new_lines.append(line)
+                if spi_overlay:
+                    # Check if overlays line exists
+                    overlays_added = False
+                    new_lines = []
+                    for line in env_content.split("\n"):
+                        if line.startswith("overlays="):
+                            # Add SPI overlay to existing overlays line
+                            if spi_overlay not in line:
+                                line = line.rstrip() + f" {spi_overlay}"
+                            overlays_added = True
+                        new_lines.append(line)
 
-                # If no overlays line exists, add it
-                if not overlays_added:
-                    new_lines.append(f"overlays={spi_overlay}")
+                    # If no overlays line exists, add it
+                    if not overlays_added:
+                        new_lines.append(f"overlays={spi_overlay}")
 
-                # Add spidev bus parameter if not present
-                if "param_spidev_spi_bus=" not in env_content:
-                    new_lines.append("param_spidev_spi_bus=0")
+                    # Add spidev bus parameter if not present
+                    if "param_spidev_spi_bus=" not in env_content:
+                        new_lines.append("param_spidev_spi_bus=0")
 
-                env_content = "\n".join(new_lines)
+                    env_content = "\n".join(new_lines)
 
-                temp_env = Path("/tmp/dietpi_env_txt")
-                temp_env.write_text(env_content)
-                subprocess.run(
-                    ["sudo", "cp", str(temp_env), str(dietpi_env_path)],
-                    check=True,
-                )
-                temp_env.unlink()
-                console.print(
-                    f"[green]✓ SPI enabled for ePaper HAT (RK3588 overlay: {spi_overlay})[/green]"
-                )
+                    temp_env = Path("/tmp/dietpi_env_txt")
+                    temp_env.write_text(env_content)
+                    subprocess.run(
+                        ["sudo", "cp", str(temp_env), str(dietpi_env_path)],
+                        check=True,
+                    )
+                    temp_env.unlink()
+
+                    # Determine chip description for message
+                    chip_desc = "Allwinner H618" if device_key == "orange_pi_0w2" else "RK3588"
+                    msg = f"✓ SPI enabled for ePaper HAT ({chip_desc} overlay: {spi_overlay})"
+                    console.print(f"[green]{msg}[/green]")
+                else:
+                    msg = "Note: SPI configuration for this device not yet implemented"
+                    console.print(f"[yellow]{msg}[/yellow]")
 
             else:
                 # Other SBC types not yet implemented
