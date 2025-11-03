@@ -5,13 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from birdnetpi.config import BirdNETConfig, ConfigManager
+from birdnetpi.config import ConfigManager  # BirdNETConfig from config_factory fixture
 
 
 class TestConfigPermissions:
     """Test configuration file and directory permissions."""
 
-    def test_config_directory_creation(self, tmp_path, path_resolver):
+    def test_config_directory_creation(self, tmp_path, path_resolver, config_factory):
         """Should config directory is created if it doesn't exist."""
         # Use a unique subdirectory that doesn't exist yet
         unique_dir = tmp_path / "test_creation"
@@ -24,14 +24,14 @@ class TestConfigPermissions:
 
         # ConfigManager should create the directory
         config_manager = ConfigManager(path_resolver)
-        config = BirdNETConfig(site_name="Test")
+        config = config_factory(site_name="Test")
         config_manager.save(config)
 
         # Directory and file should now exist
         assert config_path.parent.exists()
         assert config_path.exists()
 
-    def test_config_write_permissions(self, tmp_path, path_resolver):
+    def test_config_write_permissions(self, tmp_path, path_resolver, config_factory):
         """Should config file can be written and read."""
         # Configure path_resolver to use temp directory
         config_dir = tmp_path / "config"
@@ -41,7 +41,7 @@ class TestConfigPermissions:
         config_manager = ConfigManager(path_resolver)
 
         # Should be able to save
-        config = BirdNETConfig(site_name="Permission Test", latitude=42.0, longitude=-71.0)
+        config = config_factory(site_name="Permission Test", latitude=42.0, longitude=-71.0)
 
         # This should not raise any permission errors
         config_manager.save(config)
@@ -51,7 +51,7 @@ class TestConfigPermissions:
         assert loaded_config.site_name == "Permission Test"
         assert loaded_config.latitude == 42.0
 
-    def test_config_handles_readonly_directory(self, tmp_path, path_resolver):
+    def test_config_handles_readonly_directory(self, tmp_path, path_resolver, config_factory):
         """Should error handling when config directory is read-only."""
         # Use a unique subdirectory to avoid conflicts with pre-created directories
         unique_dir = tmp_path / "test_readonly"
@@ -67,7 +67,7 @@ class TestConfigPermissions:
             path_resolver.get_birdnetpi_config_path = lambda: config_path
 
             config_manager = ConfigManager(path_resolver)
-            config = BirdNETConfig(site_name="Readonly Test")
+            config = config_factory(site_name="Readonly Test")
 
             # Should handle permission error gracefully
             if os.name != "nt":  # Only test on Unix
@@ -80,7 +80,7 @@ class TestConfigPermissions:
                 # Restore owner-only access for temp directory cleanup
                 os.chmod(config_dir, 0o700)  # nosemgrep
 
-    def test_config_creates_parent_directories(self, tmp_path, path_resolver):
+    def test_config_creates_parent_directories(self, tmp_path, path_resolver, config_factory):
         """Should all parent directories are created as needed."""
         # Use a unique subdirectory with deeply nested path
         unique_dir = tmp_path / "test_nested"
@@ -91,14 +91,14 @@ class TestConfigPermissions:
         config_manager = ConfigManager(path_resolver)
 
         # Should create all parent directories
-        config = BirdNETConfig(site_name="Nested Test")
+        config = config_factory(site_name="Nested Test")
         config_manager.save(config)
 
         # Verify all directories were created
         assert config_path.exists()
         assert config_path.parent.exists()
 
-    def test_config_handles_existing_file(self, tmp_path, path_resolver):
+    def test_config_handles_existing_file(self, tmp_path, path_resolver, config_factory):
         """Should properly overwrite existing config files."""
         config_dir = tmp_path / "config"
         config_path = config_dir / "birdnetpi.yaml"
@@ -107,7 +107,7 @@ class TestConfigPermissions:
         config_manager = ConfigManager(path_resolver)
 
         # Create initial config
-        config1 = BirdNETConfig(site_name="Initial", latitude=10.0, longitude=20.0)
+        config1 = config_factory(site_name="Initial", latitude=10.0, longitude=20.0)
         config_manager.save(config1)
 
         # Verify it was saved
@@ -115,7 +115,7 @@ class TestConfigPermissions:
         assert loaded1.site_name == "Initial"
 
         # Overwrite with new config
-        config2 = BirdNETConfig(site_name="Updated", latitude=30.0, longitude=40.0)
+        config2 = config_factory(site_name="Updated", latitude=30.0, longitude=40.0)
         config_manager.save(config2)
 
         # Verify it was overwritten
@@ -142,7 +142,9 @@ class TestConfigPermissions:
         assert str(config_path).startswith(docker_data_path)
         assert config_path == Path(docker_data_path) / "config" / "birdnetpi.yaml"
 
-    def test_config_manager_creates_directory_on_save(self, tmp_path, path_resolver):
+    def test_config_manager_creates_directory_on_save(
+        self, tmp_path, path_resolver, config_factory
+    ):
         """Should configManager creates config directory on save if missing."""
         # Use a unique subdirectory to avoid conflicts
         unique_dir = tmp_path / "test_auto_create"
@@ -157,7 +159,7 @@ class TestConfigPermissions:
         assert not config_dir.exists()
 
         # Save should create it
-        config = BirdNETConfig(site_name="Auto Create Test")
+        config = config_factory(site_name="Auto Create Test")
         config_manager.save(config)
 
         # Now it should exist

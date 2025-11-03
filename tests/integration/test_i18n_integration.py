@@ -10,7 +10,6 @@ from jinja2 import DictLoader, Environment
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from starlette.requests import Request
 
-from birdnetpi.config import BirdNETConfig
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.models import DetectionWithTaxa
 from birdnetpi.i18n.translation_manager import TranslationManager, setup_jinja2_i18n
@@ -18,11 +17,11 @@ from birdnetpi.species.display import SpeciesDisplayService
 
 
 @pytest.fixture
-def config_with_language():
+def config_with_language(config_factory):
     """Create configs for different languages."""
 
     def _config(language="en"):
-        return BirdNETConfig(
+        return config_factory(
             language=language,
             site_name="BirdNET-Pi Test",
             latitude=0.0,

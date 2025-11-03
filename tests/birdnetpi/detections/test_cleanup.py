@@ -11,7 +11,7 @@ from sqlalchemy.engine import Result as ResultType
 from birdnetpi.config.models import EBirdFilterConfig
 from birdnetpi.database.ebird import EBirdRegionService
 from birdnetpi.detections.cleanup import CleanupStats, DetectionCleanupService
-from birdnetpi.detections.models import AudioFile, Detection
+from birdnetpi.detections.models import AudioFile
 
 # Using test_config and db_service_factory from global fixtures in conftest.py
 
@@ -78,21 +78,16 @@ def cleanup_service(cleanup_service_factory):
 
 
 @pytest.fixture
-def sample_detection():
+def sample_detection(model_factory):
     """Create a sample detection for testing."""
-    return Detection(
-        id=uuid4(),
+    return model_factory.create_detection(
         species_tensor="Cyanocitta cristata_Blue Jay",
         scientific_name="Cyanocitta cristata",
         common_name="Blue Jay",
         confidence=0.85,
-        timestamp=datetime.now(),
         latitude=43.6532,
         longitude=-79.3832,
         species_confidence_threshold=0.7,
-        week=1,
-        sensitivity_setting=1.5,
-        overlap=0.0,
         audio_file_id=uuid4(),
     )
 
@@ -252,7 +247,7 @@ class TestCleanupDetections:
     @pytest.mark.ci_issue
     @pytest.mark.asyncio
     async def test_cleanup_detections_with_audio_files(
-        self, cleanup_service_factory, db_service_factory, path_resolver, tmp_path
+        self, cleanup_service_factory, db_service_factory, path_resolver, tmp_path, model_factory
     ):
         """Should delete audio files when delete_audio=True."""
         # Create test audio file
@@ -266,13 +261,11 @@ class TestCleanupDetections:
 
         # Create detection with audio file
         audio_file_id = uuid4()
-        detection = Detection(
-            id=uuid4(),
+        detection = model_factory.create_detection(
             species_tensor="Cyanocitta cristata_Blue Jay",
             scientific_name="Cyanocitta cristata",
             common_name="Blue Jay",
             confidence=0.85,
-            timestamp=datetime.now(),
             latitude=43.6532,
             longitude=-79.3832,
             audio_file_id=audio_file_id,
@@ -326,18 +319,16 @@ class TestCleanupDetections:
 
     @pytest.mark.asyncio
     async def test_cleanup_detections_audio_deletion_error(
-        self, cleanup_service_factory, db_service_factory, path_resolver, tmp_path
+        self, cleanup_service_factory, db_service_factory, path_resolver, tmp_path, model_factory
     ):
         """Should handle audio file deletion errors gracefully."""
         # Create detection with audio file pointing to non-existent file
         audio_file_id = uuid4()
-        detection = Detection(
-            id=uuid4(),
+        detection = model_factory.create_detection(
             species_tensor="Cyanocitta cristata_Blue Jay",
             scientific_name="Cyanocitta cristata",
             common_name="Blue Jay",
             confidence=0.85,
-            timestamp=datetime.now(),
             latitude=43.6532,
             longitude=-79.3832,
             audio_file_id=audio_file_id,
@@ -568,16 +559,14 @@ class TestShouldFilterDetection:
 
     @pytest.mark.asyncio
     async def test_should_filter_detection_no_coordinates(
-        self, cleanup_service_factory, db_service_factory
+        self, cleanup_service_factory, db_service_factory, model_factory
     ):
         """Should not filter detections without coordinates."""
-        detection = Detection(
-            id=uuid4(),
+        detection = model_factory.create_detection(
             species_tensor="Cyanocitta cristata_Blue Jay",
             scientific_name="Cyanocitta cristata",
             common_name="Blue Jay",
             confidence=0.85,
-            timestamp=datetime.now(),
             latitude=None,  # No coordinates
             longitude=None,
         )
@@ -620,16 +609,14 @@ class TestEdgeCases:
 
     @pytest.mark.asyncio
     async def test_cleanup_detections_empty_scientific_name(
-        self, cleanup_service_factory, db_service_factory
+        self, cleanup_service_factory, db_service_factory, model_factory
     ):
         """Should handle detections with empty scientific name."""
-        detection = Detection(
-            id=uuid4(),
+        detection = model_factory.create_detection(
             species_tensor="_Unknown",  # Empty scientific name
             scientific_name="",  # Empty
             common_name="Unknown",
             confidence=0.85,
-            timestamp=datetime.now(),
             latitude=43.6532,
             longitude=-79.3832,
         )
@@ -647,7 +634,7 @@ class TestEdgeCases:
 
     @pytest.mark.asyncio
     async def test_cleanup_detections_absolute_audio_path(
-        self, cleanup_service_factory, db_service_factory, tmp_path
+        self, cleanup_service_factory, db_service_factory, tmp_path, model_factory
     ):
         """Should handle absolute audio file paths."""
         # Create test audio file
@@ -656,13 +643,11 @@ class TestEdgeCases:
         absolute_audio_path.touch()
 
         audio_file_id = uuid4()
-        detection = Detection(
-            id=uuid4(),
+        detection = model_factory.create_detection(
             species_tensor="Cyanocitta cristata_Blue Jay",
             scientific_name="Cyanocitta cristata",
             common_name="Blue Jay",
             confidence=0.85,
-            timestamp=datetime.now(),
             latitude=43.6532,
             longitude=-79.3832,
             audio_file_id=audio_file_id,

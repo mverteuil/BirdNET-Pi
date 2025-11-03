@@ -8,7 +8,6 @@ from jinja2.exceptions import UndefinedError
 from starlette.requests import Request
 
 from birdnetpi.audio.devices import AudioDevice
-from birdnetpi.config import BirdNETConfig
 
 
 class TestSettingsViewRendering:
@@ -36,9 +35,9 @@ class TestSettingsViewRendering:
         return request
 
     @pytest.fixture
-    def sample_config(self):
+    def sample_config(self, config_factory):
         """Create a sample configuration for testing."""
-        return BirdNETConfig(
+        return config_factory(
             site_name="Test Site",
             latitude=45.5,
             longitude=-73.6,
@@ -132,10 +131,10 @@ class TestSettingsViewRendering:
         assert "Check your audio system configuration" in html
 
     def test_settings_template_handles_missing_config_fields(
-        self, template_env, mock_request, sample_audio_devices
+        self, template_env, mock_request, sample_audio_devices, config_factory
     ):
         """Should handle missing or None config fields gracefully in template."""
-        config = BirdNETConfig()
+        config = config_factory("minimal")
         try:
             template = template_env.get_template("admin/settings.html.j2")
             html = template.render(
@@ -211,9 +210,11 @@ class TestSettingsViewRendering:
             f"Mismatched block/endblock: {block_count} vs {endblock_count}"
         )
 
-    def test_template_escapes_user_input(self, template_env, mock_request, sample_audio_devices):
+    def test_template_escapes_user_input(
+        self, template_env, mock_request, sample_audio_devices, config_factory
+    ):
         """Should template properly escapes user input to prevent XSS."""
-        config = BirdNETConfig(
+        config = config_factory(
             site_name="<script>alert('XSS')</script>", latitude=45.5, longitude=-73.6
         )
         template = template_env.get_template("admin/settings.html.j2")

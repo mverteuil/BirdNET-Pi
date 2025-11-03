@@ -19,6 +19,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 
 from birdnetpi.config import ConfigManager
+from birdnetpi.config.models import BirdNETConfig, UpdateConfig
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.models import AudioFile, Detection, DetectionWithTaxa
@@ -383,6 +384,131 @@ def test_config(path_resolver: PathResolver):
     """Should load test configuration from the test config file."""
     manager = ConfigManager(path_resolver)
     return manager.load()
+
+
+@pytest.fixture
+def config_factory():
+    """Create a factory for BirdNETConfig instances with sensible defaults.
+
+    This fixture reduces repetitive BirdNETConfig() instantiation across tests
+    by providing common configuration patterns and the ability to override
+    specific fields as needed.
+
+    Example usage:
+        # Default config with all defaults
+        config = config_factory()
+
+        # With custom location
+        config = config_factory(latitude=42.3601, longitude=-71.0589)
+
+        # Testing mode - high confidence, sensitive audio
+        config = config_factory("testing")
+
+        # GPS-enabled field deployment
+        config = config_factory("field", enable_gps=True)
+
+        # Webhook testing config
+        config = config_factory("webhook", webhook_urls=["http://example.com"])
+    """
+
+    def _create_config(preset: str | None = None, **kwargs: Any) -> BirdNETConfig:
+        """Create a BirdNETConfig with preset configurations or custom overrides.
+
+        Args:
+            preset: Optional preset configuration name. Options:
+                - None: Default config with standard settings
+                - "minimal": Absolute minimal config (BirdNETConfig())
+                - "testing": High thresholds for testing (0.85 confidence, 1.75 sensitivity)
+                - "field": Field deployment config with GPS ready
+                - "webhook": Config ready for webhook testing
+                - "notification": Config with notification rules setup
+                - "audio": Audio device testing config
+                - "location": Config with custom location (Boston area)
+            **kwargs: Override any config field
+
+        Returns:
+            BirdNETConfig instance
+        """
+        presets = {
+            "minimal": {},
+            "default": {
+                "site_name": "Test Site",
+                "latitude": 40.7128,
+                "longitude": -74.0060,
+                "sample_rate": 48000,
+                "audio_channels": 1,
+            },
+            "testing": {
+                "site_name": "Testing Site",
+                "latitude": 42.3601,
+                "longitude": -71.0589,
+                "species_confidence_threshold": 0.85,
+                "sensitivity_setting": 1.75,
+                "sample_rate": 44100,
+                "audio_channels": 2,
+            },
+            "field": {
+                "site_name": "Field Deployment",
+                "latitude": 37.7749,
+                "longitude": -122.4194,
+                "enable_gps": False,  # Can be overridden
+                "gps_update_interval": 5.0,
+            },
+            "webhook": {
+                "site_name": "Webhook Test",
+                "enable_webhooks": True,
+                "webhook_urls": [],  # To be populated
+                "webhook_events": "detection,health,gps,system",
+            },
+            "notification": {
+                "site_name": "Notification Test",
+                "notification_rules": [
+                    {
+                        "name": "Test Rule",
+                        "enabled": True,
+                        "service": "webhook",
+                        "target": "test_target",
+                        "frequency": {"when": "always"},
+                        "scope": "all",
+                        "minimum_confidence": 0,
+                    }
+                ],
+            },
+            "audio": {
+                "site_name": "Audio Test",
+                "audio_device_index": 0,
+                "sample_rate": 48000,
+                "audio_channels": 1,
+                "audio_overlap": 0.5,
+            },
+            "location": {
+                "site_name": "Location Test",
+                "latitude": 42.3601,  # Boston
+                "longitude": -71.0589,
+                "timezone": "America/New_York",
+            },
+            "updates": {
+                "site_name": "Update Test",
+                "updates": UpdateConfig(
+                    check_enabled=True,
+                    show_banner=True,
+                    check_interval_hours=6,
+                ),
+            },
+        }
+
+        # Start with preset or default
+        if preset is None:
+            config_dict = presets["default"].copy()
+        else:
+            config_dict = presets.get(preset, presets["default"]).copy()
+
+        # Apply kwargs overrides
+        config_dict.update(kwargs)
+
+        return BirdNETConfig(**config_dict)
+
+    return _create_config
 
 
 @pytest.fixture

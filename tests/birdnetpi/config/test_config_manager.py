@@ -3,13 +3,13 @@
 import pytest
 import yaml
 
-from birdnetpi.config import BirdNETConfig, ConfigManager
+from birdnetpi.config import ConfigManager
 
 
 class TestConfigManager:
     """Test ConfigManager functionality."""
 
-    def test_load_config_creates_default_if_missing(self, path_resolver):
+    def test_load_config_creates_default_if_missing(self, path_resolver, config_factory):
         """Should default config is created if file doesn't exist."""
         # Ensure config file doesn't exist
         config_path = path_resolver.get_birdnetpi_config_path()
@@ -19,8 +19,8 @@ class TestConfigManager:
         manager = ConfigManager(path_resolver)
         config = manager.load()
 
-        # Should create a default config
-        assert isinstance(config, BirdNETConfig)
+        # Should create a default config (BirdNETConfig is the return type)
+        assert config.__class__.__name__ == "BirdNETConfig"
         assert config.config_version == "2.0.0"
         assert config.site_name == "BirdNET-Pi"
 
@@ -86,10 +86,10 @@ class TestConfigManager:
         assert config.enable_mqtt is False
         assert config.enable_webhooks is False
 
-    def test_save_config(self, path_resolver):
+    def test_save_config(self, path_resolver, config_factory):
         """Should saving a config to file."""
         manager = ConfigManager(path_resolver)
-        config = BirdNETConfig(
+        config = config_factory(
             site_name="Save Test",
             latitude=50.0,
             longitude=-70.0,
@@ -107,7 +107,7 @@ class TestConfigManager:
         assert saved_data["longitude"] == -70.0
         assert saved_data["config_version"] == "2.0.0"
 
-    def test_backup_creation(self, path_resolver):
+    def test_backup_creation(self, path_resolver, config_factory):
         """Should create backups when saving over existing config."""
         config_path = path_resolver.get_birdnetpi_config_path()
         backup_path = config_path.with_suffix(".yaml.backup")
@@ -119,7 +119,7 @@ class TestConfigManager:
             yaml.dump(original_data, f)
 
         manager = ConfigManager(path_resolver)
-        new_config = BirdNETConfig(site_name="Updated")
+        new_config = config_factory(site_name="Updated")
         manager.save(new_config)
 
         # Check backup was created with original content

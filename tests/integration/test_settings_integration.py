@@ -9,7 +9,7 @@ import pytest
 import yaml
 
 from birdnetpi.audio.devices import AudioDevice, AudioDeviceService
-from birdnetpi.config import BirdNETConfig, ConfigManager
+from birdnetpi.config import ConfigManager  # BirdNETConfig from config_factory fixture
 from birdnetpi.utils.cache import clear_all_cache
 
 
@@ -24,7 +24,7 @@ def clear_cache():
 class TestSettingsConfigIntegration:
     """Integration tests for settings configuration flow."""
 
-    def test_config_save_and_load_cycle(self, tmp_path, path_resolver):
+    def test_config_save_and_load_cycle(self, tmp_path, path_resolver, config_factory):
         """Should save configuration to file and load it back correctly."""
         # Configure path_resolver to use temp directory
         config_path = tmp_path / "config" / "birdnetpi.yaml"
@@ -32,16 +32,11 @@ class TestSettingsConfigIntegration:
 
         config_manager = ConfigManager(path_resolver)
 
-        # Create test configuration
-        test_config = BirdNETConfig(
+        # Create test configuration using factory with testing preset
+        test_config = config_factory(
+            "testing",  # Preset includes Boston coords, high thresholds, custom audio settings
             site_name="Integration Test Site",
-            latitude=42.3601,
-            longitude=-71.0589,
-            sensitivity_setting=1.75,
-            species_confidence_threshold=0.85,
-            audio_device_index=3,
-            sample_rate=44100,
-            audio_channels=2,
+            audio_device_index=3,  # Override the preset's default
         )
 
         # Save configuration
@@ -64,14 +59,14 @@ class TestSettingsConfigIntegration:
         assert loaded_config.sample_rate == 44100
         assert loaded_config.audio_channels == 2
 
-    def test_config_yaml_format(self, tmp_path, path_resolver):
+    def test_config_yaml_format(self, tmp_path, path_resolver, config_factory):
         """Should save configuration in valid YAML format."""
         config_path = tmp_path / "config" / "birdnetpi.yaml"
         path_resolver.get_birdnetpi_config_path = lambda: config_path
 
         config_manager = ConfigManager(path_resolver)
 
-        test_config = BirdNETConfig(
+        test_config = config_factory(
             site_name="YAML Test",
             latitude=45.5,
             longitude=-73.6,
@@ -92,15 +87,15 @@ class TestSettingsConfigIntegration:
         assert yaml_data["enable_gps"] is True
         assert yaml_data["webhook_urls"] == ["http://example.com/hook1", "http://example.com/hook2"]
 
-    def test_config_preserves_defaults(self, tmp_path, path_resolver):
+    def test_config_preserves_defaults(self, tmp_path, path_resolver, config_factory):
         """Should preserve default values when not explicitly set."""
         config_path = tmp_path / "config" / "birdnetpi.yaml"
         path_resolver.get_birdnetpi_config_path = lambda: config_path
 
         config_manager = ConfigManager(path_resolver)
 
-        # Create minimal config
-        minimal_config = BirdNETConfig()
+        # Create minimal config using factory
+        minimal_config = config_factory("minimal")
 
         # Save and load
         config_manager.save(minimal_config)
@@ -113,15 +108,17 @@ class TestSettingsConfigIntegration:
         assert loaded_config.audio_device_index == -1
         assert loaded_config.sample_rate == 48000
 
-    def test_config_update_preserves_unchanged_fields(self, tmp_path, path_resolver):
+    def test_config_update_preserves_unchanged_fields(
+        self, tmp_path, path_resolver, config_factory
+    ):
         """Should preserve unchanged fields when updating configuration."""
         config_path = tmp_path / "config" / "birdnetpi.yaml"
         path_resolver.get_birdnetpi_config_path = lambda: config_path
 
         config_manager = ConfigManager(path_resolver)
 
-        # Initial config
-        initial_config = BirdNETConfig(
+        # Initial config using factory
+        initial_config = config_factory(
             site_name="Initial Site",
             latitude=40.0,
             longitude=-74.0,
@@ -241,18 +238,17 @@ class TestAudioDeviceIntegration:
 class TestSettingsEndToEndFlow:
     """End-to-end integration tests for complete settings flow."""
 
-    def test_complete_settings_workflow(self, tmp_path, path_resolver):
+    def test_complete_settings_workflow(self, tmp_path, path_resolver, config_factory):
         """Should handle complete workflow: load, modify, save, reload."""
         config_path = tmp_path / "config" / "birdnetpi.yaml"
         path_resolver.get_birdnetpi_config_path = lambda: config_path
 
         config_manager = ConfigManager(path_resolver)
 
-        # Step 1: Create initial configuration
-        initial_config = BirdNETConfig(
+        # Step 1: Create initial configuration using field preset
+        initial_config = config_factory(
+            "field",  # San Francisco coords preset
             site_name="E2E Test Site",
-            latitude=37.7749,
-            longitude=-122.4194,
             audio_device_index=0,
         )
         config_manager.save(initial_config)
@@ -263,7 +259,7 @@ class TestSettingsEndToEndFlow:
         assert loaded_for_display.audio_device_index == 0
 
         # Step 3: Simulate form submission with changes
-        updated_config = BirdNETConfig(
+        updated_config = config_factory(
             site_name="E2E Test Site",  # Unchanged
             latitude=37.8,  # Changed
             longitude=-122.4,  # Changed slightly
@@ -299,7 +295,7 @@ class TestSettingsEndToEndFlow:
 
     @patch("sounddevice.query_devices", autospec=True)
     def test_settings_with_audio_device_selection(
-        self, mock_query_devices, tmp_path, path_resolver
+        self, mock_query_devices, tmp_path, path_resolver, config_factory
     ):
         """Should integrate audio device selection with configuration."""
         # Mock audio devices
@@ -341,8 +337,8 @@ class TestSettingsEndToEndFlow:
         config_manager = ConfigManager(path_resolver)
 
         # Select Device B (index 1)
-        config = BirdNETConfig(
-            site_name="Audio Test",
+        config = config_factory(
+            "audio",  # Audio preset
             audio_device_index=devices[1].index,
             sample_rate=int(devices[1].default_samplerate),
         )

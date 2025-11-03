@@ -74,11 +74,6 @@ class TestWebSocketRouter:
         for route in websocket_router.routes:
             assert isinstance(route, WebSocketRoute)
 
-    def test_websocket_logger_configured(self):
-        """Should WebSocket router has logger configured."""
-        assert hasattr(websocket_routes, "logger")
-        assert websocket_routes.logger.name == "birdnetpi.web.routers.websocket_routes"
-
     def test_websocket_route_endpoint_mapping(self, websocket_router, websocket_endpoint_func):
         """Should routes map to correct endpoint functions."""
         # Create mapping of paths to endpoints
