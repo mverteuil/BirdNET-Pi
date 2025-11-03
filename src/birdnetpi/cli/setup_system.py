@@ -114,15 +114,30 @@ def detect_gps() -> tuple[float | None, float | None, str | None]:
 
 
 def get_boot_config() -> dict[str, str]:
-    """Load pre-configuration from boot volume.
+    """Load pre-configuration from boot volume or root.
 
-    Checks /boot/firmware/birdnetpi_config.txt for pre-configured values.
+    Checks multiple locations for birdnetpi_config.txt:
+    - /root/birdnetpi_config.txt (for DietPi, persists after DIETPISETUP deletion)
+    - /boot/firmware/birdnetpi_config.txt (for Raspberry Pi OS)
+    - /boot/birdnetpi_config.txt (fallback)
 
     Returns:
         Dict of pre-configured values (empty if not found)
     """
-    boot_config_path = Path("/boot/firmware/birdnetpi_config.txt")
-    if not boot_config_path.exists():
+    # Check multiple locations (prioritize /root for DietPi)
+    config_locations = [
+        Path("/root/birdnetpi_config.txt"),
+        Path("/boot/firmware/birdnetpi_config.txt"),
+        Path("/boot/birdnetpi_config.txt"),
+    ]
+
+    boot_config_path = None
+    for path in config_locations:
+        if path.exists():
+            boot_config_path = path
+            break
+
+    if not boot_config_path:
         return {}
 
     config = {}
@@ -465,12 +480,13 @@ def configure_os(
     Returns:
         Selected OS key
     """
-    if "os" not in boot_config:
+    # Check both os_key (new) and os (legacy) for backwards compatibility
+    os_key = boot_config.get("os_key") or boot_config.get("os")
+    if not os_key:
         os_key = prompt_os_selection(default="raspbian")
         click.echo(f"  Selected OS: {get_supported_os_options()[os_key]}")
         return os_key
     else:
-        os_key = boot_config["os"]
         click.echo(f"OS: {get_supported_os_options().get(os_key, os_key)} (from boot config)")
         return os_key
 
@@ -486,12 +502,13 @@ def configure_device(
     Returns:
         Selected device key
     """
-    if "device" not in boot_config:
+    # Check both device_key (new) and device (legacy) for backwards compatibility
+    device_key = boot_config.get("device_key") or boot_config.get("device")
+    if not device_key:
         device_key = prompt_device_selection(default="pi_4b")
         click.echo(f"  Selected device: {get_supported_devices()[device_key]}")
         return device_key
     else:
-        device_key = boot_config["device"]
         device_name = get_supported_devices().get(device_key, device_key)
         click.echo(f"Device: {device_name} (from boot config)")
         return device_key
