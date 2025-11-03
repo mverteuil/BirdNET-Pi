@@ -1,5 +1,6 @@
 """Tests for i18n API routes that provide translations for JavaScript."""
 
+from gettext import GNUTranslations
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,31 +13,24 @@ from birdnetpi.web.core.container import Container
 from birdnetpi.web.routers.i18n_api_routes import router
 
 
+class MockCatalogMessage:
+    """Simple catalog message for testing."""
+
+    def __init__(self, msg_id: str, msg_str: str):
+        self.id = msg_id
+        self.string = msg_str
+
+
 @pytest.fixture
 def mock_translation_manager():
     """Create a mock translation manager."""
     manager = MagicMock(spec=TranslationManager)
 
-    # Create simple classes for mocking
-    class MockMessage:
-        def __init__(self):
-            self.id = "test_key"
-            self.string = "test_value"
-
-    class MockTranslation:
-        """Spec class for translation object."""
-
-        def gettext(self, msgid: str) -> str:
-            return ""
-
-        @property
-        def _catalog(self):
-            return []
-
-    # Create a mock translation object with proper spec
-    mock_translation = MagicMock(spec=MockTranslation)
+    # Use actual GNUTranslations type for better type safety
+    mock_translation = MagicMock(spec=GNUTranslations)
     mock_translation.gettext.side_effect = lambda x: f"translated:{x}"
-    mock_translation._catalog = [MockMessage()]
+    # Add _catalog attribute (not part of GNUTranslations interface but used by our code)
+    mock_translation._catalog = [MockCatalogMessage("test_key", "test_value")]
 
     manager.get_translation.return_value = mock_translation
     return manager
@@ -50,9 +44,14 @@ def client(mock_translation_manager):
     container.translation_manager.override(providers.Singleton(lambda: mock_translation_manager))
     container.wire(modules=["birdnetpi.web.routers.i18n_api_routes"])
     app.include_router(router, prefix="/api")
-    client = TestClient(app)
-    client.mock_translation_manager = mock_translation_manager  # type: ignore[attr-defined]
-    return client
+
+    # Store mock on app state for type safety
+    test_client = TestClient(app)
+    app.state.mock_translation_manager = mock_translation_manager
+
+    # Provide access via a property-like access pattern
+    test_client.mock_translation_manager = mock_translation_manager  # type: ignore[attr-defined]
+    return test_client
 
 
 class TestI18nAPIRoutes:
@@ -211,17 +210,11 @@ class TestI18nAPIRoutes:
 
     def test_get_language_catalog_handles_missing_catalog(self, client):
         """Should handle translation without _catalog attribute."""
-
-        # Create a spec class without _catalog
-        class MockTranslationNoCatalog:
-            """Spec class for translation without catalog."""
-
-            def gettext(self, msgid: str) -> str:
-                return ""
-
-        # Create a translation without _catalog attribute
-        mock_translation = MagicMock(spec=MockTranslationNoCatalog)
+        # Create a translation using GNUTranslations (which doesn't have _catalog by default)
+        mock_translation = MagicMock(spec=GNUTranslations)
         mock_translation.gettext.side_effect = lambda x: f"translated:{x}"
+        # Explicitly ensure _catalog doesn't exist
+        del mock_translation._catalog
 
         client.mock_translation_manager.get_translation.return_value = mock_translation
 

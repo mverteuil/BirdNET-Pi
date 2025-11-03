@@ -302,12 +302,10 @@ class TestAudioWebSocketService:
         """Should handle connection closed exception gracefully."""
         mock_websocket = AsyncMock(spec=ServerConnection)
 
-        # Create an async generator that raises ConnectionClosed
-        async def mock_messages():
-            raise websockets.exceptions.ConnectionClosed(None, None)
-            yield  # pragma: no cover - never reached
-
-        mock_websocket.__aiter__ = lambda self: mock_messages()
+        # Configure the async iterator to raise ConnectionClosed
+        mock_websocket.__aiter__.return_value.__anext__.side_effect = (
+            websockets.exceptions.ConnectionClosed(None, None)
+        )
 
         await audio_websocket_service._handle_audio_websocket(mock_websocket)
 
