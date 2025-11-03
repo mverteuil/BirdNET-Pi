@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from birdnetpi.analytics.analytics import AnalyticsManager
-from birdnetpi.config import BirdNETConfig
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.models import Detection
@@ -157,9 +156,9 @@ def mock_species_database():
 
 
 @pytest.fixture
-def mock_species_display_service():
+def mock_species_display_service(config_factory):
     """Create a mock SpeciesDisplayService."""
-    config = BirdNETConfig()
+    config = config_factory()
     return SpeciesDisplayService(config)
 
 
@@ -171,11 +170,10 @@ def mock_detection_query_service(test_database_with_data, mock_species_database,
 
 
 @pytest.fixture
-async def analytics_manager_with_db(test_database_with_data, mock_species_database):
+async def analytics_manager_with_db(test_database_with_data, mock_species_database, config_factory):
     """Create AnalyticsManager with real database."""
     db_service, _ = test_database_with_data
-    config = BirdNETConfig()
-    config.species_confidence_threshold = 0.5
+    config = config_factory(species_confidence_threshold=0.5)
     detection_query_service = DetectionQueryService(
         core_database=db_service, species_database=mock_species_database, config=config
     )

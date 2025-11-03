@@ -8,7 +8,6 @@ import pytest
 
 from birdnetpi.analytics.analytics import AnalyticsManager
 from birdnetpi.analytics.presentation import PresentationManager
-from birdnetpi.config import BirdNETConfig
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.species import SpeciesDatabaseService
 from birdnetpi.detections.queries import DetectionQueryService
@@ -103,9 +102,9 @@ def mock_species_database():
 
 
 @pytest.fixture
-def mock_species_display_service():
+def mock_species_display_service(config_factory):
     """Create a mock SpeciesDisplayService."""
-    config = BirdNETConfig()
+    config = config_factory()
     return SpeciesDisplayService(config)
 
 
@@ -116,11 +115,10 @@ def mock_detection_query_service(test_database_with_data, mock_species_database,
 
 
 @pytest.fixture
-async def presentation_manager(test_database_with_data, mock_species_database):
+async def presentation_manager(test_database_with_data, mock_species_database, config_factory):
     """Create PresentationManager with real components."""
     db_service = test_database_with_data
-    config = BirdNETConfig()
-    config.species_confidence_threshold = 0.5
+    config = config_factory(species_confidence_threshold=0.5)
     detection_query_service = DetectionQueryService(
         core_database=db_service, species_database=mock_species_database, config=config
     )

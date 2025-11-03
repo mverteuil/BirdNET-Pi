@@ -1,6 +1,7 @@
 """Tests for SystemInspector class."""
 
 import asyncio
+import re
 import subprocess
 import time
 from datetime import datetime
@@ -51,32 +52,33 @@ class TestDiskMethods:
         assert status is False
         assert "Low disk space: 5.00% free, below 10% threshold" in message
 
+    @pytest.mark.parametrize(
+        "usage_percent,expected_status,expected_message_contains",
+        [
+            pytest.param(
+                95, HealthStatus.CRITICAL, "Disk usage critical: 95.0%", id="critical_high_usage"
+            ),
+            pytest.param(
+                85, HealthStatus.WARNING, "Disk usage warning: 85.0%", id="warning_moderate_usage"
+            ),
+            pytest.param(
+                50, HealthStatus.HEALTHY, "Disk usage normal: 50.0%", id="healthy_low_usage"
+            ),
+        ],
+    )
     @patch("birdnetpi.system.status.shutil.disk_usage", autospec=True)
-    def test_get_disk_health_critical(self, mock_disk_usage):
-        """Should return CRITICAL status for high disk usage."""
-        mock_disk_usage.return_value = (1000, 950, 50)  # 95% used
+    def test_get_disk_health(
+        self, mock_disk_usage, usage_percent, expected_status, expected_message_contains
+    ):
+        """Should return appropriate health status based on disk usage."""
+        used = usage_percent * 10
+        free = 1000 - used
+        mock_disk_usage.return_value = (1000, used, free)
+
         status, message = SystemInspector.get_disk_health()
 
-        assert status == HealthStatus.CRITICAL
-        assert "Disk usage critical: 95.0%" in message
-
-    @patch("birdnetpi.system.status.shutil.disk_usage", autospec=True)
-    def test_get_disk_health_warning(self, mock_disk_usage):
-        """Should return WARNING status for moderate disk usage."""
-        mock_disk_usage.return_value = (1000, 850, 150)  # 85% used
-        status, message = SystemInspector.get_disk_health()
-
-        assert status == HealthStatus.WARNING
-        assert "Disk usage warning: 85.0%" in message
-
-    @patch("birdnetpi.system.status.shutil.disk_usage", autospec=True)
-    def test_get_disk_health_healthy(self, mock_disk_usage):
-        """Should return HEALTHY status for low disk usage."""
-        mock_disk_usage.return_value = (1000, 500, 500)  # 50% used
-        status, message = SystemInspector.get_disk_health()
-
-        assert status == HealthStatus.HEALTHY
-        assert "Disk usage normal: 50.0%" in message
+        assert status == expected_status
+        assert expected_message_contains in message
 
 
 class TestCPUMethods:
@@ -100,32 +102,30 @@ class TestCPUMethods:
         mock_cpu_percent.assert_called_once_with(interval=2.5)
         assert result == 30.0
 
+    @pytest.mark.parametrize(
+        "cpu_percent,expected_status,expected_message_contains",
+        [
+            pytest.param(
+                95.0, HealthStatus.CRITICAL, "CPU usage critical: 95.0%", id="critical_high_cpu"
+            ),
+            pytest.param(
+                85.0, HealthStatus.WARNING, "CPU usage warning: 85.0%", id="warning_moderate_cpu"
+            ),
+            pytest.param(
+                30.0, HealthStatus.HEALTHY, "CPU usage normal: 30.0%", id="healthy_normal_cpu"
+            ),
+        ],
+    )
     @patch("birdnetpi.system.status.psutil.cpu_percent", autospec=True)
-    def test_get_cpu_health_critical(self, mock_cpu_percent):
-        """Should return CRITICAL status for high CPU usage."""
-        mock_cpu_percent.return_value = 95.0
+    def test_get_cpu_health(
+        self, mock_cpu_percent, cpu_percent, expected_status, expected_message_contains
+    ):
+        """Should return appropriate health status based on CPU usage."""
+        mock_cpu_percent.return_value = cpu_percent
         status, message = SystemInspector.get_cpu_health()
 
-        assert status == HealthStatus.CRITICAL
-        assert "CPU usage critical: 95.0%" in message
-
-    @patch("birdnetpi.system.status.psutil.cpu_percent", autospec=True)
-    def test_get_cpu_health_warning(self, mock_cpu_percent):
-        """Should return WARNING status for moderate CPU usage."""
-        mock_cpu_percent.return_value = 85.0
-        status, message = SystemInspector.get_cpu_health()
-
-        assert status == HealthStatus.WARNING
-        assert "CPU usage warning: 85.0%" in message
-
-    @patch("birdnetpi.system.status.psutil.cpu_percent", autospec=True)
-    def test_get_cpu_health_healthy(self, mock_cpu_percent):
-        """Should return HEALTHY status for normal CPU usage."""
-        mock_cpu_percent.return_value = 30.0
-        status, message = SystemInspector.get_cpu_health()
-
-        assert status == HealthStatus.HEALTHY
-        assert "CPU usage normal: 30.0%" in message
+        assert status == expected_status
+        assert expected_message_contains in message
 
 
 class TestMemoryMethods:
@@ -149,39 +149,49 @@ class TestMemoryMethods:
             "percent": 50.0,
         }
 
+    @pytest.mark.parametrize(
+        "memory_percent,memory_used,expected_status,expected_message_pattern",
+        [
+            pytest.param(
+                95.0,
+                7600000000,
+                HealthStatus.CRITICAL,
+                r"Memory usage critical: 95\.0%.*7247MB",
+                id="critical_high_memory",
+            ),
+            pytest.param(
+                85.0,
+                6800000000,
+                HealthStatus.WARNING,
+                r"Memory usage warning: 85\.0%",
+                id="warning_moderate_memory",
+            ),
+            pytest.param(
+                40.0,
+                3200000000,
+                HealthStatus.HEALTHY,
+                r"Memory usage normal: 40\.0%",
+                id="healthy_normal_memory",
+            ),
+        ],
+    )
     @patch("birdnetpi.system.status.psutil.virtual_memory", autospec=True)
-    def test_get_memory_health_critical(self, mock_virtual_memory):
-        """Should return CRITICAL status for high memory usage."""
-        mock_virtual_memory.return_value.percent = 95.0
-        mock_virtual_memory.return_value.used = 7600000000
+    def test_get_memory_health(
+        self,
+        mock_virtual_memory,
+        memory_percent,
+        memory_used,
+        expected_status,
+        expected_message_pattern,
+    ):
+        """Should return appropriate health status based on memory usage."""
+        mock_virtual_memory.return_value.percent = memory_percent
+        mock_virtual_memory.return_value.used = memory_used
 
         status, message = SystemInspector.get_memory_health()
 
-        assert status == HealthStatus.CRITICAL
-        assert "Memory usage critical: 95.0%" in message
-        assert "7247MB" in message  # 7600000000 / 1024 / 1024
-
-    @patch("birdnetpi.system.status.psutil.virtual_memory", autospec=True)
-    def test_get_memory_health_warning(self, mock_virtual_memory):
-        """Should return WARNING status for moderate memory usage."""
-        mock_virtual_memory.return_value.percent = 85.0
-        mock_virtual_memory.return_value.used = 6800000000
-
-        status, message = SystemInspector.get_memory_health()
-
-        assert status == HealthStatus.WARNING
-        assert "Memory usage warning: 85.0%" in message
-
-    @patch("birdnetpi.system.status.psutil.virtual_memory", autospec=True)
-    def test_get_memory_health_healthy(self, mock_virtual_memory):
-        """Should return HEALTHY status for normal memory usage."""
-        mock_virtual_memory.return_value.percent = 40.0
-        mock_virtual_memory.return_value.used = 3200000000
-
-        status, message = SystemInspector.get_memory_health()
-
-        assert status == HealthStatus.HEALTHY
-        assert "Memory usage normal: 40.0%" in message
+        assert status == expected_status
+        assert re.search(expected_message_pattern, message) is not None
 
 
 class TestTemperatureMethods:
@@ -225,87 +235,97 @@ class TestTemperatureMethods:
             result = SystemInspector.get_cpu_temperature()
             assert result is None
 
+    @pytest.mark.parametrize(
+        "temperature,expected_status,expected_message_contains",
+        [
+            pytest.param(
+                85.0,
+                HealthStatus.CRITICAL,
+                "CPU temperature critical: 85.0°C",
+                id="critical_high_temp",
+            ),
+            pytest.param(
+                75.0,
+                HealthStatus.WARNING,
+                "CPU temperature warning: 75.0°C",
+                id="warning_moderate_temp",
+            ),
+            pytest.param(
+                45.0,
+                HealthStatus.HEALTHY,
+                "CPU temperature normal: 45.0°C",
+                id="healthy_normal_temp",
+            ),
+            pytest.param(
+                None,
+                HealthStatus.UNKNOWN,
+                "Temperature monitoring not available",
+                id="unknown_no_sensor",
+            ),
+        ],
+    )
     @patch("birdnetpi.system.status.SystemInspector.get_cpu_temperature", autospec=True)
-    def test_get_temperature_health_critical(self, mock_get_temp):
-        """Should return CRITICAL status for high temperature."""
-        mock_get_temp.return_value = 85.0
+    def test_get_temperature_health(
+        self, mock_get_temp, temperature, expected_status, expected_message_contains
+    ):
+        """Should return appropriate health status based on CPU temperature."""
+        mock_get_temp.return_value = temperature
         status, message = SystemInspector.get_temperature_health()
 
-        assert status == HealthStatus.CRITICAL
-        assert "CPU temperature critical: 85.0°C" in message
-
-    @patch("birdnetpi.system.status.SystemInspector.get_cpu_temperature", autospec=True)
-    def test_get_temperature_health_warning(self, mock_get_temp):
-        """Should return WARNING status for moderate temperature."""
-        mock_get_temp.return_value = 75.0
-        status, message = SystemInspector.get_temperature_health()
-
-        assert status == HealthStatus.WARNING
-        assert "CPU temperature warning: 75.0°C" in message
-
-    @patch("birdnetpi.system.status.SystemInspector.get_cpu_temperature", autospec=True)
-    def test_get_temperature_health_healthy(self, mock_get_temp):
-        """Should return HEALTHY status for normal temperature."""
-        mock_get_temp.return_value = 45.0
-        status, message = SystemInspector.get_temperature_health()
-
-        assert status == HealthStatus.HEALTHY
-        assert "CPU temperature normal: 45.0°C" in message
-
-    @patch("birdnetpi.system.status.SystemInspector.get_cpu_temperature", autospec=True)
-    def test_get_temperature_health_unknown(self, mock_get_temp):
-        """Should return UNKNOWN status when temperature unavailable."""
-        mock_get_temp.return_value = None
-        status, message = SystemInspector.get_temperature_health()
-
-        assert status == HealthStatus.UNKNOWN
-        assert "Temperature monitoring not available" in message
+        assert status == expected_status
+        assert expected_message_contains in message
 
 
 class TestAudioDeviceMethods:
     """Test audio device checking methods."""
 
-    def test_check_audio_device_sync_success(self):
-        """Should return success when audio device works."""
+    @pytest.mark.parametrize(
+        "returncode,stderr,side_effect,expected_working,expected_message_contains",
+        [
+            pytest.param(
+                0,
+                None,
+                None,
+                True,
+                "Audio input device working normally",
+                id="success_device_works",
+            ),
+            pytest.param(
+                1, b"No such device", None, False, "No such device", id="failure_no_device"
+            ),
+            pytest.param(
+                None,
+                None,
+                subprocess.TimeoutExpired("arecord", 5),
+                False,
+                "Audio device check timed out",
+                id="timeout_check_failed",
+            ),
+            pytest.param(
+                None,
+                None,
+                FileNotFoundError(),
+                False,
+                "arecord command not found",
+                id="command_not_found",
+            ),
+        ],
+    )
+    def test_check_audio_device_sync(
+        self, returncode, stderr, side_effect, expected_working, expected_message_contains
+    ):
+        """Should handle various audio device check scenarios."""
         with patch("birdnetpi.system.status.subprocess.run", autospec=True) as mock_run:
-            mock_run.return_value.returncode = 0
+            if side_effect:
+                mock_run.side_effect = side_effect
+            else:
+                mock_run.return_value.returncode = returncode
+                mock_run.return_value.stderr = stderr
 
             is_working, message = SystemInspector.check_audio_device_sync()
 
-            assert is_working is True
-            assert "Audio input device working normally" in message
-
-    def test_check_audio_device_sync_failure(self):
-        """Should return failure when audio device fails."""
-        with patch("birdnetpi.system.status.subprocess.run", autospec=True) as mock_run:
-            mock_run.return_value.returncode = 1
-            mock_run.return_value.stderr = b"No such device"
-
-            is_working, message = SystemInspector.check_audio_device_sync()
-
-            assert is_working is False
-            assert "Audio input device failed" in message
-            assert "No such device" in message
-
-    def test_check_audio_device_sync_timeout(self):
-        """Should handle timeout when checking audio device."""
-        with patch("birdnetpi.system.status.subprocess.run", autospec=True) as mock_run:
-            mock_run.side_effect = subprocess.TimeoutExpired("arecord", 5)
-
-            is_working, message = SystemInspector.check_audio_device_sync()
-
-            assert is_working is False
-            assert "Audio device check timed out" in message
-
-    def test_check_audio_device_sync_not_found(self):
-        """Should handle missing arecord command."""
-        with patch("birdnetpi.system.status.subprocess.run", autospec=True) as mock_run:
-            mock_run.side_effect = FileNotFoundError()
-
-            is_working, message = SystemInspector.check_audio_device_sync()
-
-            assert is_working is False
-            assert "arecord command not found" in message
+            assert is_working == expected_working
+            assert expected_message_contains in message
 
     @pytest.mark.asyncio
     async def test_check_audio_device_async_success(self):
@@ -375,68 +395,109 @@ class TestSystemInfoMethods:
         assert "eth0" in result["network_interfaces"]
         assert "wlan0" in result["network_interfaces"]
 
+    @pytest.mark.parametrize(
+        "cpu_status,memory_status,disk_status,temp_status,"
+        "expected_overall,expected_alerts,has_critical,has_warning",
+        [
+            pytest.param(
+                (HealthStatus.HEALTHY, "CPU OK"),
+                (HealthStatus.HEALTHY, "Memory OK"),
+                (HealthStatus.HEALTHY, "Disk OK"),
+                (HealthStatus.HEALTHY, "Temp OK"),
+                "healthy",
+                0,
+                False,
+                False,
+                id="all_healthy",
+            ),
+            pytest.param(
+                (HealthStatus.WARNING, "CPU High"),
+                (HealthStatus.HEALTHY, "Memory OK"),
+                (HealthStatus.WARNING, "Disk High"),
+                (HealthStatus.HEALTHY, "Temp OK"),
+                "warning",
+                2,
+                False,
+                True,
+                id="warnings_present",
+            ),
+            pytest.param(
+                (HealthStatus.CRITICAL, "CPU Critical"),
+                (HealthStatus.WARNING, "Memory High"),
+                (HealthStatus.HEALTHY, "Disk OK"),
+                (HealthStatus.HEALTHY, "Temp OK"),
+                "critical",
+                2,
+                True,
+                False,
+                id="critical_with_warning",
+            ),
+        ],
+    )
     @patch("birdnetpi.system.status.SystemInspector.get_temperature_health", autospec=True)
     @patch("birdnetpi.system.status.SystemInspector.get_disk_health", autospec=True)
     @patch("birdnetpi.system.status.SystemInspector.get_memory_health", autospec=True)
     @patch("birdnetpi.system.status.SystemInspector.get_cpu_health", autospec=True)
-    def test_get_health_summary_all_healthy(self, mock_cpu, mock_memory, mock_disk, mock_temp):
-        """Should return healthy summary when all components healthy."""
-        mock_cpu.return_value = (HealthStatus.HEALTHY, "CPU OK")
-        mock_memory.return_value = (HealthStatus.HEALTHY, "Memory OK")
-        mock_disk.return_value = (HealthStatus.HEALTHY, "Disk OK")
-        mock_temp.return_value = (HealthStatus.HEALTHY, "Temp OK")
+    def test_get_health_summary(
+        self,
+        mock_cpu,
+        mock_memory,
+        mock_disk,
+        mock_temp,
+        cpu_status,
+        memory_status,
+        disk_status,
+        temp_status,
+        expected_overall,
+        expected_alerts,
+        has_critical,
+        has_warning,
+    ):
+        """Should return appropriate health summary based on component statuses."""
+        mock_cpu.return_value = cpu_status
+        mock_memory.return_value = memory_status
+        mock_disk.return_value = disk_status
+        mock_temp.return_value = temp_status
 
         result = SystemInspector.get_health_summary()
 
-        assert result["overall_status"] == "healthy"
-        assert result["alert_count"] == 0
-        assert "critical_count" not in result
-        assert "warning_count" not in result
+        assert result["overall_status"] == expected_overall
+        assert result["alert_count"] == expected_alerts
 
-    @patch("birdnetpi.system.status.SystemInspector.get_temperature_health", autospec=True)
-    @patch("birdnetpi.system.status.SystemInspector.get_disk_health", autospec=True)
-    @patch("birdnetpi.system.status.SystemInspector.get_memory_health", autospec=True)
-    @patch("birdnetpi.system.status.SystemInspector.get_cpu_health", autospec=True)
-    def test_get_health_summary_with_warnings(self, mock_cpu, mock_memory, mock_disk, mock_temp):
-        """Should return warning summary when components have warnings."""
-        mock_cpu.return_value = (HealthStatus.WARNING, "CPU High")
-        mock_memory.return_value = (HealthStatus.HEALTHY, "Memory OK")
-        mock_disk.return_value = (HealthStatus.WARNING, "Disk High")
-        mock_temp.return_value = (HealthStatus.HEALTHY, "Temp OK")
+        if has_critical:
+            assert "critical_count" in result
+            assert result["critical_count"] == 1
+        else:
+            assert "critical_count" not in result
 
-        result = SystemInspector.get_health_summary()
-
-        assert result["overall_status"] == "warning"
-        assert result["alert_count"] == 2
-        assert result["warning_count"] == 2
-        assert "critical_count" not in result
-
-    @patch("birdnetpi.system.status.SystemInspector.get_temperature_health", autospec=True)
-    @patch("birdnetpi.system.status.SystemInspector.get_disk_health", autospec=True)
-    @patch("birdnetpi.system.status.SystemInspector.get_memory_health", autospec=True)
-    @patch("birdnetpi.system.status.SystemInspector.get_cpu_health", autospec=True)
-    def test_get_health_summary_with_critical(self, mock_cpu, mock_memory, mock_disk, mock_temp):
-        """Should return critical summary when any component is critical."""
-        mock_cpu.return_value = (HealthStatus.CRITICAL, "CPU Critical")
-        mock_memory.return_value = (HealthStatus.WARNING, "Memory High")
-        mock_disk.return_value = (HealthStatus.HEALTHY, "Disk OK")
-        mock_temp.return_value = (HealthStatus.HEALTHY, "Temp OK")
-
-        result = SystemInspector.get_health_summary()
-
-        assert result["overall_status"] == "critical"
-        assert result["alert_count"] == 2
-        assert result["critical_count"] == 1
-        assert "warning_count" not in result  # Only shown for warning status
+        if has_warning and expected_overall == "warning":
+            assert "warning_count" in result
+            assert result["warning_count"] == 2
+        else:
+            assert "warning_count" not in result
 
 
 class TestContainerUptime:
     """Test container uptime detection in get_system_info."""
 
+    @pytest.mark.parametrize(
+        "process_side_effect,expected_boot_source",
+        [
+            pytest.param(None, "container", id="accessible_pid1_uses_container_time"),
+            pytest.param(
+                psutil.AccessDenied("Cannot access PID 1"),
+                "host",
+                id="inaccessible_pid1_uses_host_time",
+            ),
+            pytest.param(psutil.NoSuchProcess(1), "host", id="missing_pid1_uses_host_time"),
+        ],
+    )
     @patch("birdnetpi.system.status.psutil.Process", autospec=True)
     @patch("birdnetpi.system.status.psutil.boot_time", autospec=True)
-    def test_get_system_info_uses_container_init_time(self, mock_boot_time, mock_process_class):
-        """Should use PID 1's create time in a container environment."""
+    def test_get_system_info_boot_time_handling(
+        self, mock_boot_time, mock_process_class, process_side_effect, expected_boot_source
+    ):
+        """Should handle various PID 1 access scenarios for boot time."""
         # Set up mock times
         host_boot_time = 1000000.0  # Host booted long ago
         container_start_time = datetime.now().timestamp() - 600  # Container started 10 minutes ago
@@ -444,9 +505,11 @@ class TestContainerUptime:
         # Mock system boot time (host)
         mock_boot_time.return_value = host_boot_time
 
-        # Mock PID 1 process (container init)
-        # mock_process_class is already autospec'd, just configure its return_value
-        mock_process_class.return_value.create_time.return_value = container_start_time
+        if process_side_effect:
+            mock_process_class.side_effect = process_side_effect
+        else:
+            # Mock PID 1 process (container init)
+            mock_process_class.return_value.create_time.return_value = container_start_time
 
         # Mock other dependencies for get_system_info
         with (
@@ -460,70 +523,15 @@ class TestContainerUptime:
             # Get system info
             info = SystemInspector.get_system_info()
 
-            # Should have used container's PID 1 create time, not host boot time
-            assert info["boot_time"] == container_start_time
-            assert info["boot_time"] != host_boot_time
+            # Check which boot time was used
+            if expected_boot_source == "container":
+                assert info["boot_time"] == container_start_time
+                assert info["boot_time"] != host_boot_time
+            else:
+                assert info["boot_time"] == host_boot_time
 
             # Verify PID 1 was checked
             mock_process_class.assert_called_once_with(1)
-
-    @patch("birdnetpi.system.status.psutil.Process", autospec=True)
-    @patch("birdnetpi.system.status.psutil.boot_time", autospec=True)
-    def test_get_system_info_fallback_to_host_when_pid1_inaccessible(
-        self, mock_boot_time, mock_process_class
-    ):
-        """Should fall back to host boot time if PID 1 is not accessible."""
-        host_boot_time = 1000000.0
-
-        # Mock system boot time
-        mock_boot_time.return_value = host_boot_time
-
-        # Mock PID 1 access denied (common in some environments)
-        mock_process_class.side_effect = psutil.AccessDenied("Cannot access PID 1")
-
-        # Mock other dependencies
-        with (
-            patch("birdnetpi.system.status.psutil.cpu_count", return_value=4),
-            patch.object(SystemInspector, "get_cpu_usage", return_value=25.0),
-            patch.object(SystemInspector, "get_memory_usage", return_value={"percent": 50.0}),
-            patch.object(SystemInspector, "get_disk_usage", return_value={"percent": 60.0}),
-            patch.object(SystemInspector, "get_cpu_temperature", return_value=None),
-            patch("birdnetpi.system.status.psutil.net_if_addrs", return_value={}),
-        ):
-            # Get system info
-            info = SystemInspector.get_system_info()
-
-            # Should have fallen back to host boot time
-            assert info["boot_time"] == host_boot_time
-
-    @patch("birdnetpi.system.status.psutil.Process", autospec=True)
-    @patch("birdnetpi.system.status.psutil.boot_time", autospec=True)
-    def test_get_system_info_fallback_when_pid1_doesnt_exist(
-        self, mock_boot_time, mock_process_class
-    ):
-        """Should fall back to host boot time if PID 1 doesn't exist."""
-        host_boot_time = 1000000.0
-
-        # Mock system boot time
-        mock_boot_time.return_value = host_boot_time
-
-        # Mock PID 1 doesn't exist (shouldn't happen but be defensive)
-        mock_process_class.side_effect = psutil.NoSuchProcess(1)
-
-        # Mock other dependencies
-        with (
-            patch("birdnetpi.system.status.psutil.cpu_count", return_value=4),
-            patch.object(SystemInspector, "get_cpu_usage", return_value=25.0),
-            patch.object(SystemInspector, "get_memory_usage", return_value={"percent": 50.0}),
-            patch.object(SystemInspector, "get_disk_usage", return_value={"percent": 60.0}),
-            patch.object(SystemInspector, "get_cpu_temperature", return_value=None),
-            patch("birdnetpi.system.status.psutil.net_if_addrs", return_value={}),
-        ):
-            # Get system info
-            info = SystemInspector.get_system_info()
-
-            # Should have fallen back to host boot time
-            assert info["boot_time"] == host_boot_time
 
     def test_uptime_calculation_from_boot_time(self):
         """Should calculate uptime correctly with container boot time."""

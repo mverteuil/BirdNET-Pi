@@ -10,15 +10,14 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.engine import Result
 
-from birdnetpi.detections.models import AudioFile
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.routers.multimedia_api_routes import router
 
 
 @pytest.fixture
-def mock_audio_file():
+def mock_audio_file(model_factory):
     """Create a mock audio file record."""
-    return AudioFile(
+    return model_factory.create_audio_file(
         id=UUID("550e8400-e29b-41d4-a716-446655440000"),
         file_path=Path("test_audio.wav"),  # Relative to recordings directory
         duration=3.0,
