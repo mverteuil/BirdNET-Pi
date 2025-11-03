@@ -148,6 +148,11 @@ else
     # User doesn't exist - create with /opt/birdnetpi as home (no -m since dir exists)
     sudo useradd -d "$INSTALL_DIR" -s /bin/bash birdnetpi
 fi
+
+# Create spi and gpio groups if they don't exist (needed for DietPi/Orange Pi)
+getent group spi >/dev/null || sudo groupadd spi
+getent group gpio >/dev/null || sudo groupadd gpio
+
 sudo usermod -aG audio,video,dialout,spi,gpio birdnetpi
 sudo chown birdnetpi:birdnetpi "$INSTALL_DIR"
 
