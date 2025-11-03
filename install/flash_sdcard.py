@@ -1980,10 +1980,18 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                                 subprocess.run(["sudo", "mkdir", "-p", str(root_dir)], check=True)
 
                                 # Copy install.sh to /root on rootfs
+                                # Use dd to avoid extended attributes issues with macOS
                                 install_dest = root_dir / "install.sh"
                                 subprocess.run(
-                                    ["sudo", "cp", str(install_script), str(install_dest)],
+                                    [
+                                        "sudo",
+                                        "dd",
+                                        f"if={install_script}",
+                                        f"of={install_dest}",
+                                        "bs=1m",
+                                    ],
                                     check=True,
+                                    capture_output=True,
                                 )
                                 subprocess.run(
                                     ["sudo", "chmod", "+x", str(install_dest)], check=True
@@ -2046,11 +2054,19 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                             console.print("[cyan]Unmounting anylinuxfs...[/cyan]")
                             try:
                                 subprocess.run(
-                                    ["sudo", "anylinuxfs", "unmount"], check=True, timeout=10
+                                    ["sudo", "anylinuxfs", "unmount"],
+                                    check=True,
+                                    timeout=10,
+                                    capture_output=True,
                                 )
-                            except subprocess.TimeoutExpired:
+                                console.print("[green]✓ anylinuxfs unmounted[/green]")
+                            except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+                                # Try force stop if unmount fails
                                 subprocess.run(
-                                    ["sudo", "anylinuxfs", "stop"], check=False, timeout=5
+                                    ["sudo", "anylinuxfs", "stop"],
+                                    check=False,
+                                    timeout=5,
+                                    capture_output=True,
                                 )
                         else:
                             subprocess.run(["sudo", "umount", str(rootfs_mount)], check=False)
