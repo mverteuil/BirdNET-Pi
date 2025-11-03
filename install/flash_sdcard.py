@@ -469,15 +469,22 @@ For more help, visit: https://github.com/your-repo/BirdNET-Pi
         console.print(f"[green]✓ Copied install.sh to {final_path}[/green]")
 
 
-def copy_birdnetpi_config(
+def copy_birdnetpi_config(  # noqa: C901
     boot_mount: Path,
     config: dict[str, Any],
-) -> None:
+    os_key: str | None = None,
+    device_key: str | None = None,
+) -> Path | None:
     """Copy birdnetpi_config.txt to boot partition for unattended install.sh.
 
     Args:
         boot_mount: Path to mounted boot partition
         config: Configuration dictionary with BirdNET-Pi settings
+        os_key: Operating system key (e.g., "dietpi", "raspbian")
+        device_key: Device key (e.g., "orange_pi_5_pro", "pi_5")
+
+    Returns:
+        Path to temporary config file if created, None otherwise
     """
     # Build config lines from available settings
     config_lines = ["# BirdNET-Pi boot configuration"]
@@ -490,6 +497,15 @@ def copy_birdnetpi_config(
 
     if config.get("birdnet_branch"):
         config_lines.append(f"export BIRDNETPI_BRANCH={config['birdnet_branch']}")
+        has_config = True
+
+    # OS and device information
+    if os_key:
+        config_lines.append(f"os_key={os_key}")
+        has_config = True
+
+    if device_key:
+        config_lines.append(f"device_key={device_key}")
         has_config = True
 
     # Application settings
@@ -521,8 +537,9 @@ def copy_birdnetpi_config(
             ["sudo", "cp", str(temp_config), str(boot_mount / "birdnetpi_config.txt")],
             check=True,
         )
-        temp_config.unlink()
         console.print("[green]✓ BirdNET-Pi configuration written to boot partition[/green]")
+        return temp_config
+    return None
 
 
 # OS and device image URLs (Lite/Minimal versions for headless server)
@@ -1592,6 +1609,9 @@ def configure_dietpi_boot(  # noqa: C901
     console.print()
     console.print("[cyan]Configuring DietPi boot partition...[/cyan]")
 
+    # Initialize config_file to None (will be set by copy_birdnetpi_config if config exists)
+    config_file: Path | None = None
+
     # Mount boot partition
     if platform.system() == "Darwin":
         # DietPi uses different partition numbers on different devices
@@ -1875,11 +1895,11 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
         copy_installer_script(boot_mount, config, os_key, device_key)
 
         # Copy BirdNET-Pi pre-configuration file if any settings provided
-        copy_birdnetpi_config(boot_mount, config)
+        config_file = copy_birdnetpi_config(boot_mount, config, os_key, device_key)
 
-        # CRITICAL: Also copy install.sh to rootfs partition
+        # CRITICAL: Also copy install.sh and config to rootfs partition
         # The DIETPISETUP partition (boot_mount) will be deleted after first boot
-        # So we must also place install.sh on the persistent rootfs partition
+        # So we must also place install.sh and config on the persistent rootfs partition
         if config.get("copy_installer"):
             install_script = Path(__file__).parent / "install.sh"
             if install_script.exists():
@@ -2000,8 +2020,28 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                                 console.print(
                                     "[green]✓ install.sh copied to rootfs:/root/install.sh[/green]"
                                 )
+
+                                # Also copy config file if it was created
+                                if config_file and config_file.exists():
+                                    config_dest = root_dir / "birdnetpi_config.txt"
+                                    subprocess.run(
+                                        [
+                                            "sudo",
+                                            "dd",
+                                            f"if={config_file}",
+                                            f"of={config_dest}",
+                                            "bs=1m",
+                                        ],
+                                        check=True,
+                                        capture_output=True,
+                                    )
+                                    console.print(
+                                        "[green]✓ birdnetpi_config.txt copied to "
+                                        "rootfs:/root/birdnetpi_config.txt[/green]"
+                                    )
+
                                 console.print(
-                                    "[dim]Persists after DIETPISETUP partition deletion[/dim]"
+                                    "[dim]Files persist after DIETPISETUP partition deletion[/dim]"
                                 )
                             else:
                                 console.print(
@@ -2072,6 +2112,10 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                             subprocess.run(["sudo", "umount", str(rootfs_mount)], check=False)
 
     finally:
+        # Clean up temporary config file if it exists
+        if config_file and config_file.exists():
+            config_file.unlink()
+
         # Unmount
         console.print("[cyan]Unmounting boot partition...[/cyan]")
         if platform.system() == "Darwin":
