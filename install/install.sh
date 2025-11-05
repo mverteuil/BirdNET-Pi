@@ -210,6 +210,10 @@ done
 # Give DNS resolver a moment to stabilize
 sleep 2
 
+# Create cache directory for uv (speeds up downloads and retries)
+sudo mkdir -p /var/cache/uv
+sudo chown birdnetpi:birdnetpi /var/cache/uv
+
 # If Waveshare library was downloaded to boot partition, copy to writable location
 WAVESHARE_BOOT_PATH="/boot/firmware/waveshare-epd"
 WAVESHARE_LIB_PATH="/opt/birdnetpi/waveshare-epd"
@@ -228,7 +232,7 @@ if [ -d "$WAVESHARE_BOOT_PATH" ] && [ -n "$EPAPER_EXTRAS" ]; then
 
     # Regenerate lockfile since we changed the source
     echo "Regenerating lockfile for local Waveshare library..."
-    sudo -u birdnetpi UV_HTTP_TIMEOUT=300 /opt/uv/uv lock
+    sudo -u birdnetpi UV_CACHE_DIR=/var/cache/uv UV_HTTP_TIMEOUT=300 /opt/uv/uv lock
 
     echo "✓ Configured to use local Waveshare library"
 fi
@@ -236,7 +240,7 @@ fi
 # Install Python dependencies with retry mechanism (for network issues)
 echo "Installing Python dependencies..."
 cd "$INSTALL_DIR"
-UV_CMD="sudo -u birdnetpi UV_HTTP_TIMEOUT=300 UV_EXTRA_INDEX_URL=https://www.piwheels.org/simple /opt/uv/uv sync --locked --no-dev"
+UV_CMD="sudo -u birdnetpi UV_CACHE_DIR=/var/cache/uv UV_HTTP_TIMEOUT=300 UV_EXTRA_INDEX_URL=https://www.piwheels.org/simple /opt/uv/uv sync --locked --no-dev"
 if [ -n "$EPAPER_EXTRAS" ]; then
     UV_CMD="$UV_CMD $EPAPER_EXTRAS"
 fi
