@@ -234,6 +234,11 @@ def copy_installer_script(
     # Read install.sh and substitute repo/branch defaults if configured
     install_content = install_script.read_text()
 
+    # Debug: show what's in config
+    console.print(f"[cyan]DEBUG: config keys = {list(config.keys())}[/cyan]")
+    console.print(f"[cyan]DEBUG: birdnet_branch = {config.get('birdnet_branch')}[/cyan]")
+    console.print(f"[cyan]DEBUG: birdnet_repo_url = {config.get('birdnet_repo_url')}[/cyan]")
+
     # Replace REPO_URL default if custom repo configured
     if config.get("birdnet_repo_url"):
         repo_url = config["birdnet_repo_url"]
