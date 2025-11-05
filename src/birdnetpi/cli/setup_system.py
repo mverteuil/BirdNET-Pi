@@ -128,7 +128,8 @@ def get_boot_config() -> dict[str, str]:
 
     # Check multiple possible config file locations
     config_locations = [
-        Path("/root/birdnetpi_config.json"),  # Installation location
+        Path("/opt/birdnetpi/birdnetpi_config.json"),  # Primary location
+        Path("/root/birdnetpi_config.json"),  # Fallback (root-only)
         Path("/boot/firmware/birdnetpi_config.json"),  # Raspberry Pi OS
         Path("/boot/birdnetpi_config.json"),  # DietPi, Armbian
     ]

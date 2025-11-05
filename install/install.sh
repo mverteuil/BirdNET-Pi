@@ -162,6 +162,14 @@ sudo chown birdnetpi:birdnetpi "$INSTALL_DIR"
 echo "Cloning repository..."
 sudo -u birdnetpi git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
 
+# Copy config file from /root to installation directory (if it exists)
+# This makes it accessible to the birdnetpi user
+if [ -f /root/birdnetpi_config.json ]; then
+    echo "Copying configuration file..."
+    sudo cp /root/birdnetpi_config.json "$INSTALL_DIR/birdnetpi_config.json"
+    sudo chown birdnetpi:birdnetpi "$INSTALL_DIR/birdnetpi_config.json"
+fi
+
 # Install uv package manager system-wide to /opt/uv
 echo "Installing uv package manager..."
 sudo mkdir -p /opt/uv
