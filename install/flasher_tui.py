@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from devices import DEVICES, build_os_images_dict
 from textual import on  # type: ignore[import-untyped]
 from textual.app import App, ComposeResult  # type: ignore[import-untyped]
 from textual.containers import Container, Horizontal, Vertical  # type: ignore[import-untyped]
@@ -30,33 +31,28 @@ from textual.widgets import (  # type: ignore[import-untyped]
 
 
 def get_combined_capabilities(
-    os_key: str, device_key: str, os_properties: dict[str, Any], device_properties: dict[str, Any]
+    os_key: str, device_key: str, os_properties: dict[str, Any]
 ) -> dict[str, Any]:
     """Calculate combined capabilities from OS and device properties.
 
     Args:
         os_key: OS type (e.g., "raspbian", "armbian", "dietpi")
-        device_key: Device key (e.g., "pi_4", "orangepi5")
+        device_key: Device key (e.g., "pi_4", "orange_pi_0w2")
         os_properties: OS properties dictionary
-        device_properties: Device properties dictionary
 
     Returns:
         Dictionary of combined capabilities
     """
     os_props = os_properties.get(os_key, {})
-    device_props = device_properties.get(device_key, {})
+    device = DEVICES[device_key]
 
     return {
         # WiFi is supported if OS can configure it AND device has hardware
-        "supports_wifi": (
-            os_props.get("wifi_config_method") is not None and device_props.get("has_wifi", False)
-        ),
+        "supports_wifi": (os_props.get("wifi_config_method") is not None and device.has_wifi),
         # Custom user supported if OS has a method other than root_only
         "supports_custom_user": os_props.get("user_config_method") not in [None, "root_only"],
         # SPI supported if OS can configure it AND device has hardware
-        "supports_spi": (
-            os_props.get("spi_config_method") is not None and device_props.get("has_spi", False)
-        ),
+        "supports_spi": (os_props.get("spi_config_method") is not None and device.has_spi),
         # Pass through OS-specific properties
         "install_sh_path": os_props.get("install_sh_path", "/boot/install.sh"),
         "install_sh_needs_preservation": os_props.get("install_sh_needs_preservation", False),
@@ -186,16 +182,13 @@ class FlasherWizardApp(App[dict | None]):
 
     def __init__(
         self,
-        os_images: dict[str, Any],
-        device_properties: dict[str, Any],
-        os_properties: dict[str, Any] | None = None,
+        os_properties: dict[str, Any],
     ) -> None:
-        """Initialize wizard with OS and device data."""
+        """Initialize wizard with OS properties."""
         super().__init__()
         self.config: dict[str, Any] = {}
-        self.os_images = os_images
-        self.device_properties = device_properties
-        self.os_properties = os_properties or {}
+        self.os_images = build_os_images_dict()  # Build from devices module
+        self.os_properties = os_properties
         self.is_loaded_profile = False  # Track if config is from loaded profile
         self.loaded_profile_name: str | None = None  # Track original profile name when editing
 
@@ -252,7 +245,7 @@ class FlasherWizardApp(App[dict | None]):
             os_key = self.config["os_key"]
             device_key = result["device_key"]
             self.push_screen(
-                NetworkConfigScreen(os_key, device_key, self.device_properties, self.config),
+                NetworkConfigScreen(os_key, device_key, self.config),
                 self.handle_network_config,
             )
         else:
@@ -281,9 +274,7 @@ class FlasherWizardApp(App[dict | None]):
             os_key = self.config["os_key"]
             device_key = self.config["device_key"]
             self.push_screen(
-                AdvancedConfigScreen(
-                    os_key, device_key, self.device_properties, self.os_properties, self.config
-                ),
+                AdvancedConfigScreen(os_key, device_key, self.os_properties, self.config),
                 self.handle_advanced_config,
             )
         else:
@@ -291,7 +282,7 @@ class FlasherWizardApp(App[dict | None]):
             os_key = self.config["os_key"]
             device_key = self.config["device_key"]
             self.push_screen(
-                NetworkConfigScreen(os_key, device_key, self.device_properties, self.config),
+                NetworkConfigScreen(os_key, device_key, self.config),
                 self.handle_network_config,
             )
 
@@ -319,9 +310,7 @@ class FlasherWizardApp(App[dict | None]):
             os_key = self.config["os_key"]
             device_key = self.config["device_key"]
             self.push_screen(
-                AdvancedConfigScreen(
-                    os_key, device_key, self.device_properties, self.os_properties, self.config
-                ),
+                AdvancedConfigScreen(os_key, device_key, self.os_properties, self.config),
                 self.handle_advanced_config,
             )
 
@@ -662,7 +651,7 @@ class NetworkConfigScreen(ModalScreen[dict | None]):
         super().__init__()
         self.os_key = os_key
         self.device_key = device_key
-        self.device_properties = device_properties
+
         self.initial_config = initial_config or {}
 
     def compose(self) -> ComposeResult:
@@ -853,7 +842,6 @@ class AdvancedConfigScreen(ModalScreen[dict | None]):
         self,
         os_key: str,
         device_key: str,
-        device_properties: dict[str, Any],
         os_properties: dict[str, Any],
         initial_config: dict[str, Any] | None = None,
     ) -> None:
@@ -861,7 +849,6 @@ class AdvancedConfigScreen(ModalScreen[dict | None]):
         super().__init__()
         self.os_key = os_key
         self.device_key = device_key
-        self.device_properties = device_properties
         self.os_properties = os_properties
         self.initial_config = initial_config or {}
 
@@ -869,9 +856,7 @@ class AdvancedConfigScreen(ModalScreen[dict | None]):
         # This checks both: OS has SPI config method AND device has SPI hardware
         # For example: Pi 4 + Raspberry Pi OS = True (config_txt method + has_spi)
         #             Pi 4 + Armbian = False (no SPI config method for Armbian yet)
-        capabilities = get_combined_capabilities(
-            os_key, device_key, os_properties, device_properties
-        )
+        capabilities = get_combined_capabilities(os_key, device_key, os_properties)
         self.supports_spi = capabilities.get("supports_spi", False)
 
     def compose(self) -> ComposeResult:
@@ -1165,7 +1150,7 @@ class ConfirmationScreen(ModalScreen[bool]):
 
             # Build configuration summary
             with Vertical(classes="config-table"):
-                # OS and Device - use display names from OS_IMAGES
+                # OS and Device - use display names from devices module
                 os_key = self.config.get("os_key", "")
                 device_key = self.config.get("device_key", "")
 

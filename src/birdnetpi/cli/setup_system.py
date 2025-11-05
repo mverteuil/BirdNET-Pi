@@ -114,30 +114,33 @@ def detect_gps() -> tuple[float | None, float | None, str | None]:
 
 
 def get_boot_config() -> dict[str, str]:
-    """Load pre-configuration from boot volume.
+    """Load pre-configuration from boot volume or install directory.
 
-    Checks /boot/firmware/birdnetpi_config.txt for pre-configured values.
+    Checks for birdnetpi_config.json in multiple locations:
+    - /root/ (copied during installation by flash_sdcard.py)
+    - /boot/firmware/ (Raspberry Pi OS boot partition)
+    - /boot/ (DietPi/Armbian boot partition)
 
     Returns:
         Dict of pre-configured values (empty if not found)
     """
-    boot_config_path = Path("/boot/firmware/birdnetpi_config.txt")
-    if not boot_config_path.exists():
-        return {}
+    import json
 
-    config = {}
-    try:
-        for line in boot_config_path.read_text().splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" in line:
-                key, value = line.split("=", 1)
-                config[key.strip()] = value.strip()
-    except Exception as e:
-        click.echo(f"Warning: Could not read boot config: {e}", err=True)
+    # Check multiple possible config file locations
+    config_locations = [
+        Path("/root/birdnetpi_config.json"),  # Installation location
+        Path("/boot/firmware/birdnetpi_config.json"),  # Raspberry Pi OS
+        Path("/boot/birdnetpi_config.json"),  # DietPi, Armbian
+    ]
 
-    return config
+    for config_path in config_locations:
+        if config_path.exists():
+            try:
+                return json.loads(config_path.read_text())
+            except Exception as e:
+                click.echo(f"Warning: Could not read boot config: {e}", err=True)
+
+    return {}  # No config file found in any location
 
 
 def is_attended_install() -> bool:
