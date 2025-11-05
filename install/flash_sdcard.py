@@ -475,7 +475,7 @@ def copy_birdnetpi_config(  # noqa: C901
     os_key: str | None = None,
     device_key: str | None = None,
 ) -> Path | None:
-    """Copy birdnetpi_config.txt to boot partition for unattended install.sh.
+    """Copy birdnetpi_config.json to boot partition for unattended install.sh.
 
     Args:
         boot_mount: Path to mounted boot partition
@@ -486,55 +486,49 @@ def copy_birdnetpi_config(  # noqa: C901
     Returns:
         Path to temporary config file if created, None otherwise
     """
-    # Build config lines from available settings
-    config_lines = ["# BirdNET-Pi boot configuration"]
-    has_config = False
+    import json
 
-    # Install-time environment variables (optional)
-    if config.get("birdnet_repo_url"):
-        config_lines.append(f"export BIRDNETPI_REPO_URL={config['birdnet_repo_url']}")
-        has_config = True
-
-    if config.get("birdnet_branch"):
-        config_lines.append(f"export BIRDNETPI_BRANCH={config['birdnet_branch']}")
-        has_config = True
+    # Build JSON config from all available settings
+    boot_config: dict[str, Any] = {}
 
     # OS and device information
     if os_key:
-        config_lines.append(f"export os_key={os_key}")
-        has_config = True
-
+        boot_config["os"] = os_key
     if device_key:
-        config_lines.append(f"export device_key={device_key}")
-        has_config = True
+        boot_config["device"] = device_key
+
+    # Install-time settings
+    if config.get("birdnet_repo_url"):
+        boot_config["repo_url"] = config["birdnet_repo_url"]
+    if config.get("birdnet_branch"):
+        boot_config["branch"] = config["birdnet_branch"]
+
+    # WiFi settings
+    if config.get("wifi_ssid"):
+        boot_config["wifi_ssid"] = config["wifi_ssid"]
+    if config.get("wifi_password"):
+        boot_config["wifi_password"] = config["wifi_password"]
+    if config.get("wifi_auth"):
+        boot_config["wifi_auth"] = config["wifi_auth"]
 
     # Application settings
     if config.get("birdnet_device_name"):
-        config_lines.append(f"device_name={config['birdnet_device_name']}")
-        has_config = True
-
+        boot_config["device_name"] = config["birdnet_device_name"]
     if config.get("birdnet_latitude"):
-        config_lines.append(f"latitude={config['birdnet_latitude']}")
-        has_config = True
-
+        boot_config["latitude"] = config["birdnet_latitude"]
     if config.get("birdnet_longitude"):
-        config_lines.append(f"longitude={config['birdnet_longitude']}")
-        has_config = True
-
+        boot_config["longitude"] = config["birdnet_longitude"]
     if config.get("birdnet_timezone"):
-        config_lines.append(f"timezone={config['birdnet_timezone']}")
-        has_config = True
-
+        boot_config["timezone"] = config["birdnet_timezone"]
     if config.get("birdnet_language"):
-        config_lines.append(f"language={config['birdnet_language']}")
-        has_config = True
+        boot_config["language"] = config["birdnet_language"]
 
     # Only write if we have at least one setting
-    if has_config:
-        temp_config = Path("/tmp/birdnetpi_config.txt")
-        temp_config.write_text("\n".join(config_lines) + "\n")
+    if boot_config:
+        temp_config = Path("/tmp/birdnetpi_config.json")
+        temp_config.write_text(json.dumps(boot_config, indent=2) + "\n")
         subprocess.run(
-            ["sudo", "cp", str(temp_config), str(boot_mount / "birdnetpi_config.txt")],
+            ["sudo", "cp", str(temp_config), str(boot_mount / "birdnetpi_config.json")],
             check=True,
         )
         console.print("[green]✓ BirdNET-Pi configuration written to boot partition[/green]")
