@@ -220,7 +220,7 @@ if [ -d "$WAVESHARE_BOOT_PATH" ] && [ -n "$EPAPER_EXTRAS" ]; then
 
     # Regenerate lockfile since we changed the source
     echo "Regenerating lockfile for local Waveshare library..."
-    sudo -u birdnetpi UV_HTTP_TIMEOUT=300 /opt/uv/uv lock --quiet
+    sudo -u birdnetpi UV_HTTP_TIMEOUT=300 /opt/uv/uv lock
 
     echo "✓ Configured to use local Waveshare library"
 fi
@@ -228,7 +228,7 @@ fi
 # Install Python dependencies with retry mechanism (for network issues)
 echo "Installing Python dependencies..."
 cd "$INSTALL_DIR"
-UV_CMD="sudo -u birdnetpi UV_HTTP_TIMEOUT=300 UV_EXTRA_INDEX_URL=https://www.piwheels.org/simple /opt/uv/uv sync --locked --no-dev --quiet"
+UV_CMD="sudo -u birdnetpi UV_HTTP_TIMEOUT=300 UV_EXTRA_INDEX_URL=https://www.piwheels.org/simple /opt/uv/uv sync --locked --no-dev"
 if [ -n "$EPAPER_EXTRAS" ]; then
     UV_CMD="$UV_CMD $EPAPER_EXTRAS"
 fi
