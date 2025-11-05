@@ -208,7 +208,7 @@ def copy_installer_script(
     config: dict[str, Any],
     os_key: str,
     device_key: str,
-) -> None:
+) -> Path | None:
     """Copy install.sh to boot partition with OS-specific handling.
 
     Args:
@@ -216,6 +216,9 @@ def copy_installer_script(
         config: Configuration dictionary with copy_installer flag
         os_key: OS type for capability lookup
         device_key: Device key for capability lookup
+
+    Returns:
+        Path to the modified install.sh temp file, or None if not copied
     """
     caps = get_combined_capabilities(os_key, device_key)
 
@@ -223,13 +226,18 @@ def copy_installer_script(
     # because the boot partition will be deleted after first boot
     needs_preservation = caps.get("install_sh_needs_preservation", False)
 
-    if not config.get("copy_installer") and not needs_preservation:
-        return
+    console.print(f"[cyan]DEBUG: os={os_key}, device={device_key}[/cyan]")
+    copy_inst = config.get("copy_installer")
+    console.print(f"[cyan]DEBUG: copy_installer={copy_inst}, preserve={needs_preservation}[/cyan]")
+
+    if not copy_inst and not needs_preservation:
+        console.print("[yellow]DEBUG: Skipping (not needed)[/yellow]")
+        return None
 
     install_script = Path(__file__).parent / "install.sh"
     if not install_script.exists():
         console.print("[yellow]Warning: install.sh not found, skipping copy[/yellow]")
-        return
+        return None
 
     # Read install.sh and substitute repo/branch defaults if configured
     install_content = install_script.read_text()
@@ -492,6 +500,9 @@ For more help, visit: https://github.com/your-repo/BirdNET-Pi
     else:
         final_path = caps.get("install_sh_path", "/boot/install.sh")
         console.print(f"[green]✓ Copied install.sh to {final_path}[/green]")
+
+    # Return the temp file path so it can be used for rootfs copy
+    return temp_install
 
 
 def copy_birdnetpi_config(  # noqa: C901
@@ -1711,7 +1722,7 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                 )
 
         # Copy installer script if requested (handles preservation for DietPi automatically)
-        copy_installer_script(boot_mount, config, os_key, device_key)
+        modified_install_script = copy_installer_script(boot_mount, config, os_key, device_key)
 
         # Copy BirdNET-Pi pre-configuration file if any settings provided
         config_file = copy_birdnetpi_config(boot_mount, config, os_key, device_key)
@@ -1719,216 +1730,209 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
         # CRITICAL: Also copy install.sh and config to rootfs partition
         # The DIETPISETUP partition (boot_mount) will be deleted after first boot
         # So we must also place install.sh and config on the persistent rootfs partition
-        if config.get("copy_installer"):
-            install_script = Path(__file__).parent / "install.sh"
-            if install_script.exists():
-                console.print("[cyan]Copying install.sh to rootfs partition...[/cyan]")
+        if config.get("copy_installer") and modified_install_script:
+            console.print("[cyan]Copying install.sh to rootfs partition...[/cyan]")
 
-                # Mount rootfs partition (usually partition 2 on DietPi)
-                rootfs_mount = None
-                rootfs_partition = None
+            # Mount rootfs partition (usually partition 2 on DietPi)
+            rootfs_mount = None
+            rootfs_partition = None
 
-                try:
-                    if platform.system() == "Darwin":
-                        # On macOS, use anylinuxfs to mount the ext4 rootfs partition
-                        # Check if anylinuxfs is installed
-                        anylinuxfs_path = shutil.which("anylinuxfs")
-                        mount_result = None
-                        rootfs_partition_name = None
-                        volumes_path = Path("/Volumes")
-                        initial_volumes: set[Path] = set()
+            try:
+                if platform.system() == "Darwin":
+                    # On macOS, use anylinuxfs to mount the ext4 rootfs partition
+                    # Check if anylinuxfs is installed
+                    anylinuxfs_path = shutil.which("anylinuxfs")
+                    mount_result = None
+                    rootfs_partition_name = None
+                    volumes_path = Path("/Volumes")
+                    initial_volumes: set[Path] = set()
 
-                        if not anylinuxfs_path:
-                            console.print(
-                                "[yellow]anylinuxfs not found - skipping rootfs mount[/yellow]"
-                            )
-                            console.print(
-                                "[yellow]Automation scripts will preserve "
-                                "install.sh during first boot[/yellow]"
-                            )
-                        else:
-                            # Find the Linux Filesystem partition (rootfs)
-                            # On Orange Pi 5 Pro: partition 1 is rootfs, partition 2 is DIETPISETUP
-                            rootfs_partition_name = f"{device}s1"
+                    if not anylinuxfs_path:
+                        console.print(
+                            "[yellow]anylinuxfs not found - skipping rootfs mount[/yellow]"
+                        )
+                        console.print(
+                            "[yellow]Automation scripts will preserve "
+                            "install.sh during first boot[/yellow]"
+                        )
+                    else:
+                        # Find the Linux Filesystem partition (rootfs)
+                        # On Orange Pi 5 Pro: partition 1 is rootfs, partition 2 is DIETPISETUP
+                        rootfs_partition_name = f"{device}s1"
 
-                            console.print(
-                                f"[cyan]Mounting {rootfs_partition_name} using anylinuxfs...[/cyan]"
-                            )
-                            console.print(
-                                "[dim]This may take 10-15 seconds to start the microVM...[/dim]"
-                            )
+                        console.print(
+                            f"[cyan]Mounting {rootfs_partition_name} using anylinuxfs...[/cyan]"
+                        )
+                        console.print(
+                            "[dim]This may take 10-15 seconds to start the microVM...[/dim]"
+                        )
 
-                            # Unmount any existing anylinuxfs mount first
-                            subprocess.run(
-                                ["sudo", "anylinuxfs", "unmount"],
-                                capture_output=True,
-                                check=False,
-                                timeout=10,
-                            )
-                            time.sleep(2)
+                        # Unmount any existing anylinuxfs mount first
+                        subprocess.run(
+                            ["sudo", "anylinuxfs", "unmount"],
+                            capture_output=True,
+                            check=False,
+                            timeout=10,
+                        )
+                        time.sleep(2)
 
-                            # Get list of volumes BEFORE anylinuxfs mount
-                            initial_volumes = (
+                        # Get list of volumes BEFORE anylinuxfs mount
+                        initial_volumes = (
+                            set(volumes_path.iterdir()) if volumes_path.exists() else set()
+                        )
+
+                        # Mount with anylinuxfs
+                        mount_result = subprocess.run(
+                            ["sudo", "anylinuxfs", rootfs_partition_name, "-w", "false"],
+                            capture_output=False,  # Allow password prompt
+                            check=False,
+                        )
+
+                    if anylinuxfs_path and mount_result and mount_result.returncode == 0:
+                        # Wait for mount to appear in /Volumes
+                        console.print("[dim]Waiting for mount to appear...[/dim]")
+
+                        for attempt in range(60):
+                            time.sleep(1)
+
+                            # Find new volumes that appeared after anylinuxfs mount
+                            current_volumes = (
                                 set(volumes_path.iterdir()) if volumes_path.exists() else set()
                             )
+                            new_volumes = current_volumes - initial_volumes
 
-                            # Mount with anylinuxfs
-                            mount_result = subprocess.run(
-                                ["sudo", "anylinuxfs", rootfs_partition_name, "-w", "false"],
-                                capture_output=False,  # Allow password prompt
-                                check=False,
+                            # Look for a new volume that looks like a Linux filesystem
+                            for potential_mount in new_volumes:
+                                if potential_mount.is_dir():
+                                    # Check if it looks like a rootfs (has /etc, /root, /usr)
+                                    if (
+                                        (potential_mount / "etc").exists()
+                                        and (potential_mount / "root").exists()
+                                        and (potential_mount / "usr").exists()
+                                    ):
+                                        rootfs_mount = potential_mount
+                                        rootfs_partition = rootfs_partition_name
+                                        break
+
+                            if rootfs_mount:
+                                break
+
+                            if attempt % 5 == 0 and attempt > 0:
+                                console.print(f"[dim]Still waiting... ({attempt}s)[/dim]")
+
+                        if rootfs_mount and rootfs_mount.exists():
+                            console.print(f"[green]✓ Mounted at {rootfs_mount}[/green]")
+
+                            # Ensure /root directory exists on rootfs
+                            root_dir = rootfs_mount / "root"
+                            subprocess.run(["sudo", "mkdir", "-p", str(root_dir)], check=True)
+
+                            # Copy modified install.sh to /root on rootfs
+                            # Use dd to avoid extended attributes issues with macOS
+                            install_dest = root_dir / "install.sh"
+                            subprocess.run(
+                                [
+                                    "sudo",
+                                    "dd",
+                                    f"if={modified_install_script}",
+                                    f"of={install_dest}",
+                                    "bs=1m",
+                                ],
+                                check=True,
+                                capture_output=True,
+                            )
+                            subprocess.run(["sudo", "chmod", "+x", str(install_dest)], check=True)
+
+                            console.print(
+                                "[green]✓ install.sh copied to rootfs:/root/install.sh[/green]"
                             )
 
-                        if anylinuxfs_path and mount_result and mount_result.returncode == 0:
-                            # Wait for mount to appear in /Volumes
-                            console.print("[dim]Waiting for mount to appear...[/dim]")
-
-                            for attempt in range(60):
-                                time.sleep(1)
-
-                                # Find new volumes that appeared after anylinuxfs mount
-                                current_volumes = (
-                                    set(volumes_path.iterdir()) if volumes_path.exists() else set()
-                                )
-                                new_volumes = current_volumes - initial_volumes
-
-                                # Look for a new volume that looks like a Linux filesystem
-                                for potential_mount in new_volumes:
-                                    if potential_mount.is_dir():
-                                        # Check if it looks like a rootfs (has /etc, /root, /usr)
-                                        if (
-                                            (potential_mount / "etc").exists()
-                                            and (potential_mount / "root").exists()
-                                            and (potential_mount / "usr").exists()
-                                        ):
-                                            rootfs_mount = potential_mount
-                                            rootfs_partition = rootfs_partition_name
-                                            break
-
-                                if rootfs_mount:
-                                    break
-
-                                if attempt % 5 == 0 and attempt > 0:
-                                    console.print(f"[dim]Still waiting... ({attempt}s)[/dim]")
-
-                            if rootfs_mount and rootfs_mount.exists():
-                                console.print(f"[green]✓ Mounted at {rootfs_mount}[/green]")
-
-                                # Ensure /root directory exists on rootfs
-                                root_dir = rootfs_mount / "root"
-                                subprocess.run(["sudo", "mkdir", "-p", str(root_dir)], check=True)
-
-                                # Copy install.sh to /root on rootfs
-                                # Use dd to avoid extended attributes issues with macOS
-                                install_dest = root_dir / "install.sh"
+                            # Also copy config file if it was created
+                            if config_file and config_file.exists():
+                                config_dest = root_dir / "birdnetpi_config.json"
                                 subprocess.run(
                                     [
                                         "sudo",
                                         "dd",
-                                        f"if={install_script}",
-                                        f"of={install_dest}",
+                                        f"if={config_file}",
+                                        f"of={config_dest}",
                                         "bs=1m",
                                     ],
                                     check=True,
                                     capture_output=True,
                                 )
-                                subprocess.run(
-                                    ["sudo", "chmod", "+x", str(install_dest)], check=True
+                                console.print(
+                                    "[green]✓ birdnetpi_config.json copied to "
+                                    "rootfs:/root/birdnetpi_config.json[/green]"
                                 )
 
-                                console.print(
-                                    "[green]✓ install.sh copied to rootfs:/root/install.sh[/green]"
-                                )
-
-                                # Also copy config file if it was created
-                                if config_file and config_file.exists():
-                                    config_dest = root_dir / "birdnetpi_config.json"
-                                    subprocess.run(
-                                        [
-                                            "sudo",
-                                            "dd",
-                                            f"if={config_file}",
-                                            f"of={config_dest}",
-                                            "bs=1m",
-                                        ],
-                                        check=True,
-                                        capture_output=True,
-                                    )
-                                    console.print(
-                                        "[green]✓ birdnetpi_config.json copied to "
-                                        "rootfs:/root/birdnetpi_config.json[/green]"
-                                    )
-
-                                console.print(
-                                    "[dim]Files persist after DIETPISETUP partition deletion[/dim]"
-                                )
-                            else:
-                                console.print(
-                                    "[yellow]Could not find anylinuxfs mount after 60s[/yellow]"
-                                )
-                                console.print(
-                                    "[yellow]Automation scripts will preserve "
-                                    "install.sh during first boot[/yellow]"
-                                )
-                        elif anylinuxfs_path:
                             console.print(
-                                "[yellow]anylinuxfs mount failed - "
-                                "using boot partition only[/yellow]"
+                                "[dim]Files persist after DIETPISETUP partition deletion[/dim]"
+                            )
+                        else:
+                            console.print(
+                                "[yellow]Could not find anylinuxfs mount after 60s[/yellow]"
                             )
                             console.print(
                                 "[yellow]Automation scripts will preserve "
                                 "install.sh during first boot[/yellow]"
                             )
-                    else:
-                        # On Linux, mount partition 2 (rootfs)
-                        rootfs_partition = f"{device}2"
-                        rootfs_mount = Path("/mnt/dietpi_rootfs")
-                        rootfs_mount.mkdir(parents=True, exist_ok=True)
-
-                        subprocess.run(
-                            ["sudo", "mount", rootfs_partition, str(rootfs_mount)], check=True
-                        )
-
-                        # Ensure /root directory exists on rootfs
-                        root_dir = rootfs_mount / "root"
-                        subprocess.run(["sudo", "mkdir", "-p", str(root_dir)], check=True)
-
-                        # Copy install.sh to /root on rootfs
-                        install_dest = root_dir / "install.sh"
-                        subprocess.run(
-                            ["sudo", "cp", str(install_script), str(install_dest)], check=True
-                        )
-                        subprocess.run(["sudo", "chmod", "+x", str(install_dest)], check=True)
-
+                    elif anylinuxfs_path:
                         console.print(
-                            "[green]✓ install.sh copied to rootfs:/root/install.sh[/green]"
+                            "[yellow]anylinuxfs mount failed - using boot partition only[/yellow]"
                         )
-                        console.print("[dim]Persists after DIETPISETUP partition deletion[/dim]")
+                        console.print(
+                            "[yellow]Automation scripts will preserve "
+                            "install.sh during first boot[/yellow]"
+                        )
+                else:
+                    # On Linux, mount partition 2 (rootfs)
+                    rootfs_partition = f"{device}2"
+                    rootfs_mount = Path("/mnt/dietpi_rootfs")
+                    rootfs_mount.mkdir(parents=True, exist_ok=True)
 
-                finally:
-                    # Unmount rootfs if we mounted it
-                    if rootfs_mount and rootfs_partition:
-                        if platform.system() == "Darwin":
-                            # Unmount anylinuxfs
-                            console.print("[cyan]Unmounting anylinuxfs...[/cyan]")
-                            try:
-                                subprocess.run(
-                                    ["sudo", "anylinuxfs", "unmount"],
-                                    check=True,
-                                    timeout=10,
-                                    capture_output=True,
-                                )
-                                console.print("[green]✓ anylinuxfs unmounted[/green]")
-                            except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
-                                # Try force stop if unmount fails
-                                subprocess.run(
-                                    ["sudo", "anylinuxfs", "stop"],
-                                    check=False,
-                                    timeout=5,
-                                    capture_output=True,
-                                )
-                        else:
-                            subprocess.run(["sudo", "umount", str(rootfs_mount)], check=False)
+                    subprocess.run(
+                        ["sudo", "mount", rootfs_partition, str(rootfs_mount)], check=True
+                    )
+
+                    # Ensure /root directory exists on rootfs
+                    root_dir = rootfs_mount / "root"
+                    subprocess.run(["sudo", "mkdir", "-p", str(root_dir)], check=True)
+
+                    # Copy modified install.sh to /root on rootfs
+                    install_dest = root_dir / "install.sh"
+                    subprocess.run(
+                        ["sudo", "cp", str(modified_install_script), str(install_dest)], check=True
+                    )
+                    subprocess.run(["sudo", "chmod", "+x", str(install_dest)], check=True)
+
+                    console.print("[green]✓ install.sh copied to rootfs:/root/install.sh[/green]")
+                    console.print("[dim]Persists after DIETPISETUP partition deletion[/dim]")
+
+            finally:
+                # Unmount rootfs if we mounted it
+                if rootfs_mount and rootfs_partition:
+                    if platform.system() == "Darwin":
+                        # Unmount anylinuxfs
+                        console.print("[cyan]Unmounting anylinuxfs...[/cyan]")
+                        try:
+                            subprocess.run(
+                                ["sudo", "anylinuxfs", "unmount"],
+                                check=True,
+                                timeout=10,
+                                capture_output=True,
+                            )
+                            console.print("[green]✓ anylinuxfs unmounted[/green]")
+                        except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+                            # Try force stop if unmount fails
+                            subprocess.run(
+                                ["sudo", "anylinuxfs", "stop"],
+                                check=False,
+                                timeout=5,
+                                capture_output=True,
+                            )
+                    else:
+                        subprocess.run(["sudo", "umount", str(rootfs_mount)], check=False)
 
     finally:
         # Clean up temporary config file if it exists
