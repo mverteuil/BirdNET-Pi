@@ -231,10 +231,30 @@ def copy_installer_script(
         console.print("[yellow]Warning: install.sh not found, skipping copy[/yellow]")
         return
 
-    install_dest = boot_mount / "install.sh"
+    # Read install.sh and substitute repo/branch defaults if configured
+    install_content = install_script.read_text()
 
-    # Copy install.sh to boot partition
-    subprocess.run(["sudo", "cp", str(install_script), str(install_dest)], check=True)
+    # Replace REPO_URL default if custom repo configured
+    if config.get("birdnet_repo_url"):
+        repo_url = config["birdnet_repo_url"]
+        install_content = install_content.replace(
+            'REPO_URL="${BIRDNETPI_REPO_URL:-https://github.com/mverteuil/BirdNET-Pi.git}"',
+            f'REPO_URL="${{BIRDNETPI_REPO_URL:-{repo_url}}}"',
+        )
+
+    # Replace BRANCH default if custom branch configured
+    if config.get("birdnet_branch"):
+        branch = config["birdnet_branch"]
+        install_content = install_content.replace(
+            'BRANCH="${BIRDNETPI_BRANCH:-main}"', f'BRANCH="${{BIRDNETPI_BRANCH:-{branch}}}"'
+        )
+
+    # Write modified install.sh to temporary location, then copy to boot
+    temp_install = Path("/tmp/install.sh")
+    temp_install.write_text(install_content)
+
+    install_dest = boot_mount / "install.sh"
+    subprocess.run(["sudo", "cp", str(temp_install), str(install_dest)], check=True)
     subprocess.run(["sudo", "chmod", "+x", str(install_dest)], check=True)
 
     # For OSes that need preservation (DietPi), create wrapper script

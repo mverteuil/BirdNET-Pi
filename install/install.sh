@@ -11,22 +11,9 @@
 #   bash install.sh --test-epaper
 set -e
 
-# Load config from boot partition or /root if it exists
-# Check multiple locations (for DietPi, DIETPISETUP is deleted after first boot)
-for config_location in "/root/birdnetpi_config.json" "/boot/firmware/birdnetpi_config.json" "/boot/birdnetpi_config.json"; do
-    if [ -f "$config_location" ]; then
-        echo "Loading configuration from $config_location"
-        # Parse JSON config using python3 (available on all target systems)
-        if command -v python3 >/dev/null 2>&1; then
-            BIRDNETPI_REPO_URL=$(python3 -c "import json; print(json.load(open('$config_location')).get('repo_url', ''))" 2>/dev/null || echo "")
-            BIRDNETPI_BRANCH=$(python3 -c "import json; print(json.load(open('$config_location')).get('branch', ''))" 2>/dev/null || echo "")
-            export BIRDNETPI_REPO_URL BIRDNETPI_BRANCH
-        fi
-        break
-    fi
-done
-
-# Configuration (can be overridden by birdnetpi_config.json)
+# Configuration
+# NOTE: These defaults are substituted by flash_sdcard.py at flash time
+# based on the configured repo URL and branch in the flasher wizard
 REPO_URL="${BIRDNETPI_REPO_URL:-https://github.com/mverteuil/BirdNET-Pi.git}"
 BRANCH="${BIRDNETPI_BRANCH:-main}"
 INSTALL_DIR="/opt/birdnetpi"
