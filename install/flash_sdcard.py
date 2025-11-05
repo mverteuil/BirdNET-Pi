@@ -286,12 +286,12 @@ else
     exit 0  # Don't fail DietPi automation, just skip
 fi
 
-if [ -f /boot/firmware/birdnetpi_config.txt ]; then
-    cp /boot/firmware/birdnetpi_config.txt /root/birdnetpi_config.txt
-    echo "Preserved birdnetpi_config.txt from /boot/firmware/ to /root/"
-elif [ -f /boot/birdnetpi_config.txt ]; then
-    cp /boot/birdnetpi_config.txt /root/birdnetpi_config.txt
-    echo "Preserved birdnetpi_config.txt from /boot/ to /root/"
+if [ -f /boot/firmware/birdnetpi_config.json ]; then
+    cp /boot/firmware/birdnetpi_config.json /root/birdnetpi_config.json
+    echo "Preserved birdnetpi_config.json from /boot/firmware/ to /root/"
+elif [ -f /boot/birdnetpi_config.json ]; then
+    cp /boot/birdnetpi_config.json /root/birdnetpi_config.json
+    echo "Preserved birdnetpi_config.json from /boot/ to /root/"
 fi
 
 # Verify preservation was successful
@@ -366,12 +366,12 @@ else
 fi
 
 # Also preserve config if present
-if [ -f /boot/birdnetpi_config.txt ]; then
-    cp -v /boot/birdnetpi_config.txt /root/birdnetpi_config.txt
-    echo "Preserved birdnetpi_config.txt from /boot"
-elif [ -f /boot/firmware/birdnetpi_config.txt ]; then
-    cp -v /boot/firmware/birdnetpi_config.txt /root/birdnetpi_config.txt
-    echo "Preserved birdnetpi_config.txt from /boot/firmware"
+if [ -f /boot/birdnetpi_config.json ]; then
+    cp -v /boot/birdnetpi_config.json /root/birdnetpi_config.json
+    echo "Preserved birdnetpi_config.json from /boot"
+elif [ -f /boot/firmware/birdnetpi_config.json ]; then
+    cp -v /boot/firmware/birdnetpi_config.json /root/birdnetpi_config.json
+    echo "Preserved birdnetpi_config.json from /boot/firmware"
 fi
 
 # Verify preservation
@@ -1817,7 +1817,7 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
 
                                 # Also copy config file if it was created
                                 if config_file and config_file.exists():
-                                    config_dest = root_dir / "birdnetpi_config.txt"
+                                    config_dest = root_dir / "birdnetpi_config.json"
                                     subprocess.run(
                                         [
                                             "sudo",
@@ -1830,8 +1830,8 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                                         capture_output=True,
                                     )
                                     console.print(
-                                        "[green]✓ birdnetpi_config.txt copied to "
-                                        "rootfs:/root/birdnetpi_config.txt[/green]"
+                                        "[green]✓ birdnetpi_config.json copied to "
+                                        "rootfs:/root/birdnetpi_config.json[/green]"
                                     )
 
                                 console.print(
