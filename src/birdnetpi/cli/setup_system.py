@@ -177,6 +177,7 @@ def get_supported_devices() -> dict[str, str]:
         "pi_3b": "Raspberry Pi 3B/3B+",
         "pi_4b": "Raspberry Pi 4B",
         "pi_5": "Raspberry Pi 5",
+        "orange_pi_0w2": "Orange Pi Zero 2W",
         "orange_pi_5": "Orange Pi 5",
         "orange_pi_5_plus": "Orange Pi 5 Plus",
         "orange_pi_5_pro": "Orange Pi 5 Pro",
