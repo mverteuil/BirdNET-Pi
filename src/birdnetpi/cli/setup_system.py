@@ -114,72 +114,33 @@ def detect_gps() -> tuple[float | None, float | None, str | None]:
 
 
 def get_boot_config() -> dict[str, str]:
-    """Load pre-configuration from boot volume, root, or environment variables.
+    """Load pre-configuration from boot volume or install directory.
 
-    Checks multiple locations for birdnetpi_config.txt:
-    - /root/birdnetpi_config.txt (for DietPi, persists after DIETPISETUP deletion)
-    - /boot/firmware/birdnetpi_config.txt (for Raspberry Pi OS)
-    - /boot/birdnetpi_config.txt (fallback)
-
-    If no config file found, falls back to environment variables:
-    - BIRDNETPI_OS_KEY -> os_key
-    - BIRDNETPI_DEVICE_KEY -> device_key
-    - BIRDNETPI_DEVICE_NAME -> device_name
-    - BIRDNETPI_LATITUDE -> latitude
-    - BIRDNETPI_LONGITUDE -> longitude
-    - BIRDNETPI_TIMEZONE -> timezone
-    - BIRDNETPI_LANGUAGE -> language
+    Checks for birdnetpi_config.json in multiple locations:
+    - /root/ (copied during installation by flash_sdcard.py)
+    - /boot/firmware/ (Raspberry Pi OS boot partition)
+    - /boot/ (DietPi/Armbian boot partition)
 
     Returns:
         Dict of pre-configured values (empty if not found)
     """
-    # Check multiple locations (prioritize /root for DietPi)
+    import json
+
+    # Check multiple possible config file locations
     config_locations = [
-        Path("/root/birdnetpi_config.txt"),
-        Path("/boot/firmware/birdnetpi_config.txt"),
-        Path("/boot/birdnetpi_config.txt"),
+        Path("/root/birdnetpi_config.json"),  # Installation location
+        Path("/boot/firmware/birdnetpi_config.json"),  # Raspberry Pi OS
+        Path("/boot/birdnetpi_config.json"),  # DietPi, Armbian
     ]
 
-    boot_config_path = None
-    for path in config_locations:
-        if path.exists():
-            boot_config_path = path
-            break
+    for config_path in config_locations:
+        if config_path.exists():
+            try:
+                return json.loads(config_path.read_text())
+            except Exception as e:
+                click.echo(f"Warning: Could not read boot config: {e}", err=True)
 
-    config = {}
-
-    if boot_config_path:
-        # Read from config file
-        try:
-            for line in boot_config_path.read_text().splitlines():
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if "=" in line:
-                    key, value = line.split("=", 1)
-                    config[key.strip()] = value.strip()
-        except Exception as e:
-            click.echo(f"Warning: Could not read boot config: {e}", err=True)
-    else:
-        # Fall back to environment variables
-        import os
-
-        env_mappings = {
-            "BIRDNETPI_OS_KEY": "os_key",
-            "BIRDNETPI_DEVICE_KEY": "device_key",
-            "BIRDNETPI_DEVICE_NAME": "device_name",
-            "BIRDNETPI_LATITUDE": "latitude",
-            "BIRDNETPI_LONGITUDE": "longitude",
-            "BIRDNETPI_TIMEZONE": "timezone",
-            "BIRDNETPI_LANGUAGE": "language",
-        }
-
-        for env_var, config_key in env_mappings.items():
-            value = os.environ.get(env_var, "").strip()
-            if value:
-                config[config_key] = value
-
-    return config
+    return {}  # No config file found in any location
 
 
 def is_attended_install() -> bool:
@@ -215,7 +176,7 @@ def get_supported_devices() -> dict[str, str]:
         "pi_3b": "Raspberry Pi 3B/3B+",
         "pi_4b": "Raspberry Pi 4B",
         "pi_5": "Raspberry Pi 5",
-        "orange_pi_0w2": "Orange Pi Zero 2W",
+        "orange_pi_5": "Orange Pi 5",
         "orange_pi_5_plus": "Orange Pi 5 Plus",
         "orange_pi_5_pro": "Orange Pi 5 Pro",
         "rock_5b": "Radxa ROCK 5B",
@@ -507,13 +468,12 @@ def configure_os(
     Returns:
         Selected OS key
     """
-    # Check both os_key (new) and os (legacy) for backwards compatibility
-    os_key = boot_config.get("os_key") or boot_config.get("os")
-    if not os_key:
+    if "os" not in boot_config:
         os_key = prompt_os_selection(default="raspbian")
         click.echo(f"  Selected OS: {get_supported_os_options()[os_key]}")
         return os_key
     else:
+        os_key = boot_config["os"]
         click.echo(f"OS: {get_supported_os_options().get(os_key, os_key)} (from boot config)")
         return os_key
 
@@ -529,13 +489,12 @@ def configure_device(
     Returns:
         Selected device key
     """
-    # Check both device_key (new) and device (legacy) for backwards compatibility
-    device_key = boot_config.get("device_key") or boot_config.get("device")
-    if not device_key:
+    if "device" not in boot_config:
         device_key = prompt_device_selection(default="pi_4b")
         click.echo(f"  Selected device: {get_supported_devices()[device_key]}")
         return device_key
     else:
+        device_key = boot_config["device"]
         device_name = get_supported_devices().get(device_key, device_key)
         click.echo(f"Device: {device_name} (from boot config)")
         return device_key
