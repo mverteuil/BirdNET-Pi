@@ -124,13 +124,31 @@ else
             if grep -q "^overlays=.*spi" "$ARMBIAN_CONFIG"; then
                 echo "SPI overlay found in $ARMBIAN_CONFIG"
 
+                # Check if overlay has chip prefix (e.g., rk3588-) which needs to be removed
+                # DietPi/Armbian automatically prepend the prefix from overlay_prefix config
+                if grep -q "^overlays=.*rk3588-spi" "$ARMBIAN_CONFIG"; then
+                    echo "Fixing RK3588 SPI overlay format (removing chip prefix)..."
+                    # Replace rk3588-spi4-m0-cs1-spidev with spi4-m2-cs0-spidev (M2-CS0 is the working variant)
+                    sudo sed -i 's/rk3588-spi4-[^ ]*/spi4-m2-cs0-spidev/' "$ARMBIAN_CONFIG"
+                    SPI_ENABLED=true
+                fi
+
                 # Verify param_spidev_spi_bus parameter exists
                 if ! grep -q "^param_spidev_spi_bus=" "$ARMBIAN_CONFIG"; then
                     echo "Adding param_spidev_spi_bus=0 to $ARMBIAN_CONFIG..."
                     echo "param_spidev_spi_bus=0" | sudo tee -a "$ARMBIAN_CONFIG" > /dev/null
                     SPI_ENABLED=true
-                else
-                    echo "SPI already configured in $ARMBIAN_CONFIG"
+                fi
+
+                # Verify param_spidev_max_freq parameter exists (required for RK3588)
+                if ! grep -q "^param_spidev_max_freq=" "$ARMBIAN_CONFIG"; then
+                    echo "Adding param_spidev_max_freq=100000000 to $ARMBIAN_CONFIG..."
+                    echo "param_spidev_max_freq=100000000" | sudo tee -a "$ARMBIAN_CONFIG" > /dev/null
+                    SPI_ENABLED=true
+                fi
+
+                if [ "$SPI_ENABLED" != true ]; then
+                    echo "SPI already configured correctly in $ARMBIAN_CONFIG"
                 fi
             else
                 echo "Enabling SPI in $ARMBIAN_CONFIG..."
