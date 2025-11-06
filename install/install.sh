@@ -158,6 +158,33 @@ getent group gpio >/dev/null || sudo groupadd gpio
 sudo usermod -aG audio,video,dialout,spi,gpio birdnetpi
 sudo chown birdnetpi:birdnetpi "$INSTALL_DIR"
 
+# Grant birdnetpi user limited sudo access for systemctl commands
+# This allows the web UI to query and control services without root access
+echo "Configuring sudoers for service management..."
+cat <<'EOF' | sudo tee /etc/sudoers.d/birdnetpi-systemctl > /dev/null
+# Allow birdnetpi user to query and control birdnetpi services
+# This is needed for the web UI to show service status
+birdnetpi ALL=(root) NOPASSWD: /usr/bin/systemctl show birdnetpi-* *, \
+                              /usr/bin/systemctl is-active birdnetpi-*, \
+                              /usr/bin/systemctl start birdnetpi-*, \
+                              /usr/bin/systemctl stop birdnetpi-*, \
+                              /usr/bin/systemctl restart birdnetpi-*, \
+                              /usr/bin/systemctl enable birdnetpi-*, \
+                              /usr/bin/systemctl disable birdnetpi-*, \
+                              /usr/bin/systemctl daemon-reload, \
+                              /usr/bin/systemctl show caddy *, \
+                              /usr/bin/systemctl is-active caddy, \
+                              /usr/bin/systemctl start caddy, \
+                              /usr/bin/systemctl stop caddy, \
+                              /usr/bin/systemctl restart caddy, \
+                              /usr/bin/systemctl show redis *, \
+                              /usr/bin/systemctl is-active redis, \
+                              /usr/bin/systemctl start redis, \
+                              /usr/bin/systemctl restart redis, \
+                              /usr/bin/systemctl reboot
+EOF
+sudo chmod 0440 /etc/sudoers.d/birdnetpi-systemctl
+
 # Clone repository directly to installation directory as birdnetpi user
 echo "Cloning repository..."
 sudo -u birdnetpi git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
