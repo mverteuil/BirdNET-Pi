@@ -128,9 +128,10 @@ else
                 if ! grep -q "^param_spidev_spi_bus=" "$ARMBIAN_CONFIG"; then
                     echo "Adding param_spidev_spi_bus=0 to $ARMBIAN_CONFIG..."
                     echo "param_spidev_spi_bus=0" | sudo tee -a "$ARMBIAN_CONFIG" > /dev/null
+                    SPI_ENABLED=true
+                else
+                    echo "SPI already configured in $ARMBIAN_CONFIG"
                 fi
-
-                SPI_ENABLED=true
             else
                 echo "Enabling SPI in $ARMBIAN_CONFIG..."
                 # Check if overlays line exists
