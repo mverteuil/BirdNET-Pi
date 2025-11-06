@@ -1667,15 +1667,18 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
 
                 # Determine which SPI overlay to use based on device
                 # Orange Pi Zero 2W: Allwinner H618 SPI1
-                # Orange Pi 5 series: RK3588 SPI4-M0 is available on GPIO header
+                # Orange Pi 5 series: RK3588 SPI4-M2-CS0 (verified working)
                 # ROCK 5B: RK3588 SPI1-M1 or SPI3-M1 depending on configuration
+                #
+                # NOTE: DietPi automatically prepends overlay_prefix from dietpiEnv.txt
+                # so overlay names should NOT include the chip prefix
                 spi_overlay = None
                 if device_key == "orange_pi_0w2":
                     spi_overlay = "spi-spidev"  # Allwinner H618
                 elif device_key == "rock_5b":
-                    spi_overlay = "rk3588-spi1-m1-cs0-spidev"  # RK3588
+                    spi_overlay = "spi1-m1-cs0-spidev"  # RK3588 (prefix auto-prepended)
                 elif device_key in ["orange_pi_5_plus", "orange_pi_5_pro"]:
-                    spi_overlay = "rk3588-spi4-m0-cs1-spidev"  # RK3588
+                    spi_overlay = "spi4-m2-cs0-spidev"  # RK3588 M2-CS0 (prefix auto-prepended)
 
                 if spi_overlay:
                     # Check if overlays line exists
@@ -1696,6 +1699,11 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                     # Add spidev bus parameter if not present
                     if "param_spidev_spi_bus=" not in env_content:
                         new_lines.append("param_spidev_spi_bus=0")
+
+                    # Add max frequency parameter for RK3588 platforms (required)
+                    if device_key in ["orange_pi_5_plus", "orange_pi_5_pro", "rock_5b"]:
+                        if "param_spidev_max_freq=" not in env_content:
+                            new_lines.append("param_spidev_max_freq=100000000")
 
                     env_content = "\n".join(new_lines)
 
