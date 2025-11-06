@@ -1421,6 +1421,77 @@ PRESET_USER_SHELL="bash"
             console.print("[yellow]Warning: Could not unmount anylinuxfs[/yellow]")
 
 
+def download_waveshare_library(boot_mount: Path) -> None:
+    """Download Waveshare ePaper library to boot partition for offline installation.
+
+    Uses sparse-checkout to download only the Python subdirectory (~6MB) instead of
+    the full repository which includes 20k+ STM32 firmware files.
+
+    Args:
+        boot_mount: Path to the mounted boot partition where library should be copied
+    """
+    console.print()
+    waveshare_dest = boot_mount / "waveshare-epd"
+    temp_waveshare = Path("/tmp/waveshare_clone")
+
+    # Remove old temp clone if it exists
+    if temp_waveshare.exists():
+        shutil.rmtree(temp_waveshare)
+
+    # Clone only the Python subdirectory using sparse-checkout (~45MB vs full repo)
+    # This is small enough to fit on the boot partition
+    with console.status(
+        "[cyan]Downloading Waveshare ePaper library (Python subdirectory, ~6MB transfer)...[/cyan]"
+    ):
+        # Initialize sparse checkout
+        subprocess.run(
+            [
+                "git",
+                "clone",
+                "--depth",
+                "1",
+                "--filter=blob:none",
+                "--no-checkout",
+                "--quiet",
+                "https://github.com/waveshareteam/e-Paper.git",
+                str(temp_waveshare),
+            ],
+            check=True,
+        )
+
+        # Configure sparse checkout for Python subdirectory only
+        subprocess.run(
+            ["git", "-C", str(temp_waveshare), "sparse-checkout", "init", "--cone"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(temp_waveshare),
+                "sparse-checkout",
+                "set",
+                "RaspberryPi_JetsonNano/python",
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["git", "-C", str(temp_waveshare), "checkout", "--quiet"],
+            check=True,
+        )
+
+        # Copy only the Python subdirectory to boot partition
+        python_dir = temp_waveshare / "RaspberryPi_JetsonNano" / "python"
+        subprocess.run(
+            ["sudo", "cp", "-r", str(python_dir), str(waveshare_dest)],
+            check=True,
+        )
+        shutil.rmtree(temp_waveshare)
+    console.print("[green]✓ Waveshare ePaper library downloaded to boot partition[/green]")
+
+
 def configure_dietpi_boot(  # noqa: C901
     device: str, config: dict[str, Any], os_key: str, device_key: str
 ) -> None:
@@ -1720,77 +1791,8 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                     msg = f"✓ SPI enabled for ePaper HAT ({chip_desc} overlay: {spi_overlay})"
                     console.print(f"[green]{msg}[/green]")
 
-                    # Clone Waveshare ePaper library to boot partition for offline installation
-                    console.print()
-                    waveshare_dest = boot_mount / "waveshare-epd"
-                    temp_waveshare = Path("/tmp/waveshare_clone")
-
-                    # Remove old temp clone if it exists
-                    if temp_waveshare.exists():
-                        shutil.rmtree(temp_waveshare)
-
-                    # Clone only the Python subdirectory using sparse-checkout (~45MB vs full repo)
-                    # This is small enough to fit on the boot partition
-                    with console.status(
-                        "[cyan]Downloading Waveshare ePaper library "
-                        "(Python subdirectory, ~6MB transfer)...[/cyan]"
-                    ):
-                        # Initialize sparse checkout
-                        subprocess.run(
-                            [
-                                "git",
-                                "clone",
-                                "--depth",
-                                "1",
-                                "--filter=blob:none",
-                                "--no-checkout",
-                                "--quiet",
-                                "https://github.com/waveshareteam/e-Paper.git",
-                                str(temp_waveshare),
-                            ],
-                            check=True,
-                        )
-
-                        # Configure sparse checkout for Python subdirectory only
-                        subprocess.run(
-                            [
-                                "git",
-                                "-C",
-                                str(temp_waveshare),
-                                "sparse-checkout",
-                                "init",
-                                "--cone",
-                            ],
-                            check=True,
-                            stdout=subprocess.DEVNULL,
-                        )
-                        subprocess.run(
-                            [
-                                "git",
-                                "-C",
-                                str(temp_waveshare),
-                                "sparse-checkout",
-                                "set",
-                                "RaspberryPi_JetsonNano/python",
-                            ],
-                            check=True,
-                            stdout=subprocess.DEVNULL,
-                        )
-                        subprocess.run(
-                            ["git", "-C", str(temp_waveshare), "checkout", "--quiet"],
-                            check=True,
-                        )
-
-                        # Copy only the Python subdirectory to boot partition
-                        python_dir = temp_waveshare / "RaspberryPi_JetsonNano" / "python"
-                        subprocess.run(
-                            ["sudo", "cp", "-r", str(python_dir), str(waveshare_dest)],
-                            check=True,
-                        )
-                        shutil.rmtree(temp_waveshare)
-                    console.print(
-                        "[green]✓ Waveshare ePaper library downloaded to boot partition[/green]"
-                    )
+                    # Download Waveshare library for offline installation
+                    download_waveshare_library(boot_mount)
                 else:
                     msg = "Note: SPI configuration for this device not yet implemented"
                     console.print(f"[yellow]{msg}[/yellow]")
@@ -2273,68 +2275,8 @@ exit 0
             temp_config.unlink()
             console.print("[green]✓ SPI enabled for ePaper HAT[/green]")
 
-            # Clone Waveshare ePaper library to boot partition for offline installation
-            console.print()
-            waveshare_dest = boot_mount / "waveshare-epd"
-            temp_waveshare = Path("/tmp/waveshare_clone")
-
-            # Remove old temp clone if it exists
-            if temp_waveshare.exists():
-                shutil.rmtree(temp_waveshare)
-
-            # Clone only the Python subdirectory using sparse-checkout (~45MB vs full repo)
-            # This is small enough to fit on the boot partition
-            with console.status(
-                "[cyan]Downloading Waveshare ePaper library "
-                "(Python subdirectory, ~6MB transfer)...[/cyan]"
-            ):
-                # Initialize sparse checkout
-                subprocess.run(
-                    [
-                        "git",
-                        "clone",
-                        "--depth",
-                        "1",
-                        "--filter=blob:none",
-                        "--no-checkout",
-                        "--quiet",
-                        "https://github.com/waveshareteam/e-Paper.git",
-                        str(temp_waveshare),
-                    ],
-                    check=True,
-                )
-
-                # Configure sparse checkout for Python subdirectory only
-                subprocess.run(
-                    ["git", "-C", str(temp_waveshare), "sparse-checkout", "init", "--cone"],
-                    check=True,
-                    stdout=subprocess.DEVNULL,
-                )
-                subprocess.run(
-                    [
-                        "git",
-                        "-C",
-                        str(temp_waveshare),
-                        "sparse-checkout",
-                        "set",
-                        "RaspberryPi_JetsonNano/python",
-                    ],
-                    check=True,
-                    stdout=subprocess.DEVNULL,
-                )
-                subprocess.run(
-                    ["git", "-C", str(temp_waveshare), "checkout", "--quiet"],
-                    check=True,
-                )
-
-                # Copy only the Python subdirectory to boot partition
-                python_dir = temp_waveshare / "RaspberryPi_JetsonNano" / "python"
-                subprocess.run(
-                    ["sudo", "cp", "-r", str(python_dir), str(waveshare_dest)],
-                    check=True,
-                )
-                shutil.rmtree(temp_waveshare)
-            console.print("[green]✓ Waveshare ePaper library downloaded to boot partition[/green]")
+            # Download Waveshare library for offline installation
+            download_waveshare_library(boot_mount)
 
         # Copy installer script if requested
         copy_installer_script(boot_mount, config, os_key, device_key)
