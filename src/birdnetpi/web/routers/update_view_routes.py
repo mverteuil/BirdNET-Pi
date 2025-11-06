@@ -12,6 +12,7 @@ from birdnetpi.config import BirdNETConfig
 from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.system.status import SystemInspector
 from birdnetpi.system.system_utils import SystemUtils
+from birdnetpi.utils.auth import require_admin
 from birdnetpi.utils.cache import Cache
 from birdnetpi.utils.language import get_user_language
 from birdnetpi.web.core.container import Container
@@ -24,6 +25,7 @@ router = APIRouter()
 
 
 @router.get("/", response_class=HTMLResponse)
+@require_admin
 @inject
 async def update_page(
     request: Request,

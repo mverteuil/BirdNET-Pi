@@ -27,6 +27,7 @@ from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.log_reader import LogReaderService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.system_control import SystemControlService
+from birdnetpi.utils.auth import AuthService
 from birdnetpi.utils.cache import Cache
 from birdnetpi.web.core.config import get_config
 
@@ -126,6 +127,19 @@ class Container(containers.DeclarativeContainer):
         redis_db=0,
         default_ttl=300,
         enable_cache_warming=True,
+    )
+
+    # Authentication services
+    auth_service = providers.Singleton(
+        AuthService,
+        path_resolver=path_resolver,
+    )
+
+    # Redis client for session storage - singleton
+    redis_client = providers.Singleton(
+        lambda: __import__("redis.asyncio", fromlist=["Redis"]).Redis.from_url(
+            "redis://127.0.0.1:6379"
+        ),
     )
 
     # Core business services - singletons

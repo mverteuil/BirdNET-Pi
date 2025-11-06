@@ -13,6 +13,7 @@ from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.system.status import SystemInspector
 from birdnetpi.system.system_control import SERVICES_CONFIG, SystemControlService
 from birdnetpi.system.system_utils import SystemUtils
+from birdnetpi.utils.auth import require_admin
 from birdnetpi.utils.language import get_user_language
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.logs import LOG_LEVELS
@@ -23,6 +24,7 @@ router = APIRouter()
 
 
 @router.get("/logs", response_class=HTMLResponse)
+@require_admin
 @inject
 async def view_logs(
     request: Request,

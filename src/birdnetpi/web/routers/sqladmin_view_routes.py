@@ -2,10 +2,30 @@
 
 from fastapi import FastAPI
 from sqladmin import Admin, ModelView
+from sqladmin.authentication import AuthenticationBackend
+from starlette.requests import Request
 
 from birdnetpi.detections.models import AudioFile, Detection
 from birdnetpi.location.models import Weather
 from birdnetpi.web.core.container import Container
+
+
+class AdminAuthBackend(AuthenticationBackend):
+    """Authentication backend for SQLAdmin using Starlette's request.user."""
+
+    async def login(self, request: Request) -> bool:
+        """SQLAdmin login - redirect to main login page."""
+        # We don't handle login here, redirect to our login page
+        return False
+
+    async def logout(self, request: Request) -> bool:
+        """SQLAdmin logout - handled by our logout route."""
+        return True
+
+    async def authenticate(self, request: Request) -> bool:
+        """Check if user is authenticated via Starlette middleware."""
+        # Starlette's AuthenticationMiddleware sets request.user
+        return request.user.is_authenticated
 
 
 class DetectionAdmin(ModelView, model=Detection):
@@ -70,12 +90,13 @@ def setup_sqladmin(app: FastAPI) -> Admin:
     container = Container()
     core_database = container.core_database()
 
-    # Create admin with custom configuration
+    # Create admin with custom configuration and authentication
     admin = Admin(
         app,
         core_database.async_engine,
         base_url="/admin/database",
         title="BirdNET-Pi Database Admin",
+        authentication_backend=AdminAuthBackend(secret_key="not-used-we-use-starlette-auth"),
     )
 
     # Register model views
