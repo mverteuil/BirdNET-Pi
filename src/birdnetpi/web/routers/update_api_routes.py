@@ -14,6 +14,7 @@ from birdnetpi.releases.registry_service import RegistryService
 from birdnetpi.system.git_operations import GitOperationsService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.system_utils import SystemUtils
+from birdnetpi.utils.auth import require_admin
 from birdnetpi.utils.cache import Cache
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.update import (
@@ -34,6 +35,7 @@ router = APIRouter(prefix="/update")
 
 
 @router.post("/check")
+@require_admin
 @inject
 async def check_for_updates(
     request: UpdateCheckRequest,
@@ -69,6 +71,7 @@ async def check_for_updates(
 
 
 @router.get("/status")
+@require_admin
 @inject
 async def get_update_status(
     cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
@@ -93,6 +96,7 @@ async def get_update_status(
 
 
 @router.post("/apply")
+@require_admin
 @inject
 async def apply_update(
     request: UpdateApplyRequest,
@@ -138,6 +142,7 @@ async def apply_update(
 
 
 @router.get("/result")
+@require_admin
 @inject
 async def get_update_result(
     cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
@@ -163,6 +168,7 @@ async def get_update_result(
 
 
 @router.delete("/cancel")
+@require_admin
 @inject
 async def cancel_update(
     cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
@@ -202,6 +208,7 @@ async def cancel_update(
 
 
 @router.post("/config/git")
+@require_admin
 @inject
 async def update_git_config(
     request: GitConfigRequest,
@@ -251,6 +258,7 @@ async def update_git_config(
 
 
 @router.get("/git/remotes")
+@require_admin
 @inject
 async def list_git_remotes(
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
@@ -285,6 +293,7 @@ async def list_git_remotes(
 
 
 @router.post("/git/remotes")
+@require_admin
 @inject
 async def add_git_remote(
     request: GitRemoteRequest,
@@ -336,6 +345,7 @@ async def add_git_remote(
 
 
 @router.put("/git/remotes/{remote_name}")
+@require_admin
 @inject
 async def update_git_remote(
     remote_name: str,
@@ -390,6 +400,7 @@ async def update_git_remote(
 
 
 @router.delete("/git/remotes/{remote_name}")
+@require_admin
 @inject
 async def delete_git_remote(
     remote_name: str,
@@ -432,6 +443,7 @@ async def delete_git_remote(
 
 
 @router.get("/git/branches/{remote_name}")
+@require_admin
 @inject
 async def list_git_branches(
     remote_name: str,
@@ -470,6 +482,7 @@ async def list_git_branches(
 
 
 @router.get("/region-pack/status")
+@require_admin
 @inject
 async def get_region_pack_status(
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
@@ -485,6 +498,7 @@ async def get_region_pack_status(
 
 
 @router.get("/region-pack/available")
+@require_admin
 @inject
 async def list_available_region_packs(
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
@@ -504,6 +518,7 @@ async def list_available_region_packs(
 
 
 @router.post("/region-pack/download")
+@require_admin
 @inject
 async def download_region_pack(
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],

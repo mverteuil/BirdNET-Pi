@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 
 from birdnetpi.system.log_reader import LogReaderService
+from birdnetpi.utils.auth import require_admin
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.logs import LOG_LEVELS, LogEntry
 from birdnetpi.web.models.services import LogsResponse
@@ -20,6 +21,7 @@ router = APIRouter()
 
 
 @router.get("/logs", response_model=LogsResponse)
+@require_admin
 @inject
 async def get_logs(
     log_reader: Annotated[LogReaderService, Depends(Provide[Container.log_reader])],
@@ -120,6 +122,7 @@ async def get_logs(
 
 
 @router.get("/logs/stream")
+@require_admin
 @inject
 async def stream_logs(
     log_reader: Annotated[LogReaderService, Depends(Provide[Container.log_reader])],
@@ -204,6 +207,7 @@ async def stream_logs(
 
 
 @router.get("/logs/levels")
+@require_admin
 async def get_log_levels() -> list[dict[str, Any]]:
     """Get available log levels with display information.
 

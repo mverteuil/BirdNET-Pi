@@ -13,6 +13,7 @@ from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.system.status import SystemInspector
 from birdnetpi.system.system_control import SERVICES_CONFIG, SystemControlService
 from birdnetpi.system.system_utils import SystemUtils
+from birdnetpi.utils.auth import require_admin
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.services import (
     ConfigReloadResponse,
@@ -38,6 +39,7 @@ router = APIRouter(prefix="/system")
 
 
 @router.get("/hardware/status", response_model=HardwareStatusResponse)
+@require_admin
 @inject
 async def get_hardware_status(
     detection_query_service: Annotated[
@@ -106,6 +108,7 @@ async def get_hardware_status(
 
 
 @router.get("/services/status", response_model=ServicesStatusResponse)
+@require_admin
 @inject
 async def get_services_status(
     system_control: Annotated[
@@ -156,6 +159,7 @@ async def get_services_status(
 
 
 @router.post("/services/reload-config", response_model=ConfigReloadResponse)
+@require_admin
 @inject
 async def reload_configuration(
     system_control: Annotated[
@@ -180,6 +184,7 @@ async def reload_configuration(
 
 
 @router.get("/services/info", response_model=SystemInfo)
+@require_admin
 @inject
 async def get_system_info(
     system_control: Annotated[
@@ -203,6 +208,7 @@ async def get_system_info(
 
 
 @router.post("/services/reboot", response_model=SystemRebootResponse)
+@require_admin
 @inject
 async def reboot_system(
     request: SystemRebootRequest,
@@ -250,6 +256,7 @@ async def reboot_system(
 
 
 @router.get("/services")
+@require_admin
 @inject
 async def get_services_list(
     system_control: Annotated[
@@ -285,6 +292,7 @@ async def get_services_list(
 
 
 @router.post("/services/{service_name}/{action}", response_model=ServiceActionResponse)
+@require_admin
 @inject
 async def perform_service_action(
     service_name: Annotated[str, Path(description="Name of the service")],
