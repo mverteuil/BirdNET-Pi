@@ -115,25 +115,27 @@ else
         fi
     fi
 
-    # DietPi/Armbian on Orange Pi: /boot/armbianEnv.txt
-    ARMBIAN_CONFIG="/boot/armbianEnv.txt"
-    if [ -f "$ARMBIAN_CONFIG" ]; then
-        echo "Detected Armbian/DietPi, checking $ARMBIAN_CONFIG..."
-        if grep -q "^overlays=.*spi-spidev" "$ARMBIAN_CONFIG"; then
-            SPI_ENABLED=true
-        else
-            echo "Enabling SPI in $ARMBIAN_CONFIG..."
-            # Check if overlays line exists
-            if grep -q "^overlays=" "$ARMBIAN_CONFIG"; then
-                # Add spi-spidev to existing overlays
-                sudo sed -i 's/^overlays=\(.*\)/overlays=\1 spi-spidev/' "$ARMBIAN_CONFIG"
+    # DietPi/Armbian on Orange Pi: /boot/armbianEnv.txt or /boot/dietpiEnv.txt
+    for ARMBIAN_CONFIG in "/boot/armbianEnv.txt" "/boot/dietpiEnv.txt"; do
+        if [ -f "$ARMBIAN_CONFIG" ]; then
+            echo "Detected Armbian/DietPi, checking $ARMBIAN_CONFIG..."
+            if grep -q "^overlays=.*spi-spidev" "$ARMBIAN_CONFIG"; then
+                SPI_ENABLED=true
             else
-                # Create new overlays line
-                echo "overlays=spi-spidev" | sudo tee -a "$ARMBIAN_CONFIG" > /dev/null
+                echo "Enabling SPI in $ARMBIAN_CONFIG..."
+                # Check if overlays line exists
+                if grep -q "^overlays=" "$ARMBIAN_CONFIG"; then
+                    # Add spi-spidev to existing overlays
+                    sudo sed -i 's/^overlays=\(.*\)/overlays=\1 spi-spidev/' "$ARMBIAN_CONFIG"
+                else
+                    # Create new overlays line
+                    echo "overlays=spi-spidev" | sudo tee -a "$ARMBIAN_CONFIG" > /dev/null
+                fi
+                SPI_ENABLED=true
             fi
-            SPI_ENABLED=true
+            break
         fi
-    fi
+    done
 
     if [ "$SPI_ENABLED" = true ]; then
         echo ""
