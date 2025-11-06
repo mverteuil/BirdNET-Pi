@@ -98,11 +98,8 @@ def create_app() -> FastAPI:
         cookie_name="birdnetpi_session",
     )
 
-    # 2. Session autoload (performance - only load for protected paths)
-    app.add_middleware(
-        SessionAutoloadMiddleware,
-        paths=["/admin", "/api"],
-    )
+    # 2. Session autoload (must load for all paths since auth checks all requests)
+    app.add_middleware(SessionAutoloadMiddleware)
 
     # 3. Setup redirect (before authentication)
     app.add_middleware(SetupRedirectMiddleware)
