@@ -5,7 +5,7 @@ import subprocess
 from typing import Annotated, Any
 
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.config.manager import ConfigManager
@@ -38,7 +38,8 @@ router = APIRouter(prefix="/update")
 @require_admin
 @inject
 async def check_for_updates(
-    request: UpdateCheckRequest,
+    request: Request,
+    update_request: UpdateCheckRequest,
     cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
 ) -> UpdateStatusResponse:
     """Check for available updates.
@@ -50,7 +51,7 @@ async def check_for_updates(
         # Queue the check request for the update daemon
         cache.set(
             "update:request",
-            {"action": "check", "force": request.force},
+            {"action": "check", "force": update_request.force},
             ttl=60,  # Request expires after 1 minute
         )
 
@@ -74,6 +75,7 @@ async def check_for_updates(
 @require_admin
 @inject
 async def get_update_status(
+    request: Request,
     cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
 ) -> UpdateStatusResponse:
     """Get current update status from cache.
@@ -99,7 +101,8 @@ async def get_update_status(
 @require_admin
 @inject
 async def apply_update(
-    request: UpdateApplyRequest,
+    request: Request,
+    update_request: UpdateApplyRequest,
     cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
 ) -> UpdateActionResponse:
     """Apply a system update.
@@ -123,14 +126,14 @@ async def apply_update(
             "update:request",
             {
                 "action": "apply",
-                "version": request.version,
-                "dry_run": request.dry_run,
+                "version": update_request.version,
+                "dry_run": update_request.dry_run,
             },
             ttl=300,  # Request expires after 5 minutes
         )
 
         # Construct status message (not SQL)
-        status_message = f"Update to version {request.version} has been queued"  # nosemgrep
+        status_message = f"Update to version {update_request.version} has been queued"  # nosemgrep
         return UpdateActionResponse(
             success=True,
             message=status_message,
@@ -145,6 +148,7 @@ async def apply_update(
 @require_admin
 @inject
 async def get_update_result(
+    request: Request,
     cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
 ) -> dict[str, Any]:
     """Get the result of the last update operation.
@@ -171,6 +175,7 @@ async def get_update_result(
 @require_admin
 @inject
 async def cancel_update(
+    request: Request,
     cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
 ) -> UpdateActionResponse:
     """Cancel a pending update request.
@@ -211,14 +216,16 @@ async def cancel_update(
 @require_admin
 @inject
 async def update_git_config(
-    request: GitConfigRequest,
+    request: Request,
+    git_config: GitConfigRequest,
     config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
 ) -> UpdateActionResponse:
     """Update git configuration for system updates.
 
     Args:
-        request: Git configuration settings
+        request: FastAPI request object (required by authentication decorator)
+        git_config: Git configuration settings
         config: Current BirdNET configuration
         path_resolver: Path resolver for configuration paths
 
@@ -227,8 +234,8 @@ async def update_git_config(
     """
     try:
         # Update git settings on the config object
-        config.updates.git_remote = request.git_remote
-        config.updates.git_branch = request.git_branch
+        config.updates.git_remote = git_config.git_remote
+        config.updates.git_branch = git_config.git_branch
 
         # Save configuration using ConfigManager
         config_manager = ConfigManager(path_resolver)
@@ -236,13 +243,13 @@ async def update_git_config(
 
         logger.info(
             "Updated git configuration: remote=%s, branch=%s",
-            request.git_remote,
-            request.git_branch,
+            git_config.git_remote,
+            git_config.git_branch,
         )
 
         return UpdateActionResponse(
             success=True,
-            message=f"Git configuration updated: {request.git_remote}/{request.git_branch}",
+            message=f"Git configuration updated: {git_config.git_remote}/{git_config.git_branch}",
         )
 
     except ValueError as e:
@@ -261,6 +268,7 @@ async def update_git_config(
 @require_admin
 @inject
 async def list_git_remotes(
+    request: Request,
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
 ) -> GitRemoteListResponse:
     """List all configured git remotes.
@@ -296,13 +304,15 @@ async def list_git_remotes(
 @require_admin
 @inject
 async def add_git_remote(
-    request: GitRemoteRequest,
+    request: Request,
+    remote_request: GitRemoteRequest,
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
 ) -> UpdateActionResponse:
     """Add a new git remote.
 
     Args:
-        request: Remote name and URL
+        request: FastAPI request object (required by authentication decorator)
+        remote_request: Remote name and URL
         path_resolver: Path resolver for repository location
 
     Returns:
@@ -318,11 +328,11 @@ async def add_git_remote(
             )
 
         git_service = GitOperationsService(path_resolver)
-        git_service.add_remote(request.name, request.url)
+        git_service.add_remote(remote_request.name, remote_request.url)
 
         return UpdateActionResponse(
             success=True,
-            message=f"Git remote '{request.name}' added successfully",
+            message=f"Git remote '{remote_request.name}' added successfully",
         )
     except subprocess.CalledProcessError as e:
         # Exit code 128 means not a git repository
@@ -348,15 +358,17 @@ async def add_git_remote(
 @require_admin
 @inject
 async def update_git_remote(
+    request: Request,
     remote_name: str,
-    request: GitRemoteRequest,
+    remote_request: GitRemoteRequest,
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
 ) -> UpdateActionResponse:
     """Update an existing git remote URL.
 
     Args:
+        request: FastAPI request object (required by authentication decorator)
         remote_name: Name of remote to update
-        request: New remote configuration
+        remote_request: New remote configuration
         path_resolver: Path resolver for repository location
 
     Returns:
@@ -374,7 +386,7 @@ async def update_git_remote(
         git_service = GitOperationsService(path_resolver)
 
         # If name is changing, delete old and add new
-        if remote_name != request.name:
+        if remote_name != remote_request.name:
             # Can't rename origin
             if remote_name == "origin":
                 return UpdateActionResponse(
@@ -382,14 +394,14 @@ async def update_git_remote(
                     error="Cannot rename 'origin' remote. Edit URL only.",
                 )
             git_service.delete_remote(remote_name)
-            git_service.add_remote(request.name, request.url)
+            git_service.add_remote(remote_request.name, remote_request.url)
         else:
             # Just update URL
-            git_service.update_remote(request.name, request.url)
+            git_service.update_remote(remote_request.name, remote_request.url)
 
         return UpdateActionResponse(
             success=True,
-            message=f"Git remote '{request.name}' updated successfully",
+            message=f"Git remote '{remote_request.name}' updated successfully",
         )
     except ValueError as e:
         logger.warning("Invalid git remote update: %s", e)
@@ -403,12 +415,14 @@ async def update_git_remote(
 @require_admin
 @inject
 async def delete_git_remote(
+    request: Request,
     remote_name: str,
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
 ) -> UpdateActionResponse:
     """Delete a git remote.
 
     Args:
+        request: FastAPI request object (required by authentication decorator)
         remote_name: Name of remote to delete
         path_resolver: Path resolver for repository location
 
@@ -446,12 +460,14 @@ async def delete_git_remote(
 @require_admin
 @inject
 async def list_git_branches(
+    request: Request,
     remote_name: str,
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
 ) -> GitBranchListResponse:
     """List branches and tags for a git remote.
 
     Args:
+        request: FastAPI request object (required by authentication decorator)
         remote_name: Name of remote to query
         path_resolver: Path resolver for repository location
 
@@ -485,6 +501,7 @@ async def list_git_branches(
 @require_admin
 @inject
 async def get_region_pack_status(
+    request: Request,
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
     config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
 ) -> dict[str, Any]:
@@ -501,6 +518,7 @@ async def get_region_pack_status(
 @require_admin
 @inject
 async def list_available_region_packs(
+    request: Request,
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
     config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
 ) -> dict[str, Any]:
@@ -521,6 +539,7 @@ async def list_available_region_packs(
 @require_admin
 @inject
 async def download_region_pack(
+    request: Request,
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
     config: Annotated[BirdNETConfig, Depends(Provide[Container.config])],
     cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
