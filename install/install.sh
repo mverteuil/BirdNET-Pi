@@ -119,7 +119,17 @@ else
     for ARMBIAN_CONFIG in "/boot/armbianEnv.txt" "/boot/dietpiEnv.txt"; do
         if [ -f "$ARMBIAN_CONFIG" ]; then
             echo "Detected Armbian/DietPi, checking $ARMBIAN_CONFIG..."
-            if grep -q "^overlays=.*spi-spidev" "$ARMBIAN_CONFIG"; then
+
+            # Check for any SPI overlay (platform-specific like rk3588-spi* or generic spi-spidev)
+            if grep -q "^overlays=.*spi" "$ARMBIAN_CONFIG"; then
+                echo "SPI overlay found in $ARMBIAN_CONFIG"
+
+                # Verify param_spidev_spi_bus parameter exists
+                if ! grep -q "^param_spidev_spi_bus=" "$ARMBIAN_CONFIG"; then
+                    echo "Adding param_spidev_spi_bus=0 to $ARMBIAN_CONFIG..."
+                    echo "param_spidev_spi_bus=0" | sudo tee -a "$ARMBIAN_CONFIG" > /dev/null
+                fi
+
                 SPI_ENABLED=true
             else
                 echo "Enabling SPI in $ARMBIAN_CONFIG..."
@@ -131,6 +141,10 @@ else
                     # Create new overlays line
                     echo "overlays=spi-spidev" | sudo tee -a "$ARMBIAN_CONFIG" > /dev/null
                 fi
+
+                # Add param_spidev_spi_bus parameter
+                echo "param_spidev_spi_bus=0" | sudo tee -a "$ARMBIAN_CONFIG" > /dev/null
+
                 SPI_ENABLED=true
             fi
             break
