@@ -89,19 +89,53 @@ echo ""
 
 # Enable SPI interface early (required for e-paper HAT detection)
 # Must reboot immediately for SPI devices to appear at /dev/spidev*
-BOOT_CONFIG="/boot/firmware/config.txt"
-if [ -f "$BOOT_CONFIG" ]; then
-    echo "Checking SPI interface..."
-    if grep -q "^dtparam=spi=on" "$BOOT_CONFIG"; then
-        echo "SPI already enabled"
-    else
-        echo "Enabling SPI interface..."
-        # Uncomment if commented, or add if missing
-        if grep -q "^#dtparam=spi=on" "$BOOT_CONFIG"; then
-            sudo sed -i 's/^#dtparam=spi=on/dtparam=spi=on/' "$BOOT_CONFIG"
+echo "Checking SPI interface..."
+
+# Check if SPI devices already exist
+if ls /dev/spidev* &>/dev/null; then
+    echo "SPI already enabled (devices found)"
+else
+    SPI_ENABLED=false
+
+    # Raspberry Pi OS: /boot/firmware/config.txt
+    BOOT_CONFIG="/boot/firmware/config.txt"
+    if [ -f "$BOOT_CONFIG" ]; then
+        echo "Detected Raspberry Pi OS, checking $BOOT_CONFIG..."
+        if grep -q "^dtparam=spi=on" "$BOOT_CONFIG"; then
+            SPI_ENABLED=true
         else
-            echo "dtparam=spi=on" | sudo tee -a "$BOOT_CONFIG" > /dev/null
+            echo "Enabling SPI in $BOOT_CONFIG..."
+            # Uncomment if commented, or add if missing
+            if grep -q "^#dtparam=spi=on" "$BOOT_CONFIG"; then
+                sudo sed -i 's/^#dtparam=spi=on/dtparam=spi=on/' "$BOOT_CONFIG"
+            else
+                echo "dtparam=spi=on" | sudo tee -a "$BOOT_CONFIG" > /dev/null
+            fi
+            SPI_ENABLED=true
         fi
+    fi
+
+    # DietPi/Armbian on Orange Pi: /boot/armbianEnv.txt
+    ARMBIAN_CONFIG="/boot/armbianEnv.txt"
+    if [ -f "$ARMBIAN_CONFIG" ]; then
+        echo "Detected Armbian/DietPi, checking $ARMBIAN_CONFIG..."
+        if grep -q "^overlays=.*spi-spidev" "$ARMBIAN_CONFIG"; then
+            SPI_ENABLED=true
+        else
+            echo "Enabling SPI in $ARMBIAN_CONFIG..."
+            # Check if overlays line exists
+            if grep -q "^overlays=" "$ARMBIAN_CONFIG"; then
+                # Add spi-spidev to existing overlays
+                sudo sed -i 's/^overlays=\(.*\)/overlays=\1 spi-spidev/' "$ARMBIAN_CONFIG"
+            else
+                # Create new overlays line
+                echo "overlays=spi-spidev" | sudo tee -a "$ARMBIAN_CONFIG" > /dev/null
+            fi
+            SPI_ENABLED=true
+        fi
+    fi
+
+    if [ "$SPI_ENABLED" = true ]; then
         echo ""
         echo "========================================"
         echo "SPI interface enabled!"
@@ -116,6 +150,9 @@ if [ -f "$BOOT_CONFIG" ]; then
         read -r -p "Press Enter to reboot now, or Ctrl+C to cancel..."
         sudo reboot
         exit 0
+    else
+        echo "WARNING: Could not detect system type to enable SPI"
+        echo "SPI may need to be enabled manually for e-paper HAT support"
     fi
 fi
 
