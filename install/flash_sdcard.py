@@ -1424,8 +1424,9 @@ PRESET_USER_SHELL="bash"
 def download_waveshare_library(boot_mount: Path) -> None:
     """Download Waveshare ePaper library to boot partition for offline installation.
 
-    Uses sparse-checkout to download only the Python subdirectory (~6MB) instead of
-    the full repository which includes 20k+ STM32 firmware files.
+    Uses sparse-checkout to download only the Python subdirectory (~6MB transfer),
+    then copies only essential files (lib/ and setup.py) to save boot partition space.
+    Skips pic/ (example images) and examples/ (test scripts) which aren't needed.
 
     Args:
         boot_mount: Path to the mounted boot partition where library should be copied
@@ -1438,10 +1439,10 @@ def download_waveshare_library(boot_mount: Path) -> None:
     if temp_waveshare.exists():
         shutil.rmtree(temp_waveshare)
 
-    # Clone only the Python subdirectory using sparse-checkout (~45MB vs full repo)
-    # This is small enough to fit on the boot partition
+    # Clone only the Python subdirectory using sparse-checkout
+    # Then copy only essential files (lib/ and setup.py) to save boot partition space
     with console.status(
-        "[cyan]Downloading Waveshare ePaper library (Python subdirectory, ~6MB transfer)...[/cyan]"
+        "[cyan]Downloading Waveshare ePaper library (essential files only)...[/cyan]"
     ):
         # Initialize sparse checkout
         subprocess.run(
@@ -1482,12 +1483,29 @@ def download_waveshare_library(boot_mount: Path) -> None:
             check=True,
         )
 
-        # Copy only the Python subdirectory to boot partition
+        # Copy only essential files (lib/ and setup.py) to boot partition
+        # Skip pic/ (example images) and examples/ (test scripts) to save space
         python_dir = temp_waveshare / "RaspberryPi_JetsonNano" / "python"
-        subprocess.run(
-            ["sudo", "cp", "-r", str(python_dir), str(waveshare_dest)],
-            check=True,
-        )
+
+        # Create destination directory
+        subprocess.run(["sudo", "mkdir", "-p", str(waveshare_dest)], check=True)
+
+        # Copy lib directory (the actual library code)
+        lib_dir = python_dir / "lib"
+        if lib_dir.exists():
+            subprocess.run(
+                ["sudo", "cp", "-r", str(lib_dir), str(waveshare_dest / "lib")],
+                check=True,
+            )
+
+        # Copy setup.py (needed for pip installation)
+        setup_file = python_dir / "setup.py"
+        if setup_file.exists():
+            subprocess.run(
+                ["sudo", "cp", str(setup_file), str(waveshare_dest / "setup.py")],
+                check=True,
+            )
+
         shutil.rmtree(temp_waveshare)
     console.print("[green]✓ Waveshare ePaper library downloaded to boot partition[/green]")
 
