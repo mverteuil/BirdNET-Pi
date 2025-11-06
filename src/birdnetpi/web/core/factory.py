@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from starlette.middleware.authentication import AuthenticationMiddleware
-from starsessions import SessionAutoloadMiddleware, SessionMiddleware
+from starsessions import SessionMiddleware
 from starsessions.stores.redis import RedisStore
 
 from birdnetpi.config.manager import ConfigManager
@@ -82,7 +82,7 @@ def create_app() -> FastAPI:
     )
 
     # Authentication and session middleware (MUST come before other middleware)
-    # 1. Session middleware (creates request.session)
+    # 1. Session middleware (creates request.session, lazy-loaded on first access)
     redis_client = container.redis_client()
     session_store = RedisStore(
         connection=redis_client,
@@ -98,13 +98,10 @@ def create_app() -> FastAPI:
         cookie_name="birdnetpi_session",
     )
 
-    # 2. Session autoload (must load for all paths since auth checks all requests)
-    app.add_middleware(SessionAutoloadMiddleware)
-
-    # 3. Setup redirect (before authentication)
+    # 2. Setup redirect (before authentication)
     app.add_middleware(SetupRedirectMiddleware)
 
-    # 4. Authentication (sets request.user based on session)
+    # 3. Authentication (sets request.user based on session)
     app.add_middleware(
         AuthenticationMiddleware,
         backend=SessionAuthBackend(),

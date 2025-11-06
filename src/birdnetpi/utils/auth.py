@@ -15,7 +15,6 @@ from starlette.authentication import (
     requires,
 )
 from starlette.requests import HTTPConnection
-from starsessions import load_session
 
 from birdnetpi.system.path_resolver import PathResolver
 
@@ -117,8 +116,8 @@ class SessionAuthBackend(AuthenticationBackend):
     async def authenticate(self, conn: HTTPConnection) -> tuple[AuthCredentials, SimpleUser] | None:
         """Authenticate request based on session data.
 
-        Called by AuthenticationMiddleware on every request. Loads session
-        from Redis and checks for username.
+        Called by AuthenticationMiddleware on every request. Session is
+        automatically available via SessionMiddleware (lazy-loaded on first access).
 
         Args:
             conn: HTTP connection (request or WebSocket)
@@ -127,10 +126,8 @@ class SessionAuthBackend(AuthenticationBackend):
             Tuple of (AuthCredentials, SimpleUser) if authenticated,
             None if not authenticated
         """
-        # Load session data from Redis
-        await load_session(conn)
-
-        # Check for username in session
+        # Session is automatically available from SessionMiddleware
+        # No need to call load_session() - it's lazy-loaded on first access
         username = conn.session.get("username")
         if not username:
             return None  # Not authenticated
