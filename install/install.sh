@@ -309,10 +309,12 @@ done
 # Give DNS resolver a moment to stabilize
 sleep 2
 
-# Create cache directory for uv in tmpfs (speeds up downloads and retries)
-# Using /dev/shm avoids writing cache to SD card
-sudo mkdir -p /dev/shm/uv-cache
-sudo chown birdnetpi:birdnetpi /dev/shm/uv-cache
+# Create cache directory for uv in tmpfs
+# Using /tmp instead of /dev/shm as /dev/shm is often too small (512MB default)
+# /tmp is larger and still avoids excessive SD card writes on most systems
+UV_CACHE_DIR="/tmp/uv-cache"
+sudo mkdir -p "$UV_CACHE_DIR"
+sudo chown birdnetpi:birdnetpi "$UV_CACHE_DIR"
 
 # If Waveshare library was downloaded to boot partition, extract/copy to writable location
 # Check multiple possible locations as boot partition mount varies by system
@@ -373,7 +375,7 @@ fi
 # Install Python dependencies with retry mechanism (for network issues)
 echo "Installing Python dependencies..."
 cd "$INSTALL_DIR"
-UV_CMD="sudo -u birdnetpi UV_CACHE_DIR=/dev/shm/uv-cache UV_HTTP_TIMEOUT=300 UV_EXTRA_INDEX_URL=https://www.piwheels.org/simple /opt/uv/uv sync --locked --no-dev"
+UV_CMD="sudo -u birdnetpi UV_CACHE_DIR=$UV_CACHE_DIR UV_HTTP_TIMEOUT=300 UV_EXTRA_INDEX_URL=https://www.piwheels.org/simple /opt/uv/uv sync --locked --no-dev"
 if [ -n "$EPAPER_EXTRAS" ]; then
     UV_CMD="$UV_CMD $EPAPER_EXTRAS"
 fi
