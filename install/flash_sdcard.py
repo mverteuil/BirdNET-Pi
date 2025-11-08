@@ -1425,25 +1425,30 @@ def download_waveshare_library(boot_mount: Path) -> None:
     """Download Waveshare ePaper library to boot partition for offline installation.
 
     Uses sparse-checkout to download only the Python subdirectory (~6MB transfer),
-    then copies only essential files (lib/ and setup.py) to save boot partition space.
+    then creates a compressed tarball with only essential files (lib/ and setup.py).
     Skips pic/ (example images) and examples/ (test scripts) which aren't needed.
 
+    The compressed tarball saves significant boot partition space compared to the
+    uncompressed directory structure (~1-2MB vs ~5-6MB).
+
     Args:
-        boot_mount: Path to the mounted boot partition where library should be copied
+        boot_mount: Path to the mounted boot partition where tarball should be copied
     """
     console.print()
-    waveshare_dest = boot_mount / "waveshare-epd"
+    waveshare_tarball = boot_mount / "waveshare-epd.tar.gz"
     temp_waveshare = Path("/tmp/waveshare_clone")
+    temp_staging = Path("/tmp/waveshare_staging")
 
-    # Remove old temp clone if it exists
+    # Remove old temp directories if they exist
+    # Use rm -rf because git clone may create files with restricted permissions
     if temp_waveshare.exists():
-        shutil.rmtree(temp_waveshare)
+        subprocess.run(["rm", "-rf", str(temp_waveshare)], check=True)
+    if temp_staging.exists():
+        subprocess.run(["rm", "-rf", str(temp_staging)], check=True)
 
     # Clone only the Python subdirectory using sparse-checkout
-    # Then copy only essential files (lib/ and setup.py) to save boot partition space
-    with console.status(
-        "[cyan]Downloading Waveshare ePaper library (essential files only)...[/cyan]"
-    ):
+    # Then compress only essential files to save boot partition space
+    with console.status("[cyan]Downloading and compressing Waveshare ePaper library...[/cyan]"):
         # Initialize sparse checkout
         subprocess.run(
             [
@@ -1483,31 +1488,47 @@ def download_waveshare_library(boot_mount: Path) -> None:
             check=True,
         )
 
-        # Copy only essential files (lib/ and setup.py) to boot partition
+        # Stage only essential files for compression
         # Skip pic/ (example images) and examples/ (test scripts) to save space
         python_dir = temp_waveshare / "RaspberryPi_JetsonNano" / "python"
-
-        # Create destination directory
-        subprocess.run(["sudo", "mkdir", "-p", str(waveshare_dest)], check=True)
+        temp_staging.mkdir(parents=True)
+        staging_dir = temp_staging / "waveshare-epd"
+        staging_dir.mkdir()
 
         # Copy lib directory (the actual library code)
         lib_dir = python_dir / "lib"
         if lib_dir.exists():
-            subprocess.run(
-                ["sudo", "cp", "-r", str(lib_dir), str(waveshare_dest / "lib")],
-                check=True,
-            )
+            shutil.copytree(lib_dir, staging_dir / "lib")
 
         # Copy setup.py (needed for pip installation)
         setup_file = python_dir / "setup.py"
         if setup_file.exists():
-            subprocess.run(
-                ["sudo", "cp", str(setup_file), str(waveshare_dest / "setup.py")],
-                check=True,
-            )
+            shutil.copy2(setup_file, staging_dir / "setup.py")
 
-        shutil.rmtree(temp_waveshare)
-    console.print("[green]✓ Waveshare ePaper library downloaded to boot partition[/green]")
+        # Create compressed tarball
+        subprocess.run(
+            [
+                "tar",
+                "-czf",
+                str(waveshare_tarball),
+                "-C",
+                str(temp_staging),
+                "waveshare-epd",
+            ],
+            check=True,
+        )
+
+        # Get compressed size for informational purposes
+        tarball_size_mb = waveshare_tarball.stat().st_size / (1024 * 1024)
+
+        # Clean up temp directories (use rm -rf for git clones with restricted permissions)
+        subprocess.run(["rm", "-rf", str(temp_waveshare)], check=True)
+        subprocess.run(["rm", "-rf", str(temp_staging)], check=True)
+
+    console.print(
+        f"[green]✓ Waveshare ePaper library compressed to boot partition "
+        f"({tarball_size_mb:.1f}MB)[/green]"
+    )
 
 
 def configure_dietpi_boot(  # noqa: C901
@@ -1964,6 +1985,26 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                                 console.print(
                                     "[green]✓ birdnetpi_config.json copied to "
                                     "rootfs:/root/birdnetpi_config.json[/green]"
+                                )
+
+                            # Also copy Waveshare tarball if it was created
+                            waveshare_tarball = boot_mount / "waveshare-epd.tar.gz"
+                            if waveshare_tarball.exists():
+                                waveshare_dest = root_dir / "waveshare-epd.tar.gz"
+                                subprocess.run(
+                                    [
+                                        "sudo",
+                                        "dd",
+                                        f"if={waveshare_tarball}",
+                                        f"of={waveshare_dest}",
+                                        "bs=1m",
+                                    ],
+                                    check=True,
+                                    capture_output=True,
+                                )
+                                console.print(
+                                    "[green]✓ waveshare-epd.tar.gz copied to "
+                                    "rootfs:/root/waveshare-epd.tar.gz[/green]"
                                 )
 
                             console.print(

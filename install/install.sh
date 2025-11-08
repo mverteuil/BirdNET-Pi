@@ -314,27 +314,60 @@ sleep 2
 sudo mkdir -p /dev/shm/uv-cache
 sudo chown birdnetpi:birdnetpi /dev/shm/uv-cache
 
-# If Waveshare library was downloaded to boot partition, copy to writable location
-WAVESHARE_BOOT_PATH="/boot/firmware/waveshare-epd"
+# If Waveshare library was downloaded to boot partition, extract/copy to writable location
+# Check multiple possible locations as boot partition mount varies by system
+WAVESHARE_TARBALL_LOCATIONS=(
+    "/boot/firmware/waveshare-epd.tar.gz"
+    "/boot/waveshare-epd.tar.gz"
+    "/root/waveshare-epd.tar.gz"  # Fallback location from rootfs copy
+)
+WAVESHARE_DIR_LOCATIONS=(
+    "/boot/firmware/waveshare-epd"
+    "/boot/waveshare-epd"
+    "/root/waveshare-epd"
+)
 WAVESHARE_LIB_PATH="/opt/birdnetpi/waveshare-epd"
-if [ -d "$WAVESHARE_BOOT_PATH" ] && [ -n "$EPAPER_EXTRAS" ]; then
-    echo "Using pre-downloaded Waveshare library from boot partition..."
+WAVESHARE_FOUND=""
 
-    # Copy from boot partition (FAT32, root-owned) to writable location
-    # This is needed because uv needs write access to build the package
-    sudo cp -r "$WAVESHARE_BOOT_PATH" "$WAVESHARE_LIB_PATH"
-    sudo chown -R birdnetpi:birdnetpi "$WAVESHARE_LIB_PATH"
+if [ -n "$EPAPER_EXTRAS" ]; then
+    # Try to find tarball first (preferred)
+    for tarball_path in "${WAVESHARE_TARBALL_LOCATIONS[@]}"; do
+        if [ -f "$tarball_path" ]; then
+            echo "Extracting pre-downloaded Waveshare library from $tarball_path..."
+            sudo mkdir -p /opt/birdnetpi
+            sudo tar -xzf "$tarball_path" -C /opt/birdnetpi
+            sudo chown -R birdnetpi:birdnetpi "$WAVESHARE_LIB_PATH"
+            WAVESHARE_FOUND="yes"
+            break
+        fi
+    done
 
-    cd "$INSTALL_DIR"
+    # Fall back to uncompressed directory (backward compatibility)
+    if [ -z "$WAVESHARE_FOUND" ]; then
+        for dir_path in "${WAVESHARE_DIR_LOCATIONS[@]}"; do
+            if [ -d "$dir_path" ]; then
+                echo "Copying pre-downloaded Waveshare library from $dir_path..."
+                sudo cp -r "$dir_path" "$WAVESHARE_LIB_PATH"
+                sudo chown -R birdnetpi:birdnetpi "$WAVESHARE_LIB_PATH"
+                WAVESHARE_FOUND="yes"
+                break
+            fi
+        done
+    fi
 
-    # Patch pyproject.toml to use the copied local path instead of git URL
-    sudo -u birdnetpi sed -i 's|waveshare-epd = {git = "https://github.com/waveshareteam/e-Paper.git", subdirectory = "RaspberryPi_JetsonNano/python"}|waveshare-epd = {path = "/opt/birdnetpi/waveshare-epd"}|' pyproject.toml
+    if [ -n "$WAVESHARE_FOUND" ]; then
+        cd "$INSTALL_DIR"
 
-    # Regenerate lockfile since we changed the source
-    echo "Regenerating lockfile for local Waveshare library..."
-    sudo -u birdnetpi UV_CACHE_DIR=/dev/shm/uv-cache UV_HTTP_TIMEOUT=300 /opt/uv/uv lock
+        # Patch pyproject.toml to use the local path instead of git URL
+        sudo -u birdnetpi sed -i 's|waveshare-epd = {git = "https://github.com/waveshareteam/e-Paper.git", subdirectory = "RaspberryPi_JetsonNano/python"}|waveshare-epd = {path = "/opt/birdnetpi/waveshare-epd"}|' pyproject.toml
 
-    echo "✓ Configured to use local Waveshare library"
+        # IMPORTANT: Do NOT run 'uv lock' - it will try to access git even with patched pyproject.toml
+        # The lockfile will be regenerated automatically during 'uv sync' with the local path
+
+        echo "✓ Configured to use local Waveshare library"
+    else
+        echo "Note: Pre-downloaded Waveshare library not found, will download from GitHub"
+    fi
 fi
 
 # Install Python dependencies with retry mechanism (for network issues)
