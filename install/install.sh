@@ -194,7 +194,8 @@ fi
 # Bootstrap the environment
 echo "Installing prerequisites..."
 sudo apt-get update
-sudo apt-get install -y git python3.11 python3.11-venv python3-pip build-essential python3.11-dev
+# Minimal build dependencies (no perl, make, or other build-essential bloat)
+sudo apt-get install -y git python3.11 python3.11-venv python3-pip gcc libc6-dev python3.11-dev libportaudio2 libsndfile1
 
 # Wait for DNS to settle after apt operations
 sleep 2
@@ -361,10 +362,24 @@ if [ -n "$EPAPER_EXTRAS" ]; then
         cd "$INSTALL_DIR"
 
         # Patch pyproject.toml to use the local path instead of git URL
-        sudo -u birdnetpi sed -i 's|waveshare-epd = {git = "https://github.com/waveshareteam/e-Paper.git", subdirectory = "RaspberryPi_JetsonNano/python"}|waveshare-epd = {path = "/opt/birdnetpi/waveshare-epd"}|' pyproject.toml
+        # Use a temp script to avoid quote escaping issues with su -c wrapper
+        cat > /tmp/patch_pyproject.sh << 'SEDEOF'
+#!/bin/sh
+cd /opt/birdnetpi
+sed -i 's|waveshare-epd = {git = "https://github.com/waveshareteam/e-Paper.git", subdirectory = "RaspberryPi_JetsonNano/python"}|waveshare-epd = {path = "/opt/birdnetpi/waveshare-epd"}|' pyproject.toml
+SEDEOF
+        chmod +x /tmp/patch_pyproject.sh
+        sudo -u birdnetpi /tmp/patch_pyproject.sh
+        rm -f /tmp/patch_pyproject.sh
 
-        # IMPORTANT: Do NOT run 'uv lock' - it will try to access git even with patched pyproject.toml
-        # The lockfile will be regenerated automatically during 'uv sync' with the local path
+        # Regenerate lockfile with the local path (respects the patched pyproject.toml)
+        sudo -u birdnetpi UV_CACHE_DIR="$UV_CACHE_DIR" /opt/uv/uv lock
+
+        # Patch Waveshare library to support Orange Pi (uses same GPIO pinout as Raspberry Pi)
+        if [ -f "$WAVESHARE_LIB_PATH/lib/waveshare_epd/epdconfig.py" ]; then
+            echo "Patching Waveshare library for Orange Pi support..."
+            python3 "$INSTALL_DIR/install/patch_waveshare_orangepi.py" "$WAVESHARE_LIB_PATH/lib/waveshare_epd/epdconfig.py"
+        fi
 
         echo "✓ Configured to use local Waveshare library"
     else
