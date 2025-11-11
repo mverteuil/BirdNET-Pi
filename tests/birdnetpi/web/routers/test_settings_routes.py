@@ -17,6 +17,7 @@ from birdnetpi.config import BirdNETConfig, ConfigManager
 from birdnetpi.utils.auth import AdminUser, AuthService, pwd_context
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
+from tests.auth_helpers import authenticate_sync_client
 
 
 @pytest.fixture
@@ -140,13 +141,7 @@ def client_with_mocks(app_with_settings_routes):
     """Create authenticated test client with mocked dependencies."""
     app, config_manager, audio_service = app_with_settings_routes
     with TestClient(app) as test_client:
-        # Log in to get session cookie
-        login_response = test_client.post(
-            "/admin/login",
-            data={"username": "admin", "password": "testpassword"},
-            follow_redirects=False,
-        )
-        assert login_response.status_code == 303
+        authenticate_sync_client(test_client)
         yield (test_client, config_manager, audio_service)
 
 

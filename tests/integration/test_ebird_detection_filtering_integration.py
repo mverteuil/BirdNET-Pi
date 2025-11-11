@@ -21,6 +21,7 @@ from birdnetpi.utils.auth import AdminUser, AuthService, pwd_context
 from birdnetpi.utils.cache.cache import Cache
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
+from tests.auth_helpers import authenticate_async_client
 
 
 def create_detection_payload(**overrides):
@@ -174,13 +175,7 @@ async def authenticated_client(app_with_ebird_filtering):
     async with AsyncClient(
         transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
     ) as client:
-        # Log in to get session cookie
-        login_response = await client.post(
-            "/admin/login",
-            data={"username": "admin", "password": "testpassword"},
-            follow_redirects=False,
-        )
-        assert login_response.status_code == 303
+        await authenticate_async_client(client)
         yield client
 
 

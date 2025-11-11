@@ -8,6 +8,8 @@ import pytest
 from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
 
+from tests.auth_helpers import authenticate_sync_client
+
 
 @pytest.fixture
 def client(app_with_temp_data):
@@ -25,14 +27,7 @@ def client(app_with_temp_data):
     app_with_temp_data.mount("/static", StaticFiles(directory=static_dir), name="static")
 
     test_client = TestClient(app_with_temp_data)
-
-    # Log in to get session cookie
-    login_response = test_client.post(
-        "/admin/login",
-        data={"username": "admin", "password": "testpassword"},
-        follow_redirects=False,
-    )
-    assert login_response.status_code == 303
+    authenticate_sync_client(test_client)
 
     return test_client
 
