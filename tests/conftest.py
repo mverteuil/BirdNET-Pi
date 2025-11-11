@@ -17,6 +17,7 @@ from sqlalchemy.engine.result import MappingResult, ScalarResult
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
+from starlette.testclient import TestClient
 
 from birdnetpi.config import ConfigManager
 from birdnetpi.config.models import BirdNETConfig, UpdateConfig
@@ -29,6 +30,7 @@ from birdnetpi.releases.asset_manifest import AssetManifest
 from birdnetpi.species.display import SpeciesDisplayService
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
+from birdnetpi.utils.auth import AdminUser, AuthService, pwd_context
 from birdnetpi.utils.cache import Cache
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
@@ -197,6 +199,21 @@ async def app_with_temp_data(path_resolver):
     )
     Container.cache_service.override(providers.Singleton(lambda: mock_cache))
 
+    # Mock the auth service to enable authentication in tests
+    # Create a test admin user with hashed password "testpassword"
+    mock_auth_service = MagicMock(spec=AuthService)
+    mock_auth_service.admin_exists.return_value = True
+    mock_admin = AdminUser(
+        username="admin",
+        password_hash=pwd_context.hash("testpassword"),
+        created_at=datetime.now(UTC),
+    )
+    mock_auth_service.load_admin_user.return_value = mock_admin
+    mock_auth_service.verify_password.side_effect = lambda plain, hashed: pwd_context.verify(
+        plain, hashed
+    )
+    Container.auth_service.override(providers.Singleton(lambda: mock_auth_service))
+
     # Reset dependent services to ensure they use the overridden path_resolver
     # These are Singletons that depend on path_resolver and must be recreated
     # with the test path_resolver to prevent permission errors on /var/lib/birdnetpi
@@ -229,6 +246,36 @@ async def app_with_temp_data(path_resolver):
     Container.config.reset_override()
     Container.core_database.reset_override()
     Container.cache_service.reset_override()
+    Container.auth_service.reset_override()
+
+
+@pytest.fixture
+def authenticated_client(app_with_temp_data):
+    """Create an authenticated test client for routes that require authentication.
+
+    This fixture:
+    1. Uses the app_with_temp_data fixture (which mocks AuthService)
+    2. Creates a TestClient
+    3. Logs in with test credentials (username: admin, password: testpassword)
+    4. Returns the authenticated client with session cookie
+
+    Use this fixture for tests that access admin-protected routes.
+
+    Example:
+        def test_protected_route(authenticated_client):
+            response = authenticated_client.get("/admin/settings")
+            assert response.status_code == 200
+    """
+    with TestClient(app_with_temp_data) as client:
+        # Log in to get session cookie
+        login_response = client.post(
+            "/admin/login",
+            data={"username": "admin", "password": "testpassword"},
+            follow_redirects=False,
+        )
+        assert login_response.status_code == 303  # Successful login redirects
+
+        yield client
 
 
 @pytest.fixture

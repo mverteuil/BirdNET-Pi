@@ -17,6 +17,7 @@ from birdnetpi.config.manager import ConfigManager
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.ebird import EBirdRegionService
 from birdnetpi.releases.registry_service import BoundingBox, RegionPackInfo, RegistryService
+from birdnetpi.utils.auth import AdminUser, AuthService, pwd_context
 from birdnetpi.utils.cache.cache import Cache
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
@@ -120,6 +121,20 @@ async def app_with_ebird_filtering(path_resolver, mock_ebird_service, tmp_path):
     )
     Container.registry_service.override(providers.Singleton(lambda: mock_registry_service))
 
+    # Mock AuthService to enable authentication in tests
+    mock_auth_service = MagicMock(spec=AuthService)
+    mock_auth_service.admin_exists.return_value = True
+    mock_admin = AdminUser(
+        username="admin",
+        password_hash=pwd_context.hash("testpassword"),
+        created_at=datetime.now(UTC),
+    )
+    mock_auth_service.load_admin_user.return_value = mock_admin
+    mock_auth_service.verify_password.side_effect = lambda plain, hashed: pwd_context.verify(
+        plain, hashed
+    )
+    Container.auth_service.override(providers.Singleton(lambda: mock_auth_service))
+
     # Reset dependent services
     try:
         Container.ebird_region_service.reset()
@@ -150,6 +165,23 @@ async def app_with_ebird_filtering(path_resolver, mock_ebird_service, tmp_path):
     Container.cache_service.reset_override()
     Container.ebird_region_service.reset_override()
     Container.registry_service.reset_override()
+    Container.auth_service.reset_override()
+
+
+@pytest.fixture
+async def authenticated_client(app_with_ebird_filtering):
+    """Create an authenticated AsyncClient for API testing."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
+    ) as client:
+        # Log in to get session cookie
+        login_response = await client.post(
+            "/admin/login",
+            data={"username": "admin", "password": "testpassword"},
+            follow_redirects=False,
+        )
+        assert login_response.status_code == 303
+        yield client
 
 
 class TestEBirdFilteringDisabled:

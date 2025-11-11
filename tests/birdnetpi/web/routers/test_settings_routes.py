@@ -2,6 +2,7 @@
 
 import shutil
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
@@ -13,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from birdnetpi.audio.devices import AudioDevice, AudioDeviceService
 from birdnetpi.config import BirdNETConfig, ConfigManager
+from birdnetpi.utils.auth import AdminUser, AuthService, pwd_context
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
 
@@ -85,11 +87,26 @@ def app_with_settings_routes(path_resolver, repo_root, test_config, mock_audio_d
     mock_config_manager.save.return_value = None
     mock_audio_service = MagicMock(spec=AudioDeviceService)
     mock_audio_service.discover_input_devices.return_value = mock_audio_devices
+
+    # Mock AuthService to enable authentication in tests
+    mock_auth_service = MagicMock(spec=AuthService)
+    mock_auth_service.admin_exists.return_value = True
+    mock_admin = AdminUser(
+        username="admin",
+        password_hash=pwd_context.hash("testpassword"),
+        created_at=datetime.now(),
+    )
+    mock_auth_service.load_admin_user.return_value = mock_admin
+    mock_auth_service.verify_password.side_effect = lambda plain, hashed: pwd_context.verify(
+        plain, hashed
+    )
+
     path_resolver.get_birdnetpi_config_path = lambda: config_dir / "birdnetpi.yaml"
     path_resolver.get_templates_dir = lambda: repo_root / "src" / "birdnetpi" / "web" / "templates"
     path_resolver.get_static_dir = lambda: repo_root / "src" / "birdnetpi" / "web" / "static"
     path_resolver.get_models_dir = lambda: repo_root / "models"
     Container.path_resolver.override(providers.Singleton(lambda: path_resolver))
+    Container.auth_service.override(providers.Singleton(lambda: mock_auth_service))
     templates_dir = repo_root / "src" / "birdnetpi" / "web" / "templates"
     Container.templates.override(
         providers.Singleton(lambda: Jinja2Templates(directory=str(templates_dir)))
@@ -113,15 +130,23 @@ def app_with_settings_routes(path_resolver, repo_root, test_config, mock_audio_d
         app = create_app()
         yield (app, mock_config_manager, mock_audio_service)
     Container.path_resolver.reset_override()
+    Container.auth_service.reset_override()
     Container.templates.reset_override()
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 @pytest.fixture
 def client_with_mocks(app_with_settings_routes):
-    """Create test client with mocked dependencies."""
+    """Create authenticated test client with mocked dependencies."""
     app, config_manager, audio_service = app_with_settings_routes
     with TestClient(app) as test_client:
+        # Log in to get session cookie
+        login_response = test_client.post(
+            "/admin/login",
+            data={"username": "admin", "password": "testpassword"},
+            follow_redirects=False,
+        )
+        assert login_response.status_code == 303
         yield (test_client, config_manager, audio_service)
 
 
@@ -184,12 +209,11 @@ class TestSettingsGetRoute:
         assert 'name="site_name"' in response.text
         assert 'name="model"' in response.text
 
-    def test_settings_page_handles_no_audio_devices(self, app_with_settings_routes):
+    def test_settings_page_handles_no_audio_devices(self, client_with_mocks):
         """Should handle case when no audio devices are available."""
-        app, _config_manager, audio_service = app_with_settings_routes
+        client, _config_manager, audio_service = client_with_mocks
         audio_service.discover_input_devices.return_value = []
-        with TestClient(app) as client:
-            response = client.get("/admin/settings")
+        response = client.get("/admin/settings")
         assert response.status_code == 200
         assert "System Default" in response.text
 
