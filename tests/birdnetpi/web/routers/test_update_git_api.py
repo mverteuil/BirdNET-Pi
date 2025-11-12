@@ -51,10 +51,17 @@ class TestListGitRemotes:
         ids=["sbc_lists_remotes", "docker_returns_empty", "error_returns_500"],
     )
     def test_list_remotes(
-        self, app_with_temp_data, deployment, service_error, expected_status, expected_remotes
+        self,
+        app_with_temp_data,
+        authenticate_sync_client,
+        deployment,
+        service_error,
+        expected_status,
+        expected_remotes,
     ):
         """Should handle listing git remotes based on deployment environment."""
         client = TestClient(app_with_temp_data)
+        authenticate_sync_client(client)
 
         with patch(
             "birdnetpi.web.routers.update_api_routes.SystemUtils", autospec=True
@@ -101,6 +108,7 @@ class TestAddGitRemote:
     def test_add_remote(
         self,
         app_with_temp_data,
+        authenticate_sync_client,
         deployment,
         service_error,
         expected_success,
@@ -108,6 +116,7 @@ class TestAddGitRemote:
     ):
         """Should handle adding git remotes based on deployment environment."""
         client = TestClient(app_with_temp_data)
+        authenticate_sync_client(client)
 
         with patch(
             "birdnetpi.web.routers.update_api_routes.SystemUtils", autospec=True
@@ -186,6 +195,7 @@ class TestUpdateGitRemote:
     def test_update_remote(
         self,
         app_with_temp_data,
+        authenticate_sync_client,
         deployment,
         old_name,
         new_name,
@@ -197,6 +207,7 @@ class TestUpdateGitRemote:
     ):
         """Should handle updating git remotes based on deployment and parameters."""
         client = TestClient(app_with_temp_data)
+        authenticate_sync_client(client)
 
         with patch(
             "birdnetpi.web.routers.update_api_routes.SystemUtils", autospec=True
@@ -249,6 +260,7 @@ class TestDeleteGitRemote:
     def test_delete_remote(
         self,
         app_with_temp_data,
+        authenticate_sync_client,
         deployment,
         remote_name,
         service_error,
@@ -257,6 +269,7 @@ class TestDeleteGitRemote:
     ):
         """Should handle deleting git remotes based on deployment environment."""
         client = TestClient(app_with_temp_data)
+        authenticate_sync_client(client)
 
         with patch(
             "birdnetpi.web.routers.update_api_routes.SystemUtils", autospec=True
@@ -303,6 +316,7 @@ class TestListGitBranches:
     def test_list_branches(
         self,
         app_with_temp_data,
+        authenticate_sync_client,
         deployment,
         service_error,
         expected_status,
@@ -311,6 +325,7 @@ class TestListGitBranches:
     ):
         """Should handle listing git branches based on deployment environment."""
         client = TestClient(app_with_temp_data)
+        authenticate_sync_client(client)
 
         with patch(
             "birdnetpi.web.routers.update_api_routes.SystemUtils", autospec=True

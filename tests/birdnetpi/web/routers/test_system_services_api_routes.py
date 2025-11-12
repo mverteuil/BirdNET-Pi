@@ -27,9 +27,13 @@ def client(path_resolver, mock_system_control):
     This prevents test failures in CI where systemd detection would return "sbc".
     """
     # Mock deployment environment to return "docker" consistently
-    with patch(
-        "birdnetpi.web.routers.system_api_routes.SystemUtils.get_deployment_environment",
-        return_value="docker",
+    # Mock require_admin decorator to allow all requests
+    with (
+        patch(
+            "birdnetpi.web.routers.system_api_routes.SystemUtils.get_deployment_environment",
+            return_value="docker",
+        ),
+        patch("birdnetpi.web.routers.system_api_routes.require_admin", lambda func: func),
     ):
         app = FastAPI()
         container = Container()
