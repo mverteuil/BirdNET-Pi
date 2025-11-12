@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 import matplotlib
 import pytest
 import redis
+import redis.asyncio
 from dependency_injector import providers
 from sqlalchemy.engine import Result, Row
 from sqlalchemy.engine.result import MappingResult, ScalarResult
@@ -199,6 +200,15 @@ async def app_with_temp_data(path_resolver):
     )
     Container.cache_service.override(providers.Singleton(lambda: mock_cache))
 
+    # Mock the redis client to avoid event loop closure issues during test teardown
+    mock_redis = AsyncMock(spec=redis.asyncio.Redis)
+    # Mock async methods used by RedisStore
+    mock_redis.set = AsyncMock(spec=object, return_value=True)
+    mock_redis.get = AsyncMock(spec=object, return_value=None)
+    mock_redis.delete = AsyncMock(spec=object, return_value=True)
+    mock_redis.close = AsyncMock(spec=object)
+    Container.redis_client.override(providers.Singleton(lambda: mock_redis))
+
     # Mock the auth service to enable authentication in tests
     # Create a test admin user with hashed password "testpassword"
     mock_auth_service = MagicMock(spec=AuthService)
@@ -246,6 +256,7 @@ async def app_with_temp_data(path_resolver):
     Container.config.reset_override()
     Container.core_database.reset_override()
     Container.cache_service.reset_override()
+    Container.redis_client.reset_override()
     Container.auth_service.reset_override()
 
 
