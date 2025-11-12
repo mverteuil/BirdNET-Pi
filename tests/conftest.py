@@ -201,11 +201,25 @@ async def app_with_temp_data(path_resolver):
     Container.cache_service.override(providers.Singleton(lambda: mock_cache))
 
     # Mock the redis client to avoid event loop closure issues during test teardown
+    # and to properly store/retrieve session data for authentication
     mock_redis = AsyncMock(spec=redis.asyncio.Redis)
-    # Mock async methods used by RedisStore
-    mock_redis.set = AsyncMock(spec=object, return_value=True)
-    mock_redis.get = AsyncMock(spec=object, return_value=None)
-    mock_redis.delete = AsyncMock(spec=object, return_value=True)
+    # Create in-memory storage for sessions
+    redis_storage = {}
+
+    async def mock_set(key, value, ex=None):
+        redis_storage[key] = value
+        return True
+
+    async def mock_get(key):
+        return redis_storage.get(key)
+
+    async def mock_delete(key):
+        redis_storage.pop(key, None)
+        return True
+
+    mock_redis.set = AsyncMock(spec=object, side_effect=mock_set)
+    mock_redis.get = AsyncMock(spec=object, side_effect=mock_get)
+    mock_redis.delete = AsyncMock(spec=object, side_effect=mock_delete)
     mock_redis.close = AsyncMock(spec=object)
     Container.redis_client.override(providers.Singleton(lambda: mock_redis))
 
