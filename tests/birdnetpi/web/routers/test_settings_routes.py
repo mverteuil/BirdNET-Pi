@@ -17,7 +17,6 @@ from birdnetpi.config import BirdNETConfig, ConfigManager
 from birdnetpi.utils.auth import AdminUser, AuthService, pwd_context
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
-from tests.auth_helpers import authenticate_sync_client
 
 
 @pytest.fixture
@@ -137,7 +136,7 @@ def app_with_settings_routes(path_resolver, repo_root, test_config, mock_audio_d
 
 
 @pytest.fixture
-def client_with_mocks(app_with_settings_routes):
+def client_with_mocks(app_with_settings_routes, authenticate_sync_client):
     """Create authenticated test client with mocked dependencies."""
     app, config_manager, audio_service = app_with_settings_routes
     with TestClient(app) as test_client:

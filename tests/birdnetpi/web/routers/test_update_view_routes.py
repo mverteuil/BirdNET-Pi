@@ -8,11 +8,9 @@ import pytest
 from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
 
-from tests.auth_helpers import authenticate_sync_client
-
 
 @pytest.fixture
-def client(app_with_temp_data):
+def client(app_with_temp_data, authenticate_sync_client):
     """Create authenticated test client from app."""
     # Mount static files to avoid template rendering errors
 

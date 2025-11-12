@@ -250,7 +250,57 @@ async def app_with_temp_data(path_resolver):
 
 
 @pytest.fixture
-def authenticated_client(app_with_temp_data):
+def authenticate_sync_client():
+    """Provide a function to authenticate a sync TestClient.
+
+    Returns:
+        A callable that takes a TestClient and authenticates it
+
+    Example:
+        def test_something(authenticate_sync_client):
+            client = TestClient(app)
+            authenticate_sync_client(client)
+    """
+
+    def _authenticate(client: TestClient) -> TestClient:
+        login_response = client.post(
+            "/admin/login",
+            data={"username": "admin", "password": "testpassword"},
+            follow_redirects=False,
+        )
+        assert login_response.status_code == 303  # Successful login redirects
+        return client
+
+    return _authenticate
+
+
+@pytest.fixture
+def authenticate_async_client():
+    """Provide a function to authenticate an async AsyncClient.
+
+    Returns:
+        A callable that takes an AsyncClient and authenticates it
+
+    Example:
+        async def test_something(authenticate_async_client):
+            async with AsyncClient(...) as client:
+                await authenticate_async_client(client)
+    """
+
+    async def _authenticate(client):
+        login_response = await client.post(
+            "/admin/login",
+            data={"username": "admin", "password": "testpassword"},
+            follow_redirects=False,
+        )
+        assert login_response.status_code == 303  # Successful login redirects
+        return client
+
+    return _authenticate
+
+
+@pytest.fixture
+def authenticated_client(app_with_temp_data, authenticate_sync_client):
     """Create an authenticated test client for routes that require authentication.
 
     This fixture:
@@ -267,14 +317,7 @@ def authenticated_client(app_with_temp_data):
             assert response.status_code == 200
     """
     with TestClient(app_with_temp_data) as client:
-        # Log in to get session cookie
-        login_response = client.post(
-            "/admin/login",
-            data={"username": "admin", "password": "testpassword"},
-            follow_redirects=False,
-        )
-        assert login_response.status_code == 303  # Successful login redirects
-
+        authenticate_sync_client(client)
         yield client
 
 

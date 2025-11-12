@@ -11,11 +11,10 @@ from fastapi.testclient import TestClient
 
 from birdnetpi.releases.update_manager import UpdateManager
 from birdnetpi.utils.cache import Cache
-from tests.auth_helpers import authenticate_sync_client
 
 
 @pytest.fixture
-def client(app_with_temp_data):
+def client(app_with_temp_data, authenticate_sync_client):
     """Create authenticated test client from app."""
     # Mount static files to avoid template rendering errors
 
