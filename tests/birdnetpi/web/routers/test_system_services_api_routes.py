@@ -1,15 +1,20 @@
 """Tests for services API routes."""
 
-from unittest.mock import MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import redis.asyncio
 from dependency_injector import providers
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from birdnetpi.config import ConfigManager
+from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.system.system_control import SystemControlService
+from birdnetpi.utils.auth import AdminUser, AuthService, pwd_context
+from birdnetpi.utils.cache import Cache
 from birdnetpi.web.core.container import Container
-from birdnetpi.web.routers.system_api_routes import router
+from birdnetpi.web.core.factory import create_app
 
 
 @pytest.fixture
@@ -19,33 +24,103 @@ def mock_system_control():
 
 
 @pytest.fixture
-def client(path_resolver, mock_system_control):
+async def client(path_resolver, mock_system_control, authenticate_sync_client):
     """Create test client with services API routes.
 
     Mocks deployment environment to consistently return "docker" so tests
     use the docker service configuration (where "fastapi" is a critical service).
     This prevents test failures in CI where systemd detection would return "sbc".
+
+    Uses app_with_temp_data infrastructure for proper authentication.
     """
     # Mock deployment environment to return "docker" consistently
-    # Mock require_admin decorator to allow all requests
-    with (
-        patch(
-            "birdnetpi.web.routers.system_api_routes.SystemUtils.get_deployment_environment",
-            return_value="docker",
-        ),
-        patch("birdnetpi.web.routers.system_api_routes.require_admin", lambda func: func),
+    with patch(
+        "birdnetpi.web.routers.system_api_routes.SystemUtils.get_deployment_environment",
+        return_value="docker",
     ):
-        app = FastAPI()
-        container = Container()
-        # IMPORTANT: Override path_resolver BEFORE any other providers to prevent permission errors
-        container.path_resolver.override(providers.Singleton(lambda: path_resolver))
-        container.database_path.override(
+        # Override Container class-level providers BEFORE app creation
+        # This is critical because create_app() uses the global Container singleton
+        Container.path_resolver.override(providers.Singleton(lambda: path_resolver))
+        Container.database_path.override(
             providers.Factory(lambda: path_resolver.get_database_path())
         )
-        container.system_control_service.override(providers.Object(mock_system_control))
-        container.wire(modules=["birdnetpi.web.routers.system_api_routes"])
-        app.include_router(router, prefix="/api")
-        yield TestClient(app)
+
+        # Create config
+        manager = ConfigManager(path_resolver)
+        test_config = manager.load()
+        Container.config.override(providers.Singleton(lambda: test_config))
+
+        # Create a test database service with the temp path
+        temp_db_service = CoreDatabaseService(path_resolver.get_database_path())
+        await temp_db_service.initialize()
+        Container.core_database.override(providers.Singleton(lambda: temp_db_service))
+
+        # Mock cache service
+        mock_cache = MagicMock(spec=Cache)
+        mock_cache.configure_mock(
+            **{"get.return_value": None, "set.return_value": True, "ping.return_value": True}
+        )
+        Container.cache_service.override(providers.Singleton(lambda: mock_cache))
+
+        # Mock redis client with in-memory storage for sessions
+        mock_redis = AsyncMock(spec=redis.asyncio.Redis)
+        redis_storage = {}
+
+        async def mock_set(key, value, ex=None):
+            redis_storage[key] = value
+            return True
+
+        async def mock_get(key):
+            return redis_storage.get(key)
+
+        async def mock_delete(key):
+            redis_storage.pop(key, None)
+            return True
+
+        mock_redis.set = AsyncMock(spec=object, side_effect=mock_set)
+        mock_redis.get = AsyncMock(spec=object, side_effect=mock_get)
+        mock_redis.delete = AsyncMock(spec=object, side_effect=mock_delete)
+        mock_redis.close = AsyncMock(spec=object)
+        Container.redis_client.override(providers.Singleton(lambda: mock_redis))
+
+        # Mock auth service
+        mock_auth_service = MagicMock(spec=AuthService)
+        mock_auth_service.admin_exists.return_value = True
+        mock_admin = AdminUser(
+            username="admin",
+            password_hash=pwd_context.hash("testpassword"),
+            created_at=datetime.now(UTC),
+        )
+        mock_auth_service.load_admin_user.return_value = mock_admin
+        mock_auth_service.verify_password.side_effect = lambda plain, hashed: pwd_context.verify(
+            plain, hashed
+        )
+        Container.auth_service.override(providers.Singleton(lambda: mock_auth_service))
+
+        # Override system control service
+        Container.system_control_service.override(providers.Object(mock_system_control))
+
+        # Create app with full auth setup
+        app = create_app()
+
+        # Create client and authenticate
+        test_client = TestClient(app)
+        authenticate_sync_client(test_client)
+        yield test_client
+
+        # Cleanup database
+        if hasattr(temp_db_service, "async_engine") and temp_db_service.async_engine:
+            await temp_db_service.async_engine.dispose()
+
+        # Cleanup: reset all overrides
+        Container.path_resolver.reset_override()
+        Container.database_path.reset_override()
+        Container.config.reset_override()
+        Container.core_database.reset_override()
+        Container.cache_service.reset_override()
+        Container.redis_client.reset_override()
+        Container.auth_service.reset_override()
+        Container.system_control_service.reset_override()
 
 
 class TestSystemServicesAPIRoutes:
