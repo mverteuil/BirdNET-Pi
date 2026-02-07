@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+import h3
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +17,10 @@ if TYPE_CHECKING:
     from birdnetpi.system.path_resolver import PathResolver
 
 logger = logging.getLogger(__name__)
+
+# Data resolutions available in region packs (finest to coarsest)
+# Must match DATA_RESOLUTIONS in ebd-pack-builder
+DATA_RESOLUTIONS = [5, 4, 2]
 
 
 class EBirdRegionService:
@@ -89,6 +94,7 @@ class EBirdRegionService:
             JOIN ebird.species_lookup sl ON gs.avibase_id = sl.avibase_id
             WHERE gs.h3_cell = :h3_cell
             AND sl.scientific_name = :scientific_name
+            ORDER BY gs.resolution DESC
         """)
 
         result = await session.execute(
@@ -129,6 +135,7 @@ class EBirdRegionService:
             JOIN ebird.species_lookup sl ON gs.avibase_id = sl.avibase_id
             WHERE gs.h3_cell = :h3_cell
             AND sl.scientific_name = :scientific_name
+            ORDER BY gs.resolution DESC
         """)
 
         result = await session.execute(
@@ -169,6 +176,8 @@ class EBirdRegionService:
         """Get set of allowed species for a location based on strictness level.
 
         This is used for site-wide filtering. Results should be cached for 24 hours.
+        Searches the provided cell AND parent cells at coarser resolutions (4, 2)
+        to find all species that pass the strictness filter.
 
         Args:
             session: SQLAlchemy async session with eBird database attached
@@ -183,6 +192,15 @@ class EBirdRegionService:
         except ValueError:
             logger.error("Invalid H3 cell format: %s", h3_cell)
             return set()
+
+        # Get resolution of provided cell and compute parent cells at coarser resolutions
+        cell_resolution = h3.get_resolution(h3_cell)
+        cells_to_search = [h3_cell_int]
+
+        for resolution in DATA_RESOLUTIONS:
+            if resolution < cell_resolution:
+                parent_cell = h3.cell_to_parent(h3_cell, resolution)
+                cells_to_search.append(int(parent_cell, 16))
 
         # Build tier filter based on strictness
         if strictness == "vagrant":
@@ -203,26 +221,33 @@ class EBirdRegionService:
             tier_filter = "1=1"
 
         # tier_filter is constructed from hardcoded values based on strictness parameter
+        # For allowed species, we want any species that passes the filter at ANY resolution
+        # (if it's common at res 5, it should be allowed even if data also exists at res 2)
+        # Build parameter placeholders for cells list
+        cell_placeholders = ", ".join(f":cell_{i}" for i in range(len(cells_to_search)))
+        cell_params = {f"cell_{i}": cell for i, cell in enumerate(cells_to_search)}
+
         # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         stmt = text(  # nosemgrep
             f"""
             SELECT DISTINCT sl.scientific_name
             FROM ebird.grid_species gs
             JOIN ebird.species_lookup sl ON gs.avibase_id = sl.avibase_id
-            WHERE gs.h3_cell = :h3_cell
+            WHERE gs.h3_cell IN ({cell_placeholders})
             AND gs.{tier_filter}
         """
         )
 
-        result = await session.execute(stmt, {"h3_cell": h3_cell_int})
+        result = await session.execute(stmt, cell_params)
 
         # Extract scientific names into a set
         allowed_species = {row.scientific_name for row in result}  # type: ignore[attr-defined]
 
         logger.debug(
-            "Found %d allowed species for cell %s with strictness %s",
+            "Found %d allowed species for cell %s (+ %d parent cells) with strictness %s",
             len(allowed_species),
             h3_cell,
+            len(cells_to_search) - 1,
             strictness,
         )
 

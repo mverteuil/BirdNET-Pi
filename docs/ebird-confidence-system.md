@@ -23,22 +23,49 @@ The system uses Uber's H3 hierarchical hexagonal grid system for efficient spati
 CREATE TABLE species_lookup (
     avibase_id TEXT PRIMARY KEY,
     scientific_name TEXT NOT NULL,
-    -- ... other fields
+    common_name TEXT
 );
 
--- Grid species data (H3 cell × species observations)
+-- Grid species data with multi-resolution support
+-- Data is stored at resolutions 5 (finest), 4, and 2 (coarsest) for fallback
 CREATE TABLE grid_species (
-    h3_cell INTEGER,              -- H3 cell as integer
-    avibase_id TEXT,              -- FK to species_lookup
-    confidence_tier TEXT,         -- common/uncommon/rare/vagrant
-    confidence_boost REAL,        -- Base boost value (1.0-2.0)
-    yearly_frequency REAL,        -- Annual observation frequency
-    total_observations INTEGER,   -- Total observation count
-    total_checklists INTEGER,     -- Total checklists with species
-    monthly_frequency_json TEXT,  -- JSON array of 12 monthly frequencies
-    PRIMARY KEY (h3_cell, avibase_id)
+    h3_cell INTEGER NOT NULL,         -- H3 cell as integer
+    resolution INTEGER NOT NULL,       -- H3 resolution (5, 4, or 2)
+    avibase_id TEXT NOT NULL,          -- FK to species_lookup
+    confidence_tier TEXT NOT NULL,     -- common/uncommon/rare/vagrant
+    confidence_boost REAL NOT NULL,    -- Base boost with resolution penalty baked in
+    yearly_frequency REAL NOT NULL,    -- Annual observation frequency
+    quality_score REAL NOT NULL,       -- Data quality score (0.0-1.0)
+    PRIMARY KEY (h3_cell, resolution, avibase_id)
+);
+
+-- Monthly frequency data with multi-resolution support
+CREATE TABLE grid_species_monthly (
+    h3_cell INTEGER NOT NULL,
+    resolution INTEGER NOT NULL,
+    avibase_id TEXT NOT NULL,
+    month INTEGER NOT NULL,            -- 1-12
+    frequency REAL NOT NULL,
+    checklist_count INTEGER NOT NULL,
+    PRIMARY KEY (h3_cell, resolution, avibase_id, month)
+);
+
+-- Pack metadata
+CREATE TABLE pack_metadata (
+    key TEXT PRIMARY KEY,
+    value TEXT
 );
 ```
+
+**Multi-Resolution Fallback:**
+
+Region packs store data at multiple H3 resolutions to handle areas with sparse eBird coverage:
+- **Resolution 5** (finest): ~252 km² hexagons, no penalty (1.0x)
+- **Resolution 4** (medium): ~1,770 km² hexagons, 20% penalty (0.8x boost)
+- **Resolution 2** (coarse): ~86,000 km² hexagons, 50% penalty (0.5x boost)
+
+The resolution penalty is baked into `confidence_boost` at build time. Queries prefer
+the finest available resolution for the user's location.
 
 **Detection Tracking Fields:**
 
@@ -197,7 +224,8 @@ ATTACH DATABASE '/path/to/africa-east-2025.08.db' AS ebird
 
 #### `get_species_confidence_tier(session, scientific_name, h3_cell)`
 
-Returns the confidence tier for a species in a specific H3 cell.
+Returns the confidence tier for a species in a specific H3 cell, preferring the finest
+available resolution.
 
 **Query:**
 ```sql
@@ -206,6 +234,7 @@ FROM ebird.grid_species gs
 JOIN ebird.species_lookup sl ON gs.avibase_id = sl.avibase_id
 WHERE gs.h3_cell = :h3_cell
   AND sl.scientific_name = :scientific_name
+ORDER BY gs.resolution DESC  -- Prefer finest resolution
 ```
 
 **Returns:** `"common"` | `"uncommon"` | `"rare"` | `"vagrant"` | `None`
@@ -245,12 +274,13 @@ Checks if a species has any eBird data for a specific H3 cell.
     "confidence_boost": 1.20,        # Final calculated boost
     "confidence_tier": "common",     # Tier at matched cell
     "h3_cell": "85283473fffffff",    # Matched cell (hex string)
-    "ring_distance": 1,              # Rings from user location
+    "ring_distance": 1,              # Rings from user location (0 for coarser resolution fallback)
+    "resolution": 5,                 # H3 resolution of matched data (5, 4, or 2)
     "region_pack": None,             # Filled by caller
 }
 ```
 
-**Returns `None`** if species not found within searched rings.
+**Returns `None`** if species not found within searched rings or fallback resolutions.
 
 #### `get_allowed_species_for_location(session, h3_cell, strictness)`
 
@@ -360,11 +390,13 @@ async def get_site_species_list(latitude: float, longitude: float):
 
 ```sql
 -- Automatic from PRIMARY KEY
-CREATE INDEX idx_grid_species_pk ON grid_species(h3_cell, avibase_id);
+CREATE INDEX idx_grid_species_pk ON grid_species(h3_cell, resolution, avibase_id);
 
 -- Additional indexes for performance
+CREATE INDEX idx_grid_species_cell_res ON grid_species(h3_cell, resolution);
+CREATE INDEX idx_grid_species_avibase ON grid_species(avibase_id);
+CREATE INDEX idx_species_monthly_cell_res ON grid_species_monthly(h3_cell, resolution);
 CREATE INDEX idx_species_lookup_name ON species_lookup(scientific_name);
-CREATE INDEX idx_grid_species_tier ON grid_species(confidence_tier);
 ```
 
 ## Testing
