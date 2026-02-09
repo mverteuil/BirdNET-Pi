@@ -46,33 +46,31 @@ class TestGetConfidenceWithNeighbors:
         self, ebird_query_service, mock_session_factory, base_config
     ):
         """Should find species in exact cell without neighbor search."""
-        # Create mock row with all required fields
+        # Create mock row with all required fields (new schema with resolution, no quarterly/yearly)
         MockRow = namedtuple(
             "MockRow",
             [
                 "h3_cell",
+                "resolution",
                 "confidence_tier",
                 "base_boost",
                 "yearly_frequency",
                 "quality_score",
                 "scientific_name",
                 "month_frequency",
-                "quarter_frequency",
-                "year_frequency",
             ],
         )
 
         # User cell: 852a1073fffffff (hex) = 599718752904282111 (int) - NYC at resolution 5
         species_row = MockRow(
             h3_cell=599718752904282111,
+            resolution=5,
             confidence_tier="common",
             base_boost=1.5,
             yearly_frequency=0.3,
             quality_score=0.8,
             scientific_name="Cyanocitta cristata",
             month_frequency=0.25,
-            quarter_frequency=0.28,
-            year_frequency=0.3,
         )
 
         session, _result = mock_session_factory(fetch_results=[species_row])
@@ -90,6 +88,7 @@ class TestGetConfidenceWithNeighbors:
         assert result_data["confidence_tier"] == "common"
         assert result_data["h3_cell"] == "852a1073fffffff"
         assert result_data["ring_distance"] == 0  # Exact match
+        assert result_data["resolution"] == 5
         assert isinstance(result_data["confidence_boost"], float)
         assert result_data["region_pack"] is None
 
@@ -102,28 +101,26 @@ class TestGetConfidenceWithNeighbors:
             "MockRow",
             [
                 "h3_cell",
+                "resolution",
                 "confidence_tier",
                 "base_boost",
                 "yearly_frequency",
                 "quality_score",
                 "scientific_name",
                 "month_frequency",
-                "quarter_frequency",
-                "year_frequency",
             ],
         )
 
         # Neighbor cell (different from user cell)
         species_row = MockRow(
             h3_cell=599718724986994687,  # Different cell
+            resolution=5,
             confidence_tier="uncommon",
             base_boost=1.3,
             yearly_frequency=0.15,
             quality_score=0.6,
             scientific_name="Cyanocitta cristata",
             month_frequency=0.12,
-            quarter_frequency=0.14,
-            year_frequency=0.15,
         )
 
         session, _result = mock_session_factory(fetch_results=[species_row])
@@ -171,27 +168,25 @@ class TestGetConfidenceWithNeighbors:
             "MockRow",
             [
                 "h3_cell",
+                "resolution",
                 "confidence_tier",
                 "base_boost",
                 "yearly_frequency",
                 "quality_score",
                 "scientific_name",
                 "month_frequency",
-                "quarter_frequency",
-                "year_frequency",
             ],
         )
 
         species_row = MockRow(
             h3_cell=599718752904282111,
+            resolution=5,
             confidence_tier="common",
             base_boost=1.5,
             yearly_frequency=0.3,
             quality_score=0.8,
             scientific_name="Cyanocitta cristata",
             month_frequency=None,
-            quarter_frequency=None,
-            year_frequency=None,
         )
 
         session, _result = mock_session_factory(fetch_results=[species_row])
@@ -217,27 +212,25 @@ class TestGetConfidenceWithNeighbors:
             "MockRow",
             [
                 "h3_cell",
+                "resolution",
                 "confidence_tier",
                 "base_boost",
                 "yearly_frequency",
                 "quality_score",
                 "scientific_name",
                 "month_frequency",
-                "quarter_frequency",
-                "year_frequency",
             ],
         )
 
         species_row = MockRow(
             h3_cell=599718752904282111,
+            resolution=5,
             confidence_tier="common",
             base_boost=1.5,
             yearly_frequency=0.3,
             quality_score=0.8,
             scientific_name="Cyanocitta cristata",
             month_frequency=0.0,  # Absent in this month
-            quarter_frequency=0.28,
-            year_frequency=0.3,
         )
 
         session, _result = mock_session_factory(fetch_results=[species_row])
@@ -264,27 +257,25 @@ class TestGetConfidenceWithNeighbors:
             "MockRow",
             [
                 "h3_cell",
+                "resolution",
                 "confidence_tier",
                 "base_boost",
                 "yearly_frequency",
                 "quality_score",
                 "scientific_name",
                 "month_frequency",
-                "quarter_frequency",
-                "year_frequency",
             ],
         )
 
         species_row = MockRow(
             h3_cell=599718752904282111,
+            resolution=5,
             confidence_tier="common",
             base_boost=1.5,
             yearly_frequency=0.3,
             quality_score=0.8,
             scientific_name="Cyanocitta cristata",
             month_frequency=None,
-            quarter_frequency=None,
-            year_frequency=None,
         )
 
         session, _result = mock_session_factory(fetch_results=[species_row])
@@ -311,28 +302,26 @@ class TestGetConfidenceWithNeighbors:
             "MockRow",
             [
                 "h3_cell",
+                "resolution",
                 "confidence_tier",
                 "base_boost",
                 "yearly_frequency",
                 "quality_score",
                 "scientific_name",
                 "month_frequency",
-                "quarter_frequency",
-                "year_frequency",
             ],
         )
 
         # High quality score
         high_quality_row = MockRow(
             h3_cell=599718752904282111,
+            resolution=5,
             confidence_tier="common",
             base_boost=1.5,
             yearly_frequency=0.3,
             quality_score=1.0,  # Perfect quality
             scientific_name="Cyanocitta cristata",
             month_frequency=None,
-            quarter_frequency=None,
-            year_frequency=None,
         )
 
         session, _result = mock_session_factory(fetch_results=[high_quality_row])
@@ -368,27 +357,25 @@ class TestConfidenceCalculationComponents:
             "MockRow",
             [
                 "h3_cell",
+                "resolution",
                 "confidence_tier",
                 "base_boost",
                 "yearly_frequency",
                 "quality_score",
                 "scientific_name",
                 "month_frequency",
-                "quarter_frequency",
-                "year_frequency",
             ],
         )
 
         species_row = MockRow(
             h3_cell=599718752904282111,
+            resolution=5,
             confidence_tier="common",
             base_boost=1.0,  # Use 1.0 for easier calculation
             yearly_frequency=0.3,
             quality_score=0.5,  # Middle quality for 0.85 multiplier
             scientific_name="Cyanocitta cristata",
             month_frequency=None,
-            quarter_frequency=None,
-            year_frequency=None,
         )
 
         session, _result = mock_session_factory(fetch_results=[species_row])
@@ -407,68 +394,6 @@ class TestConfidenceCalculationComponents:
         # Exact match: base (1.0) x ring (1.0) x quality (0.85) x temporal (1.0) = 0.85
         assert abs(result_data["confidence_boost"] - 0.85) < 0.01
 
-    @pytest.mark.parametrize(
-        "month,expected_quarter",
-        [
-            (1, 1),  # January -> Q1
-            (3, 1),  # March -> Q1
-            (4, 2),  # April -> Q2
-            (6, 2),  # June -> Q2
-            (7, 3),  # July -> Q3
-            (9, 3),  # September -> Q3
-            (10, 4),  # October -> Q4
-            (12, 4),  # December -> Q4
-        ],
-    )
-    @pytest.mark.asyncio
-    async def test_quarter_calculation(
-        self, ebird_query_service, mock_session_factory, base_config, month, expected_quarter
-    ):
-        """Should correctly calculate quarter from month."""
-        MockRow = namedtuple(
-            "MockRow",
-            [
-                "h3_cell",
-                "confidence_tier",
-                "base_boost",
-                "yearly_frequency",
-                "quality_score",
-                "scientific_name",
-                "month_frequency",
-                "quarter_frequency",
-                "year_frequency",
-            ],
-        )
-
-        species_row = MockRow(
-            h3_cell=599718752904282111,
-            confidence_tier="common",
-            base_boost=1.5,
-            yearly_frequency=0.3,
-            quality_score=0.8,
-            scientific_name="Cyanocitta cristata",
-            month_frequency=None,
-            quarter_frequency=0.25,
-            year_frequency=0.3,
-        )
-
-        session, _result = mock_session_factory(fetch_results=[species_row])
-
-        await ebird_query_service.get_confidence_with_neighbors(
-            session=session,
-            scientific_name="Cyanocitta cristata",
-            latitude=40.7128,
-            longitude=-74.0060,
-            config=base_config,
-            month=month,
-        )
-
-        # Verify quarter parameter was passed correctly
-        call_args = session.execute.call_args
-        # Parameters are passed as the second positional argument (statement, params_dict)
-        params = call_args[0][1]
-        assert params["quarter"] == expected_quarter
-
 
 class TestEdgeCases:
     """Test edge cases and boundary conditions."""
@@ -482,27 +407,25 @@ class TestEdgeCases:
             "MockRow",
             [
                 "h3_cell",
+                "resolution",
                 "confidence_tier",
                 "base_boost",
                 "yearly_frequency",
                 "quality_score",
                 "scientific_name",
                 "month_frequency",
-                "quarter_frequency",
-                "year_frequency",
             ],
         )
 
         species_row = MockRow(
             h3_cell=599718752904282111,
+            resolution=5,
             confidence_tier="common",
             base_boost=1.5,
             yearly_frequency=0.3,
             quality_score=None,  # Missing
             scientific_name="Cyanocitta cristata",
             month_frequency=None,
-            quarter_frequency=None,
-            year_frequency=None,
         )
 
         session, _result = mock_session_factory(fetch_results=[species_row])
@@ -529,27 +452,25 @@ class TestEdgeCases:
             "MockRow",
             [
                 "h3_cell",
+                "resolution",
                 "confidence_tier",
                 "base_boost",
                 "yearly_frequency",
                 "quality_score",
                 "scientific_name",
                 "month_frequency",
-                "quarter_frequency",
-                "year_frequency",
             ],
         )
 
         species_row = MockRow(
             h3_cell=599718752904282111,
+            resolution=5,
             confidence_tier="vagrant",
             base_boost=0.1,  # Very low boost
             yearly_frequency=0.01,
             quality_score=0.1,
             scientific_name="Rare species",
             month_frequency=0.0,  # Absent
-            quarter_frequency=0.0,
-            year_frequency=0.01,
         )
 
         session, _result = mock_session_factory(fetch_results=[species_row])

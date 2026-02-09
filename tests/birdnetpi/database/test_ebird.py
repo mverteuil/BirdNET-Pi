@@ -420,7 +420,7 @@ class TestIntegrationWithRealSession:
         # Create temporary eBird pack database
         ebird_db = tmp_path / "test-pack.db"
 
-        # Create the database with test schema
+        # Create the database with test schema (new schema with resolution)
         engine = create_engine(f"sqlite:///{ebird_db}")
         with engine.begin() as conn:
             # Create species_lookup table
@@ -432,13 +432,15 @@ class TestIntegrationWithRealSession:
                 )
             """)
             )
-            # Create grid_species table
+            # Create grid_species table with resolution column
             conn.execute(
                 text("""
                 CREATE TABLE grid_species (
                     h3_cell INTEGER,
+                    resolution INTEGER,
                     avibase_id TEXT,
-                    confidence_tier TEXT
+                    confidence_tier TEXT,
+                    PRIMARY KEY (h3_cell, resolution, avibase_id)
                 )
             """)
             )
@@ -448,8 +450,13 @@ class TestIntegrationWithRealSession:
                 {"avibase_id": "TEST001", "scientific_name": "Test species"},
             )
             conn.execute(
-                text("INSERT INTO grid_species VALUES (:h3_cell, :avibase_id, :tier)"),
-                {"h3_cell": 599686042433355775, "avibase_id": "TEST001", "tier": "common"},
+                text("INSERT INTO grid_species VALUES (:h3_cell, :resolution, :avibase_id, :tier)"),
+                {
+                    "h3_cell": 599686042433355775,
+                    "resolution": 5,
+                    "avibase_id": "TEST001",
+                    "tier": "common",
+                },
             )
         engine.dispose()
 
@@ -487,7 +494,7 @@ class TestIntegrationWithRealSession:
         self, ebird_service, in_memory_session, tmp_path
     ):
         """Should successfully query confidence tier from real database."""
-        # Create eBird pack database with test data
+        # Create eBird pack database with test data (new schema with resolution)
         ebird_db = tmp_path / "test-pack.db"
 
         engine = create_engine(f"sqlite:///{ebird_db}")
@@ -501,14 +508,16 @@ class TestIntegrationWithRealSession:
                 )
             """)
             )
-            # Create grid_species table
+            # Create grid_species table with resolution column
             conn.execute(
                 text("""
                 CREATE TABLE grid_species (
                     h3_cell INTEGER,
+                    resolution INTEGER,
                     avibase_id TEXT,
                     confidence_tier TEXT,
-                    confidence_boost REAL
+                    confidence_boost REAL,
+                    PRIMARY KEY (h3_cell, resolution, avibase_id)
                 )
             """)
             )
@@ -520,8 +529,17 @@ class TestIntegrationWithRealSession:
             # Use the hex value converted to int
             h3_int = int("85283473fffffff", 16)
             conn.execute(
-                text("INSERT INTO grid_species VALUES (:h3_cell, :avibase_id, :tier, :boost)"),
-                {"h3_cell": h3_int, "avibase_id": "TEST001", "tier": "common", "boost": 1.5},
+                text(
+                    "INSERT INTO grid_species VALUES "
+                    "(:h3_cell, :resolution, :avibase_id, :tier, :boost)"
+                ),
+                {
+                    "h3_cell": h3_int,
+                    "resolution": 5,
+                    "avibase_id": "TEST001",
+                    "tier": "common",
+                    "boost": 1.5,
+                },
             )
         engine.dispose()
 
