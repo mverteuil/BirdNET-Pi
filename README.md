@@ -75,14 +75,23 @@ For permanent installations on Raspberry Pi and similar devices:
 
 ## 🖥️ Hardware
 
-BirdNET-Pi is designed for flexibility. It runs beautifully on a variety of single-board
-computers:
+BirdNET-Pi is designed for flexibility. It runs on a variety of single-board computers:
 
-* Raspberry Pi 4B / 400 / 3B+
-* Libre Computer "Le Potato"
-* Libre Computer "Renegade"
+**Raspberry Pi:**
+* Raspberry Pi 5
+* Raspberry Pi 4B
+* Raspberry Pi 3B/3B+
+* Raspberry Pi Zero 2W
 
-Thanks to the new modular architecture, you can even run the recording, database, and
+**Orange Pi (with DietPi/Armbian):**
+* Orange Pi Zero 2W
+* Orange Pi 5 Plus
+* Orange Pi 5 Pro
+
+**Other ARM64 Boards:**
+* Radxa ROCK 5B
+
+Thanks to the modular architecture, you can also run the recording, database, and
 analysis services on separate machines for advanced, distributed setups.
 
 ## 🙏 Attributions and Acknowledgements
