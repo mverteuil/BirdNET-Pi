@@ -34,26 +34,78 @@ timezone: Europe/Madrid
 
 ## Supported Language Codes
 
-The translation system supports a wide variety of languages, with coverage varying by database source:
+The translation system supports 44 languages in IOC and 57 in Wikidata, with coverage varying by source.
 
-### Common Language Codes
+### Full Coverage Languages (10,000+ species in IOC)
 
-| Code | Language | IOC Coverage | PatLevin Coverage | Avibase Coverage |
-|------|----------|--------------|-------------------|------------------|
-| `en` | English | ✓ Full | ✓ Full | ✓ Full |
-| `es` | Spanish | ✓ Full | ✓ Partial | ✓ Full |
-| `fr` | French | ✓ Full | ✓ Partial | ✓ Full |
-| `de` | German | ✓ Full | ✓ Partial | ✓ Full |
-| `it` | Italian | ✓ Full | ✓ Limited | ✓ Full |
-| `pt` | Portuguese | ✓ Full | ✓ Limited | ✓ Full |
-| `nl` | Dutch | ✓ Full | ✓ Limited | ✓ Full |
-| `sv` | Swedish | ✓ Full | ✓ Limited | ✓ Full |
-| `da` | Danish | ✓ Full | ✓ Limited | ✓ Full |
-| `no` | Norwegian | ✓ Full | ✓ Limited | ✓ Full |
-| `fi` | Finnish | ✓ Full | ✓ Limited | ✓ Full |
-| `ru` | Russian | ✓ Partial | ✗ None | ✓ Full |
-| `ja` | Japanese | ✓ Partial | ✗ None | ✓ Full |
-| `zh` | Chinese | ✓ Partial | ✗ None | ✓ Full |
+| Code | Language | IOC | Wikidata |
+|------|----------|-----|----------|
+| `en` | English | ✓ 10,983 | ✓ 8,138 |
+| `zh` | Chinese | ✓ 10,983 | ✓ 4,935 |
+| `nl` | Dutch | ✓ 10,983 | ✓ 8,389 |
+| `fr` | French | ✓ 10,983 | ✓ 6,893 |
+| `sk` | Slovak | ✓ 10,983 | ✓ 8,471 |
+| `sv` | Swedish | ✓ 10,983 | ✓ 8,972 |
+| `pt` | Portuguese | ✓ 10,981 | ✓ 4,641 |
+| `no` | Norwegian | ✓ 10,974 | — |
+| `da` | Danish | ✓ 10,937 | ✓ 8,213 |
+| `pl` | Polish | ✓ 10,921 | ✓ 8,521 |
+| `es` | Spanish | ✓ 10,823 | ✓ 1,871 |
+| `de` | German | ✓ 10,785 | ✓ 4,244 |
+| `uk` | Ukrainian | ✓ 10,754 | ✓ 1,175 |
+| `hr` | Croatian | ✓ 10,605 | ✓ 799 |
+| `tr` | Turkish | ✓ 10,570 | ✓ 1,160 |
+| `ru` | Russian | ✓ 10,567 | ✓ 3,231 |
+| `ja` | Japanese | ✓ 10,537 | ✓ 8,046 |
+| `cs` | Czech | ✓ 10,159 | ✓ 8,017 |
+| `ca` | Catalan | ✓ 10,065 | ✓ 6,828 |
+| `fi` | Finnish | ✓ 10,033 | ✓ 7,990 |
+| `it` | Italian | ✓ 10,006 | ✓ 670 |
+
+### Good Coverage Languages (5,000-10,000 species)
+
+| Code | Language | IOC | Wikidata |
+|------|----------|-----|----------|
+| `lt` | Lithuanian | ✓ 9,846 | ✓ 2,235 |
+| `sr` | Serbian | ✓ 8,029 | ✓ 778 |
+| `hu` | Hungarian | ✓ 6,488 | ✓ 5,980 |
+| `et` | Estonian | ✓ 5,620 | ✓ 4,946 |
+| `nb` | Norwegian Bokmål | — | ✓ 8,570 |
+| `fa` | Persian | ✓ 548 | ✓ 6,763 |
+| `he` | Hebrew | ✓ 1,145 | ✓ 5,475 |
+
+### Partial Coverage Languages (1,000-5,000 species)
+
+| Code | Language | IOC | Wikidata |
+|------|----------|-----|----------|
+| `lv` | Latvian | ✓ 2,017 | ✓ 1,829 |
+| `id` | Indonesian | ✓ 1,560 | ✓ 2,232 |
+| `bg` | Bulgarian | ✓ 1,416 | ✓ 2,882 |
+| `sl` | Slovenian | ✓ 1,107 | ✓ 526 |
+| `ar` | Arabic | ✓ 583 | ✓ 2,853 |
+| `eu` | Basque | — | ✓ 2,162 |
+| `vi` | Vietnamese | — | ✓ 1,627 |
+| `nn` | Norwegian Nynorsk | — | ✓ 1,309 |
+| `ta` | Tamil | — | ✓ 1,253 |
+
+### Limited Coverage Languages (<1,000 species)
+
+| Code | Language | IOC | Wikidata |
+|------|----------|-----|----------|
+| `th` | Thai | ✓ 999 | ✓ 402 |
+| `af` | Afrikaans | ✓ 968 | ✓ 897 |
+| `is` | Icelandic | ✓ 968 | ✓ 524 |
+| `se` | Northern Sami | ✓ 950 | — |
+| `ko` | Korean | ✓ 562 | ✓ 795 |
+| `ml` | Malayalam | ✓ 538 | ✓ 689 |
+| `el` | Greek | ✓ 512 | ✓ 364 |
+| `ro` | Romanian | ✓ 412 | ✓ 385 |
+| `mk` | Macedonian | ✓ 388 | — |
+| `be` | Belarusian | ✓ 325 | — |
+| `ms` | Malay | — | ✓ 943 |
+| `gl` | Galician | — | ✓ 696 |
+| `bn` | Bengali | — | ✓ 605 |
+| `hi` | Hindi | — | ✓ 233 |
 
 ### Regional Variants
 
@@ -66,19 +118,16 @@ The system accepts regional language codes but treats them as their base languag
 ## Database Coverage Details
 
 ### IOC World Bird List
+- **Languages**: 44 languages with translations
 - **Strengths**: Authoritative taxonomic standard, complete English coverage, extensive European language support
-- **Coverage**: All species have English names, most species have translations for major European languages
-- **Best For**: Scientific accuracy, European languages
+- **Coverage**: All ~11,000 species have English names; 21 languages have full coverage (10,000+ species)
+- **Best For**: Scientific accuracy, European languages, authoritative common names
 
-### PatLevin BirdNET Labels
-- **Strengths**: Optimized for BirdNET detection labels, community-contributed translations
-- **Coverage**: Primary support for English, German, Spanish, French; limited coverage for other languages
-- **Best For**: BirdNET-specific terminology, common detection species
-
-### Avibase (Lepage 2018)
-- **Strengths**: Comprehensive multilingual coverage, global language support
-- **Coverage**: Extensive coverage across 100+ languages including Asian, African, and indigenous languages
-- **Best For**: Rare languages, global coverage, comprehensive translation fallbacks
+### Wikidata
+- **Languages**: 57 languages with translations
+- **Strengths**: Community-maintained, includes images and conservation status, broader language variety
+- **Coverage**: Top languages have 8,000-9,000 species; includes Asian, African, and indigenous languages not in IOC
+- **Best For**: Languages not covered by IOC, supplementary species data, images
 
 ## How Translation Precedence Works
 
@@ -88,25 +137,19 @@ When you request a bird name in your configured language, the system checks data
    - Most authoritative and scientifically accurate
    - Used when available for your language
 
-2. **PatLevin BirdNET Labels** (medium priority)
-   - BirdNET-specific translations
-   - Used when IOC doesn't have your language
-
-3. **Avibase** (fallback)
+2. **Wikidata** (fallback)
    - Comprehensive multilingual coverage
-   - Used when neither IOC nor PatLevin have your language
+   - Used when IOC doesn't have your language
 
 ### Example Translation Flow
 
 For `Turdus migratorius` in Spanish (`es`):
-1. Check IOC → Found: "Petirrojo Americano" ✓ (Return this)
-2. ~~Check PatLevin~~ (skipped because IOC found)
-3. ~~Check Avibase~~ (skipped because IOC found)
+1. Check IOC → Found: "Mirlo Primavera" ✓ (Return this)
+2. ~~Check Wikidata~~ (skipped because IOC found)
 
 For `Turdus migratorius` in Hindi (`hi`):
 1. Check IOC → Not found
-2. Check PatLevin → Not found
-3. Check Avibase → Found: "अमेरिकी रॉबिन" ✓ (Return this)
+2. Check Wikidata → Found: "अमेरिकी रॉबिन" ✓ (Return this)
 
 ## UI Translation vs Species Translation
 
@@ -135,7 +178,7 @@ language: de
 Expected results:
 - UI in German
 - Species names like "Amsel" instead of "Blackbird"
-- Sources: Primarily IOC, PatLevin fallback
+- Sources: Primarily IOC, Wikidata fallback
 
 **French Setup**:
 ```yaml
@@ -144,7 +187,7 @@ language: fr
 Expected results:
 - UI in French
 - Species names like "Merle noir" instead of "Blackbird"
-- Sources: Primarily IOC, PatLevin fallback
+- Sources: Primarily IOC, Wikidata fallback
 
 ### Asian Languages
 
@@ -155,7 +198,7 @@ language: ja
 Expected results:
 - UI in Japanese (if UI translations available)
 - Species names like "クロウタドリ" instead of "Blackbird"
-- Sources: Primarily Avibase (IOC limited for Japanese)
+- Sources: IOC when available, Wikidata fallback
 
 **Chinese Setup**:
 ```yaml
@@ -164,13 +207,13 @@ language: zh
 Expected results:
 - UI in Chinese (if UI translations available)
 - Species names like "黑鸫" instead of "Blackbird"
-- Sources: Primarily Avibase (IOC limited for Chinese)
+- Sources: IOC when available, Wikidata fallback
 
 ## Advanced Configuration
 
 ### Custom Language Priorities
 
-While the database precedence is fixed (IOC → PatLevin → Avibase), you can influence results by:
+While the database precedence is fixed (IOC → Wikidata), you can influence results by:
 
 1. **Regional Codes**: Use specific regional codes that might have different coverage
 2. **Language Fallbacks**: The system gracefully falls back to English if no translation exists
@@ -245,8 +288,7 @@ When reporting translation issues, include:
 
 Translation databases are updated periodically:
 - **IOC**: Updated with each official IOC World Bird List release
-- **PatLevin**: Community contributions, updated as available
-- **Avibase**: Based on 2018 snapshot, static content
+- **Wikidata**: Community-maintained, updated regularly with system releases
 
 Check for system updates to get the latest translation database versions.
 

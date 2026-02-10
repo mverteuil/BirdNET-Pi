@@ -40,7 +40,7 @@ Pre-configure BirdNET-Pi settings before first boot (advanced):
 Set up multilingual support for bird species names. This comprehensive guide covers:
 - Quick start configuration examples
 - Supported language codes and database coverage
-- Understanding translation precedence (IOC, PatLevin, Avibase)
+- Understanding translation precedence (IOC → Wikidata)
 - Troubleshooting language configuration issues
 - Regional language variants
 
