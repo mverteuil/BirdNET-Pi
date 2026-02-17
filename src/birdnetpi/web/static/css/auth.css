@@ -12,6 +12,8 @@
 .auth-container {
   width: 100%;
   max-width: 420px;
+  margin: 2rem auto;
+  padding: 0 1rem;
 }
 
 .auth-card {
@@ -26,7 +28,8 @@
   margin-bottom: 2rem;
 }
 
-.auth-header h1 {
+.auth-header h1,
+.auth-header h2 {
   font-size: 1.875rem;
   font-weight: 700;
   color: #1a202c;
@@ -127,6 +130,26 @@
 .auth-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.auth-footer {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.auth-link {
+  color: #667eea;
+  text-decoration: none;
+  font-size: 0.938rem;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.auth-link:hover {
+  color: #764ba2;
+  text-decoration: underline;
 }
 
 /* Responsive adjustments */

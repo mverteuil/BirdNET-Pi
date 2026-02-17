@@ -3,10 +3,12 @@
 import os
 import shutil
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import redis.asyncio
 import yaml
 from dependency_injector import providers
 from fastapi.templating import Jinja2Templates
@@ -16,6 +18,7 @@ from sqladmin import Admin
 from birdnetpi.audio.devices import AudioDevice, AudioDeviceService
 from birdnetpi.config import BirdNETConfig, ConfigManager
 from birdnetpi.system.path_resolver import PathResolver
+from birdnetpi.utils.auth import AdminUser, AuthService, pwd_context
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
 
@@ -116,6 +119,41 @@ class TestSettingsE2E:
             providers.Singleton(lambda: Jinja2Templates(directory=str(templates_dir)))
         )
 
+        # Mock redis client with in-memory storage for sessions
+        mock_redis = AsyncMock(spec=redis.asyncio.Redis)
+        redis_storage = {}
+
+        async def mock_set(key, value, ex=None):
+            redis_storage[key] = value
+            return True
+
+        async def mock_get(key):
+            return redis_storage.get(key)
+
+        async def mock_delete(key):
+            redis_storage.pop(key, None)
+            return True
+
+        mock_redis.set = AsyncMock(spec=object, side_effect=mock_set)
+        mock_redis.get = AsyncMock(spec=object, side_effect=mock_get)
+        mock_redis.delete = AsyncMock(spec=object, side_effect=mock_delete)
+        mock_redis.close = AsyncMock(spec=object)
+        Container.redis_client.override(providers.Singleton(lambda: mock_redis))
+
+        # Mock auth service
+        mock_auth_service = MagicMock(spec=AuthService)
+        mock_auth_service.admin_exists.return_value = True
+        mock_admin = AdminUser(
+            username="admin",
+            password_hash=pwd_context.hash("testpassword"),
+            created_at=datetime.now(UTC),
+        )
+        mock_auth_service.load_admin_user.return_value = mock_admin
+        mock_auth_service.verify_password.side_effect = lambda plain, hashed: pwd_context.verify(
+            plain, hashed
+        )
+        Container.auth_service.override(providers.Singleton(lambda: mock_auth_service))
+
         # Patch AudioDeviceService at import
         with (
             patch(
@@ -134,12 +172,15 @@ class TestSettingsE2E:
         # Cleanup overrides
         Container.path_resolver.reset_override()
         Container.templates.reset_override()
+        Container.redis_client.reset_override()
+        Container.auth_service.reset_override()
 
-    def test_e2e_settings_page_loads_with_current_config(self, e2e_app):
+    def test_e2e_settings_page_loads_with_current_config(self, e2e_app, authenticate_sync_client):
         """Should settings page loads and displays current configuration."""
         app, _path_resolver, _ = e2e_app
 
         with TestClient(app) as client:
+            authenticate_sync_client(client)
             # GET settings page
             response = client.get("/admin/settings")
 
@@ -162,11 +203,14 @@ class TestSettingsE2E:
             assert 'action="/admin/settings"' in response.text
             assert 'method="post"' in response.text
 
-    def test_e2e_settings_form_submission_saves_changes(self, e2e_app, temp_data_dir):
+    def test_e2e_settings_form_submission_saves_changes(
+        self, e2e_app, temp_data_dir, authenticate_sync_client
+    ):
         """Should submitting the settings form saves changes to config file."""
         app, path_resolver, _ = e2e_app
 
         with TestClient(app) as client:
+            authenticate_sync_client(client)
             # Submit form with changed values
             form_data = {
                 "site_name": "Updated E2E Site",
@@ -209,11 +253,12 @@ class TestSettingsE2E:
             assert saved_data["enable_gps"] is True
             assert saved_data["birdweather_id"] == "test123"
 
-    def test_e2e_settings_roundtrip(self, e2e_app):
+    def test_e2e_settings_roundtrip(self, e2e_app, authenticate_sync_client):
         """Should complete roundtrip: load, modify, save, reload."""
         app, _path_resolver, _ = e2e_app
 
         with TestClient(app) as client:
+            authenticate_sync_client(client)
             # Step 1: Load initial settings page
             response1 = client.get("/admin/settings")
             assert response1.status_code == 200
@@ -253,11 +298,12 @@ class TestSettingsE2E:
             assert "35.6762" in response3.text
             assert "139.6503" in response3.text
 
-    def test_e2e_settings_validation_errors(self, e2e_app):
+    def test_e2e_settings_validation_errors(self, e2e_app, authenticate_sync_client):
         """Should invalid form data is handled properly."""
         app, _, _ = e2e_app
 
         with TestClient(app) as client:
+            authenticate_sync_client(client)
             # Try to submit with missing required fields
             form_data = {
                 "site_name": "",  # Empty required field
@@ -276,11 +322,12 @@ class TestSettingsE2E:
                 # Form validation might raise an exception
                 assert "ValidationError" in str(type(e).__name__) or "ValueError" in str(e)
 
-    def test_e2e_settings_handles_concurrent_access(self, e2e_app):
+    def test_e2e_settings_handles_concurrent_access(self, e2e_app, authenticate_sync_client):
         """Should handle concurrent access to settings (simulated)."""
         app, path_resolver, _ = e2e_app
 
         with TestClient(app) as client:
+            authenticate_sync_client(client)
             # Simulate two users accessing settings simultaneously
 
             # User 1 loads the page
@@ -339,7 +386,7 @@ class TestSettingsE2E:
             assert final_config.site_name == "User 2 Site"
             assert final_config.latitude == 30.0
 
-    def test_e2e_settings_preserves_unmodified_fields(self, e2e_app):
+    def test_e2e_settings_preserves_unmodified_fields(self, e2e_app, authenticate_sync_client):
         """Should fields not in the form are preserved during save."""
         app, path_resolver, _ = e2e_app
 
@@ -351,6 +398,7 @@ class TestSettingsE2E:
         config_manager.save(config)
 
         with TestClient(app) as client:
+            authenticate_sync_client(client)
             # Submit form (without git fields)
             form_data = {
                 "site_name": "Preserve Test",

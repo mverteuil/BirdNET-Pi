@@ -8,6 +8,9 @@ from collections.abc import Callable
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
+from starlette.types import ASGIApp
+
+from birdnetpi.utils.auth import AuthService
 
 
 class SetupRedirectMiddleware(BaseHTTPMiddleware):
@@ -20,6 +23,16 @@ class SetupRedirectMiddleware(BaseHTTPMiddleware):
     - Static files
     - Health check endpoints
     """
+
+    def __init__(self, app: ASGIApp, auth_service: AuthService):
+        """Initialize middleware with auth service.
+
+        Args:
+            app: ASGI application
+            auth_service: AuthService instance for checking admin existence
+        """
+        super().__init__(app)
+        self.auth_service = auth_service
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process request and redirect to setup if needed.
@@ -44,8 +57,7 @@ class SetupRedirectMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         # Check if admin user exists
-        auth_service = request.app.state.container.auth_service()
-        if not auth_service.admin_exists():
+        if not self.auth_service.admin_exists():
             return RedirectResponse(url="/admin/setup", status_code=303)
 
         # Admin exists, continue normally

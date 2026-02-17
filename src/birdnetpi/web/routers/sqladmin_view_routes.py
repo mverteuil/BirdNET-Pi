@@ -1,5 +1,7 @@
 """SQLAdmin configuration and setup for database administration interface."""
 
+import logging
+
 from fastapi import FastAPI
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
@@ -7,20 +9,27 @@ from starlette.requests import Request
 
 from birdnetpi.detections.models import AudioFile, Detection
 from birdnetpi.location.models import Weather
+from birdnetpi.utils.auth import AuthService
 from birdnetpi.web.core.container import Container
+
+logger = logging.getLogger(__name__)
 
 
 class AdminAuthBackend(AuthenticationBackend):
-    """Authentication backend for SQLAdmin using Starlette's request.user."""
+    """Authentication backend for SQLAdmin using BirdNET-Pi authentication."""
+
+    def __init__(self, secret_key: str, auth_service: AuthService):
+        """Initialize with secret key and auth service."""
+        super().__init__(secret_key)
+        self.auth_service = auth_service
 
     async def login(self, request: Request) -> bool:
-        """SQLAdmin login - redirect to main login page."""
-        # We don't handle login here, redirect to our login page
+        """Not used - login is handled by BirdNET-Pi auth routes."""
         return False
 
     async def logout(self, request: Request) -> bool:
-        """SQLAdmin logout - handled by our logout route."""
-        return True
+        """Not used - logout is handled by BirdNET-Pi auth routes."""
+        return False
 
     async def authenticate(self, request: Request) -> bool:
         """Check if user is authenticated via Starlette middleware."""
@@ -86,9 +95,10 @@ def setup_sqladmin(app: FastAPI) -> Admin:
     Returns:
         Configured Admin instance
     """
-    # Get database engine from the DI container
+    # Get database engine and auth service from the DI container
     container = Container()
     core_database = container.core_database()
+    auth_service = container.auth_service()
 
     # Create admin with custom configuration and authentication
     admin = Admin(
@@ -96,7 +106,9 @@ def setup_sqladmin(app: FastAPI) -> Admin:
         core_database.async_engine,
         base_url="/admin/database",
         title="BirdNET-Pi Database Admin",
-        authentication_backend=AdminAuthBackend(secret_key="not-used-we-use-starlette-auth"),
+        authentication_backend=AdminAuthBackend(
+            secret_key="not-used-we-use-starlette-auth", auth_service=auth_service
+        ),
     )
 
     # Register model views

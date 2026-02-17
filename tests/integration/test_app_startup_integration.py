@@ -1,14 +1,18 @@
 """Integration test that verifies the FastAPI app starts with real Container."""
 
 import shutil
+from datetime import UTC, datetime
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+import redis.asyncio
 from dependency_injector import providers
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from birdnetpi.system.path_resolver import PathResolver
+from birdnetpi.utils.auth import AdminUser, AuthService, pwd_context
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
 
@@ -72,6 +76,41 @@ class TestAppStartupIntegration:
             providers.Factory(lambda: test_resolver.get_database_path())
         )
 
+        # Mock redis client with in-memory storage for sessions
+        mock_redis = AsyncMock(spec=redis.asyncio.Redis)
+        redis_storage = {}
+
+        async def mock_set(key, value, ex=None):
+            redis_storage[key] = value
+            return True
+
+        async def mock_get(key):
+            return redis_storage.get(key)
+
+        async def mock_delete(key):
+            redis_storage.pop(key, None)
+            return True
+
+        mock_redis.set = AsyncMock(spec=object, side_effect=mock_set)
+        mock_redis.get = AsyncMock(spec=object, side_effect=mock_get)
+        mock_redis.delete = AsyncMock(spec=object, side_effect=mock_delete)
+        mock_redis.close = AsyncMock(spec=object)
+        Container.redis_client.override(providers.Singleton(lambda: mock_redis))
+
+        # Mock auth service
+        mock_auth_service = MagicMock(spec=AuthService)
+        mock_auth_service.admin_exists.return_value = True
+        mock_admin = AdminUser(
+            username="admin",
+            password_hash=pwd_context.hash("testpassword"),
+            created_at=datetime.now(UTC),
+        )
+        mock_auth_service.load_admin_user.return_value = mock_admin
+        mock_auth_service.verify_password.side_effect = lambda plain, hashed: pwd_context.verify(
+            plain, hashed
+        )
+        Container.auth_service.override(providers.Singleton(lambda: mock_auth_service))
+
         # Create the app using the factory
         app = create_app()
 
@@ -80,6 +119,8 @@ class TestAppStartupIntegration:
         # Clean up overrides
         Container.path_resolver.reset_override()
         Container.database_path.reset_override()
+        Container.redis_client.reset_override()
+        Container.auth_service.reset_override()
 
     def test_app_creation_succeeds(self, app_with_real_container: FastAPI):
         """Should create app without errors."""
@@ -114,9 +155,10 @@ class TestAppStartupIntegration:
             assert response.status_code == 200
             assert "html" in response.text.lower()
 
-    def test_api_endpoint_works(self, app_with_real_container: FastAPI):
+    def test_api_endpoint_works(self, app_with_real_container: FastAPI, authenticate_sync_client):
         """Should an API endpoint works with the real container."""
         with TestClient(app_with_real_container) as client:
+            authenticate_sync_client(client)
             response = client.get("/api/system/hardware/status")
             assert response.status_code == 200
             data = response.json()

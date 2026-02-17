@@ -323,9 +323,10 @@ class TestUpdateAPIIntegration:
         assert result_response.status_code == 200
         assert result_response.json()["success"] is True
 
-    def test_all_update_endpoints_exist(self, app_with_temp_data):
+    def test_all_update_endpoints_exist(self, app_with_temp_data, authenticate_sync_client):
         """Should have all update endpoints available."""
         client = TestClient(app_with_temp_data)
+        authenticate_sync_client(client)
 
         endpoints = [
             ("/api/update/status", "GET"),

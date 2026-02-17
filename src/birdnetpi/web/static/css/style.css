@@ -1976,6 +1976,13 @@ h1 {
   background: #f0f0f0;
 }
 
+/* Menu divider */
+.admin-menu .menu-divider {
+  border: none;
+  border-top: 1px solid #e0e0e0;
+  margin: 5px 0;
+}
+
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
   .admin-menu {
@@ -1993,6 +2000,10 @@ h1 {
 
   .admin-menu a.active {
     background: #3a3a3a;
+  }
+
+  .admin-menu .menu-divider {
+    border-top-color: #444;
   }
 }
 

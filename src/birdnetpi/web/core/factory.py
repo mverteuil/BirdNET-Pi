@@ -81,8 +81,22 @@ def create_app() -> FastAPI:
         expose_headers=["*"],  # Expose all headers including Content-Type
     )
 
-    # Authentication and session middleware (MUST come before other middleware)
-    # 1. Session middleware (creates request.session, lazy-loaded on first access)
+    # Authentication and session middleware
+    # NOTE: Middleware is stacked in reverse order - last added runs first!
+    # Desired execution order: Session → Auth → SetupRedirect → App
+    # So add in reverse: SetupRedirect, Auth, Session
+
+    # 1. Setup redirect (added first, runs last before app)
+    auth_service = container.auth_service()
+    app.add_middleware(SetupRedirectMiddleware, auth_service=auth_service)
+
+    # 2. Authentication (added second, runs after session loads)
+    app.add_middleware(
+        AuthenticationMiddleware,
+        backend=SessionAuthBackend(),
+    )
+
+    # 3. Session middleware (added last, runs first to load session)
     redis_client = container.redis_client()
     session_store = RedisStore(
         connection=redis_client,
@@ -96,15 +110,6 @@ def create_app() -> FastAPI:
         rolling=True,  # Extend session on each request
         cookie_https_only=False,  # TODO: Enable in production with HTTPS
         cookie_name="birdnetpi_session",
-    )
-
-    # 2. Setup redirect (before authentication)
-    app.add_middleware(SetupRedirectMiddleware)
-
-    # 3. Authentication (sets request.user based on session)
-    app.add_middleware(
-        AuthenticationMiddleware,
-        backend=SessionAuthBackend(),
     )
 
     # Add LanguageMiddleware

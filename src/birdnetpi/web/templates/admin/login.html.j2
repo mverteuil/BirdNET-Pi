@@ -1,29 +1,22 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BirdNET-Pi Login</title>
-    <link rel="stylesheet" href="{{ request.url_for('static', path='css/style.css') }}">
-    <link rel="stylesheet" href="{{ request.url_for('static', path='css/auth.css') }}">
-</head>
-<body class="auth-page">
-    <div class="auth-container">
-        <div class="auth-card">
-            <header class="auth-header">
-                <h1>BirdNET-Pi</h1>
-                <p class="auth-subtitle">Sign in to continue</p>
-            </header>
+{% extends "base.html.j2" %}
 
-            {% if error %}
-            <div class="auth-error" role="alert">
-                <strong>Error:</strong> {{ error }}
-            </div>
-            {% endif %}
+{% block content %}
+    <div class="content-wrapper">
+        <div class="page-header">
+            <h1>{{ _('Administrator Login') }}</h1>
+            <p>{{ _('Sign in to access admin features') }}</p>
+        </div>
 
-            <form method="post" action="/admin/login" class="auth-form">
+        {% if error %}
+        <div class="error-message" role="alert">
+            <strong>{{ _('Error:') }}</strong> {{ error }}
+        </div>
+        {% endif %}
+
+        <div class="card">
+            <form method="post" action="{{ request.url }}" class="form-vertical">
                 <div class="form-group">
-                    <label for="username">Username</label>
+                    <label for="username">{{ _('Username') }}</label>
                     <input
                         type="text"
                         id="username"
@@ -35,7 +28,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="password">Password</label>
+                    <label for="password">{{ _('Password') }}</label>
                     <input
                         type="password"
                         id="password"
@@ -45,11 +38,10 @@
                     >
                 </div>
 
-                <button type="submit" class="auth-button">
-                    Sign In
+                <button type="submit" class="btn btn-primary">
+                    {{ _('Sign In') }}
                 </button>
             </form>
         </div>
     </div>
-</body>
-</html>
+{% endblock %}
