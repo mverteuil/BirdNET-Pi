@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 from birdnetpi.config import BirdNETConfig
 from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.system.status import SystemInspector
+from birdnetpi.utils.auth import require_admin
 from birdnetpi.utils.language import get_user_language
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.template_contexts import LivestreamPageContext
@@ -18,6 +19,7 @@ router = APIRouter()
 
 
 @router.get("/livestream", response_class=HTMLResponse)
+@require_admin
 @inject
 async def get_livestream(
     request: Request,

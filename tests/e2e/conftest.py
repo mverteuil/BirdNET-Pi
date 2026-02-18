@@ -11,6 +11,62 @@ import pytest
 from birdnetpi.releases.asset_manifest import AssetManifest
 from birdnetpi.system.path_resolver import PathResolver
 
+# Default test credentials for e2e tests
+E2E_ADMIN_USERNAME = "admin"
+E2E_ADMIN_PASSWORD = "e2e-test-password-123"
+
+
+def _setup_admin_user(base_url: str = "http://localhost:8000") -> None:
+    """Create admin user for e2e tests if not already exists.
+
+    Args:
+        base_url: The base URL of the BirdNET-Pi instance
+    """
+    # Check if setup is needed (will redirect to setup if no admin exists)
+    response = httpx.get(f"{base_url}/", follow_redirects=False)
+    if response.status_code == 303 and "/admin/setup" in response.headers.get("location", ""):
+        # Create admin user
+        httpx.post(
+            f"{base_url}/admin/setup",
+            data={"username": E2E_ADMIN_USERNAME, "password": E2E_ADMIN_PASSWORD},
+            follow_redirects=False,
+        )
+
+
+def _get_authenticated_client(base_url: str = "http://localhost:8000") -> httpx.Client:
+    """Get an authenticated httpx client for e2e tests.
+
+    Args:
+        base_url: The base URL of the BirdNET-Pi instance
+
+    Returns:
+        An httpx.Client with authentication cookies set
+    """
+    client = httpx.Client(base_url=base_url)
+    # Login to get session cookie
+    client.post(
+        "/admin/login",
+        data={"username": E2E_ADMIN_USERNAME, "password": E2E_ADMIN_PASSWORD},
+        follow_redirects=False,
+    )
+    return client
+
+
+@pytest.fixture
+def authenticated_e2e_client() -> Generator[httpx.Client, None, None]:
+    """Fixture that provides an authenticated httpx client for standard e2e tests (port 8000)."""
+    client = _get_authenticated_client("http://localhost:8000")
+    yield client
+    client.close()
+
+
+@pytest.fixture
+def authenticated_profiling_client() -> Generator[httpx.Client, None, None]:
+    """Fixture that provides an authenticated httpx client for profiling tests (port 8001)."""
+    client = _get_authenticated_client("http://localhost:8001")
+    yield client
+    client.close()
+
 
 @pytest.fixture(scope="module")
 def docker_compose_up_down() -> Generator[None, None, None]:
@@ -54,6 +110,9 @@ def docker_compose_up_down() -> Generator[None, None, None]:
         subprocess.run(["docker", "compose", "logs"], check=False, env=env)
         subprocess.run([*compose_cmd, "down"], env=env, check=False)
         pytest.fail("Services did not become ready in time")
+
+    # Set up admin user for authentication
+    _setup_admin_user("http://localhost:8000")
 
     yield
 

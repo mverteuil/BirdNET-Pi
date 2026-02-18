@@ -4,10 +4,11 @@ from typing import Annotated
 
 import yaml
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from birdnetpi.config import ConfigManager
 from birdnetpi.system.path_resolver import PathResolver
+from birdnetpi.utils.auth import require_admin
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.admin import SaveConfigResponse, ValidationResponse, YAMLConfigRequest
 
@@ -49,8 +50,10 @@ def _validate_yaml_config_impl(yaml_content: str, path_resolver: PathResolver) -
 
 
 @router.post("/settings/validate", response_model=ValidationResponse)
+@require_admin
 @inject
 async def validate_yaml_config(
+    request: Request,
     config_request: YAMLConfigRequest,
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
 ) -> ValidationResponse:
@@ -60,8 +63,10 @@ async def validate_yaml_config(
 
 
 @router.post("/settings/save", response_model=SaveConfigResponse)
+@require_admin
 @inject
 async def save_yaml_config(
+    request: Request,
     config_request: YAMLConfigRequest,
     path_resolver: Annotated[PathResolver, Depends(Provide[Container.path_resolver])],
 ) -> SaveConfigResponse:

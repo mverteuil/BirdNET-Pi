@@ -4,9 +4,20 @@ import pytest
 from dependency_injector import providers
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from starlette.authentication import AuthCredentials, AuthenticationBackend, SimpleUser
+from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.requests import HTTPConnection
 
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.routers.settings_api_routes import router
+
+
+class TestAuthBackend(AuthenticationBackend):
+    """Test authentication backend that always authenticates as admin."""
+
+    async def authenticate(self, conn: HTTPConnection) -> tuple[AuthCredentials, SimpleUser] | None:
+        """Return authenticated admin user for tests."""
+        return AuthCredentials(["authenticated"]), SimpleUser("test-admin")
 
 
 @pytest.fixture
@@ -14,6 +25,12 @@ def client(tmp_path, path_resolver):
     """Create test client with admin API routes and mocked dependencies."""
     # Create the app
     app = FastAPI()
+
+    # Add authentication middleware with test backend that always authenticates
+    app.add_middleware(
+        AuthenticationMiddleware,
+        backend=TestAuthBackend(),
+    )
 
     # Create the real container
     container = Container()
@@ -33,7 +50,7 @@ def client(tmp_path, path_resolver):
     # Include the router with the same prefix as in factory
     app.include_router(router, prefix="/api")
 
-    # Create and return test client
+    # Create test client
     client = TestClient(app)
 
     # Store the path resolver for access in tests

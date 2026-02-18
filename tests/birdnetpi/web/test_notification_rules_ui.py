@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from birdnetpi.audio.capture import AudioDeviceService
 from birdnetpi.config.manager import ConfigManager
 from birdnetpi.config.models import BirdNETConfig
+from birdnetpi.utils.auth import AuthService
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
 
@@ -43,8 +44,29 @@ def app_with_notification_rules(path_resolver, repo_root, mock_config_with_rules
         mock_audio_service = MagicMock(spec=AudioDeviceService)
         mock_audio_service.discover_input_devices.return_value = []
 
+        # Mock AuthService to indicate admin exists (prevents setup redirect)
+        # and provide authentication for login
+        from datetime import datetime
+
+        from birdnetpi.utils.auth import AdminUser, pwd_context
+
+        mock_auth_service = MagicMock(spec=AuthService)
+        mock_auth_service.admin_exists.return_value = True
+
+        # Create a mock admin user with hashed password "testpassword"
+        mock_admin = AdminUser(
+            username="admin",
+            password_hash=pwd_context.hash("testpassword"),
+            created_at=datetime.now(),
+        )
+        mock_auth_service.load_admin_user.return_value = mock_admin
+        mock_auth_service.verify_password.side_effect = lambda plain, hashed: pwd_context.verify(
+            plain, hashed
+        )
+
         # Override providers BEFORE creating the app
         Container.path_resolver.override(providers.Singleton(lambda: path_resolver))
+        Container.auth_service.override(providers.Singleton(lambda: mock_auth_service))
 
         # Create templates
         templates_dir = path_resolver.get_templates_dir()
@@ -73,13 +95,24 @@ def app_with_notification_rules(path_resolver, repo_root, mock_config_with_rules
         # Clean up overrides
         Container.path_resolver.reset_override()
         Container.templates.reset_override()
+        Container.auth_service.reset_override()
 
 
 @pytest.fixture
 def client_with_notification_rules(app_with_notification_rules):
-    """Create test client with notification rules."""
+    """Create authenticated test client with notification rules."""
     app, config_manager, audio_service = app_with_notification_rules
+
     with TestClient(app) as test_client:
+        # Authenticate the test client by logging in
+        # This creates a session cookie that will be used for subsequent requests
+        login_response = test_client.post(
+            "/admin/login",
+            data={"username": "admin", "password": "testpassword"},
+            follow_redirects=False,
+        )
+        assert login_response.status_code == 303  # Successful login redirects
+
         yield test_client, config_manager, audio_service
 
 

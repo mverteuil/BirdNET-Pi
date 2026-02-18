@@ -14,8 +14,8 @@ from birdnetpi.utils.cache import Cache
 
 
 @pytest.fixture
-def client(app_with_temp_data):
-    """Create test client from app."""
+def client(app_with_temp_data, authenticate_sync_client):
+    """Create authenticated test client from app."""
     # Mount static files to avoid template rendering errors
 
     # Create a temporary static directory
@@ -28,7 +28,10 @@ def client(app_with_temp_data):
     # Mount the static files
     app_with_temp_data.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-    return TestClient(app_with_temp_data)
+    test_client = TestClient(app_with_temp_data)
+    authenticate_sync_client(test_client)
+
+    return test_client
 
 
 @pytest.fixture

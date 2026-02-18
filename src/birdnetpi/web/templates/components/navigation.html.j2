@@ -3,7 +3,7 @@
 
 <!-- Navigation -->
 <nav class="main-nav" role="navigation" aria-label="{{ _('Main navigation') }}">
-    <a href="{{ url_for('get_settings_view') }}" class="nav-item{% if active_page == 'dashboard' %} active{% endif %}"
+    <a href="/" class="nav-item{% if active_page == 'dashboard' %} active{% endif %}"
        {% if active_page == 'dashboard' %}aria-current="page"{% endif %}>{{ _('Dashboard') }}</a>
     <a href="{{ url_for('detections_view') }}" class="nav-item{% if active_page == 'detections' %} active{% endif %}"
        {% if active_page == 'detections' %}aria-current="page"{% endif %}>{{ _('Detections') }}</a>
@@ -43,6 +43,8 @@
             <a href="/admin/database" role="menuitem"
                class="{% if active_page == 'database' %}active{% endif %}"
                {% if active_page == 'database' %}aria-current="page"{% endif %}>{{ _('Database') }}</a>
+            <hr class="menu-divider" aria-hidden="true">
+            <a href="{{ url_for('logout') }}" role="menuitem">{{ _('Logout') }}</a>
         </div>
     </div>
 </nav>

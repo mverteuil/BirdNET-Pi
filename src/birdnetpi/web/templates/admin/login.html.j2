@@ -1,0 +1,47 @@
+{% extends "base.html.j2" %}
+
+{% block content %}
+    <div class="content-wrapper">
+        <div class="page-header">
+            <h1>{{ _('Administrator Login') }}</h1>
+            <p>{{ _('Sign in to access admin features') }}</p>
+        </div>
+
+        {% if error %}
+        <div class="error-message" role="alert">
+            <strong>{{ _('Error:') }}</strong> {{ error }}
+        </div>
+        {% endif %}
+
+        <div class="card">
+            <form method="post" action="{{ request.url }}" class="form-vertical">
+                <div class="form-group">
+                    <label for="username">{{ _('Username') }}</label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        required
+                        autocomplete="username"
+                        autofocus
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">{{ _('Password') }}</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    {{ _('Sign In') }}
+                </button>
+            </form>
+        </div>
+    </div>
+{% endblock %}

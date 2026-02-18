@@ -1,16 +1,28 @@
 """Tests for system API routes that handle hardware monitoring and system status."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import redis.asyncio
 from dependency_injector import providers
 from fastapi.testclient import TestClient
+from starlette.authentication import AuthCredentials, AuthenticationBackend, SimpleUser
+from starlette.requests import HTTPConnection
 
 from birdnetpi.config import ConfigManager
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.detections.queries import DetectionQueryService
+from birdnetpi.utils.auth import AuthService
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
+
+
+class TestAuthBackend(AuthenticationBackend):
+    """Test authentication backend that always authenticates as admin."""
+
+    async def authenticate(self, conn: HTTPConnection) -> tuple[AuthCredentials, SimpleUser] | None:
+        """Return authenticated admin user for tests."""
+        return AuthCredentials(["authenticated"]), SimpleUser("test-admin")
 
 
 @pytest.fixture
@@ -41,7 +53,20 @@ async def app_with_system_router(path_resolver, mock_detection_query_service):
     await temp_db_service.initialize()
     Container.core_database.override(providers.Singleton(lambda: temp_db_service))
     Container.detection_query_service.override(providers.Object(mock_detection_query_service))
-    app = create_app()
+
+    # Mock Redis client with spec
+    mock_redis = MagicMock(spec=redis.asyncio.Redis)
+    Container.redis_client.override(providers.Singleton(lambda: mock_redis))
+
+    # Mock auth_service to always return True for admin_exists()
+    mock_auth_service = MagicMock(spec=AuthService)
+    mock_auth_service.admin_exists.return_value = True
+    Container.auth_service.override(providers.Singleton(lambda: mock_auth_service))
+
+    # Patch SessionAuthBackend to use TestAuthBackend for authentication
+    with patch("birdnetpi.web.core.factory.SessionAuthBackend", TestAuthBackend):
+        app = create_app()
+
     app._test_db_service = temp_db_service  # type: ignore[attr-defined]
     app._test_mock_query_service = mock_detection_query_service  # type: ignore[attr-defined]
     yield app
@@ -52,6 +77,8 @@ async def app_with_system_router(path_resolver, mock_detection_query_service):
     Container.config.reset_override()
     Container.core_database.reset_override()
     Container.detection_query_service.reset_override()
+    Container.redis_client.reset_override()
+    Container.auth_service.reset_override()
 
 
 @pytest.fixture

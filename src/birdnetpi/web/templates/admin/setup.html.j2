@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BirdNET-Pi Setup</title>
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/style.css') }}">
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/auth.css') }}">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <header class="auth-header">
+                <h1>Welcome to BirdNET-Pi</h1>
+                <p class="auth-subtitle">Let's set up your administrator account</p>
+            </header>
+
+            <form method="post" action="/admin/setup" class="auth-form" id="setup-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        value="{{ prefill_username }}"
+                        required
+                        autocomplete="username"
+                        aria-describedby="username-help"
+                    >
+                    <small id="username-help" class="form-help">
+                        This will be your administrator username
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        required
+                        minlength="8"
+                        autocomplete="new-password"
+                        aria-describedby="password-help"
+                    >
+                    <small id="password-help" class="form-help">
+                        Minimum 8 characters
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="password-confirm">Confirm Password</label>
+                    <input
+                        type="password"
+                        id="password-confirm"
+                        name="password-confirm"
+                        required
+                        minlength="8"
+                        autocomplete="new-password"
+                        aria-describedby="password-confirm-error"
+                    >
+                    <small id="password-confirm-error" class="form-error" role="alert"></small>
+                </div>
+
+                <button type="submit" class="auth-button" id="submit-button">
+                    Create Admin Account
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Client-side password match validation
+        const form = document.getElementById('setup-form');
+        const password = document.getElementById('password');
+        const passwordConfirm = document.getElementById('password-confirm');
+        const confirmError = document.getElementById('password-confirm-error');
+        const submitButton = document.getElementById('submit-button');
+
+        function validatePasswords() {
+            if (passwordConfirm.value && password.value !== passwordConfirm.value) {
+                confirmError.textContent = 'Passwords do not match';
+                passwordConfirm.setCustomValidity('Passwords do not match');
+                return false;
+            } else {
+                confirmError.textContent = '';
+                passwordConfirm.setCustomValidity('');
+                return true;
+            }
+        }
+
+        passwordConfirm.addEventListener('input', validatePasswords);
+        password.addEventListener('input', validatePasswords);
+
+        form.addEventListener('submit', function(e) {
+            if (!validatePasswords()) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>

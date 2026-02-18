@@ -20,6 +20,7 @@ from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.system.log_reader import LogReaderService
 from birdnetpi.system.path_resolver import PathResolver
 from birdnetpi.system.status import SystemInspector
+from birdnetpi.utils.auth import require_admin
 from birdnetpi.utils.helpers import prefer
 from birdnetpi.utils.language import get_user_language
 from birdnetpi.web.core.container import Container
@@ -41,6 +42,7 @@ async def read_admin() -> dict[str, str]:
 
 # Settings Management
 @router.get("/settings", response_class=HTMLResponse)
+@require_admin
 @inject
 async def get_settings_view(
     request: Request,

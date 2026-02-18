@@ -66,9 +66,15 @@ class TestSQLAdminViewRoutes:
         mock_admin_instance = MagicMock(spec=Admin)
         mock_admin_class.return_value = mock_admin_instance
         result = setup_sqladmin(app)
-        mock_admin_class.assert_called_once_with(
-            app, mock_async_engine, base_url="/admin/database", title="BirdNET-Pi Database Admin"
-        )
+        # Check that Admin was called with the expected parameters
+        # Note: authentication_backend is also passed, but we check for the core params
+        mock_admin_class.assert_called_once()
+        call_args, call_kwargs = mock_admin_class.call_args
+        assert call_args[0] == app
+        assert call_args[1] == mock_async_engine
+        assert call_kwargs["base_url"] == "/admin/database"
+        assert call_kwargs["title"] == "BirdNET-Pi Database Admin"
+        assert "authentication_backend" in call_kwargs
         assert mock_admin_instance.add_view.call_count == 3
         call_args = [call.args[0] for call in mock_admin_instance.add_view.call_args_list]
         assert DetectionAdmin in call_args

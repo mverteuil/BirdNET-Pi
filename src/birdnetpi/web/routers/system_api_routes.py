@@ -7,12 +7,13 @@ from dataclasses import asdict
 from typing import Annotated
 
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Request
 
 from birdnetpi.detections.queries import DetectionQueryService
 from birdnetpi.system.status import SystemInspector
 from birdnetpi.system.system_control import SERVICES_CONFIG, SystemControlService
 from birdnetpi.system.system_utils import SystemUtils
+from birdnetpi.utils.auth import require_admin
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.services import (
     ConfigReloadResponse,
@@ -38,8 +39,10 @@ router = APIRouter(prefix="/system")
 
 
 @router.get("/hardware/status", response_model=HardwareStatusResponse)
+@require_admin
 @inject
 async def get_hardware_status(
+    request: Request,
     detection_query_service: Annotated[
         DetectionQueryService, Depends(Provide[Container.detection_query_service])
     ],
@@ -106,8 +109,10 @@ async def get_hardware_status(
 
 
 @router.get("/services/status", response_model=ServicesStatusResponse)
+@require_admin
 @inject
 async def get_services_status(
+    request: Request,
     system_control: Annotated[
         SystemControlService, Depends(Provide[Container.system_control_service])
     ],
@@ -156,8 +161,10 @@ async def get_services_status(
 
 
 @router.post("/services/reload-config", response_model=ConfigReloadResponse)
+@require_admin
 @inject
 async def reload_configuration(
+    request: Request,
     system_control: Annotated[
         SystemControlService, Depends(Provide[Container.system_control_service])
     ],
@@ -180,8 +187,10 @@ async def reload_configuration(
 
 
 @router.get("/services/info", response_model=SystemInfo)
+@require_admin
 @inject
 async def get_system_info(
+    request: Request,
     system_control: Annotated[
         SystemControlService, Depends(Provide[Container.system_control_service])
     ],
@@ -203,9 +212,11 @@ async def get_system_info(
 
 
 @router.post("/services/reboot", response_model=SystemRebootResponse)
+@require_admin
 @inject
 async def reboot_system(
-    request: SystemRebootRequest,
+    request: Request,
+    reboot_request: SystemRebootRequest,
     system_control: Annotated[
         SystemControlService, Depends(Provide[Container.system_control_service])
     ],
@@ -215,7 +226,7 @@ async def reboot_system(
     Requires confirmation to prevent accidental reboots.
     Only available if the deployment supports it.
     """
-    if not request.confirm:
+    if not reboot_request.confirm:
         return SystemRebootResponse(
             success=False,
             message="Reboot requires confirmation",
@@ -250,8 +261,10 @@ async def reboot_system(
 
 
 @router.get("/services")
+@require_admin
 @inject
 async def get_services_list(
+    request: Request,
     system_control: Annotated[
         SystemControlService, Depends(Provide[Container.system_control_service])
     ],
@@ -285,11 +298,13 @@ async def get_services_list(
 
 
 @router.post("/services/{service_name}/{action}", response_model=ServiceActionResponse)
+@require_admin
 @inject
 async def perform_service_action(
+    request: Request,
     service_name: Annotated[str, Path(description="Name of the service")],
     action: Annotated[str, Path(pattern="^(start|stop|restart)$", description="Action to perform")],
-    request: ServiceActionRequest,
+    action_request: ServiceActionRequest,
     system_control: Annotated[
         SystemControlService, Depends(Provide[Container.system_control_service])
     ],
@@ -305,7 +320,7 @@ async def perform_service_action(
     service_config = next((s for s in service_configs if s.name == service_name), None)
 
     if service_config and service_config.critical and action in ["restart", "stop"]:
-        if not request.confirm:
+        if not action_request.confirm:
             return ServiceActionResponse(
                 success=False,
                 message=(

@@ -6,9 +6,10 @@ import pytest
 
 
 @pytest.mark.expensive
-def test_root_endpoint_e2e(docker_compose_up_down) -> None:
+def test_root_endpoint_e2e(docker_compose_up_down, authenticated_e2e_client) -> None:
     """Should serve the root endpoint of the BirdNET-Pi application."""
-    response = httpx.get("http://localhost:8000")
+    # Need authenticated client since root page requires login
+    response = authenticated_e2e_client.get("/")
     assert response.status_code == 200
     assert "BirdNET-Pi" in response.text
 
@@ -62,10 +63,10 @@ def test_sqladmin_detection_list_e2e(docker_compose_up_down) -> None:
             result.check_returncode()
 
     # Wait for the FastAPI service to be fully ready after restart
-    # Retry the basic endpoint first to ensure the service is up
+    # Retry the health endpoint first to ensure the service is up
     for _attempt in range(10):
         try:
-            health_check = httpx.get("http://localhost:8000/", timeout=3)
+            health_check = httpx.get("http://localhost:8000/api/health/ready", timeout=3)
             if health_check.status_code == 200:
                 break
         except Exception:
@@ -74,7 +75,25 @@ def test_sqladmin_detection_list_e2e(docker_compose_up_down) -> None:
     else:
         pytest.fail("FastAPI service did not become ready after dummy data generation")
 
-    response = httpx.get("http://localhost:8000/admin/database/detection/list")
+    # Need authenticated client for SQLAdmin access
+    # Note: We need to recreate the client after container restart since session may be lost
+    # Re-setup admin and authenticate (container may have been restarted)
+    response = httpx.get("http://localhost:8000/", follow_redirects=False)
+    if response.status_code == 303 and "/admin/setup" in response.headers.get("location", ""):
+        httpx.post(
+            "http://localhost:8000/admin/setup",
+            data={"username": "admin", "password": "e2e-test-password-123"},
+            follow_redirects=False,
+        )
+
+    client = httpx.Client(base_url="http://localhost:8000")
+    client.post(
+        "/admin/login",
+        data={"username": "admin", "password": "e2e-test-password-123"},
+        follow_redirects=False,
+    )
+    response = client.get("/admin/database/detection/list")
+    client.close()
     assert response.status_code == 200
     assert "Detections" in response.text
 
@@ -85,14 +104,14 @@ def test_sqladmin_detection_list_e2e(docker_compose_up_down) -> None:
 
 
 @pytest.mark.expensive
-def test_profiling_disabled_by_default(docker_compose_up_down) -> None:
+def test_profiling_disabled_by_default(docker_compose_up_down, authenticated_e2e_client) -> None:
     """Should not enable profiling when ENABLE_PROFILING is not set.
 
     This test is in the main e2e file because it needs the regular Docker
     environment without profiling enabled.
     """
     # Request the root page with ?profile=1
-    response = httpx.get("http://localhost:8000/?profile=1")
+    response = authenticated_e2e_client.get("/?profile=1")
     assert response.status_code == 200
 
     # Should return the normal page, not profiling output

@@ -49,9 +49,11 @@ def integration_app(app_with_temp_data, tmp_path):
 
 
 @pytest.fixture
-def integration_client(integration_app):
+def integration_client(integration_app, authenticate_sync_client):
     """Create test client with integration app."""
-    return TestClient(integration_app)
+    client = TestClient(integration_app)
+    authenticate_sync_client(client)
+    return client
 
 
 class TestSystemRoutesIntegration:

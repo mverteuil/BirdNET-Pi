@@ -3,18 +3,24 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from starlette.middleware.authentication import AuthenticationMiddleware
+from starsessions import SessionMiddleware
+from starsessions.stores.redis import RedisStore
 
 from birdnetpi.config.manager import ConfigManager
 from birdnetpi.i18n.translation_manager import setup_jinja2_i18n
 from birdnetpi.system.status import SystemInspector
+from birdnetpi.utils.auth import SessionAuthBackend
 from birdnetpi.utils.language import get_user_language
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.lifespan import lifespan
 from birdnetpi.web.middleware.i18n import LanguageMiddleware
 from birdnetpi.web.middleware.request_logging import StructuredRequestLoggingMiddleware
+from birdnetpi.web.middleware.setup_redirect import SetupRedirectMiddleware
 from birdnetpi.web.middleware.update_banner import add_update_status_to_templates
 from birdnetpi.web.routers import (
     analysis_api_routes,
+    auth_routes,
     detections_api_routes,
     health_api_routes,
     i18n_api_routes,
@@ -75,6 +81,37 @@ def create_app() -> FastAPI:
         expose_headers=["*"],  # Expose all headers including Content-Type
     )
 
+    # Authentication and session middleware
+    # NOTE: Middleware is stacked in reverse order - last added runs first!
+    # Desired execution order: Session → Auth → SetupRedirect → App
+    # So add in reverse: SetupRedirect, Auth, Session
+
+    # 1. Setup redirect (added first, runs last before app)
+    auth_service = container.auth_service()
+    app.add_middleware(SetupRedirectMiddleware, auth_service=auth_service)
+
+    # 2. Authentication (added second, runs after session loads)
+    app.add_middleware(
+        AuthenticationMiddleware,
+        backend=SessionAuthBackend(),
+    )
+
+    # 3. Session middleware (added last, runs first to load session)
+    redis_client = container.redis_client()
+    session_store = RedisStore(
+        connection=redis_client,
+        prefix="birdnetpi:",
+        gc_ttl=86400,  # 24 hours
+    )
+    app.add_middleware(
+        SessionMiddleware,
+        store=session_store,
+        lifetime=86400,  # 24 hours
+        rolling=True,  # Extend session on each request
+        cookie_https_only=False,  # TODO: Enable in production with HTTPS
+        cookie_name="birdnetpi_session",
+    )
+
     # Add LanguageMiddleware
     app.add_middleware(LanguageMiddleware)
 
@@ -102,6 +139,7 @@ def create_app() -> FastAPI:
         modules=[
             "birdnetpi.web.core.factory",  # Wire factory for root route
             "birdnetpi.web.routers.analysis_api_routes",
+            "birdnetpi.web.routers.auth_routes",
             "birdnetpi.web.routers.detections_api_routes",
             "birdnetpi.web.routers.health_api_routes",
             "birdnetpi.web.routers.i18n_api_routes",  # Wire i18n API routes
@@ -124,6 +162,13 @@ def create_app() -> FastAPI:
     # Include routers with proper prefixes and consistent tagging
 
     # === API Routes (included in documentation) ===
+
+    # Authentication routes (setup, login, logout)
+    app.include_router(
+        auth_routes.router,
+        tags=["Authentication"],
+        include_in_schema=False,  # Exclude from API docs
+    )
 
     # Analysis API routes for progressive loading
     app.include_router(analysis_api_routes.router, prefix="/api", tags=["Analysis API"])
@@ -204,6 +249,12 @@ def create_app() -> FastAPI:
 
     # Database administration interface
     sqladmin_view_routes.setup_sqladmin(app)
+
+    # Cleanup Redis connection on shutdown
+    @app.on_event("shutdown")
+    async def shutdown() -> None:
+        """Clean up resources on application shutdown."""
+        await redis_client.close()
 
     # Root route (excluded from API documentation)
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)

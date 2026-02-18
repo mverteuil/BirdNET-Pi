@@ -14,7 +14,9 @@ class TestServicesViewRoutes:
     """Test class for services view endpoints."""
 
     @pytest.mark.asyncio
-    async def test_services_page_renders_successfully(self, app_with_temp_data, path_resolver):
+    async def test_services_page_renders_successfully(
+        self, app_with_temp_data, path_resolver, authenticate_sync_client
+    ):
         """Should render services page with correct context."""
         # Mock the system control service
         mock_system_control = MagicMock(spec=SystemControlService)
@@ -52,6 +54,7 @@ class TestServicesViewRoutes:
 
         # Create test client
         with TestClient(app_with_temp_data) as client:
+            authenticate_sync_client(client)
             response = client.get("/admin/services")
 
             # Should render successfully
@@ -59,7 +62,9 @@ class TestServicesViewRoutes:
             assert b"Services" in response.content or b"services" in response.content
 
     @pytest.mark.asyncio
-    async def test_services_page_handles_service_error(self, app_with_temp_data, path_resolver):
+    async def test_services_page_handles_service_error(
+        self, app_with_temp_data, path_resolver, authenticate_sync_client
+    ):
         """Should handle errors when getting service status."""
         # Mock the system control service to raise an error
         mock_system_control = MagicMock(spec=SystemControlService)
@@ -76,13 +81,16 @@ class TestServicesViewRoutes:
 
         # Create test client
         with TestClient(app_with_temp_data) as client:
+            authenticate_sync_client(client)
             response = client.get("/admin/services")
 
             # Should still render successfully with empty services
             assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_services_page_handles_system_info_error(self, app_with_temp_data, path_resolver):
+    async def test_services_page_handles_system_info_error(
+        self, app_with_temp_data, path_resolver, authenticate_sync_client
+    ):
         """Should handle errors when getting system info."""
         # Mock the system control service
         mock_system_control = MagicMock(spec=SystemControlService)
@@ -94,13 +102,16 @@ class TestServicesViewRoutes:
 
         # Create test client
         with TestClient(app_with_temp_data) as client:
+            authenticate_sync_client(client)
             response = client.get("/admin/services")
 
             # Should still render successfully with default system info
             assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_services_page_formats_uptime(self, app_with_temp_data, path_resolver):
+    async def test_services_page_formats_uptime(
+        self, app_with_temp_data, path_resolver, authenticate_sync_client
+    ):
         """Should format service uptime correctly."""
         # Mock the system control service with various uptime values
         mock_system_control = MagicMock(spec=SystemControlService)
@@ -146,6 +157,7 @@ class TestServicesViewRoutes:
 
         # Create test client
         with TestClient(app_with_temp_data) as client:
+            authenticate_sync_client(client)
             response = client.get("/admin/services")
 
             # Should render successfully
@@ -153,7 +165,7 @@ class TestServicesViewRoutes:
 
     @pytest.mark.asyncio
     async def test_services_page_identifies_critical_services(
-        self, app_with_temp_data, path_resolver
+        self, app_with_temp_data, path_resolver, authenticate_sync_client
     ):
         """Should correctly identify critical services."""
         # Mock the system control service
@@ -191,13 +203,16 @@ class TestServicesViewRoutes:
 
         # Create test client
         with TestClient(app_with_temp_data) as client:
+            authenticate_sync_client(client)
             response = client.get("/admin/services")
 
             # Should render successfully
             assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_services_page_service_status_variations(self, app_with_temp_data, path_resolver):
+    async def test_services_page_service_status_variations(
+        self, app_with_temp_data, path_resolver, authenticate_sync_client
+    ):
         """Should handle various service status values."""
         # Mock the system control service with different statuses
         mock_system_control = MagicMock(spec=SystemControlService)
@@ -261,6 +276,7 @@ class TestServicesViewRoutes:
 
         # Create test client
         with TestClient(app_with_temp_data) as client:
+            authenticate_sync_client(client)
             response = client.get("/admin/services")
 
             # Should render successfully
@@ -295,7 +311,7 @@ class TestServicesViewRoutes:
 
     @pytest.mark.asyncio
     async def test_services_page_with_systemutils_deployment(
-        self, app_with_temp_data, path_resolver
+        self, app_with_temp_data, path_resolver, authenticate_sync_client
     ):
         """Should use SystemUtils for deployment type when needed."""
         # Mock the system control service
@@ -319,6 +335,7 @@ class TestServicesViewRoutes:
 
             # Create test client
             with TestClient(app_with_temp_data) as client:
+                authenticate_sync_client(client)
                 response = client.get("/admin/services")
 
                 # Should render successfully

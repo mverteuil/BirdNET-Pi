@@ -17,6 +17,7 @@ from birdnetpi.config.manager import ConfigManager
 from birdnetpi.database.core import CoreDatabaseService
 from birdnetpi.database.ebird import EBirdRegionService
 from birdnetpi.releases.registry_service import BoundingBox, RegionPackInfo, RegistryService
+from birdnetpi.utils.auth import AdminUser, AuthService, pwd_context
 from birdnetpi.utils.cache.cache import Cache
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.core.factory import create_app
@@ -120,6 +121,20 @@ async def app_with_ebird_filtering(path_resolver, mock_ebird_service, tmp_path):
     )
     Container.registry_service.override(providers.Singleton(lambda: mock_registry_service))
 
+    # Mock AuthService to enable authentication in tests
+    mock_auth_service = MagicMock(spec=AuthService)
+    mock_auth_service.admin_exists.return_value = True
+    mock_admin = AdminUser(
+        username="admin",
+        password_hash=pwd_context.hash("testpassword"),
+        created_at=datetime.now(UTC),
+    )
+    mock_auth_service.load_admin_user.return_value = mock_admin
+    mock_auth_service.verify_password.side_effect = lambda plain, hashed: pwd_context.verify(
+        plain, hashed
+    )
+    Container.auth_service.override(providers.Singleton(lambda: mock_auth_service))
+
     # Reset dependent services
     try:
         Container.ebird_region_service.reset()
@@ -150,12 +165,25 @@ async def app_with_ebird_filtering(path_resolver, mock_ebird_service, tmp_path):
     Container.cache_service.reset_override()
     Container.ebird_region_service.reset_override()
     Container.registry_service.reset_override()
+    Container.auth_service.reset_override()
+
+
+@pytest.fixture
+async def authenticated_client(app_with_ebird_filtering, authenticate_async_client):
+    """Create an authenticated AsyncClient for API testing."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
+    ) as client:
+        await authenticate_async_client(client)
+        yield client
 
 
 class TestEBirdFilteringDisabled:
     """Test that detections are allowed when eBird filtering is disabled."""
 
-    async def test_detection_allowed_when_filtering_disabled(self, app_with_temp_data):
+    async def test_detection_allowed_when_filtering_disabled(
+        self, app_with_temp_data, authenticate_async_client
+    ):
         """Should allow detection when eBird filtering is disabled."""
         # Ensure filtering is disabled
         config = Container.config()
@@ -164,6 +192,7 @@ class TestEBirdFilteringDisabled:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_temp_data), base_url="http://test"
         ) as client:
+            await authenticate_async_client(client)
             response = await client.post(
                 "/api/detections/",
                 json=create_detection_payload(
@@ -184,7 +213,9 @@ class TestEBirdFilteringModeOff:
 
     # Using app_with_ebird_filtering instead of app_with_temp_data because we need
     # eBird filtering enabled with mocked eBird service for this integration test
-    async def test_detection_allowed_when_mode_off(self, app_with_ebird_filtering):
+    async def test_detection_allowed_when_mode_off(
+        self, app_with_ebird_filtering, authenticate_async_client
+    ):
         """Should allow detection when detection_mode is 'off'."""
         # Set mode to off
         config = Container.config()
@@ -193,6 +224,7 @@ class TestEBirdFilteringModeOff:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
         ) as client:
+            await authenticate_async_client(client)
             response = await client.post(
                 "/api/detections/",
                 json=create_detection_payload(
@@ -212,7 +244,9 @@ class TestEBirdFilteringWarnMode:
 
     # Using app_with_ebird_filtering instead of app_with_temp_data because we need
     # eBird filtering enabled with mocked eBird service for this integration test
-    async def test_vagrant_species_warned_but_allowed(self, app_with_ebird_filtering):
+    async def test_vagrant_species_warned_but_allowed(
+        self, app_with_ebird_filtering, authenticate_async_client
+    ):
         """Should warn about vagrant species but still create detection."""
         # Set mode to warn
         config = Container.config()
@@ -226,6 +260,7 @@ class TestEBirdFilteringWarnMode:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
         ) as client:
+            await authenticate_async_client(client)
             response = await client.post(
                 "/api/detections/",
                 json=create_detection_payload(
@@ -246,7 +281,9 @@ class TestEBirdFilteringFilterMode:
 
     # Using app_with_ebird_filtering instead of app_with_temp_data because we need
     # eBird filtering enabled with mocked eBird service for this integration test
-    async def test_vagrant_species_blocked_with_vagrant_strictness(self, app_with_ebird_filtering):
+    async def test_vagrant_species_blocked_with_vagrant_strictness(
+        self, app_with_ebird_filtering, authenticate_async_client
+    ):
         """Should block vagrant species with vagrant strictness."""
         config = Container.config()
         config.ebird_filtering.detection_mode = "filter"
@@ -259,6 +296,7 @@ class TestEBirdFilteringFilterMode:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
         ) as client:
+            await authenticate_async_client(client)
             response = await client.post(
                 "/api/detections/",
                 json=create_detection_payload(
@@ -275,7 +313,9 @@ class TestEBirdFilteringFilterMode:
 
     # Using app_with_ebird_filtering instead of app_with_temp_data because we need
     # eBird filtering enabled with mocked eBird service for this integration test
-    async def test_rare_species_blocked_with_rare_strictness(self, app_with_ebird_filtering):
+    async def test_rare_species_blocked_with_rare_strictness(
+        self, app_with_ebird_filtering, authenticate_async_client
+    ):
         """Should block rare species with rare strictness."""
         config = Container.config()
         config.ebird_filtering.detection_mode = "filter"
@@ -288,6 +328,7 @@ class TestEBirdFilteringFilterMode:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
         ) as client:
+            await authenticate_async_client(client)
             response = await client.post(
                 "/api/detections/",
                 json=create_detection_payload(
@@ -303,7 +344,7 @@ class TestEBirdFilteringFilterMode:
             assert "filtered" in data["message"].lower()
 
     async def test_uncommon_species_blocked_with_uncommon_strictness(
-        self, app_with_ebird_filtering
+        self, app_with_ebird_filtering, authenticate_async_client
     ):
         """Should block uncommon species with uncommon strictness."""
         config = Container.config()
@@ -317,6 +358,7 @@ class TestEBirdFilteringFilterMode:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
         ) as client:
+            await authenticate_async_client(client)
             response = await client.post(
                 "/api/detections/",
                 json=create_detection_payload(
@@ -333,7 +375,9 @@ class TestEBirdFilteringFilterMode:
 
     # Using app_with_ebird_filtering instead of app_with_temp_data because we need
     # eBird filtering enabled with mocked eBird service for this integration test
-    async def test_common_species_allowed_with_all_strictness(self, app_with_ebird_filtering):
+    async def test_common_species_allowed_with_all_strictness(
+        self, app_with_ebird_filtering, authenticate_async_client
+    ):
         """Should allow common species with any strictness level."""
         config = Container.config()
         config.ebird_filtering.detection_mode = "filter"
@@ -348,6 +392,7 @@ class TestEBirdFilteringFilterMode:
             async with AsyncClient(
                 transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
             ) as client:
+                await authenticate_async_client(client)
                 response = await client.post(
                     "/api/detections/",
                     json=create_detection_payload(
@@ -367,7 +412,9 @@ class TestEBirdFilteringUnknownSpecies:
 
     # Using app_with_ebird_filtering instead of app_with_temp_data because we need
     # eBird filtering enabled with mocked eBird service for this integration test
-    async def test_unknown_species_allowed_with_allow_behavior(self, app_with_ebird_filtering):
+    async def test_unknown_species_allowed_with_allow_behavior(
+        self, app_with_ebird_filtering, authenticate_async_client
+    ):
         """Should allow unknown species when behavior is 'allow'."""
         config = Container.config()
         config.ebird_filtering.detection_mode = "filter"
@@ -379,6 +426,7 @@ class TestEBirdFilteringUnknownSpecies:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
         ) as client:
+            await authenticate_async_client(client)
             response = await client.post(
                 "/api/detections/",
                 json=create_detection_payload(
@@ -394,7 +442,9 @@ class TestEBirdFilteringUnknownSpecies:
 
     # Using app_with_ebird_filtering instead of app_with_temp_data because we need
     # eBird filtering enabled with mocked eBird service for this integration test
-    async def test_unknown_species_blocked_with_block_behavior(self, app_with_ebird_filtering):
+    async def test_unknown_species_blocked_with_block_behavior(
+        self, app_with_ebird_filtering, authenticate_async_client
+    ):
         """Should block unknown species when behavior is 'block'."""
         config = Container.config()
         config.ebird_filtering.detection_mode = "filter"
@@ -405,6 +455,7 @@ class TestEBirdFilteringUnknownSpecies:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
         ) as client:
+            await authenticate_async_client(client)
             response = await client.post(
                 "/api/detections/",
                 json=create_detection_payload(
@@ -425,7 +476,9 @@ class TestEBirdFilteringWithoutCoordinates:
 
     # Using app_with_ebird_filtering instead of app_with_temp_data because we need
     # eBird filtering enabled with mocked eBird service for this integration test
-    async def test_detection_rejected_without_latitude(self, app_with_ebird_filtering):
+    async def test_detection_rejected_without_latitude(
+        self, app_with_ebird_filtering, authenticate_async_client
+    ):
         """Should reject detection with validation error when latitude is missing."""
         config = Container.config()
         config.ebird_filtering.detection_mode = "filter"
@@ -433,6 +486,7 @@ class TestEBirdFilteringWithoutCoordinates:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
         ) as client:
+            await authenticate_async_client(client)
             # Create payload and remove latitude field
             payload = create_detection_payload(
                 species_tensor="Turdus migratorius_American Robin",
@@ -450,7 +504,9 @@ class TestEBirdFilteringWithoutCoordinates:
 
     # Using app_with_ebird_filtering instead of app_with_temp_data because we need
     # eBird filtering enabled with mocked eBird service for this integration test
-    async def test_detection_rejected_without_longitude(self, app_with_ebird_filtering):
+    async def test_detection_rejected_without_longitude(
+        self, app_with_ebird_filtering, authenticate_async_client
+    ):
         """Should reject detection with validation error when longitude is missing."""
         config = Container.config()
         config.ebird_filtering.detection_mode = "filter"
@@ -458,6 +514,7 @@ class TestEBirdFilteringWithoutCoordinates:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
         ) as client:
+            await authenticate_async_client(client)
             # Create payload and remove longitude field
             payload = create_detection_payload(
                 species_tensor="Turdus migratorius_American Robin",
@@ -479,7 +536,9 @@ class TestEBirdFilteringErrorHandling:
 
     # Using app_with_ebird_filtering instead of app_with_temp_data because we need
     # eBird filtering enabled with mocked eBird service for this integration test
-    async def test_detection_allowed_on_ebird_service_error(self, app_with_ebird_filtering):
+    async def test_detection_allowed_on_ebird_service_error(
+        self, app_with_ebird_filtering, authenticate_async_client
+    ):
         """Should allow detection if eBird service fails."""
         config = Container.config()
         config.ebird_filtering.detection_mode = "filter"
@@ -495,6 +554,7 @@ class TestEBirdFilteringErrorHandling:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
         ) as client:
+            await authenticate_async_client(client)
             response = await client.post(
                 "/api/detections/",
                 json=create_detection_payload(
@@ -515,7 +575,9 @@ class TestEBirdFilteringStrictnessLevels:
 
     # Using app_with_ebird_filtering instead of app_with_temp_data because we need
     # eBird filtering enabled with mocked eBird service for this integration test
-    async def test_vagrant_strictness_allows_rare_uncommon_common(self, app_with_ebird_filtering):
+    async def test_vagrant_strictness_allows_rare_uncommon_common(
+        self, app_with_ebird_filtering, authenticate_async_client
+    ):
         """Should only block vagrant species with vagrant strictness."""
         config = Container.config()
         config.ebird_filtering.detection_mode = "filter"
@@ -537,6 +599,7 @@ class TestEBirdFilteringStrictnessLevels:
             async with AsyncClient(
                 transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
             ) as client:
+                await authenticate_async_client(client)
                 response = await client.post(
                     "/api/detections/",
                     json=create_detection_payload(
@@ -555,7 +618,9 @@ class TestEBirdFilteringStrictnessLevels:
 
     # Using app_with_ebird_filtering instead of app_with_temp_data because we need
     # eBird filtering enabled with mocked eBird service for this integration test
-    async def test_rare_strictness_allows_uncommon_common(self, app_with_ebird_filtering):
+    async def test_rare_strictness_allows_uncommon_common(
+        self, app_with_ebird_filtering, authenticate_async_client
+    ):
         """Should block vagrant and rare species with rare strictness."""
         config = Container.config()
         config.ebird_filtering.detection_mode = "filter"
@@ -576,6 +641,7 @@ class TestEBirdFilteringStrictnessLevels:
             async with AsyncClient(
                 transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
             ) as client:
+                await authenticate_async_client(client)
                 response = await client.post(
                     "/api/detections/",
                     json=create_detection_payload(
@@ -594,7 +660,9 @@ class TestEBirdFilteringStrictnessLevels:
 
     # Using app_with_ebird_filtering instead of app_with_temp_data because we need
     # eBird filtering enabled with mocked eBird service for this integration test
-    async def test_uncommon_strictness_allows_only_common(self, app_with_ebird_filtering):
+    async def test_uncommon_strictness_allows_only_common(
+        self, app_with_ebird_filtering, authenticate_async_client
+    ):
         """Should only allow common species with uncommon strictness."""
         config = Container.config()
         config.ebird_filtering.detection_mode = "filter"
@@ -615,6 +683,7 @@ class TestEBirdFilteringStrictnessLevels:
             async with AsyncClient(
                 transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
             ) as client:
+                await authenticate_async_client(client)
                 response = await client.post(
                     "/api/detections/",
                     json=create_detection_payload(
@@ -633,7 +702,9 @@ class TestEBirdFilteringStrictnessLevels:
 
     # Using app_with_ebird_filtering instead of app_with_temp_data because we need
     # eBird filtering enabled with mocked eBird service for this integration test
-    async def test_common_strictness_allows_only_common(self, app_with_ebird_filtering):
+    async def test_common_strictness_allows_only_common(
+        self, app_with_ebird_filtering, authenticate_async_client
+    ):
         """Should only allow common species with common strictness."""
         config = Container.config()
         config.ebird_filtering.detection_mode = "filter"
@@ -654,6 +725,7 @@ class TestEBirdFilteringStrictnessLevels:
             async with AsyncClient(
                 transport=ASGITransport(app=app_with_ebird_filtering), base_url="http://test"
             ) as client:
+                await authenticate_async_client(client)
                 response = await client.post(
                     "/api/detections/",
                     json=create_detection_payload(

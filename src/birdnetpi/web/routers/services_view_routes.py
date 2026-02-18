@@ -14,6 +14,7 @@ from birdnetpi.i18n.translation_manager import TranslationManager
 from birdnetpi.system.status import SystemInspector
 from birdnetpi.system.system_control import SERVICES_CONFIG, SystemControlService
 from birdnetpi.system.system_utils import SystemUtils
+from birdnetpi.utils.auth import require_admin
 from birdnetpi.utils.language import get_user_language
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.services import ServiceConfig, format_uptime
@@ -104,6 +105,7 @@ def _get_system_info(
 
 
 @router.get("/admin/services", response_class=HTMLResponse)
+@require_admin
 @inject
 async def services_view(
     request: Request,

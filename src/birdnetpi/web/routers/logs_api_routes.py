@@ -7,10 +7,11 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 
 from birdnetpi.system.log_reader import LogReaderService
+from birdnetpi.utils.auth import require_admin
 from birdnetpi.web.core.container import Container
 from birdnetpi.web.models.logs import LOG_LEVELS, LogEntry
 from birdnetpi.web.models.services import LogsResponse
@@ -20,8 +21,10 @@ router = APIRouter()
 
 
 @router.get("/logs", response_model=LogsResponse)
+@require_admin
 @inject
 async def get_logs(
+    request: Request,
     log_reader: Annotated[LogReaderService, Depends(Provide[Container.log_reader])],
     start_time: Annotated[datetime | None, Query(description="Start of time range")] = None,
     end_time: Annotated[datetime | None, Query(description="End of time range")] = None,
@@ -33,10 +36,11 @@ async def get_logs(
     fetched and streamed logs.
 
     Args:
+        request: FastAPI request object (required by authentication decorator)
+        log_reader: Injected log reader service
         start_time: Start of time range
         end_time: End of time range
         limit: Maximum number of entries
-        log_reader: Injected log reader service
 
     Returns:
         Dictionary with logs and metadata
@@ -120,8 +124,10 @@ async def get_logs(
 
 
 @router.get("/logs/stream")
+@require_admin
 @inject
 async def stream_logs(
+    request: Request,
     log_reader: Annotated[LogReaderService, Depends(Provide[Container.log_reader])],
 ) -> StreamingResponse:
     """Stream logs using Server-Sent Events (SSE).
@@ -130,6 +136,7 @@ async def stream_logs(
     fetched and streamed logs.
 
     Args:
+        request: FastAPI request object (required by authentication decorator)
         log_reader: Injected log reader service
 
     Returns:
@@ -204,7 +211,8 @@ async def stream_logs(
 
 
 @router.get("/logs/levels")
-async def get_log_levels() -> list[dict[str, Any]]:
+@require_admin
+async def get_log_levels(request: Request) -> list[dict[str, Any]]:
     """Get available log levels with display information.
 
     Returns:

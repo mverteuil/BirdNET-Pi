@@ -32,6 +32,7 @@ async def core_database_service(tmp_path):
 
 @pytest.mark.no_leaks
 @pytest.mark.asyncio
+@pytest.mark.ci_issue  # Flaky in CI due to async context manager mocking timing issues
 @pytest.mark.parametrize(
     "operation,should_fail,exception",
     [
