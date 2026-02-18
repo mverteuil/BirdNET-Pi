@@ -16,8 +16,6 @@ from collections.abc import Generator
 import httpx
 import pytest
 
-from tests.e2e.conftest import get_authenticated_client, setup_admin_user
-
 
 @pytest.fixture(scope="module")
 def docker_compose_with_profiling() -> Generator[None, None, None]:
@@ -53,7 +51,13 @@ def docker_compose_with_profiling() -> Generator[None, None, None]:
         pytest.fail("Services did not become ready in time")
 
     # Set up admin user for authentication (profiling uses port 8001)
-    setup_admin_user("http://localhost:8001")
+    response = httpx.get("http://localhost:8001/", follow_redirects=False)
+    if response.status_code == 303 and "/admin/setup" in response.headers.get("location", ""):
+        httpx.post(
+            "http://localhost:8001/admin/setup",
+            data={"username": "admin", "password": "e2e-test-password-123"},
+            follow_redirects=False,
+        )
 
     yield
 
@@ -62,13 +66,12 @@ def docker_compose_with_profiling() -> Generator[None, None, None]:
 
 
 @pytest.mark.expensive
-def test_profiling_enabled_root_page(docker_compose_with_profiling) -> None:
+def test_profiling_enabled_root_page(
+    docker_compose_with_profiling, authenticated_profiling_client
+) -> None:
     """Should profiling works on the root page when enabled."""
-    # Need authenticated client since root page requires login
-    client = get_authenticated_client("http://localhost:8001")
     # Request the root page with ?profile=1
-    response = client.get("/?profile=1")
-    client.close()
+    response = authenticated_profiling_client.get("/?profile=1")
     assert response.status_code == 200
 
     # Should contain pyinstrument profiling output
@@ -85,18 +88,17 @@ def test_profiling_enabled_root_page(docker_compose_with_profiling) -> None:
 
 
 @pytest.mark.expensive
-def test_profiling_enabled_settings_page(docker_compose_with_profiling) -> None:
+def test_profiling_enabled_settings_page(
+    docker_compose_with_profiling, authenticated_profiling_client
+) -> None:
     """Should enable profiling on the settings page when ENABLE_PROFILING is set.
 
     The settings page is ideal for testing because it doesn't call
     get_cpu_usage() or other system monitoring functions that have
     inherent delays, providing a cleaner profiling output.
     """
-    # Need authenticated client since settings page requires login
-    client = get_authenticated_client("http://localhost:8001")
     # Request the settings page with ?profile=1
-    response = client.get("/admin/settings?profile=1")
-    client.close()
+    response = authenticated_profiling_client.get("/admin/settings?profile=1")
     assert response.status_code == 200
 
     # Should contain pyinstrument profiling output
@@ -110,13 +112,12 @@ def test_profiling_enabled_settings_page(docker_compose_with_profiling) -> None:
 
 
 @pytest.mark.expensive
-def test_profiling_shows_system_calls(docker_compose_with_profiling) -> None:
+def test_profiling_shows_system_calls(
+    docker_compose_with_profiling, authenticated_profiling_client
+) -> None:
     """Should profiling output shows expected function calls."""
-    # Need authenticated client since root page requires login
-    client = get_authenticated_client("http://localhost:8001")
     # Request the root page with profiling
-    response = client.get("/?profile=1")
-    client.close()
+    response = authenticated_profiling_client.get("/?profile=1")
     assert response.status_code == 200
 
     # Should contain pyinstrument profiling output
@@ -138,13 +139,12 @@ def test_profiling_shows_system_calls(docker_compose_with_profiling) -> None:
 
 
 @pytest.mark.expensive
-def test_profiling_normal_request_unaffected(docker_compose_with_profiling) -> None:
+def test_profiling_normal_request_unaffected(
+    docker_compose_with_profiling, authenticated_profiling_client
+) -> None:
     """Should requests without ?profile=1 work normally when profiling is enabled."""
-    # Need authenticated client since root page requires login
-    client = get_authenticated_client("http://localhost:8001")
     # Request without profiling parameter
-    response = client.get("/")
-    client.close()
+    response = authenticated_profiling_client.get("/")
     assert response.status_code == 200
 
     # Should return normal page content
