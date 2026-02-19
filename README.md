@@ -293,4 +293,32 @@ zipp                           3.23.0             MIT License
 
 ## 🖼️ Screenshots
 
-(Coming Soon)
+### Dashboard
+The main dashboard shows real-time detection activity, system health, and recent species detections.
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+### First-Time Setup
+On first access, you'll be prompted to create your administrator account.
+
+![Setup Wizard](docs/screenshots/setup-wizard.png)
+
+### Login
+Secure session-based authentication protects administrative functions.
+
+![Login](docs/screenshots/login.png)
+
+### Settings
+Configure detection parameters, audio settings, location, and more.
+
+![Settings](docs/screenshots/settings.png)
+
+### Detections
+Browse all detections with filtering by date, species, and confidence level.
+
+![Detections](docs/screenshots/detections.png)
+
+### Species Checklist
+View your complete species checklist with detection counts and best recordings.
+
+![Species Checklist](docs/screenshots/species-checklist.png)
