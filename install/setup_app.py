@@ -724,8 +724,18 @@ class _SubprocessWrapper:
 
             if user:
                 # Convert to: su - user -c "command args..."
-                cmd_str = " ".join(shlex.quote(arg) for arg in actual_cmd)
-                cmd = ["su", "-", user, "-c", cmd_str]
+                # When env is provided, prepend env vars to command
+                env_dict = kwargs.get("env", {})
+                if env_dict:
+                    # Build env prefix for command: VAR1=val1 VAR2=val2 command args...
+                    env_str = " ".join(f"{k}={shlex.quote(v)}" for k, v in env_dict.items() if v)
+                    cmd_str = " ".join(shlex.quote(arg) for arg in actual_cmd)
+                    cmd = ["su", "-", user, "-c", f"{env_str} {cmd_str}"]
+                    # Remove env from kwargs since we're passing it via command string
+                    kwargs = {k: v for k, v in kwargs.items() if k != "env"}
+                else:
+                    cmd_str = " ".join(shlex.quote(arg) for arg in actual_cmd)
+                    cmd = ["su", "-", user, "-c", cmd_str]
             else:
                 # No user, just run directly (strip sudo)
                 cmd = actual_cmd if actual_cmd else cmd[1:]
@@ -797,6 +807,20 @@ def main() -> None:
 
         print()
         log("→", "Configuring system settings")
+        # Build environment dict with all BIRDNETPI_* variables that should be passed through
+        setup_env = {"BIRDNETPI_DATA": "/var/lib/birdnetpi"}
+        for key in [
+            "BIRDNETPI_OS_KEY",
+            "BIRDNETPI_DEVICE_KEY",
+            "BIRDNETPI_DEVICE_NAME",
+            "BIRDNETPI_LATITUDE",
+            "BIRDNETPI_LONGITUDE",
+            "BIRDNETPI_TIMEZONE",
+            "BIRDNETPI_LANGUAGE",
+        ]:
+            if key in os.environ:
+                setup_env[key] = os.environ[key]
+
         setup_cmd = [
             "sudo",
             "-u",
@@ -807,7 +831,7 @@ def main() -> None:
             setup_cmd.append("--non-interactive")
         result = subprocess.run(
             setup_cmd,
-            env={**os.environ, "BIRDNETPI_DATA": "/var/lib/birdnetpi"},
+            env={**os.environ, **setup_env},
             check=False,
             stdin=sys.stdin if sys.stdin.isatty() else subprocess.DEVNULL,
             capture_output=False,
