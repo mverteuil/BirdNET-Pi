@@ -123,6 +123,18 @@ Or from another device on your network:
 http://[host-ip]:8000
 ```
 
+#### Step 6: Complete First-Time Setup
+
+On first access, you'll be redirected to the **Admin Setup Wizard** to create your administrator account:
+
+1. Enter your desired admin username
+2. Create a secure password
+3. Click "Create Admin Account"
+
+After setup, you'll be automatically logged in and redirected to the main dashboard.
+
+**Note**: The admin account is required to access settings, system controls, and the database admin interface. Keep your credentials secure.
+
 ---
 
 ## Audio Configuration
@@ -190,9 +202,20 @@ For production use on Windows, we recommend:
 
 ## Configuration
 
+### Authentication
+
+BirdNET-Pi uses session-based authentication to protect administrative functions:
+
+- **Admin Account**: Created during first-time setup wizard
+- **Session Storage**: Sessions are stored securely with automatic expiry
+- **Protected Routes**: Settings, system controls, and database admin require login
+- **Public Routes**: Detection data, health endpoints, and API remain publicly accessible
+
+To log in after setup, navigate to `/admin/login` or click the login link in the navigation.
+
 ### Location and Settings
 
-After first launch, configure your location and settings via the web interface:
+After first launch and admin setup, configure your location and settings via the web interface:
 
 1. Navigate to **Settings** → **Location**
 2. Enter your GPS coordinates (latitude/longitude)
@@ -595,6 +618,29 @@ Optimization:
    ```bash
    docker network inspect birdnetpi-network
    ```
+
+### Login Issues
+
+**Redirected to setup wizard unexpectedly?**
+- This occurs if no admin account exists
+- Complete the setup wizard to create your admin account
+
+**Can't log in with correct credentials?**
+- Verify caps lock is off
+- Check for trailing spaces in username/password
+- Session cookies require browser cookies to be enabled
+
+**Session keeps expiring?**
+- Sessions expire after inactivity for security
+- Simply log in again at `/admin/login`
+
+**Forgot admin password?**
+- Admin credentials are stored in `admin_user.json` in the data volume
+- Delete the file and restart to trigger setup wizard:
+  ```bash
+  docker compose exec birdnet-pi rm /var/lib/birdnetpi/admin_user.json
+  docker compose restart birdnet-pi
+  ```
 
 ### Cannot Access from Other Devices
 
