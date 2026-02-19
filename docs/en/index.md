@@ -52,9 +52,20 @@ Set up multilingual support for bird species names. This comprehensive guide cov
    - [SBC Installation](./sbc-installation.md) for Raspberry Pi and similar devices
    - [Docker Installation](./docker-installation.md) for Windows, macOS, or Linux
 2. **Complete Setup**: Follow the interactive installer or pre-configure for headless operation
-3. **Configure Location**: Set your GPS coordinates for accurate species detection
-4. **Choose Your Language**: Set your preferred language for species names (see [Language Configuration](./language-configuration.md))
-5. **Start Monitoring**: Access the web interface and begin detecting birds!
+3. **Create Admin Account**: On first web access, complete the setup wizard to create your administrator account
+4. **Configure Location**: Set your GPS coordinates for accurate species detection
+5. **Choose Your Language**: Set your preferred language for species names (see [Language Configuration](./language-configuration.md))
+6. **Start Monitoring**: Access the web interface and begin detecting birds!
+
+### Authentication
+
+BirdNET-Pi uses session-based authentication to protect administrative functions:
+
+- **First-time Setup**: When you first access the web interface, you'll be prompted to create an admin account
+- **Login**: Access `/admin/login` to sign in with your credentials
+- **Logout**: Use the logout link in the navigation or access `/admin/logout`
+- **Protected Routes**: Settings, system controls, and database administration require authentication
+- **Public Routes**: Detection data and API health endpoints remain publicly accessible
 
 ### Configuration Files
 
@@ -89,6 +100,28 @@ language: en
 ## Support and Troubleshooting
 
 ### Common Issues
+
+**Can't access the web interface?**
+- Verify the service is running and healthy
+- Check that you're using the correct port (default: 8000)
+- If redirected to login, use your admin credentials
+
+**Forgot admin password?**
+- Admin credentials are stored in `admin_user.json` in your data directory
+- **Docker**: Delete the file from the volume and restart to trigger setup wizard:
+  ```bash
+  docker compose exec birdnet-pi rm /var/lib/birdnetpi/admin_user.json
+  docker compose restart birdnet-pi
+  ```
+- **SBC**: Delete the file and restart the service:
+  ```bash
+  sudo rm /var/lib/birdnetpi/admin_user.json
+  sudo systemctl restart birdnetpi-web
+  ```
+
+**Session expired?**
+- Sessions expire after a period of inactivity
+- Simply log in again at `/admin/login`
 
 **Species names not translating?**
 - Verify your language code is correct (e.g., `es`, not `spanish`)
