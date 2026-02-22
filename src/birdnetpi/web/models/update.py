@@ -69,3 +69,21 @@ class GitBranchListResponse(BaseModel):
 
     tags: list[str]
     branches: list[str]
+
+
+class RegionPackDownloadStatusResponse(BaseModel):
+    """Response model for region pack download status.
+
+    Status values:
+    - idle: No download in progress
+    - downloading: Download is in progress
+    - complete: Download finished successfully
+    - error: Download failed
+    """
+
+    status: str  # idle, downloading, complete, error
+    region_id: str | None = None
+    progress: int | None = None  # 0-100 percentage
+    downloaded_mb: float | None = None
+    total_mb: float | None = None
+    error: str | None = None

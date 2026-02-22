@@ -573,9 +573,145 @@ const gitRemoteManager = {
   },
 };
 
+// Region Pack Management
+const regionPackManager = {
+  downloadBtn: null,
+  pollInterval: null,
+  originalBtnText: null,
+
+  init() {
+    this.downloadBtn = document.getElementById("download-region-pack-btn");
+
+    if (this.downloadBtn) {
+      this.originalBtnText = this.downloadBtn.textContent;
+      this.downloadBtn.addEventListener("click", () =>
+        this.downloadRegionPack(),
+      );
+      // Check if there's already a download in progress
+      this.checkExistingDownload();
+    }
+  },
+
+  async checkExistingDownload() {
+    try {
+      const response = await fetch("/api/update/region-pack/download-status");
+      const status = await response.json();
+      if (status.status === "downloading") {
+        this.downloadBtn.disabled = true;
+        this.startPolling();
+      }
+    } catch {
+      // Ignore errors on initial check
+    }
+  },
+
+  async downloadRegionPack() {
+    try {
+      this.downloadBtn.disabled = true;
+      this.downloadBtn.textContent = _("downloading") + "...";
+
+      const response = await fetch("/api/update/region-pack/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        this.showNotification(data.message, "success");
+        // Start polling for progress
+        this.startPolling();
+      } else {
+        this.downloadBtn.textContent = this.originalBtnText;
+        this.downloadBtn.disabled = false;
+        this.showNotification(
+          data.error || _("failed-to-download-region-pack"),
+          "error",
+        );
+      }
+    } catch (error) {
+      console.error("Failed to download region pack:", error);
+      this.downloadBtn.disabled = false;
+      this.downloadBtn.textContent = this.originalBtnText;
+      this.showNotification(
+        _("failed-to-download-region-pack") + ": " + error.message,
+        "error",
+      );
+    }
+  },
+
+  startPolling() {
+    // Poll every second for progress
+    this.pollInterval = setInterval(() => this.pollStatus(), 1000);
+  },
+
+  stopPolling() {
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
+  },
+
+  async pollStatus() {
+    try {
+      const response = await fetch("/api/update/region-pack/download-status");
+      const status = await response.json();
+
+      if (status.status === "downloading") {
+        // Update button with progress
+        const progress = status.progress || 0;
+        const downloaded = status.downloaded_mb?.toFixed(1) || "0";
+        const total = status.total_mb?.toFixed(1) || "?";
+        this.downloadBtn.textContent = `${_("downloading")} ${progress}% (${downloaded}/${total} MB)`;
+      } else if (status.status === "complete") {
+        this.stopPolling();
+        this.downloadBtn.textContent = _("download-complete");
+        this.showNotification(_("region-pack-installed"), "success");
+        // Reload page after a short delay to show updated status
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else if (status.status === "error") {
+        this.stopPolling();
+        this.downloadBtn.textContent = this.originalBtnText;
+        this.downloadBtn.disabled = false;
+        this.showNotification(
+          status.error || _("failed-to-download-region-pack"),
+          "error",
+        );
+      } else if (status.status === "idle") {
+        // Download completed and status cleared, reload
+        this.stopPolling();
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("Failed to poll download status:", error);
+      // Continue polling on transient errors
+    }
+  },
+
+  showNotification(message, type) {
+    const notification = document.createElement("div");
+    notification.className = "notification notification-" + type;
+    notification.textContent = message;
+    notification.style.cssText =
+      "position: fixed; top: 20px; right: 20px; padding: 1rem 1.5rem; " +
+      "border-radius: 8px; background: " +
+      (type === "success" ? "#10b981" : "#ef4444") +
+      "; " +
+      "color: white; z-index: 1000; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);";
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+      notification.remove();
+    }, 5000);
+  },
+};
+
 // Initialize on page load
 document.addEventListener("DOMContentLoaded", () => {
   updateManager.init();
   gitConfig.init();
   gitRemoteManager.init();
+  regionPackManager.init();
 });

@@ -23,6 +23,7 @@ from birdnetpi.web.models.update import (
     GitRemoteListResponse,
     GitRemoteModel,
     GitRemoteRequest,
+    RegionPackDownloadStatusResponse,
     UpdateActionResponse,
     UpdateApplyRequest,
     UpdateCheckRequest,
@@ -605,3 +606,22 @@ async def download_region_pack(
     except Exception as e:
         logger.error("Failed to download region pack: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/region-pack/download-status", response_model=RegionPackDownloadStatusResponse)
+@require_admin
+@inject
+async def get_region_pack_download_status(
+    request: Request,
+    cache: Annotated[Cache, Depends(Provide[Container.cache_service])],
+) -> RegionPackDownloadStatusResponse:
+    """Get region pack download progress.
+
+    Returns:
+        Download status including progress percentage.
+        Status can be: idle, downloading, complete, or error.
+    """
+    status = cache.get("region_pack:download_status")
+    if not status:
+        return RegionPackDownloadStatusResponse(status="idle")
+    return RegionPackDownloadStatusResponse(**status)
