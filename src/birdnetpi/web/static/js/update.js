@@ -573,9 +573,80 @@ const gitRemoteManager = {
   },
 };
 
+// Region Pack Management
+const regionPackManager = {
+  downloadBtn: null,
+
+  init() {
+    this.downloadBtn = document.getElementById("download-region-pack-btn");
+
+    if (this.downloadBtn) {
+      this.downloadBtn.addEventListener("click", () =>
+        this.downloadRegionPack(),
+      );
+    }
+  },
+
+  async downloadRegionPack() {
+    try {
+      this.downloadBtn.disabled = true;
+      this.downloadBtn.textContent = _("downloading");
+
+      const response = await fetch("/api/update/region-pack/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        this.downloadBtn.textContent = _("download-queued");
+        this.showNotification(data.message, "success");
+        // Reload page after a short delay to show updated status
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        this.downloadBtn.textContent = _("download-region-pack");
+        this.downloadBtn.disabled = false;
+        this.showNotification(
+          data.error || _("failed-to-download-region-pack"),
+          "error",
+        );
+      }
+    } catch (error) {
+      console.error("Failed to download region pack:", error);
+      this.downloadBtn.disabled = false;
+      this.downloadBtn.textContent = _("download-region-pack");
+      this.showNotification(
+        _("failed-to-download-region-pack") + ": " + error.message,
+        "error",
+      );
+    }
+  },
+
+  showNotification(message, type) {
+    const notification = document.createElement("div");
+    notification.className = "notification notification-" + type;
+    notification.textContent = message;
+    notification.style.cssText =
+      "position: fixed; top: 20px; right: 20px; padding: 1rem 1.5rem; " +
+      "border-radius: 8px; background: " +
+      (type === "success" ? "#10b981" : "#ef4444") +
+      "; " +
+      "color: white; z-index: 1000; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);";
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+      notification.remove();
+    }, 5000);
+  },
+};
+
 // Initialize on page load
 document.addEventListener("DOMContentLoaded", () => {
   updateManager.init();
   gitConfig.init();
   gitRemoteManager.init();
+  regionPackManager.init();
 });
