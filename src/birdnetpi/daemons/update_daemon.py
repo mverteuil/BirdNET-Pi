@@ -18,6 +18,7 @@ import click
 
 from birdnetpi.config import ConfigManager
 from birdnetpi.config.models import BirdNETConfig
+from birdnetpi.releases.region_pack_service import RegionPackService
 from birdnetpi.releases.update_manager import StateFileManager, UpdateManager
 from birdnetpi.system.file_manager import FileManager
 from birdnetpi.system.path_resolver import PathResolver
@@ -36,6 +37,7 @@ class DaemonState:
     update_manager: UpdateManager | None = None
     cache_service: Cache | None = None
     config_manager: ConfigManager | None = None
+    region_pack_service: RegionPackService | None = None
     update_in_progress: bool = False
     critical_section: bool = False
     pending_signals: list[int] = []  # noqa: RUF012 - Mutable default is intentional
@@ -49,6 +51,7 @@ class DaemonState:
         cls.update_manager = None
         cls.cache_service = None
         cls.config_manager = None
+        cls.region_pack_service = None
         cls.update_in_progress = False
         cls.critical_section = False
         cls.pending_signals = []
@@ -208,6 +211,11 @@ async def run_monitor_loop() -> None:  # noqa: C901 - Reasonable complexity for 
                             )
                         last_check_time = current_time
 
+            # Check for region pack download requests
+            region_pack_request = check_for_region_pack_request()
+            if region_pack_request:
+                await process_region_pack_download(region_pack_request)
+
             # Short sleep to check for requests frequently
             await asyncio.sleep(10)  # Check every 10 seconds
 
@@ -230,6 +238,103 @@ def check_for_update_request() -> dict | None:
     except Exception as e:
         logger.error("Failed to check Redis for update request: %s", e)
         return None
+
+
+def check_for_region_pack_request() -> dict | None:
+    """Check Redis for region pack download requests.
+
+    Returns:
+        Region pack download request dict or None if no request.
+    """
+    if not DaemonState.cache_service:
+        return None
+
+    try:
+        return DaemonState.cache_service.get("region_pack:download_request")
+    except Exception as e:
+        logger.error("Failed to check Redis for region pack request: %s", e)
+        return None
+
+
+async def process_region_pack_download(request: dict) -> None:
+    """Process a region pack download request.
+
+    Args:
+        request: The download request containing region_id, download_url, size_mb.
+    """
+    if not DaemonState.region_pack_service or not DaemonState.cache_service:
+        logger.error("Region pack service or cache not initialized")
+        return
+
+    region_id = request.get("region_id")
+    download_url = request.get("download_url")
+    size_mb = request.get("size_mb", 0)
+
+    if not region_id or not download_url:
+        logger.error("Invalid region pack request: missing region_id or download_url")
+        DaemonState.cache_service.delete("region_pack:download_request")
+        return
+
+    logger.info("Processing region pack download: %s (%.1f MB)", region_id, size_mb)
+
+    # Store download status for UI
+    DaemonState.cache_service.set(
+        "region_pack:download_status",
+        {"status": "downloading", "region_id": region_id, "progress": 0},
+        ttl=3600,
+    )
+
+    try:
+        region_pack_service = DaemonState.region_pack_service
+
+        def progress_callback(downloaded_mb: float, total_mb: float) -> None:
+            """Update download progress in cache."""
+            if DaemonState.cache_service and total_mb > 0:
+                progress = int((downloaded_mb / total_mb) * 100)
+                DaemonState.cache_service.set(
+                    "region_pack:download_status",
+                    {
+                        "status": "downloading",
+                        "region_id": region_id,
+                        "progress": progress,
+                        "downloaded_mb": round(downloaded_mb, 1),
+                        "total_mb": round(total_mb, 1),
+                    },
+                    ttl=3600,
+                )
+
+        # Run download in executor to avoid blocking
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: region_pack_service.download_from_url(
+                region_id=region_id,
+                download_url=download_url,
+                size_mb=size_mb,
+                force=True,
+                progress_callback=progress_callback,
+            ),
+        )
+
+        # Update status to complete
+        DaemonState.cache_service.set(
+            "region_pack:download_status",
+            {"status": "complete", "region_id": region_id, "progress": 100},
+            ttl=300,
+        )
+        logger.info("Region pack '%s' downloaded and installed successfully", region_id)
+
+    except Exception as e:
+        logger.error("Failed to download region pack '%s': %s", region_id, e)
+        DaemonState.cache_service.set(
+            "region_pack:download_status",
+            {"status": "error", "region_id": region_id, "error": str(e)},
+            ttl=300,
+        )
+
+    finally:
+        # Clear the download request
+        DaemonState.cache_service.delete("region_pack:download_request")
 
 
 async def process_update_request(update_request: dict) -> None:  # noqa: C901 - Reasonable complexity for update handling
@@ -374,6 +479,11 @@ async def run_update_with_redis_monitoring() -> None:
                 if update_request.get("action") == "check":
                     last_check_time = asyncio.get_event_loop().time()
 
+            # Check for region pack download requests
+            region_pack_request = check_for_region_pack_request()
+            if region_pack_request:
+                await process_region_pack_download(region_pack_request)
+
             # Sleep before next check
             await asyncio.sleep(10)  # Check every 10 seconds
 
@@ -401,6 +511,9 @@ def _initialize_services() -> tuple[PathResolver, FileManager, ConfigManager]:
     DaemonState.update_manager = UpdateManager(
         path_resolver=path_resolver, file_manager=file_manager, system_control=system_control
     )
+
+    # Create RegionPackService for region pack downloads
+    DaemonState.region_pack_service = RegionPackService(path_resolver)
 
     DaemonState.config_manager = config_manager
 
