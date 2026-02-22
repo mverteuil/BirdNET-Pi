@@ -237,18 +237,26 @@ async def _apply_ebird_filter(
                 session, scientific_name, h3_cell
             )
 
-            # Handle unknown species - treat as "absent" (worse than vagrant)
-            # Species not in regional database should not occur in this region
+            # Handle unknown species based on config setting
             if confidence_tier is None:
-                logger.info(
-                    "Species %s not in eBird regional database, treating as absent",
-                    scientific_name,
-                )
-                # Treat as absent - block unless strictness is completely off
-                return (
-                    True,
-                    f"Species '{scientific_name}' not in eBird data for this region (absent)",
-                )
+                behavior = config.ebird_filtering.unknown_species_behavior
+                if behavior == "block":
+                    logger.info(
+                        "Species %s not in eBird regional database, blocking (behavior=%s)",
+                        scientific_name,
+                        behavior,
+                    )
+                    return (
+                        True,
+                        f"Species '{scientific_name}' not in eBird data for this region (blocked)",
+                    )
+                else:
+                    logger.info(
+                        "Species %s not in eBird regional database, allowing (behavior=%s)",
+                        scientific_name,
+                        behavior,
+                    )
+                    return (False, f"Species not in eBird data, allowing (behavior={behavior})")
 
             # Apply strictness filtering
             strictness = config.ebird_filtering.detection_strictness
