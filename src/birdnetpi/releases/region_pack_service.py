@@ -29,29 +29,31 @@ class RegionPackService:
         self.path_resolver = path_resolver
         self.registry_service = RegistryService(path_resolver)
 
-    def get_install_path(self, region_id: str) -> Path:
+    def get_install_path(self, release_name: str) -> Path:
         """Get the installation path for a region pack.
 
         Args:
-            region_id: The region identifier.
+            release_name: The release name (e.g., "na-east-054-2026.02").
 
         Returns:
             Path where the region pack database should be installed.
         """
+        # Ensure database directory exists
         db_dir = self.path_resolver.data_dir / "database"
         db_dir.mkdir(parents=True, exist_ok=True)
-        return db_dir / f"{region_id}.db"
+        # Use PathResolver for consistent path resolution
+        return self.path_resolver.get_ebird_pack_path(release_name)
 
-    def is_installed(self, region_id: str) -> bool:
+    def is_installed(self, release_name: str) -> bool:
         """Check if a region pack is already installed.
 
         Args:
-            region_id: The region identifier.
+            release_name: The release name (e.g., "na-east-054-2026.02").
 
         Returns:
             True if the pack is installed, False otherwise.
         """
-        return self.get_install_path(region_id).exists()
+        return self.path_resolver.get_ebird_pack_path(release_name).exists()
 
     def find_pack_for_coordinates(self, lat: float, lon: float) -> RegionPackInfo | None:
         """Find the appropriate region pack for given coordinates.
@@ -90,7 +92,7 @@ class RegionPackService:
             raise ValueError(f"Region pack '{region_pack.region_id}' has no download URL")
 
         return self.download_from_url(
-            region_id=region_pack.region_id,
+            release_name=region_pack.release_name,
             download_url=region_pack.download_url,
             size_mb=region_pack.total_size_mb,
             force=force,
@@ -99,7 +101,7 @@ class RegionPackService:
 
     def download_from_url(
         self,
-        region_id: str,
+        release_name: str,
         download_url: str,
         size_mb: float = 0,
         force: bool = False,
@@ -108,10 +110,10 @@ class RegionPackService:
         """Download and install a region pack from a direct URL.
 
         This method is used by daemons that receive download requests with
-        minimal info (just region_id and URL) without the full RegionPackInfo.
+        minimal info (just release_name and URL) without the full RegionPackInfo.
 
         Args:
-            region_id: The region identifier.
+            release_name: The release name (e.g., "na-east-054-2026.02").
             download_url: Direct download URL for the .db.gz file.
             size_mb: Expected size in MB (for logging, 0 if unknown).
             force: If True, overwrite existing pack.
@@ -124,22 +126,24 @@ class RegionPackService:
             FileExistsError: If pack exists and force is False.
             Exception: If download or extraction fails.
         """
-        output_path = self.get_install_path(region_id)
+        output_path = self.get_install_path(release_name)
 
         if output_path.exists() and not force:
-            raise FileExistsError(f"Region pack '{region_id}' already installed at {output_path}")
+            raise FileExistsError(
+                f"Region pack '{release_name}' already installed at {output_path}"
+            )
 
         if size_mb > 0:
-            logger.info("Downloading region pack '%s' (%.1f MB)", region_id, size_mb)
+            logger.info("Downloading region pack '%s' (%.1f MB)", release_name, size_mb)
         else:
-            logger.info("Downloading region pack '%s'", region_id)
+            logger.info("Downloading region pack '%s'", release_name)
 
         try:
             self._download_and_extract(download_url, output_path, progress_callback)
 
             logger.info(
                 "Region pack '%s' installed successfully at %s",
-                region_id,
+                release_name,
                 output_path,
             )
             return output_path

@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 # ==================== Request Models ====================
 
@@ -80,6 +80,24 @@ class DetectionResponse(BaseModel):
     is_first_in_period: bool | None = None
     first_ever_detection: datetime | None = None
     first_period_detection: datetime | None = None
+
+    @field_serializer(
+        "timestamp", "first_ever_detection", "first_period_detection", when_used="json"
+    )
+    @classmethod
+    def serialize_datetime_utc(cls, v: datetime | None) -> str | None:
+        """Serialize datetime with Z suffix to indicate UTC (JSON mode only).
+
+        Replaces +00:00 suffix with Z for cleaner ISO 8601 format.
+        Only applies when serializing to JSON, not when using model_dump().
+        """
+        if v is None:
+            return None
+        iso_str = v.isoformat()
+        # Replace +00:00 with Z for standard UTC format
+        if iso_str.endswith("+00:00"):
+            return iso_str[:-6] + "Z"
+        return iso_str + "Z"
 
 
 class SpeciesInfo(BaseModel):
@@ -235,6 +253,22 @@ class DetectionDetailResponse(BaseModel):
     family: str | None = None
     genus: str | None = None
     order_name: str | None = None
+
+    @field_serializer("timestamp", when_used="json")
+    @classmethod
+    def serialize_datetime_utc(cls, v: datetime | None) -> str | None:
+        """Serialize datetime with Z suffix to indicate UTC (JSON mode only).
+
+        Replaces +00:00 suffix with Z for cleaner ISO 8601 format.
+        Only applies when serializing to JSON, not when using model_dump().
+        """
+        if v is None:
+            return None
+        iso_str = v.isoformat()
+        # Replace +00:00 with Z for standard UTC format
+        if iso_str.endswith("+00:00"):
+            return iso_str[:-6] + "Z"
+        return iso_str + "Z"
 
 
 class SpeciesSummaryResponse(BaseModel):
