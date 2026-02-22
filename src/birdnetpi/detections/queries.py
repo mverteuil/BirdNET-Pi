@@ -2402,9 +2402,10 @@ class DetectionQueryService:
 
                 count_result = await session.execute(count_query, params)
                 count_row = count_result.fetchone()
-                total_count = count_row.total if count_row else 0  # type: ignore[attr-defined]
-                detected_count = count_row.detected if count_row else 0  # type: ignore[attr-defined]
-                undetected_count = count_row.undetected if count_row else 0  # type: ignore[attr-defined]
+                # SUM returns NULL when there are no rows, so handle None values
+                total_count = (count_row.total or 0) if count_row else 0  # type: ignore[attr-defined]
+                detected_count = (count_row.detected or 0) if count_row else 0  # type: ignore[attr-defined]
+                undetected_count = (count_row.undetected or 0) if count_row else 0  # type: ignore[attr-defined]
 
                 # Calculate offset for pagination
                 offset = (page - 1) * per_page
