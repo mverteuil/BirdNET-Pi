@@ -99,6 +99,18 @@ Or use your device's IP address:
 http://192.168.1.XXX:8000
 ```
 
+### Step 6: Complete First-Time Setup
+
+On first access, you'll be redirected to the **Admin Setup Wizard** to create your administrator account:
+
+1. Enter your desired admin username
+2. Create a secure password
+3. Click "Create Admin Account"
+
+After setup, you'll be automatically logged in and redirected to the main dashboard.
+
+**Note**: The admin account is required to access settings, system controls, and the database admin interface. Keep your credentials secure.
+
 ---
 
 ## Unattended Installation (Advanced)
@@ -203,6 +215,16 @@ Or use your device's IP address:
 http://192.168.1.XXX:8000
 ```
 
+### Step 5: Complete First-Time Setup
+
+On first access, you'll be redirected to the **Admin Setup Wizard** to create your administrator account:
+
+1. Enter your desired admin username
+2. Create a secure password
+3. Click "Create Admin Account"
+
+After setup, you'll be automatically logged in and redirected to the main dashboard.
+
 ---
 
 ## Supported Hardware
@@ -263,6 +285,24 @@ If you can't access the web interface:
 - Check firewall settings
 - Try accessing via IP address instead of hostname
 - Check logs: `journalctl -u birdnetpi-web -n 50`
+
+### Login Issues
+
+**Redirected to setup wizard unexpectedly?**
+- This occurs if no admin account exists
+- Complete the setup wizard to create your admin account
+
+**Forgot admin password?**
+- Admin credentials are stored in `/var/lib/birdnetpi/admin_user.json`
+- Delete the file and restart to trigger setup wizard:
+  ```bash
+  sudo rm /var/lib/birdnetpi/admin_user.json
+  sudo systemctl restart birdnetpi-web
+  ```
+
+**Session keeps expiring?**
+- Sessions expire after inactivity for security
+- Simply log in again at `/admin/login`
 
 ### Audio Device Not Detected
 
