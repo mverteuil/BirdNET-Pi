@@ -162,7 +162,6 @@ class TestSupervisordStrategyCommands:
         [
             pytest.param("start_service", "start", id="start"),
             pytest.param("stop_service", "stop", id="stop"),
-            pytest.param("restart_service", "restart", id="restart"),
         ],
     )
     def test_supervisorctl_commands(self, supervisord_strategy, method_name, expected_action):
@@ -175,6 +174,20 @@ class TestSupervisordStrategyCommands:
 
             mock_run.assert_called_once_with(
                 ["supervisorctl", expected_action, service_name], check=True
+            )
+
+    def test_restart_uses_popen(self, supervisord_strategy):
+        """Should use Popen with start_new_session for restart to allow self-restart."""
+        service_name = "test_service"
+
+        with patch("subprocess.Popen", autospec=True) as mock_popen:
+            supervisord_strategy.restart_service(service_name)
+
+            mock_popen.assert_called_once_with(
+                ["supervisorctl", "restart", service_name],
+                start_new_session=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
 
     def test_daemon_reload(self, supervisord_strategy):
