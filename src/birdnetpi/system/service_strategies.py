@@ -262,8 +262,24 @@ class DockerSupervisordStrategy(ServiceManagementStrategy):
         self._run_supervisorctl_command("stop", service_name)
 
     def restart_service(self, service_name: str) -> None:
-        """Restart a specified system service."""
-        self._run_supervisorctl_command("restart", service_name)
+        """Restart a specified system service.
+
+        Uses Popen with start_new_session to detach the restart command.
+        This is necessary because if FastAPI restarts itself, the process
+        handling the request gets killed before the restart completes.
+        """
+        cmd = ["supervisorctl", "restart", service_name]
+        try:
+            # Run in a new session so it continues even if parent dies
+            subprocess.Popen(
+                cmd,
+                start_new_session=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            logger.info(f"Restart command sent for service {service_name}")
+        except FileNotFoundError:
+            logger.error("Error: supervisorctl command not found. Is Supervisord installed?")
 
     def enable_service(self, service_name: str) -> None:
         """Enable a specified system service to start on boot."""

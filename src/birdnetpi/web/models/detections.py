@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 # ==================== Request Models ====================
 
@@ -80,6 +80,14 @@ class DetectionResponse(BaseModel):
     is_first_in_period: bool | None = None
     first_ever_detection: datetime | None = None
     first_period_detection: datetime | None = None
+
+    @field_serializer("timestamp", "first_ever_detection", "first_period_detection")
+    @classmethod
+    def serialize_datetime_utc(cls, v: datetime | None) -> str | None:
+        """Serialize datetime with Z suffix to indicate UTC."""
+        if v is None:
+            return None
+        return v.isoformat() + "Z"
 
 
 class SpeciesInfo(BaseModel):
@@ -235,6 +243,14 @@ class DetectionDetailResponse(BaseModel):
     family: str | None = None
     genus: str | None = None
     order_name: str | None = None
+
+    @field_serializer("timestamp")
+    @classmethod
+    def serialize_datetime_utc(cls, v: datetime | None) -> str | None:
+        """Serialize datetime with Z suffix to indicate UTC."""
+        if v is None:
+            return None
+        return v.isoformat() + "Z"
 
 
 class SpeciesSummaryResponse(BaseModel):

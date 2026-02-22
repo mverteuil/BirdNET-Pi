@@ -237,16 +237,18 @@ async def _apply_ebird_filter(
                 session, scientific_name, h3_cell
             )
 
-            # Handle unknown species
+            # Handle unknown species - treat as "absent" (worse than vagrant)
+            # Species not in regional database should not occur in this region
             if confidence_tier is None:
-                behavior = config.ebird_filtering.unknown_species_behavior
-                if behavior == "block":
-                    return (
-                        True,
-                        f"Species not found in eBird data for region (behavior={behavior})",
-                    )
-                else:  # allow
-                    return (False, f"Species not in eBird data, allowing (behavior={behavior})")
+                logger.info(
+                    "Species %s not in eBird regional database, treating as absent",
+                    scientific_name,
+                )
+                # Treat as absent - block unless strictness is completely off
+                return (
+                    True,
+                    f"Species '{scientific_name}' not in eBird data for this region (absent)",
+                )
 
             # Apply strictness filtering
             strictness = config.ebird_filtering.detection_strictness
@@ -473,9 +475,25 @@ async def get_best_recordings(
         has_prev = page > 1
         has_next = page < total_pages
 
-        # Format response
+        # Format response with timezone conversion
+        from datetime import UTC
+
+        import pytz
+
+        user_tz = pytz.timezone(config.timezone) if config.timezone != "UTC" else UTC
         recordings = []
         for detection in detections:
+            # Convert timestamp to user's timezone
+            # Handle both naive (assume UTC) and aware timestamps
+            if detection.timestamp:
+                ts = (
+                    detection.timestamp
+                    if detection.timestamp.tzinfo
+                    else detection.timestamp.replace(tzinfo=UTC)
+                )
+                local_time = ts.astimezone(user_tz)
+            else:
+                local_time = None
             recordings.append(
                 DetectionResponse(
                     id=detection.id,
@@ -483,8 +501,8 @@ async def get_best_recordings(
                     common_name=detection.common_name or detection.scientific_name,
                     confidence=detection.confidence,
                     timestamp=detection.timestamp,
-                    date=detection.date,
-                    time=detection.timestamp.strftime("%H:%M:%S"),
+                    date=local_time.strftime("%Y-%m-%d") if local_time else detection.date,
+                    time=local_time.strftime("%H:%M:%S") if local_time else "--:--:--",
                     latitude=detection.latitude,
                     longitude=detection.longitude,
                     family=detection.family,

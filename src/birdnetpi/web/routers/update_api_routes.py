@@ -588,7 +588,7 @@ async def download_region_pack(
         cache.set(
             "region_pack:download_request",
             {
-                "region_id": region_pack.region_id,
+                "release_name": region_pack.release_name,
                 "download_url": region_pack.download_url,
                 "size_mb": region_pack.total_size_mb,
             },

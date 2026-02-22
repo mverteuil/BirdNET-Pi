@@ -184,6 +184,7 @@ class DetectionWithTaxa(DetectionBase):
         This allows us to pass config through context to compute
         the proper display name based on configuration rules.
         Also provides backward compatibility by setting common_name.
+        Additionally converts date/time to user's configured timezone.
         """
         # Get the default serialization
         data = serializer(self)  # type: ignore[operator]
@@ -205,6 +206,21 @@ class DetectionWithTaxa(DetectionBase):
                 data["display_name"] = display_name
                 # Override common_name with the properly formatted display name
                 data["common_name"] = display_name
+
+                # Convert date/time to user's configured timezone
+                if self.timestamp and config.timezone and config.timezone != "UTC":
+                    import pytz
+
+                    user_tz = pytz.timezone(config.timezone)
+                    # Handle both naive (assume UTC) and aware timestamps
+                    ts = (
+                        self.timestamp
+                        if self.timestamp.tzinfo
+                        else self.timestamp.replace(tzinfo=UTC)
+                    )
+                    local_time = ts.astimezone(user_tz)
+                    data["date"] = local_time.strftime("%Y-%m-%d")
+                    data["time"] = local_time.strftime("%H:%M")
 
         return data
 
