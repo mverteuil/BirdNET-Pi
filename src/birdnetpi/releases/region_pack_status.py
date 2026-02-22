@@ -150,20 +150,29 @@ class RegionPackStatusService:
             return []
 
         # Find all .db files that match region pack naming pattern
-        # Pattern: name-YYYY.MM.db or name-YYYY-MM-DD.db
+        # Pattern: region-###.db (e.g., na-east-054.db) or name-YYYY.MM.db
         packs = []
         for db_file in db_dir.glob("*.db"):
-            # Skip main databases
+            # Skip main databases and WAL/SHM files
             if db_file.name in [
                 "birdnetpi.db",
                 "ioc_reference.db",
                 "avibase_database.db",
                 "patlevin_database.db",
+                "wikidata_reference.db",
             ]:
                 continue
 
-            # Check if it matches region pack pattern
-            if re.match(r"^.+-\d{4}[.-]\d{2}", db_file.stem):
+            # Skip SQLite WAL/SHM files
+            if db_file.suffix in [".db-wal", ".db-shm"]:
+                continue
+
+            # Check if it matches region pack patterns:
+            # - New format: region-### (e.g., na-east-054)
+            # - Old format: region-YYYY.MM or region-YYYY-MM-DD
+            if re.match(r"^[a-z]+-[a-z]+-\d{3}$", db_file.stem) or re.match(
+                r"^.+-\d{4}[.-]\d{2}", db_file.stem
+            ):
                 packs.append(db_file)
 
         return sorted(packs)

@@ -109,6 +109,13 @@ async def get_translations_json(
         "failed-to-apply-update": translation.gettext("Failed to apply update"),
         "failed-to-cancel-update": translation.gettext("Failed to cancel update"),
         "failed-to-save-git-config": translation.gettext("Failed to save git configuration"),
+        # Region pack messages
+        "downloading": translation.gettext("Downloading"),
+        "download-queued": translation.gettext("Download queued"),
+        "download-region-pack": translation.gettext("Download region pack"),
+        "download-complete": translation.gettext("Download complete"),
+        "region-pack-installed": translation.gettext("Region pack installed successfully"),
+        "failed-to-download-region-pack": translation.gettext("Failed to download region pack"),
     }
 
     # Use the language we determined earlier

@@ -576,21 +576,39 @@ const gitRemoteManager = {
 // Region Pack Management
 const regionPackManager = {
   downloadBtn: null,
+  pollInterval: null,
+  originalBtnText: null,
 
   init() {
     this.downloadBtn = document.getElementById("download-region-pack-btn");
 
     if (this.downloadBtn) {
+      this.originalBtnText = this.downloadBtn.textContent;
       this.downloadBtn.addEventListener("click", () =>
         this.downloadRegionPack(),
       );
+      // Check if there's already a download in progress
+      this.checkExistingDownload();
+    }
+  },
+
+  async checkExistingDownload() {
+    try {
+      const response = await fetch("/api/update/region-pack/download-status");
+      const status = await response.json();
+      if (status.status === "downloading") {
+        this.downloadBtn.disabled = true;
+        this.startPolling();
+      }
+    } catch {
+      // Ignore errors on initial check
     }
   },
 
   async downloadRegionPack() {
     try {
       this.downloadBtn.disabled = true;
-      this.downloadBtn.textContent = _("downloading");
+      this.downloadBtn.textContent = _("downloading") + "...";
 
       const response = await fetch("/api/update/region-pack/download", {
         method: "POST",
@@ -600,14 +618,11 @@ const regionPackManager = {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        this.downloadBtn.textContent = _("download-queued");
         this.showNotification(data.message, "success");
-        // Reload page after a short delay to show updated status
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
+        // Start polling for progress
+        this.startPolling();
       } else {
-        this.downloadBtn.textContent = _("download-region-pack");
+        this.downloadBtn.textContent = this.originalBtnText;
         this.downloadBtn.disabled = false;
         this.showNotification(
           data.error || _("failed-to-download-region-pack"),
@@ -617,11 +632,61 @@ const regionPackManager = {
     } catch (error) {
       console.error("Failed to download region pack:", error);
       this.downloadBtn.disabled = false;
-      this.downloadBtn.textContent = _("download-region-pack");
+      this.downloadBtn.textContent = this.originalBtnText;
       this.showNotification(
         _("failed-to-download-region-pack") + ": " + error.message,
         "error",
       );
+    }
+  },
+
+  startPolling() {
+    // Poll every second for progress
+    this.pollInterval = setInterval(() => this.pollStatus(), 1000);
+  },
+
+  stopPolling() {
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
+  },
+
+  async pollStatus() {
+    try {
+      const response = await fetch("/api/update/region-pack/download-status");
+      const status = await response.json();
+
+      if (status.status === "downloading") {
+        // Update button with progress
+        const progress = status.progress || 0;
+        const downloaded = status.downloaded_mb?.toFixed(1) || "0";
+        const total = status.total_mb?.toFixed(1) || "?";
+        this.downloadBtn.textContent = `${_("downloading")} ${progress}% (${downloaded}/${total} MB)`;
+      } else if (status.status === "complete") {
+        this.stopPolling();
+        this.downloadBtn.textContent = _("download-complete");
+        this.showNotification(_("region-pack-installed"), "success");
+        // Reload page after a short delay to show updated status
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else if (status.status === "error") {
+        this.stopPolling();
+        this.downloadBtn.textContent = this.originalBtnText;
+        this.downloadBtn.disabled = false;
+        this.showNotification(
+          status.error || _("failed-to-download-region-pack"),
+          "error",
+        );
+      } else if (status.status === "idle") {
+        // Download completed and status cleared, reload
+        this.stopPolling();
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("Failed to poll download status:", error);
+      // Continue polling on transient errors
     }
   },
 
