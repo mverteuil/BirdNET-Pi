@@ -7,6 +7,7 @@ from typing import Any
 
 import yaml
 
+import birdnetpi
 from birdnetpi.config.models import BirdNETConfig
 from birdnetpi.config.versions import VersionRegistry
 from birdnetpi.system.path_resolver import PathResolver
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 class ConfigManager:
     """Manages configuration loading, saving, and migration."""
 
-    CURRENT_VERSION = "2.0.0"
+    CURRENT_VERSION = birdnetpi.__version__
 
     @staticmethod
     def _is_profiling_enabled() -> bool:

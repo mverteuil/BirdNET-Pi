@@ -11,6 +11,7 @@ from typing import Any
 
 import click
 
+import birdnetpi
 from birdnetpi.system.path_resolver import PathResolver
 
 
@@ -71,7 +72,7 @@ def extract(obj: dict[str, Any]) -> None:
         "-k",
         "_",
         "--project=BirdNET-Pi",
-        "--version=2.0.0",
+        f"--version={birdnetpi.__version__}",
         "--msgid-bugs-address=https://github.com/mverteuil/BirdNET-Pi/issues",
         "--copyright-holder=BirdNET-Pi Contributors",
         "-o",
