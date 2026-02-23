@@ -7,9 +7,12 @@ import subprocess
 import sys
 from pathlib import Path
 from re import Match
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import click
+
+if TYPE_CHECKING:
+    import polib
 
 import birdnetpi
 from birdnetpi.system.path_resolver import PathResolver
@@ -193,8 +196,93 @@ def compile_translations(obj: dict[str, Any]) -> None:
         sys.exit(1)
 
 
+def _check_pot_version(current_pot: "polib.POFile", issues: list[str]) -> None:
+    """Check if POT header version matches package version."""
+    current_version = current_pot.metadata.get("Project-Id-Version", "")
+    expected_version = f"BirdNET-Pi {birdnetpi.__version__}"
+    if current_version != expected_version:
+        click.echo(
+            click.style(
+                f"  ✗ POT version mismatch: '{current_version}' != '{expected_version}'",
+                fg="red",
+            )
+        )
+        issues.append(f"POT version mismatch: {current_version} != {expected_version}")
+
+
+def _check_pot_msgids(
+    current_pot: "polib.POFile", new_pot: "polib.POFile", issues: list[str]
+) -> tuple[set[str], set[str]]:
+    """Check msgid completeness between current and freshly extracted POT."""
+    current_msgids = {e.msgid for e in current_pot if e.msgid}
+    new_msgids = {e.msgid for e in new_pot if e.msgid}
+
+    missing_from_pot = new_msgids - current_msgids
+    removed_from_source = current_msgids - new_msgids
+
+    if missing_from_pot:
+        click.echo(
+            click.style(
+                f"  ✗ POT missing {len(missing_from_pot)} strings from source:",
+                fg="red",
+            )
+        )
+        for msgid in sorted(missing_from_pot)[:5]:
+            click.echo(f"      - {msgid[:50]!r}...")
+        if len(missing_from_pot) > 5:
+            click.echo(f"      ... and {len(missing_from_pot) - 5} more")
+        issues.append(f"POT missing {len(missing_from_pot)} strings")
+
+    if removed_from_source:
+        click.echo(
+            click.style(
+                f"  ⚠ POT has {len(removed_from_source)} obsolete strings",
+                fg="yellow",
+            )
+        )
+
+    return current_msgids, new_msgids
+
+
+def _check_pot_flags(
+    current_pot: "polib.POFile",
+    new_pot: "polib.POFile",
+    common_msgids: set[str],
+    issues: list[str],
+) -> None:
+    """Check that entry flags match between current and freshly extracted POT."""
+    new_entries_by_msgid = {e.msgid: e for e in new_pot if e.msgid}
+    current_entries_by_msgid = {e.msgid: e for e in current_pot if e.msgid}
+
+    flag_mismatches = []
+    for msgid in common_msgids:
+        current_flags = set(current_entries_by_msgid[msgid].flags)
+        new_flags = set(new_entries_by_msgid[msgid].flags)
+        if current_flags != new_flags:
+            flag_mismatches.append((msgid, current_flags, new_flags))
+
+    if flag_mismatches:
+        click.echo(
+            click.style(
+                f"  ✗ {len(flag_mismatches)} entries have flag mismatches:",
+                fg="red",
+            )
+        )
+        for msgid, current_flags, new_flags in flag_mismatches[:3]:
+            click.echo(f"      - {msgid[:40]!r}...")
+            click.echo(f"        current: {current_flags}, expected: {new_flags}")
+        if len(flag_mismatches) > 3:
+            click.echo(f"      ... and {len(flag_mismatches) - 3} more")
+        issues.append(f"{len(flag_mismatches)} entries have flag mismatches")
+
+
 def _check_pot_freshness(src_dir: Path, babel_cfg: Path, messages_pot: Path) -> list[str]:
     """Check if POT file is up to date with source code.
+
+    Performs a comprehensive check including:
+    - msgid completeness (missing/obsolete strings)
+    - Entry flags (python-format, no-python-format, etc.)
+    - Header version matching package version
 
     Returns a list of issues found.
     """
@@ -209,6 +297,7 @@ def _check_pot_freshness(src_dir: Path, babel_cfg: Path, messages_pot: Path) -> 
         tmp_pot = Path(tmp.name)
 
     try:
+        # Use same extraction parameters as the extract command for consistency
         extract_cmd = [
             "pybabel",
             "extract",
@@ -218,6 +307,8 @@ def _check_pot_freshness(src_dir: Path, babel_cfg: Path, messages_pot: Path) -> 
             "lazy_gettext",
             "-k",
             "_",
+            "--project=BirdNET-Pi",
+            f"--version={birdnetpi.__version__}",
             "-o",
             str(tmp_pot),
             str(src_dir),
@@ -228,37 +319,18 @@ def _check_pot_freshness(src_dir: Path, babel_cfg: Path, messages_pot: Path) -> 
             issues.append("POT extraction failed")
             return issues
 
-        # Compare msgids
+        # Load both POT files
         current_pot = polib.pofile(str(messages_pot))
         new_pot = polib.pofile(str(tmp_pot))
 
-        current_msgids = {e.msgid for e in current_pot if e.msgid}
-        new_msgids = {e.msgid for e in new_pot if e.msgid}
+        # Check version, msgids, and flags
+        _check_pot_version(current_pot, issues)
+        current_msgids, new_msgids = _check_pot_msgids(current_pot, new_pot, issues)
+        _check_pot_flags(current_pot, new_pot, current_msgids & new_msgids, issues)
 
-        missing_from_pot = new_msgids - current_msgids
-        removed_from_source = current_msgids - new_msgids
-
-        if missing_from_pot:
-            click.echo(
-                click.style(
-                    f"  ✗ POT missing {len(missing_from_pot)} strings from source:",
-                    fg="red",
-                )
-            )
-            for msgid in sorted(missing_from_pot)[:5]:
-                click.echo(f"      - {msgid[:50]!r}...")
-            if len(missing_from_pot) > 5:
-                click.echo(f"      ... and {len(missing_from_pot) - 5} more")
-            issues.append(f"POT missing {len(missing_from_pot)} strings")
-        elif removed_from_source:
-            click.echo(
-                click.style(
-                    f"  ⚠ POT has {len(removed_from_source)} obsolete strings",
-                    fg="yellow",
-                )
-            )
-        else:
+        if not issues:
             click.echo(click.style("  ✓ POT is up to date", fg="green"))
+
     finally:
         tmp_pot.unlink(missing_ok=True)
 

@@ -1,18 +1,17 @@
-# yy translations for BirdNET-Pi.
-# Copyright (C) 2025 BirdNET-Pi Contributors
+# Translations template for BirdNET-Pi.
+# Copyright (C) 2026 BirdNET-Pi Contributors
 # This file is distributed under the same license as the BirdNET-Pi project.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: BirdNET-Pi 2.0.0\n"
+"Project-Id-Version: BirdNET-Pi 2.0.0a0\n"
 "Report-Msgid-Bugs-To: https://github.com/mverteuil/BirdNET-Pi/issues\n"
-"POT-Creation-Date: 2026-02-22 22:55-0500\n"
+"POT-Creation-Date: 2026-02-23 16:53-0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language: yy\n"
-"Language-Team: yy <LL@li.org>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -26,14 +25,13 @@ msgstr "noitatnemucoD IPA"
 #: src/birdnetpi/web/routers/auth_routes.py:127
 #: src/birdnetpi/web/routers/auth_routes.py:145
 #: src/birdnetpi/web/templates/admin/login.html.j2:6
-#, fuzzy
 msgid "Administrator Login"
-msgstr "unem noitartsinimdA"
+msgstr "nigoL rotartsinimdA"
 
 #: src/birdnetpi/web/routers/auth_routes.py:123
 #: src/birdnetpi/web/routers/auth_routes.py:141
 msgid "Invalid credentials"
-msgstr ""
+msgstr "slaitnederc dilavnI"
 
 #: src/birdnetpi/web/routers/i18n_api_routes.py:48
 msgid "Audio not available"
@@ -282,32 +280,29 @@ msgid "Failed to save git configuration"
 msgstr "noitarugifnoc tig evas ot deliaF"
 
 #: src/birdnetpi/web/routers/i18n_api_routes.py:113
-#, fuzzy
 msgid "Downloading"
-msgstr "daolnwoD"
+msgstr "gnidaolnwoD"
 
 #: src/birdnetpi/web/routers/i18n_api_routes.py:114
-#, fuzzy
 msgid "Download queued"
-msgstr "daolnwoD"
+msgstr "deueuq daolnwoD"
 
 #: src/birdnetpi/web/routers/i18n_api_routes.py:115
 #: src/birdnetpi/web/templates/components/region_pack_banner.html.j2:15
 msgid "Download region pack"
-msgstr ""
+msgstr "kcap noiger daolnwoD"
 
 #: src/birdnetpi/web/routers/i18n_api_routes.py:116
-#, fuzzy
 msgid "Download complete"
-msgstr "daolnwoD"
+msgstr "etelpmoc daolnwoD"
 
 #: src/birdnetpi/web/routers/i18n_api_routes.py:117
 msgid "Region pack installed successfully"
-msgstr ""
+msgstr "yllufsseccus dellatsni kcap noigeR"
 
 #: src/birdnetpi/web/routers/i18n_api_routes.py:118
 msgid "Failed to download region pack"
-msgstr ""
+msgstr "kcap noiger daolnwod ot deliaF"
 
 #: src/birdnetpi/web/routers/logs_view_routes.py:76
 #: src/birdnetpi/web/templates/components/navigation.html.j2:42
@@ -339,9 +334,8 @@ msgstr "sgnidroceR tseB"
 
 #: src/birdnetpi/web/routers/reports_view_routes.py:269
 #: src/birdnetpi/web/templates/components/navigation.html.j2:13
-#, fuzzy
 msgid "Species Checklist"
-msgstr "detceted seiceps"
+msgstr "tsilkcehC seicepS"
 
 #: src/birdnetpi/web/routers/services_view_routes.py:158
 #: src/birdnetpi/web/templates/admin/logs.html.j2:24
@@ -432,66 +426,64 @@ msgstr "oidua-tcennocsid"
 #: src/birdnetpi/web/static/js/pagination.js:32
 #, python-format
 msgid "Page %(page)s of %(total_pages)s"
-msgstr ""
+msgstr " egaP%(page)s fo %(total_pages)s"
 
 #: src/birdnetpi/web/static/js/pagination.js:39
 #, python-format
 msgid "%(count)s total %(items)s"
-msgstr ""
+msgstr "%(count)s latot %(items)s"
 
 #: src/birdnetpi/web/static/js/pagination.js:55
 msgid "Go to first page"
-msgstr ""
+msgstr "egap tsrif ot oG"
 
 #: src/birdnetpi/web/static/js/pagination.js:58
-#, fuzzy
 msgid "Go to previous page"
-msgstr "doirep suoiverp htiw erapmoC"
+msgstr "egap suoiverp ot oG"
 
 #: src/birdnetpi/web/static/js/pagination.js:60
 msgid "First"
-msgstr ""
+msgstr "tsriF"
 
 #: src/birdnetpi/web/static/js/pagination.js:61
 msgid "Prev"
-msgstr ""
+msgstr "verP"
 
 #: src/birdnetpi/web/static/js/pagination.js:74
 #, python-format
 msgid "Current page, page %(page)s"
-msgstr ""
+msgstr " egap ,egap tnerruC%(page)s"
 
 #: src/birdnetpi/web/static/js/pagination.js:79
 #, python-format
 msgid "Go to page %(page)s"
-msgstr ""
+msgstr " egap ot oG%(page)s"
 
 #: src/birdnetpi/web/static/js/pagination.js:88
 msgid "Go to next page"
-msgstr ""
+msgstr "egap txen ot oG"
 
 #: src/birdnetpi/web/static/js/pagination.js:91
 msgid "Go to last page"
-msgstr ""
+msgstr "egap tsal ot oG"
 
 #: src/birdnetpi/web/static/js/pagination.js:93
 msgid "Next"
-msgstr ""
+msgstr "txeN"
 
 #: src/birdnetpi/web/static/js/pagination.js:94
-#, fuzzy
 msgid "Last"
-msgstr "sogaL"
+msgstr "tsaL"
 
 #: src/birdnetpi/web/static/js/pagination.js:102
 #, python-format
 msgid "%(count)s %(items)s"
-msgstr ""
+msgstr "%(count)s %(items)s"
 
 #: src/birdnetpi/web/static/js/pagination.js:108
-#, fuzzy, python-format
+#, python-format
 msgid "No %(items)s found"
-msgstr "dnuof sledom oN"
+msgstr " oN%(items)sdnuof "
 
 #: src/birdnetpi/web/static/js/period_selector.js:118
 #, python-format
@@ -543,16 +535,16 @@ msgstr "lacirotsiH"
 
 #: src/birdnetpi/web/static/js/services.js:445
 msgid "System reboot timeout - manual intervention may be required"
-msgstr ""
+msgstr "deriuqer eb yam noitnevretni launam - tuoemit toober metsyS"
 
 #: src/birdnetpi/web/static/js/species_checklist.js:316
 #, python-format
 msgid "Conservation status: %(status)s"
-msgstr ""
+msgstr " :sutats noitavresnoC%(status)s"
 
 #: src/birdnetpi/web/static/js/species_checklist.js:327
 msgid "Conservation status unknown"
-msgstr ""
+msgstr "nwonknu sutats noitavresnoC"
 
 #: src/birdnetpi/web/static/js/update.js:52
 msgid "checking"
@@ -587,52 +579,44 @@ msgid "failed-to-cancel-update"
 msgstr "etadpu-lecnac-ot-deliaf"
 
 #: src/birdnetpi/web/static/js/update.js:206
-#, fuzzy
 msgid "no-remotes-configured"
-msgstr "dnuof-snoitceted-on"
+msgstr "derugifnoc-setomer-on"
 
 #: src/birdnetpi/web/static/js/update.js:211
-#, fuzzy
 msgid "select-remote"
-msgstr "etaD tceleS"
+msgstr "etomer-tceles"
 
 #: src/birdnetpi/web/static/js/update.js:231
-#, fuzzy
 msgid "failed-to-load-remotes"
-msgstr "etadpu-ylppa-ot-deliaf"
+msgstr "setomer-daol-ot-deliaf"
 
 #: src/birdnetpi/web/static/js/update.js:240
-#, fuzzy
 msgid "select-remote-first"
-msgstr "tsrif suneg tceleS"
+msgstr "tsrif-etomer-tceles"
 
 #: src/birdnetpi/web/static/js/update.js:246
-#, fuzzy
 msgid "loading-branches"
-msgstr "gnidaol"
+msgstr "sehcnarb-gnidaol"
 
 #: src/birdnetpi/web/static/js/update.js:259
 msgid "select-branch-or-tag"
-msgstr ""
+msgstr "gat-ro-hcnarb-tceles"
 
 #: src/birdnetpi/web/static/js/update.js:265
-#, fuzzy
 msgid "tags"
-msgstr "sogaL"
+msgstr "sgat"
 
 #: src/birdnetpi/web/static/js/update.js:278
-#, fuzzy
 msgid "branches"
-msgstr ":hcnarB tiG"
+msgstr "sehcnarb"
 
 #: src/birdnetpi/web/static/js/update.js:296
-#, fuzzy
 msgid "failed-to-load-branches"
-msgstr "etadpu-ylppa-ot-deliaf"
+msgstr "sehcnarb-daol-ot-deliaf"
 
 #: src/birdnetpi/web/static/js/update.js:309
 msgid "select-remote-and-branch"
-msgstr ""
+msgstr "hcnarb-dna-etomer-tceles"
 
 #: src/birdnetpi/web/static/js/update.js:328
 msgid "failed-to-save-config"
@@ -643,62 +627,54 @@ msgid "failed-to-save-git-config"
 msgstr "gifnoc-tig-evas-ot-deliaf"
 
 #: src/birdnetpi/web/static/js/update.js:452
-#, fuzzy
 msgid "edit"
-msgstr "etaidemmI"
+msgstr "tide"
 
 #: src/birdnetpi/web/static/js/update.js:462
-#, fuzzy
 msgid "delete"
-msgstr "etaD"
+msgstr "eteled"
 
 #: src/birdnetpi/web/static/js/update.js:498
-#, fuzzy
 msgid "failed-to-add-remote"
-msgstr "etadpu-ylppa-ot-deliaf"
+msgstr "etomer-dda-ot-deliaf"
 
 #: src/birdnetpi/web/static/js/update.js:504
 msgid "enter-new-url-for-remote"
-msgstr ""
+msgstr "etomer-rof-lru-wen-retne"
 
 #: src/birdnetpi/web/static/js/update.js:534
-#, fuzzy
 msgid "failed-to-update-remote"
-msgstr "etadpu-ylppa-ot-deliaf"
+msgstr "etomer-etadpu-ot-deliaf"
 
 #: src/birdnetpi/web/static/js/update.js:540
 msgid "cannot-delete-origin"
-msgstr ""
+msgstr "nigiro-eteled-tonnac"
 
 #: src/birdnetpi/web/static/js/update.js:544
-#, fuzzy
 msgid "confirm-delete-remote"
-msgstr "toobeR metsyS mrifnoC"
+msgstr "etomer-eteled-mrifnoc"
 
 #: src/birdnetpi/web/static/js/update.js:566
-#, fuzzy
 msgid "failed-to-delete-remote"
-msgstr "etadpu-lecnac-ot-deliaf"
+msgstr "etomer-eteled-ot-deliaf"
 
 #: src/birdnetpi/web/static/js/update.js:611
-#, fuzzy
 msgid "downloading"
-msgstr "daolnwoD"
+msgstr "gnidaolnwod"
 
 #: src/birdnetpi/web/static/js/update.js:628
 #: src/birdnetpi/web/static/js/update.js:637
 #: src/birdnetpi/web/static/js/update.js:679
 msgid "failed-to-download-region-pack"
-msgstr ""
+msgstr "kcap-noiger-daolnwod-ot-deliaf"
 
 #: src/birdnetpi/web/static/js/update.js:668
-#, fuzzy
 msgid "download-complete"
-msgstr "daolnwoD"
+msgstr "etelpmoc-daolnwod"
 
 #: src/birdnetpi/web/static/js/update.js:669
 msgid "region-pack-installed"
-msgstr ""
+msgstr "dellatsni-kcap-noiger"
 
 #: src/birdnetpi/web/templates/base.html.j2:30
 msgid "System health status"
@@ -972,25 +948,23 @@ msgstr "segasseM metsyS"
 
 #: src/birdnetpi/web/templates/admin/login.html.j2:7
 msgid "Sign in to access admin features"
-msgstr ""
+msgstr "serutaef nimda ssecca ot ni ngiS"
 
 #: src/birdnetpi/web/templates/admin/login.html.j2:12
-#, fuzzy
 msgid "Error:"
-msgstr "rorrE"
+msgstr ":rorrE"
 
 #: src/birdnetpi/web/templates/admin/login.html.j2:19
-#, fuzzy
 msgid "Username"
-msgstr "emiT nretsaE"
+msgstr "emanresU"
 
 #: src/birdnetpi/web/templates/admin/login.html.j2:31
 msgid "Password"
-msgstr ""
+msgstr "drowssaP"
 
 #: src/birdnetpi/web/templates/admin/login.html.j2:42
 msgid "Sign In"
-msgstr ""
+msgstr "nI ngiS"
 
 #: src/birdnetpi/web/templates/admin/logs.html.j2:16
 msgid "Skip to log content"
@@ -1839,9 +1813,7 @@ msgstr "stegraT esirppA"
 msgid ""
 "Define named Apprise service URLs (see %(link_start)sApprise "
 "docs%(link_end)s)"
-msgstr ""
-" ees( sLRU ecivres esirppA deman enifeD%(link_start)sscod "
-"esirppA%(link_end)s)"
+msgstr " ees( sLRU ecivres esirppA deman enifeD%(link_start)sscod esirppA%(link_end)s)"
 
 #: src/birdnetpi/web/templates/admin/settings.html.j2:374
 #: src/birdnetpi/web/templates/admin/settings.html.j2:750
@@ -2035,7 +2007,7 @@ msgid "e.g., 🦅 NEW: {{ common_name }}!"
 msgstr "!}} eman_nommoc {{ :WEN 🦅 ,.g.e"
 
 #: src/birdnetpi/web/templates/admin/settings.html.j2:862
-#, no-python-format, python-format
+#, python-format
 msgid "e.g., Detected {{ common_name }} at {{ confidence }}% confidence"
 msgstr "ecnedifnoc %}} ecnedifnoc {{ ta }} eman_nommoc {{ detceteD ,.g.e"
 
@@ -2048,18 +2020,16 @@ msgid "Skip to update content"
 msgstr "tnetnoc etadpu ot pikS"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:26
-#, fuzzy
 msgid "Docker Deployment"
-msgstr "reniatnoC rekcoD"
+msgstr "tnemyolpeD rekcoD"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:28
-#, fuzzy
 msgid "SBC Deployment"
-msgstr ":epyT tnemyolpeD"
+msgstr "tnemyolpeD CBS"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:30
 msgid "Unknown Deployment"
-msgstr ""
+msgstr "tnemyolpeD nwonknU"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:35
 msgid "Update status"
@@ -2114,81 +2084,73 @@ msgid "Manual Update Required"
 msgstr "deriuqeR etadpU launaM"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:122
-#, fuzzy
 msgid ""
 "This update cannot be applied automatically. Please see instructions "
 "below."
-msgstr ""
-".snoitcurtsni etadpu launam eht wollof esaelP .yllacitamotua deilppa eb "
-"tonnac etadpu sihT"
+msgstr ".woleb snoitcurtsni ees esaelP .yllacitamotua deilppa eb tonnac etadpu sihT"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:131
-#, fuzzy
 msgid "Docker update instructions"
-msgstr "snoitcurtsnI etadpU launaM"
+msgstr "snoitcurtsni etadpu rekcoD"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:132
-#, fuzzy
 msgid "Docker Update Instructions"
-msgstr "snoitcurtsnI etadpU launaM"
+msgstr "snoitcurtsnI etadpU rekcoD"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:136
 msgid ""
 "BirdNET-Pi runs in a Docker container. Updates are managed through Docker"
 " image updates."
-msgstr ""
+msgstr ".setadpu egami rekcoD hguorht deganam era setadpU .reniatnoc rekcoD a ni snur iP-TENdriB"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:141
 msgid "Production Deployment (Tagged Releases)"
-msgstr ""
+msgstr ")sesaeleR deggaT( tnemyolpeD noitcudorP"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:143
 msgid "For production deployments using tagged releases:"
-msgstr ""
+msgstr ":sesaeler deggat gnisu stnemyolped noitcudorp roF"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:145
 #: src/birdnetpi/web/templates/admin/update.html.j2:164
-#, fuzzy
 msgid "Stop the current container:"
-msgstr "reniatnoC rekcoD"
+msgstr ":reniatnoc tnerruc eht potS"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:148
 msgid "Pull the new image:"
-msgstr ""
+msgstr ":egami wen eht lluP"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:151
 #: src/birdnetpi/web/templates/admin/update.html.j2:170
-#, fuzzy
 msgid "Start the container:"
-msgstr "reniatnoc/metsys toobeR"
+msgstr ":reniatnoc eht tratS"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:154
 #: src/birdnetpi/web/templates/admin/update.html.j2:173
 msgid "Database migrations run automatically on container restart"
-msgstr ""
+msgstr "tratser reniatnoc no yllacitamotua nur snoitargim esabataD"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:160
 msgid "Development Deployment (Latest Code)"
-msgstr ""
+msgstr ")edoC tsetaL( tnemyolpeD tnempoleveD"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:162
 msgid "For development deployments building from source:"
-msgstr ""
+msgstr ":ecruos morf gnidliub stnemyolped tnempoleved roF"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:167
 msgid "Rebuild the image:"
-msgstr ""
+msgstr ":egami eht dliubeR"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:179
-#, fuzzy
 msgid "Note:"
-msgstr "rehtO"
+msgstr ":etoN"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:180
 msgid ""
 "Git remote and branch settings are not used for Docker deployments. "
 "Updates come from Docker images."
-msgstr ""
+msgstr ".segami rekcoD morf emoc setadpU .stnemyolped rekcoD rof desu ton era sgnittes hcnarb dna etomer tiG"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:186
 msgid "Git configuration"
@@ -2203,95 +2165,84 @@ msgid "Git Remote:"
 msgstr ":etomeR tiG"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:200
-#, fuzzy
 msgid "Loading remotes..."
-msgstr "...seiceps gnidaoL"
+msgstr "...setomer gnidaoL"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:206
-#, fuzzy
 msgid "Manage git remotes"
-msgstr ":etomeR tiG"
+msgstr "setomer tig eganaM"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:208
-#, fuzzy
 msgid "Manage Remotes"
-msgstr ":etomeR tiG"
+msgstr "setomeR eganaM"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:211
 msgid "Select the git remote to track for updates"
-msgstr ""
+msgstr "setadpu rof kcart ot etomer tig eht tceleS"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:215
-#, fuzzy
 msgid "Git Branch/Tag:"
-msgstr ":hcnarB tiG"
+msgstr ":gaT/hcnarB tiG"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:223
-#, fuzzy
 msgid "Select a remote first"
-msgstr "tsrif ylimaf tceleS"
+msgstr "tsrif etomer a tceleS"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:225
 msgid "Select the branch or tag to track"
-msgstr ""
+msgstr "kcart ot gat ro hcnarb eht tceleS"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:232
 msgid "Save git configuration"
 msgstr "noitarugifnoc tig evaS"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:245
-#, fuzzy
 msgid "Manage Git Remotes"
-msgstr ":etomeR tiG"
+msgstr "setomeR tiG eganaM"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:249
-#, fuzzy
 msgid "Close modal"
-msgstr "esolC"
+msgstr "ladom esolC"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:263
 msgid "Add New Remote"
-msgstr ""
+msgstr "etomeR weN ddA"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:266
-#, fuzzy
 msgid "Remote Name:"
-msgstr "eman eluR"
+msgstr ":emaN etomeR"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:272
 msgid "Letters, numbers, underscore, and dash only"
-msgstr ""
+msgstr "ylno hsad dna ,erocsrednu ,srebmun ,sretteL"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:276
 msgid "e.g., upstream, fork"
-msgstr ""
+msgstr "krof ,maertspu ,.g.e"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:280
-#, fuzzy
 msgid "Remote URL:"
-msgstr ":etomeR tiG"
+msgstr ":LRU etomeR"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:289
 msgid "Git repository URL"
-msgstr ""
+msgstr "LRU yrotisoper tiG"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:293
-#, fuzzy
 msgid "Add Remote"
-msgstr ":etomeR tiG"
+msgstr "etomeR ddA"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:303
 msgid "Unknown deployment information"
-msgstr ""
+msgstr "noitamrofni tnemyolped nwonknU"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:304
-#, fuzzy
 msgid "Deployment Type Unknown"
-msgstr ":epyT tnemyolpeD"
+msgstr "nwonknU epyT tnemyolpeD"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:306
 msgid "Unable to determine deployment type. Update functionality may be limited."
-msgstr ""
+msgstr ".detimil eb yam ytilanoitcnuf etadpU .epyt tnemyolped enimreted ot elbanU"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:313
 msgid "Update progress"
@@ -2335,67 +2286,64 @@ msgstr "deliaF etadpU"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:365
 msgid "Region pack management"
-msgstr ""
+msgstr "tnemeganam kcap noigeR"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:366
 msgid "Region Pack Management"
-msgstr ""
+msgstr "tnemeganaM kcaP noigeR"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:373
 msgid "Installed Packs:"
-msgstr ""
+msgstr ":skcaP dellatsnI"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:375
 msgid "pack(s) installed"
-msgstr ""
+msgstr "dellatsni )s(kcap"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:380
-#, fuzzy
 msgid "Location:"
-msgstr "noitacoL"
+msgstr ":noitacoL"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:383
-#, fuzzy
 msgid "Configured"
-msgstr "ecnedifnoC"
+msgstr "derugifnoC"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:385
-#, fuzzy
 msgid "Not Set"
-msgstr "TSD on"
+msgstr "teS toN"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:393
 msgid "No Region Pack Installed"
-msgstr ""
+msgstr "dellatsnI kcaP noigeR oN"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:394
 msgid ""
 "Region packs provide location-specific bird species filtering based on "
 "eBird data. Install a pack for your coordinates to enable regional "
 "filtering."
-msgstr ""
+msgstr ".gniretlif lanoiger elbane ot setanidrooc ruoy rof kcap a llatsnI .atad driBe no desab gniretlif seiceps drib cificeps-noitacol edivorp skcap noigeR"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:405
 msgid "Download region pack for your location"
-msgstr ""
+msgstr "noitacol ruoy rof kcap noiger daolnwoD"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:408
 msgid "Download Region Pack for My Location"
-msgstr ""
+msgstr "noitacoL yM rof kcaP noigeR daolnwoD"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:412
 msgid ""
 "This will download the appropriate region pack based on your configured "
 "coordinates:"
-msgstr ""
+msgstr ":setanidrooc derugifnoc ruoy no desab kcap noiger etairporppa eht daolnwod lliw sihT"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:419
 msgid "Set your location in"
-msgstr ""
+msgstr "ni noitacol ruoy teS"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:421
 msgid "to enable region pack download."
-msgstr ""
+msgstr ".daolnwod kcap noiger elbane ot"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:429
 msgid "Update help"
@@ -2413,13 +2361,13 @@ msgstr "setadpU citamotuA tuobA"
 msgid ""
 "BirdNET-Pi supports automatic updates on SBC deployments through the "
 "update daemon."
-msgstr ""
+msgstr ".nomead etadpu eht hguorht stnemyolped CBS no setadpu citamotua stroppus iP-TENdriB"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:437
 msgid ""
 "The update daemon monitors the configured git remote and branch for new "
 "releases."
-msgstr ""
+msgstr ".sesaeler wen rof hcnarb dna etomer tig derugifnoc eht srotinom nomead etadpu ehT"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:438
 msgid "Before applying an update:"
@@ -2438,56 +2386,54 @@ msgid "Review the release notes for breaking changes"
 msgstr "segnahc gnikaerb rof seton esaeler eht weiveR"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:448
-#, fuzzy
 msgid "SBC Update Process"
-msgstr "ssergorP etadpU"
+msgstr "ssecorP etadpU CBS"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:450
 msgid "For SBC deployments, updates are performed by the update daemon:"
-msgstr ""
+msgstr ":nomead etadpu eht yb demrofrep era setadpu ,stnemyolped CBS roF"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:452
 msgid "The daemon checks the configured remote/branch for updates"
-msgstr ""
+msgstr "setadpu rof hcnarb/etomer derugifnoc eht skcehc nomead ehT"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:453
 msgid "If an update is available, it can be applied through the web interface"
-msgstr ""
+msgstr "ecafretni bew eht hguorht deilppa eb nac ti ,elbaliava si etadpu na fI"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:454
 msgid "The daemon pulls the latest code and runs migrations"
-msgstr ""
+msgstr "snoitargim snur dna edoc tsetal eht sllup nomead ehT"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:455
 msgid "Services are restarted automatically"
-msgstr ""
+msgstr "yllacitamotua detratser era secivreS"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:461
 msgid "Docker Update Best Practices"
-msgstr ""
+msgstr "secitcarP tseB etadpU rekcoD"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:463
 msgid "For Docker deployments:"
-msgstr ""
+msgstr ":stnemyolped rekcoD roF"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:465
 msgid ""
 "Always use docker compose down (never docker compose down -v which "
 "deletes data)"
-msgstr ""
+msgstr ")atad seteled hcihw v- nwod esopmoc rekcod reven( nwod esopmoc rekcod esu syawlA"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:466
 msgid "Back up your data volume before major version updates"
-msgstr ""
+msgstr "setadpu noisrev rojam erofeb emulov atad ruoy pu kcaB"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:467
-#, fuzzy
 msgid "Check the release notes on GitHub for breaking changes"
-msgstr "segnahc gnikaerb rof seton esaeler eht weiveR"
+msgstr "segnahc gnikaerb rof buHtiG no seton esaeler eht kcehC"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:468
 msgid "Database migrations run automatically when the container starts"
-msgstr ""
+msgstr "strats reniatnoc eht nehw yllacitamotua nur snoitargim esabataD"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:475
 msgid "Troubleshooting"
@@ -2506,23 +2452,20 @@ msgid "Ensure your device has internet connectivity"
 msgstr "ytivitcennoc tenretni sah ecived ruoy erusnE"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:482
-#, fuzzy
 msgid "Verify that the update daemon is running"
-msgstr "gninnur si ecivres etadpu eht taht yfireV"
+msgstr "gninnur si nomead etadpu eht taht yfireV"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:483
-#, fuzzy
 msgid "Check git remote configuration is correct"
-msgstr "noitarugifnoc tig evaS"
+msgstr "tcerroc si noitarugifnoc etomer tig kcehC"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:485
-#, fuzzy
 msgid "Verify Docker daemon is running"
-msgstr "gninnur si ecivres etadpu eht taht yfireV"
+msgstr "gninnur si nomead rekcoD yfireV"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:486
 msgid "Check Docker image pull permissions"
-msgstr ""
+msgstr "snoissimrep llup egami rekcoD kcehC"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:488
 msgid "Report issues on GitHub with error details"
@@ -2530,55 +2473,51 @@ msgstr "sliated rorre htiw buHtiG no seussi tropeR"
 
 #: src/birdnetpi/web/templates/components/location_map.html.j2:10
 msgid "Search for address or place..."
-msgstr ""
+msgstr "...ecalp ro sserdda rof hcraeS"
 
 #: src/birdnetpi/web/templates/components/location_map.html.j2:11
 msgid "Search for location by address"
-msgstr ""
+msgstr "sserdda yb noitacol rof hcraeS"
 
 #: src/birdnetpi/web/templates/components/location_map.html.j2:22
 msgid "Interactive map for location selection"
-msgstr ""
+msgstr "noitceles noitacol rof pam evitcaretnI"
 
 #: src/birdnetpi/web/templates/components/location_map.html.j2:26
 msgid "Click on the map to set your location, or search for an address above."
-msgstr ""
+msgstr ".evoba sserdda na rof hcraes ro ,noitacol ruoy tes ot pam eht no kcilC"
 
 #: src/birdnetpi/web/templates/components/location_map.html.j2:199
-#, fuzzy
 msgid "Location updated"
-msgstr "etadpU lecnaC"
+msgstr "detadpu noitacoL"
 
 #: src/birdnetpi/web/templates/components/location_map.html.j2:263
 msgid "Location and timezone updated"
-msgstr ""
+msgstr "detadpu enozemit dna noitacoL"
 
 #: src/birdnetpi/web/templates/components/location_map.html.j2:279
 msgid "Please enter a location to search"
-msgstr ""
+msgstr "hcraes ot noitacol a retne esaelP"
 
 #: src/birdnetpi/web/templates/components/location_map.html.j2:283
-#, fuzzy
 msgid "Searching..."
-msgstr "...gnimaertS"
+msgstr "...gnihcraeS"
 
 #: src/birdnetpi/web/templates/components/location_map.html.j2:297
-#, fuzzy
 msgid "Search service unavailable"
-msgstr "elbaliava ton ecivreS"
+msgstr "elbaliavanu ecivres hcraeS"
 
 #: src/birdnetpi/web/templates/components/location_map.html.j2:303
 msgid "No results found. Try a different search term."
-msgstr ""
+msgstr ".mret hcraes tnereffid a yrT .dnuof stluser oN"
 
 #: src/birdnetpi/web/templates/components/location_map.html.j2:316
 msgid "Found:"
-msgstr ""
+msgstr ":dnuoF"
 
 #: src/birdnetpi/web/templates/components/location_map.html.j2:320
-#, fuzzy
 msgid "Search failed. Please try again."
-msgstr ".niaga yrt esaelP .sgnidrocer gnidaol rorrE"
+msgstr ".niaga yrt esaelP .deliaf hcraeS"
 
 #: src/birdnetpi/web/templates/components/navigation.html.j2:5
 msgid "Main navigation"
@@ -2613,9 +2552,8 @@ msgid "Database"
 msgstr "esabataD"
 
 #: src/birdnetpi/web/templates/components/navigation.html.j2:47
-#, fuzzy
 msgid "Logout"
-msgstr "sgoL"
+msgstr "tuogoL"
 
 #: src/birdnetpi/web/templates/components/period_selector.html.j2:52
 msgid "Loading period selector..."
@@ -2623,12 +2561,11 @@ msgstr "...rotceles doirep gnidaoL"
 
 #: src/birdnetpi/web/templates/components/region_pack_banner.html.j2:13
 msgid "Region pack not configured."
-msgstr ""
+msgstr ".derugifnoc ton kcap noigeR"
 
 #: src/birdnetpi/web/templates/components/region_pack_banner.html.j2:24
-#, fuzzy
 msgid "Dismiss region pack notification"
-msgstr "noitacifiton etadpu ssimsiD"
+msgstr "noitacifiton kcap noiger ssimsiD"
 
 #: src/birdnetpi/web/templates/components/region_pack_banner.html.j2:25
 #: src/birdnetpi/web/templates/components/update_banner.html.j2:51
@@ -2663,9 +2600,7 @@ msgstr "noisreV tnempoleveD"
 msgid ""
 "This is not a stable release. For production use, please install an "
 "official release."
-msgstr ""
-".esaeler laiciffo na llatsni esaelp ,esu noitcudorp roF .esaeler elbats a"
-" ton si sihT"
+msgstr ".esaeler laiciffo na llatsni esaelp ,esu noitcudorp roF .esaeler elbats a ton si sihT"
 
 #: src/birdnetpi/web/templates/components/update_banner.html.j2:31
 msgid "A new version is available!"
@@ -2742,169 +2677,166 @@ msgstr "...atad sisylana gnidaoL"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:51
 msgid "Diversity Timeline"
-msgstr ""
+msgstr "enilemiT ytisreviD"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:52
 msgid "Shannon diversity, Simpson index, and species richness over time"
-msgstr ""
+msgstr "emit revo ssenhcir seiceps dna ,xedni nospmiS ,ytisrevid nonnahS"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:53
 msgid "Tracks community diversity metrics over time."
-msgstr ""
+msgstr ".emit revo scirtem ytisrevid ytinummoc skcarT"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:53
 msgid "Shannon H'"
-msgstr ""
+msgstr "'H nonnahS"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:53
 msgid "measures entropy (higher = more diverse),"
-msgstr ""
+msgstr ",)esrevid erom = rehgih( yportne serusaem"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:53
 msgid "Simpson D"
-msgstr ""
+msgstr "D nospmiS"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:53
 msgid "measures dominance (higher = more even),"
-msgstr ""
+msgstr ",)neve erom = rehgih( ecnanimod serusaem"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:53
 msgid "Richness S"
-msgstr ""
+msgstr "S ssenhciR"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:53
 msgid "counts unique species."
-msgstr ""
+msgstr ".seiceps euqinu stnuoc"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:59
-#, fuzzy
 msgid "Species Accumulation"
-msgstr "evitca seiceps"
+msgstr "noitalumuccA seicepS"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:60
 msgid "Cumulative species discovery as detections increase"
-msgstr ""
+msgstr "esaercni snoitceted sa yrevocsid seiceps evitalumuC"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:61
 msgid "Shows how many unique species are found as more detections are recorded."
-msgstr ""
+msgstr ".dedrocer era snoitceted erom sa dnuof era seiceps euqinu ynam woh swohS"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:61
-#, fuzzy
 msgid "Species accumulation curves"
-msgstr "evitca seiceps"
+msgstr "sevruc noitalumucca seicepS"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:61
 msgid ""
 "help estimate sampling completeness and predict total diversity. Steep "
 "curves indicate high discovery rate, flattening curves suggest most "
 "species have been detected."
-msgstr ""
+msgstr ".detceted neeb evah seiceps tsom tseggus sevruc gninettalf ,etar yrevocsid hgih etacidni sevruc peetS .ytisrevid latot tciderp dna ssenetelpmoc gnilpmas etamitse pleh"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:67
 msgid "Community Similarity Matrix"
-msgstr ""
+msgstr "xirtaM ytiralimiS ytinummoC"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:68
 msgid "Jaccard similarity between time periods"
-msgstr ""
+msgstr "sdoirep emit neewteb ytiralimis draccaJ"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:69
 msgid "Compares species composition between time windows."
-msgstr ""
+msgstr ".swodniw emit neewteb noitisopmoc seiceps serapmoC"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:69
 msgid "Jaccard similarity"
-msgstr ""
+msgstr "ytiralimis draccaJ"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:69
 msgid ""
 "measures overlap: 0% = no shared species, 100% = identical communities. "
 "High values indicate stable communities, low values show turnover or "
 "seasonal changes."
-msgstr ""
+msgstr ".segnahc lanosaes ro revonrut wohs seulav wol ,seitinummoc elbats etacidni seulav hgiH .seitinummoc lacitnedi = %001 ,seiceps derahs on = %0 :palrevo serusaem"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:75
 msgid "Beta Diversity (Species Turnover)"
-msgstr ""
+msgstr ")revonruT seicepS( ytisreviD ateB"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:76
 msgid "Community change between consecutive time windows"
-msgstr ""
+msgstr "swodniw emit evitucesnoc neewteb egnahc ytinummoC"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:77
 msgid "Quantifies how much the bird community changes over time."
-msgstr ""
+msgstr ".emit revo segnahc ytinummoc drib eht hcum woh seifitnauQ"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:77
 msgid "Beta diversity (β)"
-msgstr ""
+msgstr ")β( ytisrevid ateB"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:77
 msgid ""
 "ranges from 0 (identical communities) to 1 (completely different). Green "
 "bars indicate stability, yellow shows moderate change, red indicates high"
 " turnover. Species gained (+) and lost (-) are shown below each bar."
-msgstr ""
+msgstr ".rab hcae woleb nwohs era )-( tsol dna )+( deniag seicepS .revonrut hgih setacidni der ,egnahc etaredom swohs wolley ,ytilibats etacidni srab neerG .)tnereffid yletelpmoc( 1 ot )seitinummoc lacitnedi( 0 morf segnar"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:83
-#, fuzzy
 msgid "Weather Correlations"
-msgstr "snoitceteD"
+msgstr "snoitalerroC rehtaeW"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:84
 msgid "Relationship between detections and weather variables"
-msgstr ""
+msgstr "selbairav rehtaew dna snoitceted neewteb pihsnoitaleR"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:85
 msgid "Explores relationships between weather and bird activity."
-msgstr ""
+msgstr ".ytivitca drib dna rehtaew neewteb spihsnoitaler serolpxE"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:85
 msgid "Pearson correlation (r)"
-msgstr ""
+msgstr ")r( noitalerroc nosraeP"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:85
 msgid ""
 "ranges from -1 to +1. Values near 0 indicate weak correlation, ±0.3-0.7 "
 "moderate, ±0.7-1.0 strong. Positive values show variables increase "
 "together, negative values show inverse relationships."
-msgstr ""
+msgstr ".spihsnoitaler esrevni wohs seulav evitagen ,rehtegot esaercni selbairav wohs seulav evitisoP .gnorts 0.1-7.0± ,etaredom 7.0-3.0± ,noitalerroc kaew etacidni 0 raen seulaV .1+ ot 1- morf segnar"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:88
 msgid "Temperature (°C)"
-msgstr ""
+msgstr ")C°( erutarepmeT"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:93
 msgid "Humidity (%)"
-msgstr ""
+msgstr ")%( ytidimuH"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:98
 msgid "Wind Speed (m/s)"
-msgstr ""
+msgstr ")s/m( deepS dniW"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:107
 msgid "Activity Heatmap"
-msgstr ""
+msgstr "pamtaeH ytivitcA"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:108
 msgid "Detection patterns by day of week and hour"
-msgstr ""
+msgstr "ruoh dna keew fo yad yb snrettap noitceteD"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:109
 msgid "Visualizes when birds are most active throughout the week."
-msgstr ""
+msgstr ".keew eht tuohguorht evitca tsom era sdrib nehw sezilausiV"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:109
 msgid "Heat maps"
-msgstr ""
+msgstr "spam taeH"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:109
 msgid ""
 "use color intensity to show detection frequency by day and hour. Darker "
 "cells indicate higher activity, lighter cells show fewer detections. "
 "Patterns reveal daily rhythms and weekly variations in bird behavior."
-msgstr ""
+msgstr ".roivaheb drib ni snoitairav ylkeew dna smhtyhr yliad laever snrettaP .snoitceted rewef wohs sllec rethgil ,ytivitca rehgih etacidni sllec rekraD .ruoh dna yad yb ycneuqerf noitceted wohs ot ytisnetni roloc esu"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:116
 #, python-format
@@ -2937,138 +2869,77 @@ msgid "Error loading recordings. Please try again."
 msgstr ".niaga yrt esaelP .sgnidrocer gnidaol rorrE"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:14
-#, fuzzy
 msgid "Detection status filter"
-msgstr "yrammus scitsitats noitceteD"
+msgstr "retlif sutats noitceteD"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:15
-#, fuzzy
 msgid "Show"
-msgstr "wocsoM"
+msgstr "wohS"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:16
-#, fuzzy
 msgid "Filter by detection status"
-msgstr "suneg yb retliF"
+msgstr "sutats noitceted yb retliF"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:24
-#, fuzzy
 msgid "All Species"
-msgstr "seiceps llA"
+msgstr "seicepS llA"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:33
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:58
-#, fuzzy
 msgid "Detected"
-msgstr "detceted seiceps"
+msgstr "detceteD"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:42
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:62
-#, fuzzy
 msgid "Not Detected"
-msgstr "tey snoitceted oN"
+msgstr "detceteD toN"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:52
-#, fuzzy
 msgid "Checklist statistics"
-msgstr "scitsitats gnidroceR"
+msgstr "scitsitats tsilkcehC"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:54
-#, fuzzy
 msgid "Total Species"
-msgstr "seiceps llA"
+msgstr "seicepS latoT"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:69
-#, fuzzy
 msgid "Species checklist table"
-msgstr "detceted seiceps"
+msgstr "elbat tsilkcehc seicepS"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:72
-#, fuzzy
 msgid "Image"
-msgstr "egnaR emiT"
+msgstr "egamI"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:73
 msgid "Thumbnail"
-msgstr ""
+msgstr "lianbmuhT"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:75
-#, fuzzy
 msgid "Detection status"
-msgstr "snoitceteD"
+msgstr "sutats noitceteD"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:77
-#, fuzzy
 msgid "Status"
-msgstr ":sutatS"
+msgstr "sutatS"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:81
-#, fuzzy
 msgid "Latest"
-msgstr "snehtA"
+msgstr "tsetaL"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:82
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:83
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:84
-#, fuzzy
 msgid "Conservation status"
-msgstr ":sutats ecivreS"
+msgstr "sutats noitavresnoC"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:93
-#, fuzzy
 msgid "Loading species data..."
-msgstr "...seiceps gnidaoL"
+msgstr "...atad seiceps gnidaoL"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:110
-#, fuzzy
 msgid "No species found matching the current filters."
-msgstr ".sretlif detceles eht gnihctam dnuof sgnidrocer oN"
+msgstr ".sretlif tnerruc eht gnihctam dnuof seiceps oN"
 
 #: src/birdnetpi/web/templates/reports/species_checklist.html.j2:111
-#, fuzzy
 msgid "Clear Filters"
-msgstr "sretlif evitcA"
-
-#~ msgid "invalid-remote-format"
-#~ msgstr "tamrof-etomer-dilavni"
-
-#~ msgid "invalid-branch-format"
-#~ msgstr "tamrof-hcnarb-dilavni"
-
-#~ msgid "Remote name (e.g., origin)"
-#~ msgstr ")nigiro ,.g.e( eman etomeR"
-
-#~ msgid "Git remote for updates (default: origin)"
-#~ msgstr ")nigiro :tluafed( setadpu rof etomer tiG"
-
-#~ msgid "Branch name (e.g., main)"
-#~ msgstr ")niam ,.g.e( eman hcnarB"
-
-#~ msgid "Git branch to track (default: main)"
-#~ msgstr ")niam :tluafed( kcart ot hcnarb tiG"
-
-#~ msgid ""
-#~ "BirdNET-Pi supports automatic updates "
-#~ "for minor versions and patches. Major"
-#~ " version updates may require manual "
-#~ "intervention."
-#~ msgstr ""
-#~ ".noitnevretni launam eriuqer yam setadpu "
-#~ "noisrev rojaM .sehctap dna snoisrev "
-#~ "ronim rof setadpu citamotua stroppus "
-#~ "iP-TENdriB"
-
-#~ msgid "If automatic updates are not available, you can update manually:"
-#~ msgstr ":yllaunam etadpu nac uoy ,elbaliava ton era setadpu citamotua fI"
-
-#~ msgid "SSH into your BirdNET-Pi device"
-#~ msgstr "ecived iP-TENdriB ruoy otni HSS"
-
-#~ msgid "Navigate to the BirdNET-Pi directory"
-#~ msgstr "yrotcerid iP-TENdriB eht ot etagivaN"
-
-#~ msgid "Run: git pull origin main"
-#~ msgstr "niam nigiro llup tig :nuR"
-
-#~ msgid "Restart the services: sudo systemctl restart birdnetpi"
-#~ msgstr "iptendrib tratser ltcmetsys odus :secivres eht tratseR"
+msgstr "sretliF raelC"

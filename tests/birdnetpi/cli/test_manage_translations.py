@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from click.testing import CliRunner
 
+import birdnetpi
 from birdnetpi.cli.manage_translations import (
     _process_pot_file,
     _reverse_text_with_placeholders,
@@ -18,6 +19,14 @@ from birdnetpi.cli.manage_translations import (
     run_command,
 )
 from birdnetpi.system.path_resolver import PathResolver
+
+# POT file template with proper headers for version checking
+POT_HEADER_TEMPLATE = f"""msgid ""
+msgstr ""
+"Project-Id-Version: BirdNET-Pi {birdnetpi.__version__}\\n"
+"Content-Type: text/plain; charset=UTF-8\\n"
+
+"""
 
 
 class TestRunCommand:
@@ -844,7 +853,7 @@ class TestCheckCommand:
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
         pot_file = locales_dir / "messages.pot"
-        pot_file.write_text('msgid ""\nmsgstr ""\n\nmsgid "Hello"\nmsgstr ""\n')
+        pot_file.write_text(POT_HEADER_TEMPLATE + 'msgid "Hello"\nmsgstr ""\n')
         lang_dir = locales_dir / "es" / "LC_MESSAGES"
         lang_dir.mkdir(parents=True)
         po_file = lang_dir / "messages.po"
@@ -875,7 +884,7 @@ class TestCheckCommand:
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
         pot_file = locales_dir / "messages.pot"
-        pot_file.write_text('msgid ""\nmsgstr ""\n\nmsgid "Hello"\nmsgstr ""\n')
+        pot_file.write_text(POT_HEADER_TEMPLATE + 'msgid "Hello"\nmsgstr ""\n')
         lang_dir = locales_dir / "es" / "LC_MESSAGES"
         lang_dir.mkdir(parents=True)
         po_file = lang_dir / "messages.po"
@@ -905,7 +914,7 @@ class TestCheckCommand:
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
         pot_file = locales_dir / "messages.pot"
-        pot_file.write_text('msgid ""\nmsgstr ""\n\nmsgid "Hello"\nmsgstr ""\n')
+        pot_file.write_text(POT_HEADER_TEMPLATE + 'msgid "Hello"\nmsgstr ""\n')
         lang_dir = locales_dir / "es" / "LC_MESSAGES"
         lang_dir.mkdir(parents=True)
         po_file = lang_dir / "messages.po"
@@ -934,7 +943,7 @@ class TestCheckCommand:
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
         pot_file = locales_dir / "messages.pot"
-        pot_file.write_text('msgid ""\nmsgstr ""\n\nmsgid "Hello"\nmsgstr ""\n')
+        pot_file.write_text(POT_HEADER_TEMPLATE + 'msgid "Hello"\nmsgstr ""\n')
         # Create locale that would fail if checked
         lang_dir = locales_dir / "es" / "LC_MESSAGES"
         lang_dir.mkdir(parents=True)
