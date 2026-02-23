@@ -17,8 +17,6 @@ logger = logging.getLogger(__name__)
 class ConfigManager:
     """Manages configuration loading, saving, and migration."""
 
-    CURRENT_VERSION = "2.0.0"
-
     @staticmethod
     def _is_profiling_enabled() -> bool:
         """Check if profiling is enabled via environment variable.
@@ -66,6 +64,17 @@ class ConfigManager:
         self.config_path = self.path_resolver.get_birdnetpi_config_path()
         self.template_path = self.path_resolver.get_config_template_path()
 
+    @property
+    def current_version(self) -> str:
+        """Get the current configuration version from the registry.
+
+        The version handler files are the single source of truth for schema versions.
+
+        Returns:
+            str: Current configuration version string (e.g., "2.0.0")
+        """
+        return self.registry.get_current_version().version
+
     def load(self) -> BirdNETConfig:
         """Load configuration with migration and validation.
 
@@ -86,11 +95,11 @@ class ConfigManager:
         raw_config = version_handler.apply_defaults(raw_config)
 
         # Migrate to current version if needed
-        if config_version != self.CURRENT_VERSION:
+        if config_version != self.current_version:
             raw_config = self._migrate_to_current(raw_config, config_version)
 
         # Validate final config
-        current_handler = self.registry.get_version(self.CURRENT_VERSION)
+        current_handler = self.registry.get_version(self.current_version)
         errors = current_handler.validate(raw_config)
         if errors:
             raise ValueError(f"Configuration validation failed: {', '.join(errors)}")
@@ -140,9 +149,9 @@ class ConfigManager:
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Create config from current version defaults
-            current_handler = self.registry.get_version(self.CURRENT_VERSION)
+            current_handler = self.registry.get_version(self.current_version)
             config_with_defaults = current_handler.apply_defaults(
-                {"config_version": self.CURRENT_VERSION}
+                {"config_version": self.current_version}
             )
 
             # Save the config with defaults
@@ -168,7 +177,7 @@ class ConfigManager:
         Returns:
             dict: Migrated configuration
         """
-        upgrade_path = self.registry.get_upgrade_path(from_version, self.CURRENT_VERSION)
+        upgrade_path = self.registry.get_upgrade_path(from_version, self.current_version)
 
         for version_handler in upgrade_path:
             raw_config = version_handler.upgrade_from_previous(raw_config)
