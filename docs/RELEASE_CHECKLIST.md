@@ -24,8 +24,10 @@ Update version numbers in the following files:
 | File | Location | Example |
 |------|----------|---------|
 | `pyproject.toml` | Line ~35 | `version = "X.Y.Z"` |
-| `src/birdnetpi/config/manager.py` | Line ~19 | `CURRENT_VERSION = "X.Y.Z"` |
+| `src/birdnetpi/config/versions/vX_Y_Z.py` | Line ~22 | `version = "X.Y.Z"` |
 | `src/birdnetpi/cli/manage_translations.py` | Line ~74 | `--version=X.Y.Z` |
+
+> **Note:** The config version is defined in version handler files (e.g., `v2_0_0.py`). When creating a new schema version, create a new version handler file.
 
 ## Translations
 
@@ -78,7 +80,7 @@ docker compose down
 ### Commit Changes
 ```bash
 # Stage all release-related changes
-git add pyproject.toml src/birdnetpi/config/manager.py src/birdnetpi/cli/manage_translations.py
+git add pyproject.toml src/birdnetpi/config/versions/ src/birdnetpi/cli/manage_translations.py
 git add locales/
 
 # Create release commit
