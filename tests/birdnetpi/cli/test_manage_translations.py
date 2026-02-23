@@ -230,36 +230,50 @@ class TestCompileCommand:
             'msgid "Hello"\nmsgstr "Hola"\n\n'
             'msgid "Goodbye"\nmsgstr "Adiós"\n'
         )
-        path_resolver = MagicMock(spec=PathResolver)
-        path_resolver.get_src_dir.return_value = src_dir
-        path_resolver.get_locales_dir.return_value = locales_dir
+        # Use the fixture properly - don't create a new MagicMock
+        path_resolver.get_src_dir = lambda: src_dir
+        path_resolver.get_locales_dir = lambda: locales_dir
         mock_resolver_class.return_value = path_resolver
         with runner.isolated_filesystem() as isolated_dir:
             Path(isolated_dir, "locales").symlink_to(locales_dir)
             result = runner.invoke(cli, ["compile"])
         assert result.exit_code == 0
-        assert "✓ Translation compilation completed successfully" in result.output
+        # Updated assertion: the new compile command uses a different message format
+        assert "Compiled" in result.output and "successfully" in result.output
         mo_file = locales_dir / "es" / "LC_MESSAGES" / "messages.mo"
         assert mo_file.exists()
         assert mo_file.stat().st_size > 0
 
     @patch("birdnetpi.cli.manage_translations.PathResolver", autospec=True)
-    @patch("birdnetpi.cli.manage_translations.run_command", autospec=True)
+    @patch("birdnetpi.cli.manage_translations.subprocess.run", autospec=True)
     def test_compile_failure(
-        self, mock_run_command, mock_resolver_class, runner, tmp_path, path_resolver
+        self, mock_subprocess_run, mock_resolver_class, runner, tmp_path, path_resolver
     ):
         """Should handle compilation failure."""
         src_dir = tmp_path / "src"
         src_dir.mkdir()
         locales_dir = tmp_path / "locales"
         locales_dir.mkdir()
+        # Create a locale with a PO file so compile attempts to process it
+        lang_dir = locales_dir / "es" / "LC_MESSAGES"
+        lang_dir.mkdir(parents=True)
+        po_file = lang_dir / "messages.po"
+        po_file.write_text(
+            '# Spanish translations\nmsgid ""\nmsgstr ""\n'
+            '"Content-Type: text/plain; charset=UTF-8\\n"\n\n'
+            'msgid "Hello"\nmsgstr "Hola"\n'
+        )
         path_resolver.get_src_dir = lambda: src_dir
         path_resolver.get_locales_dir = lambda: locales_dir
         mock_resolver_class.return_value = path_resolver
-        mock_run_command.return_value = False
+        # Make subprocess.run raise CalledProcessError to simulate msgfmt failure
+        mock_subprocess_run.side_effect = subprocess.CalledProcessError(
+            1, ["msgfmt"], stderr="msgfmt: error"
+        )
         result = runner.invoke(cli, ["compile"])
         assert result.exit_code == 1
-        assert "✗ Translation compilation failed" in result.output
+        # Updated assertion: the new compile command uses a different failure message format
+        assert "failed" in result.output.lower()
 
 
 class TestInitCommand:
