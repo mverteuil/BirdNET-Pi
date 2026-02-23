@@ -7,15 +7,15 @@ msgid ""
 msgstr ""
 "Project-Id-Version: BirdNET-Pi 2.0.0\n"
 "Report-Msgid-Bugs-To: https://github.com/mverteuil/BirdNET-Pi/issues\n"
-"POT-Creation-Date: 2026-02-22 22:55-0500\n"
+"POT-Creation-Date: 2026-02-23 16:53-0500\n"
 "PO-Revision-Date: 2025-08-09 13:42-0400\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: fr <LL@li.org>\n"
 "Language: fr\n"
+"Language-Team: fr <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "Generated-By: Babel 2.17.0\n"
 
 #: src/birdnetpi/web/core/factory.py:313
@@ -213,8 +213,8 @@ msgstr "Ignorer toutes les modifications non enregistrées ?"
 #: src/birdnetpi/web/routers/i18n_api_routes.py:93
 msgid "Configuration saved. Restart BirdNET-Pi services to apply changes."
 msgstr ""
-"Configuration sauvegardée. Redémarrez les services BirdNET-Pi pour appliquer "
-"les modifications."
+"Configuration sauvegardée. Redémarrez les services BirdNET-Pi pour "
+"appliquer les modifications."
 
 #: src/birdnetpi/web/routers/i18n_api_routes.py:95
 #, python-format
@@ -817,16 +817,16 @@ msgid "Ctrl+S save · Ctrl+Enter validate"
 msgstr "Ctrl+S sauvegarder · Ctrl+Entrée valider"
 
 #: src/birdnetpi/web/templates/admin/advanced_settings.html.j2:63
-msgid ""
-"This editor provides direct access to the BirdNET-Pi configuration file."
+msgid "This editor provides direct access to the BirdNET-Pi configuration file."
 msgstr ""
-"Cet éditeur fournit un accès direct au fichier de configuration de BirdNET-"
-"Pi."
+"Cet éditeur fournit un accès direct au fichier de configuration de "
+"BirdNET-Pi."
 
 #: src/birdnetpi/web/templates/admin/advanced_settings.html.j2:64
 msgid "Changes require a service restart to take effect."
 msgstr ""
-"Les modifications nécessitent le redémarrage du service pour prendre effet."
+"Les modifications nécessitent le redémarrage du service pour prendre "
+"effet."
 
 #: src/birdnetpi/web/templates/admin/advanced_settings.html.j2:64
 msgid "Use the Basic Settings page for guided configuration."
@@ -1123,8 +1123,8 @@ msgstr "Aucun journal à afficher"
 #: src/birdnetpi/web/templates/admin/logs.html.j2:198
 msgid "Select services and click Fetch or Stream to view logs"
 msgstr ""
-"Sélectionnez les services et cliquez sur Obtenir ou Flux pour afficher les "
-"journaux"
+"Sélectionnez les services et cliquez sur Obtenir ou Flux pour afficher "
+"les journaux"
 
 #: src/birdnetpi/web/templates/admin/logs.html.j2:205
 msgid "Log level color legend"
@@ -1275,8 +1275,8 @@ msgstr "Avertissement :"
 #: src/birdnetpi/web/templates/admin/services.html.j2:282
 msgid "All services will be temporarily unavailable during the reboot process."
 msgstr ""
-"Tous les services seront temporairement indisponibles pendant le processus "
-"de redémarrage."
+"Tous les services seront temporairement indisponibles pendant le "
+"processus de redémarrage."
 
 #: src/birdnetpi/web/templates/admin/settings.html.j2:12
 msgid "System settings"
@@ -1404,8 +1404,7 @@ msgstr "Aucun modèle trouvé"
 
 #: src/birdnetpi/web/templates/admin/settings.html.j2:199
 msgid "Please install model files in the models directory"
-msgstr ""
-"Veuillez installer les fichiers de modèles dans le répertoire de modèles"
+msgstr "Veuillez installer les fichiers de modèles dans le répertoire de modèles"
 
 #: src/birdnetpi/web/templates/admin/settings.html.j2:209
 msgid "Model for location-based filtering"
@@ -1854,7 +1853,8 @@ msgstr "Cibles Webhook"
 #: src/birdnetpi/web/templates/admin/settings.html.j2:387
 msgid "Define named webhook endpoints for external integrations"
 msgstr ""
-"Définissez des points d'ancrage webhook nommés pour des intégrations externes"
+"Définissez des points d'ancrage webhook nommés pour des intégrations "
+"externes"
 
 #: src/birdnetpi/web/templates/admin/settings.html.j2:392
 #: src/birdnetpi/web/templates/admin/settings.html.j2:762
@@ -2104,7 +2104,8 @@ msgstr "Mise à jour manuelle requise"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:122
 msgid ""
-"This update cannot be applied automatically. Please see instructions below."
+"This update cannot be applied automatically. Please see instructions "
+"below."
 msgstr ""
 "Cette mise à jour ne peut pas être appliquée automatiquement. Veuillez "
 "consulter les instructions ci-dessous."
@@ -2119,11 +2120,11 @@ msgstr "Instructions de Mise à Jour Docker"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:136
 msgid ""
-"BirdNET-Pi runs in a Docker container. Updates are managed through Docker "
-"image updates."
+"BirdNET-Pi runs in a Docker container. Updates are managed through Docker"
+" image updates."
 msgstr ""
-"BirdNET-Pi s'exécute dans un conteneur Docker. Les mises à jour sont gérées "
-"par les mises à jour d'images Docker."
+"BirdNET-Pi s'exécute dans un conteneur Docker. Les mises à jour sont "
+"gérées par les mises à jour d'images Docker."
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:141
 msgid "Production Deployment (Tagged Releases)"
@@ -2160,8 +2161,7 @@ msgstr "Déploiement de Développement (Dernier code)"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:162
 msgid "For development deployments building from source:"
-msgstr ""
-"Pour les déploiements de développement compilés à partir de la source :"
+msgstr "Pour les déploiements de développement compilés à partir de la source :"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:167
 msgid "Rebuild the image:"
@@ -2173,8 +2173,8 @@ msgstr "Note :"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:180
 msgid ""
-"Git remote and branch settings are not used for Docker deployments. Updates "
-"come from Docker images."
+"Git remote and branch settings are not used for Docker deployments. "
+"Updates come from Docker images."
 msgstr ""
 "Les paramètres de branche et distant Git ne sont pas utilisés pour les "
 "déploiements Docker. Les mises à jour proviennent des images Docker."
@@ -2268,11 +2268,10 @@ msgid "Deployment Type Unknown"
 msgstr "Type de Déploiement Inconnu"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:306
-msgid ""
-"Unable to determine deployment type. Update functionality may be limited."
+msgid "Unable to determine deployment type. Update functionality may be limited."
 msgstr ""
-"Impossible de déterminer le type de déploiement. La fonctionnalité de mise à "
-"jour peut être limitée."
+"Impossible de déterminer le type de déploiement. La fonctionnalité de "
+"mise à jour peut être limitée."
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:313
 msgid "Update progress"
@@ -2348,12 +2347,13 @@ msgstr "Aucun Pack Régional Installé"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:394
 msgid ""
-"Region packs provide location-specific bird species filtering based on eBird "
-"data. Install a pack for your coordinates to enable regional filtering."
+"Region packs provide location-specific bird species filtering based on "
+"eBird data. Install a pack for your coordinates to enable regional "
+"filtering."
 msgstr ""
-"Les packs régionaux fournissent un filtrage des espèces d'oiseaux spécifique "
-"à l'emplacement basé sur les données d'eBird. Installez un pack pour vos "
-"coordonnées pour activer le filtrage régional."
+"Les packs régionaux fournissent un filtrage des espèces d'oiseaux "
+"spécifique à l'emplacement basé sur les données d'eBird. Installez un "
+"pack pour vos coordonnées pour activer le filtrage régional."
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:405
 msgid "Download region pack for your location"
@@ -2368,8 +2368,8 @@ msgid ""
 "This will download the appropriate region pack based on your configured "
 "coordinates:"
 msgstr ""
-"Ceci téléchargera le pack régional approprié en fonction de vos coordonnées "
-"configurées :"
+"Ceci téléchargera le pack régional approprié en fonction de vos "
+"coordonnées configurées :"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:419
 msgid "Set your location in"
@@ -2393,8 +2393,8 @@ msgstr "À propos des Mises à Jour Automatiques"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:436
 msgid ""
-"BirdNET-Pi supports automatic updates on SBC deployments through the update "
-"daemon."
+"BirdNET-Pi supports automatic updates on SBC deployments through the "
+"update daemon."
 msgstr ""
 "BirdNET-Pi prend en charge les mises à jour automatiques sur les "
 "déploiements SBC via le démon de mise à jour."
@@ -2404,8 +2404,8 @@ msgid ""
 "The update daemon monitors the configured git remote and branch for new "
 "releases."
 msgstr ""
-"Le démon de mise à jour surveille le distant et la branche git configurés "
-"pour les nouvelles versions."
+"Le démon de mise à jour surveille le distant et la branche git configurés"
+" pour les nouvelles versions."
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:438
 msgid "Before applying an update:"
@@ -2430,19 +2430,18 @@ msgstr "Processus de mise à jour SBC"
 #: src/birdnetpi/web/templates/admin/update.html.j2:450
 msgid "For SBC deployments, updates are performed by the update daemon:"
 msgstr ""
-"Pour les déploiements SBC, les mises à jour sont effectuées par le démon de "
-"mise à jour :"
+"Pour les déploiements SBC, les mises à jour sont effectuées par le démon "
+"de mise à jour :"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:452
 msgid "The daemon checks the configured remote/branch for updates"
-msgstr ""
-"Le démon vérifie le distant/la branche configurés pour les mises à jour"
+msgstr "Le démon vérifie le distant/la branche configurés pour les mises à jour"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:453
 msgid "If an update is available, it can be applied through the web interface"
 msgstr ""
-"Si une mise à jour est disponible, elle peut être appliquée via l'interface "
-"web"
+"Si une mise à jour est disponible, elle peut être appliquée via "
+"l'interface web"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:454
 msgid "The daemon pulls the latest code and runs migrations"
@@ -2462,8 +2461,8 @@ msgstr "Pour les déploiements Docker :"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:465
 msgid ""
-"Always use docker compose down (never docker compose down -v which deletes "
-"data)"
+"Always use docker compose down (never docker compose down -v which "
+"deletes data)"
 msgstr ""
 "Utilisez toujours docker compose down (jamais docker compose down -v qui "
 "supprime les données)"
@@ -2476,8 +2475,7 @@ msgstr ""
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:467
 msgid "Check the release notes on GitHub for breaking changes"
-msgstr ""
-"Vérifiez les notes de version sur GitHub pour les modifications de rupture"
+msgstr "Vérifiez les notes de version sur GitHub pour les modifications de rupture"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:468
 msgid "Database migrations run automatically when the container starts"
@@ -2536,8 +2534,8 @@ msgstr "Carte interactive pour la sélection de l'emplacement"
 #: src/birdnetpi/web/templates/components/location_map.html.j2:26
 msgid "Click on the map to set your location, or search for an address above."
 msgstr ""
-"Cliquez sur la carte pour définir votre position ou recherchez une adresse "
-"ci-dessus."
+"Cliquez sur la carte pour définir votre position ou recherchez une "
+"adresse ci-dessus."
 
 #: src/birdnetpi/web/templates/components/location_map.html.j2:199
 msgid "Location updated"
@@ -2650,8 +2648,8 @@ msgstr "Version de développement"
 
 #: src/birdnetpi/web/templates/components/update_banner.html.j2:17
 msgid ""
-"This is not a stable release. For production use, please install an official "
-"release."
+"This is not a stable release. For production use, please install an "
+"official release."
 msgstr ""
 "Ce n'est pas une version stable. Pour une utilisation en production, "
 "installez une version officielle."
@@ -2736,8 +2734,8 @@ msgstr "Chronologie de la diversité"
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:52
 msgid "Shannon diversity, Simpson index, and species richness over time"
 msgstr ""
-"Diversité de Shannon, indice de Simpson et richesse des espèces au fil du "
-"temps"
+"Diversité de Shannon, indice de Simpson et richesse des espèces au fil du"
+" temps"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:53
 msgid "Tracks community diversity metrics over time."
@@ -2773,12 +2771,10 @@ msgstr "Accumulation d'espèces"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:60
 msgid "Cumulative species discovery as detections increase"
-msgstr ""
-"Découverte d'espèces cumulatives à mesure que les détections augmentent"
+msgstr "Découverte d'espèces cumulatives à mesure que les détections augmentent"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:61
-msgid ""
-"Shows how many unique species are found as more detections are recorded."
+msgid "Shows how many unique species are found as more detections are recorded."
 msgstr ""
 "Montre combien d'espèces uniques sont trouvées à mesure que plus de "
 "détections sont enregistrées."
@@ -2790,13 +2786,13 @@ msgstr "Courbes d'accumulation d'espèces"
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:61
 msgid ""
 "help estimate sampling completeness and predict total diversity. Steep "
-"curves indicate high discovery rate, flattening curves suggest most species "
-"have been detected."
+"curves indicate high discovery rate, flattening curves suggest most "
+"species have been detected."
 msgstr ""
 "aident à estimer l'exhaustivité de l'échantillonnage et à prédire la "
-"diversité totale. Des courbes raides indiquent un taux de découverte élevé, "
-"des courbes qui s'aplatissent suggèrent que la plupart des espèces ont été "
-"détectées."
+"diversité totale. Des courbes raides indiquent un taux de découverte "
+"élevé, des courbes qui s'aplatissent suggèrent que la plupart des espèces"
+" ont été détectées."
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:67
 msgid "Community Similarity Matrix"
@@ -2816,13 +2812,14 @@ msgstr "Similitude de Jaccard"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:69
 msgid ""
-"measures overlap: 0% = no shared species, 100% = identical communities. High "
-"values indicate stable communities, low values show turnover or seasonal "
-"changes."
+"measures overlap: 0% = no shared species, 100% = identical communities. "
+"High values indicate stable communities, low values show turnover or "
+"seasonal changes."
 msgstr ""
-"mesure le chevauchement : 0% = aucune espèce partagée, 100% = communautés "
-"identiques. Les valeurs élevées indiquent des communautés stables, les "
-"valeurs faibles indiquent un renouvellement ou des changements saisonniers."
+"mesure le chevauchement : 0% = aucune espèce partagée, 100% = communautés"
+" identiques. Les valeurs élevées indiquent des communautés stables, les "
+"valeurs faibles indiquent un renouvellement ou des changements "
+"saisonniers."
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:75
 msgid "Beta Diversity (Species Turnover)"
@@ -2834,8 +2831,7 @@ msgstr "Changement de communauté entre des fenêtres temporelles consécutives"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:77
 msgid "Quantifies how much the bird community changes over time."
-msgstr ""
-"Quantifie dans quelle mesure la communauté d'oiseaux change avec le temps."
+msgstr "Quantifie dans quelle mesure la communauté d'oiseaux change avec le temps."
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:77
 msgid "Beta diversity (β)"
@@ -2844,13 +2840,13 @@ msgstr "Diversité bêta (β)"
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:77
 msgid ""
 "ranges from 0 (identical communities) to 1 (completely different). Green "
-"bars indicate stability, yellow shows moderate change, red indicates high "
-"turnover. Species gained (+) and lost (-) are shown below each bar."
+"bars indicate stability, yellow shows moderate change, red indicates high"
+" turnover. Species gained (+) and lost (-) are shown below each bar."
 msgstr ""
 "varie de 0 (communautés identiques) à 1 (complètement différentes). Les "
-"barres vertes indiquent la stabilité, le jaune montre un changement modéré, "
-"le rouge indique un taux de renouvellement élevé. Les espèces gagnées (+) et "
-"perdues (-) sont affichées sous chaque barre."
+"barres vertes indiquent la stabilité, le jaune montre un changement "
+"modéré, le rouge indique un taux de renouvellement élevé. Les espèces "
+"gagnées (+) et perdues (-) sont affichées sous chaque barre."
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:83
 msgid "Weather Correlations"
@@ -2871,13 +2867,13 @@ msgstr "Corrélation de Pearson (r)"
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:85
 msgid ""
 "ranges from -1 to +1. Values near 0 indicate weak correlation, ±0.3-0.7 "
-"moderate, ±0.7-1.0 strong. Positive values show variables increase together, "
-"negative values show inverse relationships."
+"moderate, ±0.7-1.0 strong. Positive values show variables increase "
+"together, negative values show inverse relationships."
 msgstr ""
-"varie de -1 à +1. Les valeurs proches de 0 indiquent une corrélation faible, "
-"±0.3-0.7 modérée, ±0.7-1.0 forte. Les valeurs positives montrent que les "
-"variables augmentent ensemble, les valeurs négatives montrent des relations "
-"inverses."
+"varie de -1 à +1. Les valeurs proches de 0 indiquent une corrélation "
+"faible, ±0.3-0.7 modérée, ±0.7-1.0 forte. Les valeurs positives montrent "
+"que les variables augmentent ensemble, les valeurs négatives montrent des"
+" relations inverses."
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:88
 msgid "Temperature (°C)"
@@ -2902,8 +2898,8 @@ msgstr "Modèles de détection par jour de la semaine et heure"
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:109
 msgid "Visualizes when birds are most active throughout the week."
 msgstr ""
-"Visualise le moment où les oiseaux sont les plus actifs tout au long de la "
-"semaine."
+"Visualise le moment où les oiseaux sont les plus actifs tout au long de "
+"la semaine."
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:109
 msgid "Heat maps"
@@ -2915,11 +2911,11 @@ msgid ""
 "cells indicate higher activity, lighter cells show fewer detections. "
 "Patterns reveal daily rhythms and weekly variations in bird behavior."
 msgstr ""
-"utilisent l'intensité de la couleur pour montrer la fréquence de détection "
-"par jour et par heure. Les cellules plus sombres indiquent une activité plus "
-"élevée, les cellules plus claires montrent moins de détections. Les modèles "
-"révèlent des rythmes quotidiens et des variations hebdomadaires dans le "
-"comportement des oiseaux."
+"utilisent l'intensité de la couleur pour montrer la fréquence de "
+"détection par jour et par heure. Les cellules plus sombres indiquent une "
+"activité plus élevée, les cellules plus claires montrent moins de "
+"détections. Les modèles révèlent des rythmes quotidiens et des variations"
+" hebdomadaires dans le comportement des oiseaux."
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:116
 #, python-format
