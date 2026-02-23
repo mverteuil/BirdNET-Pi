@@ -7,754 +7,3025 @@ msgid ""
 msgstr ""
 "Project-Id-Version: BirdNET-Pi 2.0.0\n"
 "Report-Msgid-Bugs-To: https://github.com/mverteuil/BirdNET-Pi/issues\n"
-"POT-Creation-Date: 2025-08-16 11:41-0400\n"
+"POT-Creation-Date: 2026-02-22 22:55-0500\n"
 "PO-Revision-Date: 2025-08-09 13:42-0400\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language: fr\n"
 "Language-Team: fr <LL@li.org>\n"
-"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"Language: fr\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "Generated-By: Babel 2.17.0\n"
 
-#: src/birdnetpi/web/templates/audio_device_selection.html:4
-#: src/birdnetpi/web/templates/audio_device_selection.html:8
-msgid "Audio Device Selection"
-msgstr ""
+#: src/birdnetpi/web/core/factory.py:313
+msgid "API Documentation"
+msgstr "Documentation de l'API"
 
-#: src/birdnetpi/web/templates/index.html:6
-msgid "BirdNET-Pi - AI-Powered Bird Detection System"
-msgstr ""
+#: src/birdnetpi/web/routers/auth_routes.py:88
+#: src/birdnetpi/web/routers/auth_routes.py:127
+#: src/birdnetpi/web/routers/auth_routes.py:145
+#: src/birdnetpi/web/templates/admin/login.html.j2:6
+msgid "Administrator Login"
+msgstr "Connexion Administrateur"
 
-#: src/birdnetpi/web/templates/index.html:22
-msgid ""
-"AI-powered bird detection and monitoring system running 24/7\n"
-"            on your Raspberry Pi"
-msgstr ""
+#: src/birdnetpi/web/routers/auth_routes.py:123
+#: src/birdnetpi/web/routers/auth_routes.py:141
+msgid "Invalid credentials"
+msgstr "Identifiants invalides"
 
-#: src/birdnetpi/web/templates/index.html:30
-msgid "View Dashboard"
-msgstr ""
+#: src/birdnetpi/web/routers/i18n_api_routes.py:48
+msgid "Audio not available"
+msgstr "Audio non disponible"
 
-#: src/birdnetpi/web/templates/index.html:33
-msgid "Browse Detections"
-msgstr ""
-
-#: src/birdnetpi/web/templates/index.html:40
-msgid "Test Icons"
-msgstr ""
-
-#: src/birdnetpi/web/templates/index.html:46
-msgid "Species Detected"
-msgstr "Espèces Détectées"
-
-#: src/birdnetpi/web/templates/index.html:50
-#: src/birdnetpi/web/templates/reports/index.html:43
-#: src/birdnetpi/web/templates/reports/todays_detections.html:14
-msgid "Today's Detections"
-msgstr "Détections d'Aujourd'hui"
-
-#: src/birdnetpi/web/templates/index.html:54
-msgid "Hours Recorded"
-msgstr ""
-
-#: src/birdnetpi/web/templates/index.html:64
-msgid "Live Dashboard"
-msgstr ""
-
-#: src/birdnetpi/web/templates/index.html:66
-msgid "Real-time bird detection and system monitoring"
-msgstr ""
-
-#: src/birdnetpi/web/templates/index.html:74
-#: src/birdnetpi/web/templates/reports/all_detections.html:14
-#: src/birdnetpi/web/templates/reports/index.html:57
-msgid "All Detections"
-msgstr "Toutes les Détections"
-
-#: src/birdnetpi/web/templates/index.html:76
-#: src/birdnetpi/web/templates/reports/index.html:59
-msgid "Browse complete detection history"
-msgstr ""
-
-#: src/birdnetpi/web/templates/index.html:81
-#: src/birdnetpi/web/templates/reports/best_recordings.html:14
-#: src/birdnetpi/web/templates/reports/index.html:36
-msgid "Best Recordings"
-msgstr "Meilleurs Enregistrements"
-
-#: src/birdnetpi/web/templates/index.html:83
-#: src/birdnetpi/web/templates/reports/index.html:38
-msgid "Listen to high-confidence detections"
-msgstr ""
-
-#: src/birdnetpi/web/templates/index.html:88
-#: src/birdnetpi/web/templates/livestream.html:6
-#: src/birdnetpi/web/templates/livestream.html:282
-msgid "Live Stream"
-msgstr "Flux en Direct"
-
-#: src/birdnetpi/web/templates/index.html:90
-msgid "Audio stream and spectrogram"
-msgstr ""
-
-#: src/birdnetpi/web/templates/index.html:95
-#: src/birdnetpi/web/templates/reports/index.html:14
-msgid "Reports"
-msgstr "Rapports"
-
-#: src/birdnetpi/web/templates/index.html:97
-msgid "Analyze detection patterns"
-msgstr ""
-
-#: src/birdnetpi/web/templates/index.html:102
-#: src/birdnetpi/web/templates/livestream.html:291
-msgid "Field Mode"
-msgstr "Mode Terrain"
-
-#: src/birdnetpi/web/templates/index.html:103
-msgid "Manual recording mode"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:14
-#: src/birdnetpi/web/templates/index.html:107
-msgid "Settings"
-msgstr "Paramètres"
-
-#: src/birdnetpi/web/templates/index.html:108
-msgid "Configure your system"
-msgstr ""
-
-#: src/birdnetpi/web/templates/index.html:116
-msgid "System Status"
-msgstr "État du Système"
-
-#: src/birdnetpi/web/templates/index.html:119
-msgid "Online"
-msgstr "En Ligne"
-
-#: src/birdnetpi/web/templates/index.html:124
-msgid "CPU Usage"
-msgstr "Utilisation du Processeur"
-
-#: src/birdnetpi/web/templates/index.html:135
-msgid "Memory"
-msgstr "Mémoire"
-
-#: src/birdnetpi/web/templates/index.html:146
-msgid "Disk Space"
-msgstr "Espace Disque"
-
-#: src/birdnetpi/web/templates/index.html:157
-msgid "Temperature"
-msgstr "Température"
-
-#: src/birdnetpi/web/templates/index.html:166
-msgid "Recent Detections"
-msgstr "Détections Récentes"
-
-#: src/birdnetpi/web/templates/index.html:168
-msgid "today"
-msgstr "aujourd'hui"
-
-#: src/birdnetpi/web/templates/index.html:190
-msgid "Audio Stream"
-msgstr ""
-
-#: src/birdnetpi/web/templates/index.html:193
-msgid "Connecting..."
-msgstr "Connexion..."
-
-#: src/birdnetpi/web/templates/index.html:202
-msgid "Live Audio Analysis"
-msgstr ""
-
-#: src/birdnetpi/web/templates/livestream.html:284
-msgid "Real-time audio stream and visual spectrogram analysis"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:20
-#: src/birdnetpi/web/templates/livestream.html:288
-#: src/birdnetpi/web/templates/reports/index.html:20
-msgid "Back to Dashboard"
-msgstr "Retour au Tableau de Bord"
-
-#: src/birdnetpi/web/templates/livestream.html:299
-msgid "Connection Status"
-msgstr ""
-
-#: src/birdnetpi/web/templates/livestream.html:304
-msgid "Audio: Disconnected"
-msgstr ""
-
-#: src/birdnetpi/web/templates/livestream.html:310
-msgid "Spectrogram: Disconnected"
-msgstr ""
-
-#: src/birdnetpi/web/templates/livestream.html:313
-msgid "Updates: 0 Hz"
-msgstr ""
-
-#: src/birdnetpi/web/templates/livestream.html:316
-msgid "Latency: -- ms"
-msgstr ""
-
-#: src/birdnetpi/web/templates/livestream.html:327
+#: src/birdnetpi/web/routers/i18n_api_routes.py:49
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:50
 msgid "Connect Audio"
-msgstr "Connecter l'Audio"
-
-#: src/birdnetpi/web/templates/livestream.html:336
-msgid "Connect Spectrogram"
-msgstr "Connecter le Spectrogramme"
-
-#: src/birdnetpi/web/templates/livestream.html:353
-msgid "Audio On"
-msgstr ""
-
-#: src/birdnetpi/web/templates/livestream.html:356
-msgid "Volume:"
-msgstr ""
-
-#: src/birdnetpi/web/templates/livestream.html:377
-msgid "Live Spectrogram"
-msgstr ""
-
-#: src/birdnetpi/web/templates/livestream.html:378
-msgid "Real-time"
-msgstr ""
-
-#: src/birdnetpi/web/templates/livestream.html:383
-msgid "Color Scale"
-msgstr ""
-
-#: src/birdnetpi/web/templates/livestream.html:394
-msgid "Max Freq (Hz)"
-msgstr ""
-
-#: src/birdnetpi/web/templates/livestream.html:406
-msgid "Time Window (s)"
-msgstr ""
-
-#: src/birdnetpi/web/templates/livestream.html:433
-msgid "Live Detections"
-msgstr ""
-
-#: src/birdnetpi/web/templates/livestream.html:435
-msgid "0 detected"
-msgstr ""
-
-#: src/birdnetpi/web/templates/livestream.html:441
-msgid ""
-"No detections yet. Start streaming to see bird detections\n"
-"                in real-time."
-msgstr ""
-
-#: src/birdnetpi/web/templates/livestream.html:452
-msgid "Connection Log"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:6
-msgid "BirdNET-Pi Settings"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:16
-msgid "Configure your BirdNET-Pi system"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:23
-msgid "Advanced Settings"
-msgstr "Paramètres Avancés"
-
-#: src/birdnetpi/web/templates/admin/settings.html:33
-#: src/birdnetpi/web/templates/admin/yaml_editor.html:145
-#: src/birdnetpi/web/templates/admin/yaml_editor.html:163
-msgid "Basic Settings"
-msgstr "Paramètres de Base"
-
-#: src/birdnetpi/web/templates/admin/settings.html:36
-msgid "Site Name"
-msgstr "Nom du Site"
-
-#: src/birdnetpi/web/templates/admin/settings.html:47
-msgid "Latitude"
-msgstr "Latitude"
-
-#: src/birdnetpi/web/templates/admin/settings.html:59
-msgid "Longitude"
-msgstr "Longitude"
-
-#: src/birdnetpi/web/templates/admin/settings.html:72
-msgid "AI Model"
-msgstr "Modèle IA"
-
-#: src/birdnetpi/web/templates/admin/settings.html:83
-msgid "Species Confidence Threshold"
-msgstr "Seuil de Confiance des Espèces"
-
-#: src/birdnetpi/web/templates/admin/settings.html:99
-msgid "BirdWeather Integration"
-msgstr "Intégration BirdWeather"
-
-#: src/birdnetpi/web/templates/admin/settings.html:102
-msgid "BirdWeather ID"
-msgstr "ID BirdWeather"
-
-#: src/birdnetpi/web/templates/admin/settings.html:109
-msgid "Your BirdWeather Station ID"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:117
-#: src/birdnetpi/web/templates/admin/yaml_editor.html:178
-msgid "Notifications"
-msgstr "Notifications"
-
-#: src/birdnetpi/web/templates/admin/settings.html:121
-msgid "Apprise Configuration"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:127
-msgid "Enter your Apprise notification URLs here"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:134
-msgid "Notification Title"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:142
-msgid "BirdNET-Pi Detection"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:147
-msgid "Notification Body"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:155
-#, python-brace-format
-msgid "New species detected: {species}"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:174
-msgid "Notify Each Detection"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:191
-msgid "Notify New Species"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:208
-msgid "Notify New Species Each Day"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:225
-#: src/birdnetpi/web/templates/reports/index.html:29
-#: src/birdnetpi/web/templates/reports/weekly_report.html:14
-msgid "Weekly Report"
-msgstr "Rapport Hebdomadaire"
-
-#: src/birdnetpi/web/templates/admin/settings.html:231
-msgid "Minimum Time Limit (seconds)"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:244
-msgid "Exclude Species (comma separated)"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:252
-msgid "House Sparrow, European Starling"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:260
-msgid "Flickr Integration"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:263
-msgid "Flickr API Key"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:270
-msgid "Your Flickr API key"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:275
-msgid "Flickr Filter Email"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:283
-msgid "filter@example.com"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/settings.html:291
-msgid "Localization"
-msgstr "Localisation"
-
-#: src/birdnetpi/web/templates/admin/settings.html:295
-msgid "Language"
-msgstr "Langue"
-
-#: src/birdnetpi/web/templates/admin/settings.html:306
-msgid "Timezone"
-msgstr "Fuseau Horaire"
-
-#: src/birdnetpi/web/templates/admin/settings.html:323
-msgid "Save Settings"
-msgstr "Enregistrer les Paramètres"
-
-#: src/birdnetpi/web/templates/admin/test_detection_modal.html:4
-#: src/birdnetpi/web/templates/admin/test_detection_modal.html:54
-msgid "Test Detection Options"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/test_detection_modal.html:56
-msgid "Species:"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/test_detection_modal.html:57
-msgid "Test Bird"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/test_detection_modal.html:60
-msgid "Confidence (0.0-1.0):"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/test_detection_modal.html:71
-msgid "Timestamp:"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/test_detection_modal.html:75
-msgid "Send Test Detection"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/yaml_editor.html:6
-msgid "BirdNET-Pi YAML Configuration Editor"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/yaml_editor.html:142
-msgid "Advanced Settings - YAML Editor"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/yaml_editor.html:148
-msgid "Reload"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/yaml_editor.html:151
-msgid "Validate"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/yaml_editor.html:154
-msgid "Save"
-msgstr "Enregistrer"
-
-#: src/birdnetpi/web/templates/admin/yaml_editor.html:160
-msgid "Quick Navigation:"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/yaml_editor.html:166
-msgid "Model Settings"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/yaml_editor.html:172
-msgid "BirdWeather"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/yaml_editor.html:181
-msgid "GPS & Field Mode"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/yaml_editor.html:184
-msgid "MQTT"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/yaml_editor.html:190
-msgid "Webhooks"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/yaml_editor.html:193
-msgid "Logging"
-msgstr ""
-
-#: src/birdnetpi/web/templates/admin/yaml_editor.html:200
-msgid "Configuration Editor"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/all_detections.html:6
-msgid "All Detections - BirdNET-Pi Reports"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/all_detections.html:16
-msgid "Complete history of bird detections"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/all_detections.html:24
-#: src/birdnetpi/web/templates/reports/best_recordings.html:24
-#: src/birdnetpi/web/templates/reports/charts.html:25
-#: src/birdnetpi/web/templates/reports/todays_detections.html:24
-#: src/birdnetpi/web/templates/reports/weekly_report.html:31
-msgid "Back to Reports"
-msgstr "Retour aux Rapports"
-
-#: src/birdnetpi/web/templates/reports/all_detections.html:27
-#: src/birdnetpi/web/templates/reports/best_recordings.html:27
-#: src/birdnetpi/web/templates/reports/charts.html:28
-#: src/birdnetpi/web/templates/reports/todays_detections.html:27
-#: src/birdnetpi/web/templates/reports/weekly_report.html:34
-msgid "Dashboard"
-msgstr "Tableau de Bord"
-
-#: src/birdnetpi/web/templates/reports/all_detections.html:37
-#: src/birdnetpi/web/templates/reports/todays_detections.html:37
-#: src/birdnetpi/web/templates/reports/weekly_report.html:46
-msgid "Total Detections"
-msgstr "Total des Détections"
-
-#: src/birdnetpi/web/templates/reports/all_detections.html:44
-#: src/birdnetpi/web/templates/reports/todays_detections.html:45
-#: src/birdnetpi/web/templates/reports/weekly_report.html:60
-msgid "Unique Species"
-msgstr "Espèces Uniques"
-
-#: src/birdnetpi/web/templates/reports/all_detections.html:51
-#: src/birdnetpi/web/templates/reports/todays_detections.html:52
-msgid "Avg Confidence"
-msgstr "Confiance Moyenne"
-
-#: src/birdnetpi/web/templates/reports/all_detections.html:58
-msgid "Filter & Search"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/all_detections.html:62
-msgid "Species Filter"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/all_detections.html:67
-msgid "Type to filter species..."
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/all_detections.html:72
-msgid "Date Filter"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/all_detections.html:86
-msgid "Detection History"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/all_detections.html:88
-#: src/birdnetpi/web/templates/reports/all_detections.html:173
-#: src/birdnetpi/web/templates/reports/todays_detections.html:61
-#: src/birdnetpi/web/templates/reports/weekly_report.html:92
-#: src/birdnetpi/web/templates/reports/weekly_report.html:127
-msgid "detections"
-msgstr "détections"
-
-#: src/birdnetpi/web/templates/reports/all_detections.html:131
-msgid "No Detections Found"
-msgstr "Aucune Détection Trouvée"
-
-#: src/birdnetpi/web/templates/reports/all_detections.html:134
-#: src/birdnetpi/web/templates/reports/best_recordings.html:107
-msgid ""
-"No bird detections have been recorded yet. Check back after\n"
-"            the system has been running for some time."
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/all_detections.html:139
-#: src/birdnetpi/web/templates/reports/todays_detections.html:104
-#: src/birdnetpi/web/templates/reports/weekly_report.html:185
-msgid "Try Field Mode"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/best_recordings.html:6
-msgid "Best Recordings - BirdNET-Pi Reports"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/best_recordings.html:16
-msgid "Highest confidence detections for each species"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/best_recordings.html:47
-msgid "Scientific Name:"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/best_recordings.html:51
-msgid "Detected:"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/best_recordings.html:52
-msgid "at"
-msgstr "à"
-
-#: src/birdnetpi/web/templates/reports/best_recordings.html:56
-msgid "Location:"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/best_recordings.html:64
-#: src/birdnetpi/web/templates/reports/weekly_report.html:17
-msgid "Week"
-msgstr "Semaine"
-
-#: src/birdnetpi/web/templates/reports/best_recordings.html:71
-msgid "Sensitivity"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/best_recordings.html:78
-msgid "Species Confidence"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/best_recordings.html:85
-msgid "Overlap"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/best_recordings.html:104
-msgid "No Recordings Found"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/charts.html:6
-msgid "Charts - BirdNET-Pi Reports"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/charts.html:15
-msgid "Detection Charts"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/charts.html:17
-msgid "Visual analysis of bird detection patterns"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/charts.html:36
-msgid "Multi-Day Species Analysis"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/charts.html:37
-msgid "Hourly View"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/charts.html:46
-msgid "Daily Detection Patterns"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/charts.html:48
-msgid "15-Minute Intervals"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/charts.html:66
-#: src/birdnetpi/web/templates/reports/charts.html:69
-msgid "No data available for multi-day chart"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/charts.html:78
-#: src/birdnetpi/web/templates/reports/charts.html:81
-msgid "No data available for daily chart"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/index.html:6
-msgid "BirdNET-Pi Reports"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/index.html:16
-msgid "Analyze your bird detection data and patterns"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/index.html:31
-msgid "Summary and trends for the past week"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/index.html:45
-msgid "View all detections from today"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/index.html:50
-msgid "Charts & Analytics"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/index.html:52
-msgid "Visual analysis of detection patterns"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/todays_detections.html:6
-msgid "Today's Detections - BirdNET-Pi Reports"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/todays_detections.html:16
-msgid "All bird detections from today"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/todays_detections.html:59
-msgid "Detection Timeline"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/todays_detections.html:96
-msgid "No Detections Today"
-msgstr "Aucune Détection Aujourd'hui"
-
-#: src/birdnetpi/web/templates/reports/todays_detections.html:99
-msgid ""
-"No bird detections have been recorded today. Birds may be more\n"
-"            active during dawn and dusk hours."
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/weekly_report.html:6
-msgid "Weekly Report - BirdNET-Pi Reports"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/weekly_report.html:22
-msgid "Weekly detection summary and insights"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/weekly_report.html:72
-msgid "New Species"
-msgstr "Nouvelles Espèces"
-
-#: src/birdnetpi/web/templates/reports/weekly_report.html:81
-msgid "Top Species This Week"
-msgstr ""
-
-#: src/birdnetpi/web/templates/reports/weekly_report.html:83
+msgstr "Connecter l'audio"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:50
+msgid "Disconnect Audio"
+msgstr "Déconnecter l'audio"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:52
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:73
+msgid "Today"
+msgstr "Aujourd'hui"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:53
+msgid "Last 7 days"
+msgstr "7 derniers jours"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:54
+msgid "Last 30 days"
+msgstr "30 derniers jours"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:55
+msgid "All time"
+msgstr "Tout le temps"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:57
+#: src/birdnetpi/web/templates/components/taxonomic_filters.html.j2:22
+msgid "All families"
+msgstr "Toutes les familles"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:58
+msgid "All genera"
+msgstr "Tous les genres"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:59
+msgid "All species"
+msgstr "Toutes les espèces"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:60
+#: src/birdnetpi/web/templates/components/taxonomic_filters.html.j2:29
+msgid "Select family first"
+msgstr "Sélectionnez d'abord la famille"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:61
+#: src/birdnetpi/web/templates/components/taxonomic_filters.html.j2:36
+msgid "Select genus first"
+msgstr "Sélectionnez d'abord le genre"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:63
+#: src/birdnetpi/web/templates/components/inline_loading.html.j2:3
+#: src/birdnetpi/web/templates/index.html.j2:44
+#: src/birdnetpi/web/templates/index.html.j2:51
+#: src/birdnetpi/web/templates/index.html.j2:58
+#: src/birdnetpi/web/templates/index.html.j2:65
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:55
+msgid "Loading..."
+msgstr "Chargement..."
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:64
+msgid "Checking..."
+msgstr "Vérification..."
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:65
+#: src/birdnetpi/web/templates/admin/update.html.j2:70
+msgid "Error"
+msgstr "Erreur"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:66
+msgid "Error loading genera"
+msgstr "Erreur lors du chargement des genres"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:67
+msgid "Error loading species"
+msgstr "Erreur lors du chargement des espèces"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:69
+#: src/birdnetpi/web/templates/components/taxonomic_filters.html.j2:20
+msgid "Family"
+msgstr "Famille"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:70
+#: src/birdnetpi/web/templates/components/taxonomic_filters.html.j2:27
+msgid "Genus"
+msgstr "Genre"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:71
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:146
+#: src/birdnetpi/web/templates/components/taxonomic_filters.html.j2:34
+#: src/birdnetpi/web/templates/index.html.j2:85
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:50
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:70
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:79
+msgid "Species"
+msgstr "Espèce"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:73
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:111
+#: src/birdnetpi/web/templates/reports/best_recordings.html.j2:34
+msgid "Play recording"
+msgstr "Lire l'enregistrement"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:74
+#: src/birdnetpi/web/templates/components/taxonomic_filters.html.j2:28
+msgid "Filter by genus"
+msgstr "Filtrer par genre"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:75
+#: src/birdnetpi/web/templates/components/taxonomic_filters.html.j2:35
+msgid "Filter by species"
+msgstr "Filtrer par espèce"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:76
+msgid "Filter by family"
+msgstr "Filtrer par famille"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:78
+#: src/birdnetpi/web/templates/index.html.j2:36
+#: src/birdnetpi/web/templates/reports/best_recordings.html.j2:65
+msgid "recordings"
+msgstr "enregistrements"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:79
+#: src/birdnetpi/web/templates/reports/best_recordings.html.j2:66
 msgid "species"
 msgstr "espèces"
 
-#: src/birdnetpi/web/templates/reports/weekly_report.html:116
-msgid "New Species Discovered"
-msgstr ""
+#: src/birdnetpi/web/routers/i18n_api_routes.py:80
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:26
+msgid "detections"
+msgstr "détections"
 
-#: src/birdnetpi/web/templates/reports/weekly_report.html:118
-msgid "new"
-msgstr ""
+#: src/birdnetpi/web/routers/i18n_api_routes.py:81
+#: src/birdnetpi/web/templates/reports/best_recordings.html.j2:67
+msgid "Average confidence"
+msgstr "Confiance moyenne"
 
-#: src/birdnetpi/web/templates/reports/weekly_report.html:132
-msgid "New!"
-msgstr ""
+#: src/birdnetpi/web/routers/i18n_api_routes.py:82
+#: src/birdnetpi/web/templates/reports/best_recordings.html.j2:68
+msgid "Date range"
+msgstr "Plage de dates"
 
-#: src/birdnetpi/web/templates/reports/weekly_report.html:145
-msgid "Previous Week Comparison"
-msgstr ""
+#: src/birdnetpi/web/routers/i18n_api_routes.py:84
+msgid "🔄 Check for Updates"
+msgstr "🔄 Vérifier les mises à jour"
 
-#: src/birdnetpi/web/templates/reports/weekly_report.html:147
-msgid "Week-over-Week"
-msgstr ""
+#: src/birdnetpi/web/routers/i18n_api_routes.py:85
+#: src/birdnetpi/web/templates/admin/update.html.j2:68
+msgid "Update Available"
+msgstr "Mise à jour disponible"
 
-#: src/birdnetpi/web/templates/reports/weekly_report.html:153
-msgid "Previous Detections"
-msgstr ""
+#: src/birdnetpi/web/routers/i18n_api_routes.py:86
+#: src/birdnetpi/web/templates/admin/update.html.j2:72
+msgid "Up to Date"
+msgstr "À jour"
 
-#: src/birdnetpi/web/templates/reports/weekly_report.html:159
-msgid "Previous Species"
-msgstr ""
+#: src/birdnetpi/web/routers/i18n_api_routes.py:87
+msgid "Starting test update..."
+msgstr "Démarrage de la mise à jour test..."
 
-#: src/birdnetpi/web/templates/reports/weekly_report.html:177
-msgid "No Weekly Data Available"
-msgstr ""
+#: src/birdnetpi/web/routers/i18n_api_routes.py:88
+msgid "Starting update..."
+msgstr "Démarrage de la mise à jour..."
 
-#: src/birdnetpi/web/templates/reports/weekly_report.html:180
+#: src/birdnetpi/web/routers/i18n_api_routes.py:89
+msgid "Update cancelled"
+msgstr "Mise à jour annulée"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:91
+msgid "Discard all unsaved changes?"
+msgstr "Ignorer toutes les modifications non enregistrées ?"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:93
+msgid "Configuration saved. Restart BirdNET-Pi services to apply changes."
+msgstr ""
+"Configuration sauvegardée. Redémarrez les services BirdNET-Pi pour appliquer "
+"les modifications."
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:95
+#, python-format
+msgid "Failed to save: %(error)s"
+msgstr "Échec de la sauvegarde : %(error)s"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:96
+msgid "Saved"
+msgstr "Enregistré"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:97
+msgid "Save failed"
+msgstr "Échec de l'enregistrement"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:98
+msgid "Reset to saved configuration"
+msgstr "Réinitialiser à la configuration sauvegardée"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:99
+msgid "Configuration is valid"
+msgstr "La configuration est valide"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:100
+#, python-format
+msgid "Validation error: %(error)s"
+msgstr "Erreur de validation : %(error)s"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:101
+msgid "Modified"
+msgstr "Modifié"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:102
+msgid "Ready"
+msgstr "Prêt"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:103
+msgid "Modified (valid)"
+msgstr "Modifié (valide)"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:105
+msgid "Invalid remote name format"
+msgstr "Format de nom distant invalide"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:106
+msgid "Invalid branch name format"
+msgstr "Format de nom de branche invalide"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:107
+msgid "Failed to save configuration"
+msgstr "Échec de l'enregistrement de la configuration"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:108
+msgid "Failed to check for updates"
+msgstr "Échec de la vérification des mises à jour"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:109
+msgid "Failed to apply update"
+msgstr "Échec de l'application de la mise à jour"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:110
+msgid "Failed to cancel update"
+msgstr "Échec de l'annulation de la mise à jour"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:111
+msgid "Failed to save git configuration"
+msgstr "Échec de la sauvegarde de la configuration git"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:113
+msgid "Downloading"
+msgstr "Téléchargement"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:114
+msgid "Download queued"
+msgstr "Téléchargement en file d'attente"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:115
+#: src/birdnetpi/web/templates/components/region_pack_banner.html.j2:15
+msgid "Download region pack"
+msgstr "Télécharger le pack régional"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:116
+msgid "Download complete"
+msgstr "Téléchargement terminé"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:117
+msgid "Region pack installed successfully"
+msgstr "Pack régional installé avec succès"
+
+#: src/birdnetpi/web/routers/i18n_api_routes.py:118
+msgid "Failed to download region pack"
+msgstr "Échec du téléchargement du pack régional"
+
+#: src/birdnetpi/web/routers/logs_view_routes.py:76
+#: src/birdnetpi/web/templates/components/navigation.html.j2:42
+msgid "Logs"
+msgstr "Journaux"
+
+#: src/birdnetpi/web/routers/multimedia_view_routes.py:42
+#: src/birdnetpi/web/templates/components/navigation.html.j2:15
+msgid "Audio Stream"
+msgstr "Flux Audio"
+
+#: src/birdnetpi/web/routers/reports_view_routes.py:63
+#: src/birdnetpi/web/routers/reports_view_routes.py:87
+#: src/birdnetpi/web/templates/components/navigation.html.j2:9
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:80
+msgid "Detections"
+msgstr "Détections"
+
+#: src/birdnetpi/web/routers/reports_view_routes.py:138
+#: src/birdnetpi/web/templates/components/navigation.html.j2:17
+msgid "Analysis"
+msgstr "Analyse"
+
+#: src/birdnetpi/web/routers/reports_view_routes.py:200
+#: src/birdnetpi/web/routers/reports_view_routes.py:227
+#: src/birdnetpi/web/templates/components/navigation.html.j2:11
+msgid "Best Recordings"
+msgstr "Meilleurs enregistrements"
+
+#: src/birdnetpi/web/routers/reports_view_routes.py:269
+#: src/birdnetpi/web/templates/components/navigation.html.j2:13
+msgid "Species Checklist"
+msgstr "Liste des espèces"
+
+#: src/birdnetpi/web/routers/services_view_routes.py:158
+#: src/birdnetpi/web/templates/admin/logs.html.j2:24
+#: src/birdnetpi/web/templates/admin/services.html.j2:85
+msgid "Services"
+msgstr "Services"
+
+#: src/birdnetpi/web/routers/settings_view_routes.py:100
+#: src/birdnetpi/web/templates/admin/update.html.j2:420
+#: src/birdnetpi/web/templates/components/navigation.html.j2:33
+msgid "Settings"
+msgstr "Paramètres"
+
+#: src/birdnetpi/web/routers/settings_view_routes.py:370
+msgid "Advanced Settings"
+msgstr "Paramètres Avancés"
+
+#: src/birdnetpi/web/routers/update_view_routes.py:86
+#: src/birdnetpi/web/routers/update_view_routes.py:89
+msgid "System Updates"
+msgstr "Mises à jour du système"
+
+#: src/birdnetpi/web/static/js/all_detections.js:158
+#: src/birdnetpi/web/static/js/best_recordings.js:380
+msgid "audio-not-available"
+msgstr "audio-non-disponible"
+
+#: src/birdnetpi/web/static/js/all_detections.js:304
+msgid "loading-detections"
+msgstr "chargement-detections"
+
+#: src/birdnetpi/web/static/js/all_detections.js:315
+msgid "no-detections-found"
+msgstr "aucune-detection-trouvee"
+
+#: src/birdnetpi/web/static/js/all_detections.js:439
+msgid "no-species-found"
+msgstr "aucune-espece-trouvee"
+
+#: src/birdnetpi/web/static/js/all_detections.js:666
+msgid "today"
+msgstr "aujourd-hui"
+
+#: src/birdnetpi/web/static/js/all_detections.js:668
+msgid "last-7-days"
+msgstr "7-derniers-jours"
+
+#: src/birdnetpi/web/static/js/all_detections.js:670
+msgid "last-30-days"
+msgstr "30-derniers-jours"
+
+#: src/birdnetpi/web/static/js/all_detections.js:672
+msgid "all-time"
+msgstr "tout-le-temps"
+
+#: src/birdnetpi/web/static/js/base.js:22
+msgid "System Healthy"
+msgstr "Système sain"
+
+#: src/birdnetpi/web/static/js/base.js:25
+msgid "System Degraded - Some components unavailable"
+msgstr "Système dégradé - Certains composants indisponibles"
+
+#: src/birdnetpi/web/static/js/base.js:28
+msgid "System Unhealthy"
+msgstr "Système en mauvais état"
+
+#: src/birdnetpi/web/static/js/base.js:34
+msgid "Health Check Failed"
+msgstr "Échec de la vérification de l'état de santé"
+
+#: src/birdnetpi/web/static/js/base.js:43
+msgid "Health Check Unavailable"
+msgstr "Vérification de l'état de santé indisponible"
+
+#: src/birdnetpi/web/static/js/best_recordings.js:184
+msgid "loading"
+msgstr "chargement"
+
+#: src/birdnetpi/web/static/js/livestream.js:105
+msgid "connect-audio"
+msgstr "connecter-audio"
+
+#: src/birdnetpi/web/static/js/livestream.js:135
+msgid "disconnect-audio"
+msgstr "deconnecter-audio"
+
+#: src/birdnetpi/web/static/js/pagination.js:32
+#, python-format
+msgid "Page %(page)s of %(total_pages)s"
+msgstr "Page %(page)s sur %(total_pages)s"
+
+#: src/birdnetpi/web/static/js/pagination.js:39
+#, python-format
+msgid "%(count)s total %(items)s"
+msgstr "%(count)s %(items)s au total"
+
+#: src/birdnetpi/web/static/js/pagination.js:55
+msgid "Go to first page"
+msgstr "Aller à la première page"
+
+#: src/birdnetpi/web/static/js/pagination.js:58
+msgid "Go to previous page"
+msgstr "Aller à la page précédente"
+
+#: src/birdnetpi/web/static/js/pagination.js:60
+msgid "First"
+msgstr "Premier"
+
+#: src/birdnetpi/web/static/js/pagination.js:61
+msgid "Prev"
+msgstr "Préc"
+
+#: src/birdnetpi/web/static/js/pagination.js:74
+#, python-format
+msgid "Current page, page %(page)s"
+msgstr "Page actuelle, page %(page)s"
+
+#: src/birdnetpi/web/static/js/pagination.js:79
+#, python-format
+msgid "Go to page %(page)s"
+msgstr "Aller à la page %(page)s"
+
+#: src/birdnetpi/web/static/js/pagination.js:88
+msgid "Go to next page"
+msgstr "Aller à la page suivante"
+
+#: src/birdnetpi/web/static/js/pagination.js:91
+msgid "Go to last page"
+msgstr "Aller à la dernière page"
+
+#: src/birdnetpi/web/static/js/pagination.js:93
+msgid "Next"
+msgstr "Suivant"
+
+#: src/birdnetpi/web/static/js/pagination.js:94
+msgid "Last"
+msgstr "Dernier"
+
+#: src/birdnetpi/web/static/js/pagination.js:102
+#, python-format
+msgid "%(count)s %(items)s"
+msgstr "%(count)s %(items)s"
+
+#: src/birdnetpi/web/static/js/pagination.js:108
+#, python-format
+msgid "No %(items)s found"
+msgstr "Aucun %(items)s trouvé"
+
+#: src/birdnetpi/web/static/js/period_selector.js:118
+#, python-format
+msgid "Wet Season %(year)s"
+msgstr "Saison des pluies %(year)s"
+
+#: src/birdnetpi/web/static/js/period_selector.js:119
+#, python-format
+msgid "Dry Season %(year)s"
+msgstr "Saison sèche %(year)s"
+
+#: src/birdnetpi/web/static/js/period_selector.js:128
+#: src/birdnetpi/web/static/js/period_selector.js:139
+#, python-format
+msgid "Winter %(year)s"
+msgstr "Hiver %(year)s"
+
+#: src/birdnetpi/web/static/js/period_selector.js:129
+#: src/birdnetpi/web/static/js/period_selector.js:138
+#, python-format
+msgid "Summer %(year)s"
+msgstr "Été %(year)s"
+
+#: src/birdnetpi/web/static/js/period_selector.js:133
+#: src/birdnetpi/web/static/js/period_selector.js:144
+#, python-format
+msgid "Spring %(year)s"
+msgstr "Printemps %(year)s"
+
+#: src/birdnetpi/web/static/js/period_selector.js:134
+#: src/birdnetpi/web/static/js/period_selector.js:143
+#, python-format
+msgid "Fall %(year)s"
+msgstr "Automne %(year)s"
+
+#: src/birdnetpi/web/static/js/period_selector.js:182
+#, python-format
+msgid "Week of %(date)s"
+msgstr "Semaine du %(date)s"
+
+#: src/birdnetpi/web/static/js/period_selector.js:237
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:78
+msgid "All Time"
+msgstr "Tout le temps"
+
+#: src/birdnetpi/web/static/js/period_selector.js:531
+msgid "Historical"
+msgstr "Historique"
+
+#: src/birdnetpi/web/static/js/services.js:445
+msgid "System reboot timeout - manual intervention may be required"
+msgstr ""
+"Délai de redémarrage du système dépassé - une intervention manuelle peut "
+"être nécessaire"
+
+#: src/birdnetpi/web/static/js/species_checklist.js:316
+#, python-format
+msgid "Conservation status: %(status)s"
+msgstr "État de conservation : %(status)s"
+
+#: src/birdnetpi/web/static/js/species_checklist.js:327
+msgid "Conservation status unknown"
+msgstr "État de conservation inconnu"
+
+#: src/birdnetpi/web/static/js/update.js:52
+msgid "checking"
+msgstr "vérification"
+
+#: src/birdnetpi/web/static/js/update.js:88
+msgid "failed-to-check-updates"
+msgstr "echec-verification-mises-a-jour"
+
+#: src/birdnetpi/web/static/js/update.js:93
+msgid "check-for-updates"
+msgstr "verifier-les-mises-a-jour"
+
+#: src/birdnetpi/web/static/js/update.js:104
+msgid "starting-test-update"
+msgstr "demarrage-mise-a-jour-test"
+
+#: src/birdnetpi/web/static/js/update.js:105
+msgid "starting-update"
+msgstr "demarrage-mise-a-jour"
+
+#: src/birdnetpi/web/static/js/update.js:129
+msgid "failed-to-apply-update"
+msgstr "echec-application-mise-a-jour"
+
+#: src/birdnetpi/web/static/js/update.js:143
+msgid "update-cancelled"
+msgstr "mise-a-jour-annulee"
+
+#: src/birdnetpi/web/static/js/update.js:149
+msgid "failed-to-cancel-update"
+msgstr "echec-annulation-mise-a-jour"
+
+#: src/birdnetpi/web/static/js/update.js:206
+msgid "no-remotes-configured"
+msgstr "aucun-distant-configure"
+
+#: src/birdnetpi/web/static/js/update.js:211
+msgid "select-remote"
+msgstr "selectionner-distant"
+
+#: src/birdnetpi/web/static/js/update.js:231
+msgid "failed-to-load-remotes"
+msgstr "echec-chargement-distants"
+
+#: src/birdnetpi/web/static/js/update.js:240
+msgid "select-remote-first"
+msgstr "selectionnez-distant-en-premier"
+
+#: src/birdnetpi/web/static/js/update.js:246
+msgid "loading-branches"
+msgstr "chargement-branches"
+
+#: src/birdnetpi/web/static/js/update.js:259
+msgid "select-branch-or-tag"
+msgstr "selectionner-branche-ou-tag"
+
+#: src/birdnetpi/web/static/js/update.js:265
+msgid "tags"
+msgstr "tags"
+
+#: src/birdnetpi/web/static/js/update.js:278
+msgid "branches"
+msgstr "branches"
+
+#: src/birdnetpi/web/static/js/update.js:296
+msgid "failed-to-load-branches"
+msgstr "echec-chargement-branches"
+
+#: src/birdnetpi/web/static/js/update.js:309
+msgid "select-remote-and-branch"
+msgstr "selectionnez-distant-et-branche"
+
+#: src/birdnetpi/web/static/js/update.js:328
+msgid "failed-to-save-config"
+msgstr "echec-enregistrement-configuration"
+
+#: src/birdnetpi/web/static/js/update.js:331
+msgid "failed-to-save-git-config"
+msgstr "echec-enregistrement-configuration-git"
+
+#: src/birdnetpi/web/static/js/update.js:452
+msgid "edit"
+msgstr "éditer"
+
+#: src/birdnetpi/web/static/js/update.js:462
+msgid "delete"
+msgstr "supprimer"
+
+#: src/birdnetpi/web/static/js/update.js:498
+msgid "failed-to-add-remote"
+msgstr "echec-ajout-distant"
+
+#: src/birdnetpi/web/static/js/update.js:504
+msgid "enter-new-url-for-remote"
+msgstr "entrez-nouvelle-url-pour-distant"
+
+#: src/birdnetpi/web/static/js/update.js:534
+msgid "failed-to-update-remote"
+msgstr "echec-mise-a-jour-distant"
+
+#: src/birdnetpi/web/static/js/update.js:540
+msgid "cannot-delete-origin"
+msgstr "impossible-de-supprimer-origin"
+
+#: src/birdnetpi/web/static/js/update.js:544
+msgid "confirm-delete-remote"
+msgstr "confirmer-suppression-distant"
+
+#: src/birdnetpi/web/static/js/update.js:566
+msgid "failed-to-delete-remote"
+msgstr "echec-suppression-distant"
+
+#: src/birdnetpi/web/static/js/update.js:611
+msgid "downloading"
+msgstr "telechargement"
+
+#: src/birdnetpi/web/static/js/update.js:628
+#: src/birdnetpi/web/static/js/update.js:637
+#: src/birdnetpi/web/static/js/update.js:679
+msgid "failed-to-download-region-pack"
+msgstr "echec-telechargement-pack-regional"
+
+#: src/birdnetpi/web/static/js/update.js:668
+msgid "download-complete"
+msgstr "telechargement-termine"
+
+#: src/birdnetpi/web/static/js/update.js:669
+msgid "region-pack-installed"
+msgstr "pack-regional-installe"
+
+#: src/birdnetpi/web/templates/base.html.j2:30
+msgid "System health status"
+msgstr "État de santé du système"
+
+#: src/birdnetpi/web/templates/base.html.j2:32
+msgid "System information"
+msgstr "Informations système"
+
+#: src/birdnetpi/web/templates/base.html.j2:33
+msgid "Continuous acoustic monitoring"
+msgstr "Surveillance acoustique continue"
+
+#: src/birdnetpi/web/templates/base.html.j2:34
+msgid "Docker Container"
+msgstr "Conteneur Docker"
+
+#: src/birdnetpi/web/templates/base.html.j2:35
+#, python-format
+msgid "%(lat)s, %(lng)s"
+msgstr "%(lat)s, %(lng)s"
+
+#: src/birdnetpi/web/templates/base.html.j2:63
+msgid "BirdNET"
+msgstr "BirdNET"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:33
+#: src/birdnetpi/web/templates/base.html.j2:64
+#: src/birdnetpi/web/templates/index.html.j2:37
+msgid "Confidence threshold"
+msgstr "Seuil de confiance"
+
+#: src/birdnetpi/web/templates/base.html.j2:66
+msgid "Last model update:"
+msgstr "Dernière mise à jour du modèle :"
+
+#: src/birdnetpi/web/templates/index.html.j2:24
+msgid "Bird detection activity visualization"
+msgstr "Visualisation de l'activité de détection des oiseaux"
+
+#: src/birdnetpi/web/templates/index.html.j2:32
+msgid "Detection statistics summary"
+msgstr "Résumé des statistiques de détection"
+
+#: src/birdnetpi/web/templates/index.html.j2:33
+msgid "species detected"
+msgstr "espèces détectées"
+
+#: src/birdnetpi/web/templates/index.html.j2:34
+msgid "detections today"
+msgstr "détections aujourd'hui"
+
+#: src/birdnetpi/web/templates/index.html.j2:35
+msgid "active species this week"
+msgstr "espèces actives cette semaine"
+
+#: src/birdnetpi/web/templates/index.html.j2:37
+msgid "hours monitored"
+msgstr "heures surveillées"
+
+#: src/birdnetpi/web/templates/index.html.j2:42
+msgid "System resource status"
+msgstr "État des ressources système"
+
+#: src/birdnetpi/web/templates/index.html.j2:45
+msgid "CPU"
+msgstr "CPU"
+
+#: src/birdnetpi/web/templates/index.html.j2:52
+msgid "Mem"
+msgstr "Mém"
+
+#: src/birdnetpi/web/templates/index.html.j2:59
+msgid "Disk"
+msgstr "Disque"
+
+#: src/birdnetpi/web/templates/index.html.j2:66
+msgid "Audio"
+msgstr "Audio"
+
+#: src/birdnetpi/web/templates/index.html.j2:72
+msgid "System uptime"
+msgstr "Disponibilité du système"
+
+#: src/birdnetpi/web/templates/index.html.j2:73
+msgid "Up"
+msgstr "En ligne"
+
+#: src/birdnetpi/web/templates/index.html.j2:82
+msgid "Recent detections log"
+msgstr "Journal des détections récentes"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:145
+#: src/birdnetpi/web/templates/index.html.j2:84
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:49
+msgid "Time"
+msgstr "Heure"
+
+#: src/birdnetpi/web/templates/index.html.j2:86
+msgid "Conf."
+msgstr "Conf."
+
+#: src/birdnetpi/web/templates/index.html.j2:98
+msgid "No recent detections"
+msgstr "Aucune détection récente"
+
+#: src/birdnetpi/web/templates/index.html.j2:105
+msgid "Species frequency chart"
+msgstr "Graphique de fréquence des espèces"
+
+#: src/birdnetpi/web/templates/index.html.j2:106
+msgid "Today's Species (24h)"
+msgstr "Espèces d'aujourd'hui (24h)"
+
+#: src/birdnetpi/web/templates/index.html.j2:118
+msgid "No species detected today"
+msgstr "Aucune espèce détectée aujourd'hui"
+
+#: src/birdnetpi/web/templates/admin/advanced_settings.html.j2:28
+#: src/birdnetpi/web/templates/admin/settings.html.j2:538
+#: src/birdnetpi/web/templates/admin/update.html.j2:234
+msgid "Save Configuration"
+msgstr "Enregistrer la Configuration"
+
+#: src/birdnetpi/web/templates/admin/advanced_settings.html.j2:31
+msgid "Validate"
+msgstr "Valider"
+
+#: src/birdnetpi/web/templates/admin/advanced_settings.html.j2:34
+msgid "Reset Changes"
+msgstr "Réinitialiser les Modifications"
+
+#: src/birdnetpi/web/templates/admin/advanced_settings.html.j2:55
+msgid "Ctrl+S save · Ctrl+Enter validate"
+msgstr "Ctrl+S sauvegarder · Ctrl+Entrée valider"
+
+#: src/birdnetpi/web/templates/admin/advanced_settings.html.j2:63
 msgid ""
-"No bird detections have been recorded this week. Check back\n"
-"            after the system has been running for some time."
+"This editor provides direct access to the BirdNET-Pi configuration file."
 msgstr ""
+"Cet éditeur fournit un accès direct au fichier de configuration de BirdNET-"
+"Pi."
 
-#~ msgid "Audio"
-#~ msgstr "Audio"
+#: src/birdnetpi/web/templates/admin/advanced_settings.html.j2:64
+msgid "Changes require a service restart to take effect."
+msgstr ""
+"Les modifications nécessitent le redémarrage du service pour prendre effet."
 
-#~ msgid "Checking..."
-#~ msgstr "Vérification..."
+#: src/birdnetpi/web/templates/admin/advanced_settings.html.j2:64
+msgid "Use the Basic Settings page for guided configuration."
+msgstr "Utilisez la page Paramètres de base pour une configuration guidée."
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:21
+msgid "Live Audio Stream"
+msgstr "Flux Audio en Direct"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:22
+msgid "Real-time acoustic monitoring"
+msgstr "Surveillance acoustique en temps réel"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:22
+msgid "48 kHz sampling"
+msgstr "Échantillonnage à 48 kHz"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:22
+msgid "Client-side processing"
+msgstr "Traitement côté client"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:28
+#: src/birdnetpi/web/templates/admin/update.html.j2:65
+msgid "Status:"
+msgstr "Statut :"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:29
+msgid "Disconnected"
+msgstr "Déconnecté"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:32
+msgid "Sample Rate:"
+msgstr "Taux d'échantillonnage :"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:36
+msgid "Buffer:"
+msgstr "Tampon :"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:37
+msgid "samples"
+msgstr "échantillons"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:40
+msgid "Latency:"
+msgstr "Latence :"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:47
+msgid "Audio Controls"
+msgstr "Contrôles Audio"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:52
+msgid "Volume:"
+msgstr "Volume :"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:55
+msgid "Gain:"
+msgstr "Gain :"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:65
+msgid "Real-Time Spectrogram"
+msgstr "Spectrogramme en temps réel"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:98
+msgid "Max Frequency:"
+msgstr "Fréquence maximale :"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:105
+msgid "Time Window:"
+msgstr "Fenêtre temporelle :"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:111
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:123
+msgid "FFT Size:"
+msgstr "Taille FFT :"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:127
+msgid "Resolution:"
+msgstr "Résolution :"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:131
+msgid "Frame Rate:"
+msgstr "Taux de trame :"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:135
+msgid "Update Rate:"
+msgstr "Taux de mise à jour :"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:143
+msgid "Live Detections"
+msgstr "Détections en direct"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:147
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:52
+msgid "Confidence"
+msgstr "Confiance"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:150
+msgid "No detections yet"
+msgstr "Aucune détection pour l'instant"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:157
+msgid "Debug Information"
+msgstr "Informations de débogage"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:161
+msgid "Audio Waveform"
+msgstr "Forme d'onde audio"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:165
+msgid "Peak:"
+msgstr "Crête :"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:169
+msgid "RMS:"
+msgstr "RMS :"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:173
+msgid "Samples:"
+msgstr "Échantillons :"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:177
+msgid "Performance:"
+msgstr "Performance :"
+
+#: src/birdnetpi/web/templates/admin/livestream.html.j2:185
+msgid "System Messages"
+msgstr "Messages système"
+
+#: src/birdnetpi/web/templates/admin/login.html.j2:7
+msgid "Sign in to access admin features"
+msgstr "Connectez-vous pour accéder aux fonctionnalités d'administration"
+
+#: src/birdnetpi/web/templates/admin/login.html.j2:12
+msgid "Error:"
+msgstr "Erreur :"
+
+#: src/birdnetpi/web/templates/admin/login.html.j2:19
+msgid "Username"
+msgstr "Nom d'utilisateur"
+
+#: src/birdnetpi/web/templates/admin/login.html.j2:31
+msgid "Password"
+msgstr "Mot de passe"
+
+#: src/birdnetpi/web/templates/admin/login.html.j2:42
+msgid "Sign In"
+msgstr "Se connecter"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:16
+msgid "Skip to log content"
+msgstr "Aller au contenu du journal"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:20
+msgid "Log filtering options"
+msgstr "Options de filtrage des journaux"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:33
+msgid "Include logs from"
+msgstr "Inclure les journaux de"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:39
+msgid "stopped"
+msgstr "arrêté"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:46
+msgid "Select services to view logs from"
+msgstr "Sélectionner les services pour visualiser les journaux"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:52
+msgid "Log Level"
+msgstr "Niveau de journal"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:61
+msgid "Shows selected level and higher"
+msgstr "Affiche le niveau sélectionné et supérieur"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:67
+msgid "Time Range"
+msgstr "Plage horaire"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:73
+msgid "Start time"
+msgstr "Heure de début"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:75
+msgid "to"
+msgstr "à"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:80
+msgid "End time"
+msgstr "Heure de fin"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:87
+#: src/birdnetpi/web/templates/components/location_map.html.j2:15
+#: src/birdnetpi/web/templates/components/location_map.html.j2:16
+msgid "Search"
+msgstr "Rechercher"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:92
+msgid "Filter displayed logs"
+msgstr "Filtrer les journaux affichés"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:93
+msgid "Filter logs in real-time"
+msgstr "Filtrer les journaux en temps réel"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:99
+msgid "Actions"
+msgstr "Actions"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:104
+msgid "Fetch logs with current filters"
+msgstr "Obtenir les journaux avec les filtres actuels"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:106
+msgid "Fetch"
+msgstr "Obtenir"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:119
+msgid "Logs:"
+msgstr "Journaux :"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:122
+msgid "Log display format"
+msgstr "Format d'affichage du journal"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:125
+msgid "Table"
+msgstr "Tableau"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:129
+msgid "JSON"
+msgstr "JSON"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:136
+msgid "Streaming..."
+msgstr "Diffusion en cours..."
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:143
+msgid "Toggle real-time streaming"
+msgstr "Activer/Désactiver la diffusion en temps réel"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:146
+msgid "Stream"
+msgstr "Flux"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:152
+msgid "Download currently displayed logs as JSON file"
+msgstr "Télécharger les journaux actuellement affichés au format JSON"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:153
+msgid "Downloads the logs currently shown (not from server)"
+msgstr "Télécharge les journaux actuellement affichés (pas depuis le serveur)"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:155
+msgid "Download"
+msgstr "Télécharger"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:161
+msgid "Clear displayed logs"
+msgstr "Effacer les journaux affichés"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:163
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:127
+msgid "Clear"
+msgstr "Effacer"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:177
+msgid "Level"
+msgstr "Niveau"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:179
+msgid "Timestamp"
+msgstr "Horodatage"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:180
+#: src/birdnetpi/web/templates/admin/settings.html.j2:427
+#: src/birdnetpi/web/templates/admin/settings.html.j2:791
+msgid "Service"
+msgstr "Service"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:181
+msgid "Message"
+msgstr "Message"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:192
+msgid "JSON formatted logs"
+msgstr "Journaux formatés JSON"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:197
+msgid "No logs to display"
+msgstr "Aucun journal à afficher"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:198
+msgid "Select services and click Fetch or Stream to view logs"
+msgstr ""
+"Sélectionnez les services et cliquez sur Obtenir ou Flux pour afficher les "
+"journaux"
+
+#: src/birdnetpi/web/templates/admin/logs.html.j2:205
+msgid "Log level color legend"
+msgstr "Légende des couleurs par niveau de journal"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:16
+msgid "Skip to services"
+msgstr "Passer aux services"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:22
+msgid "System Status"
+msgstr "État du système"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:27
+msgid "Deployment Type:"
+msgstr "Type de déploiement :"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:40
+#: src/birdnetpi/web/templates/admin/services.html.j2:145
+msgid "Uptime:"
+msgstr "Temps de fonctionnement :"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:50
+msgid "Reload service configuration without restarting"
+msgstr "Recharger la configuration du service sans redémarrer"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:51
+msgid "Reload configuration files"
+msgstr "Recharger les fichiers de configuration"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:54
+msgid "Reload Config"
+msgstr "Recharger Configuration"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:62
+msgid "Reboot the system"
+msgstr "Redémarrer le système"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:63
+msgid "Reboot system/container"
+msgstr "Redémarrer le système/conteneur"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:66
+#: src/birdnetpi/web/templates/admin/services.html.j2:299
+msgid "Reboot System"
+msgstr "Redémarrer le Système"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:74
+msgid "Refresh all service statuses"
+msgstr "Actualiser tous les états de service"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:75
+msgid "Refresh status"
+msgstr "Actualiser l'état"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:78
+msgid "Refresh"
+msgstr "Actualiser"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:101
+msgid "Critical service"
+msgstr "Service critique"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:103
+msgid "Critical"
+msgstr "Critique"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:112
+msgid "Service status:"
+msgstr "Statut du service :"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:116
+msgid "Running"
+msgstr "En cours d'exécution"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:119
+msgid "Stopped"
+msgstr "Arrêté"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:122
+msgid "Starting"
+msgstr "Démarrage"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:125
+msgid "Failed"
+msgstr "Échoué"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:128
+#: src/birdnetpi/web/templates/admin/update.html.j2:53
+#: src/birdnetpi/web/templates/admin/update.html.j2:60
+msgid "Unknown"
+msgstr "Inconnu"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:138
+msgid "PID:"
+msgstr "PID :"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:159
+#: src/birdnetpi/web/templates/admin/services.html.j2:162
+msgid "Restart"
+msgstr "Redémarrer"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:169
+#: src/birdnetpi/web/templates/admin/services.html.j2:172
+msgid "Stop"
+msgstr "Arrêter"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:180
+#: src/birdnetpi/web/templates/admin/services.html.j2:183
+msgid "Start"
+msgstr "Démarrer"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:187
+msgid "Service not available"
+msgstr "Service indisponible"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:219
+msgid "Confirm Action"
+msgstr "Confirmer l'action"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:225
+#: src/birdnetpi/web/templates/admin/services.html.j2:273
+msgid "Close"
+msgstr "Fermer"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:239
+#: src/birdnetpi/web/templates/admin/services.html.j2:291
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:101
+msgid "Cancel"
+msgstr "Annuler"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:246
+msgid "Proceed"
+msgstr "Procéder"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:267
+msgid "Confirm System Reboot"
+msgstr "Confirmer le redémarrage du système"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:279
+msgid "Are you sure you want to reboot the system?"
+msgstr "Voulez-vous vraiment redémarrer le système ?"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:281
+msgid "Warning:"
+msgstr "Avertissement :"
+
+#: src/birdnetpi/web/templates/admin/services.html.j2:282
+msgid "All services will be temporarily unavailable during the reboot process."
+msgstr ""
+"Tous les services seront temporairement indisponibles pendant le processus "
+"de redémarrage."
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:12
+msgid "System settings"
+msgstr "Paramètres du système"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:21
+msgid "Detection Parameters"
+msgstr "Paramètres de Détection"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:26
+msgid "Confidence Threshold"
+msgstr "Seuil de Confiance"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:27
+msgid "Balance between catching everything and accuracy"
+msgstr "Équilibre entre tout capter et la précision"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:45
+msgid "More detections"
+msgstr "Plus de détections"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:45
+msgid "More false positives"
+msgstr "Plus de faux positifs"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:46
+msgid "Higher accuracy"
+msgstr "Précision plus élevée"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:46
+msgid "Miss quiet calls"
+msgstr "Manque des appels discrets"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:62
+msgid "Detection Sensitivity"
+msgstr "Sensibilité de la Détection"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:63
+msgid "Adjust for your environment's noise level"
+msgstr "Ajustez en fonction du niveau sonore de votre environnement"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:67
+msgid "Quiet"
+msgstr "Calme"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:70
+msgid "Detection sensitivity"
+msgstr "Sensibilité de détection"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:86
+msgid "Noisy"
+msgstr "Bruyant"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:93
+msgid "Analysis Overlap"
+msgstr "Chevauchement de l'analyse"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:94
+msgid "Processing vs detection completeness"
+msgstr "Traitement par rapport à l'exhaustivité de la détection"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:106
+msgid "Analysis overlap in seconds"
+msgstr "Chevauchement de l'analyse en secondes"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:107
+msgid "seconds"
+msgstr "secondes"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:110
+msgid "↓ Less CPU usage"
+msgstr "↓ Moins d'utilisation du processeur"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:111
+msgid "More complete detection ↑"
+msgstr "Détection plus complète ↑"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:114
+msgid "0s: No overlap"
+msgstr "0s : Pas de chevauchement"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:115
+msgid "1.5s: Balanced"
+msgstr "1.5s : Équilibré"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:116
+msgid "3s: Maximum"
+msgstr "3s : Maximum"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:124
+msgid "Hardware Configuration"
+msgstr "Configuration Matérielle"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:129
+msgid "Audio Input"
+msgstr "Entrée Audio"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:130
+msgid "Recording device selection"
+msgstr "Sélection du périphérique d'enregistrement"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:142
+msgid "System Default"
+msgstr "Par défaut du système"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:143
+msgid "Auto-detect best available device"
+msgstr "Détecter automatiquement le meilleur périphérique"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:165
+msgid "No audio devices detected"
+msgstr "Aucun périphérique audio détecté"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:166
+msgid "Check your audio system configuration"
+msgstr "Vérifiez la configuration de votre système audio"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:176
+msgid "AI model for bird detection"
+msgstr "Modèle d'IA pour la détection d'oiseaux"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:198
+msgid "No models found"
+msgstr "Aucun modèle trouvé"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:199
+msgid "Please install model files in the models directory"
+msgstr ""
+"Veuillez installer les fichiers de modèles dans le répertoire de modèles"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:209
+msgid "Model for location-based filtering"
+msgstr "Modèle pour le filtrage basé sur la localisation"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:231
+msgid "No metadata models found"
+msgstr "Aucun modèle de métadonnées trouvé"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:232
+msgid "Metadata models enable location-based species filtering"
+msgstr ""
+"Les modèles de métadonnées permettent le filtrage des espèces selon la "
+"localisation"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:241
+msgid "Location"
+msgstr "Localisation"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:245
+msgid "Coordinates"
+msgstr "Coordonnées"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:246
+msgid "For species list and sunrise/sunset"
+msgstr "Pour la liste des espèces et l'aube/le crépuscule"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:254
+msgid "Latitude"
+msgstr "Latitude"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:263
+msgid "Latitude in decimal degrees"
+msgstr "Latitude en degrés décimaux"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:266
+msgid "Longitude"
+msgstr "Longitude"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:275
+msgid "Longitude in decimal degrees"
+msgstr "Longitude en degrés décimaux"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:284
+msgid "Timezone"
+msgstr "Fuseau horaire"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:285
+msgid "For scheduling and timestamps"
+msgstr "Pour la programmation et l'horodatage"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:288
+msgid "Timezone selection"
+msgstr "Sélection du fuseau horaire"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:289
+msgid "Select timezone..."
+msgstr "Sélectionner le fuseau horaire..."
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:290
+msgid "Americas"
+msgstr "Amériques"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:291
+#: src/birdnetpi/web/templates/admin/settings.html.j2:292
+msgid "Eastern Time"
+msgstr "Heure de l'Est"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:291
+msgid "New York"
+msgstr "New York"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:292
+msgid "Toronto"
+msgstr "Toronto"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:293
+msgid "Central Time"
+msgstr "Heure Centrale"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:293
+msgid "Chicago"
+msgstr "Chicago"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:294
+#: src/birdnetpi/web/templates/admin/settings.html.j2:295
+msgid "Mountain Time"
+msgstr "Heure des Rocheuses"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:294
+msgid "Denver"
+msgstr "Denver"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:295
+msgid "Phoenix"
+msgstr "Phoenix"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:295
+msgid "(no DST)"
+msgstr "(pas d'heure d'été)"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:296
+#: src/birdnetpi/web/templates/admin/settings.html.j2:297
+msgid "Pacific Time"
+msgstr "Heure du Pacifique"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:296
+msgid "Los Angeles"
+msgstr "Los Angeles"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:297
+msgid "Vancouver"
+msgstr "Vancouver"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:298
+msgid "Alaska Time"
+msgstr "Heure de l'Alaska"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:299
+msgid "Brazil"
+msgstr "Brésil"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:299
+msgid "São Paulo"
+msgstr "São Paulo"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:300
+msgid "Argentina"
+msgstr "Argentine"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:300
+msgid "Buenos Aires"
+msgstr "Buenos Aires"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:301
+msgid "Mexico"
+msgstr "Mexique"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:301
+msgid "Mexico City"
+msgstr "Mexico"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:303
+msgid "Europe"
+msgstr "Europe"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:304
+msgid "Western Europe"
+msgstr "Europe de l'Ouest"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:304
+msgid "London"
+msgstr "Londres"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:305
+#: src/birdnetpi/web/templates/admin/settings.html.j2:306
+#: src/birdnetpi/web/templates/admin/settings.html.j2:307
+#: src/birdnetpi/web/templates/admin/settings.html.j2:308
+#: src/birdnetpi/web/templates/admin/settings.html.j2:309
+#: src/birdnetpi/web/templates/admin/settings.html.j2:310
+msgid "Central Europe"
+msgstr "Europe Centrale"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:305
+msgid "Paris"
+msgstr "Paris"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:306
+msgid "Berlin"
+msgstr "Berlin"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:307
+msgid "Rome"
+msgstr "Rome"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:308
+msgid "Madrid"
+msgstr "Madrid"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:309
+msgid "Amsterdam"
+msgstr "Amsterdam"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:310
+msgid "Stockholm"
+msgstr "Stockholm"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:311
+#: src/birdnetpi/web/templates/admin/settings.html.j2:312
+msgid "Eastern Europe"
+msgstr "Europe de l'Est"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:311
+msgid "Athens"
+msgstr "Athènes"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:312
+msgid "Helsinki"
+msgstr "Helsinki"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:313
+msgid "Moscow Time"
+msgstr "Heure de Moscou"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:313
+msgid "Moscow"
+msgstr "Moscou"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:315
+msgid "Asia"
+msgstr "Asie"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:316
+msgid "Gulf Standard Time"
+msgstr "Heure du Golfe"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:316
+msgid "Dubai"
+msgstr "Dubaï"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:317
+msgid "India Standard Time"
+msgstr "Heure Standard de l'Inde"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:317
+msgid "Kolkata"
+msgstr "Calcutta"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:318
+msgid "China Standard Time"
+msgstr "Heure Standard de Chine"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:318
+msgid "Shanghai"
+msgstr "Shanghai"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:319
+msgid "Hong Kong Time"
+msgstr "Heure de Hong Kong"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:319
+msgid "Hong Kong"
+msgstr "Hong Kong"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:320
+msgid "Singapore Time"
+msgstr "Heure de Singapour"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:320
+msgid "Singapore"
+msgstr "Singapour"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:321
+msgid "Japan Standard Time"
+msgstr "Heure du Japon"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:321
+msgid "Tokyo"
+msgstr "Tokyo"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:322
+msgid "Korea Standard Time"
+msgstr "Heure Standard de Corée"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:322
+msgid "Seoul"
+msgstr "Séoul"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:323
+msgid "Indochina Time"
+msgstr "Heure d'Indochine"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:323
+msgid "Bangkok"
+msgstr "Bangkok"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:324
+msgid "Western Indonesia Time"
+msgstr "Heure de l'Indonésie Occidentale"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:324
+msgid "Jakarta"
+msgstr "Jakarta"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:326
+msgid "Oceania"
+msgstr "Océanie"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:327
+#: src/birdnetpi/web/templates/admin/settings.html.j2:328
+#: src/birdnetpi/web/templates/admin/settings.html.j2:329
+msgid "Australia Eastern"
+msgstr "Est de l'Australie"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:327
+msgid "Sydney"
+msgstr "Sydney"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:328
+msgid "Melbourne"
+msgstr "Melbourne"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:329
+msgid "Brisbane"
+msgstr "Brisbane"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:329
+msgid "no DST"
+msgstr "pas d'heure d'été"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:330
+msgid "Australia Central"
+msgstr "Centre de l'Australie"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:330
+msgid "Adelaide"
+msgstr "Adélaïde"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:331
+msgid "Australia Western"
+msgstr "Ouest de l'Australie"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:331
+msgid "Perth"
+msgstr "Perth"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:332
+msgid "New Zealand"
+msgstr "Nouvelle-Zélande"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:332
+msgid "Auckland"
+msgstr "Auckland"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:333
+msgid "Fiji Time"
+msgstr "Heure des Fidji"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:333
+msgid "Fiji"
+msgstr "Fidji"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:335
+msgid "Africa"
+msgstr "Afrique"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:336
+msgid "Eastern Africa"
+msgstr "Afrique de l'Est"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:336
+msgid "Cairo"
+msgstr "Le Caire"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:337
+msgid "South Africa"
+msgstr "Afrique du Sud"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:337
+msgid "Johannesburg"
+msgstr "Johannesburg"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:338
+msgid "West Africa"
+msgstr "Afrique de l'Ouest"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:338
+msgid "Lagos"
+msgstr "Lagos"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:339
+msgid "East Africa"
+msgstr "Afrique de l'Est"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:339
+msgid "Nairobi"
+msgstr "Nairobi"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:341
+msgid "Other"
+msgstr "Autre"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:342
+msgid "Coordinated Universal Time"
+msgstr "Temps Universel Coordonné"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:343
+msgid "Iceland"
+msgstr "Islande"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:343
+msgid "Reykjavik"
+msgstr "Reykjavik"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:344
+msgid "Hawaii Time"
+msgstr "Heure d'Hawaï"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:344
+msgid "Honolulu"
+msgstr "Honolulu"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:348
+msgid "Current time:"
+msgstr "Heure actuelle :"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:349
+msgid "UTC offset:"
+msgstr "Décalage UTC :"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:363
+msgid "Configure endpoints for different notification services"
+msgstr "Configurer les endpoints pour différents services de notification"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:368
+msgid "Apprise Targets"
+msgstr "Cibles Apprise"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:369
+#, python-format
+msgid ""
+"Define named Apprise service URLs (see %(link_start)sApprise "
+"docs%(link_end)s)"
+msgstr ""
+"Définir les URL du service Apprise nommées (voir %(link_start)sdocuments "
+"Apprise%(link_end)s)"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:374
+#: src/birdnetpi/web/templates/admin/settings.html.j2:750
+msgid "Name (e.g., discord)"
+msgstr "Nom (ex. discord)"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:375
+#: src/birdnetpi/web/templates/admin/settings.html.j2:751
+msgid "Apprise URL (e.g., discord://webhook_id/token)"
+msgstr "URL Apprise (ex. discord://webhook_id/token)"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:381
+msgid "+  Add Apprise Target"
+msgstr "+ Ajouter Cible Apprise"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:386
+msgid "Webhook Targets"
+msgstr "Cibles Webhook"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:387
+msgid "Define named webhook endpoints for external integrations"
+msgstr ""
+"Définissez des points d'ancrage webhook nommés pour des intégrations externes"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:392
+#: src/birdnetpi/web/templates/admin/settings.html.j2:762
+msgid "Name (e.g., home_assistant)"
+msgstr "Nom (ex. home_assistant)"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:393
+#: src/birdnetpi/web/templates/admin/settings.html.j2:763
+msgid "Webhook URL"
+msgstr "URL de Webhook"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:399
+msgid "+  Add Webhook Target"
+msgstr "+ Ajouter Cible Webhook"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:408
+msgid "Define when and how to send notifications"
+msgstr "Définir quand et comment envoyer les notifications"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:415
+#: src/birdnetpi/web/templates/admin/settings.html.j2:779
+msgid "Rule name"
+msgstr "Nom de la règle"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:435
+#: src/birdnetpi/web/templates/admin/settings.html.j2:799
+#: src/birdnetpi/web/templates/admin/settings.html.j2:885
+#: src/birdnetpi/web/templates/admin/settings.html.j2:899
+msgid "Target"
+msgstr "Cible"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:437
+#: src/birdnetpi/web/templates/admin/settings.html.j2:886
+msgid "MQTT topic"
+msgstr "Sujet MQTT"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:449
+#: src/birdnetpi/web/templates/admin/settings.html.j2:809
+msgid "Frequency"
+msgstr "Fréquence"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:451
+#: src/birdnetpi/web/templates/admin/settings.html.j2:811
+msgid "Immediate"
+msgstr "Immédiat"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:452
+#: src/birdnetpi/web/templates/admin/settings.html.j2:812
+msgid "Daily Summary"
+msgstr "Résumé quotidien"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:453
+#: src/birdnetpi/web/templates/admin/settings.html.j2:813
+msgid "Weekly Summary"
+msgstr "Résumé hebdomadaire"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:461
+#: src/birdnetpi/web/templates/admin/settings.html.j2:918
+msgid "Monday"
+msgstr "Lundi"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:462
+#: src/birdnetpi/web/templates/admin/settings.html.j2:919
+msgid "Tuesday"
+msgstr "Mardi"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:463
+#: src/birdnetpi/web/templates/admin/settings.html.j2:920
+msgid "Wednesday"
+msgstr "Mercredi"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:464
+#: src/birdnetpi/web/templates/admin/settings.html.j2:921
+msgid "Thursday"
+msgstr "Jeudi"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:465
+#: src/birdnetpi/web/templates/admin/settings.html.j2:922
+msgid "Friday"
+msgstr "Vendredi"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:466
+#: src/birdnetpi/web/templates/admin/settings.html.j2:923
+msgid "Saturday"
+msgstr "Samedi"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:467
+#: src/birdnetpi/web/templates/admin/settings.html.j2:924
+msgid "Sunday"
+msgstr "Dimanche"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:477
+#: src/birdnetpi/web/templates/admin/settings.html.j2:824
+msgid "Scope"
+msgstr "Portée"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:479
+#: src/birdnetpi/web/templates/admin/settings.html.j2:826
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:44
+msgid "All Detections"
+msgstr "Toutes les Détections"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:480
+#: src/birdnetpi/web/templates/admin/settings.html.j2:827
+msgid "New Species (First Ever)"
+msgstr "Nouvelles espèces (Première fois)"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:481
+#: src/birdnetpi/web/templates/admin/settings.html.j2:828
+msgid "New Today"
+msgstr "Nouvelles d'aujourd'hui"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:482
+#: src/birdnetpi/web/templates/admin/settings.html.j2:829
+msgid "New This Week"
+msgstr "Nouvelles de cette semaine"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:486
+#: src/birdnetpi/web/templates/admin/settings.html.j2:833
+#: src/birdnetpi/web/templates/components/taxonomic_filters.html.j2:42
+msgid "Min Confidence"
+msgstr "Confiance Minimale"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:488
+#: src/birdnetpi/web/templates/admin/settings.html.j2:834
+msgid "Use default"
+msgstr "Utiliser par défaut"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:495
+#: src/birdnetpi/web/templates/admin/settings.html.j2:841
+msgid "Include Species (scientific names, comma-separated)"
+msgstr "Inclure des espèces (noms scientifiques, séparés par des virgules)"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:496
+#: src/birdnetpi/web/templates/admin/settings.html.j2:842
+msgid "e.g., Turdus migratorius, Cardinalis cardinalis"
+msgstr "ex. Turdus migratorius, Cardinalis cardinalis"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:501
+#: src/birdnetpi/web/templates/admin/settings.html.j2:847
+msgid "Exclude Species (scientific names, comma-separated)"
+msgstr "Exclure des espèces (noms scientifiques, séparés par des virgules)"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:502
+#: src/birdnetpi/web/templates/admin/settings.html.j2:848
+msgid "e.g., Passer domesticus, Sturnus vulgaris"
+msgstr "ex. Passer domesticus, Sturnus vulgaris"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:509
+#: src/birdnetpi/web/templates/admin/settings.html.j2:855
+msgid "Title Template (optional, uses default if empty)"
+msgstr "Modèle de Titre (optionnel, utilise par défaut si vide)"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:517
+#: src/birdnetpi/web/templates/admin/settings.html.j2:861
+msgid "Body Template (optional, uses default if empty)"
+msgstr "Modèle de Corps (optionnel, utilise par défaut si vide)"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:527
+msgid "+  Add Notification Rule"
+msgstr "+ Ajouter une règle de notification"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:540
+msgid "Last saved:"
+msgstr "Dernière sauvegarde :"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:856
+msgid "e.g., 🦅 NEW: {{ common_name }}!"
+msgstr "ex., 🦅 NOUVEAU: {{ common_name }}!"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:862
+#, python-format
+msgid "e.g., Detected {{ common_name }} at {{ confidence }}% confidence"
+msgstr "ex., Détecté {{ common_name }} à {{ confidence }}% de confiance"
+
+#: src/birdnetpi/web/templates/admin/settings.html.j2:893
+msgid "Select target..."
+msgstr "Sélectionner la cible..."
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:21
+msgid "Skip to update content"
+msgstr "Passer au contenu de mise à jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:26
+msgid "Docker Deployment"
+msgstr "Déploiement Docker"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:28
+msgid "SBC Deployment"
+msgstr "Déploiement SBC"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:30
+msgid "Unknown Deployment"
+msgstr "Déploiement inconnu"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:35
+msgid "Update status"
+msgstr "Statut de mise à jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:37
+msgid "Current Status"
+msgstr "Statut actuel"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:42
+msgid "Check for updates"
+msgstr "Vérifier les mises à jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:45
+msgid "Check for Updates"
+msgstr "Vérifier les Mises à Jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:51
+msgid "Current Version:"
+msgstr "Version Actuelle :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:58
+msgid "Latest Version:"
+msgstr "Dernière Version :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:80
+msgid "Update Details"
+msgstr "Détails de la Mise à Jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:91
+msgid "View on GitHub"
+msgstr "Voir sur GitHub"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:103
+msgid "Apply update"
+msgstr "Appliquer la mise à jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:106
+msgid "Apply Update"
+msgstr "Appliquer la Mise à Jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:113
+msgid "Test update without applying"
+msgstr "Tester la mise à jour sans l'appliquer"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:116
+msgid "Test Update (Dry Run)"
+msgstr "Mise à Jour de Test (Simulation)"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:121
+msgid "Manual Update Required"
+msgstr "Mise à jour manuelle requise"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:122
+msgid ""
+"This update cannot be applied automatically. Please see instructions below."
+msgstr ""
+"Cette mise à jour ne peut pas être appliquée automatiquement. Veuillez "
+"consulter les instructions ci-dessous."
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:131
+msgid "Docker update instructions"
+msgstr "Instructions de mise à jour Docker"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:132
+msgid "Docker Update Instructions"
+msgstr "Instructions de Mise à Jour Docker"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:136
+msgid ""
+"BirdNET-Pi runs in a Docker container. Updates are managed through Docker "
+"image updates."
+msgstr ""
+"BirdNET-Pi s'exécute dans un conteneur Docker. Les mises à jour sont gérées "
+"par les mises à jour d'images Docker."
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:141
+msgid "Production Deployment (Tagged Releases)"
+msgstr "Déploiement en Production (Versions avec balises)"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:143
+msgid "For production deployments using tagged releases:"
+msgstr "Pour les déploiements de production utilisant des versions balisées :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:145
+#: src/birdnetpi/web/templates/admin/update.html.j2:164
+msgid "Stop the current container:"
+msgstr "Arrêter le conteneur actuel :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:148
+msgid "Pull the new image:"
+msgstr "Récupérer la nouvelle image :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:151
+#: src/birdnetpi/web/templates/admin/update.html.j2:170
+msgid "Start the container:"
+msgstr "Démarrer le conteneur :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:154
+#: src/birdnetpi/web/templates/admin/update.html.j2:173
+msgid "Database migrations run automatically on container restart"
+msgstr ""
+"Les migrations de la base de données s'exécutent automatiquement au "
+"redémarrage du conteneur"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:160
+msgid "Development Deployment (Latest Code)"
+msgstr "Déploiement de Développement (Dernier code)"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:162
+msgid "For development deployments building from source:"
+msgstr ""
+"Pour les déploiements de développement compilés à partir de la source :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:167
+msgid "Rebuild the image:"
+msgstr "Recompiler l'image :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:179
+msgid "Note:"
+msgstr "Note :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:180
+msgid ""
+"Git remote and branch settings are not used for Docker deployments. Updates "
+"come from Docker images."
+msgstr ""
+"Les paramètres de branche et distant Git ne sont pas utilisés pour les "
+"déploiements Docker. Les mises à jour proviennent des images Docker."
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:186
+msgid "Git configuration"
+msgstr "Configuration Git"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:187
+msgid "Git Configuration"
+msgstr "Configuration Git"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:191
+msgid "Git Remote:"
+msgstr "Distant Git :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:200
+msgid "Loading remotes..."
+msgstr "Chargement des distants..."
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:206
+msgid "Manage git remotes"
+msgstr "Gérer les distants git"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:208
+msgid "Manage Remotes"
+msgstr "Gérer les Distants"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:211
+msgid "Select the git remote to track for updates"
+msgstr "Sélectionnez le distant git à suivre pour les mises à jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:215
+msgid "Git Branch/Tag:"
+msgstr "Branche/Tag Git :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:223
+msgid "Select a remote first"
+msgstr "Sélectionnez d'abord un distant"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:225
+msgid "Select the branch or tag to track"
+msgstr "Sélectionnez la branche ou le tag à suivre"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:232
+msgid "Save git configuration"
+msgstr "Enregistrer la configuration git"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:245
+msgid "Manage Git Remotes"
+msgstr "Gérer les Distants Git"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:249
+msgid "Close modal"
+msgstr "Fermer la modale"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:263
+msgid "Add New Remote"
+msgstr "Ajouter un Nouveau Distant"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:266
+msgid "Remote Name:"
+msgstr "Nom du distant :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:272
+msgid "Letters, numbers, underscore, and dash only"
+msgstr "Lettres, chiffres, traits de soulignement et tirets uniquement"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:276
+msgid "e.g., upstream, fork"
+msgstr "ex., upstream, fork"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:280
+msgid "Remote URL:"
+msgstr "URL du distant :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:289
+msgid "Git repository URL"
+msgstr "URL du dépôt Git"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:293
+msgid "Add Remote"
+msgstr "Ajouter le Distant"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:303
+msgid "Unknown deployment information"
+msgstr "Informations de déploiement inconnues"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:304
+msgid "Deployment Type Unknown"
+msgstr "Type de Déploiement Inconnu"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:306
+msgid ""
+"Unable to determine deployment type. Update functionality may be limited."
+msgstr ""
+"Impossible de déterminer le type de déploiement. La fonctionnalité de mise à "
+"jour peut être limitée."
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:313
+msgid "Update progress"
+msgstr "Progression de la mise à jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:314
+msgid "Update Progress"
+msgstr "Progression de la Mise à Jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:320
+msgid "Initializing..."
+msgstr "Initialisation..."
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:323
+msgid "Update log"
+msgstr "Journal des mises à jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:331
+msgid "Cancel update"
+msgstr "Annuler la mise à jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:335
+msgid "Cancel Update"
+msgstr "Annuler la Mise à Jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:341
+msgid "Last update result"
+msgstr "Résultat de la dernière mise à jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:342
+msgid "Last Update Result"
+msgstr "Résultat de la Dernière Mise à Jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:347
+msgid "Update Successful"
+msgstr "Mise à Jour Réussie"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:354
+msgid "Update Failed"
+msgstr "Échec de la Mise à Jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:365
+msgid "Region pack management"
+msgstr "Gestion des packs régionaux"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:366
+msgid "Region Pack Management"
+msgstr "Gestion des Packs Régionaux"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:373
+msgid "Installed Packs:"
+msgstr "Packs Installés :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:375
+msgid "pack(s) installed"
+msgstr "pack(s) installé(s)"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:380
+msgid "Location:"
+msgstr "Localisation :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:383
+msgid "Configured"
+msgstr "Configuré"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:385
+msgid "Not Set"
+msgstr "Non Défini"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:393
+msgid "No Region Pack Installed"
+msgstr "Aucun Pack Régional Installé"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:394
+msgid ""
+"Region packs provide location-specific bird species filtering based on eBird "
+"data. Install a pack for your coordinates to enable regional filtering."
+msgstr ""
+"Les packs régionaux fournissent un filtrage des espèces d'oiseaux spécifique "
+"à l'emplacement basé sur les données d'eBird. Installez un pack pour vos "
+"coordonnées pour activer le filtrage régional."
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:405
+msgid "Download region pack for your location"
+msgstr "Télécharger le pack régional pour votre emplacement"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:408
+msgid "Download Region Pack for My Location"
+msgstr "Télécharger le Pack Régional pour Mon Emplacement"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:412
+msgid ""
+"This will download the appropriate region pack based on your configured "
+"coordinates:"
+msgstr ""
+"Ceci téléchargera le pack régional approprié en fonction de vos coordonnées "
+"configurées :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:419
+msgid "Set your location in"
+msgstr "Définissez votre localisation dans"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:421
+msgid "to enable region pack download."
+msgstr "pour activer le téléchargement du pack régional."
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:429
+msgid "Update help"
+msgstr "Aide pour la mise à jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:430
+msgid "Update Help"
+msgstr "Aide pour la Mise à Jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:434
+msgid "About Automatic Updates"
+msgstr "À propos des Mises à Jour Automatiques"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:436
+msgid ""
+"BirdNET-Pi supports automatic updates on SBC deployments through the update "
+"daemon."
+msgstr ""
+"BirdNET-Pi prend en charge les mises à jour automatiques sur les "
+"déploiements SBC via le démon de mise à jour."
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:437
+msgid ""
+"The update daemon monitors the configured git remote and branch for new "
+"releases."
+msgstr ""
+"Le démon de mise à jour surveille le distant et la branche git configurés "
+"pour les nouvelles versions."
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:438
+msgid "Before applying an update:"
+msgstr "Avant d'appliquer une mise à jour :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:440
+msgid "Ensure your system has sufficient disk space"
+msgstr "Assurez-vous que votre système dispose d'un espace disque suffisant"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:441
+msgid "Consider backing up your data"
+msgstr "Envisagez de sauvegarder vos données"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:442
+msgid "Review the release notes for breaking changes"
+msgstr "Passez en revue les notes de version pour les modifications majeures"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:448
+msgid "SBC Update Process"
+msgstr "Processus de mise à jour SBC"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:450
+msgid "For SBC deployments, updates are performed by the update daemon:"
+msgstr ""
+"Pour les déploiements SBC, les mises à jour sont effectuées par le démon de "
+"mise à jour :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:452
+msgid "The daemon checks the configured remote/branch for updates"
+msgstr ""
+"Le démon vérifie le distant/la branche configurés pour les mises à jour"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:453
+msgid "If an update is available, it can be applied through the web interface"
+msgstr ""
+"Si une mise à jour est disponible, elle peut être appliquée via l'interface "
+"web"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:454
+msgid "The daemon pulls the latest code and runs migrations"
+msgstr "Le démon récupère le dernier code et exécute les migrations"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:455
+msgid "Services are restarted automatically"
+msgstr "Les services redémarrent automatiquement"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:461
+msgid "Docker Update Best Practices"
+msgstr "Meilleures Pratiques de Mise à Jour Docker"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:463
+msgid "For Docker deployments:"
+msgstr "Pour les déploiements Docker :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:465
+msgid ""
+"Always use docker compose down (never docker compose down -v which deletes "
+"data)"
+msgstr ""
+"Utilisez toujours docker compose down (jamais docker compose down -v qui "
+"supprime les données)"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:466
+msgid "Back up your data volume before major version updates"
+msgstr ""
+"Sauvegardez votre volume de données avant les mises à jour de version "
+"majeures"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:467
+msgid "Check the release notes on GitHub for breaking changes"
+msgstr ""
+"Vérifiez les notes de version sur GitHub pour les modifications de rupture"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:468
+msgid "Database migrations run automatically when the container starts"
+msgstr ""
+"Les migrations de la base de données s'exécutent automatiquement au "
+"démarrage du conteneur"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:475
+msgid "Troubleshooting"
+msgstr "Dépannage"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:477
+msgid "If you encounter issues:"
+msgstr "Si vous rencontrez des problèmes :"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:479
+msgid "Check the system logs for error messages"
+msgstr "Vérifiez les journaux du système pour les messages d'erreur"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:480
+msgid "Ensure your device has internet connectivity"
+msgstr "Assurez-vous que votre appareil a une connectivité internet"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:482
+msgid "Verify that the update daemon is running"
+msgstr "Vérifiez que le démon de mise à jour est en cours d'exécution"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:483
+msgid "Check git remote configuration is correct"
+msgstr "Vérifiez que la configuration distante de git est correcte"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:485
+msgid "Verify Docker daemon is running"
+msgstr "Vérifiez que le démon Docker est en cours d'exécution"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:486
+msgid "Check Docker image pull permissions"
+msgstr "Vérifiez les autorisations de récupération d'image Docker"
+
+#: src/birdnetpi/web/templates/admin/update.html.j2:488
+msgid "Report issues on GitHub with error details"
+msgstr "Signalez les problèmes sur GitHub avec les détails de l'erreur"
+
+#: src/birdnetpi/web/templates/components/location_map.html.j2:10
+msgid "Search for address or place..."
+msgstr "Rechercher une adresse ou un lieu..."
+
+#: src/birdnetpi/web/templates/components/location_map.html.j2:11
+msgid "Search for location by address"
+msgstr "Rechercher un emplacement par adresse"
+
+#: src/birdnetpi/web/templates/components/location_map.html.j2:22
+msgid "Interactive map for location selection"
+msgstr "Carte interactive pour la sélection de l'emplacement"
+
+#: src/birdnetpi/web/templates/components/location_map.html.j2:26
+msgid "Click on the map to set your location, or search for an address above."
+msgstr ""
+"Cliquez sur la carte pour définir votre position ou recherchez une adresse "
+"ci-dessus."
+
+#: src/birdnetpi/web/templates/components/location_map.html.j2:199
+msgid "Location updated"
+msgstr "Emplacement mis à jour"
+
+#: src/birdnetpi/web/templates/components/location_map.html.j2:263
+msgid "Location and timezone updated"
+msgstr "Emplacement et fuseau horaire mis à jour"
+
+#: src/birdnetpi/web/templates/components/location_map.html.j2:279
+msgid "Please enter a location to search"
+msgstr "Veuillez entrer un emplacement à rechercher"
+
+#: src/birdnetpi/web/templates/components/location_map.html.j2:283
+msgid "Searching..."
+msgstr "Recherche en cours..."
+
+#: src/birdnetpi/web/templates/components/location_map.html.j2:297
+msgid "Search service unavailable"
+msgstr "Service de recherche indisponible"
+
+#: src/birdnetpi/web/templates/components/location_map.html.j2:303
+msgid "No results found. Try a different search term."
+msgstr "Aucun résultat trouvé. Essayez un autre terme de recherche."
+
+#: src/birdnetpi/web/templates/components/location_map.html.j2:316
+msgid "Found:"
+msgstr "Trouvé :"
+
+#: src/birdnetpi/web/templates/components/location_map.html.j2:320
+msgid "Search failed. Please try again."
+msgstr "La recherche a échoué. Veuillez réessayer."
+
+#: src/birdnetpi/web/templates/components/navigation.html.j2:5
+msgid "Main navigation"
+msgstr "Navigation principale"
+
+#: src/birdnetpi/web/templates/components/navigation.html.j2:7
+msgid "Dashboard"
+msgstr "Tableau de Bord"
+
+#: src/birdnetpi/web/templates/components/navigation.html.j2:19
+msgid "API"
+msgstr "API"
+
+#: src/birdnetpi/web/templates/components/navigation.html.j2:22
+msgid "Administration menu"
+msgstr "Menu d'administration"
+
+#: src/birdnetpi/web/templates/components/navigation.html.j2:28
+msgid "Admin"
+msgstr "Admin"
+
+#: src/birdnetpi/web/templates/components/navigation.html.j2:36
+msgid "System Services"
+msgstr "Services Système"
+
+#: src/birdnetpi/web/templates/components/navigation.html.j2:39
+msgid "System Update"
+msgstr "Mise à Jour Système"
+
+#: src/birdnetpi/web/templates/components/navigation.html.j2:45
+msgid "Database"
+msgstr "Base de Données"
+
+#: src/birdnetpi/web/templates/components/navigation.html.j2:47
+msgid "Logout"
+msgstr "Déconnexion"
+
+#: src/birdnetpi/web/templates/components/period_selector.html.j2:52
+msgid "Loading period selector..."
+msgstr "Chargement du sélecteur de période..."
+
+#: src/birdnetpi/web/templates/components/region_pack_banner.html.j2:13
+msgid "Region pack not configured."
+msgstr "Pack régional non configuré."
+
+#: src/birdnetpi/web/templates/components/region_pack_banner.html.j2:24
+msgid "Dismiss region pack notification"
+msgstr "Rejeter la notification du pack régional"
+
+#: src/birdnetpi/web/templates/components/region_pack_banner.html.j2:25
+#: src/birdnetpi/web/templates/components/update_banner.html.j2:51
+msgid "Dismiss for this session"
+msgstr "Rejeter pour cette session"
+
+#: src/birdnetpi/web/templates/components/taxonomic_filters.html.j2:17
+msgid "Recording filters"
+msgstr "Filtres d'enregistrement"
+
+#: src/birdnetpi/web/templates/components/taxonomic_filters.html.j2:21
+msgid "Filter by taxonomic family"
+msgstr "Filtrer par famille taxonomique"
+
+#: src/birdnetpi/web/templates/components/taxonomic_filters.html.j2:43
+msgid "Minimum confidence threshold"
+msgstr "Seuil de confiance minimum"
+
+#: src/birdnetpi/web/templates/components/taxonomic_filters.html.j2:44
+msgid "70 percent confidence"
+msgstr "70 pour cent de confiance"
+
+#: src/birdnetpi/web/templates/components/taxonomic_filters.html.j2:53
+msgid "Active filters"
+msgstr "Filtres actifs"
+
+#: src/birdnetpi/web/templates/components/update_banner.html.j2:13
+msgid "Development Version"
+msgstr "Version de développement"
+
+#: src/birdnetpi/web/templates/components/update_banner.html.j2:17
+msgid ""
+"This is not a stable release. For production use, please install an official "
+"release."
+msgstr ""
+"Ce n'est pas une version stable. Pour une utilisation en production, "
+"installez une version officielle."
+
+#: src/birdnetpi/web/templates/components/update_banner.html.j2:31
+msgid "A new version is available!"
+msgstr "Une nouvelle version est disponible !"
+
+#: src/birdnetpi/web/templates/components/update_banner.html.j2:44
+msgid "View Update"
+msgstr "Voir la Mise à Jour"
+
+#: src/birdnetpi/web/templates/components/update_banner.html.j2:50
+msgid "Dismiss update notification"
+msgstr "Ignorer la notification de mise à jour"
+
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:26
+msgid "species active"
+msgstr "espèces actives"
+
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:51
+msgid "Date"
+msgstr "Date"
+
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:57
+msgid "Loading detections..."
+msgstr "Chargement des détections..."
+
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:74
+msgid "This Week"
+msgstr "Cette Semaine"
+
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:75
+msgid "This Month"
+msgstr "Ce Mois-ci"
+
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:76
+msgid "This Season"
+msgstr "Cette Saison"
+
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:77
+msgid "This Year"
+msgstr "Cette Année"
+
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:84
+msgid "Loading species..."
+msgstr "Chargement des espèces..."
+
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:97
+msgid "Select Date"
+msgstr "Sélectionner Date"
+
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:100
+msgid "Go"
+msgstr "Aller"
+
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:126
+msgid "Filtered"
+msgstr "Filtré"
+
+#: src/birdnetpi/web/templates/reports/all_detections.html.j2:136
+#, python-format
+msgid "Confidence threshold ≥%(threshold)s"
+msgstr "Seuil de confiance ≥%(threshold)s"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:29
+msgid "Analysis period:"
+msgstr "Période d'analyse :"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:39
+msgid "Compare with previous period"
+msgstr "Comparer avec la période précédente"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:46
+msgid "Loading analysis data..."
+msgstr "Chargement des données d'analyse..."
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:51
+msgid "Diversity Timeline"
+msgstr "Chronologie de la diversité"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:52
+msgid "Shannon diversity, Simpson index, and species richness over time"
+msgstr ""
+"Diversité de Shannon, indice de Simpson et richesse des espèces au fil du "
+"temps"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:53
+msgid "Tracks community diversity metrics over time."
+msgstr "Suit les mesures de diversité de la communauté au fil du temps."
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:53
+msgid "Shannon H'"
+msgstr "Shannon H'"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:53
+msgid "measures entropy (higher = more diverse),"
+msgstr "mesure l'entropie (plus grand = plus diversifié),"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:53
+msgid "Simpson D"
+msgstr "Simpson D"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:53
+msgid "measures dominance (higher = more even),"
+msgstr "mesure la dominance (plus grand = plus équilibré),"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:53
+msgid "Richness S"
+msgstr "Richesse S"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:53
+msgid "counts unique species."
+msgstr "compte les espèces uniques."
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:59
+msgid "Species Accumulation"
+msgstr "Accumulation d'espèces"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:60
+msgid "Cumulative species discovery as detections increase"
+msgstr ""
+"Découverte d'espèces cumulatives à mesure que les détections augmentent"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:61
+msgid ""
+"Shows how many unique species are found as more detections are recorded."
+msgstr ""
+"Montre combien d'espèces uniques sont trouvées à mesure que plus de "
+"détections sont enregistrées."
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:61
+msgid "Species accumulation curves"
+msgstr "Courbes d'accumulation d'espèces"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:61
+msgid ""
+"help estimate sampling completeness and predict total diversity. Steep "
+"curves indicate high discovery rate, flattening curves suggest most species "
+"have been detected."
+msgstr ""
+"aident à estimer l'exhaustivité de l'échantillonnage et à prédire la "
+"diversité totale. Des courbes raides indiquent un taux de découverte élevé, "
+"des courbes qui s'aplatissent suggèrent que la plupart des espèces ont été "
+"détectées."
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:67
+msgid "Community Similarity Matrix"
+msgstr "Matrice de Similitude de la Communauté"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:68
+msgid "Jaccard similarity between time periods"
+msgstr "Similitude de Jaccard entre périodes"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:69
+msgid "Compares species composition between time windows."
+msgstr "Compare la composition des espèces entre fenêtres de temps."
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:69
+msgid "Jaccard similarity"
+msgstr "Similitude de Jaccard"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:69
+msgid ""
+"measures overlap: 0% = no shared species, 100% = identical communities. High "
+"values indicate stable communities, low values show turnover or seasonal "
+"changes."
+msgstr ""
+"mesure le chevauchement : 0% = aucune espèce partagée, 100% = communautés "
+"identiques. Les valeurs élevées indiquent des communautés stables, les "
+"valeurs faibles indiquent un renouvellement ou des changements saisonniers."
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:75
+msgid "Beta Diversity (Species Turnover)"
+msgstr "Diversité Bêta (Renouvellement des Espèces)"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:76
+msgid "Community change between consecutive time windows"
+msgstr "Changement de communauté entre des fenêtres temporelles consécutives"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:77
+msgid "Quantifies how much the bird community changes over time."
+msgstr ""
+"Quantifie dans quelle mesure la communauté d'oiseaux change avec le temps."
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:77
+msgid "Beta diversity (β)"
+msgstr "Diversité bêta (β)"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:77
+msgid ""
+"ranges from 0 (identical communities) to 1 (completely different). Green "
+"bars indicate stability, yellow shows moderate change, red indicates high "
+"turnover. Species gained (+) and lost (-) are shown below each bar."
+msgstr ""
+"varie de 0 (communautés identiques) à 1 (complètement différentes). Les "
+"barres vertes indiquent la stabilité, le jaune montre un changement modéré, "
+"le rouge indique un taux de renouvellement élevé. Les espèces gagnées (+) et "
+"perdues (-) sont affichées sous chaque barre."
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:83
+msgid "Weather Correlations"
+msgstr "Corrélations Météorologiques"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:84
+msgid "Relationship between detections and weather variables"
+msgstr "Relation entre les détections et les variables météorologiques"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:85
+msgid "Explores relationships between weather and bird activity."
+msgstr "Explore les relations entre la météo et l'activité des oiseaux."
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:85
+msgid "Pearson correlation (r)"
+msgstr "Corrélation de Pearson (r)"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:85
+msgid ""
+"ranges from -1 to +1. Values near 0 indicate weak correlation, ±0.3-0.7 "
+"moderate, ±0.7-1.0 strong. Positive values show variables increase together, "
+"negative values show inverse relationships."
+msgstr ""
+"varie de -1 à +1. Les valeurs proches de 0 indiquent une corrélation faible, "
+"±0.3-0.7 modérée, ±0.7-1.0 forte. Les valeurs positives montrent que les "
+"variables augmentent ensemble, les valeurs négatives montrent des relations "
+"inverses."
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:88
+msgid "Temperature (°C)"
+msgstr "Température (°C)"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:93
+msgid "Humidity (%)"
+msgstr "Humidité (%)"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:98
+msgid "Wind Speed (m/s)"
+msgstr "Vitesse du vent (m/s)"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:107
+msgid "Activity Heatmap"
+msgstr "Carte de chaleur d'activité"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:108
+msgid "Detection patterns by day of week and hour"
+msgstr "Modèles de détection par jour de la semaine et heure"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:109
+msgid "Visualizes when birds are most active throughout the week."
+msgstr ""
+"Visualise le moment où les oiseaux sont les plus actifs tout au long de la "
+"semaine."
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:109
+msgid "Heat maps"
+msgstr "Cartes de chaleur"
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:109
+msgid ""
+"use color intensity to show detection frequency by day and hour. Darker "
+"cells indicate higher activity, lighter cells show fewer detections. "
+"Patterns reveal daily rhythms and weekly variations in bird behavior."
+msgstr ""
+"utilisent l'intensité de la couleur pour montrer la fréquence de détection "
+"par jour et par heure. Les cellules plus sombres indiquent une activité plus "
+"élevée, les cellules plus claires montrent moins de détections. Les modèles "
+"révèlent des rythmes quotidiens et des variations hebdomadaires dans le "
+"comportement des oiseaux."
+
+#: src/birdnetpi/web/templates/reports/analysis.html.j2:116
+#, python-format
+msgid "Confidence threshold: ≥%(threshold)s"
+msgstr "Seuil de confiance : ≥%(threshold)s"
+
+#: src/birdnetpi/web/templates/reports/best_recordings.html.j2:13
+msgid "Recording statistics"
+msgstr "Statistiques d'enregistrement"
+
+#: src/birdnetpi/web/templates/reports/best_recordings.html.j2:14
+msgid "Loading statistics..."
+msgstr "Chargement des statistiques..."
+
+#: src/birdnetpi/web/templates/reports/best_recordings.html.j2:19
+msgid "Best recordings list"
+msgstr "Liste des meilleurs enregistrements"
+
+#: src/birdnetpi/web/templates/reports/best_recordings.html.j2:20
+#: src/birdnetpi/web/templates/reports/best_recordings.html.j2:72
+msgid "Loading recordings..."
+msgstr "Chargement des enregistrements..."
+
+#: src/birdnetpi/web/templates/reports/best_recordings.html.j2:75
+msgid "No recordings found matching the selected filters."
+msgstr "Aucun enregistrement trouvé correspondant aux filtres sélectionnés."
+
+#: src/birdnetpi/web/templates/reports/best_recordings.html.j2:78
+msgid "Error loading recordings. Please try again."
+msgstr "Erreur lors du chargement des enregistrements. Veuillez réessayer."
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:14
+msgid "Detection status filter"
+msgstr "Filtre de statut de détection"
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:15
+msgid "Show"
+msgstr "Afficher"
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:16
+msgid "Filter by detection status"
+msgstr "Filtrer par statut de détection"
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:24
+msgid "All Species"
+msgstr "Toutes les Espèces"
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:33
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:58
+msgid "Detected"
+msgstr "Détecté"
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:42
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:62
+msgid "Not Detected"
+msgstr "Non Détecté"
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:52
+msgid "Checklist statistics"
+msgstr "Statistiques de la liste de contrôle"
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:54
+msgid "Total Species"
+msgstr "Total des espèces"
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:69
+msgid "Species checklist table"
+msgstr "Tableau de liste des espèces"
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:72
+msgid "Image"
+msgstr "Image"
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:73
+msgid "Thumbnail"
+msgstr "Miniature"
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:75
+msgid "Detection status"
+msgstr "Statut de détection"
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:77
+msgid "Status"
+msgstr "Statut"
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:81
+msgid "Latest"
+msgstr "Dernier"
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:82
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:83
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:84
+msgid "Conservation status"
+msgstr "État de conservation"
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:93
+msgid "Loading species data..."
+msgstr "Chargement des données sur les espèces..."
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:110
+msgid "No species found matching the current filters."
+msgstr "Aucune espèce ne correspond aux filtres actuels."
+
+#: src/birdnetpi/web/templates/reports/species_checklist.html.j2:111
+msgid "Clear Filters"
+msgstr "Effacer les Filtres"
 
 #~ msgid "GPS"
 #~ msgstr "GPS"
@@ -768,60 +3039,41 @@ msgstr ""
 #~ msgid "Active"
 #~ msgstr "Actif"
 
-#~ msgid "Location"
-#~ msgstr ""
-
-#~ msgid "GPS: Not available"
-#~ msgstr ""
-
-#~ msgid "Accuracy: Unknown"
-#~ msgstr ""
-
-#~ msgid "Satellites: --"
-#~ msgstr ""
-
-#~ msgid "Last update: Never"
-#~ msgstr ""
-
-#~ msgid "CPU"
-#~ msgstr "Processeur"
-
-#~ msgid "Disk"
-#~ msgstr "Disque"
-
-#~ msgid "Live Audio"
-#~ msgstr ""
-
-#~ msgid "Spectrogram"
-#~ msgstr ""
-
-#~ msgid "Refresh"
-#~ msgstr "Actualiser"
-
 #~ msgid "Home"
 #~ msgstr "Accueil"
 
-#~ msgid "Loading detections..."
-#~ msgstr "Chargement des détections..."
+#~ msgid "Reports"
+#~ msgstr "Rapports"
 
-#~ msgid "Total Today:"
-#~ msgstr ""
+#~ msgid "Field Mode"
+#~ msgstr "Mode Terrain"
 
-#~ msgid ""
-#~ "No bird detections have been recorded"
-#~ " yet. Check back after the system "
-#~ "has been running for some time."
-#~ msgstr ""
+#~ msgid "Online"
+#~ msgstr "En Ligne"
 
-#~ msgid ""
-#~ "No bird detections have been recorded"
-#~ " today. Birds may be more active "
-#~ "during dawn and dusk hours."
-#~ msgstr ""
+#~ msgid "Disk Space"
+#~ msgstr "Espace Disque"
 
-#~ msgid ""
-#~ "No bird detections have been recorded"
-#~ " this week. Check back after the "
-#~ "system has been running for some "
-#~ "time."
-#~ msgstr ""
+#~ msgid "Back to Dashboard"
+#~ msgstr "Retour au Tableau de Bord"
+
+#~ msgid "Basic Settings"
+#~ msgstr "Paramètres de Base"
+
+#~ msgid "AI Model"
+#~ msgstr "Modèle IA"
+
+#~ msgid "BirdWeather ID"
+#~ msgstr "ID BirdWeather"
+
+#~ msgid "Weekly Report"
+#~ msgstr "Rapport Hebdomadaire"
+
+#~ msgid "Language"
+#~ msgstr "Langue"
+
+#~ msgid "Save Settings"
+#~ msgstr "Enregistrer les Paramètres"
+
+#~ msgid "Back to Reports"
+#~ msgstr "Retour aux Rapports"
