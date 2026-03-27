@@ -40,6 +40,11 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Version: ${VERSION}"
 
+          # Docker tags must be lowercase; github.repository preserves case
+          IMAGE_LC="${GITHUB_REPOSITORY,,}"
+          echo "image_name=${IMAGE_LC}" >> "$GITHUB_OUTPUT"
+          echo "Image: ${IMAGE_LC}"
+
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -78,8 +83,8 @@ jobs:
           target: init
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}-init
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-init
+            ${{ env.REGISTRY }}/${{ steps.version.outputs.image_name }}:${{ steps.version.outputs.version }}-init
+            ${{ env.REGISTRY }}/${{ steps.version.outputs.image_name }}:latest-init
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
@@ -99,13 +104,13 @@ jobs:
             echo ""
             echo "### Init Image"
             echo '```'
-            echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}-init"
-            echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-init"
+            echo "${{ env.REGISTRY }}/${{ steps.version.outputs.image_name }}:${{ steps.version.outputs.version }}-init"
+            echo "${{ env.REGISTRY }}/${{ steps.version.outputs.image_name }}:latest-init"
             echo '```'
             echo ""
             echo "### Pull Commands"
             echo '```bash'
-            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}"
-            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}-init"
+            echo "docker pull ${{ env.REGISTRY }}/${{ steps.version.outputs.image_name }}:${{ steps.version.outputs.version }}"
+            echo "docker pull ${{ env.REGISTRY }}/${{ steps.version.outputs.image_name }}:${{ steps.version.outputs.version }}-init"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
