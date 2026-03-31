@@ -91,7 +91,10 @@ class AudioCaptureService:
     def start_capture(self) -> None:
         """Start the audio capture stream."""
         try:
+            # sounddevice expects None for default device, not -1
             device_id = self.config.audio_device_index
+            if device_id == -1:
+                device_id = None
             channels = self.config.audio_channels
             target_sample_rate = self.config.sample_rate  # What BirdNET expects (48000)
 
