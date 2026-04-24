@@ -21,14 +21,14 @@ jobs:
           python-version: '3.11'
       - name: Setup uv
         uses: ./.github/actions/setup-uv
-      - name: Cache pre-commit hooks
-        id: cache-pre-commit
+      - name: Cache prek hooks
+        id: cache-prek
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pre-commit
-          key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+          path: ~/.cache/prek
+          key: ${{ runner.os }}-prek-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-pre-commit-
+            ${{ runner.os }}-prek-
       - name: Install linting tools
         run: |
           sudo apt-get update
@@ -38,10 +38,10 @@ jobs:
           sudo chmod +x /usr/local/bin/hadolint
       - name: Create uv venv
         run: ~/.local/bin/uv venv
-      - name: Install pre-commit
-        run: ~/.local/bin/uv pip install pre-commit
-      - name: Run pre-commit checks
-        run: ~/.local/bin/uv run pre-commit run --all-files
+      - name: Install prek
+        run: ~/.local/bin/uv pip install prek
+      - name: Run prek checks
+        run: ~/.local/bin/uv run prek run --all-files
 
   translations:
     runs-on: ubuntu-latest
