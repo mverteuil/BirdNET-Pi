@@ -75,7 +75,7 @@ Changes that violate the philosophy of this project will be rejected. Changes th
 
 ## Code Style
 
-We use `pre-commit` to enforce code style. Please make sure to install the pre-commit hooks with `pre-commit install` before you start working.
+We use [`prek`](https://github.com/j178/prek) (a drop-in compatible reimplementation of `pre-commit`) to enforce code style. Install it (e.g. `uv tool install prek`, `brew install prek`, or `uv pip install prek` inside the project venv) and register the git hook with `prek install` before you start working. The hook config still lives in `.pre-commit-config.yaml`.
 
 The primary tools we use are:
 *   `actionlint` for GitHub Actions workflows.
@@ -86,7 +86,7 @@ The primary tools we use are:
 *   `shellcheck` for shell scripts.
 *   `yamllint` for YAML files.
 
-Running `pre-commit run` before committing will ensure your code meets our style guidelines.
+Running `prek run` before committing will ensure your code meets our style guidelines.
 
 ## Commit Messages
 
