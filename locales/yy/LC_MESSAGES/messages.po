@@ -1,4 +1,4 @@
-# Translations template for BirdNET-Pi.
+# yy translations for BirdNET-Pi.
 # Copyright (C) 2026 BirdNET-Pi Contributors
 # This file is distributed under the same license as the BirdNET-Pi project.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
@@ -8,10 +8,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: BirdNET-Pi 2.0.0a0\n"
 "Report-Msgid-Bugs-To: https://github.com/mverteuil/BirdNET-Pi/issues\n"
-"POT-Creation-Date: 2026-02-23 16:53-0500\n"
+"POT-Creation-Date: 2026-04-24 11:58-0400\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: yy\n"
+"Language-Team: yy <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1813,7 +1814,9 @@ msgstr "stegraT esirppA"
 msgid ""
 "Define named Apprise service URLs (see %(link_start)sApprise "
 "docs%(link_end)s)"
-msgstr " ees( sLRU ecivres esirppA deman enifeD%(link_start)sscod esirppA%(link_end)s)"
+msgstr ""
+" ees( sLRU ecivres esirppA deman enifeD%(link_start)sscod "
+"esirppA%(link_end)s)"
 
 #: src/birdnetpi/web/templates/admin/settings.html.j2:374
 #: src/birdnetpi/web/templates/admin/settings.html.j2:750
@@ -2087,7 +2090,9 @@ msgstr "deriuqeR etadpU launaM"
 msgid ""
 "This update cannot be applied automatically. Please see instructions "
 "below."
-msgstr ".woleb snoitcurtsni ees esaelP .yllacitamotua deilppa eb tonnac etadpu sihT"
+msgstr ""
+".woleb snoitcurtsni ees esaelP .yllacitamotua deilppa eb tonnac etadpu "
+"sihT"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:131
 msgid "Docker update instructions"
@@ -2101,7 +2106,9 @@ msgstr "snoitcurtsnI etadpU rekcoD"
 msgid ""
 "BirdNET-Pi runs in a Docker container. Updates are managed through Docker"
 " image updates."
-msgstr ".setadpu egami rekcoD hguorht deganam era setadpU .reniatnoc rekcoD a ni snur iP-TENdriB"
+msgstr ""
+".setadpu egami rekcoD hguorht deganam era setadpU .reniatnoc rekcoD a ni "
+"snur iP-TENdriB"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:141
 msgid "Production Deployment (Tagged Releases)"
@@ -2150,7 +2157,9 @@ msgstr ":etoN"
 msgid ""
 "Git remote and branch settings are not used for Docker deployments. "
 "Updates come from Docker images."
-msgstr ".segami rekcoD morf emoc setadpU .stnemyolped rekcoD rof desu ton era sgnittes hcnarb dna etomer tiG"
+msgstr ""
+".segami rekcoD morf emoc setadpU .stnemyolped rekcoD rof desu ton era "
+"sgnittes hcnarb dna etomer tiG"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:186
 msgid "Git configuration"
@@ -2321,7 +2330,10 @@ msgid ""
 "Region packs provide location-specific bird species filtering based on "
 "eBird data. Install a pack for your coordinates to enable regional "
 "filtering."
-msgstr ".gniretlif lanoiger elbane ot setanidrooc ruoy rof kcap a llatsnI .atad driBe no desab gniretlif seiceps drib cificeps-noitacol edivorp skcap noigeR"
+msgstr ""
+".gniretlif lanoiger elbane ot setanidrooc ruoy rof kcap a llatsnI .atad "
+"driBe no desab gniretlif seiceps drib cificeps-noitacol edivorp skcap "
+"noigeR"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:405
 msgid "Download region pack for your location"
@@ -2335,7 +2347,9 @@ msgstr "noitacoL yM rof kcaP noigeR daolnwoD"
 msgid ""
 "This will download the appropriate region pack based on your configured "
 "coordinates:"
-msgstr ":setanidrooc derugifnoc ruoy no desab kcap noiger etairporppa eht daolnwod lliw sihT"
+msgstr ""
+":setanidrooc derugifnoc ruoy no desab kcap noiger etairporppa eht "
+"daolnwod lliw sihT"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:419
 msgid "Set your location in"
@@ -2361,13 +2375,17 @@ msgstr "setadpU citamotuA tuobA"
 msgid ""
 "BirdNET-Pi supports automatic updates on SBC deployments through the "
 "update daemon."
-msgstr ".nomead etadpu eht hguorht stnemyolped CBS no setadpu citamotua stroppus iP-TENdriB"
+msgstr ""
+".nomead etadpu eht hguorht stnemyolped CBS no setadpu citamotua stroppus "
+"iP-TENdriB"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:437
 msgid ""
 "The update daemon monitors the configured git remote and branch for new "
 "releases."
-msgstr ".sesaeler wen rof hcnarb dna etomer tig derugifnoc eht srotinom nomead etadpu ehT"
+msgstr ""
+".sesaeler wen rof hcnarb dna etomer tig derugifnoc eht srotinom nomead "
+"etadpu ehT"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:438
 msgid "Before applying an update:"
@@ -2421,7 +2439,9 @@ msgstr ":stnemyolped rekcoD roF"
 msgid ""
 "Always use docker compose down (never docker compose down -v which "
 "deletes data)"
-msgstr ")atad seteled hcihw v- nwod esopmoc rekcod reven( nwod esopmoc rekcod esu syawlA"
+msgstr ""
+")atad seteled hcihw v- nwod esopmoc rekcod reven( nwod esopmoc rekcod esu"
+" syawlA"
 
 #: src/birdnetpi/web/templates/admin/update.html.j2:466
 msgid "Back up your data volume before major version updates"
@@ -2600,7 +2620,9 @@ msgstr "noisreV tnempoleveD"
 msgid ""
 "This is not a stable release. For production use, please install an "
 "official release."
-msgstr ".esaeler laiciffo na llatsni esaelp ,esu noitcudorp roF .esaeler elbats a ton si sihT"
+msgstr ""
+".esaeler laiciffo na llatsni esaelp ,esu noitcudorp roF .esaeler elbats a"
+" ton si sihT"
 
 #: src/birdnetpi/web/templates/components/update_banner.html.j2:31
 msgid "A new version is available!"
@@ -2732,7 +2754,10 @@ msgid ""
 "help estimate sampling completeness and predict total diversity. Steep "
 "curves indicate high discovery rate, flattening curves suggest most "
 "species have been detected."
-msgstr ".detceted neeb evah seiceps tsom tseggus sevruc gninettalf ,etar yrevocsid hgih etacidni sevruc peetS .ytisrevid latot tciderp dna ssenetelpmoc gnilpmas etamitse pleh"
+msgstr ""
+".detceted neeb evah seiceps tsom tseggus sevruc gninettalf ,etar "
+"yrevocsid hgih etacidni sevruc peetS .ytisrevid latot tciderp dna "
+"ssenetelpmoc gnilpmas etamitse pleh"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:67
 msgid "Community Similarity Matrix"
@@ -2755,7 +2780,10 @@ msgid ""
 "measures overlap: 0% = no shared species, 100% = identical communities. "
 "High values indicate stable communities, low values show turnover or "
 "seasonal changes."
-msgstr ".segnahc lanosaes ro revonrut wohs seulav wol ,seitinummoc elbats etacidni seulav hgiH .seitinummoc lacitnedi = %001 ,seiceps derahs on = %0 :palrevo serusaem"
+msgstr ""
+".segnahc lanosaes ro revonrut wohs seulav wol ,seitinummoc elbats "
+"etacidni seulav hgiH .seitinummoc lacitnedi = %001 ,seiceps derahs on = "
+"%0 :palrevo serusaem"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:75
 msgid "Beta Diversity (Species Turnover)"
@@ -2778,7 +2806,10 @@ msgid ""
 "ranges from 0 (identical communities) to 1 (completely different). Green "
 "bars indicate stability, yellow shows moderate change, red indicates high"
 " turnover. Species gained (+) and lost (-) are shown below each bar."
-msgstr ".rab hcae woleb nwohs era )-( tsol dna )+( deniag seicepS .revonrut hgih setacidni der ,egnahc etaredom swohs wolley ,ytilibats etacidni srab neerG .)tnereffid yletelpmoc( 1 ot )seitinummoc lacitnedi( 0 morf segnar"
+msgstr ""
+".rab hcae woleb nwohs era )-( tsol dna )+( deniag seicepS .revonrut hgih "
+"setacidni der ,egnahc etaredom swohs wolley ,ytilibats etacidni srab "
+"neerG .)tnereffid yletelpmoc( 1 ot )seitinummoc lacitnedi( 0 morf segnar"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:83
 msgid "Weather Correlations"
@@ -2801,7 +2832,10 @@ msgid ""
 "ranges from -1 to +1. Values near 0 indicate weak correlation, ±0.3-0.7 "
 "moderate, ±0.7-1.0 strong. Positive values show variables increase "
 "together, negative values show inverse relationships."
-msgstr ".spihsnoitaler esrevni wohs seulav evitagen ,rehtegot esaercni selbairav wohs seulav evitisoP .gnorts 0.1-7.0± ,etaredom 7.0-3.0± ,noitalerroc kaew etacidni 0 raen seulaV .1+ ot 1- morf segnar"
+msgstr ""
+".spihsnoitaler esrevni wohs seulav evitagen ,rehtegot esaercni selbairav "
+"wohs seulav evitisoP .gnorts 0.1-7.0± ,etaredom 7.0-3.0± ,noitalerroc "
+"kaew etacidni 0 raen seulaV .1+ ot 1- morf segnar"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:88
 msgid "Temperature (°C)"
@@ -2836,7 +2870,10 @@ msgid ""
 "use color intensity to show detection frequency by day and hour. Darker "
 "cells indicate higher activity, lighter cells show fewer detections. "
 "Patterns reveal daily rhythms and weekly variations in bird behavior."
-msgstr ".roivaheb drib ni snoitairav ylkeew dna smhtyhr yliad laever snrettaP .snoitceted rewef wohs sllec rethgil ,ytivitca rehgih etacidni sllec rekraD .ruoh dna yad yb ycneuqerf noitceted wohs ot ytisnetni roloc esu"
+msgstr ""
+".roivaheb drib ni snoitairav ylkeew dna smhtyhr yliad laever snrettaP "
+".snoitceted rewef wohs sllec rethgil ,ytivitca rehgih etacidni sllec "
+"rekraD .ruoh dna yad yb ycneuqerf noitceted wohs ot ytisnetni roloc esu"
 
 #: src/birdnetpi/web/templates/reports/analysis.html.j2:116
 #, python-format
