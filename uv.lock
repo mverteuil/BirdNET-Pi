@@ -286,7 +286,6 @@ dependencies = [
     { name = "paho-mqtt" },
     { name = "pandas" },
     { name = "passlib", extra = ["argon2"] },
-    { name = "pip" },
     { name = "plotly" },
     { name = "psutil" },
     { name = "pydub" },
@@ -296,7 +295,6 @@ dependencies = [
     { name = "redis", extra = ["hiredis"] },
     { name = "resampy" },
     { name = "seaborn" },
-    { name = "setuptools" },
     { name = "sounddevice" },
     { name = "sqladmin" },
     { name = "sqlalchemy" },
@@ -308,7 +306,6 @@ dependencies = [
     { name = "tzlocal" },
     { name = "uvicorn" },
     { name = "websockets" },
-    { name = "wheel" },
     { name = "wtforms" },
 ]
 
@@ -380,7 +377,6 @@ requires-dist = [
     { name = "pandas" },
     { name = "passlib", extras = ["argon2"], specifier = ">=1.7.4" },
     { name = "pillow", marker = "(platform_machine == 'aarch64' and extra == 'epaper') or (platform_machine == 'armv7l' and extra == 'epaper')", specifier = ">=10.0.0" },
-    { name = "pip" },
     { name = "plotly" },
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "pydub", specifier = ">=0.25.1" },
@@ -391,7 +387,6 @@ requires-dist = [
     { name = "resampy" },
     { name = "rpi-gpio", marker = "(platform_machine == 'aarch64' and extra == 'epaper') or (platform_machine == 'armv7l' and extra == 'epaper')", specifier = ">=0.7.1" },
     { name = "seaborn" },
-    { name = "setuptools" },
     { name = "sounddevice", specifier = ">=0.5.2" },
     { name = "spidev", marker = "(platform_machine == 'aarch64' and extra == 'epaper') or (platform_machine == 'armv7l' and extra == 'epaper')", specifier = ">=3.6" },
     { name = "sqladmin", specifier = ">=0.21.0" },
@@ -405,7 +400,6 @@ requires-dist = [
     { name = "uvicorn" },
     { name = "waveshare-epd", marker = "extra == 'epaper'", git = "https://github.com/waveshareteam/e-Paper.git?subdirectory=RaspberryPi_JetsonNano%2Fpython" },
     { name = "websockets", specifier = ">=15.0.1" },
-    { name = "wheel" },
     { name = "wtforms", specifier = ">=3.1.2" },
 ]
 provides-extras = ["epaper"]
@@ -1286,15 +1280,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/c3/28/ec0fc38107fc32536908034e990c47914c57cd7c5a3ece4d8d8f7ffd7e27/pillow-12.2.0-pp311-pypy311_pp73-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:4a6c9fa44005fa37a91ebfc95d081e8079757d2e904b27103f4f5fa6f0bf78c0", size = 5355404, upload-time = "2026-04-01T14:46:06.33Z" },
     { url = "https://files.pythonhosted.org/packages/5e/8b/51b0eddcfa2180d60e41f06bd6d0a62202b20b59c68f5a132e615b75aecf/pillow-12.2.0-pp311-pypy311_pp73-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:25373b66e0dd5905ed63fa3cae13c82fbddf3079f2c8bf15c6fb6a35586324c1", size = 6002215, upload-time = "2026-04-01T14:46:08.83Z" },
     { url = "https://files.pythonhosted.org/packages/bc/60/5382c03e1970de634027cee8e1b7d39776b778b81812aaf45b694dfe9e28/pillow-12.2.0-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:bfa9c230d2fe991bed5318a5f119bd6780cda2915cca595393649fc118ab895e", size = 7080946, upload-time = "2026-04-01T14:46:11.734Z" },
-]
-
-[[package]]
-name = "pip"
-version = "26.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/48/83/0d7d4e9efe3344b8e2fe25d93be44f64b65364d3c8d7bc6dc90198d5422e/pip-26.0.1.tar.gz", hash = "sha256:c4037d8a277c89b320abe636d59f91e6d0922d08a05b60e85e53b296613346d8", size = 1812747, upload-time = "2026-02-05T02:20:18.702Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/de/f0/c81e05b613866b76d2d1066490adf1a3dbc4ee9d9c839961c3fc8a6997af/pip-26.0.1-py3-none-any.whl", hash = "sha256:bdb1b08f4274833d62c1aa29e20907365a2ceb950410df15fc9521bad440122b", size = 1787723, upload-time = "2026-02-05T02:20:16.416Z" },
 ]
 
 [[package]]
@@ -2238,18 +2223,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/d8/75/994634a49b7e12532be6a42103597b71098fd25900f7437d6055ed39930a/websockets-15.0.1-cp311-cp311-win32.whl", hash = "sha256:16b6c1b3e57799b9d38427dda63edcbe4926352c47cf88588c0be4ace18dac85", size = 176388, upload-time = "2025-03-05T20:02:13.32Z" },
     { url = "https://files.pythonhosted.org/packages/98/93/e36c73f78400a65f5e236cd376713c34182e6663f6889cd45a4a04d8f203/websockets-15.0.1-cp311-cp311-win_amd64.whl", hash = "sha256:27ccee0071a0e75d22cb35849b1db43f2ecd3e161041ac1ee9d2352ddf72f065", size = 176828, upload-time = "2025-03-05T20:02:14.585Z" },
     { url = "https://files.pythonhosted.org/packages/fa/a8/5b41e0da817d64113292ab1f8247140aac61cbf6cfd085d6a0fa77f4984f/websockets-15.0.1-py3-none-any.whl", hash = "sha256:f7a866fbc1e97b5c617ee4116daaa09b722101d4a3c170c787450ba409f9736f", size = 169743, upload-time = "2025-03-05T20:03:39.41Z" },
-]
-
-[[package]]
-name = "wheel"
-version = "0.46.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "packaging" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/9b/92/3a64fa9639b8e290fe8630d8067a66f7c5510845c6d73686ad880c9b04d9/wheel-0.46.2.tar.gz", hash = "sha256:3d79e48fde9847618a5a181f3cc35764c349c752e2fe911e65fa17faab9809b0", size = 60274, upload-time = "2026-01-21T23:55:25.838Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/13/2c/5e079cefe955ae58e5a052fe037c850ce493eb7269dedeb960237e78fb0f/wheel-0.46.2-py3-none-any.whl", hash = "sha256:33ae60725d69eaa249bc1982e739943c23b34b58d51f1cb6253453773aca6e65", size = 29971, upload-time = "2026-01-21T23:55:24.447Z" },
 ]
 
 [[package]]
