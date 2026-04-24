@@ -427,7 +427,7 @@ if [ "$TEST_EPAPER" = true ]; then
     echo "ePaper HAT Test Mode"
     echo "========================================"
     echo ""
-    "$INSTALL_DIR/.venv/bin/python" "$INSTALL_DIR/install/test_epaper.py"
+    "$INSTALL_DIR/.venv/bin/python" -B "$INSTALL_DIR/install/test_epaper.py"
     exit $?
 fi
 
